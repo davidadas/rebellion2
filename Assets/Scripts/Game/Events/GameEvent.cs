@@ -15,52 +15,20 @@ namespace Rebellion.Game.Events
         public string InstanceID { get; set; }
 
         [PersistableAttribute]
-        public int? MinimumRuns { get; set; }
+        public int? TriggerCount { get; set; }
 
-        [PersistableAttribute]
-        public int? MaximumRuns { get; set; }
-
-        [PersistableAttribute]
-        public bool UnlimitedRuns { get; set; }
-
-        public int GetMinimumRuns() => MinimumRuns ?? 1;
-
-        public int? GetMaximumRuns() => UnlimitedRuns ? null : MaximumRuns ?? MinimumRuns ?? 1;
-
-        public void ValidateRunLimits()
+        public int? GetTriggerCount()
         {
-            int minimum = GetMinimumRuns();
-            if (minimum < 1)
+            if (TriggerCount <= 0)
                 throw new System.InvalidOperationException(
-                    $"Event '{InstanceID}' MinimumRuns must be positive."
+                    $"Event '{InstanceID}' TriggerCount must be a positive integer."
                 );
-            if (UnlimitedRuns && MaximumRuns.HasValue)
-                throw new System.InvalidOperationException(
-                    $"Event '{InstanceID}' cannot combine MaximumRuns with UnlimitedRuns."
-                );
-            if (MaximumRuns is < 1)
-                throw new System.InvalidOperationException(
-                    $"Event '{InstanceID}' MaximumRuns must be positive."
-                );
-            if (MaximumRuns.HasValue && minimum > MaximumRuns.Value)
-                throw new System.InvalidOperationException(
-                    $"Event '{InstanceID}' MinimumRuns cannot exceed MaximumRuns."
-                );
+            return TriggerCount;
         }
 
-        public bool CanExecute(int completedRuns)
-        {
-            ValidateRunLimits();
-            int? maximum = GetMaximumRuns();
-            return !maximum.HasValue || completedRuns < maximum.Value;
-        }
-
-        public bool IsComplete(int completedRuns)
-        {
-            ValidateRunLimits();
-            int? maximum = GetMaximumRuns();
-            return maximum.HasValue && completedRuns >= maximum.Value;
-        }
+        public bool CanExecute(GameEventState state) =>
+            !state.IsExhausted
+            && (!GetTriggerCount().HasValue || state.ExecutionCount < GetTriggerCount().Value);
 
         // Result Triggers.
         public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
@@ -68,6 +36,7 @@ namespace Rebellion.Game.Events
         // Schedule and Execution Pipeline.
         public GameEventScheduler Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
+        public List<GameConditional> Until { get; set; } = new List<GameConditional>();
         public GameEventForEach ForEach { get; set; }
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 

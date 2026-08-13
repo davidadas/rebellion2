@@ -22,7 +22,8 @@ namespace Rebellion.Systems
     /// </summary>
     public class MovementSystem
         : IGameResultHandler<BlockadeChangedResult>,
-            IGameResultHandler<UnitMovementRequestedResult>
+            IGameResultHandler<UnitMovementRequestedResult>,
+            IGameResultHandler<UnitPlacementRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
@@ -131,10 +132,50 @@ namespace Rebellion.Systems
                 if (result?.Destination == null)
                     continue;
 
-                if (result.Units?.Count > 0)
-                    RequestMove(result.Units, result.Destination);
+                if (result.Units?.Count > 0 && result.DestinationCandidates?.Count > 1)
+                {
+                    foreach (ContainerNode candidate in result.DestinationCandidates)
+                    {
+                        if (
+                            TryRequestMoveGroup(
+                                result.Units,
+                                candidate,
+                                _pendingResults,
+                                result.SourceEventInstanceID
+                            )
+                        )
+                            break;
+                    }
+                }
+                else if (result.Units?.Count > 0)
+                    RequestMove(result.Units, result.Destination, result.SourceEventInstanceID);
                 else if (result.Unit != null)
-                    RequestMove(result.Unit, result.Destination);
+                    RequestMove(result.Unit, result.Destination, result.SourceEventInstanceID);
+            }
+
+            return new List<GameResult>();
+        }
+
+        List<GameResult> IGameResultHandler<UnitPlacementRequestedResult>.HandleResults(
+            IReadOnlyList<UnitPlacementRequestedResult> results
+        )
+        {
+            if (results == null)
+                return new List<GameResult>();
+
+            foreach (UnitPlacementRequestedResult result in results)
+            {
+                if (result?.Destination == null || result.Units == null)
+                    continue;
+                IEnumerable<ContainerNode> candidates =
+                    result.DestinationCandidates?.Count > 0
+                        ? result.DestinationCandidates
+                        : new[] { result.Destination };
+                foreach (ContainerNode candidate in candidates)
+                {
+                    if (TryPlaceGroup(result.Units, candidate))
+                        break;
+                }
             }
 
             return new List<GameResult>();
@@ -148,6 +189,15 @@ namespace Rebellion.Systems
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The target container to move toward.</param>
         public void RequestMove(IMovable unit, ContainerNode destination)
+        {
+            RequestMove(unit, destination, (string)null);
+        }
+
+        private void RequestMove(
+            IMovable unit,
+            ContainerNode destination,
+            string sourceEventInstanceID
+        )
         {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
@@ -188,7 +238,12 @@ namespace Rebellion.Systems
                 return;
             }
 
-            ExecuteMove(unit, destination, _pendingResults);
+            ExecuteMove(
+                unit,
+                destination,
+                _pendingResults,
+                sourceEventInstanceID: sourceEventInstanceID
+            );
         }
 
         /// <summary>
@@ -249,12 +304,21 @@ namespace Rebellion.Systems
         /// <param name="destination">The shared target container.</param>
         public void RequestMove(List<IMovable> units, ContainerNode destination)
         {
+            RequestMove(units, destination, null);
+        }
+
+        private void RequestMove(
+            List<IMovable> units,
+            ContainerNode destination,
+            string sourceEventInstanceID
+        )
+        {
             if (units == null)
                 throw new ArgumentNullException(nameof(units));
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
-            TryRequestMoveGroup(units, destination, _pendingResults);
+            TryRequestMoveGroup(units, destination, _pendingResults, sourceEventInstanceID);
         }
 
         /// <summary>
@@ -799,11 +863,13 @@ namespace Rebellion.Systems
         /// <param name="units">The movable units in execution order.</param>
         /// <param name="destination">The shared destination.</param>
         /// <param name="results">The collection receiving movement results.</param>
+        /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
         /// <returns>True when the movement group was accepted.</returns>
         private bool TryRequestMoveGroup(
             List<IMovable> units,
             ContainerNode destination,
-            ICollection<GameResult> results
+            ICollection<GameResult> results,
+            string sourceEventInstanceID = null
         )
         {
             if (units == null || units.Count == 0 || destination == null || results == null)
@@ -821,9 +887,95 @@ namespace Rebellion.Systems
                 if (IsUnderConstruction(unit))
                     ApplyManufacturingDestination(unit, resolvedDestination);
                 else
-                    ExecuteAcceptedMove(unit, resolvedDestination, results, movementGroupID);
+                    ExecuteAcceptedMove(
+                        unit,
+                        resolvedDestination,
+                        results,
+                        movementGroupID,
+                        sourceEventInstanceID
+                    );
             }
 
+            return true;
+        }
+
+        /// <summary>
+        /// Places a complete group immediately after validating every destination reservation.
+        /// </summary>
+        /// <param name="units">The units to place together.</param>
+        /// <param name="destination">The shared requested destination.</param>
+        /// <returns>True when the complete group was placed.</returns>
+        private bool TryPlaceGroup(List<IMovable> units, ContainerNode destination)
+        {
+            if (units == null || units.Count == 0 || destination == null)
+                return false;
+
+            destination = ResolveLiveContainer(destination);
+            List<IMovable> liveUnits = new List<IMovable>();
+            HashSet<string> instanceIDs = new HashSet<string>(StringComparer.Ordinal);
+            foreach (IMovable unit in units)
+            {
+                if (
+                    unit is not ISceneNode node
+                    || !instanceIDs.Add(node.InstanceID)
+                    || ResolveRegisteredNode(node) is not IMovable live
+                    || _game.IsInVoid(node)
+                )
+                    return false;
+                liveUnits.Add(live);
+            }
+
+            if (
+                !TryPlanPlacementGroup(liveUnits, destination, out List<ContainerNode> destinations)
+            )
+                return false;
+
+            for (int index = 0; index < liveUnits.Count; index++)
+            {
+                ISceneNode unit = (ISceneNode)liveUnits[index];
+                ContainerNode resolvedDestination = destinations[index];
+                if (unit.GetParent() == null)
+                    _game.AttachRegisteredNode(unit, resolvedDestination);
+                else
+                    _game.MoveNode(unit, resolvedDestination);
+                liveUnits[index].Movement = null;
+            }
+
+            return true;
+        }
+
+        private bool TryPlanPlacementGroup(
+            IReadOnlyList<IMovable> units,
+            ContainerNode destination,
+            out List<ContainerNode> resolvedDestinations
+        )
+        {
+            resolvedDestinations = new List<ContainerNode>();
+            Dictionary<ContainerNode, List<ISceneNode>> plannedChildren =
+                new Dictionary<ContainerNode, List<ISceneNode>>();
+            foreach (IMovable unit in units)
+            {
+                if (
+                    unit == null
+                    || !TryResolveAcceptedDestination(
+                        unit,
+                        destination,
+                        plannedChildren,
+                        out ContainerNode resolvedDestination
+                    )
+                )
+                    return false;
+
+                if (
+                    !plannedChildren.TryGetValue(resolvedDestination, out List<ISceneNode> children)
+                )
+                {
+                    children = new List<ISceneNode>();
+                    plannedChildren.Add(resolvedDestination, children);
+                }
+                children.Add((ISceneNode)unit);
+                resolvedDestinations.Add(resolvedDestination);
+            }
             return true;
         }
 
@@ -1087,6 +1239,7 @@ namespace Rebellion.Systems
         )
         {
             string movementGroupID = movable.Movement?.MovementGroupID;
+            string sourceEventInstanceID = movable.Movement?.SourceEventInstanceID;
 
             if (TryFollowMovingFleetDestination(movable, destination))
                 return;
@@ -1109,7 +1262,13 @@ namespace Rebellion.Systems
             try
             {
                 CompleteArrival(movable, destination, destinationPlanet, results);
-                AddArrivalResults(movable, destinationPlanet, movementGroupID, results);
+                AddArrivalResults(
+                    movable,
+                    destinationPlanet,
+                    movementGroupID,
+                    results,
+                    sourceEventInstanceID
+                );
             }
             catch (SceneAccessException ex)
             {
@@ -1338,11 +1497,13 @@ namespace Rebellion.Systems
         /// <param name="destinationPlanet">The destination planet.</param>
         /// <param name="movementGroupID">The movement order id that produced the arrival.</param>
         /// <param name="results">The results generated this tick.</param>
+        /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
         private void AddArrivalResults(
             IMovable movable,
             Planet destinationPlanet,
             string movementGroupID,
-            List<GameResult> results
+            ICollection<GameResult> results,
+            string sourceEventInstanceID = null
         )
         {
             results.Add(
@@ -1359,6 +1520,7 @@ namespace Rebellion.Systems
                     Unit = movable,
                     Destination = destinationPlanet,
                     MovementGroupID = movementGroupID,
+                    SourceEventInstanceID = sourceEventInstanceID,
                     Tick = _game.CurrentTick,
                 }
             );
@@ -1669,11 +1831,13 @@ namespace Rebellion.Systems
         /// <param name="destination">The target container to reparent into.</param>
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order id for grouped moves.</param>
+        /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
         private void ExecuteMove(
             IMovable unit,
             ContainerNode destination,
             ICollection<GameResult> results,
-            string movementGroupID = null
+            string movementGroupID = null,
+            string sourceEventInstanceID = null
         )
         {
             movementGroupID ??= Guid.NewGuid().ToString("N");
@@ -1688,7 +1852,13 @@ namespace Rebellion.Systems
             )
                 return;
 
-            ExecuteAcceptedMove(unit, resolvedDestination, results, movementGroupID);
+            ExecuteAcceptedMove(
+                unit,
+                resolvedDestination,
+                results,
+                movementGroupID,
+                sourceEventInstanceID
+            );
         }
 
         /// <summary>
@@ -1698,11 +1868,13 @@ namespace Rebellion.Systems
         /// <param name="destination">The accepted destination.</param>
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order identifier.</param>
+        /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
         private void ExecuteAcceptedMove(
             IMovable unit,
             ContainerNode destination,
             ICollection<GameResult> results,
-            string movementGroupID
+            string movementGroupID,
+            string sourceEventInstanceID = null
         )
         {
             Planet destinationPlanet = RequireDestinationPlanet(destination);
@@ -1741,6 +1913,14 @@ namespace Rebellion.Systems
             if (unit.GetParent() == destination)
             {
                 unit.Movement = null;
+                if (!string.IsNullOrWhiteSpace(sourceEventInstanceID))
+                    AddArrivalResults(
+                        unit,
+                        destinationPlanet,
+                        movementGroupID,
+                        results,
+                        sourceEventInstanceID
+                    );
                 return;
             }
 
@@ -1750,6 +1930,14 @@ namespace Rebellion.Systems
                 ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
                 unit.Movement = null;
                 AddPlanetGarrisonChangedResults(results, unit, originPlanet);
+                if (!string.IsNullOrWhiteSpace(sourceEventInstanceID))
+                    AddArrivalResults(
+                        unit,
+                        destinationPlanet,
+                        movementGroupID,
+                        results,
+                        sourceEventInstanceID
+                    );
                 return;
             }
 
@@ -1761,6 +1949,7 @@ namespace Rebellion.Systems
                 TransitTicks = transitTicks,
                 TicksElapsed = 0,
                 MovementGroupID = movementGroupID,
+                SourceEventInstanceID = sourceEventInstanceID,
                 OriginPosition = originPosition,
                 CurrentPosition = originPosition,
             };
@@ -1821,6 +2010,7 @@ namespace Rebellion.Systems
         {
             Point currentPosition = movable.Movement.CurrentPosition;
             string movementGroupID = movable.Movement.MovementGroupID;
+            string sourceEventInstanceID = movable.Movement.SourceEventInstanceID;
             movable.Movement = new MovementState
             {
                 TransitTicks = CalculateTransitTicks(
@@ -1831,6 +2021,7 @@ namespace Rebellion.Systems
                 ),
                 TicksElapsed = 0,
                 MovementGroupID = movementGroupID,
+                SourceEventInstanceID = sourceEventInstanceID,
                 OriginPosition = currentPosition,
                 CurrentPosition = currentPosition,
             };

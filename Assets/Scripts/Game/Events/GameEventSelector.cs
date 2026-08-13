@@ -41,6 +41,33 @@ namespace Rebellion.Game.Events
                 || node is Planet selectedPlanet && selectedPlanet.InstanceID == expected
                 || node.GetParentOfType<Planet>()?.InstanceID == expected;
         }
+
+        protected static bool MatchesActiveOrRecordedLocation(
+            GameRoot game,
+            ISceneNode node,
+            GameEventExecutionContext context,
+            string planetInstanceID,
+            string planetBinding
+        )
+        {
+            if (MatchesLocation(node, context, planetInstanceID, planetBinding))
+                return true;
+            if (!game.IsInVoid(node))
+                return false;
+
+            Planet planet = !string.IsNullOrWhiteSpace(planetBinding)
+                ? context?.GetBindingReference<Planet>(planetBinding)
+                : null;
+            string expected = planet?.InstanceID ?? planetInstanceID;
+            if (string.IsNullOrWhiteSpace(expected))
+                return true;
+
+            ISceneNode recordedParent = game.GetSceneNodeByInstanceID<ISceneNode>(
+                node.LastParentInstanceID
+            );
+            return recordedParent is Planet recordedPlanet && recordedPlanet.InstanceID == expected
+                || recordedParent?.GetParentOfType<Planet>()?.InstanceID == expected;
+        }
     }
 
     public abstract class OwnedSceneNodeSelector<T> : GameEventSelector
@@ -123,6 +150,9 @@ namespace Rebellion.Game.Events
     public sealed class SelectOfficers : LocatedSceneNodeSelector<Officer>
     {
         [PersistableAttribute]
+        public bool IncludeRetained { get; set; }
+
+        [PersistableAttribute]
         public bool? IsCaptured { get; set; }
 
         internal override IEnumerable<ISceneNode> Select(
@@ -130,7 +160,27 @@ namespace Rebellion.Game.Events
             IRandomNumberProvider provider,
             GameEventExecutionContext context
         ) =>
-            SelectLocated(game, context)
+            (
+                IncludeRetained
+                    ? game.GetRegisteredSceneNodesByType<Officer>()
+                    : Active<Officer>(game)
+            )
+                .Where(node =>
+                    string.IsNullOrWhiteSpace(InstanceID) || node.InstanceID == InstanceID
+                )
+                .Where(node =>
+                    string.IsNullOrWhiteSpace(OwnerFactionInstanceID)
+                    || node.OwnerInstanceID == OwnerFactionInstanceID
+                )
+                .Where(node =>
+                    MatchesActiveOrRecordedLocation(
+                        game,
+                        node,
+                        context,
+                        PlanetInstanceID,
+                        PlanetBinding
+                    )
+                )
                 .Where(officer => !IsCaptured.HasValue || officer.IsCaptured == IsCaptured.Value);
     }
 
@@ -356,6 +406,25 @@ namespace Rebellion.Game.Events
         }
     }
 
+    [PersistableObject(Name = "SelectFirst")]
+    public sealed class SelectFirst : GameEventSelector
+    {
+        [PersistableInlineCollection]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+
+        internal override IEnumerable<ISceneNode> Select(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        ) => SelectCandidates(game, provider, context).Take(1);
+
+        internal IEnumerable<ISceneNode> SelectCandidates(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        ) => Selectors.SelectMany(selector => selector.Select(game, provider, context)).Distinct();
+    }
+
     [PersistableObject(Name = "SelectBinding")]
     public sealed class SelectBinding : GameEventSelector
     {
@@ -369,10 +438,76 @@ namespace Rebellion.Game.Events
         )
         {
             if (context?.TryGetBindingReference(Binding, out object value) != true)
+                throw new InvalidOperationException(
+                    $"SelectBinding could not resolve binding '{Binding}'."
+                );
+
+            IEnumerable<ISceneNode> nodes = value switch
+            {
+                ISceneNode node => new[] { node },
+                IEnumerable<ISceneNode> collection => collection,
+                _ => throw new InvalidOperationException(
+                    $"SelectBinding '{Binding}' does not contain scene nodes."
+                ),
+            };
+            List<ISceneNode> selected = new List<ISceneNode>();
+            foreach (ISceneNode node in nodes)
+            {
+                ISceneNode canonical =
+                    node == null
+                        ? null
+                        : game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID);
+                if (canonical == null || canonical.GetParent() == null)
+                    throw new InvalidOperationException(
+                        $"SelectBinding '{Binding}' contains an unresolved or detached scene node."
+                    );
+                if (selected.All(existing => existing.InstanceID != canonical.InstanceID))
+                    selected.Add(canonical);
+            }
+            return selected;
+        }
+    }
+
+    [PersistableObject(Name = "SelectAncestors")]
+    public sealed class SelectAncestors : GameEventSelector
+    {
+        [PersistableAttribute]
+        public SceneAncestorType Type { get; set; }
+
+        [PersistableInlineCollection]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+
+        internal override IEnumerable<ISceneNode> Select(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        ) =>
+            Selectors
+                .SelectMany(selector => selector.Select(game, provider, context))
+                .Select(node => SceneAncestors.Resolve(node, Type))
+                .Where(node => node != null)
+                .Distinct();
+    }
+
+    [PersistableObject(Name = "SelectLastParent")]
+    public sealed class SelectLastParent : GameEventSelector
+    {
+        [PersistableAttribute]
+        public string UnitInstanceID { get; set; }
+
+        internal override IEnumerable<ISceneNode> Select(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
+            if (unit == null)
                 return Enumerable.Empty<ISceneNode>();
-            if (value is ISceneNode node)
-                return new[] { node };
-            return value is IEnumerable<ISceneNode> nodes ? nodes : Enumerable.Empty<ISceneNode>();
+            ISceneNode parent = game.GetSceneNodeByInstanceID<ISceneNode>(
+                unit.LastParentInstanceID
+            );
+            return parent == null ? Enumerable.Empty<ISceneNode>() : new[] { parent };
         }
     }
 }

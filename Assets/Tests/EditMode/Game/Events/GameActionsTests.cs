@@ -364,12 +364,12 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void RequestMovement_ValidReferences_EmitsAuthoritativeRequest()
+        public void SendUnits_ValidReferences_EmitsAuthoritativeRequest()
         {
             GameRoot game = BuildGame(out Planet destination, out Planet origin);
             Officer officer = EntityFactory.CreateOfficer("traveler", "rebels");
             game.AttachNode(officer, origin);
-            RequestMovementAction action = new RequestMovementAction
+            SendUnitsAction action = new SendUnitsAction
             {
                 UnitInstanceID = officer.InstanceID,
                 DestinationInstanceID = destination.InstanceID,
@@ -380,19 +380,19 @@ namespace Rebellion.Tests.Game.Events
                 .OfType<UnitMovementRequestedResult>()
                 .Single();
 
-            Assert.AreSame(officer, result.Unit);
+            CollectionAssert.AreEqual(new[] { officer }, result.Units);
             Assert.AreSame(destination, result.Destination);
             Assert.AreSame(origin, officer.GetParent());
         }
 
         [Test]
-        public void RequestMovement_IncompatibleSelector_ThrowsPreciseError()
+        public void SendUnits_IncompatibleSelector_ThrowsPreciseError()
         {
             GameRoot game = BuildGame(out Planet destination, out _);
-            RequestMovementAction action = new RequestMovementAction
+            SendUnitsAction action = new SendUnitsAction
             {
                 DestinationInstanceID = destination.InstanceID,
-                Selectors = new List<GameEventSelector>
+                Units = new List<GameEventSelector>
                 {
                     new SelectPlanets { InstanceID = destination.InstanceID },
                 },
@@ -403,6 +403,43 @@ namespace Rebellion.Tests.Game.Events
             );
 
             StringAssert.Contains("only movable units", exception.Message);
+        }
+
+        [Test]
+        public void SendUnits_SelectFirstDestination_EmitsAllOrderedCandidates()
+        {
+            GameRoot game = BuildGame(out Planet first, out Planet origin);
+            Planet second = new Planet
+            {
+                InstanceID = "second",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(second, first.GetParent());
+            Officer officer = EntityFactory.CreateOfficer("traveler", "rebels");
+            game.AttachNode(officer, origin);
+            SendUnitsAction action = new SendUnitsAction
+            {
+                UnitInstanceID = officer.InstanceID,
+                Destination = new List<GameEventSelector>
+                {
+                    new SelectFirst
+                    {
+                        Selectors = new List<GameEventSelector>
+                        {
+                            new SelectPlanets { InstanceID = first.InstanceID },
+                            new SelectPlanets { InstanceID = second.InstanceID },
+                        },
+                    },
+                },
+            };
+
+            UnitMovementRequestedResult result = action
+                .Execute(game)
+                .OfType<UnitMovementRequestedResult>()
+                .Single();
+
+            CollectionAssert.AreEqual(new[] { first, second }, result.DestinationCandidates);
         }
 
         [Test]
@@ -531,7 +568,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void RemoveFromVoid_OfficerInVoid_RestoresPreviousParent()
+        public void RemoveFromVoid_OfficerInVoid_DetachesAndPreservesPreviousParent()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -544,7 +581,99 @@ namespace Rebellion.Tests.Game.Events
             }.Execute(game);
 
             Assert.IsEmpty(results);
-            Assert.AreSame(origin, luke.GetParent());
+            Assert.IsNull(luke.GetParent());
+            Assert.AreEqual(origin.InstanceID, luke.LastParentInstanceID);
+        }
+
+        [Test]
+        public void SelectOfficers_IncludeRetainedAtRecordedPlanet_ReturnsVoidOfficer()
+        {
+            GameRoot game = BuildGame(out _, out Planet origin);
+            Officer han = EntityFactory.CreateOfficer("han", "rebels");
+            han.IsCaptured = true;
+            game.AttachNode(han, origin);
+            game.AddToVoid(han);
+            SelectOfficers selector = new SelectOfficers
+            {
+                PlanetInstanceID = origin.InstanceID,
+                OwnerFactionInstanceID = "rebels",
+                IsCaptured = true,
+                IncludeRetained = true,
+            };
+
+            List<ISceneNode> selected = selector.Select(game, new FixedRNG(0), null).ToList();
+
+            CollectionAssert.AreEqual(new ISceneNode[] { han }, selected);
+        }
+
+        [Test]
+        public void SelectBinding_StaleReferenceWithRegisteredInstanceID_ReturnsCanonicalNode()
+        {
+            GameRoot game = BuildGame(out _, out Planet origin);
+            Officer canonical = EntityFactory.CreateOfficer("han", "rebels");
+            game.AttachNode(canonical, origin);
+            Officer stale = EntityFactory.CreateOfficer(canonical.InstanceID, "rebels");
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                null,
+                null
+            );
+            context.Bind("officer", stale);
+
+            ISceneNode selected = new SelectBinding { Binding = "$officer" }
+                .Select(game, new FixedRNG(0), context)
+                .Single();
+
+            Assert.AreSame(canonical, selected);
+        }
+
+        [Test]
+        public void SelectBinding_DetachedRegisteredNode_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out Planet origin);
+            Officer officer = EntityFactory.CreateOfficer("han", "rebels");
+            game.AttachNode(officer, origin);
+            game.AddToVoid(officer);
+            game.RemoveFromVoid(officer);
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                null,
+                null
+            );
+            context.Bind("officer", officer);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                new SelectBinding { Binding = "$officer" }
+                    .Select(game, new FixedRNG(0), context)
+                    .ToList()
+            );
+        }
+
+        [Test]
+        public void RemoveFromVoid_RetainedOfficerSelector_DetachesMatchingOfficer()
+        {
+            GameRoot game = BuildGame(out _, out Planet origin);
+            Officer han = EntityFactory.CreateOfficer("han", "rebels");
+            han.IsCaptured = true;
+            game.AttachNode(han, origin);
+            game.AddToVoid(han);
+            RemoveFromVoidAction action = new RemoveFromVoidAction
+            {
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectOfficers
+                    {
+                        PlanetInstanceID = origin.InstanceID,
+                        IsCaptured = true,
+                        IncludeRetained = true,
+                    },
+                },
+            };
+
+            action.Execute(game);
+
+            Assert.IsNull(han.GetParent());
+            Assert.AreEqual(origin.InstanceID, han.LastParentInstanceID);
         }
 
         [Test]
@@ -631,7 +760,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerStat_PercentOfCurrentRank_AdjustsForceRating()
+        public void AdjustOfficerStat_PercentOfEffectiveRank_AdjustsForceRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -641,7 +770,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 OfficerInstanceID = luke.InstanceID,
                 Stat = OfficerStat.Force,
-                PercentOfCurrent = 25,
+                PercentOfEffective = 25,
             };
 
             ForceExperienceResult result = action
@@ -675,7 +804,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerStat_PercentOfBaseRating_AdjustsStoredRating()
+        public void AdjustOfficerStat_PercentOfStoredRating_AdjustsStoredRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -686,7 +815,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 OfficerInstanceID = luke.InstanceID,
                 Stat = OfficerStat.ShipResearch,
-                PercentOfBase = -25,
+                PercentOfStored = -25,
             }.Execute(game);
 
             Assert.AreEqual(30, luke.GetBaseRating(OfficerRating.ShipResearch));
@@ -705,9 +834,175 @@ namespace Rebellion.Tests.Game.Events
                     OfficerInstanceID = luke.InstanceID,
                     Stat = OfficerStat.Combat,
                     Amount = 5,
-                    PercentOfBase = 10,
+                    PercentOfStored = 10,
                 }.Execute(game)
             );
+        }
+
+        [Test]
+        public void PerformSkillCheck_SuccessfulRoll_ExecutesSuccessActions()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.SetBaseRating(OfficerRating.Combat, 50);
+            game.AttachNode(luke, rebelPlanet);
+            game.Config.ProbabilityTables.Mission.Rescue = new Dictionary<int, int> { [50] = 60 };
+            PerformSkillCheckAction action = new PerformSkillCheckAction
+            {
+                OfficerInstanceID = luke.InstanceID,
+                Rating = OfficerRating.Combat,
+                ProbabilityTable = MissionTypeIDs.Rescue,
+                Success = new List<GameAction>
+                {
+                    new SetEventVariableAction
+                    {
+                        Key = "result",
+                        Operation = EventVariableOperation.Set,
+                        Operand = 1,
+                    },
+                },
+                Failure = new List<GameAction>
+                {
+                    new SetEventVariableAction
+                    {
+                        Key = "result",
+                        Operation = EventVariableOperation.Set,
+                        Operand = -1,
+                    },
+                },
+            };
+
+            action.Execute(game, new FixedRNG(0.59));
+
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("result"));
+        }
+
+        [Test]
+        public void PerformSkillCheck_FailedRoll_ExecutesFailureActions()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.SetBaseRating(OfficerRating.Combat, 50);
+            game.AttachNode(luke, rebelPlanet);
+            game.Config.ProbabilityTables.Mission.Rescue = new Dictionary<int, int> { [50] = 60 };
+            PerformSkillCheckAction action = new PerformSkillCheckAction
+            {
+                OfficerInstanceID = luke.InstanceID,
+                Rating = OfficerRating.Combat,
+                ProbabilityTable = MissionTypeIDs.Rescue,
+                Success = new List<GameAction>(),
+                Failure = new List<GameAction>
+                {
+                    new SetEventVariableAction
+                    {
+                        Key = "result",
+                        Operation = EventVariableOperation.Set,
+                        Operand = -1,
+                    },
+                },
+            };
+
+            action.Execute(game, new FixedRNG(0.60));
+
+            Assert.AreEqual(-1, game.EventRuntime.GetVariable("result"));
+        }
+
+        [Test]
+        public void PerformSkillCheck_InjuredOfficer_UsesEffectiveRating()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.SetBaseRating(OfficerRating.Combat, 50);
+            luke.InjuryPoints = 20;
+            game.AttachNode(luke, rebelPlanet);
+            game.Config.ProbabilityTables.Mission.Rescue = new Dictionary<int, int>
+            {
+                [0] = 0,
+                [50] = 100,
+            };
+            PerformSkillCheckAction action = new PerformSkillCheckAction
+            {
+                OfficerInstanceID = luke.InstanceID,
+                Rating = OfficerRating.Combat,
+                ProbabilityTable = MissionTypeIDs.Rescue,
+                Failure = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "failed", Operand = 1 },
+                },
+            };
+
+            action.Execute(game, new FixedRNG(0.5));
+
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("failed"));
+        }
+
+        [Test]
+        public void PerformSkillCheck_NegativeRatingMultiplier_UsesScaledScoreAndEmitsOutcome()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer han = EntityFactory.CreateOfficer("han", "rebels");
+            han.SetBaseRating(OfficerRating.Combat, 50);
+            game.AttachNode(han, rebelPlanet);
+            game.Config.ProbabilityTables.Mission.Abduction = new Dictionary<int, int>
+            {
+                [-51] = 0,
+                [-50] = 100,
+            };
+            PerformSkillCheckAction action = new PerformSkillCheckAction
+            {
+                OfficerInstanceID = han.InstanceID,
+                Rating = OfficerRating.Combat,
+                ProbabilityTable = MissionTypeIDs.Abduction,
+                RatingMultiplier = -1,
+            };
+
+            SkillCheckCompletedResult result = action
+                .Execute(game, new FixedRNG(0.99))
+                .OfType<SkillCheckCompletedResult>()
+                .Single();
+
+            Assert.AreSame(han, result.Officer);
+            Assert.AreEqual(OfficerRating.Combat, result.Rating);
+            Assert.AreEqual(MissionTypeIDs.Abduction, result.ProbabilityTable);
+            Assert.IsTrue(result.Succeeded);
+        }
+
+        [Test]
+        public void PerformSkillCheck_MissingOfficer_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            PerformSkillCheckAction action = new PerformSkillCheckAction
+            {
+                OfficerInstanceID = "missing",
+                Rating = OfficerRating.Combat,
+                ProbabilityTable = MissionTypeIDs.Rescue,
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                action.Execute(game)
+            );
+
+            StringAssert.Contains("could not resolve officer", exception.Message);
+        }
+
+        [Test]
+        public void PerformSkillCheck_MissingProbabilityTable_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            game.AttachNode(luke, rebelPlanet);
+            PerformSkillCheckAction action = new PerformSkillCheckAction
+            {
+                OfficerInstanceID = luke.InstanceID,
+                Rating = OfficerRating.Combat,
+                ProbabilityTable = "missing",
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                action.Execute(game)
+            );
+
+            StringAssert.Contains("could not resolve probability table", exception.Message);
         }
 
         [Test]

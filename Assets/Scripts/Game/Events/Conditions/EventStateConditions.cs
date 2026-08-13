@@ -54,22 +54,47 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// A <see cref="GameConditional"/> that is met when the specified game event has been completed.
+    /// A <see cref="GameConditional"/> that is met after the specified event has triggered.
     /// </summary>
-    [PersistableObject(Name = "IsEventComplete")]
-    public sealed class IsEventCompleteConditional : GameConditional
+    [PersistableObject(Name = "HasEventTriggered")]
+    public sealed class HasEventTriggeredConditional : GameConditional
     {
         [PersistableAttribute]
         public string EventInstanceID { get; set; }
 
         /// <summary>
-        /// Checks whether the event with the configured instance ID has been marked complete.
+        /// Checks whether the event with the configured instance ID has executed at least once.
         /// </summary>
         /// <param name="context">The context providing event runtime state.</param>
-        /// <returns>True if the event is complete; otherwise false.</returns>
+        /// <returns>True if the event has executed; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
-            return context.Game.EventRuntime.IsComplete(EventInstanceID);
+            return context.Game.EventRuntime.GetState(EventInstanceID).ExecutionCount > 0;
+        }
+    }
+
+    /// <summary>
+    /// Tests whether the specified event can no longer execute.
+    /// </summary>
+    [PersistableObject(Name = "IsEventExhausted")]
+    public sealed class IsEventExhaustedConditional : GameConditional
+    {
+        [PersistableAttribute]
+        public string EventInstanceID { get; set; }
+
+        public override bool IsMet(GameConditionContext context)
+        {
+            GameEventState state = context.Game.EventRuntime.GetState(EventInstanceID);
+            if (state.IsExhausted)
+                return true;
+
+            GameEvent definition = context
+                .Game.GetEventPool()
+                .Find(gameEvent =>
+                    string.Equals(gameEvent.InstanceID, EventInstanceID, StringComparison.Ordinal)
+                );
+            int? triggerCount = definition?.GetTriggerCount();
+            return triggerCount.HasValue && state.ExecutionCount >= triggerCount.Value;
         }
     }
 
@@ -130,21 +155,6 @@ namespace Rebellion.Game.Events
             )
                 return false;
 
-            if (actual is IEnumerable values && actual is not string)
-            {
-                bool contains = false;
-                foreach (object value in values)
-                    contains |= Compare(value, ExpectedValue) == 0;
-                return Comparison switch
-                {
-                    EventVariableComparison.Equal => contains,
-                    EventVariableComparison.NotEqual => !contains,
-                    _ => throw new InvalidOperationException(
-                        "Collection bindings support only Equal and NotEqual."
-                    ),
-                };
-            }
-
             if (
                 Comparison
                     is EventVariableComparison.GreaterThan
@@ -174,10 +184,6 @@ namespace Rebellion.Game.Events
 
         private static int Compare(object actual, string expected)
         {
-            if (actual is IGameEntity entity)
-            {
-                return string.Compare(entity.InstanceID, expected, StringComparison.Ordinal);
-            }
             if (actual is bool boolean && bool.TryParse(expected, out bool expectedBoolean))
                 return boolean.CompareTo(expectedBoolean);
             if (actual is bool)
@@ -195,6 +201,39 @@ namespace Rebellion.Game.Events
             throw new InvalidOperationException(
                 $"Binding values of type '{actual?.GetType().Name ?? "null"}' cannot be compared."
             );
+        }
+    }
+
+    /// <summary>
+    /// Tests whether a bound scene-node collection contains one canonical unit.
+    /// </summary>
+    [PersistableObject(Name = "BindingIncludesUnit")]
+    public sealed class BindingIncludesUnitConditional : GameConditional
+    {
+        [PersistableAttribute]
+        public string Binding { get; set; }
+
+        [PersistableAttribute]
+        public string UnitInstanceID { get; set; }
+
+        public override bool IsMet(GameConditionContext context)
+        {
+            if (
+                context.Activation == null
+                || !context.Activation.TryGetBindingReference(Binding, out object actual)
+                || actual is not IEnumerable values
+            )
+                return false;
+
+            foreach (object value in values)
+            {
+                if (
+                    value is IGameEntity entity
+                    && string.Equals(entity.InstanceID, UnitInstanceID, StringComparison.Ordinal)
+                )
+                    return true;
+            }
+            return false;
         }
     }
 }

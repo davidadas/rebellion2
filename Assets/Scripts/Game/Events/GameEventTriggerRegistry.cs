@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Game.Events
@@ -12,22 +13,43 @@ namespace Rebellion.Game.Events
         private interface ITriggerContract
         {
             Type ResultType { get; }
+            IReadOnlyDictionary<string, Type> Arguments { get; }
             bool Matches(GameResult result);
             bool TryReadArgument(GameResult result, string argument, out object value);
+            bool TryGetArgumentType(string argument, out Type type);
         }
 
         private sealed class TriggerContract<TResult> : ITriggerContract
             where TResult : GameResult
         {
-            private readonly Dictionary<string, Func<TResult, object>> _arguments = new(
+            private sealed class TriggerArgument
+            {
+                internal Type Type { get; set; }
+                internal Func<TResult, object> Getter { get; set; }
+            }
+
+            private readonly Dictionary<string, TriggerArgument> _arguments = new(
                 StringComparer.Ordinal
             );
 
             public Type ResultType => typeof(TResult);
 
-            internal TriggerContract<TResult> Argument(string name, Func<TResult, object> getter)
+            public IReadOnlyDictionary<string, Type> Arguments =>
+                _arguments.ToDictionary(
+                    entry => entry.Key,
+                    entry => entry.Value.Type,
+                    StringComparer.Ordinal
+                );
+
+            internal TriggerContract<TResult> Argument<TValue>(
+                string name,
+                Func<TResult, TValue> getter
+            )
             {
-                _arguments.Add(name, getter);
+                _arguments.Add(
+                    name,
+                    new TriggerArgument { Type = typeof(TValue), Getter = result => getter(result) }
+                );
                 return this;
             }
 
@@ -35,13 +57,27 @@ namespace Rebellion.Game.Events
 
             public bool TryReadArgument(GameResult result, string argument, out object value)
             {
-                if (result is TResult typed && _arguments.TryGetValue(argument, out var getter))
+                if (
+                    result is TResult typed
+                    && _arguments.TryGetValue(argument, out TriggerArgument contract)
+                )
                 {
-                    value = getter(typed);
+                    value = contract.Getter(typed);
                     return true;
                 }
 
                 value = null;
+                return false;
+            }
+
+            public bool TryGetArgumentType(string argument, out Type type)
+            {
+                if (_arguments.TryGetValue(argument, out TriggerArgument contract))
+                {
+                    type = contract.Type;
+                    return true;
+                }
+                type = null;
                 return false;
             }
         }
@@ -50,8 +86,20 @@ namespace Rebellion.Game.Events
 
         internal static Type GetResultType(string eventID) => GetContract(eventID).ResultType;
 
+        internal static IReadOnlyDictionary<string, Type> GetArguments(string eventID) =>
+            GetContract(eventID).Arguments;
+
         internal static bool Matches(string eventID, GameResult result) =>
             result != null && GetContract(eventID).Matches(result);
+
+        internal static Type GetArgumentType(string eventID, string argument)
+        {
+            if (GetContract(eventID).TryGetArgumentType(argument, out Type type))
+                return type;
+            throw new InvalidOperationException(
+                $"Trigger '{eventID}' does not expose argument '{argument}'."
+            );
+        }
 
         internal static void Bind(
             GameEventExecutionContext context,
@@ -90,24 +138,32 @@ namespace Rebellion.Game.Events
             Dictionary<string, ITriggerContract> contracts = new(StringComparer.Ordinal);
             Register<UnitArrivedResult>(contracts, "core:unit.arrived")
                 .Argument("Unit", result => result.Unit)
+                .Argument("UnitInstanceID", result => result.Unit?.InstanceID)
                 .Argument("Destination", result => result.Destination)
-                .Argument("SourceEvent", result => result.SourceEventInstanceID);
+                .Argument("DestinationInstanceID", result => result.Destination?.InstanceID)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<DuelResult>(contracts, "core:duel.completed")
                 .Argument("Officer", result => result.EncounteredOfficer)
+                .Argument("OfficerInstanceID", result => result.EncounteredOfficer?.InstanceID)
                 .Argument("Opponent", result => result.OpposingOfficer)
+                .Argument("OpponentInstanceID", result => result.OpposingOfficer?.InstanceID)
                 .Argument("Location", result => result.Location)
                 .Argument("OfficerCaptured", result => result.EncounteredOfficerCaptured)
                 .Argument("OfficerInjury", result => result.EncounteredOfficerInjury)
                 .Argument("OpponentInjury", result => result.OpposingOfficerInjury)
                 .Argument("ImagePath", result => result.ImagePath)
                 .Argument("AudioPath", result => result.AudioPath)
-                .Argument("SourceEvent", result => result.SourceEventInstanceID);
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<OfficerCaptureStateResult>(contracts, "core:officer.capture-changed")
                 .Argument("Officer", result => result.TargetOfficer ?? result.CapturedOfficer)
+                .Argument(
+                    "OfficerInstanceID",
+                    result => (result.TargetOfficer ?? result.CapturedOfficer)?.InstanceID
+                )
                 .Argument("LinkedOfficer", result => result.LinkedOfficer)
                 .Argument("Context", result => result.Context)
                 .Argument("IsCaptured", result => result.IsCaptured)
-                .Argument("SourceEvent", result => result.SourceEventInstanceID);
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<MissionCompletedResult>(contracts, "core:mission.completed")
                 .Argument("Mission", result => result.Mission)
                 .Argument("Outcome", result => result.Outcome)
@@ -115,12 +171,19 @@ namespace Rebellion.Game.Events
                 .Argument("Participants", result => result.Participants)
                 .Argument("Location", result => result.Location)
                 .Argument("ReturnDestination", result => result.ReturnDestination)
-                .Argument("SourceEvent", result => result.SourceEventInstanceID);
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<ForceDiscoveryResult>(contracts, "core:force.discovered")
                 .Argument("Officer", result => result.Officer)
                 .Argument("Discoverer", result => result.Discoverer)
                 .Argument("ForceRank", result => result.ForceRank)
-                .Argument("SourceEvent", result => result.SourceEventInstanceID);
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<SkillCheckCompletedResult>(contracts, "core:skill-check.completed")
+                .Argument("Officer", result => result.Officer)
+                .Argument("OfficerInstanceID", result => result.Officer?.InstanceID)
+                .Argument("Rating", result => result.Rating)
+                .Argument("ProbabilityTable", result => result.ProbabilityTable)
+                .Argument("Succeeded", result => result.Succeeded)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             return contracts;
         }
 

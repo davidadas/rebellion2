@@ -207,6 +207,177 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleMovementRequest_EventOriginatedRequest_PropagatesSourceToArrival()
+        {
+            (_, _, Planet destination, Officer officer, MovementSystem movement) = BuildScene();
+            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
+            handler.HandleResults(
+                new[]
+                {
+                    new UnitMovementRequestedResult
+                    {
+                        Unit = officer,
+                        Destination = destination,
+                        SourceEventInstanceID = "SEND_OFFICER",
+                    },
+                }
+            );
+            int transitTicks = officer.Movement.TransitTicks;
+
+            List<GameResult> results = new List<GameResult>();
+            for (int tick = 0; tick < transitTicks; tick++)
+                results.AddRange(movement.ProcessTick());
+
+            UnitArrivedResult arrival = results.OfType<UnitArrivedResult>().Single();
+            Assert.AreEqual("SEND_OFFICER", arrival.SourceEventInstanceID);
+        }
+
+        [Test]
+        public void HandleMovementRequest_EventOriginatedRequestAlreadyAtDestination_EmitsArrival()
+        {
+            (_, Planet origin, _, Officer officer, MovementSystem movement) = BuildScene();
+            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
+
+            handler.HandleResults(
+                new[]
+                {
+                    new UnitMovementRequestedResult
+                    {
+                        Unit = officer,
+                        Destination = origin,
+                        SourceEventInstanceID = "SEND_OFFICER",
+                    },
+                }
+            );
+            UnitArrivedResult arrival = movement.ProcessTick().OfType<UnitArrivedResult>().Single();
+
+            Assert.AreSame(officer, arrival.Unit);
+            Assert.AreSame(origin, arrival.Destination);
+            Assert.AreEqual("SEND_OFFICER", arrival.SourceEventInstanceID);
+        }
+
+        [Test]
+        public void HandlePlacementRequest_DetachedRetainedUnit_PlacesWithoutTransit()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            game.AddToVoid(officer);
+            game.RemoveFromVoid(officer);
+            IGameResultHandler<UnitPlacementRequestedResult> handler = movement;
+
+            handler.HandleResults(
+                new[]
+                {
+                    new UnitPlacementRequestedResult
+                    {
+                        Units = new List<IMovable> { officer },
+                        Destination = destination,
+                    },
+                }
+            );
+
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.AreEqual(origin.InstanceID, officer.LastParentInstanceID);
+        }
+
+        [Test]
+        public void HandleMovementRequest_FirstCandidateRejectsGroup_UsesNextCandidate()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            Planet rejected = new Planet
+            {
+                InstanceID = "rejected",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(rejected, origin.GetParent());
+            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
+
+            handler.HandleResults(
+                new[]
+                {
+                    new UnitMovementRequestedResult
+                    {
+                        Units = new List<IMovable> { officer },
+                        Destination = rejected,
+                        DestinationCandidates = new List<ContainerNode> { rejected, destination },
+                    },
+                }
+            );
+
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
+        public void HandlePlacementRequest_GroupExceedsCapacity_LeavesEveryUnitUnchanged()
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementSystem movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            CapitalShip sourceShip = new CapitalShip
+            {
+                InstanceID = "source-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 2,
+            };
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            CapitalShip destinationShip = new CapitalShip
+            {
+                InstanceID = "destination-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            Starfighter first = new Starfighter
+            {
+                InstanceID = "first",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter second = new Starfighter
+            {
+                InstanceID = "second",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(sourceShip, sourceFleet);
+            game.AttachNode(first, sourceShip);
+            game.AttachNode(second, sourceShip);
+            game.AttachNode(destinationFleet, destination);
+            game.AttachNode(destinationShip, destinationFleet);
+            IGameResultHandler<UnitPlacementRequestedResult> handler = movement;
+
+            handler.HandleResults(
+                new[]
+                {
+                    new UnitPlacementRequestedResult
+                    {
+                        Units = new List<IMovable> { first, second },
+                        Destination = destinationFleet,
+                    },
+                }
+            );
+
+            Assert.AreSame(sourceShip, first.GetParent());
+            Assert.AreSame(sourceShip, second.GetParent());
+        }
+
+        [Test]
         public void RequestMove_ValidDestination_UnitIsNoLongerAtOrigin()
         {
             (

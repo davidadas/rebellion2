@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -11,7 +12,7 @@ namespace Rebellion.Tests.Game.Events
     public class EventStateConditionsTests
     {
         [Test]
-        public void EvaluateBinding_OfficerInsideBoundFleet_DoesNotMatchInstanceID()
+        public void EvaluateBinding_ObjectBinding_ThrowsInvalidOperationException()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             Officer emperor = EntityFactory.CreateOfficer("emperor", "empire");
@@ -33,13 +34,15 @@ namespace Rebellion.Tests.Game.Events
             );
             context.Bind("unit", fleet);
 
-            bool matches = conditional.IsMet(game, context);
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                conditional.IsMet(game, context)
+            );
 
-            Assert.IsFalse(matches);
+            StringAssert.Contains("cannot be compared", exception.Message);
         }
 
         [Test]
-        public void EvaluateBinding_DifferentEntity_DoesNotMatchInstanceID()
+        public void EvaluateBinding_DifferentObjectBinding_ThrowsInvalidOperationException()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
@@ -55,9 +58,43 @@ namespace Rebellion.Tests.Game.Events
             );
             context.Bind("destination", rebelPlanet);
 
-            bool matches = conditional.IsMet(game, context);
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                conditional.IsMet(game, context)
+            );
 
-            Assert.IsFalse(matches);
+            StringAssert.Contains("cannot be compared", exception.Message);
+        }
+
+        [Test]
+        public void IsEventExhausted_LoadedCountAtLimit_ReturnsTrueBeforeEventProcessing()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            game.EventPool.Add(new GameEvent { InstanceID = "limited", TriggerCount = 2 });
+            game.EventRuntime.GetState("limited").ExecutionCount = 2;
+            IsEventExhaustedConditional conditional = new IsEventExhaustedConditional
+            {
+                EventInstanceID = "limited",
+            };
+
+            bool exhausted = conditional.IsMet(game);
+
+            Assert.IsTrue(exhausted);
+        }
+
+        [Test]
+        public void IsEventExhausted_LoadedUnlimitedEvent_ReturnsFalse()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            game.EventPool.Add(new GameEvent { InstanceID = "unlimited" });
+            game.EventRuntime.GetState("unlimited").ExecutionCount = 10;
+            IsEventExhaustedConditional conditional = new IsEventExhaustedConditional
+            {
+                EventInstanceID = "unlimited",
+            };
+
+            bool exhausted = conditional.IsMet(game);
+
+            Assert.IsFalse(exhausted);
         }
 
         private static GameRoot BuildGame(out Planet empirePlanet, out Planet rebelPlanet)

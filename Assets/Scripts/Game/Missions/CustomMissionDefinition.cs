@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -33,29 +31,6 @@ namespace Rebellion.Game.Missions
     [PersistableObject]
     public sealed class AutomaticMissionSuccess { }
 
-    [PersistableObject(Name = "Rating")]
-    public sealed class MissionRatingContribution
-    {
-        [PersistableAttribute]
-        public OfficerRating Rating { get; set; }
-
-        [PersistableAttribute]
-        public int Divisor { get; set; } = 1;
-
-        [PersistableAttribute]
-        public int ParticipantIndex { get; set; }
-    }
-
-    [PersistableObject]
-    public sealed class ChanceMissionSuccess
-    {
-        [PersistableAttribute]
-        public int BasePercent { get; set; }
-
-        public List<MissionRatingContribution> Ratings { get; set; } =
-            new List<MissionRatingContribution>();
-    }
-
     [PersistableObject]
     public sealed class OpposedMissionSuccess
     {
@@ -73,7 +48,6 @@ namespace Rebellion.Game.Missions
     public sealed class MissionSuccessRule
     {
         public AutomaticMissionSuccess Automatic { get; set; }
-        public ChanceMissionSuccess Chance { get; set; }
         public OpposedMissionSuccess Opposed { get; set; }
     }
 
@@ -113,30 +87,11 @@ namespace Rebellion.Game.Missions
                 );
 
             int successModes =
-                (Success?.Automatic == null ? 0 : 1)
-                + (Success?.Chance == null ? 0 : 1)
-                + (Success?.Opposed == null ? 0 : 1);
+                (Success?.Automatic == null ? 0 : 1) + (Success?.Opposed == null ? 0 : 1);
             if (successModes != 1)
                 throw new InvalidOperationException(
                     $"Mission definition '{InstanceID}' requires exactly one success rule."
                 );
-            if (Success.Chance != null)
-            {
-                if (Success.Chance.BasePercent < 0 || Success.Chance.BasePercent > 100)
-                    throw new InvalidOperationException(
-                        $"Mission definition '{InstanceID}' has an invalid base chance."
-                    );
-                if (
-                    Success.Chance.Ratings.Any(rating =>
-                        rating.Rating == OfficerRating.None
-                        || rating.Divisor <= 0
-                        || rating.ParticipantIndex < 0
-                    )
-                )
-                    throw new InvalidOperationException(
-                        $"Mission definition '{InstanceID}' has an invalid rating contribution."
-                    );
-            }
             if (
                 Success.Opposed != null
                 && (

@@ -10,16 +10,26 @@ namespace Rebellion.Game.Events
     [PersistableObject]
     public sealed class GameEventRuntimeState
     {
-        public HashSet<string> CompletedEventIDs { get; set; } = new HashSet<string>();
+        private HashSet<string> _legacyCompletedEventIDs = new HashSet<string>(
+            StringComparer.Ordinal
+        );
+
+        [PersistableIgnore]
+        [PersistableMember(Name = "CompletedEventIDs")]
+        public HashSet<string> LegacyCompletedEventIDs
+        {
+            get => new HashSet<string>();
+            set =>
+                _legacyCompletedEventIDs =
+                    value == null
+                        ? new HashSet<string>(StringComparer.Ordinal)
+                        : new HashSet<string>(value, StringComparer.Ordinal);
+        }
+
         public Dictionary<string, GameEventState> States { get; set; } =
             new Dictionary<string, GameEventState>(StringComparer.Ordinal);
         public Dictionary<string, int> Variables { get; set; } =
             new Dictionary<string, int>(StringComparer.Ordinal);
-
-        public void Complete(string eventInstanceID) => CompletedEventIDs.Add(eventInstanceID);
-
-        public bool IsComplete(string eventInstanceID) =>
-            CompletedEventIDs.Contains(eventInstanceID);
 
         public GameEventState GetState(string eventInstanceID)
         {
@@ -32,6 +42,11 @@ namespace Rebellion.Game.Events
             {
                 state = new GameEventState();
                 States.Add(eventInstanceID, state);
+            }
+            if (_legacyCompletedEventIDs.Contains(eventInstanceID))
+            {
+                state.ExecutionCount = Math.Max(1, state.ExecutionCount);
+                state.IsExhausted = true;
             }
             return state;
         }

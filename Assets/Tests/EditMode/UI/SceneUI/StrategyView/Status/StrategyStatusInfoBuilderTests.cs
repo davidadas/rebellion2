@@ -513,7 +513,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void Build_OfficerWithAuthoredStatus_ShowsStatusText()
+        public void Build_OfficerWithDisplayStatus_ShowsDisplayStatus()
         {
             Officer officer = new Officer
             {
@@ -523,7 +523,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             };
             _game.AttachNode(officer, _planet);
             _game.AddToVoid(officer);
-            officer.StatusText = "Training";
+            officer.DisplayStatus = "Training";
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 

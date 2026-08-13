@@ -491,8 +491,8 @@ public sealed class FinderWindowRowBuilder
         if (personnel is Officer officerOnMission && officerOnMission.IsOnMission())
             return "On Mission";
 
-        if (personnel is Officer officer && !string.IsNullOrWhiteSpace(officer.StatusText))
-            return officer.StatusText;
+        if (personnel is BaseGameEntity entity && !string.IsNullOrWhiteSpace(entity.DisplayStatus))
+            return entity.DisplayStatus;
         if (personnel is SpecialForces specialForces && specialForces.IsOnMission())
         {
             return "On Mission";

@@ -8,23 +8,33 @@ namespace Rebellion.Tests.Game.Events
     public sealed class GameEventTests
     {
         [Test]
-        public void ValidateRunLimits_MinimumExceedsMaximum_ThrowsInvalidOperationException()
+        public void GetTriggerCount_PositiveInteger_ReturnsCount()
         {
-            GameEvent gameEvent = new GameEvent { MinimumRuns = 3, MaximumRuns = 2 };
+            GameEvent gameEvent = new GameEvent { TriggerCount = 3 };
 
-            TestDelegate validate = gameEvent.ValidateRunLimits;
+            int? result = gameEvent.GetTriggerCount();
 
-            Assert.Throws<InvalidOperationException>(validate);
+            Assert.AreEqual(3, result);
         }
 
         [Test]
-        public void ValidateRunLimits_UnlimitedWithMaximum_ThrowsInvalidOperationException()
+        public void GetTriggerCount_Omitted_ReturnsNull()
         {
-            GameEvent gameEvent = new GameEvent { MaximumRuns = 2, UnlimitedRuns = true };
+            GameEvent gameEvent = new GameEvent();
 
-            TestDelegate validate = gameEvent.ValidateRunLimits;
+            int? result = gameEvent.GetTriggerCount();
 
-            Assert.Throws<InvalidOperationException>(validate);
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public void GetTriggerCount_InvalidValue_ThrowsInvalidOperationException()
+        {
+            GameEvent gameEvent = new GameEvent { TriggerCount = 0 };
+
+            TestDelegate getTriggerCount = () => gameEvent.GetTriggerCount();
+
+            Assert.Throws<InvalidOperationException>(getTriggerCount);
         }
     }
 }

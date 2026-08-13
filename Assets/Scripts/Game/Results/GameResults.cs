@@ -603,6 +603,28 @@ namespace Rebellion.Game.Results
         public IMovable Unit { get; set; }
         public List<IMovable> Units { get; set; } = new List<IMovable>();
         public ContainerNode Destination { get; set; }
+        public List<ContainerNode> DestinationCandidates { get; set; } = new List<ContainerNode>();
+    }
+
+    /// <summary>
+    /// A data-defined event requested immediate placement without transit.
+    /// </summary>
+    public sealed class UnitPlacementRequestedResult : GameResult
+    {
+        public List<IMovable> Units { get; set; } = new List<IMovable>();
+        public ContainerNode Destination { get; set; }
+        public List<ContainerNode> DestinationCandidates { get; set; } = new List<ContainerNode>();
+    }
+
+    /// <summary>
+    /// Reports the outcome of one authored officer-rating check.
+    /// </summary>
+    public sealed class SkillCheckCompletedResult : GameResult
+    {
+        public Officer Officer { get; set; }
+        public OfficerRating Rating { get; set; }
+        public string ProbabilityTable { get; set; }
+        public bool Succeeded { get; set; }
     }
 
     /// <summary>

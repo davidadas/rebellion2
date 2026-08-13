@@ -144,6 +144,21 @@ namespace Rebellion.Game.Events
         CapitalShip,
     }
 
+    internal static class SceneAncestors
+    {
+        internal static ISceneNode Resolve(ISceneNode node, SceneAncestorType type) =>
+            type switch
+            {
+                SceneAncestorType.Galaxy => node.GetParentOfType<GalaxyMap>(),
+                SceneAncestorType.PlanetSystem => node.GetParentOfType<PlanetSystem>(),
+                SceneAncestorType.Planet => node.GetParentOfType<Planet>(),
+                SceneAncestorType.Fleet => node.GetParentOfType<Fleet>(),
+                SceneAncestorType.Mission => node.GetParentOfType<Mission>(),
+                SceneAncestorType.CapitalShip => node.GetParentOfType<CapitalShip>(),
+                _ => null,
+            };
+    }
+
     [PersistableObject(Name = "ShareParent")]
     public sealed class ShareParentConditional : GameConditional
     {
@@ -177,22 +192,12 @@ namespace Rebellion.Game.Events
             List<ISceneNode> nodes = SceneConditionUnits.ResolveDistinct(context.Game, Units);
             if (nodes == null)
                 return false;
-            List<ISceneNode> ancestors = nodes.ConvertAll(ResolveAncestor);
+            List<ISceneNode> ancestors = nodes.ConvertAll(node =>
+                SceneAncestors.Resolve(node, Type)
+            );
             return ancestors[0] != null
                 && ancestors.All(ancestor => ReferenceEquals(ancestor, ancestors[0]));
         }
-
-        private ISceneNode ResolveAncestor(ISceneNode node) =>
-            Type switch
-            {
-                SceneAncestorType.Galaxy => node.GetParentOfType<GalaxyMap>(),
-                SceneAncestorType.PlanetSystem => node.GetParentOfType<PlanetSystem>(),
-                SceneAncestorType.Planet => node.GetParentOfType<Planet>(),
-                SceneAncestorType.Fleet => node.GetParentOfType<Fleet>(),
-                SceneAncestorType.Mission => node.GetParentOfType<Mission>(),
-                SceneAncestorType.CapitalShip => node.GetParentOfType<CapitalShip>(),
-                _ => null,
-            };
     }
 
     internal static class SceneConditionUnits

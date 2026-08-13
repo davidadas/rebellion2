@@ -408,7 +408,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void SaveAndLoadGame_GameWithCompletedEvents_PreservesCompletedEventIDs()
+        public void SaveAndLoadGame_GameWithExhaustedEvents_PreservesEventStates()
         {
             GameSummary summary = new GameSummary
             {
@@ -424,7 +424,12 @@ namespace Rebellion.Tests.Managers
                 Summary = summary,
                 EventRuntime = new GameEventRuntimeState
                 {
-                    CompletedEventIDs = new HashSet<string> { "EVENT1", "EVENT2", "EVENT3" },
+                    States = new Dictionary<string, GameEventState>
+                    {
+                        ["EVENT1"] = new GameEventState { IsExhausted = true },
+                        ["EVENT2"] = new GameEventState { IsExhausted = true },
+                        ["EVENT3"] = new GameEventState { IsExhausted = true },
+                    },
                 },
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
@@ -433,10 +438,10 @@ namespace Rebellion.Tests.Managers
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(3, loadedGame.EventRuntime.CompletedEventIDs.Count);
-            Assert.IsTrue(loadedGame.EventRuntime.CompletedEventIDs.Contains("EVENT1"));
-            Assert.IsTrue(loadedGame.EventRuntime.CompletedEventIDs.Contains("EVENT2"));
-            Assert.IsTrue(loadedGame.EventRuntime.CompletedEventIDs.Contains("EVENT3"));
+            Assert.AreEqual(3, loadedGame.EventRuntime.States.Count);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT1"].IsExhausted);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT2"].IsExhausted);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT3"].IsExhausted);
         }
 
         [Test]
@@ -689,8 +694,8 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, loadedGame.Factions.Count);
             Assert.IsNotNull(loadedGame.EventPool);
             Assert.AreEqual(0, loadedGame.EventPool.Count);
-            Assert.IsNotNull(loadedGame.EventRuntime.CompletedEventIDs);
-            Assert.AreEqual(0, loadedGame.EventRuntime.CompletedEventIDs.Count);
+            Assert.IsNotNull(loadedGame.EventRuntime.States);
+            Assert.AreEqual(0, loadedGame.EventRuntime.States.Count);
             Assert.IsNotNull(loadedGame.UnrecruitedOfficers);
             Assert.AreEqual(0, loadedGame.UnrecruitedOfficers.Count);
         }
@@ -743,16 +748,17 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            HashSet<string> completedEvents = new HashSet<string>();
+            Dictionary<string, GameEventState> eventStates =
+                new Dictionary<string, GameEventState>();
             for (int i = 0; i < 50; i++)
             {
-                completedEvents.Add($"EVENT{i}");
+                eventStates.Add($"EVENT{i}", new GameEventState { IsExhausted = true });
             }
 
             GameRoot game = new GameRoot
             {
                 Summary = summary,
-                EventRuntime = new GameEventRuntimeState { CompletedEventIDs = completedEvents },
+                EventRuntime = new GameEventRuntimeState { States = eventStates },
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
@@ -760,10 +766,10 @@ namespace Rebellion.Tests.Managers
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(50, loadedGame.EventRuntime.CompletedEventIDs.Count);
+            Assert.AreEqual(50, loadedGame.EventRuntime.States.Count);
             for (int i = 0; i < 50; i++)
             {
-                Assert.IsTrue(loadedGame.EventRuntime.CompletedEventIDs.Contains($"EVENT{i}"));
+                Assert.IsTrue(loadedGame.EventRuntime.States[$"EVENT{i}"].IsExhausted);
             }
         }
 

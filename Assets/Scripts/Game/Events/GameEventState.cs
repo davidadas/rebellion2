@@ -13,5 +13,6 @@ namespace Rebellion.Game.Events
         public int NextEligibleTick { get; set; }
         public int ExecutionCount { get; set; }
         public int LastExecutionTick { get; set; } = -1;
+        public bool IsExhausted { get; set; }
     }
 }

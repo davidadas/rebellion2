@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -9,6 +10,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -37,7 +39,7 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.EventPool);
 
             Assert.Contains(gameEvent, _game.EventPool);
-            Assert.IsFalse(_game.EventRuntime.IsComplete(gameEvent.InstanceID));
+            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
         }
 
         [Test]
@@ -50,7 +52,7 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.EventPool);
 
             Assert.IsFalse(_game.EventPool.Contains(gameEvent));
-            Assert.IsTrue(_game.EventRuntime.IsComplete(gameEvent.InstanceID));
+            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
         }
 
         [Test]
@@ -63,14 +65,14 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.EventPool);
 
             Assert.Contains(gameEvent, _game.EventPool);
-            Assert.IsFalse(_game.EventRuntime.IsComplete(gameEvent.InstanceID));
+            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
         }
 
         [Test]
-        public void ProcessEvents_MaximumRunsFive_ExecutesFiveTimes()
+        public void ProcessEvents_TriggerCountFive_ExecutesFiveTimes()
         {
             GameEvent gameEvent = CreateTickEvent("FIVE_RUNS", targetTick: 0, repeatable: false);
-            gameEvent.MaximumRuns = 5;
+            gameEvent.TriggerCount = 5;
             _game.CurrentTick = 1;
             _game.EventPool.Add(gameEvent);
 
@@ -81,10 +83,10 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessEvents_MinimumRunsWithoutMaximum_ExecutesMinimumTimes()
+        public void ProcessEvents_TriggerCountThree_ExecutesThreeTimes()
         {
             GameEvent gameEvent = CreateTickEvent("THREE_RUNS", targetTick: 0, repeatable: false);
-            gameEvent.MinimumRuns = 3;
+            gameEvent.TriggerCount = 3;
             _game.CurrentTick = 1;
             _game.EventPool.Add(gameEvent);
 
@@ -214,6 +216,7 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "HERITAGE",
+                TriggerCount = 1,
                 Triggers = EncounterTrigger(),
                 Conditionals = new List<GameConditional>
                 {
@@ -274,25 +277,63 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_MultipleTriggersWithDifferentAliases_ThrowsInvalidOperationException()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "MULTI_TRIGGER",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger(
+                        "core:unit.arrived",
+                        ("UnitInstanceID", "subjectInstanceID")
+                    ),
+                    new GameEventTrigger("core:duel.completed"),
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _system.HandleResults(new[] { new UnitArrivedResult() })
+            );
+
+            StringAssert.Contains("same binding aliases", exception.Message);
+        }
+
+        [Test]
+        public void AvailableArguments_UnitArrivalTrigger_ExposesTypedContractMetadata()
+        {
+            GameEventTrigger trigger = new GameEventTrigger("core:unit.arrived");
+
+            IReadOnlyDictionary<string, Type> arguments = trigger.AvailableArguments;
+
+            Assert.AreEqual(typeof(IGameEntity), arguments["Unit"]);
+            Assert.AreEqual(typeof(string), arguments["UnitInstanceID"]);
+            Assert.AreEqual(typeof(Planet), arguments["Destination"]);
+            Assert.AreEqual(typeof(string), arguments["DestinationInstanceID"]);
+        }
+
+        [Test]
         public void HandleResults_SuppressNextAutomaticMessage_EmitsExplicitInstruction()
         {
             Officer luke = new Officer { InstanceID = "luke" };
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "JABBA_CAPTURES_LUKE",
+                TriggerCount = 1,
                 Triggers = new List<GameEventTrigger>
                 {
                     new GameEventTrigger(
                         "core:officer.capture-changed",
-                        ("Officer", "officer"),
+                        ("OfficerInstanceID", "officerInstanceID"),
                         ("IsCaptured", "isCaptured"),
-                        ("SourceEvent", "sourceEvent")
+                        ("SourceEventInstanceID", "sourceEventInstanceID")
                     ),
                 },
                 Conditionals = new List<GameConditional>
                 {
-                    BindingEquals("sourceEvent", "LUKE_RESCUES_HAN_FROM_JABBA"),
-                    BindingEquals("officer", luke.InstanceID),
+                    BindingEquals("sourceEventInstanceID", "LUKE_RESCUES_HAN_FROM_JABBA"),
+                    BindingEquals("officerInstanceID", luke.InstanceID),
                     BindingEquals("isCaptured", "true"),
                 },
                 Actions = new List<GameAction>
@@ -371,7 +412,7 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "RECURRING_ENCOUNTER_EFFECTS",
-                UnlimitedRuns = true,
+
                 Triggers = EncounterTrigger(),
                 Conditionals = new List<GameConditional>
                 {
@@ -442,7 +483,7 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "SCOPED",
-                UnlimitedRuns = true,
+
                 ForEach = new GameEventForEach
                 {
                     Selectors = new List<GameEventSelector> { new SelectPlanets() },
@@ -484,7 +525,7 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "OWNED_ONLY",
-                UnlimitedRuns = true,
+
                 ForEach = new GameEventForEach
                 {
                     Selectors = new List<GameEventSelector> { new SelectPlanets() },
@@ -527,7 +568,7 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "OWNED_ONLY",
-                UnlimitedRuns = true,
+
                 ForEach = new GameEventForEach
                 {
                     Selectors = new List<GameEventSelector> { new SelectPlanets() },
@@ -568,6 +609,7 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "ONE_SHOT_PER_PLANET",
+                TriggerCount = 1,
                 ForEach = new GameEventForEach
                 {
                     Selectors = new List<GameEventSelector> { new SelectPlanets() },
@@ -595,6 +637,7 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "DELAYED_RANDOM_TARGET",
+                TriggerCount = 1,
                 Schedule = new GameEventScheduler { At = new AtTick { Tick = 10 } },
                 ForEach = new GameEventForEach
                 {
@@ -681,7 +724,7 @@ namespace Rebellion.Tests.Systems
             return new GameEvent
             {
                 InstanceID = instanceId,
-                UnlimitedRuns = repeatable,
+                TriggerCount = repeatable ? null : 1,
                 Conditionals = new List<GameConditional>
                 {
                     new TickCountConditional
@@ -698,8 +741,8 @@ namespace Rebellion.Tests.Systems
             {
                 new GameEventTrigger(
                     "core:duel.completed",
-                    ("Officer", "officer"),
-                    ("Opponent", "opponent")
+                    ("OfficerInstanceID", "officer"),
+                    ("OpponentInstanceID", "opponent")
                 ),
             };
 

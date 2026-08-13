@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -9,31 +10,6 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
-    /// <summary>
-    /// Sets the authored status text displayed for an officer.
-    /// </summary>
-    [PersistableObject(Name = "SetOfficerStatus")]
-    public sealed class SetOfficerStatusAction : GameAction
-    {
-        [PersistableAttribute]
-        public string OfficerInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public string Text { get; set; }
-
-        public override List<GameResult> Execute(GameActionContext context)
-        {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
-            if (officer == null)
-                throw new InvalidOperationException(
-                    $"SetOfficerStatus could not resolve officer '{OfficerInstanceID}'."
-                );
-
-            officer.StatusText = Text;
-            return new List<GameResult>();
-        }
-    }
-
     /// <summary>
     /// Sets one officer's captivity state and emits the standard state-change result.
     /// </summary>
@@ -121,8 +97,8 @@ namespace Rebellion.Game.Events
         public OfficerStat Stat { get; set; }
 
         public int? Amount { get; set; }
-        public int? PercentOfBase { get; set; }
-        public int? PercentOfCurrent { get; set; }
+        public int? PercentOfStored { get; set; }
+        public int? PercentOfEffective { get; set; }
         public int? PercentOfPositiveGap { get; set; }
         public string ReferenceOfficerInstanceID { get; set; }
         public int MinimumAmount { get; set; }
@@ -136,8 +112,8 @@ namespace Rebellion.Game.Events
             int modeCount = new int?[]
             {
                 Amount,
-                PercentOfBase,
-                PercentOfCurrent,
+                PercentOfStored,
+                PercentOfEffective,
                 PercentOfPositiveGap,
             }.Count(value => value.HasValue);
             if (modeCount != 1)
@@ -190,9 +166,9 @@ namespace Rebellion.Game.Events
                 int adjustment =
                     Amount
                     ?? (
-                        PercentOfBase.HasValue ? checked(baseValue * PercentOfBase.Value / 100)
-                        : PercentOfCurrent.HasValue
-                            ? checked(currentValue * PercentOfCurrent.Value / 100)
+                        PercentOfStored.HasValue ? checked(baseValue * PercentOfStored.Value / 100)
+                        : PercentOfEffective.HasValue
+                            ? checked(currentValue * PercentOfEffective.Value / 100)
                         : Math.Max(
                             MinimumAmount,
                             checked(
@@ -218,6 +194,72 @@ namespace Rebellion.Game.Events
                     }
                 );
             }
+            return results;
+        }
+    }
+
+    /// <summary>
+    /// Resolves one officer's effective rating through an authored probability table.
+    /// </summary>
+    [PersistableObject(Name = "PerformSkillCheck")]
+    public sealed class PerformSkillCheckAction : GameAction
+    {
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public OfficerRating Rating { get; set; }
+
+        [PersistableAttribute]
+        public string ProbabilityTable { get; set; }
+
+        [PersistableAttribute]
+        public int RatingMultiplier { get; set; } = 1;
+
+        public List<GameAction> Success { get; set; } = new List<GameAction>();
+        public List<GameAction> Failure { get; set; } = new List<GameAction>();
+
+        public override List<GameResult> Execute(GameActionContext context)
+        {
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                throw new InvalidOperationException(
+                    $"PerformSkillCheck could not resolve officer '{OfficerInstanceID}'."
+                );
+            if (Rating == OfficerRating.None)
+                throw new InvalidOperationException("PerformSkillCheck requires a rating.");
+            if (RatingMultiplier == 0)
+                throw new InvalidOperationException(
+                    "PerformSkillCheck RatingMultiplier cannot be zero."
+                );
+
+            GameConfig.MissionProbabilityTablesConfig tables = context
+                .Game
+                .Config
+                ?.ProbabilityTables
+                ?.Mission;
+            if (tables?.GetSuccessTable(ProbabilityTable) == null)
+                throw new InvalidOperationException(
+                    $"PerformSkillCheck could not resolve probability table '{ProbabilityTable}'."
+                );
+
+            int probability = tables.GetSuccessProbability(
+                ProbabilityTable,
+                checked(officer.GetEffectiveRating(Rating) * RatingMultiplier)
+            );
+            bool succeeded = context.Random.NextDouble() * 100 < probability;
+            IEnumerable<GameAction> actions = succeeded ? Success : Failure;
+            List<GameResult> results = GameAction.ExecuteAll(actions, context);
+            results.Add(
+                new SkillCheckCompletedResult
+                {
+                    Officer = officer,
+                    Rating = Rating,
+                    ProbabilityTable = ProbabilityTable,
+                    Succeeded = succeeded,
+                    Tick = context.Game.CurrentTick,
+                }
+            );
             return results;
         }
     }

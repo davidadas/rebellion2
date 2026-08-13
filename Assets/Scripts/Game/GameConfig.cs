@@ -809,6 +809,18 @@ namespace Rebellion.Game
                     _ => null,
                 };
             }
+
+            /// <summary>
+            /// Resolves a score through a named mission probability table.
+            /// </summary>
+            public int GetSuccessProbability(string key, int score)
+            {
+                Dictionary<int, int> table = GetSuccessTable(key);
+                if (table == null || table.Count == 0)
+                    return DefaultSuccessProbability;
+
+                return new ProbabilityTable(table).Lookup(score);
+            }
         }
 
         /// <summary>

@@ -397,11 +397,7 @@ namespace Rebellion.Game.Missions
         )
         {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
-            return LookupProbability(
-                missionTables.GetSuccessTable(probabilityTableKey),
-                score,
-                missionTables.DefaultSuccessProbability
-            );
+            return missionTables.GetSuccessProbability(probabilityTableKey, score);
         }
 
         /// <summary>

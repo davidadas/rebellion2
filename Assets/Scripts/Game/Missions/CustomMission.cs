@@ -133,9 +133,6 @@ namespace Rebellion.Game.Missions
                 );
             if (success.Automatic != null)
                 return true;
-            if (success.Chance != null)
-                return provider.NextDouble() * 100 < GetSuccessChance(success.Chance);
-
             Officer target = GetTarget<Officer>(game);
             if (target == null)
                 throw new InvalidOperationException(
@@ -149,30 +146,6 @@ namespace Rebellion.Game.Missions
             );
             return IsSuccessfulProbabilityRoll(provider.NextDouble() * 100, probability);
         }
-
-        private int GetSuccessChance(ChanceMissionSuccess chance)
-        {
-            int result = chance.BasePercent;
-            foreach (MissionRatingContribution contribution in chance.Ratings)
-            {
-                if (contribution.Divisor <= 0)
-                    throw new InvalidOperationException(
-                        $"Mission '{MissionDefinitionID}' rating divisors must be positive."
-                    );
-                Officer participant = GetMainParticipant<Officer>(contribution.ParticipantIndex);
-                if (participant == null)
-                    throw new InvalidOperationException(
-                        $"Mission '{MissionDefinitionID}' could not resolve participant {contribution.ParticipantIndex} as an officer."
-                    );
-                result +=
-                    participant.GetEffectiveRating(contribution.Rating) / contribution.Divisor;
-            }
-            return Math.Clamp(result, 0, 100);
-        }
-
-        private T GetMainParticipant<T>(int index)
-            where T : class =>
-            index >= 0 && index < MainParticipants.Count ? MainParticipants[index] as T : null;
 
         private void EnsureDefinition()
         {

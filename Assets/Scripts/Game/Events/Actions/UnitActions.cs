@@ -5,7 +5,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -57,21 +56,97 @@ namespace Rebellion.Game.Events
         }
     }
 
-    /// <summary>
-    /// References one unit in a scripted movement group.
-    /// </summary>
-    [PersistableObject(Name = "Unit")]
-    public sealed class MovementUnitReference
+    internal static class UnitActionTargets
     {
-        [PersistableAttribute]
-        public string UnitInstanceID { get; set; }
+        internal static List<IMovable> ResolveUnits(
+            string unitInstanceID,
+            IEnumerable<GameEventSelector> selectors,
+            GameActionContext context,
+            string actionName
+        )
+        {
+            GameRoot game = context.Game;
+            IEnumerable<ISceneNode> selected = (
+                selectors ?? Enumerable.Empty<GameEventSelector>()
+            ).SelectMany(selector => selector.Select(game, context.Random, context.Activation));
+            if (!string.IsNullOrWhiteSpace(unitInstanceID))
+            {
+                ISceneNode direct = game.GetSceneNodeByInstanceID<ISceneNode>(unitInstanceID);
+                if (direct == null)
+                    throw new InvalidOperationException(
+                        $"{actionName} could not resolve unit '{unitInstanceID}'."
+                    );
+                selected = new[] { direct }.Concat(selected);
+            }
+
+            List<ISceneNode> resolved = selected
+                .Where(node => node != null)
+                .Select(node => game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID))
+                .Where(node => node != null)
+                .GroupBy(node => node.InstanceID, StringComparer.Ordinal)
+                .Select(group => group.First())
+                .ToList();
+            if (resolved.Count == 0)
+                throw new InvalidOperationException(
+                    $"{actionName} requires at least one resolvable unit."
+                );
+            if (resolved.Any(unit => unit is not IMovable))
+                throw new InvalidOperationException(
+                    $"{actionName} unit selectors may return only movable units."
+                );
+            return resolved.Cast<IMovable>().ToList();
+        }
+
+        internal static List<ContainerNode> ResolveDestinations(
+            string destinationInstanceID,
+            IEnumerable<GameEventSelector> selectors,
+            GameActionContext context,
+            string actionName
+        )
+        {
+            GameRoot game = context.Game;
+            List<GameEventSelector> destinationSelectors = (
+                selectors ?? Enumerable.Empty<GameEventSelector>()
+            ).ToList();
+            bool selectFirstAccepted =
+                destinationSelectors.Count == 1 && destinationSelectors[0] is SelectFirst;
+            IEnumerable<ISceneNode> selected = selectFirstAccepted
+                ? ((SelectFirst)destinationSelectors[0]).SelectCandidates(
+                    game,
+                    context.Random,
+                    context.Activation
+                )
+                : destinationSelectors.SelectMany(selector =>
+                    selector.Select(game, context.Random, context.Activation)
+                );
+            if (!string.IsNullOrWhiteSpace(destinationInstanceID))
+            {
+                ISceneNode direct = game.GetSceneNodeByInstanceID<ISceneNode>(
+                    destinationInstanceID
+                );
+                if (direct == null)
+                    throw new InvalidOperationException(
+                        $"{actionName} could not resolve destination '{destinationInstanceID}'."
+                    );
+                selected = new[] { direct }.Concat(selected);
+            }
+
+            List<ContainerNode> destinations = selected
+                .Where(node => node != null)
+                .Select(node => game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID))
+                .OfType<ContainerNode>()
+                .GroupBy(node => node.InstanceID, StringComparer.Ordinal)
+                .Select(group => group.First())
+                .ToList();
+            if (destinations.Count == 0 || (!selectFirstAccepted && destinations.Count != 1))
+                throw new InvalidOperationException(
+                    $"{actionName} requires exactly one destination or an explicit SelectFirst; resolved {destinations.Count}."
+                );
+            return destinations;
+        }
     }
 
-    /// <summary>
-    /// Requests authoritative movement for one or more movable scene nodes.
-    /// </summary>
-    [PersistableObject(Name = "RequestMovement")]
-    public sealed class RequestMovementAction : GameAction
+    public abstract class UnitTransferAction : GameAction
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
@@ -79,87 +154,82 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string DestinationInstanceID { get; set; }
 
-        [PersistableAttribute]
-        public string DestinationUnitInstanceID { get; set; }
+        public List<GameEventSelector> Units { get; set; } = new List<GameEventSelector>();
 
-        [PersistableAttribute]
-        public string DestinationBinding { get; set; }
+        public List<GameEventSelector> Destination { get; set; } = new List<GameEventSelector>();
 
-        public List<MovementUnitReference> Units { get; set; } = new List<MovementUnitReference>();
+        protected (List<IMovable> Units, List<ContainerNode> Destinations) Resolve(
+            GameActionContext context,
+            string actionName
+        ) =>
+            (
+                UnitActionTargets.ResolveUnits(UnitInstanceID, Units, context, actionName),
+                UnitActionTargets.ResolveDestinations(
+                    DestinationInstanceID,
+                    Destination,
+                    context,
+                    actionName
+                )
+            );
+    }
 
-        [PersistableInlineCollection]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
-
-        /// <inheritdoc />
+    /// <summary>
+    /// Places one or more units at a destination without transit time.
+    /// </summary>
+    [PersistableObject(Name = "PlaceUnits")]
+    public sealed class PlaceUnitsAction : UnitTransferAction
+    {
         public override List<GameResult> Execute(GameActionContext context)
         {
-            GameRoot game = context.Game;
-            List<IMovable> units = ResolveUnits(game, context.Random, context.Activation);
-            ContainerNode destination = ResolveDestination(game, context.Activation);
-            if (destination == null)
-                throw new InvalidOperationException(
-                    "RequestMovement could not resolve its destination."
-                );
+            (List<IMovable> units, List<ContainerNode> destinations) = Resolve(
+                context,
+                "PlaceUnits"
+            );
+            return new List<GameResult>
+            {
+                new UnitPlacementRequestedResult
+                {
+                    Units = units,
+                    Destination = destinations[0],
+                    DestinationCandidates = destinations,
+                    Tick = context.Game.CurrentTick,
+                },
+            };
+        }
+    }
 
+    /// <summary>
+    /// Sends one or more units through normal movement and transit.
+    /// </summary>
+    [PersistableObject(Name = "SendUnits")]
+    public sealed class SendUnitsAction : UnitTransferAction
+    {
+        public override List<GameResult> Execute(GameActionContext context)
+        {
+            (List<IMovable> units, List<ContainerNode> destinations) = Resolve(
+                context,
+                "SendUnits"
+            );
+            if (
+                units.Any(unit =>
+                    unit is not ISceneNode node
+                    || node.GetParent() == null
+                    || context.Game.IsInVoid(node)
+                )
+            )
+                throw new InvalidOperationException(
+                    "SendUnits requires active units at a valid scene location."
+                );
             return new List<GameResult>
             {
                 new UnitMovementRequestedResult
                 {
-                    Unit = units.Count == 1 ? units[0] : null,
-                    Units = units.Count > 1 ? units : new List<IMovable>(),
-                    Destination = destination,
-                    Tick = game.CurrentTick,
+                    Units = units,
+                    Destination = destinations[0],
+                    DestinationCandidates = destinations,
+                    Tick = context.Game.CurrentTick,
                 },
             };
-        }
-
-        private List<IMovable> ResolveUnits(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
-        {
-            IEnumerable<string> instanceIDs = Units.Select(reference => reference.UnitInstanceID);
-            if (!string.IsNullOrWhiteSpace(UnitInstanceID))
-                instanceIDs = new[] { UnitInstanceID }.Concat(instanceIDs);
-
-            List<ISceneNode> selected = instanceIDs
-                .Distinct(StringComparer.Ordinal)
-                .Select(game.GetSceneNodeByInstanceID<ISceneNode>)
-                .Concat(Selectors.SelectMany(selector => selector.Select(game, provider, context)))
-                .Distinct()
-                .ToList();
-            if (selected.Count == 0 || selected.Any(unit => unit == null))
-                throw new InvalidOperationException(
-                    "RequestMovement could not resolve every requested movable unit."
-                );
-            if (selected.Any(unit => unit is not IMovable))
-                throw new InvalidOperationException(
-                    "RequestMovement selectors may return only movable units."
-                );
-            return selected.Cast<IMovable>().ToList();
-        }
-
-        private ContainerNode ResolveDestination(GameRoot game, GameEventExecutionContext context)
-        {
-            if (!string.IsNullOrWhiteSpace(DestinationInstanceID))
-                return game.GetSceneNodeByInstanceID<ContainerNode>(DestinationInstanceID);
-
-            if (
-                !string.IsNullOrWhiteSpace(DestinationBinding)
-                && context?.TryGetBindingReference(DestinationBinding, out object bound) == true
-            )
-            {
-                if (bound is ContainerNode container)
-                    return container;
-                if (bound is ISceneNode node)
-                    return node.GetParentOfType<Planet>();
-            }
-
-            ISceneNode destinationUnit = game.GetSceneNodeByInstanceID<ISceneNode>(
-                DestinationUnitInstanceID
-            );
-            return destinationUnit as ContainerNode ?? destinationUnit?.GetParentOfType<Planet>();
         }
     }
 
@@ -172,21 +242,34 @@ namespace Rebellion.Game.Events
         [PersistableAttribute(Name = "UnitInstanceID")]
         public string UnitInstanceID { get; set; }
 
+        [PersistableInlineCollection]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
-            if (unit == null)
-                throw new InvalidOperationException(
-                    $"AddToVoid could not resolve unit '{UnitInstanceID}'."
-                );
-            game.AddToVoid(unit);
+            List<IMovable> units = UnitActionTargets.ResolveUnits(
+                UnitInstanceID,
+                Selectors,
+                context,
+                "AddToVoid"
+            );
+            foreach (IMovable movable in units)
+            {
+                ISceneNode unit = (ISceneNode)movable;
+                if (unit.GetParent() == null || game.IsInVoid(unit))
+                    throw new InvalidOperationException(
+                        $"AddToVoid requires an active unit; '{unit.GetDisplayName()}' is not active."
+                    );
+            }
+            foreach (IMovable unit in units)
+                game.AddToVoid((ISceneNode)unit);
             return new List<GameResult>();
         }
     }
 
     /// <summary>
-    /// Requests activation of an off-map unit at an explicit destination.
+    /// Detaches one retained unit from faction void storage.
     /// </summary>
     [PersistableObject(Name = "RemoveFromVoid")]
     public sealed class RemoveFromVoidAction : GameAction
@@ -194,18 +277,28 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
 
+        [PersistableInlineCollection]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
-            if (unit == null)
-                throw new InvalidOperationException(
-                    $"RemoveFromVoid could not resolve unit '{UnitInstanceID}'."
-                );
-            if (!game.RemoveFromVoid(unit))
-                throw new InvalidOperationException(
-                    $"RemoveFromVoid could not restore '{UnitInstanceID}' to a previous location."
-                );
+            List<IMovable> units = UnitActionTargets.ResolveUnits(
+                UnitInstanceID,
+                Selectors,
+                context,
+                "RemoveFromVoid"
+            );
+            foreach (IMovable movable in units)
+            {
+                ISceneNode unit = (ISceneNode)movable;
+                if (!game.IsInVoid(unit))
+                    throw new InvalidOperationException(
+                        $"RemoveFromVoid requires a retained unit; '{unit.GetDisplayName()}' is not retained."
+                    );
+            }
+            foreach (IMovable unit in units)
+                game.RemoveFromVoid((ISceneNode)unit);
             return new List<GameResult>();
         }
     }

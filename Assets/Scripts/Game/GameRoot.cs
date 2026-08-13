@@ -264,32 +264,55 @@ namespace Rebellion.Game
             MoveNode(node, GetVoidPool(node.OwnerInstanceID));
         }
 
-        public bool RemoveFromVoid(ISceneNode node)
+        public void RemoveFromVoid(ISceneNode node)
         {
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
             if (!IsInVoid(node))
                 throw new InvalidOperationException($"'{node.GetDisplayName()}' is not in void.");
 
-            HashSet<ISceneNode> visited = new HashSet<ISceneNode>();
-            for (
-                ISceneNode previous = ResolveLastParent(node);
-                previous != null && visited.Add(previous);
-                previous = ResolveLastParent(previous)
-            )
-            {
-                if (
-                    previous is ContainerNode destination
-                    && !IsInVoid(destination)
-                    && destination.CanAcceptChild(node)
-                )
-                {
-                    MoveNode(node, destination);
-                    return true;
-                }
-            }
+            ISceneNode parent = node.GetParent();
+            string lastParentInstanceID = node.LastParentInstanceID;
+            ISceneNode lastParent = node.LastParentNode;
+            parent.RemoveChild(node);
+            node.SetParent(null);
+            node.LastParentInstanceID = lastParentInstanceID;
+            node.LastParentNode = lastParent;
+        }
 
-            return false;
+        /// <summary>
+        /// Attaches a registered detached node without changing its registry or faction ownership.
+        /// </summary>
+        /// <param name="node">The registered detached node.</param>
+        /// <param name="parent">The receiving scene container.</param>
+        internal void AttachRegisteredNode(ISceneNode node, ContainerNode parent)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (parent == null)
+                throw new ArgumentNullException(nameof(parent));
+            if (node.GetParent() != null)
+                throw new InvalidOperationException(
+                    $"Cannot attach '{node.GetDisplayName()}' because it already has a parent."
+                );
+            if (
+                !NodesByInstanceID.TryGetValue(node.InstanceID, out ISceneNode registered)
+                || !ReferenceEquals(node, registered)
+            )
+                throw new InvalidOperationException(
+                    $"Cannot attach unregistered node '{node.GetDisplayName()}'."
+                );
+            if (!parent.CanAcceptChild(node))
+                throw new InvalidOperationException(
+                    $"Cannot attach '{node.GetDisplayName()}' to '{parent.GetDisplayName()}'."
+                );
+
+            string lastParentInstanceID = node.LastParentInstanceID;
+            ISceneNode lastParent = node.LastParentNode;
+            parent.AddChild(node);
+            node.SetParent(parent);
+            node.LastParentInstanceID = lastParentInstanceID;
+            node.LastParentNode = lastParent;
         }
 
         public bool IsInVoid(ISceneNode node)
@@ -685,20 +708,6 @@ namespace Rebellion.Game
             GetFactionByOwnerInstanceID(ownerInstanceId);
             EnsureVoidPools();
             return VoidPools.Single(pool => pool.OwnerInstanceID == ownerInstanceId);
-        }
-
-        private ISceneNode ResolveLastParent(ISceneNode node)
-        {
-            if (!string.IsNullOrWhiteSpace(node.LastParentInstanceID))
-            {
-                ISceneNode registered = GetSceneNodeByInstanceID<ISceneNode>(
-                    node.LastParentInstanceID
-                );
-                if (registered != null)
-                    return registered;
-            }
-
-            return node.LastParentNode;
         }
     }
 }

@@ -50,54 +50,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_ChanceSuccessRule_UsesAuthoredParticipantRatings()
-        {
-            (GameRoot game, Planet _, Planet location, Officer participant, _) =
-                MissionSceneBuilder.Build();
-            participant.SetBaseRating(OfficerRating.Combat, 90);
-            participant.SetBaseRating(OfficerRating.Espionage, 90);
-            CustomMissionDefinition definition = new CustomMissionDefinition
-            {
-                InstanceID = "chance",
-                DisplayName = "Chance",
-                Duration = new MissionDuration { Fixed = new FixedMissionDuration { Ticks = 0 } },
-                Success = new MissionSuccessRule
-                {
-                    Chance = new ChanceMissionSuccess
-                    {
-                        Ratings = new List<MissionRatingContribution>
-                        {
-                            new MissionRatingContribution
-                            {
-                                Rating = OfficerRating.Combat,
-                                Divisor = 3,
-                            },
-                            new MissionRatingContribution
-                            {
-                                Rating = OfficerRating.Espionage,
-                                Divisor = 3,
-                            },
-                        },
-                    },
-                },
-            };
-            CustomMission mission = CreateMission(
-                game,
-                location,
-                definition,
-                participant,
-                participant
-            );
-
-            MissionCompletedResult result = mission
-                .Execute(game, new FixedRNG(0.5))
-                .OfType<MissionCompletedResult>()
-                .Single();
-
-            Assert.AreEqual(MissionOutcome.Success, result.Outcome);
-        }
-
-        [Test]
         public void Execute_AutomaticSuccessRule_ReturnsSuccessfulCompletion()
         {
             (GameRoot game, Planet _, Planet location, Officer participant, _) =

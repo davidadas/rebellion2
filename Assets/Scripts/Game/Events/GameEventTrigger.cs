@@ -28,7 +28,17 @@ namespace Rebellion.Game.Events
 
         internal Type ResultType => GameEventTriggerRegistry.GetResultType(Event);
 
+        /// <summary>
+        /// Gets the statically typed arguments exposed by this trigger contract.
+        /// </summary>
+        [PersistableIgnore]
+        public IReadOnlyDictionary<string, Type> AvailableArguments =>
+            GameEventTriggerRegistry.GetArguments(Event);
+
         internal bool Matches(GameResult result) => GameEventTriggerRegistry.Matches(Event, result);
+
+        internal Type GetArgumentType(string argument) =>
+            GameEventTriggerRegistry.GetArgumentType(Event, argument);
 
         internal void Bind(GameEventExecutionContext context, GameResult result) =>
             GameEventTriggerRegistry.Bind(context, this, result);

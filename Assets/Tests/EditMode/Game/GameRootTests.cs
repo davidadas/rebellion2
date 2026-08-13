@@ -88,10 +88,7 @@ namespace Rebellion.Tests.Game
             Assert.IsNotNull(_game.Galaxy, "Galaxy should be initialized");
             Assert.AreEqual(0, _game.CurrentTick, "Current tick should be initialized to 0");
             Assert.IsEmpty(_game.EventPool, "Event pool should be empty initially");
-            Assert.IsEmpty(
-                _game.EventRuntime.CompletedEventIDs,
-                "Completed event IDs should be empty initially"
-            );
+            Assert.IsEmpty(_game.EventRuntime.States, "Event states should be empty initially");
         }
 
         [Test]
@@ -757,7 +754,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void RemoveFromVoid_PreviousParentAcceptsOfficer_RestoresOfficer()
+        public void RemoveFromVoid_RetainedOfficer_DetachesAndPreservesPreviousParent()
         {
             Officer officer = new Officer
             {
@@ -767,10 +764,10 @@ namespace Rebellion.Tests.Game
             _game.AttachNode(officer, _planet);
             _game.AddToVoid(officer);
 
-            bool returned = _game.RemoveFromVoid(officer);
+            _game.RemoveFromVoid(officer);
 
-            Assert.IsTrue(returned);
-            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsNull(officer.GetParent());
+            Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
             Assert.IsFalse(_game.IsInVoid(officer));
         }
 

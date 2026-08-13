@@ -825,8 +825,8 @@ internal sealed class StrategyStatusInfoBuilder
             return "Enroute";
         if (officer.IsOnMission())
             return "On Mission";
-        if (!string.IsNullOrWhiteSpace(officer.StatusText))
-            return officer.StatusText;
+        if (!string.IsNullOrWhiteSpace(officer.DisplayStatus))
+            return officer.DisplayStatus;
         return "Awaiting Orders";
     }
 

@@ -45,15 +45,9 @@ namespace Rebellion.Systems
                     continue;
 
                 if (TryProcessEvent(gameEvent, null, null, out List<GameResult> globalResults))
-                {
                     allResults.AddRange(globalResults);
-                    if (
-                        gameEvent.IsComplete(
-                            _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount
-                        )
-                    )
-                        eventsToRemove.Add(gameEvent);
-                }
+                if (_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted)
+                    eventsToRemove.Add(gameEvent);
             }
 
             foreach (GameEvent eventToRemove in eventsToRemove)
@@ -102,11 +96,7 @@ namespace Rebellion.Systems
                         continue;
 
                     eventResults.AddRange(reactions);
-                    if (
-                        gameEvent.IsComplete(
-                            _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount
-                        )
-                    )
+                    if (_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted)
                         _game.RemoveEvent(gameEvent);
                 }
             }
@@ -156,7 +146,7 @@ namespace Rebellion.Systems
         )
         {
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
-            if (!gameEvent.CanExecute(state.ExecutionCount))
+            if (ShouldExhaust(gameEvent, state) || !gameEvent.CanExecute(state))
             {
                 results = new List<GameResult>();
                 return false;
@@ -214,16 +204,35 @@ namespace Rebellion.Systems
                 return false;
 
             state.ExecutionCount++;
-            bool isComplete = gameEvent.IsComplete(state.ExecutionCount);
             state.LastExecutionTick = _game.CurrentTick;
-            if (!isComplete)
+            bool isExhausted = ShouldExhaust(gameEvent, state);
+            if (!isExhausted)
             {
                 GetRepeatRange(gameEvent, out int minimum, out int maximum);
                 state.NextEligibleTick = _game.CurrentTick + RollRange(minimum, maximum);
             }
-            if (isComplete)
-                _game.EventRuntime.Complete(gameEvent.InstanceID);
             return true;
+        }
+
+        private bool ShouldExhaust(GameEvent gameEvent, GameEventState state)
+        {
+            if (state.IsExhausted)
+                return true;
+
+            int? triggerCount = gameEvent.GetTriggerCount();
+            bool reachedCount = triggerCount.HasValue && state.ExecutionCount >= triggerCount.Value;
+            bool reachedUntil =
+                gameEvent.Until.Count > 0
+                && gameEvent.Until.All(condition =>
+                    condition.IsMet(
+                        new GameConditionContext(
+                            _game,
+                            new GameEventExecutionContext(gameEvent, state, null, null)
+                        )
+                    )
+                );
+            state.IsExhausted = reachedCount || reachedUntil;
+            return state.IsExhausted;
         }
 
         /// <summary>
@@ -239,11 +248,61 @@ namespace Rebellion.Systems
                 throw new InvalidOperationException(
                     $"Event '{gameEvent.InstanceID}' cannot combine result triggers with a tick schedule."
                 );
-            gameEvent.ValidateRunLimits();
-            if (gameEvent.GetMaximumRuns() != 1 && gameEvent.Schedule?.IsOneShot == true)
+            ValidateTriggerBindings(gameEvent);
+            int? triggerCount = gameEvent.GetTriggerCount();
+            if (triggerCount != 1 && gameEvent.Schedule?.IsOneShot == true)
                 throw new InvalidOperationException(
                     $"Event '{gameEvent.InstanceID}' cannot repeat with a one-shot schedule."
                 );
+        }
+
+        private static void ValidateTriggerBindings(GameEvent gameEvent)
+        {
+            Dictionary<string, Type> aliases = new Dictionary<string, Type>(StringComparer.Ordinal);
+            HashSet<string> sharedAliases = null;
+            foreach (GameEventTrigger trigger in gameEvent.Triggers)
+            {
+                HashSet<string> triggerAliases = new HashSet<string>(StringComparer.Ordinal);
+                foreach (GameEventTriggerBinding binding in trigger.Bindings)
+                {
+                    if (string.IsNullOrWhiteSpace(binding.As) || !triggerAliases.Add(binding.As))
+                        throw new InvalidOperationException(
+                            $"Event '{gameEvent.InstanceID}' trigger '{trigger.Event}' has a missing or duplicate binding alias."
+                        );
+                    Type argumentType = trigger.GetArgumentType(binding.Argument);
+                    if (
+                        aliases.TryGetValue(binding.As, out Type existingType)
+                        && existingType != argumentType
+                    )
+                        throw new InvalidOperationException(
+                            $"Event '{gameEvent.InstanceID}' binds '{binding.As}' with incompatible types."
+                        );
+                    aliases[binding.As] = argumentType;
+                }
+
+                if (sharedAliases == null)
+                    sharedAliases = triggerAliases;
+                else if (!sharedAliases.SetEquals(triggerAliases))
+                    throw new InvalidOperationException(
+                        $"Event '{gameEvent.InstanceID}' must expose the same binding aliases on every trigger path."
+                    );
+            }
+
+            for (int first = 0; first < gameEvent.Triggers.Count; first++)
+            {
+                for (int second = first + 1; second < gameEvent.Triggers.Count; second++)
+                {
+                    Type firstType = gameEvent.Triggers[first].ResultType;
+                    Type secondType = gameEvent.Triggers[second].ResultType;
+                    if (
+                        firstType.IsAssignableFrom(secondType)
+                        || secondType.IsAssignableFrom(firstType)
+                    )
+                        throw new InvalidOperationException(
+                            $"Event '{gameEvent.InstanceID}' has overlapping result triggers."
+                        );
+                }
+            }
         }
 
         /// <summary>

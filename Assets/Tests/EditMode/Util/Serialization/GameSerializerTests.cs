@@ -286,14 +286,14 @@ namespace Rebellion.Tests.Util.Serialization
                 {
                     new GameEventTrigger(
                         "core:officer.capture-changed",
-                        ("SourceEvent", "sourceEvent")
+                        ("SourceEventInstanceID", "sourceEventInstanceID")
                     ),
                 },
                 Conditionals = new List<GameConditional>
                 {
                     new EvaluateBindingConditional
                     {
-                        Binding = "$sourceEvent",
+                        Binding = "$sourceEventInstanceID",
                         Comparison = EventVariableComparison.Equal,
                         ExpectedValue = "LUKE_RESCUES_HAN_FROM_JABBA",
                     },
@@ -316,7 +316,7 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml
             );
             StringAssert.Contains(
-                "<EvaluateBinding Binding=\"$sourceEvent\" Comparison=\"Equal\" ExpectedValue=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
+                "<EvaluateBinding Binding=\"$sourceEventInstanceID\" Comparison=\"Equal\" ExpectedValue=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
                 serializedXml
             );
             SuppressNextAutomaticMessageAction action =
@@ -499,21 +499,85 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_GameEventRunLimits_RoundTripsAttributes()
+        public void Serialize_RemoveFromVoidWithRetainedOfficerSelector_RoundTripsSelector()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameAction));
+            RemoveFromVoidAction action = new RemoveFromVoidAction
+            {
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectOfficers
+                    {
+                        PlanetBinding = "$destination",
+                        IsCaptured = true,
+                        IncludeRetained = true,
+                    },
+                },
+            };
+
+            string xml = SerializeToString(serializer, action);
+            RemoveFromVoidAction restored = (RemoveFromVoidAction)DeserializeFromString(
+                serializer,
+                xml
+            );
+
+            SelectOfficers selector = restored.Selectors.OfType<SelectOfficers>().Single();
+            Assert.AreEqual("$destination", selector.PlanetBinding);
+            Assert.AreEqual(true, selector.IsCaptured);
+            Assert.IsTrue(selector.IncludeRetained);
+        }
+
+        [Test]
+        public void Serialize_PlaceUnitsWithSelectors_RoundTripsTransferStructure()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameAction));
+            PlaceUnitsAction action = new PlaceUnitsAction
+            {
+                Units = new List<GameEventSelector>
+                {
+                    new SelectBinding { Binding = "$participants" },
+                },
+                Destination = new List<GameEventSelector>
+                {
+                    new SelectFirst
+                    {
+                        Selectors = new List<GameEventSelector>
+                        {
+                            new SelectLastParent { UnitInstanceID = "LUKE_SKYWALKER" },
+                            new SelectPlanets { InstanceID = "YAVIN" },
+                        },
+                    },
+                },
+            };
+
+            string xml = SerializeToString(serializer, action);
+            PlaceUnitsAction restored = (PlaceUnitsAction)DeserializeFromString(serializer, xml);
+
+            Assert.AreEqual(
+                "$participants",
+                restored.Units.OfType<SelectBinding>().Single().Binding
+            );
+            SelectFirst destination = restored.Destination.OfType<SelectFirst>().Single();
+            Assert.AreEqual(
+                "LUKE_SKYWALKER",
+                destination.Selectors.OfType<SelectLastParent>().Single().UnitInstanceID
+            );
+            Assert.AreEqual(
+                "YAVIN",
+                destination.Selectors.OfType<SelectPlanets>().Single().InstanceID
+            );
+        }
+
+        [Test]
+        public void Serialize_GameEventTriggerCount_RoundTripsAttribute()
         {
             GameSerializer serializer = new GameSerializer(typeof(GameEvent));
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "LIMITED_EVENT",
-                MinimumRuns = 2,
-                MaximumRuns = 5,
-            };
+            GameEvent gameEvent = new GameEvent { InstanceID = "LIMITED_EVENT", TriggerCount = 5 };
 
             string xml = SerializeToString(serializer, gameEvent);
             GameEvent restored = (GameEvent)DeserializeFromString(serializer, xml);
 
-            Assert.AreEqual(2, restored.MinimumRuns);
-            Assert.AreEqual(5, restored.MaximumRuns);
+            Assert.AreEqual(5, restored.TriggerCount);
         }
 
         [Test]
@@ -556,6 +620,7 @@ namespace Rebellion.Tests.Util.Serialization
                 TransitTicks = 9,
                 TicksElapsed = 4,
                 MovementGroupID = "group-1",
+                SourceEventInstanceID = "SEND_OFFICER",
                 OriginPosition = new Point(12, 34),
                 CurrentPosition = new Point(56, 78),
             };
@@ -569,6 +634,7 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(9, deserialized.TransitTicks);
             Assert.AreEqual(4, deserialized.TicksElapsed);
             Assert.AreEqual("group-1", deserialized.MovementGroupID);
+            Assert.AreEqual("SEND_OFFICER", deserialized.SourceEventInstanceID);
             Assert.AreEqual(new Point(12, 34), deserialized.OriginPosition);
             Assert.AreEqual(new Point(56, 78), deserialized.CurrentPosition);
         }
@@ -2007,6 +2073,40 @@ namespace Rebellion.Tests.Util.Serialization
                     .GetOwnedUnitsByType<Fleet>()
                     .ToList()
             );
+        }
+
+        [Test]
+        public void Deserialize_GameEventRuntimeStateWithLegacyCompletion_MigratesCanonicalState()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEventRuntimeState));
+            const string xml =
+                "<GameEventRuntimeState><CompletedEventIDs><String>EVENT</String></CompletedEventIDs></GameEventRuntimeState>";
+
+            GameEventRuntimeState runtime = (GameEventRuntimeState)DeserializeFromString(
+                serializer,
+                xml
+            );
+            GameEventState state = runtime.GetState("EVENT");
+
+            Assert.AreEqual(1, state.ExecutionCount);
+            Assert.IsTrue(state.IsExhausted);
+        }
+
+        [Test]
+        public void Serialize_GameEventRuntimeStateAfterLegacyMigration_OmitsLegacyCompletionSet()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEventRuntimeState));
+            const string xml =
+                "<GameEventRuntimeState><CompletedEventIDs><String>EVENT</String></CompletedEventIDs></GameEventRuntimeState>";
+            GameEventRuntimeState runtime = (GameEventRuntimeState)DeserializeFromString(
+                serializer,
+                xml
+            );
+            runtime.GetState("EVENT");
+
+            string serialized = SerializeToString(serializer, runtime);
+
+            StringAssert.DoesNotContain("CompletedEventIDs", serialized);
         }
 
         private string SerializeToString(GameSerializer serializer, object obj)
