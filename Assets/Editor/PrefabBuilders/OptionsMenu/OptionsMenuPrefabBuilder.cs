@@ -29,6 +29,8 @@ public static class OptionsMenuPrefabBuilder
         "Application/OptionsMenu/UI/ui_settingsmenu_toggle_icon";
     private const string _optionsKnobAddress =
         "Application/OptionsMenu/UI/ui_settingsmenu_slider_knob";
+    private const string _restoreDefaultIconAddress =
+        "Application/OptionsMenu/UI/ui_settingsmenu_restore_default_icon";
     private const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     private const string _scrollUpAddress =
@@ -143,8 +145,8 @@ public static class OptionsMenuPrefabBuilder
         ApplyOptionsDisplayFont(pageTitle);
         SetSourceRect(pageTitle.rectTransform, 240, 36, 357, 22);
 
-        string[] tabNames = { "GRAPHICS", "AUDIO", "SAVE / LOAD", "CONTROLS" };
-        string[] tabObjectNames = { "GraphicsTab", "AudioTab", "SaveLoadTab", "ControlsTab" };
+        string[] tabNames = { "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" };
+        string[] tabObjectNames = { "GraphicsTab", "AudioTab", "ControlsTab", "SaveLoadTab" };
         Button[] tabButtons = new Button[4];
         TextMeshProUGUI[] tabLabels = new TextMeshProUGUI[4];
         for (int i = 0; i < tabNames.Length; i++)
@@ -213,9 +215,10 @@ public static class OptionsMenuPrefabBuilder
         Button defaultsButton = CreateOptionsActionButton(
             settingsActions,
             "DefaultsButton",
-            "DEFAULTS",
-            338,
-            textColor
+            "RESTORE DEFAULTS",
+            300,
+            textColor,
+            114
         );
         Button applyButton = CreateOptionsActionButton(
             settingsActions,
@@ -453,7 +456,7 @@ public static class OptionsMenuPrefabBuilder
         Image renameBackground = slotRenameField.GetComponent<Image>();
         renameBackground.color = new Color(0.08f, 0.10f, 0.13f, 0.98f);
         slotRenameField.textComponent.fontSize = 12;
-        slotRenameField.textComponent.alignment = TextAlignmentOptions.MidlineLeft;
+        slotRenameField.textComponent.alignment = TextAlignmentOptions.BaselineLeft;
         StretchFillInputChild((RectTransform)slotRenameField.textComponent.transform);
         slotRenameField.customCaretColor = true;
         slotRenameField.caretColor = Color.white;
@@ -463,7 +466,7 @@ public static class OptionsMenuPrefabBuilder
         if (slotRenameField.placeholder is TextMeshProUGUI renamePlaceholder)
         {
             renamePlaceholder.fontSize = 12;
-            renamePlaceholder.alignment = TextAlignmentOptions.MidlineLeft;
+            renamePlaceholder.alignment = TextAlignmentOptions.BaselineLeft;
             renamePlaceholder.color = new Color(0.60f, 0.65f, 0.72f);
             StretchFillInputChild(renamePlaceholder.rectTransform);
         }
@@ -494,7 +497,7 @@ public static class OptionsMenuPrefabBuilder
         primaryColumnHeader.fontSize = 9;
         primaryColumnHeader.alignment = TextAlignmentOptions.Midline;
         ApplyOptionsDisplayFont(primaryColumnHeader);
-        SetSourceRect(primaryColumnHeader.rectTransform, 216, 2, 63, 12);
+        SetSourceRect(primaryColumnHeader.rectTransform, 208, 2, 57, 12);
         TextMeshProUGUI secondaryColumnHeader = CreateTextLabel(
             "SecondaryColumnHeader",
             controlsPage
@@ -504,7 +507,7 @@ public static class OptionsMenuPrefabBuilder
         secondaryColumnHeader.fontSize = 9;
         secondaryColumnHeader.alignment = TextAlignmentOptions.Midline;
         ApplyOptionsDisplayFont(secondaryColumnHeader);
-        SetSourceRect(secondaryColumnHeader.rectTransform, 283, 2, 63, 12);
+        SetSourceRect(secondaryColumnHeader.rectTransform, 269, 2, 57, 12);
 
         Image bindingRowTemplate = CreateSlicedImage(
             "BindingRowTemplate",
@@ -537,31 +540,57 @@ public static class OptionsMenuPrefabBuilder
         bindingActionTemplate.color = textDim;
         bindingActionTemplate.fontSize = 11;
         bindingActionTemplate.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(bindingActionTemplate.rectTransform, 11, 4, 245, 15);
+        SetSourceRect(bindingActionTemplate.rectTransform, 11, 4, 175, 15);
         bindingActionTemplate.gameObject.SetActive(false);
         Image bindingKeyBadgeTemplate = CreateSlicedImage(
             "BindingKeyBadgeTemplate",
             controlsContent,
             _optionsBadgeAddress,
             _badgeBorder,
-            266,
+            251,
             3,
-            61,
+            57,
             16,
             Color.white
         );
         bindingKeyBadgeTemplate.raycastTarget = true;
         Button bindingKeyBadgeButton = bindingKeyBadgeTemplate.gameObject.AddComponent<Button>();
         bindingKeyBadgeButton.targetGraphic = bindingKeyBadgeTemplate;
-        bindingKeyBadgeButton.transition = Selectable.Transition.None;
+        ApplyOptionsButtonFeedback(bindingKeyBadgeButton);
         bindingKeyBadgeTemplate.gameObject.SetActive(false);
         TextMeshProUGUI bindingKeyTemplate = CreateTextLabel("BindingKeyTemplate", controlsContent);
         bindingKeyTemplate.text = "Key";
         bindingKeyTemplate.color = textColor;
         bindingKeyTemplate.fontSize = 10;
         bindingKeyTemplate.alignment = TextAlignmentOptions.Midline;
-        SetSourceRect(bindingKeyTemplate.rectTransform, 266, 3, 61, 16);
+        SetSourceRect(bindingKeyTemplate.rectTransform, 251, 3, 57, 16);
         bindingKeyTemplate.gameObject.SetActive(false);
+        Image bindingRestoreTemplate = CreateSlicedImage(
+            "BindingRestoreTemplate",
+            controlsContent,
+            _optionsBadgeAddress,
+            _badgeBorder,
+            312,
+            3,
+            30,
+            16,
+            Color.white
+        );
+        bindingRestoreTemplate.raycastTarget = true;
+        Button bindingRestoreButton = bindingRestoreTemplate.gameObject.AddComponent<Button>();
+        bindingRestoreButton.targetGraphic = bindingRestoreTemplate;
+        ApplyOptionsButtonFeedback(bindingRestoreButton);
+        RawImage bindingRestoreIcon = CreateRawImage(
+            "Icon",
+            bindingRestoreTemplate.transform,
+            _restoreDefaultIconAddress,
+            9,
+            2,
+            12,
+            12
+        );
+        bindingRestoreIcon.raycastTarget = false;
+        bindingRestoreTemplate.gameObject.SetActive(false);
 
         // Confirmation Dialog.
         ConfirmationDialogView confirmDialog = CommonUIPrefabBuilder.InstantiateConfirmationDialog(
@@ -635,6 +664,7 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(view, "_bindingActionTemplate", bindingActionTemplate);
         AssignReference(view, "_bindingKeyBadgeTemplate", bindingKeyBadgeTemplate);
         AssignReference(view, "_bindingKeyTemplate", bindingKeyTemplate);
+        AssignReference(view, "_bindingRestoreTemplate", bindingRestoreTemplate);
 
         GameObject saved = SaveGeneratedPrefabAsset(window, _optionsMenuWindowPrefabPath);
         UnityEngine.Object.DestroyImmediate(window);
@@ -712,8 +742,8 @@ public static class OptionsMenuPrefabBuilder
     {
         child.anchorMin = new Vector2(0f, 0f);
         child.anchorMax = new Vector2(1f, 1f);
-        child.offsetMin = new Vector2(6f, 0f);
-        child.offsetMax = new Vector2(-6f, 0f);
+        child.offsetMin = new Vector2(6f, -2f);
+        child.offsetMax = new Vector2(-6f, -2f);
     }
 
     /// <summary>
@@ -840,13 +870,15 @@ public static class OptionsMenuPrefabBuilder
     /// <param name="label">The caps caption.</param>
     /// <param name="x">The source-space left position.</param>
     /// <param name="color">The label color.</param>
+    /// <param name="width">The source-space button width.</param>
     /// <returns>The configured button.</returns>
     private static Button CreateOptionsActionButton(
         Transform parent,
         string name,
         string label,
         int x,
-        Color color
+        Color color,
+        int width = 76
     )
     {
         Button button = CreateSlicedButton(
@@ -856,7 +888,7 @@ public static class OptionsMenuPrefabBuilder
             _badgeBorder,
             x,
             408,
-            76,
+            width,
             22,
             Color.white
         );
@@ -866,7 +898,7 @@ public static class OptionsMenuPrefabBuilder
         text.fontSize = 11;
         text.alignment = TextAlignmentOptions.Midline;
         ApplyOptionsDisplayFont(text);
-        SetSourceRect(text.rectTransform, 0, 4, 76, 14);
+        SetSourceRect(text.rectTransform, 0, 4, width, 14);
         ApplyOptionsFillButtonFeedback(button);
         AddOptionsButtonBorder(button.targetGraphic);
         return button;

@@ -33,6 +33,7 @@ public sealed class ScrollAreaView : MonoBehaviour
     private ScrollAreaDragRelay dragRelay;
 
     private float scrollStep;
+    private bool hasContentLayout;
     private bool updatingScrollbar;
 
     /// <summary>
@@ -147,9 +148,11 @@ public sealed class ScrollAreaView : MonoBehaviour
 
         float viewportHeight = GetViewportHeight();
         float appliedContentHeight = Mathf.Max(viewportHeight, contentHeight);
-        float normalizedPosition = resetScroll
-            ? 1f
-            : Mathf.Clamp01(scrollRect.verticalNormalizedPosition);
+        float normalizedPosition =
+            resetScroll || !hasContentLayout
+                ? 1f
+                : Mathf.Clamp01(scrollRect.verticalNormalizedPosition);
+        hasContentLayout = true;
 
         contentRoot.sizeDelta = new Vector2(
             GetRectWidth(scrollRect.viewport),

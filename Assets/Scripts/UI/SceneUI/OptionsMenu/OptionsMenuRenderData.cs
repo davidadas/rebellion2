@@ -9,8 +9,8 @@ public enum OptionsMenuTab
 {
     Graphics,
     Audio,
-    SaveLoad,
     Controls,
+    SaveLoad,
 }
 
 /// <summary>
@@ -25,23 +25,27 @@ public sealed class OptionsBindingRow
     /// <param name="primary">The primary bound keys.</param>
     /// <param name="secondary">The secondary bound keys, if any.</param>
     /// <param name="isHeader">Whether this row is a group header rather than a bindable action.</param>
+    /// <param name="primaryEditable">Whether the primary binding can be changed.</param>
     public OptionsBindingRow(
         string action,
         string primary,
         string secondary = "",
-        bool isHeader = false
+        bool isHeader = false,
+        bool primaryEditable = true
     )
     {
         Action = action ?? string.Empty;
         Primary = primary ?? string.Empty;
         Secondary = secondary ?? string.Empty;
         IsHeader = isHeader;
+        PrimaryEditable = primaryEditable;
     }
 
     public string Action { get; }
     public string Primary { get; }
     public string Secondary { get; }
     public bool IsHeader { get; }
+    public bool PrimaryEditable { get; }
 }
 
 /// <summary>

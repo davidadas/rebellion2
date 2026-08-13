@@ -61,6 +61,7 @@ public sealed class InputManager : MonoBehaviour
     /// <returns>The serialized binding override data.</returns>
     public string SaveBindingOverrides()
     {
+        RestoreReservedEscapeBinding(Actions.asset);
         return Actions.asset.SaveBindingOverridesAsJson();
     }
 
@@ -74,5 +75,29 @@ public sealed class InputManager : MonoBehaviour
         asset.RemoveAllBindingOverrides();
         if (!string.IsNullOrWhiteSpace(bindingOverrides))
             asset.LoadBindingOverridesFromJson(bindingOverrides);
+        RestoreReservedEscapeBinding(asset);
+    }
+
+    /// <summary>
+    /// Removes persisted overrides from the fixed Escape binding and its chord alternative.
+    /// </summary>
+    private static void RestoreReservedEscapeBinding(InputActionAsset asset)
+    {
+        InputAction action = asset.FindAction("Global/CancelOrSettings", true);
+        bool clearingPrimaryChord = false;
+        for (int index = 0; index < action.bindings.Count; index++)
+        {
+            InputBinding binding = action.bindings[index];
+            if (!binding.isPartOfComposite)
+            {
+                clearingPrimaryChord = binding.name == "PrimaryChord";
+                if (binding.name == "Primary" || clearingPrimaryChord)
+                    action.RemoveBindingOverride(index);
+                continue;
+            }
+
+            if (clearingPrimaryChord)
+                action.RemoveBindingOverride(index);
+        }
     }
 }

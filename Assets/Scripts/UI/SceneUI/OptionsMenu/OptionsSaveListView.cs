@@ -9,6 +9,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
 {
+    private const float RenameTextBaselineOffset = -2f;
+
     private static readonly Color _accentColor = new Color(0.373f, 0.659f, 0.925f);
     private static readonly Color _metaColor = new Color(0.573f, 0.635f, 0.706f);
     private static readonly Color _textColor = new Color(0.875f, 0.910f, 0.941f);
@@ -303,12 +305,12 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     {
         if (_renameField.textComponent is TextMeshProUGUI text)
         {
-            text.alignment = TextAlignmentOptions.MidlineLeft;
+            text.alignment = TextAlignmentOptions.BaselineLeft;
             StretchRenameText(text.rectTransform);
         }
         if (_renameField.placeholder is TextMeshProUGUI placeholder)
         {
-            placeholder.alignment = TextAlignmentOptions.MidlineLeft;
+            placeholder.alignment = TextAlignmentOptions.BaselineLeft;
             StretchRenameText(placeholder.rectTransform);
         }
 
@@ -540,8 +542,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         rect.anchorMin = Vector2.zero;
         rect.anchorMax = Vector2.one;
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.offsetMin = new Vector2(6f, 0f);
-        rect.offsetMax = new Vector2(-6f, 0f);
+        rect.offsetMin = new Vector2(6f, RenameTextBaselineOffset);
+        rect.offsetMax = new Vector2(-6f, RenameTextBaselineOffset);
     }
 
     /// <summary>

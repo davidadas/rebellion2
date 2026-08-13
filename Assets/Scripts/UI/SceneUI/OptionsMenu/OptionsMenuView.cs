@@ -16,6 +16,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private static readonly Color _textColor = new Color(0.875f, 0.910f, 0.941f);
     private static readonly Color _badgeColor = new Color(0.204f, 0.243f, 0.302f);
     private static readonly Color _badgeListeningColor = new Color(0.373f, 0.659f, 0.925f);
+    private static readonly Color _badgeLockedColor = new Color(0.145f, 0.169f, 0.208f);
 
     private readonly List<TextMeshProUGUI> _bindingHeaderFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> _bindingActionFields = new List<TextMeshProUGUI>();
@@ -24,6 +25,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private readonly List<Image> _bindingRowImages = new List<Image>();
     private readonly List<Image> _bindingBadgeImages = new List<Image>();
     private readonly List<Image> _bindingSecondaryBadgeImages = new List<Image>();
+    private readonly List<Image> _bindingRestoreImages = new List<Image>();
     private readonly HashSet<Button> _wiredBadges = new HashSet<Button>();
 
     [Header("Frame")]
@@ -142,6 +144,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private TextMeshProUGUI _bindingKeyTemplate;
 
+    [SerializeField]
+    private Image _bindingRestoreTemplate;
+
     private bool _bound;
     private OptionsMenuTab? _previousTab;
 
@@ -158,6 +163,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action ConfirmAccepted;
     public event Action ConfirmDeclined;
     public event Action<int, bool> RebindRequested;
+    public event Action<int> BindingRestoreRequested;
     public event Action MainMenuRequested;
     public event Action QuitRequested;
     public event Action<UserTacticalOption> TacticalToggleRequested;
@@ -214,6 +220,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
 
         bool resetSaveLoadScroll =
             data.ActiveTab == OptionsMenuTab.SaveLoad && _previousTab != OptionsMenuTab.SaveLoad;
+        bool resetControlsScroll =
+            data.ActiveTab == OptionsMenuTab.Controls && _previousTab != OptionsMenuTab.Controls;
         UILayout.SetSourcePosition(transform as RectTransform, data.X, data.Y);
         UILayout.SetTextContent(_headerTextField, "OPTIONS");
         UILayout.SetTextContent(_pageTitleTextField, GetTabTitle(data.ActiveTab));
@@ -233,7 +241,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 RenderSaveLoadPage(data, resetSaveLoadScroll);
                 break;
             case OptionsMenuTab.Controls:
-                RenderControlsPage(data);
+                RenderControlsPage(data, resetControlsScroll);
                 break;
         }
         _previousTab = data.ActiveTab;
@@ -331,13 +339,17 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// backed rows with badged key captions.
     /// </summary>
     /// <param name="data">The Options menu data.</param>
-    private void RenderControlsPage(OptionsMenuRenderData data)
+    /// <param name="resetScroll">Whether the page was just entered.</param>
+    private void RenderControlsPage(OptionsMenuRenderData data, bool resetScroll)
     {
         RectInt rowTemplate = UILayout.GetSourceRect(_bindingRowTemplate.rectTransform);
         RectInt headerTemplate = UILayout.GetSourceRect(_bindingHeaderTemplate.rectTransform);
         RectInt actionTemplate = UILayout.GetSourceRect(_bindingActionTemplate.rectTransform);
         RectInt badgeTemplate = UILayout.GetSourceRect(_bindingKeyBadgeTemplate.rectTransform);
         RectInt keyTemplate = UILayout.GetSourceRect(_bindingKeyTemplate.rectTransform);
+        RectInt restoreTemplate = UILayout.GetSourceRect(_bindingRestoreTemplate.rectTransform);
+        int secondaryX = badgeTemplate.x;
+        int primaryX = secondaryX - badgeTemplate.width - 4;
         int contentHeight = 0;
         int headerCount = 0;
         int rowCount = 0;
@@ -395,7 +407,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 new RectInt(
                     actionTemplate.x,
                     contentHeight + actionTemplate.y,
-                    180,
+                    actionTemplate.width,
                     actionTemplate.height
                 )
             );
@@ -405,13 +417,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 "BindingPrimary",
                 rowCount,
                 i,
-                badgeTemplate.x - 67,
+                primaryX,
                 contentHeight,
                 binding.Primary,
                 badgeTemplate,
                 keyTemplate,
                 false,
-                i == data.ListeningRow && !data.ListeningSecondary
+                i == data.ListeningRow && !data.ListeningSecondary,
+                binding.PrimaryEditable
             );
             RenderBindingKey(
                 _bindingSecondaryBadgeImages,
@@ -419,19 +432,21 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 "BindingSecondary",
                 rowCount,
                 i,
-                badgeTemplate.x,
+                secondaryX,
                 contentHeight,
                 binding.Secondary,
                 badgeTemplate,
                 keyTemplate,
                 true,
-                i == data.ListeningRow && data.ListeningSecondary
+                i == data.ListeningRow && data.ListeningSecondary,
+                true
             );
+            RenderBindingRestore(rowCount, i, contentHeight, restoreTemplate);
             rowCount++;
             contentHeight += rowTemplate.height + 5;
         }
 
-        _controlsScrollArea.SetContentHeight(contentHeight, rowTemplate.height + 5, false);
+        _controlsScrollArea.SetContentHeight(contentHeight, rowTemplate.height + 5, resetScroll);
         HideFieldsFrom(_bindingHeaderFields, headerCount);
         HideFieldsFrom(_bindingActionFields, rowCount);
         HideFieldsFrom(_bindingKeyFields, rowCount);
@@ -439,6 +454,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         HideImagesFrom(_bindingRowImages, rowCount);
         HideImagesFrom(_bindingBadgeImages, rowCount);
         HideImagesFrom(_bindingSecondaryBadgeImages, rowCount);
+        HideImagesFrom(_bindingRestoreImages, rowCount);
     }
 
     /// <summary>
@@ -456,6 +472,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="keyTemplate">The key template rect.</param>
     /// <param name="isSecondary">Whether this is the secondary column.</param>
     /// <param name="listening">Whether this cell is awaiting a key press.</param>
+    /// <param name="editable">Whether this cell accepts rebinding requests.</param>
     private void RenderBindingKey(
         List<Image> badges,
         List<TextMeshProUGUI> keys,
@@ -468,7 +485,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         RectInt badgeTemplate,
         RectInt keyTemplate,
         bool isSecondary,
-        bool listening
+        bool listening,
+        bool editable
     )
     {
         Image badge = GetBindingImage(badges, _bindingKeyBadgeTemplate, prefix + "Badge", index);
@@ -478,7 +496,13 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         }
 
         badge.gameObject.SetActive(true);
-        badge.color = listening ? _badgeListeningColor : _badgeColor;
+        if (badgeButton != null)
+            badgeButton.interactable = editable;
+        badge.color = listening
+            ? _badgeListeningColor
+            : editable
+                ? _badgeColor
+                : _badgeLockedColor;
         UILayout.SetSourceRect(
             badge.rectTransform,
             x,
@@ -490,8 +514,42 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             GetBindingField(keys, _bindingKeyTemplate, prefix + "Key", index),
             _bindingKeyTemplate,
             listening ? "..." : text,
-            _textColor,
+            editable ? _textColor : _metaColor,
             new RectInt(x, top + keyTemplate.y, keyTemplate.width, keyTemplate.height)
+        );
+    }
+
+    /// <summary>
+    /// Displays the per-action restore-default control.
+    /// </summary>
+    /// <param name="index">The pooled row index.</param>
+    /// <param name="bindingIndex">The source binding index, including headers.</param>
+    /// <param name="top">The row's source-space top.</param>
+    /// <param name="templateRect">The authored restore-control rectangle.</param>
+    private void RenderBindingRestore(
+        int index,
+        int bindingIndex,
+        int top,
+        RectInt templateRect
+    )
+    {
+        Image restore = GetBindingImage(
+            _bindingRestoreImages,
+            _bindingRestoreTemplate,
+            "BindingRestore",
+            index
+        );
+        if (restore.TryGetComponent(out Button button) && _wiredBadges.Add(button))
+            button.onClick.AddListener(() => BindingRestoreRequested?.Invoke(bindingIndex));
+
+        restore.gameObject.SetActive(true);
+        restore.color = _badgeColor;
+        UILayout.SetSourceRect(
+            restore.rectTransform,
+            templateRect.x,
+            top + templateRect.y,
+            templateRect.width,
+            templateRect.height
         );
     }
 
@@ -824,6 +882,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || _bindingActionTemplate == null
             || _bindingKeyBadgeTemplate == null
             || _bindingKeyTemplate == null
+            || _bindingRestoreTemplate == null
         )
             throw new MissingReferenceException($"{name} is missing a binding template.");
 
@@ -832,5 +891,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _bindingActionTemplate.gameObject.SetActive(false);
         _bindingKeyBadgeTemplate.gameObject.SetActive(false);
         _bindingKeyTemplate.gameObject.SetActive(false);
+        _bindingRestoreTemplate.gameObject.SetActive(false);
     }
 }

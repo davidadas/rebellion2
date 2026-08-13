@@ -164,6 +164,160 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies entering Controls starts at the top without pinning later renders there.
+        /// </summary>
+        [Test]
+        public void ControlsPage_Entered_ScrollsToTopOnce()
+        {
+            OptionsBindingRow[] bindings = Enumerable
+                .Range(0, 24)
+                .Select(index => new OptionsBindingRow($"Action {index}", "A"))
+                .ToArray();
+            ScrollRect scrollRect = GetField<ScrollAreaView>("_controlsScrollArea")
+                .GetComponentInChildren<ScrollRect>(true);
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
+
+            Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
+
+            scrollRect.verticalNormalizedPosition = 0.5f;
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
+
+            Assert.AreEqual(0.5f, scrollRect.verticalNormalizedPosition, 0.01f);
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Graphics));
+            scrollRect.verticalNormalizedPosition = 0.5f;
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
+
+            Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
+        }
+
+        /// <summary>
+        /// Verifies the reserved Escape badge is locked while its additional binding remains editable.
+        /// </summary>
+        [Test]
+        public void ControlsPage_OpenGameMenuRow_LocksPrimaryBadgeOnly()
+        {
+            OptionsBindingRow[] bindings =
+            {
+                new OptionsBindingRow(
+                    "Open Game Menu",
+                    "ESC",
+                    "UNBOUND",
+                    primaryEditable: false
+                ),
+            };
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
+
+            Button primary = _root
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "BindingPrimaryBadge0");
+            Button secondary = _root
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "BindingSecondaryBadge0");
+            Assert.IsFalse(primary.interactable);
+            Assert.IsTrue(secondary.interactable);
+        }
+
+        /// <summary>
+        /// Verifies every interactive control-row button uses the standard Options feedback states.
+        /// </summary>
+        [Test]
+        public void ControlsPage_InteractiveButtons_UseOptionsFeedbackStates()
+        {
+            OptionsBindingRow[] bindings = { new OptionsBindingRow("Show Troopers", "T") };
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
+
+            string[] buttonNames =
+            {
+                "BindingPrimaryBadge0",
+                "BindingSecondaryBadge0",
+                "BindingRestore0",
+            };
+            foreach (string buttonName in buttonNames)
+            {
+                Button button = _root
+                    .GetComponentsInChildren<Button>(true)
+                    .Single(candidate => candidate.name == buttonName);
+                Assert.AreEqual(Selectable.Transition.ColorTint, button.transition, buttonName);
+                Assert.AreNotEqual(button.colors.normalColor, button.colors.highlightedColor, buttonName);
+                Assert.AreNotEqual(button.colors.normalColor, button.colors.pressedColor, buttonName);
+            }
+        }
+
+        /// <summary>
+        /// Verifies Controls precedes Save / Load in both tab presentation and selection routing.
+        /// </summary>
+        [Test]
+        public void Tabs_PresentControlsBeforeSaveLoad_AndRouteSelections()
+        {
+            CollectionAssert.AreEqual(
+                new[] { "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" },
+                GetField<TextMeshProUGUI[]>("_tabLabelFields").Select(label => label.text).ToArray()
+            );
+
+            OptionsMenuTab selectedTab = OptionsMenuTab.Graphics;
+            _view.TabSelected += tab => selectedTab = tab;
+            Button[] tabButtons = GetField<Button[]>("_tabButtons");
+
+            tabButtons[2].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
+            tabButtons[3].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.SaveLoad, selectedTab);
+        }
+
+        /// <summary>
+        /// Verifies each controls row exposes its own restore-default request.
+        /// </summary>
+        [Test]
+        public void ControlsPage_RestoreButton_ClickRaisesBindingRowRequest()
+        {
+            int restoredRow = -1;
+            _view.BindingRestoreRequested += row => restoredRow = row;
+            OptionsBindingRow[] bindings = { new OptionsBindingRow("Show Troopers", "T") };
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
+
+            _root
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "BindingRestore0")
+                .onClick.Invoke();
+
+            Assert.AreEqual(0, restoredRow);
+        }
+
+        /// <summary>
+        /// Verifies the per-binding restore control uses the authored reset icon rather than text.
+        /// </summary>
+        [Test]
+        public void ControlsPage_RestoreTemplate_UsesContentBoundResetIcon()
+        {
+            Image template = GetField<Image>("_bindingRestoreTemplate");
+            RawImage icon = template.GetComponentInChildren<RawImage>(true);
+
+            Assert.IsNotNull(icon);
+            Assert.AreEqual(
+                "Application/OptionsMenu/UI/ui_settingsmenu_restore_default_icon",
+                icon.GetComponent<ContentTextureBinding>().Address
+            );
+            Assert.IsEmpty(template.GetComponentsInChildren<TextMeshProUGUI>(true));
+        }
+
+        /// <summary>
+        /// Verifies the Controls-page global defaults action is labeled as a restore-all action.
+        /// </summary>
+        [Test]
+        public void SettingsPages_DefaultsAction_UsesRestoreDefaultsLabel()
+        {
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls));
+
+            Assert.AreEqual(
+                "RESTORE DEFAULTS",
+                GetField<Button>("_defaultsButton").GetComponentInChildren<TextMeshProUGUI>().text
+            );
+        }
+
+        /// <summary>
         /// Verifies display arrows emit their semantic direction requests.
         /// </summary>
         [Test]
@@ -222,9 +376,38 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreSame(input.transform, input.textViewport);
             Assert.IsNotNull(input.textViewport.GetComponent<RectMask2D>());
             Assert.AreEqual(
-                TextAlignmentOptions.MidlineLeft,
+                TextAlignmentOptions.BaselineLeft,
                 ((TextMeshProUGUI)input.textComponent).alignment
             );
+            Assert.AreEqual(-2f, ((RectTransform)input.textComponent.transform).offsetMin.y);
+            Assert.AreEqual(-2f, ((RectTransform)input.textComponent.transform).offsetMax.y);
+        }
+
+        /// <summary>
+        /// Verifies taller glyph geometry cannot move the rename text baseline or caret container.
+        /// </summary>
+        [Test]
+        public void RenameInput_TallGlyph_KeepsStableBaselineAndTextBounds()
+        {
+            _saveListView.AlignRenameInput();
+            TMP_InputField input = GetSaveListField<TMP_InputField>("_renameField");
+            TextMeshProUGUI text = (TextMeshProUGUI)input.textComponent;
+            input.gameObject.SetActive(true);
+
+            input.SetTextWithoutNotify("A");
+            input.ForceLabelUpdate();
+            text.ForceMeshUpdate();
+            float ordinaryBaseline = text.textInfo.characterInfo[0].baseLine;
+            Vector2 ordinaryPosition = text.rectTransform.anchoredPosition;
+            Vector2 ordinarySize = text.rectTransform.sizeDelta;
+
+            input.SetTextWithoutNotify("(");
+            input.ForceLabelUpdate();
+            text.ForceMeshUpdate();
+
+            Assert.AreEqual(ordinaryBaseline, text.textInfo.characterInfo[0].baseLine, 0.01f);
+            Assert.AreEqual(ordinaryPosition, text.rectTransform.anchoredPosition);
+            Assert.AreEqual(ordinarySize, text.rectTransform.sizeDelta);
         }
 
         /// <summary>
@@ -473,7 +656,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// </summary>
         private static OptionsMenuRenderData CreateRenderDataForTab(
             OptionsMenuTab activeTab,
-            params OptionsSaveSlot[] saveSlots
+            OptionsSaveSlot[] saveSlots = null,
+            OptionsBindingRow[] bindings = null
         )
         {
             return new OptionsMenuRenderData(
@@ -484,8 +668,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 string.Empty,
                 new Dictionary<UserTacticalOption, bool>(),
                 Array.Empty<float>(),
-                Array.Empty<OptionsBindingRow>(),
-                saveSlots,
+                bindings ?? Array.Empty<OptionsBindingRow>(),
+                saveSlots ?? Array.Empty<OptionsSaveSlot>(),
                 -1,
                 false,
                 true,

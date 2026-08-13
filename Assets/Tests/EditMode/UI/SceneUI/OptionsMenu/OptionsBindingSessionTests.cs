@@ -135,6 +135,147 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     !row.IsHeader && row.Action == "Open Game Menu" && row.Primary == "ESC"
                 )
             );
+            Assert.IsFalse(
+                session.Rows.Single(row => row.Action == "Open Game Menu").PrimaryEditable
+            );
+        }
+
+        /// <summary>
+        /// Verifies the reserved Escape slot cannot enter interactive capture.
+        /// </summary>
+        [Test]
+        public void BeginRebind_OpenGameMenuPrimary_DoesNotStartCapture()
+        {
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+            session.Rebuild();
+            int row = session
+                .Rows.Select((binding, index) => (binding, index))
+                .Single(item => item.binding.Action == "Open Game Menu")
+                .index;
+
+            session.BeginRebind(row, false);
+
+            Assert.AreEqual(-1, session.ListeningRow);
+        }
+
+        /// <summary>
+        /// Verifies restoring one row leaves overrides on other actions intact.
+        /// </summary>
+        [Test]
+        public void RestoreDefault_OneBinding_RestoresOnlySelectedAction()
+        {
+            InputAction troopers = _inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
+            InputAction fighters = _inputManager.Asset.FindAction(
+                "Strategy/ShowFighterSquadrons",
+                true
+            );
+            troopers.ApplyBindingOverride(FindBinding(troopers, "Primary"), "<Keyboard>/n");
+            fighters.ApplyBindingOverride(FindBinding(fighters, "Primary"), "<Keyboard>/m");
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+            session.Rebuild();
+            int row = session
+                .Rows.Select((binding, index) => (binding, index))
+                .Single(item => item.binding.Action == "Show Troopers")
+                .index;
+
+            session.RestoreDefault(row);
+
+            Assert.IsNull(troopers.bindings[FindBinding(troopers, "Primary")].overridePath);
+            Assert.AreEqual(
+                "<Keyboard>/m",
+                fighters.bindings[FindBinding(fighters, "Primary")].overridePath
+            );
+        }
+
+        /// <summary>
+        /// Verifies restoring all bindings removes overrides throughout the bindable maps.
+        /// </summary>
+        [Test]
+        public void RestoreAllDefaults_MultipleBindings_RemovesEveryOverride()
+        {
+            InputAction troopers = _inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
+            InputAction quickSave = _inputManager.Asset.FindAction("Global/QuickSave", true);
+            troopers.ApplyBindingOverride(FindBinding(troopers, "Primary"), "<Keyboard>/n");
+            quickSave.ApplyBindingOverride(FindBinding(quickSave, "Primary"), "<Keyboard>/m");
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+            session.Rebuild();
+
+            session.RestoreAllDefaults();
+
+            Assert.IsFalse(
+                _inputManager.Asset.actionMaps.SelectMany(map => map.actions)
+                    .SelectMany(action => action.bindings)
+                    .Any(binding => binding.hasOverrides)
+            );
+        }
+
+        /// <summary>
+        /// Verifies an unbound secondary slot can begin capture through the temporary listening action.
+        /// </summary>
+        [Test]
+        public void BeginRebind_UnboundSecondarySlot_StartsInteractiveCapture()
+        {
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+            session.Rebuild();
+            int row = session
+                .Rows.Select((binding, index) => (binding, index))
+                .First(item => item.binding.Action == "Show Troopers")
+                .index;
+
+            Assert.AreEqual("UNBOUND", session.Rows[row].Secondary);
+            Assert.DoesNotThrow(() => session.BeginRebind(row, true));
+
+            Assert.AreEqual(row, session.ListeningRow);
+            Assert.IsTrue(session.ListeningSecondary);
+            session.CancelRebind();
+            Assert.AreEqual(-1, session.ListeningRow);
+        }
+
+        /// <summary>
+        /// Verifies Escape cancels binding capture without leaking into the global menu command.
+        /// </summary>
+        [Test]
+        public void BeginRebind_Escape_CancelsCaptureWithoutPerformingGlobalShortcut()
+        {
+            InputTestFixture inputFixture = new();
+            inputFixture.Setup();
+            GameObject inputRoot = new("IsolatedInputManager");
+            InputManager inputManager = inputRoot.AddComponent<InputManager>();
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            InputAction cancel = inputManager.Asset.FindAction("Global/CancelOrSettings", true);
+            int cancelCount = 0;
+            cancel.performed += _ => cancelCount++;
+            cancel.actionMap.Enable();
+
+            try
+            {
+                using OptionsBindingSession session = new OptionsBindingSession(inputManager);
+                session.Rebuild();
+                int row = session
+                    .Rows.Select((binding, index) => (binding, index))
+                    .First(item => item.binding.Action == "Show Troopers")
+                    .index;
+                session.BeginRebind(row, false);
+
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                InputSystem.Update();
+
+                Assert.AreEqual(-1, session.ListeningRow);
+                Assert.AreEqual(0, cancelCount);
+
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                InputSystem.Update();
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                InputSystem.Update();
+
+                Assert.AreEqual(1, cancelCount);
+            }
+            finally
+            {
+                cancel.actionMap.Disable();
+                Object.DestroyImmediate(inputRoot);
+                inputFixture.TearDown();
+            }
         }
 
         /// <summary>

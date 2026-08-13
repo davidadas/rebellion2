@@ -211,6 +211,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (_window == null)
             return false;
 
+        if (_bindingSession.ListeningRow >= 0)
+        {
+            _bindingSession.CancelRebind();
+            return true;
+        }
+
         if (_pendingConfirmAction != null || _bindingSession.HasPendingConflict)
         {
             HandleConfirmDeclined();
@@ -240,6 +246,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.ConfirmAccepted += HandleConfirmAccepted;
         target.ConfirmDeclined += HandleConfirmDeclined;
         target.RebindRequested += HandleRebindRequested;
+        target.BindingRestoreRequested += HandleBindingRestoreRequested;
         target.MainMenuRequested += HandleMainMenuRequested;
         target.QuitRequested += HandleQuitRequested;
         target.TacticalToggleRequested += HandleTacticalToggle;
@@ -529,8 +536,13 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void ApplyActiveDefaults()
     {
+        if (_activeTab == OptionsMenuTab.Controls)
+        {
+            _bindingSession.RestoreAllDefaults();
+            return;
+        }
+
         _settingsSession.RestoreDefaults(_activeTab);
-        _bindingSession.Rebuild();
         _markDirty();
     }
 
@@ -660,6 +672,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Restores one action's authored binding defaults.
+    /// </summary>
+    /// <param name="row">The controls row to restore.</param>
+    private void HandleBindingRestoreRequested(int row)
+    {
+        _bindingSession.RestoreDefault(row);
+    }
+
+    /// <summary>
     /// Displays the confirmation prompt for a conflicting binding assignment.
     /// </summary>
     /// <param name="message">The conflict prompt to display.</param>
@@ -731,6 +752,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.ConfirmAccepted -= HandleConfirmAccepted;
         destroyed.ConfirmDeclined -= HandleConfirmDeclined;
         destroyed.RebindRequested -= HandleRebindRequested;
+        destroyed.BindingRestoreRequested -= HandleBindingRestoreRequested;
         destroyed.MainMenuRequested -= HandleMainMenuRequested;
         destroyed.QuitRequested -= HandleQuitRequested;
         destroyed.TacticalToggleRequested -= HandleTacticalToggle;

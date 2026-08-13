@@ -31,6 +31,7 @@ internal sealed class OptionsSettingsSession
     private int _snapshotResolutionHeight;
     private int _snapshotFullScreenMode;
     private string _snapshotBindingOverrides = string.Empty;
+    private bool _inputDiffersFromSnapshot;
 
     /// <summary>
     /// Creates a pending settings session over the runtime service owners.
@@ -95,6 +96,7 @@ internal sealed class OptionsSettingsSession
             Video.SetEnabled(entry.Key, entry.Value);
 
         _inputManager.LoadBindingOverrides(_snapshotBindingOverrides);
+        _inputDiffersFromSnapshot = false;
         ApplyAllVolumes();
         ApplyResolution();
         RebuildResolutions();
@@ -121,14 +123,11 @@ internal sealed class OptionsSettingsSession
                     SetVolumeValue(channel, 1f);
                 ApplyAllVolumes();
                 break;
-            case OptionsMenuTab.Controls:
-                _inputManager.Asset.RemoveAllBindingOverrides();
-                break;
             default:
                 return;
         }
 
-        IsDirty = true;
+        RefreshDirtyState();
     }
 
     /// <summary>
@@ -164,7 +163,7 @@ internal sealed class OptionsSettingsSession
     internal void ToggleTactical(UserTacticalOption option)
     {
         Video.SetEnabled(option, !Video.IsEnabled(option));
-        IsDirty = true;
+        RefreshDirtyState();
     }
 
     /// <summary>
@@ -182,7 +181,7 @@ internal sealed class OptionsSettingsSession
         Video.ResolutionWidth = resolution.x;
         Video.ResolutionHeight = resolution.y;
         _displayManager.Apply(Video);
-        IsDirty = true;
+        RefreshDirtyState();
     }
 
     /// <summary>
@@ -198,7 +197,7 @@ internal sealed class OptionsSettingsSession
             % _fullScreenModes.Length;
         Video.FullScreenMode = _fullScreenModes[next];
         ApplyResolution();
-        IsDirty = true;
+        RefreshDirtyState();
     }
 
     /// <summary>
@@ -210,7 +209,7 @@ internal sealed class OptionsSettingsSession
             return;
 
         ApplyVolume(channel, Mathf.Clamp01(value));
-        IsDirty = true;
+        RefreshDirtyState();
     }
 
     /// <summary>
@@ -218,7 +217,12 @@ internal sealed class OptionsSettingsSession
     /// </summary>
     internal void MarkInputChanged()
     {
-        IsDirty = true;
+        _inputDiffersFromSnapshot = !string.Equals(
+            _inputManager.SaveBindingOverrides(),
+            _snapshotBindingOverrides,
+            StringComparison.Ordinal
+        );
+        RefreshDirtyState();
     }
 
     /// <summary>
@@ -231,9 +235,56 @@ internal sealed class OptionsSettingsSession
         _snapshotResolutionHeight = Video.ResolutionHeight;
         _snapshotFullScreenMode = Video.FullScreenMode;
         _snapshotBindingOverrides = _inputManager.SaveBindingOverrides();
+        _inputDiffersFromSnapshot = false;
         _snapshotTactical.Clear();
         foreach (UserTacticalOption option in Enum.GetValues(typeof(UserTacticalOption)))
             _snapshotTactical[option] = Video.IsEnabled(option);
+    }
+
+    /// <summary>
+    /// Recomputes whether the staged settings differ from the last loaded or applied snapshot.
+    /// </summary>
+    private void RefreshDirtyState()
+    {
+        float[] volumes = GetVolumes();
+        if (volumes.Length != _snapshotVolumes.Length)
+        {
+            IsDirty = true;
+            return;
+        }
+
+        for (int channel = 0; channel < volumes.Length; channel++)
+        {
+            if (!Mathf.Approximately(volumes[channel], _snapshotVolumes[channel]))
+            {
+                IsDirty = true;
+                return;
+            }
+        }
+
+        if (
+            Video.ResolutionWidth != _snapshotResolutionWidth
+            || Video.ResolutionHeight != _snapshotResolutionHeight
+            || Video.FullScreenMode != _snapshotFullScreenMode
+        )
+        {
+            IsDirty = true;
+            return;
+        }
+
+        foreach (UserTacticalOption option in Enum.GetValues(typeof(UserTacticalOption)))
+        {
+            if (
+                !_snapshotTactical.TryGetValue(option, out bool enabled)
+                || Video.IsEnabled(option) != enabled
+            )
+            {
+                IsDirty = true;
+                return;
+            }
+        }
+
+        IsDirty = _inputDiffersFromSnapshot;
     }
 
     /// <summary>

@@ -31,13 +31,14 @@ internal sealed class OptionsBindingSession : IDisposable
 
     private InputActionRebindingExtensions.RebindingOperation _operation;
     private InputAction _listeningAction;
-    private InputAction _reboundAction;
     private string[] _previousActionOverrides;
-    private bool _reboundActionWasEnabled;
     private bool _rebindApplied;
     private InputAction _conflictOldAction;
     private int _conflictOldIndex;
     private InputAction _conflictNewAction;
+    private bool _rebindOwnsShortcutInput;
+    private bool _textEntryOwnsShortcutInput;
+    private bool _shortcutRestoreScheduled;
 
     /// <summary>
     /// Raised after a binding override changes.
@@ -104,7 +105,8 @@ internal sealed class OptionsBindingSession : IDisposable
                     new OptionsBindingRow(
                         GetActionLabel(action.name),
                         FormatSlot(action, primary),
-                        FormatSlot(action, secondary)
+                        FormatSlot(action, secondary),
+                        primaryEditable: !HasReservedPrimary(action)
                     )
                 );
                 mapTargets.Add(new BindingTarget(action, primary, secondary));
@@ -133,12 +135,48 @@ internal sealed class OptionsBindingSession : IDisposable
         BindingTarget target = _targets[row];
         if (target.Action == null)
             return;
+        if (!secondary && HasReservedPrimary(target.Action))
+            return;
 
         ListeningRow = row;
         ListeningSecondary = secondary;
         _previousActionOverrides = CaptureOverrides(target.Action);
+        SetRebindShortcutInputOwnership(true);
         PresentationChanged?.Invoke();
         StartRebind(target.Action, secondary ? target.Secondary : target.Primary);
+    }
+
+    /// <summary>
+    /// Restores the authored defaults for one binding row.
+    /// </summary>
+    /// <param name="row">The controls row to restore.</param>
+    internal void RestoreDefault(int row)
+    {
+        if (_operation != null || HasPendingConflict || row < 0 || row >= _targets.Count)
+            return;
+
+        InputAction action = _targets[row].Action;
+        if (action == null)
+            return;
+
+        action.RemoveAllBindingOverrides();
+        Changed?.Invoke();
+        Rebuild();
+        PresentationChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Restores every bindable action to its authored defaults.
+    /// </summary>
+    internal void RestoreAllDefaults()
+    {
+        if (_operation != null || HasPendingConflict)
+            return;
+
+        _inputManager.Asset.RemoveAllBindingOverrides();
+        Changed?.Invoke();
+        Rebuild();
+        PresentationChanged?.Invoke();
     }
 
     /// <summary>
@@ -171,31 +209,11 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <param name="active">Whether text entry is active.</param>
     internal void SetTextEntryActive(bool active)
     {
-        InputActionAsset asset = _inputManager.Asset;
+        _textEntryOwnsShortcutInput = active;
         if (active)
-        {
-            if (_suppressedActionStates.Count > 0)
-                return;
-
-            foreach (InputActionMap map in asset.actionMaps)
-            {
-                if (!IsBindableMap(map.name))
-                    continue;
-                foreach (InputAction action in map.actions)
-                {
-                    _suppressedActionStates[action] = action.enabled;
-                    action.Disable();
-                }
-            }
-            return;
-        }
-
-        foreach (KeyValuePair<InputAction, bool> entry in _suppressedActionStates)
-        {
-            if (entry.Key != null && entry.Value)
-                entry.Key.Enable();
-        }
-        _suppressedActionStates.Clear();
+            SuppressShortcutInput();
+        else
+            RestoreShortcutInput();
     }
 
     /// <summary>
@@ -215,8 +233,10 @@ internal sealed class OptionsBindingSession : IDisposable
         _operation = null;
         _listeningAction?.Dispose();
         _listeningAction = null;
-        RestoreReboundActionState();
-        SetTextEntryActive(false);
+        _rebindOwnsShortcutInput = false;
+        _textEntryOwnsShortcutInput = false;
+        CancelScheduledShortcutRestore();
+        RestoreShortcutInput();
         ClearConflict();
     }
 
@@ -226,13 +246,11 @@ internal sealed class OptionsBindingSession : IDisposable
     private void StartRebind(InputAction action, BindingSlot slot)
     {
         _rebindApplied = false;
-        _reboundAction = action;
-        _reboundActionWasEnabled = action.enabled;
-        action.Disable();
         _listeningAction = new InputAction(type: InputActionType.Button);
 
         InputActionRebindingExtensions.RebindingOperation candidate = _listeningAction
             .PerformInteractiveRebinding()
+            .WithRebindAddingNewBinding()
             .WithCancelingThrough("<Keyboard>/escape")
             .WithControlsExcluding("<Mouse>")
             .WithControlsExcluding("<Keyboard>/anyKey");
@@ -278,9 +296,9 @@ internal sealed class OptionsBindingSession : IDisposable
         _operation = null;
         _listeningAction?.Dispose();
         _listeningAction = null;
-        RestoreReboundActionState();
         ListeningRow = -1;
         ListeningSecondary = false;
+        SetRebindShortcutInputOwnership(false);
 
         if (!completed || !_rebindApplied)
         {
@@ -414,14 +432,90 @@ internal sealed class OptionsBindingSession : IDisposable
     }
 
     /// <summary>
-    /// Restores the rebound action's enabled state.
+    /// Acquires or releases exclusive shortcut ownership for interactive rebinding.
     /// </summary>
-    private void RestoreReboundActionState()
+    /// <param name="active">Whether an interactive rebind owns shortcut input.</param>
+    private void SetRebindShortcutInputOwnership(bool active)
     {
-        if (_reboundActionWasEnabled)
-            _reboundAction?.Enable();
-        _reboundAction = null;
-        _reboundActionWasEnabled = false;
+        _rebindOwnsShortcutInput = active;
+        if (active)
+        {
+            CancelScheduledShortcutRestore();
+            SuppressShortcutInput();
+            return;
+        }
+
+        if (!_textEntryOwnsShortcutInput)
+            ScheduleShortcutRestore();
+    }
+
+    /// <summary>
+    /// Disables bindable application shortcuts while an editor owns keyboard input.
+    /// </summary>
+    private void SuppressShortcutInput()
+    {
+        if (_suppressedActionStates.Count > 0)
+            return;
+
+        foreach (InputActionMap map in _inputManager.Asset.actionMaps)
+        {
+            if (!IsBindableMap(map.name))
+                continue;
+            foreach (InputAction action in map.actions)
+            {
+                _suppressedActionStates[action] = action.enabled;
+                action.Disable();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Restores shortcuts after the input event that ended capture has been fully dispatched.
+    /// </summary>
+    private void ScheduleShortcutRestore()
+    {
+        if (_shortcutRestoreScheduled)
+            return;
+
+        _shortcutRestoreScheduled = true;
+        InputSystem.onAfterUpdate += HandleInputUpdateFinished;
+    }
+
+    /// <summary>
+    /// Releases shortcut ownership at a stable input-system update boundary.
+    /// </summary>
+    private void HandleInputUpdateFinished()
+    {
+        CancelScheduledShortcutRestore();
+        RestoreShortcutInput();
+    }
+
+    /// <summary>
+    /// Removes a pending shortcut-restore callback.
+    /// </summary>
+    private void CancelScheduledShortcutRestore()
+    {
+        if (!_shortcutRestoreScheduled)
+            return;
+
+        InputSystem.onAfterUpdate -= HandleInputUpdateFinished;
+        _shortcutRestoreScheduled = false;
+    }
+
+    /// <summary>
+    /// Restores the enabled state captured before exclusive keyboard input began.
+    /// </summary>
+    private void RestoreShortcutInput()
+    {
+        if (_rebindOwnsShortcutInput || _textEntryOwnsShortcutInput)
+            return;
+
+        foreach (KeyValuePair<InputAction, bool> entry in _suppressedActionStates)
+        {
+            if (entry.Key != null && entry.Value)
+                entry.Key.Enable();
+        }
+        _suppressedActionStates.Clear();
     }
 
     /// <summary>
@@ -588,6 +682,14 @@ internal sealed class OptionsBindingSession : IDisposable
     private static bool IsBindableMap(string map)
     {
         return map is "Global" or "Strategy";
+    }
+
+    /// <summary>
+    /// Identifies the system-reserved Escape slot used for consistent UI navigation.
+    /// </summary>
+    private static bool HasReservedPrimary(InputAction action)
+    {
+        return action?.actionMap?.name == "Global" && action.name == "CancelOrSettings";
     }
 
     /// <summary>

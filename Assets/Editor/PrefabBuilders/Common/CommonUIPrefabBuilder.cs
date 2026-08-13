@@ -98,6 +98,7 @@ public static class CommonUIPrefabBuilder
         scrollbarBackground.color = Color.clear;
         scrollbarBackground.raycastTarget = true;
         scrollbar.direction = Scrollbar.Direction.BottomToTop;
+        scrollbar.value = 1f;
         scrollbar.transition = Selectable.Transition.None;
 
         GameObject track = CreateRectObject("TrackBackgroundImage", scrollbarObject.transform);
