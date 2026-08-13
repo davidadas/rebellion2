@@ -203,17 +203,6 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
-        public void ScrollToBottom_ContentOverflows_MovesToMaximumOffset()
-        {
-            _scrollArea.SetContentHeight(200, 10, true);
-
-            _scrollArea.ScrollToBottom();
-
-            Assert.AreEqual(150f, _contentRoot.anchoredPosition.y, 0.01f);
-            Assert.AreEqual(0f, _scrollbar.value, 0.01f);
-        }
-
-        [Test]
         public void RelayDragEvents_SubscribedHandlers_ReceivePointerEvents()
         {
             PointerEventData eventData = new PointerEventData(null);

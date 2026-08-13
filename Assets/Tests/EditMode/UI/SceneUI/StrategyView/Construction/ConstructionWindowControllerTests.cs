@@ -47,6 +47,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
+            _windowManager.WindowCloseRequested += _windowManager.DestroyWindow;
             _sourceWindow = CreateSourceWindow();
             _actions = new TestActions();
             _controller = CreateController();
@@ -129,8 +130,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsNotNull(_controller.GetStatusTarget(view));
         }
 
+        /// <summary>
+        /// Verifies that requesting another construction tab replaces the exclusive window.
+        /// </summary>
         [Test]
-        public void OpenFromAdvisor_ExistingPlanet_ReusesWindowWithoutAdditionalInvalidation()
+        public void OpenFromAdvisor_DifferentTab_ReplacesExistingWindow()
         {
             _controller.OpenFromAdvisor(_planet, _planet, FacilityWindowTab.Shipyards);
             UIWindow firstWindow = _windowManager.Windows.Single();
@@ -138,8 +142,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _controller.OpenFromAdvisor(_planet, _planet, FacilityWindowTab.Training);
 
             Assert.AreEqual(1, _windowManager.Windows.Count);
-            Assert.AreSame(firstWindow, _windowManager.Windows.Single());
-            Assert.AreEqual(1, _dirtyCount);
+            Assert.AreNotSame(firstWindow, _windowManager.Windows.Single());
+            Assert.AreEqual(2, _dirtyCount);
+        }
+
+        /// <summary>
+        /// Verifies that repeating one construction request toggles its exclusive window closed.
+        /// </summary>
+        [Test]
+        public void OpenFromAdvisor_SameRequest_TogglesExistingWindowClosed()
+        {
+            _controller.OpenFromAdvisor(_planet, _planet, FacilityWindowTab.Shipyards);
+
+            _controller.OpenFromAdvisor(_planet, _planet, FacilityWindowTab.Shipyards);
+
+            Assert.IsEmpty(_windowManager.Windows);
         }
 
         [Test]

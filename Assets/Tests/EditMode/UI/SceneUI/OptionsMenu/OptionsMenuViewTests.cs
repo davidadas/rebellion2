@@ -130,10 +130,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies entering Save/Load starts at the bottom without pinning later renders there.
+        /// Verifies entering Save/Load starts at the top without pinning later renders there.
         /// </summary>
         [Test]
-        public void SaveLoadPage_Entered_ScrollsToBottomOnce()
+        public void SaveLoadPage_Entered_ScrollsToTopOnce()
         {
             OptionsSaveSlot[] slots = Enumerable
                 .Range(0, 12)
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             _view.Render(CreateRenderData(slots));
 
-            Assert.AreEqual(0f, scrollRect.verticalNormalizedPosition, 0.01f);
+            Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
 
             scrollRect.verticalNormalizedPosition = 0.5f;
             _view.Render(CreateRenderData(slots));
@@ -160,7 +160,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             scrollRect.verticalNormalizedPosition = 0.5f;
             _view.Render(CreateRenderData(slots));
 
-            Assert.AreEqual(0f, scrollRect.verticalNormalizedPosition, 0.01f);
+            Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
         }
 
         /// <summary>
@@ -220,6 +220,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(SaveGameManager.MaxDisplayNameLength, input.characterLimit);
             Assert.IsFalse(input.onFocusSelectAll);
             Assert.AreSame(input.transform, input.textViewport);
+            Assert.IsNotNull(input.textViewport.GetComponent<RectMask2D>());
             Assert.AreEqual(
                 TextAlignmentOptions.MidlineLeft,
                 ((TextMeshProUGUI)input.textComponent).alignment
@@ -254,6 +255,69 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 * renderedName.fontSize
                 / renderedName.font.faceInfo.pointSize;
             Assert.GreaterOrEqual(renderedName.rectTransform.rect.height, renderedLineHeight);
+        }
+
+        /// <summary>
+        /// Verifies a long save label is clipped before the row's delete control.
+        /// </summary>
+        [Test]
+        public void SaveList_LongName_LabelEndsBeforeDeleteControl()
+        {
+            OptionsSaveSlot savedGame = new OptionsSaveSlot(
+                new string('N', SaveGameManager.MaxDisplayNameLength),
+                "Today",
+                null,
+                false,
+                "test_save"
+            );
+
+            _view.Render(CreateRenderData(savedGame));
+
+            RectInt nameRect = UILayout.GetSourceRect(
+                _root
+                    .GetComponentsInChildren<TextMeshProUGUI>(true)
+                    .Single(text => text.name == "SlotName0")
+                    .rectTransform
+            );
+            RectInt deleteRect = UILayout.GetSourceRect(
+                (RectTransform)
+                    _root
+                        .GetComponentsInChildren<Button>(true)
+                        .Single(button => button.name == "SlotDelete0")
+                        .transform
+            );
+            Assert.Less(nameRect.xMax, deleteRect.xMin);
+        }
+
+        /// <summary>
+        /// Verifies inline editing hides the static save label beneath the input field.
+        /// </summary>
+        [Test]
+        public void SaveList_Renaming_HidesStaticNameUntilEditingCloses()
+        {
+            OptionsSaveSlot savedGame = new OptionsSaveSlot(
+                "Test Save",
+                "Today",
+                null,
+                false,
+                "test_save"
+            );
+            OptionsMenuRenderData data = CreateRenderData(savedGame);
+            _view.Render(data);
+            TextMeshProUGUI renderedName = _root
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "SlotName0");
+
+            typeof(OptionsSaveListView)
+                .GetMethod("BeginRename", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(_saveListView, new object[] { 0 });
+            _view.Render(data);
+
+            Assert.IsFalse(renderedName.gameObject.activeSelf);
+
+            _saveListView.CancelRename();
+
+            Assert.IsTrue(renderedName.gameObject.activeSelf);
         }
 
         /// <summary>

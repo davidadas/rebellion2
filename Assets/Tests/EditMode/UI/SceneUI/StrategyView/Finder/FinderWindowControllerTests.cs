@@ -46,6 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
+            _windowManager.WindowCloseRequested += _windowManager.DestroyWindow;
             _controller = CreateController();
         }
 
@@ -91,34 +92,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies that repeating a finder command closes its existing window.
+        /// </summary>
         [Test]
-        public void Open_ExistingMode_FocusesWithoutCreatingAnotherWindow()
+        public void Open_ExistingMode_TogglesWindowClosed()
         {
             _controller.Open(FinderMode.Systems);
-            UIWindow window = _windowManager.Windows.Single();
 
             _controller.Open(FinderMode.Systems);
 
-            Assert.AreEqual(1, _windowManager.Windows.Count);
-            Assert.AreSame(window, _windowManager.ActiveWindow);
+            Assert.AreEqual(0, _windowManager.Windows.Count);
+            Assert.IsNull(_windowManager.ActiveWindow);
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies that requesting another finder mode replaces the exclusive finder.
+        /// </summary>
         [Test]
-        public void Open_DifferentModes_CreatesIndependentWindowSessions()
+        public void Open_DifferentModes_ReplacesExistingFinder()
         {
             _controller.Open(FinderMode.Systems);
             _controller.Open(FinderMode.Personnel);
 
-            Assert.AreEqual(2, _windowManager.Windows.Count);
-            CollectionAssert.AreEquivalent(
-                new[] { FinderMode.Systems, FinderMode.Personnel },
-                _windowManager.Windows.Select(window =>
-                {
-                    _windowManager.TryGetWindowView(window, out FinderWindowView view);
-                    return _controller.GetMode(view);
-                })
-            );
+            Assert.AreEqual(1, _windowManager.Windows.Count);
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out FinderWindowView view);
+            Assert.AreEqual(FinderMode.Personnel, _controller.GetMode(view));
             Assert.AreEqual(2, _dirtyCount);
         }
 

@@ -128,12 +128,12 @@ namespace Rebellion.Tests.Managers
         }
 
         /// <summary>
-        /// Verifies save display names use the product's 32-character limit.
+        /// Verifies save display names use the product's 64-character limit.
         /// </summary>
         [Test]
-        public void MaxDisplayNameLength_Is32Characters()
+        public void MaxDisplayNameLength_Is64Characters()
         {
-            Assert.AreEqual(32, SaveGameManager.MaxDisplayNameLength);
+            Assert.AreEqual(64, SaveGameManager.MaxDisplayNameLength);
         }
 
         /// <summary>

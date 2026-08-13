@@ -60,6 +60,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.DoesNotThrow(() => InvokePrivate("Update"));
         }
 
+        /// <summary>
+        /// Verifies that new-game startup rejects a missing launch summary.
+        /// </summary>
         [Test]
         public void StartNewGameAsync_MissingSummary_ThrowsInvalidOperationException()
         {
@@ -102,6 +105,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies that faction introduction playback rejects a missing faction.
+        /// </summary>
         [Test]
         public void PlayFactionIntroAsync_NullFaction_ThrowsInvalidOperationException()
         {

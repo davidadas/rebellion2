@@ -48,7 +48,7 @@ namespace Rebellion.Tests.UI.Input
         {
             SetInputFocus(true);
 
-            Assert.IsTrue(UIInputFocus.IsTextEntryActive());
+            Assert.IsTrue(UIInputFocus.IsTextEntryActive(_eventSystem));
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace Rebellion.Tests.UI.Input
         {
             SetInputFocus(false);
 
-            Assert.IsFalse(UIInputFocus.IsTextEntryActive());
+            Assert.IsFalse(UIInputFocus.IsTextEntryActive(_eventSystem));
         }
 
         /// <summary>
@@ -71,7 +71,18 @@ namespace Rebellion.Tests.UI.Input
             SetInputFocus(true);
             _inputField.enabled = false;
 
-            Assert.IsFalse(UIInputFocus.IsTextEntryActive());
+            Assert.IsFalse(UIInputFocus.IsTextEntryActive(_eventSystem));
+        }
+
+        /// <summary>
+        /// Verifies a destroyed selected object is treated as no text focus.
+        /// </summary>
+        [Test]
+        public void IsTextEntryActive_DestroyedSelectedObject_ReturnsFalse()
+        {
+            Object.DestroyImmediate(_selectedChild);
+
+            Assert.IsFalse(UIInputFocus.IsTextEntryActive(_eventSystem));
         }
 
         /// <summary>

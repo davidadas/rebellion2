@@ -212,7 +212,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
-        bool enteredSaveLoad =
+        bool resetSaveLoadScroll =
             data.ActiveTab == OptionsMenuTab.SaveLoad && _previousTab != OptionsMenuTab.SaveLoad;
         UILayout.SetSourcePosition(transform as RectTransform, data.X, data.Y);
         UILayout.SetTextContent(_headerTextField, "OPTIONS");
@@ -230,7 +230,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 RenderAudioPage(data);
                 break;
             case OptionsMenuTab.SaveLoad:
-                RenderSaveLoadPage(data, enteredSaveLoad);
+                RenderSaveLoadPage(data, resetSaveLoadScroll);
                 break;
             case OptionsMenuTab.Controls:
                 RenderControlsPage(data);
@@ -320,10 +320,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// Rebuilds the save-slot list and applies action availability.
     /// </summary>
     /// <param name="data">The Options menu data.</param>
-    /// <param name="scrollToBottom">Whether the page was just entered.</param>
-    private void RenderSaveLoadPage(OptionsMenuRenderData data, bool scrollToBottom)
+    /// <param name="resetScroll">Whether the page was just entered.</param>
+    private void RenderSaveLoadPage(OptionsMenuRenderData data, bool resetScroll)
     {
-        _saveListView.Render(data, scrollToBottom);
+        _saveListView.Render(data, resetScroll);
     }
 
     /// <summary>

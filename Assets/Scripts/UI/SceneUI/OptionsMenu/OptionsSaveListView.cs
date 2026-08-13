@@ -158,8 +158,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// Renders the current save slots, selection, and available save actions.
     /// </summary>
     /// <param name="data">The current Options menu render state.</param>
-    /// <param name="scrollToBottom">Whether to show the bottom of the rebuilt list.</param>
-    public void Render(OptionsMenuRenderData data, bool scrollToBottom)
+    /// <param name="resetScroll">Whether to show the top of the rebuilt list.</param>
+    public void Render(OptionsMenuRenderData data, bool resetScroll)
     {
         int selected = data.SelectedSlot;
         bool existingSelected =
@@ -216,7 +216,12 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             TextMeshProUGUI name = GetField(_nameFields, _nameTemplate, "SlotName", index);
             RectInt renderedNameRect = slot.IsCreateNew
                 ? new RectInt(0, top, rowRect.width, rowRect.height)
-                : new RectInt(nameRect.x, top + nameRect.y, nameRect.width, nameRect.height);
+                : new RectInt(
+                    nameRect.x,
+                    top + nameRect.y,
+                    rowRect.width - nameRect.x - 32,
+                    nameRect.height
+                );
             UILayout.SetTemplateText(
                 name,
                 _nameTemplate,
@@ -247,14 +252,13 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             contentHeight += rowRect.height + gap;
         }
 
-        _scrollArea.SetContentHeight(contentHeight, rowRect.height + gap, false);
-        if (scrollToBottom)
-            _scrollArea.ScrollToBottom();
+        _scrollArea.SetContentHeight(contentHeight, rowRect.height + gap, resetScroll);
         HideFrom(_rowImages, data.SaveSlots.Count);
         HideFrom(_iconImages, data.SaveSlots.Count);
         HideFrom(_nameFields, data.SaveSlots.Count);
         HideFrom(_metaFields, data.SaveSlots.Count);
         HideFrom(_deleteButtons, data.SaveSlots.Count);
+        SetRowNameVisible(_renameRow, false);
     }
 
     /// <summary>
@@ -284,6 +288,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         if (_renameRow < 0)
             return;
 
+        SetRowNameVisible(_renameRow, true);
         _renameRow = -1;
         _suppressRenameCommit = true;
         _pendingRenameFocus = false;
@@ -458,6 +463,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _renameField.SetTextWithoutNotify(
             _slots[index].IsCreateNew ? string.Empty : _slots[index].Name
         );
+        SetRowNameVisible(index, false);
         _pendingRenameFocus = true;
         RenameEditingChanged?.Invoke(true);
     }
@@ -484,6 +490,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         }
 
         int row = _renameRow;
+        SetRowNameVisible(row, true);
         _renameRow = -1;
         _pendingRenameFocus = false;
         RenameEditingChanged?.Invoke(false);
@@ -494,6 +501,19 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             return;
         }
         SlotRenamed?.Invoke(row, value, submitted);
+    }
+
+    /// <summary>
+    /// Shows or hides the static name beneath the active inline editor.
+    /// </summary>
+    /// <param name="index">The save-row index.</param>
+    /// <param name="visible">Whether the static name should be visible.</param>
+    private void SetRowNameVisible(int index, bool visible)
+    {
+        if (index < 0 || index >= _nameFields.Count)
+            return;
+
+        _nameFields[index].gameObject.SetActive(visible);
     }
 
     /// <summary>
@@ -589,6 +609,13 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             || _renameField == null
         )
             throw new MissingReferenceException($"{name} is missing a save-row reference.");
+        if (
+            _renameField.textViewport == null
+            || _renameField.textViewport.GetComponent<RectMask2D>() == null
+        )
+            throw new MissingReferenceException(
+                $"{name} rename field has no masked text viewport."
+            );
         if (_rowIdleSprite == null || _rowActiveSprite == null)
             throw new MissingReferenceException($"{name} is missing a row sprite.");
         if (

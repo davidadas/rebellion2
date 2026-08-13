@@ -36,7 +36,7 @@
             ],
             "bindings": [
                 {
-                    "name": "",
+                    "name": "Primary",
                     "id": "00000000-0000-0000-0000-000000000005",
                     "path": "<Keyboard>/escape",
                     "interactions": "",
@@ -45,6 +45,83 @@
                     "action": "CancelOrSettings",
                     "isComposite": false,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "PrimaryChord",
+                    "id": "c465a401-802b-4f31-9877-1f527bbaf781",
+                    "path": "OneModifier(modifiersOrder=1)",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CancelOrSettings",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Modifier",
+                    "id": "88fda71f-c510-48a8-a01a-c17e0b55dadb",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CancelOrSettings",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Binding",
+                    "id": "24ba77c2-038a-4143-a8d6-0390b2142d23",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CancelOrSettings",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Secondary",
+                    "id": "624cbb2d-50bc-430c-9964-d1fb6b58de52",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CancelOrSettings",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "SecondaryChord",
+                    "id": "97e6ed2d-4876-45ad-bbb0-084d9189e968",
+                    "path": "OneModifier(modifiersOrder=1)",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CancelOrSettings",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Modifier",
+                    "id": "f0d7d65e-6513-44b1-af04-46f57634a820",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CancelOrSettings",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Binding",
+                    "id": "5a63882f-a547-4892-b6db-0c83478f07b9",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CancelOrSettings",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 },
                 {
                     "name": "Primary",

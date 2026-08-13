@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -117,6 +118,23 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void ProjectInputSettings_ShortcutConsumption_IsEnabled()
         {
             Assert.IsTrue(InputSystem.settings.shortcutKeysConsumeInput);
+        }
+
+        /// <summary>
+        /// Verifies the global Escape command is exposed with its player-facing menu label.
+        /// </summary>
+        [Test]
+        public void Rebuild_GlobalBindings_IncludesOpenGameMenu()
+        {
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+
+            session.Rebuild();
+
+            Assert.IsTrue(
+                session.Rows.Any(row =>
+                    !row.IsHeader && row.Action == "Open Game Menu" && row.Primary == "ESC"
+                )
+            );
         }
 
         /// <summary>

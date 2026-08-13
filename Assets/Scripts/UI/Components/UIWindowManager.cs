@@ -10,6 +10,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
 {
     private readonly List<RaycastResult> raycastResults = new();
     private readonly List<UIWindow> windows = new();
+    private UIWindow exclusiveWindow;
     private RectTransform rectTransform;
     private RectInt? movementBounds;
     private int nextWindowId = 1;
@@ -143,6 +144,64 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Toggles one user-facing modal in the manager's exclusive-window slot.
+    /// </summary>
+    /// <typeparam name="TView">The authored feature-view type.</typeparam>
+    /// <param name="prefab">The authored feature-view prefab.</param>
+    /// <param name="parent">The authored modal parent.</param>
+    /// <param name="hierarchyName">The semantic hierarchy name for the window instance.</param>
+    /// <param name="x">The requested source-space horizontal position.</param>
+    /// <param name="y">The requested source-space vertical position.</param>
+    /// <param name="size">The authored source-space window size.</param>
+    /// <param name="canMove">Whether the window may be moved.</param>
+    /// <param name="matchesRequestedWindow">Determines whether the current same-type window represents the repeated request.</param>
+    /// <param name="view">Receives the created feature view, or null when the request closed or could not replace the active window.</param>
+    /// <returns>The created window, or null when the request toggled the current window closed or a blocking overlay owns input.</returns>
+    public UIWindow ToggleExclusiveWindow<TView>(
+        TView prefab,
+        Transform parent,
+        string hierarchyName,
+        int x,
+        int y,
+        Vector2Int size,
+        bool canMove,
+        Predicate<TView> matchesRequestedWindow,
+        out TView view
+    )
+        where TView : MonoBehaviour
+    {
+        view = null;
+        UIWindow current = GetExclusiveWindow();
+        UIWindow topModal = GetTopModalWindow();
+        if (topModal != null && topModal != current)
+            return null;
+
+        if (current != null)
+        {
+            bool repeatedRequest =
+                TryGetWindowView(current, out TView currentView)
+                && (matchesRequestedWindow == null || matchesRequestedWindow(currentView));
+            if (!TryCloseExclusiveWindow(current) || repeatedRequest)
+                return null;
+        }
+
+        exclusiveWindow = CreateWindow(
+            prefab,
+            parent,
+            hierarchyName,
+            x,
+            y,
+            size,
+            true,
+            true,
+            canMove,
+            false,
+            out view
+        );
+        return exclusiveWindow;
+    }
+
+    /// <summary>
     /// Removes a registered window and destroys its hosted authored view.
     /// </summary>
     /// <param name="window">The registered window to destroy.</param>
@@ -206,6 +265,9 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     {
         if (window == null || !windows.Remove(window))
             return;
+
+        if (exclusiveWindow == window)
+            exclusiveWindow = null;
 
         if (ActiveWindow == window)
             ActiveWindow = GetTopFocusableWindow();
@@ -684,6 +746,30 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Resolves the currently registered exclusive window.
+    /// </summary>
+    /// <returns>The registered exclusive window, or null when the slot is empty.</returns>
+    private UIWindow GetExclusiveWindow()
+    {
+        if (exclusiveWindow != null && GetWindowByID(exclusiveWindow.Id) == exclusiveWindow)
+            return exclusiveWindow;
+
+        exclusiveWindow = null;
+        return null;
+    }
+
+    /// <summary>
+    /// Requests semantic closure of the current exclusive window and verifies synchronous release.
+    /// </summary>
+    /// <param name="window">The registered exclusive window to close.</param>
+    /// <returns>True when the owning lifecycle removed the window from the registry.</returns>
+    private bool TryCloseExclusiveWindow(UIWindow window)
+    {
+        int windowId = window.Id;
+        return TryRequestClose(window) && !ReferenceEquals(GetWindowByID(windowId), window);
     }
 
     /// <summary>

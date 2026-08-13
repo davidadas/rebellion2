@@ -10,6 +10,7 @@ public sealed class MainMenuController : MonoBehaviour
 {
     private const string _creditsVideoPath = "Application/Credits/Videos/credits";
     private const string _menuMusicPath = "Application/MainMenu/Audio/battle-of-endor-1-medley";
+    private const string _selectSfxPath = "Application/MainMenu/Audio/select";
 
     [SerializeField]
     private MainMenuView view;
@@ -247,6 +248,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void OpenLoadGameMenu()
     {
+        PlayAudioCue(_selectSfxPath);
         OpenOptions(OptionsMenuTab.SaveLoad);
     }
 

@@ -79,6 +79,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies that briefing segments preload and play sequentially before completion.
+        /// </summary>
         [Test]
         public async Task Play_MultipleSegments_PlaysInOrderAndCompletesAsync()
         {
@@ -118,6 +121,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 Assert.IsNull(skipped);
                 advisorView.AdvanceAnimation(0.5f);
                 Assert.IsFalse(skipped);
+                Assert.AreSame(idle, GetProtocolImage(rootObject).texture);
             }
             finally
             {

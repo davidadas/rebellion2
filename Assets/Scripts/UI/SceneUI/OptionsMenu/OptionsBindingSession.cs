@@ -99,13 +99,10 @@ internal sealed class OptionsBindingSession : IDisposable
             List<BindingTarget> mapTargets = new List<BindingTarget>();
             foreach (InputAction action in map.actions)
             {
-                if (!IsBindableAction(action.name))
-                    continue;
-
                 (BindingSlot primary, BindingSlot secondary) = GetBindingSlots(action);
                 mapRows.Add(
                     new OptionsBindingRow(
-                        Humanize(action.name),
+                        GetActionLabel(action.name),
                         FormatSlot(action, primary),
                         FormatSlot(action, secondary)
                     )
@@ -186,8 +183,6 @@ internal sealed class OptionsBindingSession : IDisposable
                     continue;
                 foreach (InputAction action in map.actions)
                 {
-                    if (!IsBindableAction(action.name))
-                        continue;
                     _suppressedActionStates[action] = action.enabled;
                     action.Disable();
                 }
@@ -304,7 +299,7 @@ internal sealed class OptionsBindingSession : IDisposable
             _conflictOldIndex = otherIndex;
             _conflictNewAction = action;
             ConflictRequested?.Invoke(
-                $"That input is already bound to \"{Humanize(other.name)}\". Move it here and clear the old binding?"
+                $"That input is already bound to \"{GetActionLabel(other.name)}\". Move it here and clear the old binding?"
             );
             return;
         }
@@ -596,14 +591,6 @@ internal sealed class OptionsBindingSession : IDisposable
     }
 
     /// <summary>
-    /// Checks whether an action is exposed by the Options controls page.
-    /// </summary>
-    private static bool IsBindableAction(string action)
-    {
-        return action != "CancelOrSettings";
-    }
-
-    /// <summary>
     /// Checks whether an action intentionally binds a modifier as its complete input.
     /// </summary>
     private static bool IsModifierAction(string actionName)
@@ -623,6 +610,7 @@ internal sealed class OptionsBindingSession : IDisposable
             return "UNBOUND";
         return display
             .ToUpperInvariant()
+            .Replace("ESCAPE", "ESC")
             .Replace("LEFT ", "L ")
             .Replace("RIGHT ", "R ")
             .Replace("CONTROL", "CTRL")
@@ -659,6 +647,16 @@ internal sealed class OptionsBindingSession : IDisposable
             builder.Append(value);
         }
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// Returns the player-facing label for one authored input action.
+    /// </summary>
+    /// <param name="actionName">The authored input action name.</param>
+    /// <returns>The label displayed by the Controls page.</returns>
+    private static string GetActionLabel(string actionName)
+    {
+        return actionName == "CancelOrSettings" ? "Open Game Menu" : Humanize(actionName);
     }
 
     /// <summary>

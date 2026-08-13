@@ -236,6 +236,11 @@ public sealed class ContentBindingsTests
             return textures.TryGetValue(address, out Texture2D texture) ? texture : null;
         }
 
+        /// <summary>
+        /// Resolves a sprite from the test content collection.
+        /// </summary>
+        /// <param name="address">The test content address.</param>
+        /// <returns>The configured test sprite, or null when none exists.</returns>
         public Sprite GetSprite(string address)
         {
             return sprites.TryGetValue(address, out Sprite sprite) ? sprite : null;

@@ -408,7 +408,7 @@ public static class OptionsMenuPrefabBuilder
         slotNameTemplate.overflowMode = TextOverflowModes.Truncate;
         slotNameTemplate.raycastTarget = false;
         ApplyOptionsDisplayFont(slotNameTemplate);
-        SetSourceRect(slotNameTemplate.rectTransform, 34, 0, 300, 20);
+        SetSourceRect(slotNameTemplate.rectTransform, 34, 0, 271, 20);
         slotNameTemplate.gameObject.SetActive(false);
         TextMeshProUGUI slotMetaTemplate = CreateTextLabel("SlotDateTemplate", slotContent);
         slotMetaTemplate.text = "Date";
@@ -459,6 +459,7 @@ public static class OptionsMenuPrefabBuilder
         slotRenameField.caretColor = Color.white;
         slotRenameField.caretWidth = 2;
         slotRenameField.caretBlinkRate = 0.85f;
+        slotRenameField.characterLimit = SaveGameManager.MaxDisplayNameLength;
         if (slotRenameField.placeholder is TextMeshProUGUI renamePlaceholder)
         {
             renamePlaceholder.fontSize = 12;

@@ -13,8 +13,24 @@ internal static class UIInputFocus
     /// <returns>True while the selected UI hierarchy contains a focused text field.</returns>
     internal static bool IsTextEntryActive()
     {
-        GameObject selectedObject = EventSystem.current?.currentSelectedGameObject;
-        TMP_InputField inputField = selectedObject?.GetComponentInParent<TMP_InputField>();
+        return IsTextEntryActive(EventSystem.current);
+    }
+
+    /// <summary>
+    /// Returns whether a supplied event system currently routes input to a focused TMP field.
+    /// </summary>
+    /// <param name="eventSystem">The event system whose selected hierarchy should be inspected.</param>
+    /// <returns>True while the selected UI hierarchy contains a focused text field.</returns>
+    internal static bool IsTextEntryActive(EventSystem eventSystem)
+    {
+        if (eventSystem == null)
+            return false;
+
+        GameObject selectedObject = eventSystem.currentSelectedGameObject;
+        if (selectedObject == null)
+            return false;
+
+        TMP_InputField inputField = selectedObject.GetComponentInParent<TMP_InputField>();
         return inputField?.isActiveAndEnabled == true
             && inputField.interactable
             && inputField.isFocused;

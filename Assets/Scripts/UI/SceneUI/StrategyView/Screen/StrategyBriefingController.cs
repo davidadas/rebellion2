@@ -130,8 +130,7 @@ public sealed class StrategyBriefingController
             return;
 
         StrategyAdvisorAnimationViewData skipPlayback =
-            activeBriefing.Skip == null ? null : CreatePlayback(activeBriefing.Skip);
-        strategyHudController.CancelAdvisorAnimation();
+            activeBriefing.Skip == null ? null : CreatePlayback(activeBriefing.Skip, false);
         Complete(true);
         if (skipPlayback != null)
             strategyHudController.ReplaceAdvisorAnimation(skipPlayback, null, null);
@@ -157,8 +156,12 @@ public sealed class StrategyBriefingController
     /// Resolves one segment into resident advisor playback data.
     /// </summary>
     /// <param name="segment">The configured briefing segment.</param>
+    /// <param name="holdFinalFrame">Whether the final frame remains visible between segments.</param>
     /// <returns>The resolved animation presentation.</returns>
-    private StrategyAdvisorAnimationViewData CreatePlayback(StrategyBriefingSegmentTheme segment)
+    private StrategyAdvisorAnimationViewData CreatePlayback(
+        StrategyBriefingSegmentTheme segment,
+        bool holdFinalFrame = true
+    )
     {
         if (segment == null || segment.FrameCount <= 0)
             throw new InvalidOperationException("Briefing contains an empty animation segment.");
@@ -180,7 +183,8 @@ public sealed class StrategyBriefingController
             false,
             audioPath,
             segment.DelayBeforeSeconds,
-            string.IsNullOrEmpty(audioPath) ? 0f : getAudioDuration(audioPath)
+            string.IsNullOrEmpty(audioPath) ? 0f : getAudioDuration(audioPath),
+            holdFinalFrame
         );
     }
 
@@ -348,6 +352,7 @@ public sealed class StrategyBriefingController
     /// <param name="skipped">Whether the player skipped the remaining briefing.</param>
     private void Complete(bool skipped)
     {
+        strategyHudController.CancelAdvisorAnimation();
         briefingCancellation?.Cancel();
         briefingCancellation?.Dispose();
         briefingCancellation = null;
