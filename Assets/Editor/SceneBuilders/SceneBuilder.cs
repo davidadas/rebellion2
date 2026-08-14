@@ -22,8 +22,17 @@ public static class SceneBuilder
             throw new FileNotFoundException(prefabPath);
 
         Scene scene = FindOpenScene(scenePath);
-        bool openedByBuilder = !scene.IsValid();
         Scene activeScene = SceneManager.GetActiveScene();
+        bool reusesBatchScene =
+            !scene.IsValid()
+            && Application.isBatchMode
+            && SceneManager.sceneCount == 1
+            && activeScene.IsValid()
+            && activeScene.isLoaded
+            && string.IsNullOrEmpty(activeScene.path);
+        bool openedByBuilder = !scene.IsValid() && !reusesBatchScene;
+        if (reusesBatchScene)
+            scene = activeScene;
         Object[] selection = Selection.objects;
         try
         {
