@@ -43,7 +43,10 @@ public sealed class UserVideoSettings
     /// </summary>
     public void Normalize()
     {
-        if (ResolutionWidth <= 0 || ResolutionHeight <= 0)
+        if (
+            (ResolutionWidth != 0 || ResolutionHeight != 0)
+            && !DisplayManager.IsSixteenByNine(ResolutionWidth, ResolutionHeight)
+        )
         {
             ResolutionWidth = 0;
             ResolutionHeight = 0;

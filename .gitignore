@@ -67,18 +67,17 @@ Assets/_Recovery/
 Assets/Videos/
 Assets/TextMesh Pro/
 /Assets/Content/
+/Assets/Resources/UI/DefaultCursor.png
 # Installed content is supplied by rebellion2-media beside the project/player.
 /Content/
 
-# UI builders and committed base-scene templates are the source of truth for generated UI assets.
+# UI builders are the source of truth for generated UI assets and scenes.
 /Assets/Prefabs/UI/Common/*.prefab
 /Assets/Prefabs/UI/MainMenu/*.prefab
-/Assets/Prefabs/UI/SaveMenu/*.prefab
+/Assets/Prefabs/UI/OptionsMenu/*.prefab
 /Assets/Prefabs/UI/StrategyView/**/*.prefab
 /Assets/Scenes/MainMenu.unity
 /Assets/Scenes/MainMenu.unity.meta
-/Assets/Scenes/SaveMenu.unity
-/Assets/Scenes/SaveMenu.unity.meta
 /Assets/Scenes/StrategyView.unity
 /Assets/Scenes/StrategyView.unity.meta
 

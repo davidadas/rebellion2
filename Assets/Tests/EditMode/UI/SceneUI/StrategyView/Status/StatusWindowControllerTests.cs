@@ -49,6 +49,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
+            _windowManager.WindowCloseRequested += window =>
+            {
+                _closeCount++;
+                _windowManager.DestroyWindow(window);
+            };
             _controller = CreateController();
             _controller.Initialize(new TestActions());
         }
@@ -141,6 +146,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(1, _windowManager.Windows.Count);
             Assert.AreEqual(1, _closeCount);
             Assert.AreEqual(2, _dirtyCount);
+        }
+
+        /// <summary>
+        /// Verifies that repeating one status request toggles its exclusive window closed.
+        /// </summary>
+        [Test]
+        public void Open_SameTarget_TogglesExistingStatusWindowClosed()
+        {
+            Officer officer = new Officer { InstanceID = "same", DisplayName = "Same" };
+            StrategyStatusTarget target = new StrategyStatusTarget(null, officer);
+            _controller.Open(target);
+
+            bool opened = _controller.Open(target);
+
+            Assert.IsFalse(opened);
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.AreEqual(1, _closeCount);
         }
 
         [Test]

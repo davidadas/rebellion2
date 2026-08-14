@@ -63,7 +63,9 @@ public sealed class GalaxyMapProjector
             ProjectActiveFilterLabel(
                 playerTheme?.GalacticInformationDisplay,
                 filter,
-                briefing?.Label
+                briefing == null ? null
+                    : string.IsNullOrWhiteSpace(briefing.Label) ? "Briefing"
+                    : briefing.Label
             ),
             clusters
         );

@@ -31,7 +31,12 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movement;
+        private readonly Dictionary<CapitalShip, float> _battleHullStrengths =
+            new Dictionary<CapitalShip, float>();
+        private readonly Dictionary<CapitalShip, float> _battleShieldStrengths =
+            new Dictionary<CapitalShip, float>();
         private SpaceCombatDecision _pendingDecision;
+        private bool _battleTacticalStateChanged;
 
         /// <summary>
         /// Whether a player-involved combat encounter is waiting for resolution.
@@ -480,6 +485,9 @@ namespace Rebellion.Systems
             Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
                 decision.DefenderFleetInstanceID
             );
+            _battleHullStrengths.Clear();
+            _battleShieldStrengths.Clear();
+            _battleTacticalStateChanged = false;
 
             try
             {
@@ -523,6 +531,9 @@ namespace Rebellion.Systems
             }
             finally
             {
+                _battleHullStrengths.Clear();
+                _battleShieldStrengths.Clear();
+                _battleTacticalStateChanged = false;
                 ClearCombatFlags(decision);
             }
 
@@ -1012,7 +1023,7 @@ namespace Rebellion.Systems
         /// <param name="defender">Defending fleet after the round.</param>
         /// <param name="combatResult">Result of the latest combat round.</param>
         /// <returns>True when neither side can inflict damage or the round changed no state.</returns>
-        private static bool IsSpaceCombatStalemated(
+        private bool IsSpaceCombatStalemated(
             SpaceCombatDecision decision,
             Fleet attacker,
             Fleet defender,
@@ -1034,12 +1045,13 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="combatResult">Combat round to inspect.</param>
         /// <returns>True when the round changed hull, fighter counts, or winner state.</returns>
-        private static bool DidCombatChangeState(SpaceCombatResult combatResult)
+        private bool DidCombatChangeState(SpaceCombatResult combatResult)
         {
             if (combatResult == null)
                 return false;
 
-            return combatResult.Winner != CombatSide.Draw
+            return _battleTacticalStateChanged
+                || combatResult.Winner != CombatSide.Draw
                 || combatResult.ShipDamage.Any(damage => damage.HullBefore != damage.HullAfter)
                 || combatResult.FighterLosses.Any(loss => loss.SquadsBefore != loss.SquadsAfter);
         }
@@ -1255,7 +1267,7 @@ namespace Rebellion.Systems
         /// <param name="tick">Current game tick (recorded on the result).</param>
         /// <param name="config">Combat configuration supplying damage/variance tuning values.</param>
         /// <returns>The combat result with winner, per-ship damage, and fighter losses.</returns>
-        private static SpaceCombatResult ResolveSpace(
+        private SpaceCombatResult ResolveSpace(
             Fleet attackerFleet,
             Fleet defenderFleet,
             string attackerOwnerInstanceId,
@@ -1266,6 +1278,7 @@ namespace Rebellion.Systems
             GameConfig.SpaceCombatConfig config
         )
         {
+            _battleTacticalStateChanged = false;
             (List<ShipSnap> atkShips, List<FighterSnap> atkFighters) = SnapshotForce(
                 attackerFleet,
                 planet,
@@ -1279,6 +1292,9 @@ namespace Rebellion.Systems
                 config
             );
 
+            RechargeShields(atkShips);
+            RechargeShields(defShips);
+
             bool anyArmed =
                 HasOperationalSpaceWeapons(attackerFleet, planet, attackerOwnerInstanceId)
                 || HasOperationalSpaceWeapons(defenderFleet, planet, defenderOwnerInstanceId);
@@ -1289,6 +1305,9 @@ namespace Rebellion.Systems
                 PhaseWeaponFire(defShips, atkShips, atkFighters, rng, config);
                 PhaseFighterEngage(atkFighters, defFighters, atkShips, defShips, rng, config);
             }
+
+            StoreShieldStrengths(atkShips);
+            StoreShieldStrengths(defShips);
 
             return BuildSpaceResult(
                 attackerFleet,
@@ -1338,7 +1357,7 @@ namespace Rebellion.Systems
         /// <param name="ownerInstanceId">The side's owner identifier.</param>
         /// <param name="config">Combat configuration supplying fighter durability.</param>
         /// <returns>Ship and fighter snapshots for the represented side.</returns>
-        private static (List<ShipSnap> ships, List<FighterSnap> fighters) SnapshotForce(
+        private (List<ShipSnap> ships, List<FighterSnap> fighters) SnapshotForce(
             Fleet fleet,
             Planet planet,
             string ownerInstanceId,
@@ -1349,13 +1368,30 @@ namespace Rebellion.Systems
 
             foreach (CapitalShip ship in GetActiveCapitalShips(fleet))
             {
+                int shieldMax = Math.Max(ship.MaxShieldStrength, 0);
+                float shieldCurrent = shieldMax;
+                if (_battleShieldStrengths.TryGetValue(ship, out float storedShieldStrength))
+                {
+                    shieldCurrent = Math.Min(Math.Max(storedShieldStrength, 0), shieldMax);
+                }
+
+                float hullCurrent = ship.CurrentHullStrength;
+                if (_battleHullStrengths.TryGetValue(ship, out float storedHullStrength))
+                {
+                    hullCurrent = Math.Min(Math.Max(storedHullStrength, 0), ship.MaxHullStrength);
+                }
+
                 ships.Add(
                     new ShipSnap
                     {
                         Ship = ship,
-                        HullCurrent = ship.CurrentHullStrength,
+                        HullInitial = ship.CurrentHullStrength,
+                        HullBeforeRound = hullCurrent,
+                        HullCurrent = hullCurrent,
                         HullMax = ship.MaxHullStrength,
-                        ShieldNibble = Math.Min(ship.ShieldRechargeRate, 15),
+                        ShieldInitial = shieldCurrent,
+                        ShieldCurrent = shieldCurrent,
+                        ShieldMax = shieldMax,
                         WeaponNibble = 15,
                         Alive = true,
                     }
@@ -1379,6 +1415,44 @@ namespace Rebellion.Systems
                 .ToList();
 
             return (ships, fighters);
+        }
+
+        /// <summary>
+        /// Recharges surviving capital-ship shields for the next combat round.
+        /// </summary>
+        /// <param name="ships">The capital-ship snapshots to recharge.</param>
+        private static void RechargeShields(List<ShipSnap> ships)
+        {
+            foreach (ShipSnap ship in ships.Where(ship => ship.Alive))
+            {
+                if (ship.HullMax <= 0)
+                    continue;
+
+                float effectiveRechargeRate =
+                    Math.Max(ship.Ship.ShieldRechargeRate, 0)
+                    * Math.Max(ship.HullCurrent, 0)
+                    / ship.HullMax;
+                ship.ShieldCurrent = Math.Min(
+                    ship.ShieldMax,
+                    ship.ShieldCurrent + effectiveRechargeRate
+                );
+            }
+        }
+
+        /// <summary>
+        /// Preserves capital-ship hull and shield state for the next combat round.
+        /// </summary>
+        /// <param name="ships">The capital-ship snapshots to preserve.</param>
+        private void StoreShieldStrengths(List<ShipSnap> ships)
+        {
+            foreach (ShipSnap ship in ships)
+            {
+                _battleTacticalStateChanged |=
+                    ship.HullCurrent != ship.HullBeforeRound
+                    || ship.ShieldCurrent != ship.ShieldInitial;
+                _battleHullStrengths[ship.Ship] = ship.HullCurrent;
+                _battleShieldStrengths[ship.Ship] = ship.ShieldCurrent;
+            }
         }
 
         /// <summary>
@@ -1443,7 +1517,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Applies weapon damage to a single target with configured variance and shield absorption.
-        /// Shield nibble / 15 of damage is absorbed; remainder reduces hull.
         /// </summary>
         /// <param name="target">Target ship snapshot (mutated).</param>
         /// <param name="baseDamage">Pre-variance damage to apply.</param>
@@ -1457,12 +1530,22 @@ namespace Rebellion.Systems
         )
         {
             int damage = CalculateWeaponDamage(baseDamage, rng, config);
+            ApplyDamage(target, damage);
+        }
 
-            int absorbed = (int)(damage * target.ShieldNibble / 15.0);
-            int hullDamage = Math.Max(damage - absorbed, 0);
+        /// <summary>
+        /// Applies damage to a capital ship's shields before its hull.
+        /// </summary>
+        /// <param name="target">The capital-ship snapshot to damage.</param>
+        /// <param name="damage">The non-negative damage to apply.</param>
+        private static void ApplyDamage(ShipSnap target, int damage)
+        {
+            float shieldDamage = Math.Min(target.ShieldCurrent, damage);
+            target.ShieldCurrent -= shieldDamage;
+            float hullDamage = damage - shieldDamage;
 
             target.HullCurrent = Math.Max(target.HullCurrent - hullDamage, 0);
-            if (target.HullCurrent == 0)
+            if (target.HullCurrent <= 0)
                 target.Alive = false;
         }
 
@@ -1603,13 +1686,9 @@ namespace Rebellion.Systems
                 double spreadPct = config.FighterDamageSpreadPercent / 100.0;
                 int damage = (int)(totalAttack * (basePct + spreadPct * roll));
 
-                enemyShips[targetIdx].HullCurrent = Math.Max(
-                    enemyShips[targetIdx].HullCurrent - damage,
-                    0
-                );
-                if (enemyShips[targetIdx].HullCurrent == 0)
+                ApplyDamage(enemyShips[targetIdx], damage);
+                if (enemyShips[targetIdx].HullCurrent <= 0)
                 {
-                    enemyShips[targetIdx].Alive = false;
                     aliveTargets.Remove(targetIdx);
                     if (aliveTargets.Count == 0)
                         break;
@@ -1785,18 +1864,33 @@ namespace Rebellion.Systems
         {
             for (int i = 0; i < ships.Count; i++)
             {
-                if (ships[i].HullCurrent < ships[i].HullMax)
+                int hullAfter = GetCommittedHullStrength(ships[i]);
+                if (hullAfter < ships[i].HullInitial)
                 {
                     results.Add(
                         new ShipDamageResult
                         {
                             Ship = ships[i].Ship,
-                            HullBefore = ships[i].HullMax,
-                            HullAfter = ships[i].HullCurrent,
+                            HullBefore = ships[i].HullInitial,
+                            HullAfter = hullAfter,
                         }
                     );
                 }
             }
+        }
+
+        /// <summary>
+        /// Converts a capital ship's simulated hull strength into its committed integer value.
+        /// </summary>
+        /// <param name="ship">The capital-ship snapshot to inspect.</param>
+        /// <returns>Zero for a destroyed ship; otherwise at least one hull point.</returns>
+        private static int GetCommittedHullStrength(ShipSnap ship)
+        {
+            if (!ship.Alive)
+                return 0;
+
+            float survivingHullStrength = Math.Max(ship.HullCurrent, 1);
+            return (int)Math.Round(survivingHullStrength, MidpointRounding.ToEven);
         }
 
         /// <summary>
@@ -1922,11 +2016,13 @@ namespace Rebellion.Systems
         private class ShipSnap
         {
             public CapitalShip Ship;
-            public int HullCurrent;
+            public int HullInitial;
+            public float HullBeforeRound;
+            public float HullCurrent;
             public int HullMax;
-
-            /// <summary>Shield recharge allocation (0-15).</summary>
-            public int ShieldNibble;
+            public float ShieldInitial;
+            public float ShieldCurrent;
+            public int ShieldMax;
 
             /// <summary>Weapon recharge allocation (0-15).</summary>
             public int WeaponNibble;

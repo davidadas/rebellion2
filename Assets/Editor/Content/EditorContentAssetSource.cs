@@ -32,7 +32,7 @@ public sealed class EditorContentAssetSource : IContentAssetSource
     public Texture2D GetTexture(string address)
     {
         string assetPath = ResolveAssetPath(address);
-        ConfigureImporter(assetPath, TextureImporterType.Default, SpriteImportMode.None);
+        ConfigureImporter(assetPath, TextureImporterType.Default, SpriteImportMode.None, null);
         return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
     }
 
@@ -44,7 +44,20 @@ public sealed class EditorContentAssetSource : IContentAssetSource
     public Sprite GetSprite(string address)
     {
         string assetPath = ResolveAssetPath(address);
-        ConfigureImporter(assetPath, TextureImporterType.Sprite, SpriteImportMode.Single);
+        ConfigureImporter(assetPath, TextureImporterType.Sprite, SpriteImportMode.Single, null);
+        return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+    }
+
+    /// <summary>
+    /// Loads an imported preview sprite with an explicit nine-slice border.
+    /// </summary>
+    /// <param name="address">The application- or pack-relative content address.</param>
+    /// <param name="border">The sprite border in pixels.</param>
+    /// <returns>The imported sprite.</returns>
+    public Sprite GetSprite(string address, Vector4 border)
+    {
+        string assetPath = ResolveAssetPath(address);
+        ConfigureImporter(assetPath, TextureImporterType.Sprite, SpriteImportMode.Single, border);
         return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
     }
 
@@ -54,10 +67,12 @@ public sealed class EditorContentAssetSource : IContentAssetSource
     /// <param name="assetPath">The Unity asset path.</param>
     /// <param name="textureType">The required texture type.</param>
     /// <param name="spriteImportMode">The required sprite import mode.</param>
+    /// <param name="spriteBorder">The explicit sprite border, or null to preserve it.</param>
     private static void ConfigureImporter(
         string assetPath,
         TextureImporterType textureType,
-        SpriteImportMode spriteImportMode
+        SpriteImportMode spriteImportMode,
+        Vector4? spriteBorder
     )
     {
         TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
@@ -97,6 +112,29 @@ public sealed class EditorContentAssetSource : IContentAssetSource
             true,
             value => importer.alphaIsTransparency = value
         );
+        if (spriteBorder.HasValue)
+        {
+            changed |= SetIfDifferent(
+                importer.spriteBorder,
+                spriteBorder.Value,
+                value => importer.spriteBorder = value
+            );
+            changed |= SetIfDifferent(
+                importer.wrapMode,
+                TextureWrapMode.Clamp,
+                value => importer.wrapMode = value
+            );
+            changed |= SetIfDifferent(
+                importer.filterMode,
+                FilterMode.Bilinear,
+                value => importer.filterMode = value
+            );
+            changed |= SetIfDifferent(
+                importer.textureCompression,
+                TextureImporterCompression.Uncompressed,
+                value => importer.textureCompression = value
+            );
+        }
 
         if (changed)
             importer.SaveAndReimport();

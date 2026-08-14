@@ -85,18 +85,14 @@ public sealed class EncyclopediaWindowController
     }
 
     /// <summary>
-    /// Opens or focuses the Encyclopedia at its current session state.
+    /// Toggles the exclusive Encyclopedia at its default session state.
     /// </summary>
     public void Open()
     {
-        UIWindow existing = FindWindow();
-        if (existing != null)
-        {
-            windowManager.Focus(existing);
+        UIWindow window = ToggleWindow(out EncyclopediaWindowView view);
+        if (window == null)
             return;
-        }
 
-        EncyclopediaWindowView view = CreateWindow();
         BindWindow(view);
         markDirty();
     }
@@ -116,14 +112,25 @@ public sealed class EncyclopediaWindowController
         UIWindow existing = FindWindow();
         if (existing != null)
         {
-            if (windowManager.TryGetWindowView(existing, out EncyclopediaWindowView existingView))
-                RequestEntry(existingView, target);
+            if (
+                !windowManager.CanInteractWithWindow(existing)
+                || !windowManager.TryGetWindowView(
+                    existing,
+                    out EncyclopediaWindowView existingView
+                )
+            )
+                return;
+
+            RequestEntry(existingView, target);
             windowManager.Focus(existing);
             markDirty();
             return;
         }
 
-        EncyclopediaWindowView view = CreateWindow();
+        UIWindow window = ToggleWindow(out EncyclopediaWindowView view);
+        if (window == null)
+            return;
+
         BindWindow(view);
         RequestEntry(view, target);
         markDirty();
@@ -436,26 +443,24 @@ public sealed class EncyclopediaWindowController
     }
 
     /// <summary>
-    /// Creates one authored Encyclopedia window at its configured placement.
+    /// Applies exclusive-window replacement and toggle policy for the Encyclopedia.
     /// </summary>
-    /// <returns>The created Encyclopedia view.</returns>
-    private EncyclopediaWindowView CreateWindow()
+    /// <param name="view">Receives a newly created Encyclopedia view.</param>
+    /// <returns>The created Encyclopedia window, or null when the request closed or was blocked.</returns>
+    private UIWindow ToggleWindow(out EncyclopediaWindowView view)
     {
         Vector2Int position = getWindowPosition();
-        windowManager.CreateWindow(
+        return windowManager.ToggleExclusiveWindow(
             windowLayer.EncyclopediaWindowPrefab,
             windowLayer.GetWindowParent(true),
             "EncyclopediaWindow",
             position.x,
             position.y,
             windowLayer.GetWindowSize(windowLayer.EncyclopediaWindowPrefab),
-            true,
-            true,
             false,
-            false,
-            out EncyclopediaWindowView view
+            null,
+            out view
         );
-        return view;
     }
 
     /// <summary>

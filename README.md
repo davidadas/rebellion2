@@ -52,6 +52,8 @@ shared under any circumstances.**
 - [Modding and content packs](Docs/Modding.md)
 
 Game assets and generated UI artifacts are intentionally kept outside this source repository.
+For a development checkout, clone `rebellion2-media` beside this repository and run
+`./build.sh sync-media`; see the development guide for the `MEDIA_PATH` override and full setup.
 
 ## Reporting bugs
 

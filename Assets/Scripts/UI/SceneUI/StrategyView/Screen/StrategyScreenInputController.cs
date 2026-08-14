@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Routes strategy-surface pointer gestures to targeting, dragging, windows, and the galaxy map.
@@ -19,6 +21,9 @@ public sealed class StrategyScreenInputController : ICancelable
     private readonly Action renderOverlay;
     private UIWindow pressedWindow;
     private bool suppressNextClick;
+    private GameObject _lastCommandTarget;
+    private int _lastCommandX;
+    private int _lastCommandY;
 
     /// <summary>
     /// Creates the strategy-surface input router.
@@ -97,6 +102,16 @@ public sealed class StrategyScreenInputController : ICancelable
             strategyContextMenuRouter.OpenContextMenu(eventData, x, y);
             markDirty();
             return;
+        }
+
+        if (
+            eventData.button == PointerEventData.InputButton.Left
+            && windowManager.GetWindow(eventData) != null
+        )
+        {
+            _lastCommandTarget = GetRaycastTarget(eventData);
+            _lastCommandX = x;
+            _lastCommandY = y;
         }
 
         pressedWindow = windowManager.GetWindow(eventData);
@@ -279,6 +294,63 @@ public sealed class StrategyScreenInputController : ICancelable
     public void SuppressNextClick()
     {
         suppressNextClick = true;
+    }
+
+    /// <summary>
+    /// Runs a context menu action for the item under the pointer.
+    /// </summary>
+    /// <param name="action">The context menu action.</param>
+    /// <returns>True when an enabled command was executed.</returns>
+    public bool TryExecuteContextShortcut(StrategyMenuAction action)
+    {
+        if (targetingController.IsTargeting || EventSystem.current == null)
+            return false;
+
+        if (_lastCommandTarget != null)
+        {
+            PointerEventData selectedEvent = new PointerEventData(EventSystem.current)
+            {
+                button = PointerEventData.InputButton.Right,
+                pointerCurrentRaycast = new RaycastResult { gameObject = _lastCommandTarget },
+            };
+            if (
+                strategyContextMenuRouter.TryExecuteShortcut(
+                    selectedEvent,
+                    _lastCommandX,
+                    _lastCommandY,
+                    action
+                )
+            )
+            {
+                markDirty();
+                renderOverlay();
+                return true;
+            }
+        }
+
+        if (Mouse.current == null)
+            return false;
+
+        PointerEventData eventData = new PointerEventData(EventSystem.current)
+        {
+            button = PointerEventData.InputButton.Right,
+            position = Mouse.current.position.ReadValue(),
+        };
+        List<RaycastResult> raycasts = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(eventData, raycasts);
+        if (raycasts.Count == 0)
+            return false;
+
+        eventData.pointerCurrentRaycast = raycasts[0];
+        if (!tryGetSourcePosition(eventData, eventData.position, out int x, out int y))
+            return false;
+
+        if (!strategyContextMenuRouter.TryExecuteShortcut(eventData, x, y, action))
+            return false;
+
+        markDirty();
+        renderOverlay();
+        return true;
     }
 
     /// <summary>

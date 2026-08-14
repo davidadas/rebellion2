@@ -137,36 +137,15 @@ public sealed class MessagesWindowController
     public bool IsOpen => FindWindow() != null;
 
     /// <summary>
-    /// Opens or focuses the Messages window on a requested tab.
+    /// Toggles the exclusive Messages window on a requested tab.
     /// </summary>
     /// <param name="initialTab">The semantic Messages tab to display.</param>
     public void Open(MessagesTab initialTab)
     {
-        UIWindow existing = FindWindow();
-        if (existing != null)
-        {
-            if (windowManager.TryGetWindowView(existing, out MessagesWindowView existingView))
-                OpenTab(existingView, initialTab);
-
-            windowManager.Focus(existing);
-            markDirty();
+        UIWindow window = ToggleWindow(initialTab, out MessagesWindowView view);
+        if (window == null)
             return;
-        }
 
-        Vector2Int position = getWindowPosition();
-        windowManager.CreateWindow(
-            windowLayer.MessagesWindowPrefab,
-            windowLayer.GetWindowParent(true),
-            "MessagesWindow",
-            position.x,
-            position.y,
-            windowLayer.GetWindowSize(windowLayer.MessagesWindowPrefab),
-            true,
-            true,
-            false,
-            false,
-            out MessagesWindowView view
-        );
         BindWindow(view);
         OpenTab(view, initialTab);
         markDirty();
@@ -182,13 +161,29 @@ public sealed class MessagesWindowController
         if (message == null)
             return;
 
-        Open(tab);
         UIWindow window = FindWindow();
-        if (
-            window == null
-            || !windowManager.TryGetWindowView(window, out MessagesWindowView view)
-            || !TryGetSession(view, out MessagesWindowSession session)
-        )
+        MessagesWindowView view;
+        if (window != null)
+        {
+            if (
+                !windowManager.CanInteractWithWindow(window)
+                || !windowManager.TryGetWindowView(window, out view)
+            )
+                return;
+
+            OpenTab(view, tab);
+        }
+        else
+        {
+            window = ToggleWindow(tab, out view);
+            if (window == null)
+                return;
+
+            BindWindow(view);
+            OpenTab(view, tab);
+        }
+
+        if (!TryGetSession(view, out MessagesWindowSession session))
             return;
 
         RefreshSession(session);
@@ -202,6 +197,29 @@ public sealed class MessagesWindowController
         PlayMessageDetailAudio(currentMessage);
         windowManager.Focus(window);
         markDirty();
+    }
+
+    /// <summary>
+    /// Applies exclusive-window replacement and same-tab toggle policy for Messages.
+    /// </summary>
+    /// <param name="initialTab">The semantic Messages tab requested by the caller.</param>
+    /// <param name="view">Receives a newly created Messages view.</param>
+    /// <returns>The created Messages window, or null when the request closed or was blocked.</returns>
+    private UIWindow ToggleWindow(MessagesTab initialTab, out MessagesWindowView view)
+    {
+        MessagesTab requestedTab = MessagesTabCatalog.Clamp((int)initialTab);
+        Vector2Int position = getWindowPosition();
+        return windowManager.ToggleExclusiveWindow(
+            windowLayer.MessagesWindowPrefab,
+            windowLayer.GetWindowParent(true),
+            "MessagesWindow",
+            position.x,
+            position.y,
+            windowLayer.GetWindowSize(windowLayer.MessagesWindowPrefab),
+            false,
+            existingView => GetActiveTab(existingView) == requestedTab,
+            out view
+        );
     }
 
     /// <summary>

@@ -672,30 +672,7 @@ public sealed class ConstructionWindowController
         if (producer?.Planet == null)
             return;
 
-        ConstructionWindowView existing = windowManager.FindWindowView<ConstructionWindowView>(
-            view =>
-                sessions.TryGetValue(view, out ConstructionWindowSession session)
-                && session.Planet?.Planet?.InstanceID == producer.Planet.InstanceID
-        );
-        if (
-            existing != null
-            && sessions.TryGetValue(existing, out ConstructionWindowSession existingSession)
-        )
-        {
-            TryInitializeWindow(
-                existing,
-                existingSession.Window,
-                producer,
-                sourceWindow,
-                manufacturingTab,
-                destinationPlanetId,
-                destinationItemId
-            );
-            existingSession.Window.RequestFocus();
-            return;
-        }
-
-        UIWindow window = windowManager.CreateWindow(
+        UIWindow window = windowManager.ToggleExclusiveWindow(
             windowLayer.ConstructionWindowPrefab,
             windowLayer.GetWindowParent(true),
             $"ConstructionWindow-{producer.Planet.GetDisplayName()}",
@@ -703,11 +680,25 @@ public sealed class ConstructionWindowController
             position.y,
             windowLayer.GetWindowSize(windowLayer.ConstructionWindowPrefab),
             true,
-            true,
-            true,
-            false,
+            existingView =>
+                sessions.TryGetValue(existingView, out ConstructionWindowSession session)
+                && HaveSameProducer(session.Planet, producer)
+                && session.ManufacturingTab == manufacturingTab
+                && string.Equals(
+                    session.DestinationPlanetId,
+                    destinationPlanetId,
+                    StringComparison.Ordinal
+                )
+                && string.Equals(
+                    session.DestinationItemId,
+                    destinationItemId,
+                    StringComparison.Ordinal
+                ),
             out ConstructionWindowView view
         );
+        if (window == null)
+            return;
+
         if (
             !TryInitializeWindow(
                 view,
@@ -725,6 +716,24 @@ public sealed class ConstructionWindowController
         }
 
         markDirty();
+    }
+
+    /// <summary>
+    /// Compares construction producers by stable identity and then object identity when unsaved.
+    /// </summary>
+    /// <param name="left">The current construction producer.</param>
+    /// <param name="right">The requested construction producer.</param>
+    /// <returns>True when both values identify the same producer.</returns>
+    private static bool HaveSameProducer(GalaxyMapPlanet left, GalaxyMapPlanet right)
+    {
+        if (left == null || right == null)
+            return left == null && right == null;
+
+        string leftId = left.Planet?.InstanceID;
+        string rightId = right.Planet?.InstanceID;
+        return string.IsNullOrEmpty(leftId) || string.IsNullOrEmpty(rightId)
+            ? ReferenceEquals(left, right)
+            : string.Equals(leftId, rightId, StringComparison.Ordinal);
     }
 
     /// <summary>

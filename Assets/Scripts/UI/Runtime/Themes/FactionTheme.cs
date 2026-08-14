@@ -18,7 +18,7 @@ public class FactionTheme
 
     public bool UseUpperButtonLayout { get; set; }
 
-    public string SaveMenuSlotIconImagePath { get; set; }
+    public string SavedGameSlotIconImagePath { get; set; }
 
     public string IntroCutscenePath { get; set; }
 

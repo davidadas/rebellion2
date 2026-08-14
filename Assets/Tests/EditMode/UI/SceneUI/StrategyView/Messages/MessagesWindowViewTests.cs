@@ -274,6 +274,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             MessagesCommandButtonRenderData button = new MessagesCommandButtonRenderData(
                 _texture,
                 _pressedTexture,
+                null,
                 true,
                 true
             );

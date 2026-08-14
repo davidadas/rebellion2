@@ -156,6 +156,62 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("Coruscant Campaign", loadedGame.Metadata.SaveDisplayName);
         }
 
+        /// <summary>
+        /// Verifies save display names use the product's 64-character limit.
+        /// </summary>
+        [Test]
+        public void MaxDisplayNameLength_Is64Characters()
+        {
+            Assert.AreEqual(64, SaveGameManager.MaxDisplayNameLength);
+        }
+
+        /// <summary>
+        /// Verifies saving truncates an overlong display name at the domain boundary.
+        /// </summary>
+        [Test]
+        public void SaveGameData_OverlongDisplayName_TruncatesStoredName()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
+
+            _saveGameManager.SaveGameData(game, _saveFileName, overlongName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(
+                SaveGameManager.MaxDisplayNameLength,
+                loadedGame.Metadata.SaveDisplayName.Length
+            );
+        }
+
+        /// <summary>
+        /// Verifies renaming truncates an overlong display name before metadata is persisted.
+        /// </summary>
+        [Test]
+        public void SetSaveDisplayName_OverlongName_TruncatesMetadataName()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName, "Initial Name");
+            string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
+
+            _saveGameManager.SetSaveDisplayName(_saveFileName, overlongName);
+
+            SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
+            Assert.AreEqual(
+                SaveGameManager.MaxDisplayNameLength,
+                entry.Metadata.SaveDisplayName.Length
+            );
+        }
+
         [Test]
         public void SaveSlotGameData_ValidGame_WritesMetadataSidecar()
         {
@@ -176,8 +232,11 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("FNALL1", entry.Metadata.PlayerFactionID);
         }
 
+        /// <summary>
+        /// Verifies a missing derived metadata sidecar is rebuilt from its canonical save.
+        /// </summary>
         [Test]
-        public void GetSaveSlotEntries_LegacySaveWithoutSidecar_CreatesSidecar()
+        public void GetSaveSlotEntries_SaveWithoutSidecar_RecreatesSidecar()
         {
             GameRoot game = new GameRoot
             {
@@ -185,14 +244,14 @@ namespace Rebellion.Tests.Managers
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
-            _saveGameManager.SaveSlotGameData(game, 1, "Legacy Slot");
+            _saveGameManager.SaveSlotGameData(game, 1, "Recovered Slot");
             string fileName = _saveGameManager.GetSaveSlotFileName(1);
             string metadataPath = _saveGameManager.GetSaveMetadataFilePath(fileName);
             File.Delete(metadataPath);
 
             SaveGameEntry entry = _saveGameManager.GetSaveSlotEntries().Single();
 
-            Assert.AreEqual("Legacy Slot", entry.Metadata.SaveDisplayName);
+            Assert.AreEqual("Recovered Slot", entry.Metadata.SaveDisplayName);
             Assert.IsTrue(File.Exists(metadataPath));
         }
 

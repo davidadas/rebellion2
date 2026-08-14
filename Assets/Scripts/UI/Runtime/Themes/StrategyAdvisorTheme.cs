@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Presentation.Advisor;
 using Rebellion.Util.Serialization;
@@ -92,21 +93,32 @@ public class StrategyBriefingTheme
     public StrategyBriefingSegmentTheme Skip { get; set; }
 
     /// <summary>
-    /// Builds the active faction's briefing preload manifest so playback never performs disk
-    /// decoding between spoken segments.
+    /// Builds the media manifest required to open the briefing and handle an immediate skip.
     /// </summary>
-    /// <returns>The textures and audio required by the complete briefing.</returns>
-    public ContentPreloadManifest CreatePreloadManifest()
+    /// <returns>The first segment and skip-response media.</returns>
+    public ContentPreloadManifest CreateOpeningPreloadManifest()
     {
-        ContentPreloadManifest manifest = new ContentPreloadManifest
-        {
-            TexturesPerFrame = _texturesPerFrame,
-        };
+        ContentPreloadManifest manifest = CreateEmptyPreloadManifest();
         HashSet<string> animations = new HashSet<string>();
         HashSet<string> audioNames = new HashSet<string>();
-        for (int i = 0; i < Segments.Count; i++)
-            AddPreloadAssets(Segments[i], animations, audioNames, manifest);
+        if (Segments.Count > 0)
+            AddPreloadAssets(Segments[0], animations, audioNames, manifest);
         AddPreloadAssets(Skip, animations, audioNames, manifest);
+        return manifest;
+    }
+
+    /// <summary>
+    /// Builds the media manifest required to play one briefing segment.
+    /// </summary>
+    /// <param name="segment">The briefing segment to load.</param>
+    /// <returns>The segment's animation frames and voice clip.</returns>
+    public ContentPreloadManifest CreateSegmentPreloadManifest(StrategyBriefingSegmentTheme segment)
+    {
+        if (segment == null)
+            throw new ArgumentNullException(nameof(segment));
+
+        ContentPreloadManifest manifest = CreateEmptyPreloadManifest();
+        AddPreloadAssets(segment, new HashSet<string>(), new HashSet<string>(), manifest);
         return manifest;
     }
 
@@ -129,6 +141,15 @@ public class StrategyBriefingTheme
     public string GetAudioPath(string audio)
     {
         return $"{AudioRoot}/{audio}";
+    }
+
+    /// <summary>
+    /// Creates a briefing manifest with the configured per-frame decode budget.
+    /// </summary>
+    /// <returns>An empty briefing preload manifest.</returns>
+    private static ContentPreloadManifest CreateEmptyPreloadManifest()
+    {
+        return new ContentPreloadManifest { TexturesPerFrame = _texturesPerFrame };
     }
 
     /// <summary>

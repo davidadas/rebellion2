@@ -105,7 +105,7 @@ public sealed class StatusWindowController
     }
 
     /// <summary>
-    /// Replaces the current status window with a resolved target.
+    /// Toggles the exclusive status window for a resolved target.
     /// </summary>
     /// <param name="target">The entity or manufacturing summary to present.</param>
     /// <param name="infoDisabled">Whether Encyclopedia navigation is unavailable.</param>
@@ -115,26 +115,21 @@ public sealed class StatusWindowController
         if (target == null)
             return false;
 
-        UIWindow existing = FindWindow();
-        if (existing != null && windowManager.TryGetWindowView(existing, out StatusWindowView _))
-        {
-            closeWindow(existing);
-        }
-
         Vector2Int position = getWindowPosition();
-        UIWindow window = windowManager.CreateWindow(
+        UIWindow window = windowManager.ToggleExclusiveWindow(
             windowLayer.StatusWindowPrefab,
             windowLayer.GetWindowParent(true),
             $"StatusWindow-{target.Item?.GetDisplayName() ?? target.Planet?.Planet?.GetDisplayName() ?? target.ManufacturingType?.ToString() ?? "UnknownTarget"}",
             position.x,
             position.y,
             windowLayer.GetWindowSize(windowLayer.StatusWindowPrefab),
-            true,
-            true,
             false,
-            false,
+            existingView => MatchesTarget(existingView, target),
             out StatusWindowView view
         );
+        if (window == null)
+            return false;
+
         if (!TryInitializeWindow(view, target, infoDisabled))
         {
             windowManager.DestroyWindow(window);
@@ -143,6 +138,64 @@ public sealed class StatusWindowController
 
         markDirty();
         return true;
+    }
+
+    /// <summary>
+    /// Determines whether a status view already represents a requested semantic target.
+    /// </summary>
+    /// <param name="view">The bound status view to inspect.</param>
+    /// <param name="target">The requested status target.</param>
+    /// <returns>True when the current and requested targets have the same stable identity.</returns>
+    private bool MatchesTarget(StatusWindowView view, StrategyStatusTarget target)
+    {
+        if (
+            view == null
+            || target == null
+            || !sessions.TryGetValue(view, out StatusWindowSession session)
+        )
+            return false;
+
+        StrategyStatusTarget current = session.Target;
+        return current != null
+            && HaveSameItem(current.Item, target.Item)
+            && HaveSamePlanet(current.Planet, target.Planet)
+            && current.ManufacturingType == target.ManufacturingType;
+    }
+
+    /// <summary>
+    /// Compares optional scene nodes by stable identity and then object identity when unsaved.
+    /// </summary>
+    /// <param name="left">The current scene node.</param>
+    /// <param name="right">The requested scene node.</param>
+    /// <returns>True when both values identify the same scene node.</returns>
+    private static bool HaveSameItem(ISceneNode left, ISceneNode right)
+    {
+        if (left == null || right == null)
+            return left == null && right == null;
+
+        string leftId = left.GetInstanceID();
+        string rightId = right.GetInstanceID();
+        return string.IsNullOrEmpty(leftId) || string.IsNullOrEmpty(rightId)
+            ? ReferenceEquals(left, right)
+            : string.Equals(leftId, rightId, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Compares optional galaxy-map planets by stable identity and then object identity when unsaved.
+    /// </summary>
+    /// <param name="left">The current galaxy-map planet.</param>
+    /// <param name="right">The requested galaxy-map planet.</param>
+    /// <returns>True when both values identify the same planet.</returns>
+    private static bool HaveSamePlanet(GalaxyMapPlanet left, GalaxyMapPlanet right)
+    {
+        if (left == null || right == null)
+            return left == null && right == null;
+
+        string leftId = left.Planet?.InstanceID;
+        string rightId = right.Planet?.InstanceID;
+        return string.IsNullOrEmpty(leftId) || string.IsNullOrEmpty(rightId)
+            ? ReferenceEquals(left, right)
+            : string.Equals(leftId, rightId, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -377,21 +430,6 @@ public sealed class StatusWindowController
             return session;
 
         throw new InvalidOperationException($"{view.name} has not been initialized.");
-    }
-
-    /// <summary>
-    /// Finds the registered status window.
-    /// </summary>
-    /// <returns>The registered window, or null when status is closed.</returns>
-    private UIWindow FindWindow()
-    {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (windowManager.TryGetWindowView(window, out StatusWindowView _))
-                return window;
-        }
-
-        return null;
     }
 
     /// <summary>

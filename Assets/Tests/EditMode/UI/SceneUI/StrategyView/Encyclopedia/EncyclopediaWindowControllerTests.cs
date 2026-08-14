@@ -64,6 +64,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
+            _windowManager.WindowCloseRequested += _windowManager.DestroyWindow;
             _controller = CreateController();
         }
 
@@ -107,16 +108,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies that repeating the Encyclopedia command closes its existing window.
+        /// </summary>
         [Test]
-        public void Open_ExistingWindow_FocusesWithoutCreatingAnotherWindow()
+        public void Open_ExistingWindow_TogglesWindowClosed()
         {
             _controller.Open();
-            UIWindow window = _windowManager.Windows.Single();
 
             _controller.Open();
 
-            Assert.AreEqual(1, _windowManager.Windows.Count);
-            Assert.AreSame(window, _windowManager.ActiveWindow);
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.IsNull(_windowManager.ActiveWindow);
             Assert.AreEqual(1, _dirtyCount);
         }
 

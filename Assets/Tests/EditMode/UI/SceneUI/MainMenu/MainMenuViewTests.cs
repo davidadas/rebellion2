@@ -73,6 +73,67 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies the generated Main Menu owns a complete full-screen Options overlay.
+        /// </summary>
+        [Test]
+        public void AuthoredPrefab_OptionsOverlay_IsFullScreenAndInitiallyHidden()
+        {
+            Transform overlay = _prefabRoot.transform.Find("UI/OptionsOverlayCanvas");
+            Assert.IsNotNull(overlay);
+            Assert.IsFalse(overlay.gameObject.activeSelf);
+            Assert.IsNotNull(overlay.GetComponent<UIWindowManager>());
+
+            RectTransform dimmer = (RectTransform)overlay.Find("OptionsDimmer");
+            RectTransform modalLayer = (RectTransform)overlay.Find("OptionsModalLayer");
+            Assert.AreEqual(Vector2.zero, dimmer.anchorMin);
+            Assert.AreEqual(Vector2.one, dimmer.anchorMax);
+            Assert.AreEqual(Vector2.zero, dimmer.offsetMin);
+            Assert.AreEqual(Vector2.zero, dimmer.offsetMax);
+            Assert.AreEqual(Vector2.zero, modalLayer.anchorMin);
+            Assert.AreEqual(Vector2.one, modalLayer.anchorMax);
+            Assert.AreEqual(new Color(0f, 0f, 0f, 0.8f), dimmer.GetComponent<Image>().color);
+        }
+
+        /// <summary>
+        /// Verifies exit confirmation blocks the entire menu independently of the Options overlay.
+        /// </summary>
+        [Test]
+        public void AuthoredPrefab_ExitConfirmation_BlockerFillsMainMenu()
+        {
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                "exitConfirmationDialog"
+            );
+            RectTransform root = (RectTransform)confirmation.transform;
+            RectTransform blocker = (RectTransform)root.Find("InputBlocker");
+            RectTransform dialogSurface = (RectTransform)root.Find("DialogSurface");
+
+            Assert.AreEqual(Vector2.zero, root.anchorMin);
+            Assert.AreEqual(Vector2.one, root.anchorMax);
+            Assert.AreEqual(Vector2.zero, root.offsetMin);
+            Assert.AreEqual(Vector2.zero, root.offsetMax);
+            Assert.AreEqual(Vector2.zero, blocker.anchorMin);
+            Assert.AreEqual(Vector2.one, blocker.anchorMax);
+            Assert.AreEqual(Vector2.zero, blocker.offsetMin);
+            Assert.AreEqual(Vector2.zero, blocker.offsetMax);
+            Assert.AreEqual(Vector3.one * 3f, dialogSurface.localScale);
+        }
+
+        /// <summary>
+        /// Verifies the view exclusively controls Options overlay visibility.
+        /// </summary>
+        [Test]
+        public void RenderOptionsOverlay_ChangesAuthoredOverlayVisibility()
+        {
+            GameObject overlay = GetField<GameObject>("optionsOverlay");
+
+            _view.RenderOptionsOverlay(true);
+            Assert.IsTrue(overlay.activeSelf);
+
+            _view.RenderOptionsOverlay(false);
+            Assert.IsFalse(overlay.activeSelf);
+        }
+
         [Test]
         public void AuthoredPrefab_CockpitBackdropAndControlsShareFullCanvas()
         {
@@ -92,34 +153,47 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void TryGetSelectedDifficulty_SelectedAuthoredToggle_ReturnsMappedDifficulty()
+        public void RenderDifficulty_Value_SelectsMappedToggleWithoutRequest()
         {
             Array bindings = GetBindings("difficultyBindings");
             SetAllToggles(bindings, false);
             object selectedBinding = bindings.GetValue(1);
-            Toggle selectedToggle = GetBindingValue<Toggle>(selectedBinding, "Toggle");
             GameDifficulty expected = GetBindingValue<GameDifficulty>(selectedBinding, "Value");
-            selectedToggle.SetIsOnWithoutNotify(true);
+            int requestCount = 0;
+            _view.DifficultySelected += _ => requestCount++;
 
-            bool found = _view.TryGetSelectedDifficulty(out GameDifficulty difficulty);
+            _view.RenderDifficulty(expected);
 
-            Assert.IsTrue(found);
-            Assert.AreEqual(expected, difficulty);
+            Assert.IsTrue(GetBindingValue<Toggle>(selectedBinding, "Toggle").isOn);
+            Assert.AreEqual(
+                1,
+                bindings
+                    .Cast<object>()
+                    .Count(binding => GetBindingValue<Toggle>(binding, "Toggle").isOn)
+            );
+            Assert.AreEqual(0, requestCount);
         }
 
         [Test]
-        public void TryGetSelectedDifficulty_NoSelectedToggle_ReturnsFalse()
+        public void RenderGalaxySize_Value_SelectsMappedToggleWithoutRequest()
         {
-            FieldInfo field = typeof(MainMenuView).GetField(
-                "difficultyBindings",
-                BindingFlags.Instance | BindingFlags.NonPublic
+            Array bindings = GetBindings("galaxySizeBindings");
+            SetAllToggles(bindings, false);
+            object selectedBinding = bindings.GetValue(2);
+            GameSize expected = GetBindingValue<GameSize>(selectedBinding, "Value");
+            int requestCount = 0;
+            _view.GalaxySizeSelected += _ => requestCount++;
+
+            _view.RenderGalaxySize(expected);
+
+            Assert.IsTrue(GetBindingValue<Toggle>(selectedBinding, "Toggle").isOn);
+            Assert.AreEqual(
+                1,
+                bindings
+                    .Cast<object>()
+                    .Count(binding => GetBindingValue<Toggle>(binding, "Toggle").isOn)
             );
-            field.SetValue(_view, Array.CreateInstance(field.FieldType.GetElementType(), 0));
-
-            bool found = _view.TryGetSelectedDifficulty(out GameDifficulty difficulty);
-
-            Assert.IsFalse(found);
-            Assert.AreEqual(default(GameDifficulty), difficulty);
+            Assert.AreEqual(0, requestCount);
         }
 
         [Test]
@@ -129,7 +203,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             int exitCount = 0;
             int creditsCount = 0;
             int victoryCount = 0;
-            _view.LoadGameRequested += () => loadCount++;
+            _view.SaveLoadMenuRequested += () => loadCount++;
             _view.ExitRequested += () => exitCount++;
             _view.CreditsRequested += () => creditsCount++;
             _view.VictoryConditionToggleRequested += () => victoryCount++;
@@ -141,7 +215,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.AreEqual(1, loadCount);
             Assert.AreEqual(0, exitCount);
-            SaveMenuConfirmDialogView confirmation = GetField<SaveMenuConfirmDialogView>(
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
                 "exitConfirmationDialog"
             );
             Assert.IsTrue(confirmation.gameObject.activeSelf);
@@ -229,6 +303,25 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(expectedPath, requestedPath);
         }
 
+        /// <summary>
+        /// Verifies Load Game sound is owned by its semantic command instead of a pointer binding.
+        /// </summary>
+        [Test]
+        public void AudioCue_LoadGameButton_HasNoGenericPointerBinding()
+        {
+            EventTrigger loadTrigger = GetField<Button>("loadGameButton")
+                .GetComponent<EventTrigger>();
+            Array bindings = GetBindings("audioCueBindings");
+
+            bool hasLoadBinding = bindings
+                .Cast<object>()
+                .Any(binding =>
+                    ReferenceEquals(loadTrigger, GetBindingValue<EventTrigger>(binding, "Trigger"))
+                );
+
+            Assert.IsFalse(hasLoadBinding);
+        }
+
         [Test]
         public void ExitLever_PointerPress_ShowsAndRestoresPressedVisual()
         {
@@ -269,6 +362,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "Application/MainMenu/Audio/select",
                     "Application/MainMenu/Audio/galaxysize-select",
                     "Application/MainMenu/Audio/exit-select",
+                    "Application/MainMenu/Audio/faction-select",
                 },
                 _view.GetAudioCuePaths()
             );
@@ -278,7 +372,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         public void OnEnable_AlreadyBound_DoesNotDuplicateListeners()
         {
             int loadCount = 0;
-            _view.LoadGameRequested += () => loadCount++;
+            _view.SaveLoadMenuRequested += () => loadCount++;
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnEnable");
             GetField<Button>("loadGameButton").onClick.Invoke();
@@ -291,7 +385,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         {
             int loadCount = 0;
             int cueCount = 0;
-            _view.LoadGameRequested += () => loadCount++;
+            _view.SaveLoadMenuRequested += () => loadCount++;
             _view.AudioCueRequested += _ => cueCount++;
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDisable");

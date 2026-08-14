@@ -69,17 +69,20 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void GetReadableTexture_ExistingAddress_RemainsReadableAndCached()
+        public void GetSprite_DifferentBorders_CachesDistinctVariants()
         {
             using ContentAssets assets = CreateAssets();
+            Vector4 border = new Vector4(7f, 7f, 7f, 7f);
 
-            Texture2D first = assets.GetReadableTexture(_textureAddress);
-            Texture2D second = assets.GetReadableTexture(_textureAddress);
+            Sprite unbordered = assets.GetSprite(_textureAddress);
+            Sprite bordered = assets.GetSprite(_textureAddress, border);
+            Sprite borderedAgain = assets.GetSprite(_textureAddress, border);
 
-            Assert.IsNotNull(first);
-            Assert.IsTrue(first.isReadable);
-            Assert.AreSame(first, second);
-            Assert.AreNotSame(first, assets.GetTexture(_textureAddress));
+            Assert.IsNotNull(unbordered);
+            Assert.IsNotNull(bordered);
+            Assert.AreNotSame(unbordered, bordered);
+            Assert.AreSame(bordered, borderedAgain);
+            Assert.AreEqual(border, bordered.border);
         }
 
         [Test]

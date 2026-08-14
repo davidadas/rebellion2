@@ -257,6 +257,18 @@ public sealed class MessagesCommandBarView : MonoBehaviour
         MessagesCommandButtonRenderData data
     )
     {
+        if (data.SourceBounds.HasValue)
+        {
+            RectInt bounds = data.SourceBounds.Value;
+            UILayout.SetSourceRect(
+                image.rectTransform,
+                bounds.x,
+                bounds.y,
+                bounds.width,
+                bounds.height
+            );
+        }
+
         if (!data.Visible)
         {
             pressVisual.SetInteractiveTextures(null, null);

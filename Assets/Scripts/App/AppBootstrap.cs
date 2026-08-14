@@ -12,10 +12,8 @@ using UnityEditor;
 /// </summary>
 public sealed class AppBootstrap : MonoBehaviour
 {
-    private const string _defaultCursorAddress =
-        "Application/Common/UI/ui_common_cursor_default_outlined";
+    private const string _defaultCursorResourcePath = "UI/DefaultCursor";
     private const string _mainMenuPreloadID = "main-menu";
-    private const string _saveMenuPreloadID = "save-menu";
     private const string _strategyPreloadID = "strategy";
 
 #if UNITY_EDITOR
@@ -43,12 +41,11 @@ public sealed class AppBootstrap : MonoBehaviour
     private ContentModelCache _contentModelCache;
     private ContentPack _contentPack;
     private CutsceneManager _cutsceneManager;
+    private DisplayManager _displayManager;
     private Task _mainMenuContentTask;
-    private Task _saveMenuContentTask;
     private Task _strategyContentTask;
     private GameRuntime _runtime;
     private SceneLoader _sceneLoader;
-    private ContentPreloadManifest _saveMenuApplicationPreload;
     private ContentPreloadManifest _strategyApplicationPreload;
     private UserSettingsManager _userSettingsManager;
 
@@ -110,24 +107,20 @@ public sealed class AppBootstrap : MonoBehaviour
             _contentPack.ContentRootPath,
             _mainMenuPreloadID
         );
-        _saveMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
-            _contentPack.ContentRootPath,
-            _saveMenuPreloadID
-        );
         _strategyApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
             _contentPack.ContentRootPath,
             _strategyPreloadID
         );
         _contentAssets = new ContentAssets(_contentPack.ContentRootPath, _contentPack.PackRootPath);
         Texture2D cursorTexture =
-            _contentAssets.GetReadableTexture(_defaultCursorAddress)
+            Resources.Load<Texture2D>(_defaultCursorResourcePath)
             ?? throw new InvalidOperationException(
-                $"Application cursor is missing: {_defaultCursorAddress}"
+                $"Application cursor resource is missing: {_defaultCursorResourcePath}"
             );
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
-        _runtime = new GameRuntime(_sceneLoader.Load, _contentPack);
+        _runtime = new GameRuntime(_contentPack);
 
         if (audioManager == null)
             audioManager = AudioManager.EnsureExists(transform);
@@ -149,7 +142,8 @@ public sealed class AppBootstrap : MonoBehaviour
         if (inputManager == null)
             inputManager = CreateInputManager();
 
-        _userSettingsManager = new UserSettingsManager(audioManager, inputManager);
+        _displayManager = new DisplayManager();
+        _userSettingsManager = new UserSettingsManager(audioManager, _displayManager, inputManager);
         _userSettingsManager.Load();
 
         if (inputController == null)
@@ -178,25 +172,13 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
-    /// Loads all content required by the save-menu scene.
-    /// </summary>
-    /// <returns>The shared save-menu preload task.</returns>
-    internal Task InitializeSaveMenuContentAsync()
-    {
-        _saveMenuContentTask ??= Task.WhenAll(
-            _contentAssets.PreloadAsync(_saveMenuApplicationPreload),
-            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_saveMenuPreloadID))
-        );
-        return _saveMenuContentTask;
-    }
-
-    /// <summary>
     /// Loads all content required by the strategy scene.
     /// </summary>
     /// <returns>The shared strategy preload task.</returns>
     internal Task InitializeStrategyContentAsync()
     {
         StartStrategyContentPreload();
+        GameStartupTrace.Log($"Strategy content task status: {_strategyContentTask.Status}.");
         return _strategyContentTask;
     }
 
@@ -254,9 +236,29 @@ public sealed class AppBootstrap : MonoBehaviour
     private void StartStrategyContentPreload()
     {
         _strategyContentTask ??= Task.WhenAll(
-            _contentAssets.PreloadAsync(_strategyApplicationPreload),
-            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_strategyPreloadID))
+            TracePreloadAsync(
+                "Strategy application preload",
+                _contentAssets.PreloadAsync(_strategyApplicationPreload)
+            ),
+            TracePreloadAsync(
+                "Strategy pack preload",
+                _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_strategyPreloadID))
+            )
         );
+    }
+
+    /// <summary>
+    /// Reports completion of one content preload when a game-startup trace is active.
+    /// </summary>
+    /// <param name="description">The preload phase being measured.</param>
+    /// <param name="preload">The underlying content preload.</param>
+    /// <returns>A task that completes with the underlying preload.</returns>
+    private static async Task TracePreloadAsync(string description, Task preload)
+    {
+        if (GameStartupTrace.IsActive)
+            GameStartupTrace.Log($"{description} pending.");
+        await preload;
+        GameStartupTrace.Log($"{description} complete.");
     }
 
     /// <summary>
@@ -283,11 +285,9 @@ public sealed class AppBootstrap : MonoBehaviour
         _contentAssets = null;
         _contentPack = null;
         _mainMenuApplicationPreload = null;
-        _saveMenuApplicationPreload = null;
         _strategyApplicationPreload = null;
         _runtime = null;
         _mainMenuContentTask = null;
-        _saveMenuContentTask = null;
         _strategyContentTask = null;
     }
 
@@ -351,6 +351,24 @@ public sealed class AppBootstrap : MonoBehaviour
     public InputManager GetInputManager()
     {
         return inputManager;
+    }
+
+    /// <summary>
+    /// Returns the application display manager.
+    /// </summary>
+    /// <returns>The active display manager.</returns>
+    public DisplayManager GetDisplayManager()
+    {
+        return _displayManager;
+    }
+
+    /// <summary>
+    /// Returns the input context controller.
+    /// </summary>
+    /// <returns>The active application input controller.</returns>
+    public AppInputController GetInputController()
+    {
+        return inputController;
     }
 
     /// <summary>
