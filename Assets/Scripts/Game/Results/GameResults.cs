@@ -77,35 +77,10 @@ namespace Rebellion.Game.Results
         Resource,
     }
 
-    public enum SystemCombatStateType
-    {
-        Battle,
-        Bombardment,
-        Assault,
-    }
-
     public enum PlanetOwnershipChangeReason
     {
         None,
         PopularSupport,
-    }
-
-    public enum FleetStateType
-    {
-        Battle,
-        Blockade,
-        Bombardment,
-        Assault,
-    }
-
-    public enum ShipStatType
-    {
-        ShieldRechargeRate,
-        WeaponRechargeRate,
-        TractorBeamPower,
-        Speed,
-        PrimaryHyperdrive,
-        BackupHyperdrive,
     }
 
     #endregion
@@ -125,17 +100,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Combat at a system started or ended (battle, bombardment, or assault).
-    /// </summary>
-    public class SystemCombatStateResult : GameResult
-    {
-        public Planet Planet { get; set; }
-        public Fleet Fleet { get; set; }
-        public SystemCombatStateType CombatState { get; set; }
-        public bool IsActive { get; set; }
-    }
-
-    /// <summary>
     /// A blockade at a system started or ended.
     /// </summary>
     public class BlockadeChangedResult : GameResult
@@ -143,16 +107,6 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
         public Fleet BlockadingFleet { get; set; }
         public bool Blockaded { get; set; }
-    }
-
-    /// <summary>
-    /// A system was explored (or exploration ended) by a fleet.
-    /// </summary>
-    public class SystemExploredResult : GameResult
-    {
-        public Planet Planet { get; set; }
-        public Fleet Fleet { get; set; }
-        public bool IsNewlyExplored { get; set; }
     }
 
     /// <summary>
@@ -165,26 +119,6 @@ namespace Rebellion.Game.Results
         public Officer Officer { get; set; }
         public Officer Discoverer { get; set; }
         public int ForceRank { get; set; }
-    }
-
-    /// <summary>
-    /// A system's population changed or was depopulated.
-    /// </summary>
-    public class SystemPopulationChangedResult : GameResult
-    {
-        public Planet Planet { get; set; }
-        public bool IsDepopulated { get; set; }
-        public int Population { get; set; }
-    }
-
-    /// <summary>
-    /// A system was controlled for the first time ever.
-    /// </summary>
-    public class SystemFirstControlResult : GameResult
-    {
-        public Planet Planet { get; set; }
-        public bool IsFirstControl { get; set; }
-        public IGameEntity ControlRef { get; set; }
     }
 
     /// <summary>
@@ -292,16 +226,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A faction's victory condition state changed.
-    /// </summary>
-    public class VictoryConditionChangedResult : GameResult
-    {
-        public Faction Faction { get; set; }
-        public int ConditionId { get; set; }
-        public int Value { get; set; }
-    }
-
-    /// <summary>
     /// A recruitment mission completed (successfully or not).
     /// </summary>
     public class OfficerRecruitedResult : GameResult
@@ -360,15 +284,6 @@ namespace Rebellion.Game.Results
         public bool IsActive { get; set; }
     }
 
-    /// <summary>
-    /// A mission key was assigned to a role.
-    /// </summary>
-    public class RoleMissionKeyResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public Mission Mission { get; set; }
-    }
-
     #endregion
 
     #region Officer
@@ -417,56 +332,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A character's command type changed.
-    /// </summary>
-    public class CommandKindChangedResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public int CommandKind { get; set; }
-        public int Detail { get; set; }
-    }
-
-    /// <summary>
-    /// A character is now commanding a target.
-    /// </summary>
-    public class OfficerCommandingResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public IGameEntity CommandTarget { get; set; }
-        public IGameEntity Context { get; set; }
-    }
-
-    /// <summary>
-    /// Two factions' characters encountered each other.
-    /// </summary>
-    public class OfficerEncounterResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public Faction FactionA { get; set; }
-        public Faction FactionB { get; set; }
-    }
-
-    /// <summary>
-    /// A traitor was discovered.
-    /// </summary>
-    public class TraitorDiscoveredResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public IGameEntity DiscoveredBy { get; set; }
-        public IGameEntity Context { get; set; }
-    }
-
-    /// <summary>
-    /// A character's Force level changed.
-    /// </summary>
-    public class ForceChangedResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public int ForceLevel { get; set; }
-        public int Detail { get; set; }
-    }
-
-    /// <summary>
     /// A character's Force training progress changed.
     /// </summary>
     public class ForceTrainingResult : GameResult
@@ -505,29 +370,12 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Han Solo was attacked by a bounty hunter.
-    /// </summary>
-    public class BountyAttackResult : GameResult
-    {
-        public Officer Officer { get; set; }
-    }
-
-    /// <summary>
     /// A character's seat-of-power status changed.
     /// </summary>
     public class SeatOfPowerChangedResult : GameResult
     {
         public Officer Officer { get; set; }
         public bool IsAtSeat { get; set; }
-    }
-
-    /// <summary>
-    /// A character pickup/retrieval operation changed state.
-    /// </summary>
-    public class OfficerPickupResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public bool InProgress { get; set; }
     }
 
     #endregion
@@ -548,15 +396,6 @@ namespace Rebellion.Game.Results
     public class GameObjectDeployedResult : GameResult
     {
         public IGameEntity GameObject { get; set; }
-    }
-
-    /// <summary>
-    /// A game object's usable state changed.
-    /// </summary>
-    public class GameObjectUsableResult : GameResult
-    {
-        public IGameEntity GameObject { get; set; }
-        public bool IsUsable { get; set; }
     }
 
     /// <summary>
@@ -593,17 +432,6 @@ namespace Rebellion.Game.Results
     {
         public IGameEntity GameObject { get; set; }
         public int DamageValue { get; set; }
-    }
-
-    /// <summary>
-    /// The controlling faction of a game object changed.
-    /// </summary>
-    public class GameObjectControlChangedResult : GameResult
-    {
-        public IGameEntity GameObject { get; set; }
-        public Faction PreviousOwner { get; set; }
-        public Faction NewOwner { get; set; }
-        public IGameEntity Context { get; set; }
     }
 
     /// <summary>
@@ -646,30 +474,9 @@ namespace Rebellion.Game.Results
         public IGameEntity Context { get; set; }
     }
 
-    /// <summary>
-    /// A game object's name changed.
-    /// </summary>
-    public class GameObjectNameChangedResult : GameResult
-    {
-        public IGameEntity GameObject { get; set; }
-        public string NewName { get; set; }
-        public string OldName { get; set; }
-    }
-
     #endregion
 
     #region Fleet / Combat
-
-    /// <summary>
-    /// A fleet's operational state changed (entering or leaving battle, blockade, bombardment, or assault).
-    /// </summary>
-    public class FleetStateChangedResult : GameResult
-    {
-        public Fleet Fleet { get; set; }
-        public Planet Planet { get; set; }
-        public FleetStateType State { get; set; }
-        public bool IsActive { get; set; }
-    }
 
     /// <summary>
     /// A fighter squadron took casualties during combat.
@@ -691,18 +498,6 @@ namespace Rebellion.Game.Results
         public Fleet Fleet { get; set; }
         public int OldHull { get; set; }
         public int NewHull { get; set; }
-    }
-
-    /// <summary>
-    /// A capital ship's non-hull attribute changed (shields, weapons, speed, etc.).
-    /// </summary>
-    public class ShipStatChangedResult : GameResult
-    {
-        public CapitalShip Ship { get; set; }
-        public Fleet Fleet { get; set; }
-        public ShipStatType Stat { get; set; }
-        public int OldValue { get; set; }
-        public int NewValue { get; set; }
     }
 
     /// <summary>
@@ -1012,15 +807,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A manufacturing slot was reserved or released.
-    /// </summary>
-    public class ManufacturingReservedResult : GameResult
-    {
-        public Faction Faction { get; set; }
-        public bool IsReserved { get; set; }
-    }
-
-    /// <summary>
     /// A manufactured item was deployed to its destination.
     /// </summary>
     public class ManufacturingDeployedResult : GameResult
@@ -1028,38 +814,6 @@ namespace Rebellion.Game.Results
         public Faction Faction { get; set; }
         public IGameEntity DeployedObject { get; set; }
         public IGameEntity Location { get; set; }
-    }
-
-    /// <summary>
-    /// The name of a product being manufactured was set or changed.
-    /// </summary>
-    public class ManufacturingProductNameResult : GameResult
-    {
-        public Faction Faction { get; set; }
-        public string ProductName { get; set; }
-        public string Detail { get; set; }
-    }
-
-    #endregion
-
-    #region Outcome
-
-    /// <summary>
-    /// A major (heavy) scripted outcome was dispatched.
-    /// </summary>
-    public class HeavyOutcomeResult : GameResult
-    {
-        public IGameEntity Subject { get; set; }
-        public IGameEntity Target { get; set; }
-    }
-
-    /// <summary>
-    /// A minor (light) scripted outcome was dispatched.
-    /// </summary>
-    public class LightOutcomeResult : GameResult
-    {
-        public IGameEntity Subject { get; set; }
-        public IGameEntity Target { get; set; }
     }
 
     #endregion

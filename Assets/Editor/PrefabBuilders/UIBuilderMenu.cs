@@ -18,6 +18,7 @@ public static class UIBuilderMenu
     {
         RunInAuthoringScene(() =>
         {
+            BootPrefabBuilder.Rebuild();
             RebuildOptionsMenuAndDependencies();
             MainMenuPrefabBuilder.Rebuild();
             StrategyViewPrefabBuilder.Rebuild();
@@ -39,7 +40,9 @@ public static class UIBuilderMenu
             "t:Prefab",
             new[]
             {
+                "Assets/Prefabs/UI/Boot",
                 "Assets/Prefabs/UI/Common",
+                "Assets/Prefabs/UI/Cutscenes",
                 "Assets/Prefabs/UI/MainMenu",
                 "Assets/Prefabs/UI/OptionsMenu",
                 "Assets/Prefabs/UI/StrategyView",
@@ -86,6 +89,16 @@ public static class UIBuilderMenu
             RebuildOptionsMenuAndDependencies();
             StrategyViewPrefabBuilder.Rebuild();
         });
+        SaveAndRefresh();
+    }
+
+    /// <summary>
+    /// Rebuilds the boot scene and its generated prefabs.
+    /// </summary>
+    [MenuItem("Rebellion/Build/Build Boot UI", false, 23)]
+    public static void BuildBoot()
+    {
+        RunInAuthoringScene(BootPrefabBuilder.Rebuild);
         SaveAndRefresh();
     }
 

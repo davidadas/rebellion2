@@ -5,6 +5,7 @@
     ],
     "references": [
         "GameAssembly",
+        "Rebellion.Editor.MediaSync",
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",
         "Unity.TextMeshPro",

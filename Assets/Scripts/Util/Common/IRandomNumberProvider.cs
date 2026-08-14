@@ -60,27 +60,4 @@ namespace Rebellion.Util.Common
             return _rng.Next(min, max);
         }
     }
-
-    /// <summary>
-    /// Test implementation returning fixed sequence of values.
-    /// Wraps around when exhausted.
-    /// </summary>
-    public class FixedRandomProvider : IRandomNumberProvider
-    {
-        private readonly double[] _values;
-        private int _index;
-
-        /// <summary>
-        /// Creates a fixed random provider with the specified value sequence.
-        /// </summary>
-        /// <param name="fixedValues">Array of values to return in sequence.</param>
-        public FixedRandomProvider(double[] fixedValues)
-        {
-            _values = fixedValues;
-        }
-
-        public double NextDouble() => _values[_index++ % _values.Length];
-
-        public int NextInt(int min, int max) => (int)(NextDouble() * (max - min)) + min;
-    }
 }

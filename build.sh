@@ -104,7 +104,6 @@ usage() {
     echo "Usage: ./build.sh [command]"
     echo ""
     echo "Commands:"
-    echo "  sync-media Copy development assets from the sibling rebellion2-media checkout"
     echo "  format    Check formatting with CSharpier"
     echo "  xmlformat Format XML data files in-place with xmllint"
     echo "  lint      Run Roslynator static analysis"
@@ -114,64 +113,6 @@ usage() {
     echo "  clean     Remove build artifacts"
     echo "  all       Run format + lint + test"
     exit 1
-}
-
-copy_media_tree() {
-    local source_path="$1"
-    local destination_path="$2"
-
-    mkdir -p "$destination_path"
-    cp -a "$source_path/." "$destination_path/"
-}
-
-copy_media_file() {
-    local source_path="$1"
-    local destination_path="$2"
-
-    mkdir -p "$(dirname "$destination_path")"
-    cp "$source_path" "$destination_path"
-}
-
-do_sync_media() {
-    local project_root
-    local media_root
-
-    if [ ! -d "$PROJECT_PATH" ]; then
-        echo "FAIL: project directory not found: $PROJECT_PATH"
-        exit 1
-    fi
-
-    project_root="$(cd "$PROJECT_PATH" && pwd -P)"
-    media_root="${MEDIA_PATH:-$(dirname "$project_root")/rebellion2-media}"
-
-    if [ ! -d "$media_root/.git" ]; then
-        echo "FAIL: rebellion2-media checkout not found at '$media_root'."
-        echo "Clone it beside rebellion2 or set MEDIA_PATH to its checkout directory."
-        exit 1
-    fi
-
-    media_root="$(cd "$media_root" && pwd -P)"
-    if [ ! -d "$media_root/Content" ]; then
-        echo "FAIL: rebellion2-media Content directory not found at '$media_root/Content'."
-        exit 1
-    fi
-    if [ ! -d "$media_root/Models/MainMenu" ]; then
-        echo "FAIL: rebellion2-media Main Menu models not found at '$media_root/Models/MainMenu'."
-        exit 1
-    fi
-    if [ ! -f "$media_root/Content/Application/Common/UI/ui_common_cursor_default_outlined.png" ]; then
-        echo "FAIL: default cursor asset not found in rebellion2-media."
-        exit 1
-    fi
-
-    echo "=== Sync Media ==="
-    copy_media_tree "$media_root/Content" "$project_root/Assets/Content"
-    copy_media_tree "$media_root/Models/MainMenu" "$project_root/Assets/Art/Models/MainMenu"
-    copy_media_file \
-        "$media_root/Content/Application/Common/UI/ui_common_cursor_default_outlined.png" \
-        "$project_root/Assets/Resources/UI/DefaultCursor.png"
-    echo "Development media copied from: $media_root"
-    echo "Destination-only files were preserved."
 }
 
 do_format() {
@@ -391,7 +332,6 @@ do_all() {
 }
 
 case "${1:-}" in
-    sync-media) do_sync_media ;;
     format)    do_format ;;
     xmlformat) do_xmlformat ;;
     lint)      do_lint ;;

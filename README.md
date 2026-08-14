@@ -52,8 +52,8 @@ shared under any circumstances.**
 - [Modding and content packs](Docs/Modding.md)
 
 Game assets and generated UI artifacts are intentionally kept outside this source repository.
-For a development checkout, clone `rebellion2-media` beside this repository and run
-`./build.sh sync-media`; see the development guide for the `MEDIA_PATH` override and full setup.
+For a development checkout, clone `rebellion2-media` beside this repository and synchronize it from
+the Unity Editor; see the development guide for details. CI installs its media checkout automatically.
 
 ## Reporting bugs
 

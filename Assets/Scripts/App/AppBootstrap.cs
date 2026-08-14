@@ -364,31 +364,6 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns the loaded user settings.
-    /// </summary>
-    /// <returns>The active user settings, or null when settings have not been loaded.</returns>
-    public UserSettings GetUserSettings()
-    {
-        return _userSettingsManager?.Settings;
-    }
-
-    /// <summary>
-    /// Applies the active user settings to runtime systems.
-    /// </summary>
-    public void ApplyUserSettings()
-    {
-        _userSettingsManager?.Apply();
-    }
-
-    /// <summary>
-    /// Captures and saves the active user settings.
-    /// </summary>
-    public void SaveUserSettings()
-    {
-        _userSettingsManager?.Save();
-    }
-
-    /// <summary>
     /// Gets the active external content pack.
     /// </summary>
     /// <returns>The active content pack.</returns>

@@ -59,16 +59,6 @@ namespace Rebellion.Game.Research
         }
 
         /// <summary>
-        /// Returns the manufacturing type of the referenced manufacturable.
-        /// </summary>
-        /// <returns>The manufacturing type of the referenced manufacturable.</returns>
-        /// <seealso cref="ManufacturingType"/>
-        public ManufacturingType GetManufacturingType()
-        {
-            return Manufacturable.GetManufacturingType();
-        }
-
-        /// <summary>
         /// Returns the research order of the referenced manufacturable.
         /// </summary>
         /// <returns>Research unlock order index from the referenced manufacturable.</returns>

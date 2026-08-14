@@ -17,6 +17,11 @@ public static class SceneBuilder
     /// <param name="instanceName">The root instance name.</param>
     public static void Build(string scenePath, string prefabPath, string instanceName)
     {
+        string sceneDirectory = Path.GetDirectoryName(scenePath);
+        if (string.IsNullOrEmpty(sceneDirectory))
+            throw new IOException($"Scene path has no directory: {scenePath}");
+        Directory.CreateDirectory(sceneDirectory);
+
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         if (prefab == null)
             throw new FileNotFoundException(prefabPath);
