@@ -148,7 +148,7 @@ public static class MainMenuPrefabBuilder
             512,
             360,
             true,
-            underLightIntensity: 1f
+            underLightIntensity: 2.5f
         ),
     };
 
@@ -2083,7 +2083,7 @@ public static class MainMenuPrefabBuilder
         sunObject.transform.localRotation = Quaternion.Euler(45.63f, 122.25f, 0f);
         Light sun = sunObject.GetComponent<Light>();
         sun.type = LightType.Directional;
-        sun.intensity = 0.45f;
+        sun.intensity = 0.6f;
         sun.color = new Color(1f, 0.94f, 0.88f);
         sun.cullingMask = 1 << planetLayer;
         sun.shadows = LightShadows.None;
@@ -2440,7 +2440,7 @@ public static class MainMenuPrefabBuilder
         Light underLight = underLightObject.GetComponent<Light>();
         underLight.type = LightType.Point;
         underLight.range = 8f;
-        underLight.intensity = 0.75f;
+        underLight.intensity = 2f;
         underLight.color = Color.white;
 
         return spinner;
@@ -2569,7 +2569,7 @@ public static class MainMenuPrefabBuilder
             lights.transform,
             "Key",
             Quaternion.Euler(45f, 35f, 0f),
-            0.35f,
+            0.6f,
             Color.white,
             LightShadows.Soft
         );
@@ -2577,8 +2577,16 @@ public static class MainMenuPrefabBuilder
             lights.transform,
             "Fill",
             Quaternion.Euler(20f, 40f, 0f),
-            0.15f,
+            0.35f,
             new Color(0.85f, 0.9f, 1f),
+            LightShadows.None
+        );
+        AddDirectionalLight(
+            lights.transform,
+            "Rim",
+            Quaternion.Euler(35f, 175f, 0f),
+            1.0f,
+            Color.white,
             LightShadows.None
         );
     }
