@@ -127,16 +127,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void Rebuild_GlobalBindings_IncludesOpenGameMenu()
         {
             using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+            InputAction openGameMenu = _inputManager.Asset.FindAction(
+                "Global/CancelOrSettings",
+                true
+            );
 
             session.Rebuild();
 
-            Assert.IsTrue(
-                session.Rows.Any(row =>
-                    !row.IsHeader && row.Action == "Open Game Menu" && row.Primary == "ESC"
-                )
-            );
-            Assert.IsFalse(
-                session.Rows.Single(row => row.Action == "Open Game Menu").PrimaryEditable
+            OptionsBindingRow row = session.Rows.Single(row => row.Action == "Open Game Menu");
+            Assert.IsFalse(row.IsHeader);
+            Assert.AreNotEqual("UNBOUND", row.Primary);
+            Assert.IsFalse(row.PrimaryEditable);
+            Assert.AreEqual(
+                "<Keyboard>/escape",
+                openGameMenu.bindings[FindBinding(openGameMenu, "Primary")].effectivePath
             );
         }
 
