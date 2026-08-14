@@ -334,7 +334,7 @@ namespace Rebellion.Tests.Game.Events
                     {
                         Key = "luke.stage",
                         Comparison = EventVariableComparison.GreaterThanOrEqual,
-                        ExpectedValue = 2,
+                        CompareTo = 2,
                     },
                 },
                 Actions = new List<GameAction>
@@ -580,7 +580,7 @@ namespace Rebellion.Tests.Game.Events
                 UnitInstanceID = luke.InstanceID,
             }.Execute(game);
 
-            Assert.IsEmpty(results);
+            Assert.IsInstanceOf<EventVariableChangedResult>(results.Single());
             Assert.IsNull(luke.GetParent());
             Assert.AreEqual(origin.InstanceID, luke.LastParentInstanceID);
         }
@@ -677,20 +677,17 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetOfficerImageSet_ConfiguredValues_UpdatesOfficer()
+        public void SetOfficerImages_ConfiguredValues_UpdatesOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, rebelPlanet);
-            SetOfficerImageSetAction action = new SetOfficerImageSetAction
+            SetOfficerImagesAction action = new SetOfficerImagesAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                ImageSet = new OfficerImageSet
-                {
-                    DisplayImagePath = "jedi-display",
-                    SmallDisplayImagePath = "jedi-small-display",
-                    EncyclopediaImagePath = "jedi-encyclopedia",
-                },
+                DisplayImagePath = "jedi-display",
+                SmallDisplayImagePath = "jedi-small-display",
+                EncyclopediaImagePath = "jedi-encyclopedia",
             };
 
             Assert.IsEmpty(action.Execute(game));
@@ -710,10 +707,7 @@ namespace Rebellion.Tests.Game.Events
             SetOfficerVoiceSetAction action = new SetOfficerVoiceSetAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                VoiceSet = new OfficerVoiceSet
-                {
-                    PersonnelArrived = new List<string> { "jedi-arrived" },
-                },
+                PersonnelArrived = new List<string> { "jedi-arrived" },
             };
 
             Assert.IsEmpty(action.Execute(game));
@@ -852,7 +846,7 @@ namespace Rebellion.Tests.Game.Events
                 OfficerInstanceID = luke.InstanceID,
                 Rating = OfficerRating.Combat,
                 ProbabilityTable = MissionTypeIDs.Rescue,
-                Success = new List<GameAction>
+                OnSuccess = new List<GameAction>
                 {
                     new SetEventVariableAction
                     {
@@ -861,7 +855,7 @@ namespace Rebellion.Tests.Game.Events
                         Operand = 1,
                     },
                 },
-                Failure = new List<GameAction>
+                OnFailure = new List<GameAction>
                 {
                     new SetEventVariableAction
                     {
@@ -890,8 +884,8 @@ namespace Rebellion.Tests.Game.Events
                 OfficerInstanceID = luke.InstanceID,
                 Rating = OfficerRating.Combat,
                 ProbabilityTable = MissionTypeIDs.Rescue,
-                Success = new List<GameAction>(),
-                Failure = new List<GameAction>
+                OnSuccess = new List<GameAction>(),
+                OnFailure = new List<GameAction>
                 {
                     new SetEventVariableAction
                     {
@@ -925,7 +919,7 @@ namespace Rebellion.Tests.Game.Events
                 OfficerInstanceID = luke.InstanceID,
                 Rating = OfficerRating.Combat,
                 ProbabilityTable = MissionTypeIDs.Rescue,
-                Failure = new List<GameAction>
+                OnFailure = new List<GameAction>
                 {
                     new SetEventVariableAction { Key = "failed", Operand = 1 },
                 },
@@ -937,7 +931,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void PerformSkillCheck_NegativeRatingMultiplier_UsesScaledScoreAndEmitsOutcome()
+        public void PerformSkillCheck_NegativeRatingMultiplier_UsesScaledScore()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer han = EntityFactory.CreateOfficer("han", "rebels");
@@ -954,17 +948,17 @@ namespace Rebellion.Tests.Game.Events
                 Rating = OfficerRating.Combat,
                 ProbabilityTable = MissionTypeIDs.Abduction,
                 RatingMultiplier = -1,
+                OnSuccess = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "succeeded", Operand = 1 },
+                },
             };
 
-            SkillCheckCompletedResult result = action
-                .Execute(game, new FixedRNG(0.99))
-                .OfType<SkillCheckCompletedResult>()
-                .Single();
+            List<GameResult> results = action.Execute(game, new FixedRNG(0.99));
 
-            Assert.AreSame(han, result.Officer);
-            Assert.AreEqual(OfficerRating.Combat, result.Rating);
-            Assert.AreEqual(MissionTypeIDs.Abduction, result.ProbabilityTable);
-            Assert.IsTrue(result.Succeeded);
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("succeeded"));
+            Assert.AreEqual(1, results.Count);
+            Assert.IsInstanceOf<EventVariableChangedResult>(results[0]);
         }
 
         [Test]

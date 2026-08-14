@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 Binding = "$unit",
                 Comparison = EventVariableComparison.Equal,
-                ExpectedValue = emperor.InstanceID,
+                CompareTo = emperor.InstanceID,
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent(),
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 Binding = "$destination",
                 Comparison = EventVariableComparison.Equal,
-                ExpectedValue = empirePlanet.InstanceID,
+                CompareTo = empirePlanet.InstanceID,
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent(),

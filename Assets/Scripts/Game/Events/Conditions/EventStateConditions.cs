@@ -111,7 +111,7 @@ namespace Rebellion.Game.Events
         public EventVariableComparison Comparison { get; set; }
 
         [PersistableAttribute]
-        public int ExpectedValue { get; set; }
+        public int CompareTo { get; set; }
 
         /// <inheritdoc />
         public override bool IsMet(GameConditionContext context)
@@ -119,12 +119,12 @@ namespace Rebellion.Game.Events
             int current = context.Game.EventRuntime.GetVariable(Key);
             return Comparison switch
             {
-                EventVariableComparison.Equal => current == ExpectedValue,
-                EventVariableComparison.NotEqual => current != ExpectedValue,
-                EventVariableComparison.GreaterThan => current > ExpectedValue,
-                EventVariableComparison.GreaterThanOrEqual => current >= ExpectedValue,
-                EventVariableComparison.LessThan => current < ExpectedValue,
-                EventVariableComparison.LessThanOrEqual => current <= ExpectedValue,
+                EventVariableComparison.Equal => current == CompareTo,
+                EventVariableComparison.NotEqual => current != CompareTo,
+                EventVariableComparison.GreaterThan => current > CompareTo,
+                EventVariableComparison.GreaterThanOrEqual => current >= CompareTo,
+                EventVariableComparison.LessThan => current < CompareTo,
+                EventVariableComparison.LessThanOrEqual => current <= CompareTo,
                 _ => throw new InvalidOperationException(
                     $"Unsupported event variable comparison '{Comparison}'."
                 ),
@@ -145,7 +145,7 @@ namespace Rebellion.Game.Events
         public EventVariableComparison Comparison { get; set; }
 
         [PersistableAttribute]
-        public string ExpectedValue { get; set; }
+        public string CompareTo { get; set; }
 
         public override bool IsMet(GameConditionContext context)
         {
@@ -167,7 +167,7 @@ namespace Rebellion.Game.Events
                     $"Binding '{Binding}' supports ordered comparisons only when it contains an integer."
                 );
 
-            int comparison = Compare(actual, ExpectedValue);
+            int comparison = Compare(actual, CompareTo);
             return Comparison switch
             {
                 EventVariableComparison.Equal => comparison == 0,

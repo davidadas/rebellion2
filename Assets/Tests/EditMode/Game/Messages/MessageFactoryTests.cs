@@ -47,6 +47,7 @@ namespace Rebellion.Tests.Game.Messages
                         OverlayImagePath = "Officers/luke",
                         BackgroundAudioPath = "Story/dialogue",
                         OfficerVoicePath = "Officers/luke/dialogue",
+                        SourceEventInstanceID = "STORY_EVENT",
                         AdvisorNotification = new AdvisorNotification
                         {
                             Preset = AdvisorNotificationPreset.SubjectReport,
@@ -72,22 +73,12 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_SuppressNextAutomaticMessage_RemovesOneAutomaticMessageOnly()
+        public void CreateMessages_GameplayResult_ProducesAutomaticMessage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
-            Officer luke = new Officer
-            {
-                DisplayName = "Luke Skywalker",
-                OwnerInstanceID = alliance.InstanceID,
-            };
-            game.AttachNode(luke, origin);
+            Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
+            game.AttachNode(officer, origin);
 
-            OfficerCaptureStateResult suppressedCapture = new OfficerCaptureStateResult
-            {
-                TargetOfficer = luke,
-                IsCaptured = true,
-                Context = origin,
-            };
             List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
@@ -95,58 +86,27 @@ namespace Rebellion.Tests.Game.Messages
                     Definition(
                         MessageResultType.OfficerCaptured,
                         MessageType.Mission,
-                        "Generic capture",
-                        "Generic capture"
+                        "Captured",
+                        "Captured"
                     ),
                 },
-                suppressedCapture,
                 new OfficerCaptureStateResult
                 {
-                    TargetOfficer = luke,
+                    TargetOfficer = officer,
                     IsCaptured = true,
                     Context = origin,
-                },
-                new SuppressNextAutomaticMessageResult
-                {
-                    MessageType = MessageResultType.OfficerCaptured,
-                    Recipient = alliance,
-                    TargetResult = suppressedCapture,
-                },
-                new MessageRequestedResult
-                {
-                    Recipient = alliance,
-                    SubjectNode = luke,
-                    MessageType = MessageType.Mission,
-                    Subject = "Jabba Captures {subject}",
-                    Body = "{subject} was captured by Jabba while attempting to rescue Han Solo.",
                 }
             );
 
-            Assert.AreEqual(2, deliveries.Count);
-            Assert.AreEqual(
-                1,
-                deliveries.Count(delivery => delivery.Message.Title == "Generic capture")
-            );
-            Assert.AreEqual(
-                1,
-                deliveries.Count(delivery =>
-                    delivery.Message.Title == "Jabba Captures Luke Skywalker"
-                )
-            );
+            Assert.AreEqual("Captured", deliveries.Single().Message.Title);
         }
 
         [Test]
-        public void CreateMessages_SuppressionWithDifferentMessageType_PreservesAutomaticMessage()
+        public void CreateMessages_AuthoredEventResult_SkipsAutomaticMessage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
             game.AttachNode(officer, origin);
-            OfficerCaptureStateResult capture = new OfficerCaptureStateResult
-            {
-                TargetOfficer = officer,
-                IsCaptured = true,
-                Context = origin,
-            };
 
             List<MessageDelivery> deliveries = CreateMessages(
                 game,
@@ -159,84 +119,11 @@ namespace Rebellion.Tests.Game.Messages
                         "Captured"
                     ),
                 },
-                capture,
-                new SuppressNextAutomaticMessageResult
+                new OfficerCaptureStateResult
                 {
-                    MessageType = MessageResultType.SpaceBattle,
-                    TargetResult = capture,
-                }
-            );
-
-            Assert.AreEqual(1, deliveries.Count);
-        }
-
-        [Test]
-        public void CreateMessages_SuppressionWithDifferentRecipient_PreservesAutomaticMessage()
-        {
-            (GameRoot game, Faction alliance, Faction empire, Planet origin, _) =
-                BuildTwoFactionMessageScene();
-            Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
-            game.AttachNode(officer, origin);
-            OfficerCaptureStateResult capture = new OfficerCaptureStateResult
-            {
-                TargetOfficer = officer,
-                IsCaptured = true,
-                Context = origin,
-            };
-
-            List<MessageDelivery> deliveries = CreateMessages(
-                game,
-                new[]
-                {
-                    Definition(
-                        MessageResultType.OfficerCaptured,
-                        MessageType.Mission,
-                        "Captured",
-                        "Captured"
-                    ),
-                },
-                capture,
-                new SuppressNextAutomaticMessageResult
-                {
-                    MessageType = MessageResultType.OfficerCaptured,
-                    Recipient = empire,
-                    TargetResult = capture,
-                }
-            );
-
-            Assert.AreSame(alliance, deliveries.Single().Recipient);
-        }
-
-        [Test]
-        public void CreateMessages_SuppressionFromSameEvent_RemovesDerivedAutomaticMessage()
-        {
-            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
-            Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
-            game.AttachNode(officer, origin);
-            OfficerCaptureStateResult capture = new OfficerCaptureStateResult
-            {
-                TargetOfficer = officer,
-                IsCaptured = true,
-                Context = origin,
-                SourceEventInstanceID = "CAPTURE_EVENT",
-            };
-
-            List<MessageDelivery> deliveries = CreateMessages(
-                game,
-                new[]
-                {
-                    Definition(
-                        MessageResultType.OfficerCaptured,
-                        MessageType.Mission,
-                        "Captured",
-                        "Captured"
-                    ),
-                },
-                capture,
-                new SuppressNextAutomaticMessageResult
-                {
-                    MessageType = MessageResultType.OfficerCaptured,
-                    TargetResult = new MissionCompletedResult(),
+                    TargetOfficer = officer,
+                    IsCaptured = true,
+                    Context = origin,
                     SourceEventInstanceID = "CAPTURE_EVENT",
                 }
             );
@@ -3823,34 +3710,18 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_SpaceBattle_RestoresStrategicAndFleetOutcomeText()
+        public void CreateMessages_SpaceBattle_ComposesSituationAndFleetOutcome()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
-            Fleet attacker = new Fleet
-            {
-                InstanceID = "alliance-fleet",
-                OwnerInstanceID = alliance.InstanceID,
-            };
-            Fleet defender = new Fleet
-            {
-                InstanceID = "empire-fleet",
-                OwnerInstanceID = empire.InstanceID,
-            };
 
-            MessageDefinition[] definitions = ContentPackLoader
-                .OpenActive()
-                .GameData.MessageDefinitions.Where(definition =>
-                    definition.ResultType == MessageResultType.SpaceBattle
-                )
-                .ToArray();
             List<MessageDelivery> deliveries = CreateMessages(
                 game,
-                definitions,
+                SpaceBattleNarrativeDefinitions(),
                 new SpaceCombatResult
                 {
-                    AttackerFleet = attacker,
-                    DefenderFleet = defender,
+                    AttackerFleet = new Fleet { OwnerInstanceID = alliance.InstanceID },
+                    DefenderFleet = new Fleet { OwnerInstanceID = empire.InstanceID },
                     AttackerOwnerInstanceID = alliance.InstanceID,
                     DefenderOwnerInstanceID = empire.InstanceID,
                     Planet = target,
@@ -3861,15 +3732,11 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(
-                "The Alliance fleet is victorious.\n"
-                    + "Yavin is now under blockade by Alliance forces.\n"
-                    + "The Empire fleet has been completely destroyed.",
+                "won|blockade:Alliance:Yavin|Empire:destroyed",
                 FirstMessageFor(deliveries, alliance).Body
             );
             Assert.AreEqual(
-                "The Empire fleet is defeated.\n"
-                    + "Yavin is now under blockade by Alliance forces.\n"
-                    + "The Empire fleet has been completely destroyed.",
+                "lost|blockade:Empire:Yavin|Empire:destroyed",
                 FirstMessageFor(deliveries, empire).Body
             );
         }
@@ -3879,28 +3746,14 @@ namespace Rebellion.Tests.Game.Messages
         {
             (GameRoot game, Faction alliance, Faction empire, Planet retreat, Planet target) =
                 BuildTwoFactionMessageScene();
-            Fleet attacker = new Fleet
-            {
-                InstanceID = "alliance-fleet",
-                OwnerInstanceID = alliance.InstanceID,
-            };
-            Fleet defender = new Fleet
-            {
-                InstanceID = "empire-fleet",
-                OwnerInstanceID = empire.InstanceID,
-            };
+            Fleet attacker = new Fleet { OwnerInstanceID = alliance.InstanceID };
+            Fleet defender = new Fleet { OwnerInstanceID = empire.InstanceID };
             game.AttachNode(attacker, retreat);
             game.AttachNode(defender, target);
 
-            MessageDefinition[] definitions = ContentPackLoader
-                .OpenActive()
-                .GameData.MessageDefinitions.Where(definition =>
-                    definition.ResultType == MessageResultType.SpaceBattle
-                )
-                .ToArray();
             List<MessageDelivery> deliveries = CreateMessages(
                 game,
-                definitions,
+                SpaceBattleNarrativeDefinitions(),
                 new SpaceCombatResult
                 {
                     AttackerFleet = attacker,
@@ -3915,15 +3768,11 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(
-                "The Alliance fleet is defeated.\n"
-                    + "The Alliance attack on Yavin has failed.\n"
-                    + "The Alliance fleet has withdrawn to Coruscant.",
+                "lost|attack-failed:Alliance:Yavin|Alliance:withdrew:Coruscant",
                 FirstMessageFor(deliveries, alliance).Body
             );
             Assert.AreEqual(
-                "The Empire fleet is victorious.\n"
-                    + "Yavin has been successfully defended from Alliance forces.\n"
-                    + "The Alliance fleet has withdrawn.",
+                "won|defended:Empire:Yavin|Alliance:withdrew",
                 FirstMessageFor(deliveries, empire).Body
             );
         }
@@ -4203,6 +4052,35 @@ namespace Rebellion.Tests.Game.Messages
                     outcome: MessageResultOutcome.Stalemate
                 ),
             };
+        }
+
+        private static MessageDefinition[] SpaceBattleNarrativeDefinitions()
+        {
+            MessageDefinition[] definitions = SpaceBattleDefinitions();
+            SpaceBattleNarrativeTemplates narrative = new SpaceBattleNarrativeTemplates
+            {
+                VictoryHeadline = "won",
+                DefeatHeadline = "lost",
+                StalemateHeadline = "draw",
+                NeutralVictory = "neutral-victory:{faction}:{system}",
+                NeutralDefeat = "neutral-defeat:{faction}:{system}",
+                SuccessfullyDefended = "defended:{faction}:{system}",
+                BlockadeEstablished = "blockade:{faction}:{system}",
+                AttackFailed = "attack-failed:{faction}:{system}",
+                BlockadeMaintained = "maintained:{faction}:{system}",
+                BlockadeBroken = "broken:{faction}:{system}",
+                NoVictor = "no-victor:{system}",
+                FleetDestroyed = "{fleetFaction}:destroyed",
+                FleetWithdrawn = "{fleetFaction}:withdrew",
+                FleetWithdrawnTo = "{fleetFaction}:withdrew:{retreatSystem}",
+                AllShipsDestroyed = "all-destroyed",
+            };
+            foreach (MessageDefinition definition in definitions)
+            {
+                definition.Body = "{headline}|{situation}|{fleetOutcome}";
+                definition.SpaceBattleNarrative = narrative;
+            }
+            return definitions;
         }
 
         private static MessageDefinition[] SmugglingDefinitions()

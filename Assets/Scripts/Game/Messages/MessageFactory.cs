@@ -139,35 +139,7 @@ namespace Rebellion.Game.Messages
 
             deliveries.AddRange(_authoredMessageFactory.CreateDeliveries(batch.AuthoredRequests));
 
-            ApplyAutomaticMessageSuppressions(deliveries, batch.Suppressions);
-
             return deliveries;
-        }
-
-        private static void ApplyAutomaticMessageSuppressions(
-            List<MessageDelivery> deliveries,
-            IReadOnlyList<SuppressNextAutomaticMessageResult> suppressions
-        )
-        {
-            foreach (SuppressNextAutomaticMessageResult suppression in suppressions)
-            {
-                int index = deliveries.FindIndex(delivery =>
-                    delivery.SourceResults?.Any(source =>
-                        ReferenceEquals(source, suppression.TargetResult)
-                        || (
-                            !string.IsNullOrWhiteSpace(suppression.SourceEventInstanceID)
-                            && source.SourceEventInstanceID == suppression.SourceEventInstanceID
-                        )
-                    ) == true
-                    && delivery.Message?.ResultType == suppression.MessageType
-                    && (
-                        suppression.Recipient == null
-                        || delivery.Recipient?.InstanceID == suppression.Recipient.InstanceID
-                    )
-                );
-                if (index >= 0)
-                    deliveries.RemoveAt(index);
-            }
         }
 
         /// <summary>

@@ -576,16 +576,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Suppresses one matching automatic message produced by the current result batch.
-    /// </summary>
-    public sealed class SuppressNextAutomaticMessageResult : GameResult
-    {
-        public MessageResultType MessageType { get; set; }
-        public Faction Recipient { get; set; }
-        public GameResult TargetResult { get; set; }
-    }
-
-    /// <summary>
     /// A persistent data-defined event variable changed.
     /// </summary>
     public class EventVariableChangedResult : GameResult
@@ -614,17 +604,6 @@ namespace Rebellion.Game.Results
         public List<IMovable> Units { get; set; } = new List<IMovable>();
         public ContainerNode Destination { get; set; }
         public List<ContainerNode> DestinationCandidates { get; set; } = new List<ContainerNode>();
-    }
-
-    /// <summary>
-    /// Reports the outcome of one authored officer-rating check.
-    /// </summary>
-    public sealed class SkillCheckCompletedResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public OfficerRating Rating { get; set; }
-        public string ProbabilityTable { get; set; }
-        public bool Succeeded { get; set; }
     }
 
     /// <summary>

@@ -28,7 +28,7 @@ namespace Rebellion.Systems
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _random = random ?? throw new ArgumentNullException(nameof(random));
             _captureAvoidance = new ProbabilityTable(
-                _game.Config.DuelResolution.CaptureAvoidancePercentByMinimumCombatAdvantage
+                _game.Config.DuelResolution.CombatCaptureAvoidance
             );
         }
 

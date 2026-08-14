@@ -254,10 +254,12 @@ namespace Rebellion.Util.Serialization
         /// <param name="collection">The collection to write.</param>
         /// <param name="writer">The XmlWriter to use.</param>
         /// <param name="name">The optional name for the XML element.</param>
+        /// <param name="itemName">The optional element name for each collection item.</param>
         private static void WriteCollection(
             IEnumerable collection,
             XmlWriter writer,
-            string name = null
+            string name = null,
+            string itemName = null
         )
         {
             Type elementType =
@@ -271,7 +273,7 @@ namespace Rebellion.Util.Serialization
                 WriteValue(
                     item,
                     writer,
-                    ReflectionHelper.GetPersistableElementName(item.GetType())
+                    itemName ?? ReflectionHelper.GetPersistableElementName(item.GetType())
                 );
             }
             writer.WriteEndElement();
@@ -338,7 +340,24 @@ namespace Rebellion.Util.Serialization
                     }
 
                     string elementName = GetElementName(member, value);
-                    WriteValue(value, writer, elementName);
+                    PersistableCollectionItemAttribute collectionItem =
+                        (PersistableCollectionItemAttribute)
+                            Attribute.GetCustomAttribute(
+                                member,
+                                typeof(PersistableCollectionItemAttribute)
+                            );
+                    if (collectionItem != null && value is IEnumerable collection)
+                    {
+                        if (string.IsNullOrWhiteSpace(collectionItem.Name))
+                            throw new InvalidOperationException(
+                                $"Collection member '{member.Name}' requires an item element name."
+                            );
+                        WriteCollection(collection, writer, elementName, collectionItem.Name);
+                    }
+                    else
+                    {
+                        WriteValue(value, writer, elementName);
+                    }
                 }
             }
             writer.WriteEndElement();

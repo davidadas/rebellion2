@@ -177,13 +177,6 @@ namespace Rebellion.Game.Events
                 .Argument("Discoverer", result => result.Discoverer)
                 .Argument("ForceRank", result => result.ForceRank)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<SkillCheckCompletedResult>(contracts, "core:skill-check.completed")
-                .Argument("Officer", result => result.Officer)
-                .Argument("OfficerInstanceID", result => result.Officer?.InstanceID)
-                .Argument("Rating", result => result.Rating)
-                .Argument("ProbabilityTable", result => result.ProbabilityTable)
-                .Argument("Succeeded", result => result.Succeeded)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             return contracts;
         }
 

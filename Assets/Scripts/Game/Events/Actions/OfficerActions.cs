@@ -216,8 +216,8 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int RatingMultiplier { get; set; } = 1;
 
-        public List<GameAction> Success { get; set; } = new List<GameAction>();
-        public List<GameAction> Failure { get; set; } = new List<GameAction>();
+        public List<GameAction> OnSuccess { get; set; } = new List<GameAction>();
+        public List<GameAction> OnFailure { get; set; } = new List<GameAction>();
 
         public override List<GameResult> Execute(GameActionContext context)
         {
@@ -248,19 +248,8 @@ namespace Rebellion.Game.Events
                 checked(officer.GetEffectiveRating(Rating) * RatingMultiplier)
             );
             bool succeeded = context.Random.NextDouble() * 100 < probability;
-            IEnumerable<GameAction> actions = succeeded ? Success : Failure;
-            List<GameResult> results = GameAction.ExecuteAll(actions, context);
-            results.Add(
-                new SkillCheckCompletedResult
-                {
-                    Officer = officer,
-                    Rating = Rating,
-                    ProbabilityTable = ProbabilityTable,
-                    Succeeded = succeeded,
-                    Tick = context.Game.CurrentTick,
-                }
-            );
-            return results;
+            IEnumerable<GameAction> actions = succeeded ? OnSuccess : OnFailure;
+            return GameAction.ExecuteAll(actions, context);
         }
     }
 
@@ -354,12 +343,15 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Replaces the authored image paths used for an officer.
     /// </summary>
-    [PersistableObject(Name = "SetOfficerImageSet")]
-    public sealed class SetOfficerImageSetAction : GameAction
+    [PersistableObject(Name = "SetOfficerImages")]
+    public sealed class SetOfficerImagesAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
-        public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
+        public string DisplayImagePath { get; set; }
+        public string SmallDisplayImagePath { get; set; }
+        public string MessageImagePath { get; set; }
+        public string EncyclopediaImagePath { get; set; }
 
         /// <inheritdoc />
         public override List<GameResult> Execute(GameActionContext context)
@@ -368,9 +360,17 @@ namespace Rebellion.Game.Events
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
                 throw new InvalidOperationException(
-                    $"SetOfficerImageSet could not resolve officer '{OfficerInstanceID}'."
+                    $"SetOfficerImages could not resolve officer '{OfficerInstanceID}'."
                 );
-            officer.ImageSet.MergeFrom(ImageSet);
+            officer.ImageSet.MergeFrom(
+                new OfficerImageSet
+                {
+                    DisplayImagePath = DisplayImagePath,
+                    SmallDisplayImagePath = SmallDisplayImagePath,
+                    MessageImagePath = MessageImagePath,
+                    EncyclopediaImagePath = EncyclopediaImagePath,
+                }
+            );
             officer.ApplyImageSet();
             return new List<GameResult>();
         }
@@ -385,7 +385,41 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
 
-        public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> Order { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> PersonnelArrived { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> MissionSuccess { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> MissionFailure { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> MissionAbort { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> Released { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> Recovered { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> EnemyDetected { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> ForceGrowth { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> ForceUserDiscovered { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> TraitorDiscovered { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> RescueAttempt { get; set; } = new List<string>();
 
         /// <inheritdoc />
         public override List<GameResult> Execute(GameActionContext context)
@@ -397,7 +431,23 @@ namespace Rebellion.Game.Events
                     $"SetOfficerVoiceSet could not resolve officer '{OfficerInstanceID}'."
                 );
 
-            officer.VoiceSet.MergeFrom(VoiceSet);
+            officer.VoiceSet.MergeFrom(
+                new OfficerVoiceSet
+                {
+                    Order = Order,
+                    PersonnelArrived = PersonnelArrived,
+                    MissionSuccess = MissionSuccess,
+                    MissionFailure = MissionFailure,
+                    MissionAbort = MissionAbort,
+                    Released = Released,
+                    Recovered = Recovered,
+                    EnemyDetected = EnemyDetected,
+                    ForceGrowth = ForceGrowth,
+                    ForceUserDiscovered = ForceUserDiscovered,
+                    TraitorDiscovered = TraitorDiscovered,
+                    RescueAttempt = RescueAttempt,
+                }
+            );
             return new List<GameResult>();
         }
     }

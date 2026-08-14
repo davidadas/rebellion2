@@ -47,7 +47,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_EventResults_AddsMessages()
+        public void ProcessTick_EventResults_DoesNotAddAutomaticMessages()
         {
             GameRoot game = new GameRoot();
             Faction faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
@@ -73,7 +73,7 @@ namespace Rebellion.Tests.Managers
 
             manager.ProcessTick();
 
-            Assert.AreEqual(1, faction.Messages[MessageType.Manufacturing].Count);
+            Assert.IsEmpty(faction.Messages[MessageType.Manufacturing]);
         }
 
         [Test]

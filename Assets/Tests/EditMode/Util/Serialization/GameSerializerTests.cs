@@ -182,6 +182,13 @@ namespace Rebellion.Tests.Util.Serialization
     }
 
     [PersistableObject]
+    public class ItemWithNamedCollectionItems
+    {
+        [PersistableCollectionItem(Name = "Path")]
+        public List<string> Paths { get; set; } = new List<string>();
+    }
+
+    [PersistableObject]
     public class ItemWithInclude
     {
         [PersistableInclude(typeof(SimpleItem))]
@@ -194,6 +201,24 @@ namespace Rebellion.Tests.Util.Serialization
     [TestFixture]
     public class GameSerializerTests
     {
+        [Test]
+        public void Serialize_NamedScalarCollectionItems_RoundTripsConfiguredElementName()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithNamedCollectionItems));
+            ItemWithNamedCollectionItems item = new ItemWithNamedCollectionItems
+            {
+                Paths = new List<string> { "first", "second" },
+            };
+
+            string xml = SerializeToString(serializer, item);
+            ItemWithNamedCollectionItems restored =
+                (ItemWithNamedCollectionItems)DeserializeFromString(serializer, xml);
+
+            StringAssert.Contains("<Path>first</Path>", xml);
+            StringAssert.DoesNotContain("<String>", xml);
+            CollectionAssert.AreEqual(item.Paths, restored.Paths);
+        }
+
         [Test]
         public void Serialize_SingleObject_ReturnsExpectedXml()
         {
@@ -276,61 +301,6 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_SuppressNextAutomaticMessage_RoundTripsExplicitAction()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "JABBA_CAPTURES_LUKE",
-                Triggers = new List<GameEventTrigger>
-                {
-                    new GameEventTrigger(
-                        "core:officer.capture-changed",
-                        ("SourceEventInstanceID", "sourceEventInstanceID")
-                    ),
-                },
-                Conditionals = new List<GameConditional>
-                {
-                    new EvaluateBindingConditional
-                    {
-                        Binding = "$sourceEventInstanceID",
-                        Comparison = EventVariableComparison.Equal,
-                        ExpectedValue = "LUKE_RESCUES_HAN_FROM_JABBA",
-                    },
-                },
-                Actions = new List<GameAction>
-                {
-                    new SuppressNextAutomaticMessageAction
-                    {
-                        MessageType = MessageResultType.OfficerCaptured,
-                        RecipientFactionInstanceID = "FNALL1",
-                    },
-                },
-            };
-
-            string serializedXml = SerializeToString(serializer, gameEvent);
-            GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
-
-            StringAssert.Contains(
-                "<SuppressNextAutomaticMessage Type=\"OfficerCaptured\" RecipientFactionInstanceID=\"FNALL1\"",
-                serializedXml
-            );
-            StringAssert.Contains(
-                "<EvaluateBinding Binding=\"$sourceEventInstanceID\" Comparison=\"Equal\" ExpectedValue=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
-                serializedXml
-            );
-            SuppressNextAutomaticMessageAction action =
-                deserialized.Actions.Single() as SuppressNextAutomaticMessageAction;
-            Assert.IsNotNull(action);
-            Assert.AreEqual(MessageResultType.OfficerCaptured, action.MessageType);
-            Assert.AreEqual("FNALL1", action.RecipientFactionInstanceID);
-            EvaluateBindingConditional source =
-                deserialized.Conditionals[0] as EvaluateBindingConditional;
-            Assert.IsNotNull(source);
-            Assert.AreEqual("LUKE_RESCUES_HAN_FROM_JABBA", source.ExpectedValue);
-        }
-
-        [Test]
         public void Serialize_GameEventMessageActions_RoundTripsAliasesAndPresentation()
         {
             GameSerializer serializer = new GameSerializer(typeof(GameEvent));
@@ -397,7 +367,7 @@ namespace Rebellion.Tests.Util.Serialization
                             {
                                 Key = "luke.stage",
                                 Comparison = EventVariableComparison.Equal,
-                                ExpectedValue = 1,
+                                CompareTo = 1,
                             },
                         },
                         Actions = new List<GameAction>
@@ -543,7 +513,7 @@ namespace Rebellion.Tests.Util.Serialization
                     {
                         Selectors = new List<GameEventSelector>
                         {
-                            new SelectLastParent { UnitInstanceID = "LUKE_SKYWALKER" },
+                            new SelectPreviousLocation { UnitInstanceID = "LUKE_SKYWALKER" },
                             new SelectPlanets { InstanceID = "YAVIN" },
                         },
                     },
@@ -560,7 +530,7 @@ namespace Rebellion.Tests.Util.Serialization
             SelectFirst destination = restored.Destination.OfType<SelectFirst>().Single();
             Assert.AreEqual(
                 "LUKE_SKYWALKER",
-                destination.Selectors.OfType<SelectLastParent>().Single().UnitInstanceID
+                destination.Selectors.OfType<SelectPreviousLocation>().Single().UnitInstanceID
             );
             Assert.AreEqual(
                 "YAVIN",

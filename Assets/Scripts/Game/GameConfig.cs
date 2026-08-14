@@ -578,10 +578,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class DuelResolutionConfig
         {
-            public Dictionary<
-                int,
-                int
-            > CaptureAvoidancePercentByMinimumCombatAdvantage { get; set; } =
+            public Dictionary<int, int> CombatCaptureAvoidance { get; set; } =
                 new Dictionary<int, int>();
 
             public int CaptureEvasionInjuryBaseChance { get; set; } = 100;

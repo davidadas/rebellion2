@@ -14,17 +14,14 @@ namespace Rebellion.Game.Messages
 
         private MessageResultBatch(
             GameResult[] automaticResults,
-            MessageRequestedResult[] authoredRequests,
-            SuppressNextAutomaticMessageResult[] suppressions
+            MessageRequestedResult[] authoredRequests
         )
         {
             _automaticResults = automaticResults;
             AuthoredRequests = authoredRequests;
-            Suppressions = suppressions;
         }
 
         public IReadOnlyList<MessageRequestedResult> AuthoredRequests { get; }
-        public IReadOnlyList<SuppressNextAutomaticMessageResult> Suppressions { get; }
 
         public IEnumerable<T> OfType<T>()
             where T : GameResult => _automaticResults.OfType<T>();
@@ -37,11 +34,10 @@ namespace Rebellion.Game.Messages
                 completeResults
                     .Where(result =>
                         result is not MessageRequestedResult
-                        && result is not SuppressNextAutomaticMessageResult
+                        && string.IsNullOrWhiteSpace(result.SourceEventInstanceID)
                     )
                     .ToArray(),
-                completeResults.OfType<MessageRequestedResult>().ToArray(),
-                completeResults.OfType<SuppressNextAutomaticMessageResult>().ToArray()
+                completeResults.OfType<MessageRequestedResult>().ToArray()
             );
         }
     }

@@ -90,10 +90,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             config.DuelResolution = new GameConfig.DuelResolutionConfig
             {
-                CaptureAvoidancePercentByMinimumCombatAdvantage = new Dictionary<int, int>
-                {
-                    { 0, 50 },
-                },
+                CombatCaptureAvoidance = new Dictionary<int, int> { { 0, 50 } },
                 CaptureEvasionInjuryBaseChance = 100,
                 MinimumInjuryChance = 1,
                 InjuryBase = 1,

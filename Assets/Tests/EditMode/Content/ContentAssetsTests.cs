@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -9,18 +9,49 @@ namespace Rebellion.Tests.Content
     [TestFixture]
     public sealed class ContentAssetsTests
     {
-        [Test]
-        public void GetTexture_ConfiguredPackAddress_LoadsAndCachesTexture()
-        {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            using ContentAssets assets = CreateAssets(pack);
-            FactionTheme theme = pack.GameData.FactionThemes.First(candidate =>
-                candidate.FactionInstanceID == pack.Scenario.PlayableFactionIDs[0]
-            );
-            string address = theme.ConfirmDialogTheme.BackgroundImagePath;
+        private const string _textureAddress = "Application/Textures/test";
+        private const string _videoAddress = "Application/Videos/test";
+        private string _contentRoot;
+        private string _packRoot;
 
-            Texture2D first = assets.GetTexture(address);
-            Texture2D second = assets.GetTexture(address);
+        [SetUp]
+        public void SetUp()
+        {
+            _contentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "rebellion2-content-assets",
+                Guid.NewGuid().ToString("N")
+            );
+            _packRoot = Path.Combine(_contentRoot, "Pack");
+            Directory.CreateDirectory(Path.Combine(_contentRoot, "Application", "Textures"));
+            Directory.CreateDirectory(Path.Combine(_contentRoot, "Application", "Videos"));
+            Directory.CreateDirectory(_packRoot);
+            File.WriteAllBytes(
+                Path.Combine(_contentRoot, "Application", "Textures", "test.png"),
+                Convert.FromBase64String(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+                )
+            );
+            File.WriteAllBytes(
+                Path.Combine(_contentRoot, "Application", "Videos", "test.mp4"),
+                Array.Empty<byte>()
+            );
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (Directory.Exists(_contentRoot))
+                Directory.Delete(_contentRoot, true);
+        }
+
+        [Test]
+        public void GetTexture_ExistingAddress_LoadsAndCachesTexture()
+        {
+            using ContentAssets assets = CreateAssets();
+
+            Texture2D first = assets.GetTexture(_textureAddress);
+            Texture2D second = assets.GetTexture(_textureAddress);
 
             Assert.IsNotNull(first);
             Assert.AreSame(first, second);
@@ -29,156 +60,94 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void GetTexture_MissingApplicationAddress_ReturnsNull()
+        public void GetTexture_MissingAddress_ReturnsNull()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            using ContentAssets assets = CreateAssets(pack);
+            using ContentAssets assets = CreateAssets();
 
-            Assert.IsNull(assets.GetTexture("Application/Common/UI/missing"));
-            Assert.IsNull(assets.GetTexture("Application/Common/UI/missing"));
+            Assert.IsNull(assets.GetTexture("Application/Textures/missing"));
+            Assert.IsNull(assets.GetTexture("Application/Textures/missing"));
         }
 
         [Test]
-        public void GetReadableTexture_ApplicationCursor_RemainsReadableAndCached()
+        public void GetReadableTexture_ExistingAddress_RemainsReadableAndCached()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            using ContentAssets assets = CreateAssets(pack);
-            const string address = "Application/Common/UI/ui_common_cursor_default_outlined";
+            using ContentAssets assets = CreateAssets();
 
-            Texture2D first = assets.GetReadableTexture(address);
-            Texture2D second = assets.GetReadableTexture(address);
+            Texture2D first = assets.GetReadableTexture(_textureAddress);
+            Texture2D second = assets.GetReadableTexture(_textureAddress);
 
             Assert.IsNotNull(first);
             Assert.IsTrue(first.isReadable);
             Assert.AreSame(first, second);
-            Assert.AreNotSame(first, assets.GetTexture(address));
+            Assert.AreNotSame(first, assets.GetTexture(_textureAddress));
         }
 
         [Test]
-        public async System.Threading.Tasks.Task PreloadAsync_TextureDirectory_CachesExtensionlessAddressAsync()
+        public async Task PreloadAsync_TextureDirectory_CachesExtensionlessAddressAsync()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            string contentRoot = Path.Combine(
-                Path.GetTempPath(),
-                "rebellion2-content-assets",
-                Guid.NewGuid().ToString("N")
-            );
-            string textureDirectory = Path.Combine(contentRoot, "Application", "Common", "UI");
-            Directory.CreateDirectory(textureDirectory);
-            string sourcePath = Path.Combine(
-                pack.ContentRootPath,
-                "Application",
-                "Common",
-                "UI",
-                "ui_common_confirmation_dialog.png"
-            );
-            string destinationPath = Path.Combine(
-                textureDirectory,
-                "ui_common_confirmation_dialog.png"
-            );
-            File.Copy(sourcePath, destinationPath);
-
-            try
+            using ContentAssets assets = CreateAssets();
+            ContentPreloadManifest manifest = new ContentPreloadManifest
             {
-                using ContentAssets assets = new ContentAssets(
-                    contentRoot,
-                    Path.Combine(contentRoot, "pack")
-                );
-                ContentPreloadManifest manifest = new ContentPreloadManifest
-                {
-                    TexturesPerFrame = 100,
-                    TextureDirectories = { "Application/Common/UI" },
-                };
+                TexturesPerFrame = 100,
+                TextureDirectories = { "Application/Textures" },
+            };
 
-                await assets.PreloadAsync(manifest);
-                File.Delete(destinationPath);
+            await assets.PreloadAsync(manifest);
+            File.Delete(Path.Combine(_contentRoot, "Application", "Textures", "test.png"));
 
-                Assert.IsNotNull(
-                    assets.GetTexture("Application/Common/UI/ui_common_confirmation_dialog")
-                );
-            }
-            finally
-            {
-                Directory.Delete(contentRoot, true);
-            }
+            Assert.IsNotNull(assets.GetTexture(_textureAddress));
         }
 
         [Test]
         public void GetTexture_UnscopedAddress_ThrowsArgumentException()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            using ContentAssets assets = CreateAssets(pack);
+            using ContentAssets assets = CreateAssets();
 
-            Assert.Throws<ArgumentException>(() => assets.GetTexture("UI/outside"));
+            Assert.Throws<ArgumentException>(() => assets.GetTexture("Textures/outside"));
         }
 
         [Test]
         public void GetTexture_AddressLeavesPackRoot_ThrowsArgumentException()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            using ContentAssets assets = CreateAssets(pack);
+            using ContentAssets assets = CreateAssets();
 
             Assert.Throws<ArgumentException>(() => assets.GetTexture("Pack/../../outside"));
         }
 
         [Test]
-        public void GetVideoUrl_ConfiguredSharedAddress_ReturnsExistingLocalFile()
+        public void GetVideoUrl_ExistingAddress_ReturnsExistingLocalFile()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            using ContentAssets assets = CreateAssets(pack);
+            using ContentAssets assets = CreateAssets();
 
-            string url = assets.GetVideoUrl("Application/Boot/Videos/intro");
+            string url = assets.GetVideoUrl(_videoAddress);
 
             Assert.AreEqual(Uri.UriSchemeFile, new Uri(url).Scheme);
             Assert.IsTrue(File.Exists(new Uri(url).LocalPath));
         }
 
         [Test]
-        public void GetVideoUrl_ConfiguredFactionEndings_ReturnExistingLocalFiles()
-        {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            using ContentAssets assets = CreateAssets(pack);
-
-            foreach (
-                FactionTheme theme in pack.GameData.FactionThemes.Where(theme =>
-                    pack.Scenario.PlayableFactionIDs.Contains(theme.FactionInstanceID)
-                )
-            )
-            {
-                Assert.IsTrue(
-                    File.Exists(new Uri(assets.GetVideoUrl(theme.VictoryCutscenePath)).LocalPath)
-                );
-                Assert.IsTrue(
-                    File.Exists(new Uri(assets.GetVideoUrl(theme.DefeatCutscenePath)).LocalPath)
-                );
-            }
-        }
-
-        [Test]
         public void GetVideoUrl_AbsoluteAddress_ThrowsArgumentException()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            using ContentAssets assets = CreateAssets(pack);
+            using ContentAssets assets = CreateAssets();
 
-            Assert.Throws<ArgumentException>(() => assets.GetVideoUrl(pack.PackRootPath));
+            Assert.Throws<ArgumentException>(() => assets.GetVideoUrl(_packRoot));
         }
 
         [Test]
         public void Dispose_SubsequentAssetRequest_ThrowsObjectDisposedException()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            ContentAssets assets = CreateAssets(pack);
+            ContentAssets assets = CreateAssets();
 
             assets.Dispose();
 
             Assert.Throws<ObjectDisposedException>(() =>
-                assets.GetTexture("Application/Common/UI/missing")
+                assets.GetTexture("Application/Textures/missing")
             );
         }
 
-        private static ContentAssets CreateAssets(ContentPack pack)
+        private ContentAssets CreateAssets()
         {
-            return new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
+            return new ContentAssets(_contentRoot, _packRoot);
         }
     }
 }

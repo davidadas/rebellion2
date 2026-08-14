@@ -314,69 +314,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_SuppressNextAutomaticMessage_EmitsExplicitInstruction()
-        {
-            Officer luke = new Officer { InstanceID = "luke" };
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "JABBA_CAPTURES_LUKE",
-                TriggerCount = 1,
-                Triggers = new List<GameEventTrigger>
-                {
-                    new GameEventTrigger(
-                        "core:officer.capture-changed",
-                        ("OfficerInstanceID", "officerInstanceID"),
-                        ("IsCaptured", "isCaptured"),
-                        ("SourceEventInstanceID", "sourceEventInstanceID")
-                    ),
-                },
-                Conditionals = new List<GameConditional>
-                {
-                    BindingEquals("sourceEventInstanceID", "LUKE_RESCUES_HAN_FROM_JABBA"),
-                    BindingEquals("officerInstanceID", luke.InstanceID),
-                    BindingEquals("isCaptured", "true"),
-                },
-                Actions = new List<GameAction>
-                {
-                    new SetEventVariableAction { Key = "jabba.captured.luke", Operand = 1 },
-                    new SuppressNextAutomaticMessageAction
-                    {
-                        MessageType = MessageResultType.OfficerCaptured,
-                    },
-                },
-            };
-            _game.EventPool.Add(gameEvent);
-            OfficerCaptureStateResult unrelatedCapture = new OfficerCaptureStateResult
-            {
-                TargetOfficer = luke,
-                IsCaptured = true,
-                SourceEventInstanceID = "UNRELATED_MISSION",
-            };
-            OfficerCaptureStateResult palaceCapture = new OfficerCaptureStateResult
-            {
-                TargetOfficer = luke,
-                IsCaptured = true,
-                SourceEventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA",
-            };
-            MissionCompletedResult palaceMission = new MissionCompletedResult
-            {
-                SourceEventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA",
-            };
-
-            _system.HandleResults(new[] { unrelatedCapture });
-            List<GameResult> reactions = _system.HandleResults(
-                new GameResult[] { palaceCapture, palaceMission }
-            );
-
-            Assert.AreEqual(
-                MessageResultType.OfficerCaptured,
-                reactions.OfType<SuppressNextAutomaticMessageResult>().Single().MessageType
-            );
-            Assert.AreEqual(1, _game.EventRuntime.GetVariable("jabba.captured.luke"));
-            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
-        }
-
-        [Test]
         public void HandleResults_WithoutSuppression_PreservesTriggerAndSiblingMessages()
         {
             GameEvent gameEvent = new GameEvent
@@ -751,7 +688,7 @@ namespace Rebellion.Tests.Systems
             {
                 Binding = "$" + name,
                 Comparison = EventVariableComparison.Equal,
-                ExpectedValue = value,
+                CompareTo = value,
             };
 
         private sealed class RecordScopedPlanetAction : GameAction

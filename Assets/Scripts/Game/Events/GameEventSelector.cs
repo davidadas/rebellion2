@@ -489,8 +489,8 @@ namespace Rebellion.Game.Events
                 .Distinct();
     }
 
-    [PersistableObject(Name = "SelectLastParent")]
-    public sealed class SelectLastParent : GameEventSelector
+    [PersistableObject(Name = "SelectPreviousLocation")]
+    public sealed class SelectPreviousLocation : GameEventSelector
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }

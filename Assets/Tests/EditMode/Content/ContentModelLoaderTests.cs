@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -10,8 +11,8 @@ public sealed class ContentModelLoaderTests
     [Test]
     public async Task LoadAsync_ValidGlb_ReturnsDisposableModelAsync()
     {
-        ContentPack pack = ContentPackLoader.OpenActive();
-        using ContentAssets assets = new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
+        string contentRoot = Path.Combine(Application.dataPath, "Content");
+        using ContentAssets assets = new ContentAssets(contentRoot, contentRoot);
         string filePath = assets.ResolveFile(_citadelAddress, ".glb");
         Assert.That(filePath, Is.Not.Null, $"Test GLB is missing: {_citadelAddress}");
 

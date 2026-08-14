@@ -13,52 +13,6 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Suppresses one matching automatically generated message in the current result batch.
-    /// </summary>
-    [PersistableObject(Name = "SuppressNextAutomaticMessage")]
-    public sealed class SuppressNextAutomaticMessageAction : GameAction
-    {
-        [PersistableAttribute(Name = "Type")]
-        public MessageResultType MessageType { get; set; }
-
-        [PersistableAttribute]
-        public string RecipientFactionInstanceID { get; set; }
-
-        public override List<GameResult> Execute(GameActionContext context)
-        {
-            GameRoot game = context.Game;
-            if (MessageType == MessageResultType.None)
-                throw new InvalidOperationException(
-                    "SuppressNextAutomaticMessage requires a concrete message result type."
-                );
-            GameResult targetResult = context.Activation?.TriggerResult;
-            if (targetResult == null)
-                throw new InvalidOperationException(
-                    "SuppressNextAutomaticMessage requires a triggering result."
-                );
-
-            Faction recipient = string.IsNullOrWhiteSpace(RecipientFactionInstanceID)
-                ? null
-                : game.GetFactionByOwnerInstanceID(RecipientFactionInstanceID);
-            if (!string.IsNullOrWhiteSpace(RecipientFactionInstanceID) && recipient == null)
-                throw new InvalidOperationException(
-                    $"SuppressNextAutomaticMessage could not resolve faction '{RecipientFactionInstanceID}'."
-                );
-
-            return new List<GameResult>
-            {
-                new SuppressNextAutomaticMessageResult
-                {
-                    MessageType = MessageType,
-                    Recipient = recipient,
-                    TargetResult = targetResult,
-                    Tick = game.CurrentTick,
-                },
-            };
-        }
-    }
-
-    /// <summary>
     /// Selects one authored narrative fragment from current simulation state.
     /// </summary>
     [PersistableObject(Name = "ConditionalBody")]

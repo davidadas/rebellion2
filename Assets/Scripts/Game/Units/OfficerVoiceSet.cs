@@ -9,17 +9,40 @@ namespace Rebellion.Game.Units
     [PersistableObject]
     public sealed class OfficerVoiceSet
     {
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> Order { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> PersonnelArrived { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> MissionSuccess { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> MissionFailure { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> MissionAbort { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> Released { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> Recovered { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> EnemyDetected { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> ForceGrowth { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> ForceUserDiscovered { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> TraitorDiscovered { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Path")]
         public List<string> RescueAttempt { get; set; } = new List<string>();
 
         public IReadOnlyList<string> Get(OfficerVoiceLineType type)
