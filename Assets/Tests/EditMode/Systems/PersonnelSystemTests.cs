@@ -76,8 +76,8 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(retired);
-            Assert.IsInstanceOf<VoidPool>(officer.GetParent());
-            Assert.IsInstanceOf<VoidPool>(specialForces.GetParent());
+            Assert.IsNull(officer.GetParent());
+            Assert.IsNull(specialForces.GetParent());
             Assert.IsTrue(_game.IsInVoid(officer));
             Assert.IsTrue(_game.IsInVoid(specialForces));
             Assert.IsTrue(officer.IsRetired);

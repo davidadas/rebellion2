@@ -79,10 +79,7 @@ namespace Rebellion.Tests.Systems
                 new[] { Request(encountered, opposing) }
             );
 
-            DuelRejectedResult rejection = results.OfType<DuelRejectedResult>().Single();
-            Assert.AreSame(encountered, rejection.EncounteredOfficer);
-            Assert.AreSame(opposing, rejection.OpposingOfficer);
-            Assert.AreEqual("The officers are not at the same planet.", rejection.Reason);
+            Assert.IsEmpty(results);
         }
 
         private static (GameRoot game, Officer encountered, Officer opposing) BuildEncounter()

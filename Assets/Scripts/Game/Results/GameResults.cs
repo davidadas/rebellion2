@@ -576,16 +576,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A persistent data-defined event variable changed.
-    /// </summary>
-    public class EventVariableChangedResult : GameResult
-    {
-        public string Key { get; set; }
-        public int PreviousValue { get; set; }
-        public int CurrentValue { get; set; }
-    }
-
-    /// <summary>
     /// A data-defined event requested movement through the authoritative movement system.
     /// </summary>
     public class UnitMovementRequestedResult : GameResult
@@ -616,25 +606,6 @@ namespace Rebellion.Game.Results
         public string LocationInstanceID { get; set; }
         public List<string> MainParticipantInstanceIDs { get; set; } = new List<string>();
         public List<string> DecoyParticipantInstanceIDs { get; set; } = new List<string>();
-    }
-
-    /// <summary>
-    /// A content-defined mission request could not be created from the current simulation state.
-    /// </summary>
-    public sealed class CustomMissionRejectedResult : GameResult
-    {
-        public CustomMissionRequestedResult Request { get; set; }
-        public string Reason { get; set; }
-    }
-
-    /// <summary>
-    /// A requested duel could not be resolved against the current simulation state.
-    /// </summary>
-    public sealed class DuelRejectedResult : GameResult
-    {
-        public Officer EncounteredOfficer { get; set; }
-        public Officer OpposingOfficer { get; set; }
-        public string Reason { get; set; }
     }
 
     /// <summary>

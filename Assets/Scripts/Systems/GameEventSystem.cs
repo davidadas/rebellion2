@@ -170,38 +170,22 @@ namespace Rebellion.Systems
                 triggerResult,
                 trigger
             );
-            IReadOnlyList<ISceneNode> targets = gameEvent.ForEach?.Select(
-                _game,
-                _provider,
-                selectorContext
+            ISceneNode target = gameEvent.Target?.Select(_game, _provider, selectorContext);
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                gameEvent,
+                state,
+                target,
+                triggerResult,
+                trigger
             );
-            if (gameEvent.ForEach != null && targets.Count == 0)
+            if (!gameEvent.AreConditionsMet(_game, context))
             {
                 results = new List<GameResult>();
                 return false;
             }
 
-            IEnumerable<ISceneNode> activationTargets = targets ?? new ISceneNode[] { null };
-            results = new List<GameResult>();
-            bool executed = false;
-            foreach (ISceneNode target in activationTargets)
-            {
-                GameEventExecutionContext context = new GameEventExecutionContext(
-                    gameEvent,
-                    state,
-                    target,
-                    triggerResult,
-                    trigger
-                );
-                if (!gameEvent.AreConditionsMet(_game, context))
-                    continue;
-
-                GameLogger.Log($"Executing game event: {gameEvent.InstanceID}");
-                results.AddRange(gameEvent.Execute(_game, _provider, context));
-                executed = true;
-            }
-            if (!executed)
-                return false;
+            GameLogger.Log($"Executing game event: {gameEvent.InstanceID}");
+            results = gameEvent.Execute(_game, _provider, context);
 
             state.ExecutionCount++;
             state.LastExecutionTick = _game.CurrentTick;

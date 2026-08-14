@@ -405,7 +405,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessEvents_ForEachPlanets_UsesOnePersistedSchedule()
+        public void ProcessEvents_TargetedPlanet_UsesOnePersistedSchedule()
         {
             _game.Factions.Add(new Faction { InstanceID = "alliance" });
             _game.Factions.Add(new Faction { InstanceID = "empire" });
@@ -421,9 +421,12 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "SCOPED",
 
-                ForEach = new GameEventForEach
+                Target = new GameEventTarget
                 {
-                    Selectors = new List<GameEventSelector> { new SelectPlanets() },
+                    Selectors = new List<GameEventSelector>
+                    {
+                        new SelectPlanets { InstanceID = first.InstanceID },
+                    },
                 },
                 Conditionals = new List<GameConditional>
                 {
@@ -446,7 +449,7 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.EventPool);
 
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("scope.first"));
-            Assert.AreEqual(1, _game.EventRuntime.GetVariable("scope.second"));
+            Assert.Zero(_game.EventRuntime.GetVariable("scope.second"));
             Assert.AreEqual(30, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
             Assert.AreEqual(30, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
         }
@@ -463,7 +466,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "OWNED_ONLY",
 
-                ForEach = new GameEventForEach
+                Target = new GameEventTarget
                 {
                     Selectors = new List<GameEventSelector> { new SelectPlanets() },
                 },
@@ -506,7 +509,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "OWNED_ONLY",
 
-                ForEach = new GameEventForEach
+                Target = new GameEventTarget
                 {
                     Selectors = new List<GameEventSelector> { new SelectPlanets() },
                 },
@@ -537,7 +540,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessEvents_OneShotForEachPlanets_ExecutesEachPlanetOnce()
+        public void ProcessEvents_OneShotTarget_ExecutesTargetOnce()
         {
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             Planet planet = new Planet { InstanceID = "planet" };
@@ -547,7 +550,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "ONE_SHOT_PER_PLANET",
                 TriggerCount = 1,
-                ForEach = new GameEventForEach
+                Target = new GameEventTarget
                 {
                     Selectors = new List<GameEventSelector> { new SelectPlanets() },
                 },
@@ -576,7 +579,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "DELAYED_RANDOM_TARGET",
                 TriggerCount = 1,
                 Schedule = new GameEventScheduler { At = new AtTick { Tick = 10 } },
-                ForEach = new GameEventForEach
+                Target = new GameEventTarget
                 {
                     Selectors = new List<GameEventSelector>
                     {

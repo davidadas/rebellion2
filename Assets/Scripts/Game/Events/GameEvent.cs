@@ -6,6 +6,19 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Events
 {
     /// <summary>
+    /// Persists the scheduling history for one authored event definition.
+    /// </summary>
+    [PersistableObject]
+    public sealed class GameEventState
+    {
+        public bool IsInitialized { get; set; }
+        public int NextEligibleTick { get; set; }
+        public int ExecutionCount { get; set; }
+        public int LastExecutionTick { get; set; } = -1;
+        public bool IsExhausted { get; set; }
+    }
+
+    /// <summary>
     /// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.
     /// Execute returns the results of those actions for notification and logging.
     /// </summary>
@@ -37,7 +50,7 @@ namespace Rebellion.Game.Events
         public GameEventScheduler Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameConditional> Until { get; set; } = new List<GameConditional>();
-        public GameEventForEach ForEach { get; set; }
+        public GameEventTarget Target { get; set; }
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
         /// <summary>

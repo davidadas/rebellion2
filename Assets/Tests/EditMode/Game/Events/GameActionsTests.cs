@@ -352,13 +352,9 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            EventVariableChangedResult result = action
-                .Execute(game, new FixedRandomProvider(new[] { 0d }))
-                .OfType<EventVariableChangedResult>()
-                .Single();
+            List<GameResult> results = action.Execute(game, new FixedRandomProvider(new[] { 0d }));
 
-            Assert.AreEqual(2, result.PreviousValue);
-            Assert.AreEqual(3, result.CurrentValue);
+            Assert.IsEmpty(results);
             Assert.AreEqual(3, game.EventRuntime.GetVariable("luke.stage"));
             Assert.AreEqual(0, game.EventRuntime.GetVariable("wrong"));
         }
@@ -555,7 +551,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AddToVoid_ActiveOfficer_ParentsOfficerToVoidPool()
+        public void AddToVoid_ActiveOfficer_RetainsDetachedOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -563,7 +559,7 @@ namespace Rebellion.Tests.Game.Events
 
             new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
 
-            Assert.IsInstanceOf<VoidPool>(luke.GetParent());
+            Assert.IsNull(luke.GetParent());
             Assert.IsTrue(game.IsInVoid(luke));
         }
 
@@ -580,7 +576,7 @@ namespace Rebellion.Tests.Game.Events
                 UnitInstanceID = luke.InstanceID,
             }.Execute(game);
 
-            Assert.IsInstanceOf<EventVariableChangedResult>(results.Single());
+            Assert.IsEmpty(results);
             Assert.IsNull(luke.GetParent());
             Assert.AreEqual(origin.InstanceID, luke.LastParentInstanceID);
         }
@@ -957,8 +953,7 @@ namespace Rebellion.Tests.Game.Events
             List<GameResult> results = action.Execute(game, new FixedRNG(0.99));
 
             Assert.AreEqual(1, game.EventRuntime.GetVariable("succeeded"));
-            Assert.AreEqual(1, results.Count);
-            Assert.IsInstanceOf<EventVariableChangedResult>(results[0]);
+            Assert.IsEmpty(results);
         }
 
         [Test]

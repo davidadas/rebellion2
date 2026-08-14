@@ -2928,10 +2928,7 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = system.HandleResults(new[] { request });
 
-            CustomMissionRejectedResult rejection = results
-                .OfType<CustomMissionRejectedResult>()
-                .Single();
-            Assert.AreSame(request, rejection.Request);
+            Assert.IsEmpty(results);
             Assert.AreEqual(0, game.GetSceneNodesByType<CustomMission>().Count);
         }
     }

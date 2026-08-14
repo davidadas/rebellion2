@@ -90,18 +90,7 @@ namespace Rebellion.Systems
                     out Planet location
                 );
                 if (rejectionReason != null)
-                {
-                    reactions.Add(
-                        new CustomMissionRejectedResult
-                        {
-                            Request = result,
-                            Reason = rejectionReason,
-                            SourceEventInstanceID = result.SourceEventInstanceID,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
                     continue;
-                }
 
                 CustomMission mission = new CustomMission(
                     definition,

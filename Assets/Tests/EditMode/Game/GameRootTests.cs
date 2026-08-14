@@ -731,7 +731,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void AddToVoid_OwnedOfficer_ParentsOfficerToFactionVoidPool()
+        public void AddToVoid_OwnedOfficer_RetainsDetachedOfficer()
         {
             Officer officer = new Officer
             {
@@ -742,7 +742,7 @@ namespace Rebellion.Tests.Game
 
             _game.AddToVoid(officer);
 
-            Assert.IsInstanceOf<VoidPool>(officer.GetParent());
+            Assert.IsNull(officer.GetParent());
             Assert.IsTrue(_game.IsInVoid(officer));
             Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
             Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
@@ -788,7 +788,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void ChangeOwnership_OfficerInVoid_MovesOfficerToNewFactionVoidPool()
+        public void ChangeOwnership_OfficerInVoid_PreservesRetentionAndChangesOwner()
         {
             Officer officer = new Officer
             {
@@ -801,7 +801,7 @@ namespace Rebellion.Tests.Game
             _game.ChangeOwnership(officer, _faction2.InstanceID);
 
             Assert.AreEqual(_faction2.InstanceID, officer.OwnerInstanceID);
-            Assert.AreEqual(_faction2.InstanceID, officer.GetParent().OwnerInstanceID);
+            Assert.IsNull(officer.GetParent());
             Assert.IsTrue(_game.IsInVoid(officer));
         }
 

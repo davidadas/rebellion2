@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
@@ -31,8 +32,19 @@ namespace Rebellion.Systems
         /// <param name="results">The game results to process.</param>
         public List<GameResult> ProcessResults(IEnumerable<GameResult> results)
         {
+            GameResult[] resultBatch =
+                results?.Where(result => result != null).ToArray()
+                ?? System.Array.Empty<GameResult>();
+            IEnumerable<GameResult> automaticResults = resultBatch.Where(
+                IsEligibleForAutomaticMessage
+            );
+            IEnumerable<MessageRequestedResult> authoredRequests =
+                resultBatch.OfType<MessageRequestedResult>();
+            IEnumerable<MessageDelivery> deliveries = _messageFactory
+                .CreateMessages(automaticResults, _game)
+                .Concat(_messageFactory.CreateAuthoredMessages(authoredRequests));
             List<GameResult> deliveredResults = new List<GameResult>();
-            foreach (MessageDelivery delivery in _messageFactory.CreateMessages(results, _game))
+            foreach (MessageDelivery delivery in deliveries)
             {
                 if (delivery.Recipient == null || delivery.Message == null)
                     continue;
@@ -53,6 +65,14 @@ namespace Rebellion.Systems
             }
             return deliveredResults;
         }
+
+        /// <summary>
+        /// Returns whether an ordinary simulation result may produce an automatic message.
+        /// Authored event effects must request their messages explicitly.
+        /// </summary>
+        private static bool IsEligibleForAutomaticMessage(GameResult result) =>
+            result is not MessageRequestedResult
+            && string.IsNullOrWhiteSpace(result.SourceEventInstanceID);
 
         /// <summary>
         /// Advances time-based message lifecycle state for the current game tick.

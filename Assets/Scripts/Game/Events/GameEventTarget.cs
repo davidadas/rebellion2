@@ -8,28 +8,35 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Defines the selected objects that receive independent event activation contexts.
+    /// Selects the single scene node targeted by one event activation.
     /// </summary>
     [PersistableObject]
-    public sealed class GameEventForEach
+    public sealed class GameEventTarget
     {
         [PersistableInlineCollection]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        public IReadOnlyList<ISceneNode> Select(
+        /// <summary>
+        /// Resolves the authored selector and requires exactly one target.
+        /// </summary>
+        public ISceneNode Select(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventExecutionContext context = null
         )
         {
             if (Selectors.Count != 1)
-                throw new InvalidOperationException("ForEach requires exactly one selector.");
+                throw new InvalidOperationException("Target requires exactly one selector.");
 
-            return Selectors[0]
+            ISceneNode[] targets = Selectors[0]
                 .Select(game, provider, context)
                 .Distinct()
-                .OrderBy(node => node.InstanceID, StringComparer.Ordinal)
                 .ToArray();
+            if (targets.Length != 1)
+                throw new InvalidOperationException(
+                    $"Target selector must resolve exactly one object but resolved {targets.Length}."
+                );
+            return targets[0];
         }
     }
 }

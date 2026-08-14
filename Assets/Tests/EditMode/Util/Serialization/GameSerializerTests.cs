@@ -2035,7 +2035,7 @@ namespace Rebellion.Tests.Util.Serialization
             );
             Assert.IsTrue(restored.IsInVoid(restoredFleet));
             Assert.AreSame(restoredFleet, restoredShip.GetParent());
-            Assert.AreEqual(faction.InstanceID, restoredFleet.GetParent().OwnerInstanceID);
+            Assert.IsNull(restoredFleet.GetParent());
             Assert.Contains(
                 restoredFleet,
                 restored

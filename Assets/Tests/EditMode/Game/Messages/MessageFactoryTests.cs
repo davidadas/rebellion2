@@ -30,32 +30,34 @@ namespace Rebellion.Tests.Game.Messages
             vader.DisplayName = "Darth Vader";
             game.AttachNode(luke, destination);
 
-            Message message = FirstMessageFor(
-                CreateMessages(
-                    game,
-                    new MessageDefinition[0],
-                    new MessageRequestedResult
+            MessageFactory factory = new MessageFactory(new MessageDefinition[0]);
+            MessageDelivery delivery = factory
+                .CreateAuthoredMessages(
+                    new[]
                     {
-                        Recipient = alliance,
-                        SubjectNode = luke,
-                        RelatedSubjectNode = vader,
-                        Location = destination,
-                        MessageType = MessageType.Advice,
-                        Subject = "{subject} at {location}",
-                        Body = "{subject} confronts {relatedSubject} for {faction}",
-                        BackgroundImagePath = "Story/image",
-                        OverlayImagePath = "Officers/luke",
-                        BackgroundAudioPath = "Story/dialogue",
-                        OfficerVoicePath = "Officers/luke/dialogue",
-                        SourceEventInstanceID = "STORY_EVENT",
-                        AdvisorNotification = new AdvisorNotification
+                        new MessageRequestedResult
                         {
-                            Preset = AdvisorNotificationPreset.SubjectReport,
+                            Recipient = alliance,
+                            SubjectNode = luke,
+                            RelatedSubjectNode = vader,
+                            Location = destination,
+                            MessageType = MessageType.Advice,
+                            Subject = "{subject} at {location}",
+                            Body = "{subject} confronts {relatedSubject} for {faction}",
+                            BackgroundImagePath = "Story/image",
+                            OverlayImagePath = "Officers/luke",
+                            BackgroundAudioPath = "Story/dialogue",
+                            OfficerVoicePath = "Officers/luke/dialogue",
+                            SourceEventInstanceID = "STORY_EVENT",
+                            AdvisorNotification = new AdvisorNotification
+                            {
+                                Preset = AdvisorNotificationPreset.SubjectReport,
+                            },
                         },
                     }
-                ),
-                alliance
-            );
+                )
+                .Single();
+            Message message = delivery.Message;
 
             Assert.AreEqual("Luke Skywalker at Yavin", message.Title);
             Assert.AreEqual("Luke Skywalker confronts Darth Vader for Alliance", message.Body);
@@ -66,10 +68,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Officers/luke/dialogue", message.OfficerVoicePath);
             Assert.AreEqual(luke.InstanceID, message.NavigationTargetInstanceID);
             Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
-            Assert.AreEqual(
-                AdvisorSubjectNotification.Report,
-                DeliveryFor(message).AdvisorSubjectNotification
-            );
+            Assert.AreEqual(AdvisorSubjectNotification.Report, delivery.AdvisorSubjectNotification);
         }
 
         [Test]
@@ -102,7 +101,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_AuthoredEventResult_SkipsAutomaticMessage()
+        public void CreateMessages_AuthoredEventResult_DoesNotApplyDeliveryPolicy()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
@@ -128,7 +127,7 @@ namespace Rebellion.Tests.Game.Messages
                 }
             );
 
-            Assert.IsEmpty(deliveries);
+            Assert.AreEqual("Captured", deliveries.Single().Message.Title);
         }
 
         [Test]

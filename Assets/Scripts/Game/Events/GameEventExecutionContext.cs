@@ -11,13 +11,15 @@ namespace Rebellion.Game.Events
     /// </summary>
     public sealed class GameEventExecutionContext
     {
+        private readonly Dictionary<string, object> _bindings = new Dictionary<string, object>(
+            StringComparer.Ordinal
+        );
         private readonly List<GameResult> _results = new List<GameResult>();
 
         public GameEvent Event { get; }
         public GameEventState State { get; }
         public ISceneNode Target { get; }
         public GameResult TriggerResult { get; }
-        public GameEventBindings Bindings { get; }
         public IReadOnlyList<GameResult> Results => _results;
 
         /// <summary>
@@ -40,7 +42,6 @@ namespace Rebellion.Game.Events
             State = state;
             Target = target;
             TriggerResult = triggerResult;
-            Bindings = new GameEventBindings();
             Bind("target", target);
             Bind("trigger", triggerResult);
             trigger?.Bind(this, triggerResult);
@@ -61,7 +62,10 @@ namespace Rebellion.Game.Events
         /// <param name="value">The value to expose; null values are ignored.</param>
         public void Bind(string name, object value)
         {
-            Bindings.Set(name, value);
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("A binding name is required.", nameof(name));
+            if (value != null)
+                _bindings[name] = value;
         }
 
         /// <summary>
@@ -73,7 +77,14 @@ namespace Rebellion.Game.Events
         /// <returns>True when a compatible binding exists.</returns>
         public bool TryGetBinding<T>(string name, out T value)
         {
-            return Bindings.TryGet(name, out value);
+            if (_bindings.TryGetValue(name, out object binding) && binding is T typed)
+            {
+                value = typed;
+                return true;
+            }
+
+            value = default;
+            return false;
         }
 
         /// <summary>
@@ -88,7 +99,7 @@ namespace Rebellion.Game.Events
         /// Attempts to read a binding without imposing a compile-time value type.
         /// </summary>
         public bool TryGetBinding(string name, out object value) =>
-            Bindings.TryGet(name, out value);
+            _bindings.TryGetValue(name, out value);
 
         public bool TryGetBindingReference<T>(string reference, out T value)
         {

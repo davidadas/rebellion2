@@ -768,7 +768,7 @@ internal sealed class StrategyStatusInfoBuilder
         ISceneNode item
     )
     {
-        if (item?.GetParent() == null || item.GetParent() is VoidPool)
+        if (item?.GetParent() == null)
             return;
         string location = GetStatusLocationName(target, item);
         if (!string.IsNullOrWhiteSpace(location))

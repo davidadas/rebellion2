@@ -44,19 +44,6 @@ namespace Rebellion.Systems
                 string rejectionReason = GetRejectionReason(request);
                 if (rejectionReason == null)
                     Resolve(request, reactions);
-                else
-                    reactions.Add(
-                        Stamp(
-                            new DuelRejectedResult
-                            {
-                                EncounteredOfficer = request?.EncounteredOfficer,
-                                OpposingOfficer = request?.OpposingOfficer,
-                                Reason = rejectionReason,
-                                Tick = _game.CurrentTick,
-                            },
-                            request
-                        )
-                    );
             }
 
             return reactions;
