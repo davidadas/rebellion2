@@ -85,7 +85,7 @@ assert_coverage_threshold() {
     local actual="$2"
     local threshold="$3"
 
-    if [ "$(echo "$actual < $threshold" | bc -l)" = "1" ]; then
+    if awk -v actual="$actual" -v threshold="$threshold" 'BEGIN { exit !(actual < threshold) }'; then
         echo "FAIL: $label coverage ${actual}% is below threshold ${threshold}%"
         return 1
     fi
@@ -211,7 +211,7 @@ do_test() {
 }
 
 do_coverage() {
-    require_command bc
+    require_command awk
 
     local coverage_dir="${COVERAGE_DIR:-Coverage}"
     run_unity_editmode_tests \
