@@ -1,5 +1,4 @@
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 
 namespace Rebellion.Tests.App
@@ -51,24 +50,22 @@ namespace Rebellion.Tests.App
         }
 
         /// <summary>
-        /// Verifies the synchronized cursor uses Unity's required hardware-cursor import settings.
+        /// Verifies the external cursor loads with Unity's runtime cursor requirements.
         /// </summary>
         [Test]
-        public void DefaultCursor_SynchronizedResource_UsesCursorImportSettings()
+        public void DefaultCursor_ExternalContent_LoadsReadableTexture()
         {
-            Texture2D cursor = Resources.Load<Texture2D>("UI/DefaultCursor");
+            using ContentAssets assets = new ContentAssets(
+                TestContent.Pack.ContentRootPath,
+                TestContent.Pack.PackRootPath
+            );
+
+            Texture2D cursor = assets.GetCursor("Application/Common/UI/ui_common_cursor_default");
+
             Assert.IsNotNull(cursor);
-
-            string assetPath = AssetDatabase.GetAssetPath(cursor);
-            TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
-
-            Assert.IsNotNull(importer);
             Assert.IsTrue(cursor.isReadable);
             Assert.AreEqual(TextureFormat.RGBA32, cursor.format);
             Assert.AreEqual(1, cursor.mipmapCount);
-            Assert.AreEqual(TextureImporterType.Cursor, importer.textureType);
-            Assert.IsTrue(importer.alphaIsTransparency);
-            Assert.AreEqual(TextureImporterCompression.Uncompressed, importer.textureCompression);
         }
 
         private static void DestroyAudioManagers()

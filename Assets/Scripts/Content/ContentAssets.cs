@@ -131,17 +131,54 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <returns>The loaded texture, or null when the address cannot be loaded.</returns>
     public Texture2D GetTexture(string path)
     {
+        return GetTexture(path, true);
+    }
+
+    /// <summary>
+    /// Resolves a readable texture suitable for use as a hardware cursor.
+    /// </summary>
+    /// <param name="path">The application content address.</param>
+    /// <returns>The loaded cursor texture, or null when the address cannot be loaded.</returns>
+    public Texture2D GetCursor(string path)
+    {
+        Texture2D texture = GetTexture(path, false);
+        if (texture == null || texture.format == TextureFormat.RGBA32)
+            return texture;
+
+        Texture2D cursor = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false)
+        {
+            name = texture.name,
+            filterMode = texture.filterMode,
+            wrapMode = texture.wrapMode,
+        };
+        cursor.SetPixels32(texture.GetPixels32());
+        cursor.Apply(false, false);
+        textures[NormalizeAddress(path)] = cursor;
+        DestroyAsset(texture);
+        return cursor;
+    }
+
+    /// <summary>
+    /// Resolves and caches a texture with the requested CPU readability.
+    /// </summary>
+    /// <param name="path">The application or pack content address.</param>
+    /// <param name="markNonReadable">Whether to release the texture's CPU-side pixels.</param>
+    /// <returns>The loaded texture, or null when the address cannot be loaded.</returns>
+    private Texture2D GetTexture(string path, bool markNonReadable)
+    {
         ThrowIfDisposed();
         string normalizedPath = NormalizeAddress(path);
         if (string.IsNullOrEmpty(normalizedPath))
             return null;
         if (textures.TryGetValue(normalizedPath, out Texture2D texture))
         {
-            if (texture != null)
+            if (texture != null && (markNonReadable || texture.isReadable))
                 return texture;
 
             // Unity can destroy transient editor-preview objects when a prefab stage closes while
             // domain reload is disabled. Never retain a dead Unity object in the content cache.
+            if (texture != null)
+                DestroyAsset(texture);
             textures.Remove(normalizedPath);
         }
         if (unavailableTextures.Contains(normalizedPath))
@@ -158,7 +195,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         {
             byte[] bytes = File.ReadAllBytes(filePath);
             texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if (!ImageConversion.LoadImage(texture, bytes, true))
+            if (!ImageConversion.LoadImage(texture, bytes, markNonReadable))
             {
                 DestroyAsset(texture);
                 unavailableTextures.Add(normalizedPath);

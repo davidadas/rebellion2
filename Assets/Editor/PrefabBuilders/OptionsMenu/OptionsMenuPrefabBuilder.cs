@@ -112,9 +112,9 @@ public static class OptionsMenuPrefabBuilder
             _optionsPanelAddress,
             _panelBorder,
             23,
-            69,
+            70,
             192,
-            365,
+            364,
             Color.white
         );
         CreateSlicedImage(
@@ -123,9 +123,9 @@ public static class OptionsMenuPrefabBuilder
             _optionsPanelAddress,
             _panelBorder,
             228,
-            69,
+            70,
             382,
-            365,
+            364,
             Color.white
         );
 
@@ -671,7 +671,7 @@ public static class OptionsMenuPrefabBuilder
         bindingKeyBadgeTemplate.raycastTarget = true;
         Button bindingKeyBadgeButton = bindingKeyBadgeTemplate.gameObject.AddComponent<Button>();
         bindingKeyBadgeButton.targetGraphic = bindingKeyBadgeTemplate;
-        ApplyOptionsButtonFeedback(bindingKeyBadgeButton);
+        ApplyOptionsFillButtonFeedback(bindingKeyBadgeButton);
         bindingKeyBadgeTemplate.gameObject.SetActive(false);
         TextMeshProUGUI bindingKeyTemplate = CreateTextLabel("BindingKeyTemplate", controlsContent);
         bindingKeyTemplate.text = "Key";
@@ -694,7 +694,7 @@ public static class OptionsMenuPrefabBuilder
         bindingRestoreTemplate.raycastTarget = true;
         Button bindingRestoreButton = bindingRestoreTemplate.gameObject.AddComponent<Button>();
         bindingRestoreButton.targetGraphic = bindingRestoreTemplate;
-        ApplyOptionsButtonFeedback(bindingRestoreButton);
+        ApplyOptionsFillButtonFeedback(bindingRestoreButton);
         RawImage bindingRestoreIcon = CreateRawImage(
             "Icon",
             bindingRestoreTemplate.transform,
@@ -749,7 +749,7 @@ public static class OptionsMenuPrefabBuilder
         Button defaultsButton = CreateOptionsActionButton(
             settingsActions,
             "DefaultsButton",
-            "RESTORE DEFAULTS",
+            "APPLY DEFAULTS",
             300,
             textColor,
             114
