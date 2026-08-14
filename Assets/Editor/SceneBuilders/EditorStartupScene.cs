@@ -4,22 +4,22 @@ using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Opens the main menu when Unity starts without a saved scene selected.
+/// Opens the committed boot scene when Unity starts without a saved scene selected.
 /// </summary>
 [InitializeOnLoad]
 public static class EditorStartupScene
 {
-    private const string _mainMenuScenePath = "Assets/Scenes/MainMenu.unity";
+    private const string _bootScenePath = "Assets/Scenes/BootScene.unity";
 
     static EditorStartupScene()
     {
-        EditorApplication.delayCall += OpenMainMenuWhenUntitled;
+        EditorApplication.delayCall += OpenBootSceneWhenUntitled;
     }
 
     /// <summary>
-    /// Replaces Unity's clean untitled startup scene with the main-menu scene.
+    /// Replaces Unity's clean untitled startup scene with the committed boot scene.
     /// </summary>
-    private static void OpenMainMenuWhenUntitled()
+    private static void OpenBootSceneWhenUntitled()
     {
         if (
             EditorApplication.isPlayingOrWillChangePlaymode
@@ -33,10 +33,10 @@ public static class EditorStartupScene
             !activeScene.IsValid()
             || !string.IsNullOrEmpty(activeScene.path)
             || activeScene.isDirty
-            || !File.Exists(_mainMenuScenePath)
+            || !File.Exists(_bootScenePath)
         )
             return;
 
-        EditorSceneManager.OpenScene(_mainMenuScenePath, OpenSceneMode.Single);
+        EditorSceneManager.OpenScene(_bootScenePath, OpenSceneMode.Single);
     }
 }
