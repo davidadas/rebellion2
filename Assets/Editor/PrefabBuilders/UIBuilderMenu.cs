@@ -10,6 +10,8 @@ using UnityEngine.UI;
 /// </summary>
 public static class UIBuilderMenu
 {
+    private const string _mainMenuScenePath = "Assets/Scenes/MainMenu.unity";
+
     /// <summary>
     /// Rebuilds every generated UI prefab and scene.
     /// </summary>
@@ -98,10 +100,17 @@ public static class UIBuilderMenu
         if (build == null)
             throw new ArgumentNullException(nameof(build));
 
-        if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        if (
+            !Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()
+        )
             return;
 
         Scene activeScene = SceneManager.GetActiveScene();
+        if (!Application.isBatchMode && string.IsNullOrEmpty(activeScene.path))
+        {
+            EditorSceneManager.OpenScene(_mainMenuScenePath, OpenSceneMode.Single);
+            activeScene = SceneManager.GetActiveScene();
+        }
         UnityEngine.Object[] selection = Selection.objects;
         bool usesBatchScene = Application.isBatchMode && string.IsNullOrEmpty(activeScene.path);
         Scene authoringScene = usesBatchScene
@@ -114,7 +123,9 @@ public static class UIBuilderMenu
                 "Assets/Scenes/UIBuilderAuthoringTemp.unity"
             );
             if (!EditorSceneManager.SaveScene(authoringScene, authoringScenePath))
-                throw new InvalidOperationException("Could not create the temporary UI authoring scene.");
+                throw new InvalidOperationException(
+                    "Could not create the temporary UI authoring scene."
+                );
             SceneManager.SetActiveScene(authoringScene);
         }
         try

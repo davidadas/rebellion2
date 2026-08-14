@@ -60,12 +60,12 @@ public static class MainMenuPrefabBuilder
 
     // Spinning 3D icon rigs.
     private const string _iconRigsName = "IconRigs"; // container for the lights and all icon rigs
-    private const string _lightsName = "SharedLights"; // 3-point light set lighting every icon rig
     private static readonly Vector3 _rigOrigin = new Vector3(10000f, 10000f, 10000f);
 
     // Each rig sits this far from the next along Z so one icon's camera never captures the
     // other's model (camera far clip is 20, so 1000 units of separation is comfortably isolated).
     private const float _rigSpacing = 1000f;
+    private const string _lightsName = "SharedLights";
 
     // The five icon slots -- two faction coins and three difficulty ships/sphere -- each carrying
     // its model + RenderTexture paths and the orientation its rig applies. (Face is defined below.)
@@ -148,7 +148,7 @@ public static class MainMenuPrefabBuilder
             512,
             360,
             true,
-            underLightIntensity: 2.5f
+            underLightIntensity: 1f
         ),
     };
 
@@ -2083,7 +2083,7 @@ public static class MainMenuPrefabBuilder
         sunObject.transform.localRotation = Quaternion.Euler(45.63f, 122.25f, 0f);
         Light sun = sunObject.GetComponent<Light>();
         sun.type = LightType.Directional;
-        sun.intensity = 0.6f;
+        sun.intensity = 0.45f;
         sun.color = new Color(1f, 0.94f, 0.88f);
         sun.cullingMask = 1 << planetLayer;
         sun.shadows = LightShadows.None;
@@ -2219,8 +2219,7 @@ public static class MainMenuPrefabBuilder
         // replaced, leaving the selection overlay and toggle behaviour intact.
         public readonly bool IsToggle;
 
-        // When > 0, adds a short-range point light beneath this icon for an up-glow (e.g. the Death
-        // Star). The rigs sit _rigSpacing apart, so its range keeps it from reaching the others.
+        // Adds a short-range point light beneath icons that need extra underside detail.
         public readonly float UnderLightIntensity;
 
         public Face(
@@ -2435,15 +2434,15 @@ public static class MainMenuPrefabBuilder
         camera.farClipPlane = 20f;
         camera.targetTexture = renderTexture;
 
-        // Point light beneath so the stem is lit; the shared 3-point set leaves the underside dark.
         GameObject underLightObject = new GameObject("UnderLight", typeof(Light));
         underLightObject.transform.SetParent(rig.transform, false);
         underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
         Light underLight = underLightObject.GetComponent<Light>();
         underLight.type = LightType.Point;
         underLight.range = 8f;
-        underLight.intensity = 2f;
+        underLight.intensity = 0.75f;
         underLight.color = Color.white;
+
         return spinner;
     }
 
@@ -2486,8 +2485,7 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Builds one off-screen model + camera rig that renders an icon to its texture. Lighting is
-    /// provided by the shared three-point set built in <see cref="BuildSharedLighting"/>.
+    /// Builds one off-screen model + camera rig that renders an icon to its texture.
     /// </summary>
     /// <param name="parent">The container to parent the rig under.</param>
     /// <param name="renderTexture">The texture the rig camera renders into.</param>
@@ -2546,8 +2544,6 @@ public static class MainMenuPrefabBuilder
 
         if (face.UnderLightIntensity > 0f)
         {
-            // A short-range point light beneath the model gives this icon an up-glow without
-            // reaching the neighbouring rigs (they sit _rigSpacing apart).
             GameObject underLightObject = new GameObject("UnderLight", typeof(Light));
             underLightObject.transform.SetParent(rig.transform, false);
             underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
@@ -2560,26 +2556,20 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Builds one shared three-point directional light set (key, fill, rim) that lights every
-    /// icon. Directional lights are global, so a single set lights both rigs identically and
-    /// gives the coins a bright lit side, a darker shadowed side, and a rim highlight instead of
-    /// the flat, evenly-lit look of a single light.
+    /// Builds the shared key and fill lights used by the main-menu icon rigs.
     /// </summary>
-    /// <param name="parent">The container to parent the lights under.</param>
+    /// <param name="parent">The container that owns the lights.</param>
     private static void BuildSharedLighting(GameObject parent)
     {
         GameObject lights = new GameObject(_lightsName);
         lights.transform.SetParent(parent.transform, false);
         lights.transform.position = _rigOrigin;
 
-        // Key from the upper left with soft self-shadowing so the shadow falls toward the lower
-        // right; a dim cool fill from the right so the shadowed side stays readable; a rim from
-        // above-behind to catch the top edge.
         AddDirectionalLight(
             lights.transform,
             "Key",
             Quaternion.Euler(45f, 35f, 0f),
-            0.6f,
+            0.35f,
             Color.white,
             LightShadows.Soft
         );
@@ -2587,29 +2577,21 @@ public static class MainMenuPrefabBuilder
             lights.transform,
             "Fill",
             Quaternion.Euler(20f, 40f, 0f),
-            0.35f,
+            0.15f,
             new Color(0.85f, 0.9f, 1f),
-            LightShadows.None
-        );
-        AddDirectionalLight(
-            lights.transform,
-            "Rim",
-            Quaternion.Euler(35f, 175f, 0f),
-            1.0f,
-            Color.white,
             LightShadows.None
         );
     }
 
     /// <summary>
-    /// Adds one directional light to the shared lighting set.
+    /// Adds one directional light to the shared icon lighting rig.
     /// </summary>
-    /// <param name="parent">The lighting set to parent the light under.</param>
-    /// <param name="name">The light's role, used in its GameObject name.</param>
-    /// <param name="rotation">The light's local rotation (its aim direction).</param>
+    /// <param name="parent">The lighting-rig parent.</param>
+    /// <param name="name">The light name.</param>
+    /// <param name="rotation">The light rotation.</param>
     /// <param name="intensity">The light intensity.</param>
     /// <param name="color">The light color.</param>
-    /// <param name="shadows">The shadow mode for this light.</param>
+    /// <param name="shadows">The shadow mode.</param>
     private static void AddDirectionalLight(
         Transform parent,
         string name,
@@ -2619,16 +2601,14 @@ public static class MainMenuPrefabBuilder
         LightShadows shadows
     )
     {
-        GameObject go = new GameObject($"IconLight_{name}", typeof(Light));
-        go.transform.SetParent(parent, false);
-        go.transform.localRotation = rotation;
-        Light light = go.GetComponent<Light>();
+        GameObject lightObject = new GameObject($"IconLight_{name}", typeof(Light));
+        lightObject.transform.SetParent(parent, false);
+        lightObject.transform.localRotation = rotation;
+        Light light = lightObject.GetComponent<Light>();
         light.type = LightType.Directional;
         light.intensity = intensity;
         light.color = color;
         light.shadows = shadows;
-        // Skip the planet's isolated layer -- it has its own warm sun, and this set's cool fill
-        // light would wash out the planet's colors. (Layer 31 = planetLayer in BuildPlanetRig.)
         light.cullingMask = ~(1 << 31);
     }
 

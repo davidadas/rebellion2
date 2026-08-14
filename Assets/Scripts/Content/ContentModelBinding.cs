@@ -91,14 +91,6 @@ public sealed class ContentModelBinding : MonoBehaviour
     }
 
     /// <summary>
-    /// Starts loading even when no presentation owner explicitly awaits readiness.
-    /// </summary>
-    private void Start()
-    {
-        _ = Ready;
-    }
-
-    /// <summary>
     /// Cancels any in-flight load so it cannot instantiate into a destroyed hierarchy.
     /// </summary>
     private void OnDestroy()

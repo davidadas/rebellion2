@@ -102,7 +102,7 @@ public sealed class MainMenuController : MonoBehaviour
                 themeLibrary.GetTheme,
                 bootstrap.GetContentAssets().GetTexture
             );
-            AudioManager audioManager = AudioManager.EnsureExists();
+            AudioManager audioManager = bootstrap.GetAudioManager();
             audioManager.PreloadSfx(view?.GetAudioCuePaths());
             audioManager.PlayTrack(_menuMusicPath, true);
             mainMenuCanvas.enabled = true;
