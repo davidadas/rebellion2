@@ -18,11 +18,6 @@ public sealed class GameRuntime
     public bool HasActiveGame => _activeGameSession != null;
 
     /// <summary>
-    /// Raised when global input requests the settings menu.
-    /// </summary>
-    public event Action ToggleSettingsMenuRequested;
-
-    /// <summary>
     /// Creates an application runtime backed by the active content pack.
     /// </summary>
     /// <param name="contentPack">The active content pack.</param>
@@ -133,15 +128,6 @@ public sealed class GameRuntime
         HotReloadGame(fileName);
 
         return true;
-    }
-
-    /// <summary>
-    /// Toggle settings menu.
-    /// Execution depends on current scene context.
-    /// </summary>
-    public void ToggleSettingsMenu()
-    {
-        ToggleSettingsMenuRequested?.Invoke();
     }
 
     /// <summary>

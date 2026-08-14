@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
 {
-    private const float RenameTextBaselineOffset = -2f;
+    private const float _renameTextBaselineOffset = -2f;
 
     private static readonly Color _accentColor = new Color(0.373f, 0.659f, 0.925f);
     private static readonly Color _metaColor = new Color(0.573f, 0.635f, 0.706f);
@@ -542,8 +542,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         rect.anchorMin = Vector2.zero;
         rect.anchorMax = Vector2.one;
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.offsetMin = new Vector2(6f, RenameTextBaselineOffset);
-        rect.offsetMax = new Vector2(-6f, RenameTextBaselineOffset);
+        rect.offsetMin = new Vector2(6f, _renameTextBaselineOffset);
+        rect.offsetMax = new Vector2(-6f, _renameTextBaselineOffset);
     }
 
     /// <summary>

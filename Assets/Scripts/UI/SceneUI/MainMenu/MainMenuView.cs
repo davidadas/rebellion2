@@ -246,7 +246,7 @@ public sealed class MainMenuView : MonoBehaviour
     /// <summary>
     /// Occurs when the player requests the load-game menu.
     /// </summary>
-    public event Action LoadGameRequested;
+    public event Action SaveLoadMenuRequested;
 
     /// <summary>
     /// Occurs when the player requests exiting the application.
@@ -454,23 +454,29 @@ public sealed class MainMenuView : MonoBehaviour
     }
 
     /// <summary>
-    /// Gets the difficulty selected by the authored toggle group.
+    /// Renders the selected galaxy size without emitting a selection request.
     /// </summary>
-    /// <param name="difficulty">Receives the selected difficulty when available.</param>
-    /// <returns><see langword="true"/> when a configured difficulty toggle is selected.</returns>
-    public bool TryGetSelectedDifficulty(out GameDifficulty difficulty)
+    /// <param name="size">The galaxy size selected in launch state.</param>
+    internal void RenderGalaxySize(GameSize size)
+    {
+        foreach (GalaxySizeBinding binding in galaxySizeBindings)
+        {
+            if (binding?.Toggle != null)
+                binding.Toggle.SetIsOnWithoutNotify(binding.Value == size);
+        }
+    }
+
+    /// <summary>
+    /// Renders the selected difficulty without emitting a selection request.
+    /// </summary>
+    /// <param name="difficulty">The difficulty selected in launch state.</param>
+    internal void RenderDifficulty(GameDifficulty difficulty)
     {
         foreach (DifficultyBinding binding in difficultyBindings)
         {
-            if (binding?.Toggle != null && binding.Toggle.isOn)
-            {
-                difficulty = binding.Value;
-                return true;
-            }
+            if (binding?.Toggle != null)
+                binding.Toggle.SetIsOnWithoutNotify(binding.Value == difficulty);
         }
-
-        difficulty = default;
-        return false;
     }
 
     /// <summary>
@@ -685,7 +691,7 @@ public sealed class MainMenuView : MonoBehaviour
         if (controlsBound)
             return;
 
-        BindButton(loadGameButton, () => LoadGameRequested?.Invoke());
+        BindButton(loadGameButton, () => SaveLoadMenuRequested?.Invoke());
         BindButton(exitButton, ShowExitConfirmation);
         BindButton(creditsButton, () => CreditsRequested?.Invoke());
         BindButton(victoryConditionButton, () => VictoryConditionToggleRequested?.Invoke());

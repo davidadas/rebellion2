@@ -26,7 +26,7 @@ public sealed class MainMenuController : MonoBehaviour
     private Canvas mainMenuCanvas;
     private OptionsMenuController optionsMenuController;
     private bool optionsDirty;
-    private GameRuntime _settingsRuntime;
+    private AppInputController _appInputController;
 
     /// <summary>
     /// Resets launch state and renders the authored initial selections.
@@ -50,9 +50,8 @@ public sealed class MainMenuController : MonoBehaviour
         if (mainMenuCanvas == null)
             throw new MissingReferenceException($"{name} has no main-menu canvas.");
         mainMenuCanvas.enabled = false;
-
-        if (view.TryGetSelectedDifficulty(out GameDifficulty difficulty))
-            SelectGameDifficulty(difficulty);
+        view.RenderGalaxySize(GameLaunchContext.Summary.GalaxySize);
+        view.RenderDifficulty(GameLaunchContext.Summary.Difficulty);
     }
 
     /// <summary>
@@ -63,21 +62,19 @@ public sealed class MainMenuController : MonoBehaviour
         if (view == null)
             return;
 
-        AppBootstrap.EnsureExists().GetInputController()?.SetContext(InputContext.Menu);
+        _appInputController = AppBootstrap.EnsureExists().GetInputController();
+        _appInputController?.SetContext(InputContext.Menu);
+        if (_appInputController != null)
+            _appInputController.OptionsMenuRequested += HandleOptionsMenuRequested;
 
         view.GalaxySizeSelected += SelectGalaxySize;
         view.DifficultySelected += SelectGameDifficulty;
         view.StartGameRequested += HandleStartGameRequested;
         view.VictoryConditionToggleRequested += HandleVictoryConditionToggleRequested;
-        view.LoadGameRequested += OpenLoadGameMenu;
+        view.SaveLoadMenuRequested += OpenSaveLoadMenu;
         view.ExitRequested += ExitApplication;
         view.CreditsRequested += ShowCredits;
         view.AudioCueRequested += PlayAudioCue;
-
-        // Options Menu.
-        _settingsRuntime = AppBootstrap.EnsureExists().GetRuntime();
-        if (_settingsRuntime != null)
-            _settingsRuntime.ToggleSettingsMenuRequested += HandleToggleSettingsMenu;
     }
 
     /// <summary>
@@ -128,13 +125,16 @@ public sealed class MainMenuController : MonoBehaviour
         view.DifficultySelected -= SelectGameDifficulty;
         view.StartGameRequested -= HandleStartGameRequested;
         view.VictoryConditionToggleRequested -= HandleVictoryConditionToggleRequested;
-        view.LoadGameRequested -= OpenLoadGameMenu;
+        view.SaveLoadMenuRequested -= OpenSaveLoadMenu;
         view.ExitRequested -= ExitApplication;
         view.CreditsRequested -= ShowCredits;
         view.AudioCueRequested -= PlayAudioCue;
 
-        if (_settingsRuntime != null)
-            _settingsRuntime.ToggleSettingsMenuRequested -= HandleToggleSettingsMenu;
+        if (_appInputController != null)
+        {
+            _appInputController.OptionsMenuRequested -= HandleOptionsMenuRequested;
+            _appInputController = null;
+        }
     }
 
     /// <summary>
@@ -152,7 +152,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// <summary>
     /// Opens the Options menu from its keyboard shortcut.
     /// </summary>
-    private void HandleToggleSettingsMenu()
+    private void HandleOptionsMenuRequested()
     {
         EnsureOptionsController();
         if (optionsMenuController == null)
@@ -246,7 +246,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// <summary>
     /// Opens the Options menu.
     /// </summary>
-    private void OpenLoadGameMenu()
+    private void OpenSaveLoadMenu()
     {
         PlayAudioCue(_selectSfxPath);
         OpenOptions(OptionsMenuTab.SaveLoad);
@@ -291,7 +291,7 @@ public sealed class MainMenuController : MonoBehaviour
             () => view.GetOptionsWindowPosition(_optionsMenuPrefab),
             windowManager.DestroyWindow,
             bootstrap,
-            LoadSaveFromMainMenu,
+            RequestSavedGameLaunch,
             MarkOptionsDirty
         );
     }
@@ -317,14 +317,10 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     /// <param name="fileName">The save identifier to load.</param>
     /// <returns>True when the Strategy scene transition was requested.</returns>
-    private static bool LoadSaveFromMainMenu(string fileName)
+    private static bool RequestSavedGameLaunch(string fileName)
     {
         AppBootstrap bootstrap = AppBootstrap.Instance;
-        if (
-            bootstrap == null
-            || string.IsNullOrEmpty(fileName)
-            || !System.IO.File.Exists(SaveGameManager.Instance.GetSaveFilePath(fileName))
-        )
+        if (bootstrap == null || string.IsNullOrEmpty(fileName))
             return false;
 
         bootstrap.GetRuntime()?.EndGame();

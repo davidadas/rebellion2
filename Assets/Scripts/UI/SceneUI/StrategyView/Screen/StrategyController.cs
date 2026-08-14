@@ -129,6 +129,7 @@ public sealed class StrategyController
     private StrategyWindowCommandController windowCommandController;
     private StrategyScreenInputController inputController;
     private OptionsMenuController _optionsMenuController;
+    private AppInputController _appInputController;
 
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
@@ -426,8 +427,9 @@ public sealed class StrategyController
             settingsRuntime.LoadGame,
             MarkDirty
         );
-        if (settingsRuntime != null)
-            settingsRuntime.ToggleSettingsMenuRequested += HandleToggleOptions;
+        _appInputController = bootstrap.GetInputController();
+        if (_appInputController != null)
+            _appInputController.OptionsMenuRequested += HandleToggleOptions;
         WireStrategyInputActions();
         battleAlertWindowController = new BattleAlertWindowController(
             () =>
@@ -721,9 +723,11 @@ public sealed class StrategyController
         UnregisterCancelHandlers();
         UnsubscribeViewEvents();
         _optionsMenuController?.Dispose();
-        GameRuntime settingsRuntime = AppBootstrap.Instance?.GetRuntime();
-        if (settingsRuntime != null)
-            settingsRuntime.ToggleSettingsMenuRequested -= HandleToggleOptions;
+        if (_appInputController != null)
+        {
+            _appInputController.OptionsMenuRequested -= HandleToggleOptions;
+            _appInputController = null;
+        }
         if (gameManager != null)
         {
             gameManager.GameSpeedChanged -= MarkDirty;

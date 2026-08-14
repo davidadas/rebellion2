@@ -145,10 +145,70 @@ public static class OptionsMenuPrefabBuilder
         ApplyOptionsDisplayFont(pageTitle);
         SetSourceRect(pageTitle.rectTransform, 240, 36, 357, 22);
 
+        BuildTabNavigation(view, contentRoot, textColor);
+
+        RectTransform graphicsPage = CreateChildLayer("GraphicsPage", contentRoot);
+        SetSourceRect(graphicsPage, 228, 69, 382, 365);
+        RectTransform audioPage = CreateChildLayer("AudioPage", contentRoot);
+        SetSourceRect(audioPage, 228, 69, 382, 365);
+        RectTransform saveLoadPage = CreateChildLayer("SaveLoadPage", contentRoot);
+        SetSourceRect(saveLoadPage, 228, 69, 382, 365);
+        RectTransform controlsPage = CreateChildLayer("ControlsPage", contentRoot);
+        SetSourceRect(controlsPage, 228, 69, 382, 365);
+
+        // Hidden Pages.
+        audioPage.gameObject.SetActive(false);
+        saveLoadPage.gameObject.SetActive(false);
+        controlsPage.gameObject.SetActive(false);
+
+        BuildGraphicsPage(view, graphicsPage, accent);
+
+        BuildAudioPage(view, audioPage, accent, textColor);
+
+        BuildSaveLoadPage(view, saveLoadPage, accent, textColor, textDim);
+
+        BuildControlsPage(view, controlsPage, accent, textColor, textDim);
+        BuildFooter(view, contentRoot, textColor, textDim);
+
+        AssignReference(view, "_backgroundImage", background);
+        AssignReference(view, "_headerTextField", header);
+        AssignReference(view, "_pageTitleTextField", pageTitle);
+        AssignReference(view, "_rowIdleSprite", LoadSprite(_optionsRowAddress, _panelBorder));
+        AssignReference(
+            view,
+            "_rowActiveSprite",
+            LoadSprite(_optionsRowActiveAddress, _panelBorder)
+        );
+        AssignString(view, "_rowIdleSpriteAddress", _optionsRowAddress);
+        AssignString(view, "_rowActiveSpriteAddress", _optionsRowActiveAddress);
+        AssignReference(view, "_graphicsPage", graphicsPage.gameObject);
+        AssignReference(view, "_audioPage", audioPage.gameObject);
+        AssignReference(view, "_saveLoadPage", saveLoadPage.gameObject);
+        AssignReference(view, "_controlsPage", controlsPage.gameObject);
+
+        GameObject saved = SaveGeneratedPrefabAsset(window, _optionsMenuWindowPrefabPath);
+        UnityEngine.Object.DestroyImmediate(window);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        return saved.GetComponent<OptionsMenuView>();
+    }
+
+    /// <summary>
+    /// Builds and wires the Options page-selection buttons.
+    /// </summary>
+    /// <param name="view">The Options view receiving the authored references.</param>
+    /// <param name="contentRoot">The Options content root.</param>
+    /// <param name="textColor">The primary Options text color.</param>
+    private static void BuildTabNavigation(
+        OptionsMenuView view,
+        RectTransform contentRoot,
+        Color textColor
+    )
+    {
         string[] tabNames = { "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" };
         string[] tabObjectNames = { "GraphicsTab", "AudioTab", "ControlsTab", "SaveLoadTab" };
-        Button[] tabButtons = new Button[4];
-        TextMeshProUGUI[] tabLabels = new TextMeshProUGUI[4];
+        Button[] tabButtons = new Button[tabNames.Length];
+        TextMeshProUGUI[] tabLabels = new TextMeshProUGUI[tabNames.Length];
         for (int i = 0; i < tabNames.Length; i++)
         {
             Button tabButton = CreateSlicedButton(
@@ -178,56 +238,22 @@ public static class OptionsMenuPrefabBuilder
             tabLabels[i] = tabLabel;
         }
 
-        RectTransform graphicsPage = CreateChildLayer("GraphicsPage", contentRoot);
-        SetSourceRect(graphicsPage, 228, 69, 382, 365);
-        RectTransform audioPage = CreateChildLayer("AudioPage", contentRoot);
-        SetSourceRect(audioPage, 228, 69, 382, 365);
-        RectTransform saveLoadPage = CreateChildLayer("SaveLoadPage", contentRoot);
-        SetSourceRect(saveLoadPage, 228, 69, 382, 365);
-        OptionsSaveListView saveListView = EnableRuntimeComponent(
-            saveLoadPage.gameObject.AddComponent<OptionsSaveListView>()
-        );
-        RectTransform controlsPage = CreateChildLayer("ControlsPage", contentRoot);
-        SetSourceRect(controlsPage, 228, 69, 382, 365);
+        AssignReferenceArray(view, "_tabButtons", tabButtons);
+        AssignReferenceArray(view, "_tabLabelFields", tabLabels);
+    }
 
-        // Hidden Pages.
-        audioPage.gameObject.SetActive(false);
-        saveLoadPage.gameObject.SetActive(false);
-        controlsPage.gameObject.SetActive(false);
-
-        Button backToGameButton = CreateOptionsNavRow(
-            contentRoot,
-            "BackToGame",
-            "BACK TO GAME",
-            226,
-            textDim
-        );
-        Button mainMenuButton = CreateOptionsNavRow(
-            contentRoot,
-            "MainMenu",
-            "MAIN MENU",
-            265,
-            textDim
-        );
-        Button quitButton = CreateOptionsNavRow(contentRoot, "Quit", "QUIT", 304, textDim);
-
-        RectTransform settingsActions = CreateChildLayer("SettingsActions", contentRoot);
-        Button defaultsButton = CreateOptionsActionButton(
-            settingsActions,
-            "DefaultsButton",
-            "RESTORE DEFAULTS",
-            300,
-            textColor,
-            114
-        );
-        Button applyButton = CreateOptionsActionButton(
-            settingsActions,
-            "ApplyButton",
-            "APPLY",
-            424,
-            textColor
-        );
-
+    /// <summary>
+    /// Builds and wires the Graphics page controls.
+    /// </summary>
+    /// <param name="view">The Options view receiving the authored references.</param>
+    /// <param name="graphicsPage">The authored Graphics page root.</param>
+    /// <param name="accent">The Options accent color.</param>
+    private static void BuildGraphicsPage(
+        OptionsMenuView view,
+        RectTransform graphicsPage,
+        Color accent
+    )
+    {
         CreateOptionsSectionHeader(graphicsPage, "DisplayHeader", "DISPLAY", 16, accent);
         TextMeshProUGUI resolutionValue = CreateOptionsFieldRow(
             graphicsPage,
@@ -263,8 +289,9 @@ public static class OptionsMenuPrefabBuilder
             "High Detail Textures",
             "Holocube",
         };
-        OptionsToggleRowView[] tacticalRows = new OptionsToggleRowView[5];
+        OptionsToggleRowView[] tacticalRows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
+        {
             tacticalRows[i] = CreateOptionsTacticalRow(
                 graphicsPage,
                 $"Tactical{options[i]}",
@@ -273,11 +300,35 @@ public static class OptionsMenuPrefabBuilder
                 20,
                 126 + i * 26
             );
+        }
 
+        AssignReferenceArray(view, "_tacticalRows", tacticalRows);
+        AssignReference(view, "_resolutionValueField", resolutionValue);
+        AssignReference(view, "_resolutionPrevButton", resolutionPrev);
+        AssignReference(view, "_resolutionNextButton", resolutionNext);
+        AssignReference(view, "_fullScreenValueField", fullScreenValue);
+        AssignReference(view, "_fullScreenPrevButton", fullScreenPrev);
+        AssignReference(view, "_fullScreenNextButton", fullScreenNext);
+    }
+
+    /// <summary>
+    /// Builds and wires the Audio page controls.
+    /// </summary>
+    /// <param name="view">The Options view receiving the authored references.</param>
+    /// <param name="audioPage">The authored Audio page root.</param>
+    /// <param name="accent">The Options accent color.</param>
+    /// <param name="textColor">The primary Options text color.</param>
+    private static void BuildAudioPage(
+        OptionsMenuView view,
+        RectTransform audioPage,
+        Color accent,
+        Color textColor
+    )
+    {
         CreateOptionsSectionHeader(audioPage, "VolumeHeader", "VOLUME", 16, accent);
         string[] volumeLabels = { "Master", "Music", "Sound Effects", "Ambience", "Video" };
-        NormalizedSliderView[] volumeSliders = new NormalizedSliderView[5];
-        TextMeshProUGUI[] volumeValues = new TextMeshProUGUI[5];
+        NormalizedSliderView[] volumeSliders = new NormalizedSliderView[volumeLabels.Length];
+        TextMeshProUGUI[] volumeValues = new TextMeshProUGUI[volumeLabels.Length];
         for (int i = 0; i < volumeLabels.Length; i++)
         {
             int rowY = 44 + i * 34;
@@ -303,6 +354,29 @@ public static class OptionsMenuPrefabBuilder
             volumeValues[i] = volumeValue;
         }
 
+        AssignReferenceArray(view, "_volumeSliders", volumeSliders);
+        AssignReferenceArray(view, "_volumeValueFields", volumeValues);
+    }
+
+    /// <summary>
+    /// Builds and wires the Save/Load page controls.
+    /// </summary>
+    /// <param name="view">The Options view receiving the authored references.</param>
+    /// <param name="saveLoadPage">The authored Save/Load page root.</param>
+    /// <param name="accent">The Options accent color.</param>
+    /// <param name="textColor">The primary Options text color.</param>
+    /// <param name="textDim">The secondary Options text color.</param>
+    private static void BuildSaveLoadPage(
+        OptionsMenuView view,
+        RectTransform saveLoadPage,
+        Color accent,
+        Color textColor,
+        Color textDim
+    )
+    {
+        OptionsSaveListView saveListView = EnableRuntimeComponent(
+            saveLoadPage.gameObject.AddComponent<OptionsSaveListView>()
+        );
         TextMeshProUGUI savedGamesLabel = CreateOptionsSectionHeader(
             saveLoadPage,
             "SavedGamesLabel",
@@ -473,6 +547,48 @@ public static class OptionsMenuPrefabBuilder
         slotRenameField.onFocusSelectAll = false;
         slotRenameField.gameObject.SetActive(false);
 
+        AssignReference(view, "_saveListView", saveListView);
+        AssignReference(saveListView, "_saveButton", saveButton);
+        AssignReference(saveListView, "_loadButton", loadButton);
+        AssignReference(saveListView, "_saveDisabledImage", saveDisabledIcon);
+        AssignReference(saveListView, "_loadDisabledImage", loadDisabledIcon);
+        AssignReference(saveListView, "_scrollArea", saveSlotScrollArea);
+        AssignReference(saveListView, "_rowTemplate", slotRowTemplate);
+        AssignReference(saveListView, "_iconTemplate", slotIconTemplate);
+        AssignReference(saveListView, "_nameTemplate", slotNameTemplate);
+        AssignReference(saveListView, "_metaTemplate", slotMetaTemplate);
+        AssignReference(saveListView, "_deleteTemplate", slotDeleteTemplate);
+        AssignReference(saveListView, "_renameField", slotRenameField);
+        AssignReference(
+            saveListView,
+            "_rowIdleSprite",
+            LoadSprite(_optionsRowAddress, _panelBorder)
+        );
+        AssignReference(
+            saveListView,
+            "_rowActiveSprite",
+            LoadSprite(_optionsRowActiveAddress, _panelBorder)
+        );
+        AssignString(saveListView, "_rowIdleSpriteAddress", _optionsRowAddress);
+        AssignString(saveListView, "_rowActiveSpriteAddress", _optionsRowActiveAddress);
+    }
+
+    /// <summary>
+    /// Builds and wires the Controls page controls.
+    /// </summary>
+    /// <param name="view">The Options view receiving the authored references.</param>
+    /// <param name="controlsPage">The authored Controls page root.</param>
+    /// <param name="accent">The Options accent color.</param>
+    /// <param name="textColor">The primary Options text color.</param>
+    /// <param name="textDim">The secondary Options text color.</param>
+    private static void BuildControlsPage(
+        OptionsMenuView view,
+        RectTransform controlsPage,
+        Color accent,
+        Color textColor,
+        Color textDim
+    )
+    {
         ScrollAreaView controlsScrollArea = CreateScrollAreaView(
             controlsPage,
             "ControlsScrollArea",
@@ -490,7 +606,6 @@ public static class OptionsMenuPrefabBuilder
             312,
             out RectTransform controlsContent
         );
-
         TextMeshProUGUI primaryColumnHeader = CreateTextLabel("PrimaryColumnHeader", controlsPage);
         primaryColumnHeader.text = "PRIMARY";
         primaryColumnHeader.color = textDim;
@@ -592,7 +707,60 @@ public static class OptionsMenuPrefabBuilder
         bindingRestoreIcon.raycastTarget = false;
         bindingRestoreTemplate.gameObject.SetActive(false);
 
-        // Confirmation Dialog.
+        AssignReference(view, "_controlsScrollArea", controlsScrollArea);
+        AssignReference(view, "_bindingRowTemplate", bindingRowTemplate);
+        AssignReference(view, "_bindingHeaderTemplate", bindingHeaderTemplate);
+        AssignReference(view, "_bindingActionTemplate", bindingActionTemplate);
+        AssignReference(view, "_bindingKeyBadgeTemplate", bindingKeyBadgeTemplate);
+        AssignReference(view, "_bindingKeyTemplate", bindingKeyTemplate);
+        AssignReference(view, "_bindingRestoreTemplate", bindingRestoreTemplate);
+    }
+
+    /// <summary>
+    /// Builds and wires the persistent Options navigation and confirmation controls.
+    /// </summary>
+    /// <param name="view">The Options view receiving the authored references.</param>
+    /// <param name="contentRoot">The Options content root.</param>
+    /// <param name="textColor">The primary Options text color.</param>
+    /// <param name="textDim">The secondary Options text color.</param>
+    private static void BuildFooter(
+        OptionsMenuView view,
+        RectTransform contentRoot,
+        Color textColor,
+        Color textDim
+    )
+    {
+        Button backToGameButton = CreateOptionsNavRow(
+            contentRoot,
+            "BackToGame",
+            "BACK TO GAME",
+            226,
+            textDim
+        );
+        Button mainMenuButton = CreateOptionsNavRow(
+            contentRoot,
+            "MainMenu",
+            "MAIN MENU",
+            265,
+            textDim
+        );
+        Button quitButton = CreateOptionsNavRow(contentRoot, "Quit", "QUIT", 304, textDim);
+        RectTransform settingsActions = CreateChildLayer("SettingsActions", contentRoot);
+        Button defaultsButton = CreateOptionsActionButton(
+            settingsActions,
+            "DefaultsButton",
+            "RESTORE DEFAULTS",
+            300,
+            textColor,
+            114
+        );
+        Button applyButton = CreateOptionsActionButton(
+            settingsActions,
+            "ApplyButton",
+            "APPLY",
+            424,
+            textColor
+        );
         ConfirmationDialogView confirmDialog = CommonUIPrefabBuilder.InstantiateConfirmationDialog(
             contentRoot
         );
@@ -601,76 +769,13 @@ public static class OptionsMenuPrefabBuilder
         confirmDialog.gameObject.SetActive(false);
         ConfigureOptionsNavigationLayout(contentRoot, backToGameButton, mainMenuButton, quitButton);
 
-        AssignReference(view, "_backgroundImage", background);
-        AssignReference(view, "_headerTextField", header);
-        AssignReference(view, "_pageTitleTextField", pageTitle);
-        AssignReference(view, "_rowIdleSprite", LoadSprite(_optionsRowAddress, _panelBorder));
-        AssignReference(
-            view,
-            "_rowActiveSprite",
-            LoadSprite(_optionsRowActiveAddress, _panelBorder)
-        );
-        AssignString(view, "_rowIdleSpriteAddress", _optionsRowAddress);
-        AssignString(view, "_rowActiveSpriteAddress", _optionsRowActiveAddress);
-        AssignReferenceArray(view, "_tabButtons", tabButtons);
-        AssignReferenceArray(view, "_tabLabelFields", tabLabels);
-        AssignReference(view, "_graphicsPage", graphicsPage.gameObject);
-        AssignReference(view, "_audioPage", audioPage.gameObject);
-        AssignReference(view, "_saveLoadPage", saveLoadPage.gameObject);
-        AssignReference(view, "_controlsPage", controlsPage.gameObject);
         AssignReference(view, "_backToGameButton", backToGameButton);
         AssignReference(view, "_mainMenuButton", mainMenuButton);
         AssignReference(view, "_quitButton", quitButton);
-        AssignReferenceArray(view, "_tacticalRows", tacticalRows);
-        AssignReference(view, "_resolutionValueField", resolutionValue);
-        AssignReference(view, "_resolutionPrevButton", resolutionPrev);
-        AssignReference(view, "_resolutionNextButton", resolutionNext);
-        AssignReference(view, "_fullScreenValueField", fullScreenValue);
-        AssignReference(view, "_fullScreenPrevButton", fullScreenPrev);
-        AssignReference(view, "_fullScreenNextButton", fullScreenNext);
-        AssignReferenceArray(view, "_volumeSliders", volumeSliders);
-        AssignReferenceArray(view, "_volumeValueFields", volumeValues);
-        AssignReference(view, "_saveListView", saveListView);
         AssignReference(view, "_settingsActions", settingsActions.gameObject);
         AssignReference(view, "_applyButton", applyButton);
         AssignReference(view, "_defaultsButton", defaultsButton);
         AssignReference(view, "_confirmDialog", confirmDialog);
-        AssignReference(saveListView, "_saveButton", saveButton);
-        AssignReference(saveListView, "_loadButton", loadButton);
-        AssignReference(saveListView, "_saveDisabledImage", saveDisabledIcon);
-        AssignReference(saveListView, "_loadDisabledImage", loadDisabledIcon);
-        AssignReference(saveListView, "_scrollArea", saveSlotScrollArea);
-        AssignReference(saveListView, "_rowTemplate", slotRowTemplate);
-        AssignReference(saveListView, "_iconTemplate", slotIconTemplate);
-        AssignReference(saveListView, "_nameTemplate", slotNameTemplate);
-        AssignReference(saveListView, "_metaTemplate", slotMetaTemplate);
-        AssignReference(saveListView, "_deleteTemplate", slotDeleteTemplate);
-        AssignReference(saveListView, "_renameField", slotRenameField);
-        AssignReference(
-            saveListView,
-            "_rowIdleSprite",
-            LoadSprite(_optionsRowAddress, _panelBorder)
-        );
-        AssignReference(
-            saveListView,
-            "_rowActiveSprite",
-            LoadSprite(_optionsRowActiveAddress, _panelBorder)
-        );
-        AssignString(saveListView, "_rowIdleSpriteAddress", _optionsRowAddress);
-        AssignString(saveListView, "_rowActiveSpriteAddress", _optionsRowActiveAddress);
-        AssignReference(view, "_controlsScrollArea", controlsScrollArea);
-        AssignReference(view, "_bindingRowTemplate", bindingRowTemplate);
-        AssignReference(view, "_bindingHeaderTemplate", bindingHeaderTemplate);
-        AssignReference(view, "_bindingActionTemplate", bindingActionTemplate);
-        AssignReference(view, "_bindingKeyBadgeTemplate", bindingKeyBadgeTemplate);
-        AssignReference(view, "_bindingKeyTemplate", bindingKeyTemplate);
-        AssignReference(view, "_bindingRestoreTemplate", bindingRestoreTemplate);
-
-        GameObject saved = SaveGeneratedPrefabAsset(window, _optionsMenuWindowPrefabPath);
-        UnityEngine.Object.DestroyImmediate(window);
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-        return saved.GetComponent<OptionsMenuView>();
     }
 
     /// <summary>

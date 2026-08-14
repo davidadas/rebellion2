@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using Rebellion.Game;
 
-namespace Rebellion.Tests.UI.SceneUI.MainMenu
+namespace Rebellion.Tests.UI.SceneUI
 {
     [TestFixture]
     public class GameLaunchContextTests

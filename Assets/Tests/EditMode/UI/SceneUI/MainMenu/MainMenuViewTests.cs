@@ -153,34 +153,47 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void TryGetSelectedDifficulty_SelectedAuthoredToggle_ReturnsMappedDifficulty()
+        public void RenderDifficulty_Value_SelectsMappedToggleWithoutRequest()
         {
             Array bindings = GetBindings("difficultyBindings");
             SetAllToggles(bindings, false);
             object selectedBinding = bindings.GetValue(1);
-            Toggle selectedToggle = GetBindingValue<Toggle>(selectedBinding, "Toggle");
             GameDifficulty expected = GetBindingValue<GameDifficulty>(selectedBinding, "Value");
-            selectedToggle.SetIsOnWithoutNotify(true);
+            int requestCount = 0;
+            _view.DifficultySelected += _ => requestCount++;
 
-            bool found = _view.TryGetSelectedDifficulty(out GameDifficulty difficulty);
+            _view.RenderDifficulty(expected);
 
-            Assert.IsTrue(found);
-            Assert.AreEqual(expected, difficulty);
+            Assert.IsTrue(GetBindingValue<Toggle>(selectedBinding, "Toggle").isOn);
+            Assert.AreEqual(
+                1,
+                bindings
+                    .Cast<object>()
+                    .Count(binding => GetBindingValue<Toggle>(binding, "Toggle").isOn)
+            );
+            Assert.AreEqual(0, requestCount);
         }
 
         [Test]
-        public void TryGetSelectedDifficulty_NoSelectedToggle_ReturnsFalse()
+        public void RenderGalaxySize_Value_SelectsMappedToggleWithoutRequest()
         {
-            FieldInfo field = typeof(MainMenuView).GetField(
-                "difficultyBindings",
-                BindingFlags.Instance | BindingFlags.NonPublic
+            Array bindings = GetBindings("galaxySizeBindings");
+            SetAllToggles(bindings, false);
+            object selectedBinding = bindings.GetValue(2);
+            GameSize expected = GetBindingValue<GameSize>(selectedBinding, "Value");
+            int requestCount = 0;
+            _view.GalaxySizeSelected += _ => requestCount++;
+
+            _view.RenderGalaxySize(expected);
+
+            Assert.IsTrue(GetBindingValue<Toggle>(selectedBinding, "Toggle").isOn);
+            Assert.AreEqual(
+                1,
+                bindings
+                    .Cast<object>()
+                    .Count(binding => GetBindingValue<Toggle>(binding, "Toggle").isOn)
             );
-            field.SetValue(_view, Array.CreateInstance(field.FieldType.GetElementType(), 0));
-
-            bool found = _view.TryGetSelectedDifficulty(out GameDifficulty difficulty);
-
-            Assert.IsFalse(found);
-            Assert.AreEqual(default(GameDifficulty), difficulty);
+            Assert.AreEqual(0, requestCount);
         }
 
         [Test]
@@ -190,7 +203,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             int exitCount = 0;
             int creditsCount = 0;
             int victoryCount = 0;
-            _view.LoadGameRequested += () => loadCount++;
+            _view.SaveLoadMenuRequested += () => loadCount++;
             _view.ExitRequested += () => exitCount++;
             _view.CreditsRequested += () => creditsCount++;
             _view.VictoryConditionToggleRequested += () => victoryCount++;
@@ -359,7 +372,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         public void OnEnable_AlreadyBound_DoesNotDuplicateListeners()
         {
             int loadCount = 0;
-            _view.LoadGameRequested += () => loadCount++;
+            _view.SaveLoadMenuRequested += () => loadCount++;
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnEnable");
             GetField<Button>("loadGameButton").onClick.Invoke();
@@ -372,7 +385,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         {
             int loadCount = 0;
             int cueCount = 0;
-            _view.LoadGameRequested += () => loadCount++;
+            _view.SaveLoadMenuRequested += () => loadCount++;
             _view.AudioCueRequested += _ => cueCount++;
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDisable");
