@@ -12,7 +12,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
     {
         private const string _prefabPath = "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
         private const string _clipPath =
-            "Assets/Tests/EditMode/UI/SceneUI/Cutscenes/CutsceneTestClip.webm";
+            "Assets/Tests/EditMode/GameTests/UI/SceneUI/Cutscenes/CutsceneTestClip.webm";
 
         private VideoClip _clip;
         private CutsceneManager _manager;

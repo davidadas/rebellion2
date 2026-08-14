@@ -1,14 +1,11 @@
 {
-    "name": "EditMode",
+    "name": "EditorTests",
+    "rootNamespace": "Rebellion.Tests.Editor",
     "includePlatforms": [
         "Editor"
     ],
     "references": [
-        "GameAssembly",
         "Rebellion.Editor.MediaSync",
-        "Unity.InputSystem",
-        "Unity.InputSystem.TestFramework",
-        "Unity.TextMeshPro",
         "UnityEditor.TestRunner",
         "UnityEngine.TestRunner"
     ],

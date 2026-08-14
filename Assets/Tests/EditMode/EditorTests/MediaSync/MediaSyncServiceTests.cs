@@ -4,7 +4,7 @@ using System.IO;
 using NUnit.Framework;
 using Rebellion.Editor.Media;
 
-namespace Rebellion.Tests.Content
+namespace Rebellion.Tests.Editor.MediaSync
 {
     [TestFixture]
     public sealed class MediaSyncServiceTests

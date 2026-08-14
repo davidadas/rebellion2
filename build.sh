@@ -149,9 +149,15 @@ do_lint() {
         echo "=== GameAssembly ==="
         dotnet build GameAssembly.csproj -verbosity:normal "${extra_args[@]}"
         echo ""
-        echo "=== EditMode ==="
-        dotnet build EditMode.csproj -verbosity:normal "${extra_args[@]}"
-        echo ""
+        for test_project in GameTests.csproj EditorTests.csproj; do
+            if [ ! -f "$test_project" ]; then
+                continue
+            fi
+
+            echo "=== ${test_project%.csproj} ==="
+            dotnet build "$test_project" -verbosity:normal "${extra_args[@]}"
+            echo ""
+        done
     fi
 
     echo "=== Format Rules ==="
