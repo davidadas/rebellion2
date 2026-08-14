@@ -6,32 +6,6 @@ namespace Rebellion.Tests.UserSettings
     [TestFixture]
     public sealed class UserVideoSettingsTests
     {
-        [Test]
-        public void Normalize_VersionOneSettings_RestoresTacticalDefaultsAndUpgradesVersion()
-        {
-            global::UserSettings settings = new global::UserSettings
-            {
-                Version = 1,
-                Video = new UserVideoSettings
-                {
-                    ShowStarfield = false,
-                    ShowPlanet = false,
-                    ShowPyro = false,
-                    HighDetail = false,
-                    ShowHolocube = false,
-                },
-            };
-
-            settings.Normalize();
-
-            Assert.AreEqual(global::UserSettings.CurrentVersion, settings.Version);
-            Assert.IsTrue(settings.Video.ShowStarfield);
-            Assert.IsTrue(settings.Video.ShowPlanet);
-            Assert.IsTrue(settings.Video.ShowPyro);
-            Assert.IsTrue(settings.Video.HighDetail);
-            Assert.IsTrue(settings.Video.ShowHolocube);
-        }
-
         [TestCase(UserTacticalOption.Starfield)]
         [TestCase(UserTacticalOption.Planet)]
         [TestCase(UserTacticalOption.Pyro)]
@@ -78,6 +52,67 @@ namespace Rebellion.Tests.UserSettings
             Assert.AreEqual(1920, settings.ResolutionWidth);
             Assert.AreEqual(1080, settings.ResolutionHeight);
             Assert.AreEqual((int)FullScreenMode.Windowed, settings.FullScreenMode);
+        }
+
+        /// <summary>
+        /// Verifies normalization clears a persisted resolution outside the supported aspect ratio.
+        /// </summary>
+        [Test]
+        public void Normalize_NonSixteenByNineResolution_ClearsUnsupportedSelection()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                ResolutionWidth = 3840,
+                ResolutionHeight = 1600,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual(0, settings.ResolutionWidth);
+            Assert.AreEqual(0, settings.ResolutionHeight);
+        }
+
+        /// <summary>
+        /// Verifies an ultrawide target falls back to the largest fitting 16:9 mode.
+        /// </summary>
+        [Test]
+        public void Resolve_UltrawideTarget_SelectsLargestFittingSixteenByNineMode()
+        {
+            Vector2Int[] supported =
+            {
+                new Vector2Int(1280, 720),
+                new Vector2Int(1920, 1080),
+                new Vector2Int(2560, 1440),
+                new Vector2Int(3840, 2160),
+            };
+
+            Vector2Int selected = DisplayManager.ResolveResolution(
+                supported,
+                3840,
+                1600,
+                3840,
+                1600
+            );
+
+            Assert.AreEqual(new Vector2Int(2560, 1440), selected);
+            Assert.IsTrue(DisplayManager.IsSixteenByNine(selected.x, selected.y));
+        }
+
+        [TestCase(1920, 1080, true)]
+        [TestCase(2560, 1440, true)]
+        [TestCase(3840, 1600, false)]
+        /// <summary>
+        /// Verifies the aspect-ratio predicate accepts only 16:9 dimensions.
+        /// </summary>
+        [TestCase(1366, 768, true)]
+        [TestCase(1920, 1200, false)]
+        public void IsSixteenByNine_AcceptsOnlySixteenByNineModes(
+            int width,
+            int height,
+            bool expected
+        )
+        {
+            Assert.AreEqual(expected, DisplayManager.IsSixteenByNine(width, height));
         }
 
         [Test]

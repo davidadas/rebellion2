@@ -112,6 +112,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(dimmer.gameObject.activeSelf);
             Assert.AreEqual(0, blocker.transform.GetSiblingIndex());
             Assert.AreEqual(1, dimmer.transform.GetSiblingIndex());
+            Assert.AreEqual(new Color(0f, 0f, 0f, 0.8f), dimmer.color);
         }
 
         [Test]

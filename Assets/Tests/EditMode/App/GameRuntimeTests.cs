@@ -21,11 +21,7 @@ namespace Rebellion.Tests.App
                 nameof(GameRuntimeTests),
                 Guid.NewGuid().ToString("N")
             );
-            runtime = new GameRuntime(
-                _ => { },
-                contentPack,
-                new SaveGameManager(saveDirectoryPath)
-            );
+            runtime = new GameRuntime(contentPack, new SaveGameManager(saveDirectoryPath));
         }
 
         [TearDown]

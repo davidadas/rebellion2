@@ -71,6 +71,20 @@
       <Private>false</Private>
     </Reference>
     <Reference
+      Include="UnityEngine.ImageConversionModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.ImageConversionModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.ImageConversionModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.TextRenderingModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.TextRenderingModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
       Include="UnityEngine.AnimationModule"
       Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.AnimationModule.dll')"
     >

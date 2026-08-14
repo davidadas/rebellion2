@@ -1,6 +1,8 @@
 using System;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
@@ -14,10 +16,12 @@ public static class UIBuilderMenu
     [MenuItem("Rebellion/Build/Build All UI %#u", false, 0)]
     public static void BuildAll()
     {
-        UIAuthoringGuard.EnsureEditMode();
-        MainMenuPrefabBuilder.Rebuild();
-        SaveMenuPrefabBuilder.Rebuild();
-        StrategyViewPrefabBuilder.Rebuild();
+        RunInAuthoringScene(() =>
+        {
+            RebuildOptionsMenuAndDependencies();
+            MainMenuPrefabBuilder.Rebuild();
+            StrategyViewPrefabBuilder.Rebuild();
+        });
         SaveAndRefresh();
     }
 
@@ -37,7 +41,7 @@ public static class UIBuilderMenu
             {
                 "Assets/Prefabs/UI/Common",
                 "Assets/Prefabs/UI/MainMenu",
-                "Assets/Prefabs/UI/SaveMenu",
+                "Assets/Prefabs/UI/OptionsMenu",
                 "Assets/Prefabs/UI/StrategyView",
             }
         );
@@ -53,19 +57,21 @@ public static class UIBuilderMenu
     [MenuItem("Rebellion/Build/Build Main Menu UI", false, 20)]
     public static void BuildMainMenu()
     {
-        UIAuthoringGuard.EnsureEditMode();
-        MainMenuPrefabBuilder.Rebuild();
+        RunInAuthoringScene(() =>
+        {
+            RebuildOptionsMenuAndDependencies();
+            MainMenuPrefabBuilder.Rebuild();
+        });
         SaveAndRefresh();
     }
 
     /// <summary>
-    /// Rebuilds the generated save-game UI.
+    /// Rebuilds the generated Options menu UI.
     /// </summary>
-    [MenuItem("Rebellion/Build/Build Save Game UI", false, 21)]
-    public static void BuildSaveGame()
+    [MenuItem("Rebellion/Build/Build Options Menu UI", false, 21)]
+    public static void BuildOptionsMenu()
     {
-        UIAuthoringGuard.EnsureEditMode();
-        SaveMenuPrefabBuilder.Rebuild();
+        RunInAuthoringScene(RebuildOptionsMenuAndDependencies);
         SaveAndRefresh();
     }
 
@@ -75,9 +81,59 @@ public static class UIBuilderMenu
     [MenuItem("Rebellion/Build/Build Strategy UI", false, 22)]
     public static void BuildStrategy()
     {
-        UIAuthoringGuard.EnsureEditMode();
-        StrategyViewPrefabBuilder.Rebuild();
+        RunInAuthoringScene(() =>
+        {
+            RebuildOptionsMenuAndDependencies();
+            StrategyViewPrefabBuilder.Rebuild();
+        });
         SaveAndRefresh();
+    }
+
+    /// <summary>
+    /// Isolates temporary prefab-authoring objects from the user's open scenes and restores editor focus afterward.
+    /// </summary>
+    /// <param name="build">The prefab and generated-scene work to perform.</param>
+    private static void RunInAuthoringScene(Action build)
+    {
+        if (build == null)
+            throw new ArgumentNullException(nameof(build));
+
+        Scene activeScene = SceneManager.GetActiveScene();
+        UnityEngine.Object[] selection = Selection.objects;
+        bool usesBatchScene = Application.isBatchMode && string.IsNullOrEmpty(activeScene.path);
+        Scene authoringScene = usesBatchScene
+            ? activeScene
+            : EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+        if (!usesBatchScene)
+            SceneManager.SetActiveScene(authoringScene);
+        try
+        {
+            build();
+        }
+        finally
+        {
+            if (usesBatchScene)
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            }
+            else
+            {
+                if (activeScene.IsValid() && activeScene.isLoaded)
+                    SceneManager.SetActiveScene(activeScene);
+                if (authoringScene.IsValid() && authoringScene.isLoaded)
+                    EditorSceneManager.CloseScene(authoringScene, true);
+            }
+            Selection.objects = selection;
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds the shared controls before the Options menu that consumes them.
+    /// </summary>
+    private static void RebuildOptionsMenuAndDependencies()
+    {
+        CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
+        OptionsMenuPrefabBuilder.Rebuild();
     }
 
     /// <summary>

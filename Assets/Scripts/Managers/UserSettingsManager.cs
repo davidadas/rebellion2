@@ -10,7 +10,9 @@ public sealed class UserSettingsManager
     private const string _settingsFileName = "user-settings.json";
 
     private readonly AudioManager _audioManager;
+    private readonly DisplayManager _displayManager;
     private readonly InputManager _inputManager;
+    private readonly string _settingsFilePathOverride;
 
     /// <summary>
     /// Gets the active user settings.
@@ -21,11 +23,33 @@ public sealed class UserSettingsManager
     /// Creates a user settings manager for the supplied runtime systems.
     /// </summary>
     /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="displayManager">The display manager that receives video settings.</param>
     /// <param name="inputManager">The input manager that receives binding overrides.</param>
-    public UserSettingsManager(AudioManager audioManager, InputManager inputManager)
+    public UserSettingsManager(
+        AudioManager audioManager,
+        DisplayManager displayManager,
+        InputManager inputManager
+    )
+        : this(audioManager, displayManager, inputManager, null) { }
+
+    /// <summary>
+    /// Creates a user settings manager that uses the given file path.
+    /// </summary>
+    /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="displayManager">The display manager that receives video settings.</param>
+    /// <param name="inputManager">The input manager that receives binding overrides.</param>
+    /// <param name="settingsFilePath">The exact settings file path.</param>
+    internal UserSettingsManager(
+        AudioManager audioManager,
+        DisplayManager displayManager,
+        InputManager inputManager,
+        string settingsFilePath
+    )
     {
         _audioManager = audioManager;
+        _displayManager = displayManager ?? throw new ArgumentNullException(nameof(displayManager));
         _inputManager = inputManager;
+        _settingsFilePathOverride = settingsFilePath;
     }
 
     /// <summary>
@@ -34,7 +58,8 @@ public sealed class UserSettingsManager
     /// <returns>The absolute user settings file path.</returns>
     public string GetSettingsFilePath()
     {
-        return Path.Combine(Application.persistentDataPath, _settingsFileName);
+        return _settingsFilePathOverride
+            ?? Path.Combine(Application.persistentDataPath, _settingsFileName);
     }
 
     /// <summary>
@@ -58,7 +83,7 @@ public sealed class UserSettingsManager
 
         _audioManager?.ApplySettings(Settings.Audio);
         _inputManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
-        ApplyVideoSettings(Settings.Video);
+        _displayManager.Apply(Settings.Video);
     }
 
     /// <summary>
@@ -108,7 +133,12 @@ public sealed class UserSettingsManager
 
         string path = GetSettingsFilePath();
         Directory.CreateDirectory(Path.GetDirectoryName(path));
-        File.WriteAllText(path, JsonUtility.ToJson(settings, true));
+        string temporaryPath = path + ".tmp";
+        File.WriteAllText(temporaryPath, JsonUtility.ToJson(settings, true));
+        if (File.Exists(path))
+            File.Replace(temporaryPath, path, null);
+        else
+            File.Move(temporaryPath, path);
     }
 
     /// <summary>
@@ -123,22 +153,6 @@ public sealed class UserSettingsManager
             Settings.Input.BindingOverridesJson = _inputManager.SaveBindingOverrides();
 
         Settings.Normalize();
-    }
-
-    /// <summary>
-    /// Applies the saved display mode once during startup. Zero dimensions select the
-    /// current display's native resolution.
-    /// </summary>
-    /// <param name="video">The normalized video settings.</param>
-    private static void ApplyVideoSettings(UserVideoSettings video)
-    {
-        if (Application.isEditor)
-            return;
-
-        int width = video.ResolutionWidth > 0 ? video.ResolutionWidth : Display.main.systemWidth;
-        int height =
-            video.ResolutionHeight > 0 ? video.ResolutionHeight : Display.main.systemHeight;
-        Screen.SetResolution(width, height, (FullScreenMode)video.FullScreenMode);
     }
 
     /// <summary>

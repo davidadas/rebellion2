@@ -20,8 +20,8 @@ using Object = UnityEngine.Object;
 public static class MainMenuPrefabBuilder
 {
     private const string _scenePath = "Assets/Scenes/MainMenu.unity";
-    private const string _sceneTemplatePath =
-        "Assets/Editor/PrefabBuilders/Templates/MainMenu.unity";
+    private const string _optionsMenuPrefabPath =
+        "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
     private const string _sceneInstanceName = "MainMenuRoot";
 
     // Prefab + authored-asset paths.
@@ -157,8 +157,6 @@ public static class MainMenuPrefabBuilder
     /// </summary>
     public static void RebuildMainMenuPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
-
         GameObject root = new GameObject("MainMenuRoot");
         try
         {
@@ -183,10 +181,36 @@ public static class MainMenuPrefabBuilder
     /// <param name="root">The freshly created prefab root.</param>
     private static void BuildBaseHierarchy(GameObject root)
     {
+        BuildMainCamera(root);
+        BuildEventSystem(root);
         BuildServices(root);
         MainMenuController controller = BuildController(root);
         BuildCanvas(root);
         PopulateViewBindings(root, controller.GetComponent<MainMenuView>());
+    }
+
+    /// <summary>
+    /// Authors the camera and audio listener owned by the Main Menu scene root.
+    /// </summary>
+    /// <param name="root">The scene-root prefab receiving the infrastructure.</param>
+    private static void BuildMainCamera(GameObject root)
+    {
+        GameObject cameraObject = NewChild("Main Camera", root.transform);
+        cameraObject.tag = "MainCamera";
+        Camera camera = cameraObject.AddComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = Color.black;
+        cameraObject.AddComponent<AudioListener>();
+    }
+
+    /// <summary>
+    /// Authors the event system required by the self-contained Main Menu root.
+    /// </summary>
+    private static void BuildEventSystem(GameObject root)
+    {
+        GameObject eventSystem = NewChild("EventSystem", root.transform);
+        eventSystem.AddComponent<EventSystem>();
+        eventSystem.AddComponent<StandaloneInputModule>();
     }
 
     /// <summary>
@@ -228,7 +252,7 @@ public static class MainMenuPrefabBuilder
                 .transform.Find("PressedImage")
                 .gameObject;
         serializedView.FindProperty("exitConfirmationDialog").objectReferenceValue =
-            FindRequiredComponent<SaveMenuConfirmDialogView>(root, "ConfirmDialog");
+            FindRequiredComponent<ConfirmationDialogView>(root, "ConfirmDialog");
         serializedView.FindProperty("creditsButton").objectReferenceValue =
             FindRequiredComponent<Button>(root, "CreditsButton");
         serializedView.FindProperty("victoryConditionButton").objectReferenceValue =
@@ -248,6 +272,12 @@ public static class MainMenuPrefabBuilder
             factionLaunches
         );
         WriteAudioCueBindings(serializedView.FindProperty("audioCueBindings"), audioCues);
+        serializedView.FindProperty("optionsOverlay").objectReferenceValue =
+            FindRequiredComponent<RectTransform>(root, "OptionsOverlayCanvas").gameObject;
+        serializedView.FindProperty("optionsWindowLayer").objectReferenceValue =
+            FindRequiredComponent<RectTransform>(root, "OptionsModalLayer");
+        serializedView.FindProperty("optionsWindowManager").objectReferenceValue =
+            FindRequiredComponent<UIWindowManager>(root, "OptionsOverlayCanvas");
         serializedView.ApplyModifiedPropertiesWithoutUndo();
     }
 
@@ -273,7 +303,6 @@ public static class MainMenuPrefabBuilder
             ("LargeGalaxyToggle", _galaxySizeSelectSfxPath),
             ("ExitButton", _exitSelectSfxPath),
             ("CreditsButton", _selectSfxPath),
-            ("LoadGameButton", _selectSfxPath),
             ("LeftFactionLaunchButton", _factionSelectSfxPath),
             ("RightFactionLaunchButton", _factionSelectSfxPath),
             ("VictoryConditionButton", _selectSfxPath),
@@ -343,6 +372,11 @@ public static class MainMenuPrefabBuilder
         MainMenuController controller = controllerObject.AddComponent<MainMenuController>();
         MainMenuView view = controllerObject.AddComponent<MainMenuView>();
         AssignReference(controller, "view", view);
+        AssignReference(
+            controller,
+            "_optionsMenuPrefab",
+            AssetDatabase.LoadAssetAtPath<OptionsMenuView>(_optionsMenuPrefabPath)
+        );
         AssignFloat(controller, "creditsMusicFadeDuration", 0.5f);
         return controller;
     }
@@ -405,6 +439,54 @@ public static class MainMenuPrefabBuilder
         cockpit.raycastTarget = false;
 
         BuildControls(viewport.transform);
+        BuildOptionsOverlay(ui.transform);
+    }
+
+    /// <summary>
+    /// Authors the full-screen Options canvas, dimmer, modal layer, and window manager.
+    /// </summary>
+    /// <param name="parent">The Main Menu UI root.</param>
+    private static void BuildOptionsOverlay(Transform parent)
+    {
+        GameObject overlay = NewChild(
+            "OptionsOverlayCanvas",
+            parent,
+            typeof(RectTransform),
+            typeof(Canvas),
+            typeof(CanvasScaler),
+            typeof(GraphicRaycaster),
+            typeof(UIWindowManager)
+        );
+        FillParent(overlay.GetComponent<RectTransform>());
+
+        Canvas canvas = overlay.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1000;
+
+        CanvasScaler scaler = overlay.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(853.33f, 480f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+
+        GameObject dimmer = NewChild(
+            "OptionsDimmer",
+            overlay.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        FillParent(dimmer.GetComponent<RectTransform>());
+        Image dimmerImage = dimmer.GetComponent<Image>();
+        dimmerImage.color = new Color(0f, 0f, 0f, 0.8f);
+        dimmerImage.raycastTarget = true;
+
+        GameObject modalLayer = NewChild(
+            "OptionsModalLayer",
+            overlay.transform,
+            typeof(RectTransform)
+        );
+        FillParent(modalLayer.GetComponent<RectTransform>());
+        overlay.SetActive(false);
     }
 
     /// <summary>
@@ -438,17 +520,18 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Authors the same modal exit confirmation used by the save menu.
+    /// Authors the shared modal exit confirmation.
     /// </summary>
     private static void BuildExitConfirmationDialog(Transform parent)
     {
-        SaveMenuConfirmDialogView dialog = SaveMenuPrefabBuilder.CreateConfirmDialog(parent);
+        ConfirmationDialogView dialog = CommonUIPrefabBuilder.InstantiateConfirmationDialog(parent);
+        dialog.gameObject.name = "ConfirmDialog";
         RectTransform rect = dialog.transform as RectTransform;
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.localScale = Vector3.one * 3f;
+        FillParent(rect);
+        RectTransform dialogSurface = dialog.transform.Find("DialogSurface") as RectTransform;
+        if (dialogSurface == null)
+            throw new MissingReferenceException("Confirmation dialog has no DialogSurface.");
+        dialogSurface.localScale = Vector3.one * 3f;
     }
 
     /// <summary>
@@ -868,7 +951,7 @@ public static class MainMenuPrefabBuilder
 
         ContentSpriteBinding destinationBinding =
             destination.gameObject.AddComponent<ContentSpriteBinding>();
-        destinationBinding.SetAddress(sourceBinding.Address);
+        destinationBinding.SetAddress(sourceBinding.Address, sourceBinding.Border);
         Object.DestroyImmediate(sourceBinding);
     }
 
@@ -1224,7 +1307,7 @@ public static class MainMenuPrefabBuilder
             .transform.Find("PressedImage")
             .gameObject;
         serializedView.FindProperty("exitConfirmationDialog").objectReferenceValue =
-            FindRequiredComponent<SaveMenuConfirmDialogView>(root, "ConfirmDialog");
+            FindRequiredComponent<ConfirmationDialogView>(root, "ConfirmDialog");
         serializedView.ApplyModifiedPropertiesWithoutUndo();
         AssignReference(controller, "view", view);
         RemoveControllerPersistentCalls(root, controller);
@@ -2611,13 +2694,7 @@ public static class MainMenuPrefabBuilder
     public static void Rebuild()
     {
         RebuildMainMenuPrefab();
-        SceneRootPrefabInstaller.ResetSceneFromTemplate(_sceneTemplatePath, _scenePath);
-        SceneRootPrefabInstaller.InstallRootPrefabInScene(
-            _scenePath,
-            _prefabPath,
-            _sceneInstanceName,
-            null
-        );
+        SceneBuilder.Build(_scenePath, _prefabPath, _sceneInstanceName);
     }
 
     /// <summary>

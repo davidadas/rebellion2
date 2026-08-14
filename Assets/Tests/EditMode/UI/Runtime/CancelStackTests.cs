@@ -35,6 +35,25 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreEqual(1, second.CancelCount);
         }
 
+        /// <summary>
+        /// Verifies reopening a cancelable promotes it ahead of previously registered handlers.
+        /// </summary>
+        [Test]
+        public void Register_ExistingCancelable_PromotesItToTop()
+        {
+            CancelStack stack = new CancelStack();
+            TestCancelable menu = new TestCancelable(true);
+            TestCancelable windowManager = new TestCancelable(true);
+
+            stack.Register(menu);
+            stack.Register(windowManager);
+            stack.Register(menu);
+
+            Assert.IsTrue(stack.TryCancel());
+            Assert.AreEqual(1, menu.CancelCount);
+            Assert.AreEqual(0, windowManager.CancelCount);
+        }
+
         [Test]
         public void Unregister_RemovesCancelableFromStack()
         {

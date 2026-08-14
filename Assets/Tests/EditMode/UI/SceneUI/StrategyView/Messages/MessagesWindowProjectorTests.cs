@@ -224,6 +224,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Project_FactionSpecificCommandLayouts_ReturnsEveryAuthoredButtonRectangle()
+        {
+            _theme.CloseButton.SourceLayout = CreateSourceLayout(426, 21, 44, 41);
+            _theme.DisplayButton.SourceLayout = CreateSourceLayout(426, 89, 44, 41);
+            _theme.IndexButton.SourceLayout = CreateSourceLayout(426, 89, 44, 41);
+            _theme.SignalButton.SourceLayout = CreateSourceLayout(426, 148, 44, 41);
+            _theme.SignalTargetButton.SourceLayout = CreateSourceLayout(426, 207, 44, 41);
+            _theme.ChatCommandButton.SourceLayout = CreateSourceLayout(426, 266, 44, 41);
+
+            MessagesWindowRenderData data = MessagesWindowProjector.Project(
+                _uiContext,
+                Array.Empty<Message>(),
+                MessagesTab.All,
+                false,
+                null,
+                null,
+                true,
+                false,
+                0,
+                0
+            );
+
+            Assert.AreEqual(new RectInt(426, 21, 44, 41), data.CommandBar.CloseButton.SourceBounds);
+            Assert.AreEqual(
+                new RectInt(426, 89, 44, 41),
+                data.CommandBar.DisplayButton.SourceBounds
+            );
+            Assert.AreEqual(new RectInt(426, 89, 44, 41), data.CommandBar.IndexButton.SourceBounds);
+            Assert.AreEqual(
+                new RectInt(426, 148, 44, 41),
+                data.CommandBar.SignalButton.SourceBounds
+            );
+            Assert.AreEqual(
+                new RectInt(426, 207, 44, 41),
+                data.CommandBar.SignalTargetButton.SourceBounds
+            );
+            Assert.AreEqual(new RectInt(426, 266, 44, 41), data.CommandBar.ChatButton.SourceBounds);
+        }
+
+        [Test]
         public void Project_DetailPanel_ReturnsSelectedMessageAndNavigationCommands()
         {
             Message first = CreateMessage("first", "First", MessageType.Fleet);
@@ -390,6 +430,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         private static Message CreateMessage(string instanceId, string title, MessageType type)
         {
             return new Message(type, title) { InstanceID = instanceId };
+        }
+
+        private static SourceRectLayout CreateSourceLayout(int x, int y, int width, int height)
+        {
+            return new SourceRectLayout
+            {
+                X = x,
+                Y = y,
+                Width = width,
+                Height = height,
+            };
         }
     }
 }

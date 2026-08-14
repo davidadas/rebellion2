@@ -146,6 +146,25 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(_scrollDownButton.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies the initial content layout starts at the top and later layouts preserve position.
+        /// </summary>
+        [Test]
+        public void SetContentHeight_FirstLayoutStartsAtTopThenPreservesPosition()
+        {
+            _contentRoot.sizeDelta = new Vector2(100, 200);
+            _rootObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 0f;
+
+            _scrollArea.SetContentHeight(200, 10, false);
+
+            Assert.AreEqual(1f, _scrollbar.value, 0.01f);
+
+            _rootObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 0.5f;
+            _scrollArea.SetContentHeight(200, 10, false);
+
+            Assert.AreEqual(0.5f, _scrollbar.value, 0.01f);
+        }
+
         [Test]
         public void RelayScroll_ContentOverflows_MovesByConfiguredStep()
         {

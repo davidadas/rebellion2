@@ -5,6 +5,8 @@
     ],
     "references": [
         "GameAssembly",
+        "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework",
         "Unity.TextMeshPro",
         "UnityEditor.TestRunner",
         "UnityEngine.TestRunner"

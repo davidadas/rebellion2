@@ -441,7 +441,7 @@ public sealed class AudioManager : MonoBehaviour
             return;
 
         EnsureAudioSources();
-        sfxSource.PlayOneShot(clip, volumeScale * sfxVolume * masterVolume);
+        sfxSource.PlayOneShot(clip, volumeScale);
     }
 
     /// <summary>

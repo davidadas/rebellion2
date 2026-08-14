@@ -107,10 +107,11 @@ jobs:
 
       - name: Install media
         run: |
-          mkdir -p Assets/Content Assets/Art/Models/MainMenu
+          mkdir -p Assets/Content Assets/Art/Models/MainMenu Assets/Resources/UI
           test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
+          cp .ci/rebellion2-media/Content/Application/Common/UI/ui_common_cursor_default_outlined.png Assets/Resources/UI/DefaultCursor.png
           rm -rf .ci
 
       - uses: actions/cache@v4
@@ -284,10 +285,11 @@ jobs:
 
       - name: Install media
         run: |
-          mkdir -p Assets/Content Assets/Art/Models/MainMenu
+          mkdir -p Assets/Content Assets/Art/Models/MainMenu Assets/Resources/UI
           test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
+          cp .ci/rebellion2-media/Content/Application/Common/UI/ui_common_cursor_default_outlined.png Assets/Resources/UI/DefaultCursor.png
           rm -rf .ci
 
       - uses: actions/cache@v4

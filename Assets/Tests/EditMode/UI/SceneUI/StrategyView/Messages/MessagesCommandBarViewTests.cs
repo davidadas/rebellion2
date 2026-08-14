@@ -69,6 +69,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Render_FactionSpecificButtonBounds_AppliesEveryCommandLayout()
+        {
+            RectInt closeBounds = new RectInt(426, 21, 44, 41);
+            RectInt displayBounds = new RectInt(426, 89, 44, 41);
+            RectInt indexBounds = new RectInt(426, 89, 44, 41);
+            RectInt signalBounds = new RectInt(426, 148, 44, 41);
+            RectInt targetBounds = new RectInt(426, 207, 44, 41);
+            RectInt chatBounds = new RectInt(426, 266, 44, 41);
+            MessagesCommandBarRenderData data = new MessagesCommandBarRenderData(
+                _texture,
+                CreateButton(_texture, _pressedTexture, true, true, closeBounds),
+                CreateButton(_texture, _pressedTexture, true, true, displayBounds),
+                CreateButton(_texture, _pressedTexture, true, true, indexBounds),
+                CreateButton(_texture, _pressedTexture, true, true, signalBounds),
+                CreateButton(_texture, _pressedTexture, true, true, targetBounds),
+                CreateButton(_texture, _pressedTexture, true, true, chatBounds)
+            );
+
+            _view.Render(data);
+
+            AssertSourceRect("CloseButtonImage", closeBounds);
+            AssertSourceRect("DisplayButtonImage", displayBounds);
+            AssertSourceRect("IndexButtonImage", indexBounds);
+            AssertSourceRect("SignalButtonImage", signalBounds);
+            AssertSourceRect("SignalTargetButtonImage", targetBounds);
+            AssertSourceRect("ChatCommandButtonImage", chatBounds);
+        }
+
+        [Test]
         public void CommandButtons_PressThenClick_RaiseControlBeforeSemanticRequests()
         {
             int controlCount = 0;
@@ -166,10 +195,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Texture texture,
             Texture pressedTexture,
             bool visible,
-            bool enabled
+            bool enabled,
+            RectInt? sourceBounds = null
         )
         {
-            return new MessagesCommandButtonRenderData(texture, pressedTexture, visible, enabled);
+            return new MessagesCommandButtonRenderData(
+                texture,
+                pressedTexture,
+                sourceBounds,
+                visible,
+                enabled
+            );
+        }
+
+        private void AssertSourceRect(string objectName, RectInt expected)
+        {
+            RectInt actual = UILayout.GetSourceRect(
+                FindComponent<RawImage>(objectName).rectTransform
+            );
+            Assert.AreEqual(expected.x, actual.x, objectName);
+            Assert.AreEqual(expected.y, actual.y, objectName);
+            Assert.AreEqual(expected.width, actual.width, objectName);
+            Assert.AreEqual(expected.height, actual.height, objectName);
         }
 
         private T FindComponent<T>(string objectName)

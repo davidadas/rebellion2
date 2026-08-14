@@ -98,32 +98,26 @@ public sealed class FinderWindowController
     }
 
     /// <summary>
-    /// Opens or focuses the Finder for a requested category.
+    /// Toggles the exclusive Finder for a requested category.
     /// </summary>
     /// <param name="mode">The Finder category to display.</param>
     public void Open(FinderMode mode)
     {
-        UIWindow existing = FindWindow(mode);
-        if (existing != null)
-        {
-            windowManager.Focus(existing);
-            return;
-        }
-
         Vector2Int position = getWindowPosition();
-        windowManager.CreateWindow(
+        UIWindow window = windowManager.ToggleExclusiveWindow(
             windowLayer.FinderWindowPrefab,
             windowLayer.GetWindowParent(true),
             $"FinderWindow-{mode}",
             position.x,
             position.y,
             windowLayer.GetWindowSize(windowLayer.FinderWindowPrefab),
-            true,
-            true,
             false,
-            false,
+            existingView => GetMode(existingView) == mode,
             out FinderWindowView view
         );
+        if (window == null)
+            return;
+
         BindWindow(view, mode);
         markDirty();
     }
@@ -398,27 +392,6 @@ public sealed class FinderWindowController
             return session;
 
         throw new InvalidOperationException("The Finder view has not been bound to a session.");
-    }
-
-    /// <summary>
-    /// Finds the registered Finder window for one category.
-    /// </summary>
-    /// <param name="mode">The Finder category to locate.</param>
-    /// <returns>The registered window, or null when the category is closed.</returns>
-    private UIWindow FindWindow(FinderMode mode)
-    {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                windowManager.TryGetWindowView(window, out FinderWindowView view)
-                && GetMode(view) == mode
-            )
-            {
-                return window;
-            }
-        }
-
-        return null;
     }
 
     /// <summary>

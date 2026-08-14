@@ -25,10 +25,6 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     private readonly Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>(
         StringComparer.Ordinal
     );
-    private readonly Dictionary<string, Texture2D> readableTextures = new Dictionary<
-        string,
-        Texture2D
-    >(StringComparer.Ordinal);
     private readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>(
         StringComparer.Ordinal
     );
@@ -135,40 +131,18 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <returns>The loaded texture, or null when the address cannot be loaded.</returns>
     public Texture2D GetTexture(string path)
     {
-        return GetTexture(path, textures, true);
-    }
-
-    /// <summary>
-    /// Resolves and caches a CPU-readable texture for APIs such as the hardware cursor.
-    /// </summary>
-    /// <param name="path">The application or pack content address.</param>
-    /// <returns>The loaded readable texture, or null when the address cannot be loaded.</returns>
-    public Texture2D GetReadableTexture(string path)
-    {
-        return GetTexture(path, readableTextures, false);
-    }
-
-    /// <summary>
-    /// Resolves and caches a texture with the requested CPU-readability.
-    /// </summary>
-    private Texture2D GetTexture(
-        string path,
-        IDictionary<string, Texture2D> cache,
-        bool markNonReadable
-    )
-    {
         ThrowIfDisposed();
         string normalizedPath = NormalizeAddress(path);
         if (string.IsNullOrEmpty(normalizedPath))
             return null;
-        if (cache.TryGetValue(normalizedPath, out Texture2D texture))
+        if (textures.TryGetValue(normalizedPath, out Texture2D texture))
         {
             if (texture != null)
                 return texture;
 
             // Unity can destroy transient editor-preview objects when a prefab stage closes while
             // domain reload is disabled. Never retain a dead Unity object in the content cache.
-            cache.Remove(normalizedPath);
+            textures.Remove(normalizedPath);
         }
         if (unavailableTextures.Contains(normalizedPath))
             return null;
@@ -184,7 +158,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         {
             byte[] bytes = File.ReadAllBytes(filePath);
             texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if (!ImageConversion.LoadImage(texture, bytes, markNonReadable))
+            if (!ImageConversion.LoadImage(texture, bytes, true))
             {
                 DestroyAsset(texture);
                 unavailableTextures.Add(normalizedPath);
@@ -205,7 +179,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         texture.name = Path.GetFileNameWithoutExtension(filePath);
         texture.filterMode = FilterMode.Point;
         texture.wrapMode = TextureWrapMode.Clamp;
-        cache.Add(normalizedPath, texture);
+        textures.Add(normalizedPath, texture);
         return texture;
     }
 
@@ -214,13 +188,25 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// </summary>
     public Sprite GetSprite(string path)
     {
+        return GetSprite(path, Vector4.zero);
+    }
+
+    /// <summary>
+    /// Resolves and caches a sprite backed by an addressed texture with an explicit border.
+    /// </summary>
+    /// <param name="path">The application or pack content address.</param>
+    /// <param name="border">The sprite's nine-slice border in pixels.</param>
+    /// <returns>The loaded sprite, or null when the address cannot be loaded.</returns>
+    public Sprite GetSprite(string path, Vector4 border)
+    {
         string normalizedPath = NormalizeAddress(path);
         if (string.IsNullOrEmpty(normalizedPath))
             return null;
-        if (sprites.TryGetValue(normalizedPath, out Sprite sprite) && sprite != null)
+        string cacheKey = CreateSpriteCacheKey(normalizedPath, border);
+        if (sprites.TryGetValue(cacheKey, out Sprite sprite) && sprite != null)
             return sprite;
 
-        sprites.Remove(normalizedPath);
+        sprites.Remove(cacheKey);
         Texture2D texture = GetTexture(normalizedPath);
         if (texture == null)
             return null;
@@ -229,11 +215,27 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
             texture,
             new Rect(0f, 0f, texture.width, texture.height),
             new Vector2(0.5f, 0.5f),
-            100f
+            100f,
+            0,
+            SpriteMeshType.FullRect,
+            border
         );
         sprite.name = texture.name;
-        sprites.Add(normalizedPath, sprite);
+        sprites.Add(cacheKey, sprite);
         return sprite;
+    }
+
+    /// <summary>
+    /// Creates a deterministic cache key for one addressed sprite presentation.
+    /// </summary>
+    /// <param name="normalizedPath">The normalized content address.</param>
+    /// <param name="border">The sprite's nine-slice border.</param>
+    /// <returns>The cache key.</returns>
+    private static string CreateSpriteCacheKey(string normalizedPath, Vector4 border)
+    {
+        return FormattableString.Invariant(
+            $"{normalizedPath}|{border.x:R},{border.y:R},{border.z:R},{border.w:R}"
+        );
     }
 
     /// <summary>
@@ -309,13 +311,10 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
             DestroyAsset(sprite);
         foreach (Texture2D texture in textures.Values)
             DestroyAsset(texture);
-        foreach (Texture2D texture in readableTextures.Values)
-            DestroyAsset(texture);
 
         audioClips.Clear();
         audioLoads.Clear();
         textures.Clear();
-        readableTextures.Clear();
         sprites.Clear();
         unavailableTextures.Clear();
         disposed = true;
