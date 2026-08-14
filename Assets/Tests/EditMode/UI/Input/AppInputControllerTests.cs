@@ -9,9 +9,6 @@ namespace Rebellion.Tests.UI.Input
     [TestFixture]
     public class AppInputControllerTests
     {
-        /// <summary>
-        /// Verifies unhandled global cancel input is routed as a UI request.
-        /// </summary>
         [Test]
         public void CancelOrSettings_Unhandled_RaisesOptionsMenuRequest()
         {
