@@ -16,6 +16,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly Action _markDirty;
     private readonly AppBootstrap _bootstrap;
     private readonly Func<string, bool> _loadSave;
+    private readonly SaveGameManager _saveGameManager;
     private readonly IContentAssetSource _contentAssets;
     private readonly FactionThemeLibrary _factionThemeLibrary;
 
@@ -46,6 +47,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="bootstrap">The application runtime and service owner.</param>
     /// <param name="loadSave">Loads a save through the owning scene's hot- or cold-load flow.</param>
     /// <param name="markDirty">Marks the menu data as changed.</param>
+    /// <param name="saveGameManager">The save-game persistence service.</param>
     public OptionsMenuController(
         OptionsMenuView prefab,
         Transform windowParent,
@@ -54,7 +56,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         Action<UIWindow> closeWindow,
         AppBootstrap bootstrap,
         Func<string, bool> loadSave,
-        Action markDirty
+        Action markDirty,
+        SaveGameManager saveGameManager
     )
     {
         _prefab = prefab;
@@ -66,6 +69,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
         _loadSave = loadSave ?? throw new ArgumentNullException(nameof(loadSave));
+        _saveGameManager =
+            saveGameManager ?? throw new ArgumentNullException(nameof(saveGameManager));
         _contentAssets = _bootstrap.GetContentAssets();
         _factionThemeLibrary = new FactionThemeLibrary(
             _bootstrap.GetContentPack().GameData.FactionThemes
@@ -333,7 +338,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             if (submitted && HasActiveGame())
                 OverwriteSave(fileName, newName);
             else
-                SaveGameManager.Instance.SetSaveDisplayName(fileName, newName);
+                _saveGameManager.SetSaveDisplayName(fileName, newName);
             RefreshSaveSlots(fileName);
             _markDirty();
             return;
@@ -358,7 +363,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             $"Delete \"{label}\"?",
             () =>
             {
-                SaveGameManager.Instance.DeleteSave(fileName);
+                _saveGameManager.DeleteSave(fileName);
                 _selectedSlot = -1;
                 RefreshSaveSlots();
                 _markDirty();
@@ -421,7 +426,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (HasActiveGame())
             _saveSlots.Add(new OptionsSaveSlot("Create New Save", string.Empty, null, true, null));
 
-        foreach (SaveGameEntry entry in SaveGameManager.Instance.GetSavedGames())
+        foreach (SaveGameEntry entry in _saveGameManager.GetSavedGames())
         {
             string displayName = string.IsNullOrEmpty(entry.Metadata?.SaveDisplayName)
                 ? entry.FileName
@@ -472,7 +477,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return;
 
         string fileName = $"save_{DateTime.Now:yyyyMMdd_HHmmss}";
-        SaveGameManager.Instance.SaveGameData(game, fileName, displayName);
+        _saveGameManager.SaveGameData(game, fileName, displayName);
     }
 
     /// <summary>
@@ -486,7 +491,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (game == null || string.IsNullOrEmpty(fileName))
             return;
 
-        SaveGameManager.Instance.SaveGameData(game, fileName, displayName);
+        _saveGameManager.SaveGameData(game, fileName, displayName);
     }
 
     /// <summary>
@@ -736,7 +741,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="destroyed">The destroyed view.</param>
     private void HandleViewDestroyed(OptionsMenuView destroyed)
     {
-        if (destroyed == null)
+        if (ReferenceEquals(destroyed, null))
             return;
 
         destroyed.TabSelected -= HandleTabSelected;

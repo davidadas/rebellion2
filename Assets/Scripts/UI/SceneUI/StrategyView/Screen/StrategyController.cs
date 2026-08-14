@@ -425,7 +425,8 @@ public sealed class StrategyController
             CloseWindow,
             bootstrap,
             settingsRuntime.LoadGame,
-            MarkDirty
+            MarkDirty,
+            SaveGameManager.Instance
         );
         _appInputController = bootstrap.GetInputController();
         if (_appInputController != null)

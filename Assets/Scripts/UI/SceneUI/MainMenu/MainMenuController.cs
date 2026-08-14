@@ -292,7 +292,8 @@ public sealed class MainMenuController : MonoBehaviour
             windowManager.DestroyWindow,
             bootstrap,
             RequestSavedGameLaunch,
-            MarkOptionsDirty
+            MarkOptionsDirty,
+            SaveGameManager.Instance
         );
     }
 
