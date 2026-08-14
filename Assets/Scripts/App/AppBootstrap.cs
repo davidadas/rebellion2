@@ -12,7 +12,7 @@ using UnityEditor;
 /// </summary>
 public sealed class AppBootstrap : MonoBehaviour
 {
-    private const string _defaultCursorResourcePath = "UI/DefaultCursor";
+    private const string _defaultCursorAddress = "Application/Common/UI/ui_common_cursor_default";
     private const string _mainMenuPreloadID = "main-menu";
     private const string _strategyPreloadID = "strategy";
 
@@ -112,18 +112,13 @@ public sealed class AppBootstrap : MonoBehaviour
             _strategyPreloadID
         );
         _contentAssets = new ContentAssets(_contentPack.ContentRootPath, _contentPack.PackRootPath);
-        Texture2D cursorTexture =
-            Resources.Load<Texture2D>(_defaultCursorResourcePath)
-            ?? throw new InvalidOperationException(
-                $"Application cursor resource is missing: {_defaultCursorResourcePath}"
-            );
+        Texture2D cursorTexture = _contentAssets.GetCursor(_defaultCursorAddress);
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
         _runtime = new GameRuntime(_contentPack);
 
-        if (audioManager == null)
-            audioManager = AudioManager.EnsureExists(transform);
+        audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
         _cutsceneManager = GetComponent<CutsceneManager>();
@@ -338,9 +333,8 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <returns>The active application audio manager.</returns>
     public AudioManager GetAudioManager()
     {
-        if (audioManager == null)
-            audioManager = AudioManager.EnsureExists(transform);
-
+        audioManager = AudioManager.EnsureExists(transform);
+        audioManager.InitializeContent(_contentAssets);
         return audioManager;
     }
 

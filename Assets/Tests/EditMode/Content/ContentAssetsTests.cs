@@ -59,6 +59,25 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(TextureWrapMode.Clamp, first.wrapMode);
         }
 
+        /// <summary>
+        /// Verifies cursor loading replaces a non-readable cached copy with readable pixel data.
+        /// </summary>
+        [Test]
+        public void GetCursor_CachedTexture_ReloadsReadableTexture()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            using ContentAssets assets = CreateAssets(pack);
+            const string address = "Application/Common/UI/ui_common_cursor_default";
+
+            Texture2D ordinaryTexture = assets.GetTexture(address);
+            int ordinaryInstanceId = ordinaryTexture.GetInstanceID();
+            Texture2D cursor = assets.GetCursor(address);
+
+            Assert.IsFalse(ordinaryTexture);
+            Assert.IsTrue(cursor.isReadable);
+            Assert.AreNotEqual(ordinaryInstanceId, cursor.GetInstanceID());
+        }
+
         [Test]
         public void GetTexture_MissingAddress_ReturnsNull()
         {

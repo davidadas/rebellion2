@@ -246,6 +246,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     button.colors.pressedColor,
                     buttonName
                 );
+                Assert.Greater(
+                    button.colors.highlightedColor.grayscale,
+                    button.colors.normalColor.grayscale,
+                    buttonName
+                );
             }
         }
 
@@ -303,19 +308,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "Application/OptionsMenu/UI/ui_settingsmenu_restore_default_icon",
                 icon.GetComponent<ContentTextureBinding>().Address
             );
+            Assert.AreEqual(new RectInt(9, 2, 12, 12), UILayout.GetSourceRect(icon.rectTransform));
             Assert.IsEmpty(template.GetComponentsInChildren<TextMeshProUGUI>(true));
         }
 
         /// <summary>
-        /// Verifies the Controls-page global defaults action is labeled as a restore-all action.
+        /// Verifies the settings-page defaults action uses the expected label.
         /// </summary>
         [Test]
-        public void SettingsPages_DefaultsAction_UsesRestoreDefaultsLabel()
+        public void SettingsPages_DefaultsAction_UsesApplyDefaultsLabel()
         {
             _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls));
 
             Assert.AreEqual(
-                "RESTORE DEFAULTS",
+                "APPLY DEFAULTS",
                 GetField<Button>("_defaultsButton").GetComponentInChildren<TextMeshProUGUI>().text
             );
         }
