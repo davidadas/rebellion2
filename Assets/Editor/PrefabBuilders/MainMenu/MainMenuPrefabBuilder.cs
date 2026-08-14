@@ -36,7 +36,6 @@ public static class MainMenuPrefabBuilder
     private const string _rebelFactionId = "FNALL1";
 
     // Resource paths for the SFX cues authored on the pointer-up event triggers.
-    // These mirror the original front-end voice cues (COMMON.DLL WAVE 8000-8004).
     private const string _selectSfxPath = "Application/MainMenu/Audio/select";
     private const string _exitSelectSfxPath = "Application/MainMenu/Audio/exit-select";
     private const string _galaxySizeSelectSfxPath = "Application/MainMenu/Audio/galaxysize-select";
