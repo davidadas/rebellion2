@@ -4,6 +4,7 @@ using System.Runtime.ExceptionServices;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
@@ -116,6 +117,23 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(1, completedCount);
             Assert.AreEqual(Color.black, _screen.color);
             Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
+        }
+
+        /// <summary>
+        /// Verifies a platform decoder failure releases playback through the normal completion path.
+        /// </summary>
+        [Test]
+        public void HandlePlaybackError_ActivePlayback_InvokesCompletionOnce()
+        {
+            int completedCount = 0;
+            _player.Play(_clip, () => completedCount++);
+            LogAssert.Expect(LogType.Error, "Cutscene playback failed: decoder failed");
+
+            Invoke("HandlePlaybackError", _videoPlayer, "decoder failed");
+            Invoke("EndCutscene");
+
+            Assert.AreEqual(1, completedCount);
+            Assert.AreEqual(Color.black, _screen.color);
         }
 
         [Test]

@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
@@ -16,9 +19,12 @@ public sealed class StrategyBriefingController
     private readonly GameRoot game;
     private readonly GalaxyMapController galaxyMapController;
     private readonly Action playPresentationSfx;
+    private readonly Func<ContentPreloadManifest, Task> preloadContent;
+    private readonly Action<IEnumerable<string>> preloadSfx;
     private readonly StrategyHudController strategyHudController;
 
     private StrategyBriefingTheme activeBriefing;
+    private CancellationTokenSource briefingCancellation;
     private Action<bool> completed;
     private int segmentIndex;
 
@@ -28,6 +34,8 @@ public sealed class StrategyBriefingController
     /// <param name="game">The active game.</param>
     /// <param name="getTexture">Resolves a preloaded briefing frame.</param>
     /// <param name="getAudioDuration">Resolves the duration of a preloaded voice clip.</param>
+    /// <param name="preloadContent">Makes a declared content manifest resident.</param>
+    /// <param name="preloadSfx">Registers one resident voice clip for immediate playback.</param>
     /// <param name="strategyHudController">Presents advisor animation playback.</param>
     /// <param name="galaxyMapController">Presents briefing map cues.</param>
     /// <param name="playPresentationSfx">Plays the map-presentation transition sound.</param>
@@ -35,6 +43,8 @@ public sealed class StrategyBriefingController
         GameRoot game,
         Func<string, Texture2D> getTexture,
         Func<string, float> getAudioDuration,
+        Func<ContentPreloadManifest, Task> preloadContent,
+        Action<IEnumerable<string>> preloadSfx,
         StrategyHudController strategyHudController,
         GalaxyMapController galaxyMapController,
         Action playPresentationSfx
@@ -44,6 +54,9 @@ public sealed class StrategyBriefingController
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.getAudioDuration =
             getAudioDuration ?? throw new ArgumentNullException(nameof(getAudioDuration));
+        this.preloadContent =
+            preloadContent ?? throw new ArgumentNullException(nameof(preloadContent));
+        this.preloadSfx = preloadSfx ?? throw new ArgumentNullException(nameof(preloadSfx));
         this.strategyHudController =
             strategyHudController ?? throw new ArgumentNullException(nameof(strategyHudController));
         this.galaxyMapController =
@@ -66,11 +79,45 @@ public sealed class StrategyBriefingController
             onCompleted?.Invoke(false);
             return;
         }
+        if (activeBriefing != null)
+            throw new InvalidOperationException("A strategy briefing is already active.");
 
         activeBriefing = briefing;
+        briefingCancellation = new CancellationTokenSource();
         completed = onCompleted;
         segmentIndex = 0;
-        PlayCurrentSegment();
+        Faction playerFaction = game.GetPlayerFaction();
+        Faction opponentFaction = game.GetFactions()
+            .FirstOrDefault(faction => faction != playerFaction);
+        galaxyMapController.SetBriefingPresentation(
+            new StrategyBriefingMapPresentation(
+                StrategyBriefingMapMode.Default,
+                "Briefing",
+                null,
+                null,
+                playerFaction?.InstanceID,
+                opponentFaction?.InstanceID
+            )
+        );
+        BeginSegmentPlayback(activeBriefing.Segments[0]);
+    }
+
+    /// <summary>
+    /// Loads the opening segment and skip response before briefing playback begins.
+    /// </summary>
+    /// <param name="briefing">The briefing whose opening media must be resident.</param>
+    /// <returns>A task that completes when the briefing can begin immediately.</returns>
+    public async Task PrepareAsync(StrategyBriefingTheme briefing)
+    {
+        if (briefing == null)
+            throw new ArgumentNullException(nameof(briefing));
+        if (activeBriefing != null)
+            throw new InvalidOperationException("Cannot prepare media during briefing playback.");
+
+        await Task.Yield();
+        ContentPreloadManifest manifest = briefing.CreateOpeningPreloadManifest();
+        await preloadContent(manifest);
+        preloadSfx(manifest.Audio);
     }
 
     /// <summary>
@@ -83,8 +130,7 @@ public sealed class StrategyBriefingController
             return;
 
         StrategyAdvisorAnimationViewData skipPlayback =
-            activeBriefing.Skip == null ? null : CreatePlayback(activeBriefing.Skip);
-        strategyHudController.CancelAdvisorAnimation();
+            activeBriefing.Skip == null ? null : CreatePlayback(activeBriefing.Skip, false);
         Complete(true);
         if (skipPlayback != null)
             strategyHudController.ReplaceAdvisorAnimation(skipPlayback, null, null);
@@ -110,8 +156,12 @@ public sealed class StrategyBriefingController
     /// Resolves one segment into resident advisor playback data.
     /// </summary>
     /// <param name="segment">The configured briefing segment.</param>
+    /// <param name="holdFinalFrame">Whether the final frame remains visible between segments.</param>
     /// <returns>The resolved animation presentation.</returns>
-    private StrategyAdvisorAnimationViewData CreatePlayback(StrategyBriefingSegmentTheme segment)
+    private StrategyAdvisorAnimationViewData CreatePlayback(
+        StrategyBriefingSegmentTheme segment,
+        bool holdFinalFrame = true
+    )
     {
         if (segment == null || segment.FrameCount <= 0)
             throw new InvalidOperationException("Briefing contains an empty animation segment.");
@@ -133,7 +183,8 @@ public sealed class StrategyBriefingController
             false,
             audioPath,
             segment.DelayBeforeSeconds,
-            string.IsNullOrEmpty(audioPath) ? 0f : getAudioDuration(audioPath)
+            string.IsNullOrEmpty(audioPath) ? 0f : getAudioDuration(audioPath),
+            holdFinalFrame
         );
     }
 
@@ -142,19 +193,69 @@ public sealed class StrategyBriefingController
     /// </summary>
     private void HandleSegmentCompleted()
     {
+        if (activeBriefing == null)
+            return;
+
         segmentIndex++;
         if (segmentIndex < activeBriefing.Segments.Count)
-            PlayCurrentSegment();
+        {
+            _ = TransitionToSegmentAsync(
+                activeBriefing,
+                activeBriefing.Segments[segmentIndex],
+                segmentIndex,
+                briefingCancellation.Token
+            );
+        }
         else
             Complete(false);
     }
 
     /// <summary>
-    /// Resolves and begins the current segment.
+    /// Loads and begins the next segment while the current briefing remains active.
     /// </summary>
-    private void PlayCurrentSegment()
+    /// <param name="briefing">The briefing that owns the segment.</param>
+    /// <param name="segment">The next segment to present.</param>
+    /// <param name="expectedIndex">The segment position that requested the transition.</param>
+    /// <param name="cancellationToken">The active briefing lifetime.</param>
+    /// <returns>A task that completes after playback begins or the transition is abandoned.</returns>
+    private async Task TransitionToSegmentAsync(
+        StrategyBriefingTheme briefing,
+        StrategyBriefingSegmentTheme segment,
+        int expectedIndex,
+        CancellationToken cancellationToken
+    )
     {
-        StrategyBriefingSegmentTheme segment = activeBriefing.Segments[segmentIndex];
+        try
+        {
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
+            ContentPreloadManifest manifest = briefing.CreateSegmentPreloadManifest(segment);
+            await preloadContent(manifest);
+            cancellationToken.ThrowIfCancellationRequested();
+            preloadSfx(manifest.Audio);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (activeBriefing != briefing || segmentIndex != expectedIndex)
+                return;
+
+            BeginSegmentPlayback(segment);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception exception)
+        {
+            if (cancellationToken.IsCancellationRequested || activeBriefing != briefing)
+                return;
+
+            Debug.LogException(exception);
+            Complete(false);
+        }
+    }
+
+    /// <summary>
+    /// Begins playback after the current segment's media is resident.
+    /// </summary>
+    /// <param name="segment">The resident segment to present.</param>
+    private void BeginSegmentPlayback(StrategyBriefingSegmentTheme segment)
+    {
         strategyHudController.ReplaceAdvisorAnimation(
             CreatePlayback(segment),
             () => PresentSegment(segment),
@@ -251,6 +352,10 @@ public sealed class StrategyBriefingController
     /// <param name="skipped">Whether the player skipped the remaining briefing.</param>
     private void Complete(bool skipped)
     {
+        strategyHudController.CancelAdvisorAnimation();
+        briefingCancellation?.Cancel();
+        briefingCancellation?.Dispose();
+        briefingCancellation = null;
         activeBriefing = null;
         segmentIndex = 0;
         galaxyMapController.SetBriefingPresentation(null);

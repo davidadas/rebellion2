@@ -111,17 +111,20 @@ public sealed class MessagesCommandButtonRenderData
     /// </summary>
     /// <param name="texture">The displayed texture.</param>
     /// <param name="pressedTexture">The pointer-down texture.</param>
+    /// <param name="sourceBounds">The optional faction-authored source-space bounds.</param>
     /// <param name="visible">Whether the button is displayed.</param>
     /// <param name="enabled">Whether the button accepts input.</param>
     public MessagesCommandButtonRenderData(
         Texture texture,
         Texture pressedTexture,
+        RectInt? sourceBounds,
         bool visible,
         bool enabled
     )
     {
         Texture = texture;
         PressedTexture = pressedTexture;
+        SourceBounds = sourceBounds;
         Visible = visible;
         Enabled = enabled;
     }
@@ -129,6 +132,8 @@ public sealed class MessagesCommandButtonRenderData
     public Texture Texture { get; }
 
     public Texture PressedTexture { get; }
+
+    public RectInt? SourceBounds { get; }
 
     public bool Visible { get; }
 

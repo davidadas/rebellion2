@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -12,6 +13,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -76,7 +78,7 @@ public sealed class StrategyController
     private BookmarkBarView bookmarkBar;
 
     [SerializeField]
-    private SaveMenuConfirmDialogView briefingSkipConfirmation;
+    private ConfirmationDialogView briefingSkipConfirmation;
 
     private CancelStack cancelStack;
     private GameManager gameManager;
@@ -86,11 +88,16 @@ public sealed class StrategyController
     private EventSystem briefingEventSystem;
     private bool briefingSkipConfirmationOpen;
     private UIContext uiContext;
+    private readonly List<(
+        InputAction action,
+        Action<InputAction.CallbackContext> callback
+    )> _boundInputActions = new List<(InputAction, Action<InputAction.CallbackContext>)>();
 
     private bool dirty = true;
     private bool contentReady;
     private bool initialized;
     private bool cancelHandlersRegistered;
+    private bool presentationActive;
     private RectInt windowMovePreviewBounds;
     private bool windowMovePreviewVisible;
 
@@ -121,6 +128,8 @@ public sealed class StrategyController
     private StrategyWindowPlacementController windowPlacementController;
     private StrategyWindowCommandController windowCommandController;
     private StrategyScreenInputController inputController;
+    private OptionsMenuController _optionsMenuController;
+    private AppInputController _appInputController;
 
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
@@ -159,14 +168,43 @@ public sealed class StrategyController
         BindMessageSystem(gameManager.MessageSystem);
 
         InitializeScreenControllers();
-        InitializeWindowControllers();
-        InitializeInteractionControllers();
-        BindWindowControllerActions();
-        SubscribeViewEvents();
         IContentAssetSource contentAssets = AppBootstrap.Instance.GetContentAssets();
         ContentBindings.Apply(transform.root.gameObject, contentAssets);
         strategyWindowManager.SetContentSource(contentAssets);
         initialized = true;
+    }
+
+    /// <summary>
+    /// Loads the faction briefing's opening media through the briefing owner.
+    /// </summary>
+    /// <returns>A task that completes when opening briefing playback is ready.</returns>
+    public Task PrepareBriefingAsync()
+    {
+        if (!initialized)
+            throw new InvalidOperationException("StrategyController has not been initialized.");
+
+        StrategyBriefingTheme briefing = uiContext?.GetPlayerFactionTheme()?.StrategyBriefing;
+        return briefing == null || briefing.Segments.Count == 0
+            ? Task.CompletedTask
+            : briefingController.PrepareAsync(briefing);
+    }
+
+    /// <summary>
+    /// Reveals the initialized strategy presentation and starts its ambient behavior.
+    /// </summary>
+    public void ActivatePresentation()
+    {
+        if (!initialized)
+            throw new InvalidOperationException("StrategyController has not been initialized.");
+        if (presentationActive)
+            throw new InvalidOperationException("StrategyController is already active.");
+
+        InitializeWindowControllers();
+        InitializeInteractionControllers();
+        BindWindowControllerActions();
+        SubscribeViewEvents();
+        presentationActive = true;
+        AppBootstrap.Instance?.GetInputController()?.SetContext(InputContext.Strategy);
         RegisterCancelHandlers();
         OnGameReady();
         LoadInitialContent();
@@ -187,6 +225,7 @@ public sealed class StrategyController
     private void InitializeScreenControllers()
     {
         AudioManager audioManager = AudioManager.EnsureExists();
+        ContentAssets contentAssets = AppBootstrap.Instance.GetContentAssets();
         System.Random musicRandom = new System.Random();
         strategyMusicController = new StrategyMusicController(
             () => gameManager.GetGame(),
@@ -210,7 +249,9 @@ public sealed class StrategyController
         briefingController = new StrategyBriefingController(
             gameManager.GetGame(),
             path => uiContext?.GetTexture(path),
-            path => AppBootstrap.Instance.GetContentAssets().GetPreloadedAudio(path).length,
+            path => contentAssets.GetPreloadedAudio(path).length,
+            contentAssets.PreloadAsync,
+            audioManager.PreloadSfx,
             strategyHudController,
             galaxyMapController,
             () => PlaySfx(StrategyUISoundPaths.GalacticInformationControl)
@@ -374,6 +415,23 @@ public sealed class StrategyController
             CloseWindow,
             MarkDirty
         );
+        AppBootstrap bootstrap = AppBootstrap.Instance;
+        GameRuntime settingsRuntime = bootstrap.GetRuntime();
+        _optionsMenuController = new OptionsMenuController(
+            strategyWindowLayerView.OptionsMenuWindowPrefab,
+            strategyWindowLayerView.GetWindowParent(true),
+            strategyWindowManager,
+            windowPlacementController.GetOptionsWindowPosition,
+            CloseWindow,
+            bootstrap,
+            settingsRuntime.LoadGame,
+            MarkDirty,
+            SaveGameManager.Instance
+        );
+        _appInputController = bootstrap.GetInputController();
+        if (_appInputController != null)
+            _appInputController.OptionsMenuRequested += HandleToggleOptions;
+        WireStrategyInputActions();
         battleAlertWindowController = new BattleAlertWindowController(
             () =>
                 gameManager.SpaceCombatSystem.TryGetPendingCombat(out PendingCombatResult pending)
@@ -635,11 +693,11 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Restores cancellation routing when an initialized strategy screen is re-enabled.
+    /// Restores cancellation routing when an active strategy screen is re-enabled.
     /// </summary>
     private void OnEnable()
     {
-        if (initialized)
+        if (presentationActive)
             RegisterCancelHandlers();
     }
 
@@ -662,8 +720,15 @@ public sealed class StrategyController
     private void OnDestroy()
     {
         SetBriefingInteractionEnabled(true);
+        UnwireStrategyInputActions();
         UnregisterCancelHandlers();
         UnsubscribeViewEvents();
+        _optionsMenuController?.Dispose();
+        if (_appInputController != null)
+        {
+            _appInputController.OptionsMenuRequested -= HandleToggleOptions;
+            _appInputController = null;
+        }
         if (gameManager != null)
         {
             gameManager.GameSpeedChanged -= MarkDirty;
@@ -727,11 +792,6 @@ public sealed class StrategyController
             return;
         }
 
-        AudioManager
-            .EnsureExists()
-            .PreloadSfx(
-                StrategyUISoundPaths.GetBriefingPreloadPaths(uiContext.GetPlayerFactionTheme())
-            );
         briefingActive = true;
         briefingSkipConfirmationOpen = false;
         briefingEventSystem = EventSystem.current;
@@ -765,6 +825,7 @@ public sealed class StrategyController
         AudioManager.EnsureExists().PauseSfx();
         SetBriefingInteractionEnabled(true);
         briefingSkipConfirmation.Show("Do you wish to skip the tutorial?");
+        dirty = true;
     }
 
     /// <summary>
@@ -1101,6 +1162,7 @@ public sealed class StrategyController
         advisorReportWindowController.RenderWindows();
         statusWindowController.RenderWindows();
         encyclopediaWindowController.RenderWindows();
+        _optionsMenuController.RenderWindows();
         finderWindowController.RenderWindows();
         messagesWindowController.RenderWindows();
         battleAlertWindowController.RenderWindows();
@@ -1918,8 +1980,7 @@ public sealed class StrategyController
         switch (action)
         {
             case StrategyHudAction.Options:
-                SaveMenuLaunchContext.OpenFromStrategyView();
-                AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
+                _optionsMenuController.Open();
                 break;
             case StrategyHudAction.SystemFinder:
                 finderWindowController.Open(FinderMode.Systems);
@@ -2743,6 +2804,268 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Adds the strategy key binding listeners.
+    /// </summary>
+    private void WireStrategyInputActions()
+    {
+        InputActionAsset asset = AppBootstrap.Instance?.GetInputManager()?.Asset;
+        if (asset == null)
+            return;
+
+        asset.FindActionMap("Strategy")?.Enable();
+
+        for (int slot = 0; slot < 12; slot++)
+        {
+            int index = slot;
+            BindInputAction(
+                asset,
+                $"Strategy/BookmarkSlot{slot + 1}",
+                () => HandleBookmarkRequested(index)
+            );
+        }
+
+        BindInputAction(
+            asset,
+            "Strategy/OpenSystemFinder",
+            () => finderWindowController.Open(FinderMode.Systems)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenFleetFinder",
+            () => finderWindowController.Open(FinderMode.Fleets)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenPersonnelFinder",
+            () => finderWindowController.Open(FinderMode.Personnel)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenPlanetFinder",
+            () => finderWindowController.Open(FinderMode.Troops)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenEncyclopedia",
+            () => encyclopediaWindowController.Open()
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenAllMessages",
+            () => messagesWindowController.Open(MessagesTab.All)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenMissionSetup",
+            () => inputController.TryExecuteContextShortcut(StrategyMenuAction.CreateMission)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/IssueMoveOrder",
+            () => inputController.TryExecuteContextShortcut(StrategyMenuAction.Move)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/ConfirmMoveOrder",
+            () => inputController.TryExecuteContextShortcut(StrategyMenuAction.MoveConfirm)
+        );
+        BindInputAction(asset, "Strategy/DecreaseGameSpeed", () => StepGameSpeed(false));
+        BindInputAction(asset, "Strategy/IncreaseGameSpeed", () => StepGameSpeed(true));
+
+        BindGalacticInformationAction(
+            asset,
+            "ShowPopularSupport",
+            GalacticInformationFilterMode.PopularSupport
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowUprisings",
+            GalacticInformationFilterMode.Uprisings
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowIdleFleets",
+            GalacticInformationFilterMode.IdleFleets
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowFleetsEnroute",
+            GalacticInformationFilterMode.FleetsEnroute
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowIdlePersonnel",
+            GalacticInformationFilterMode.IdlePersonnel
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowActivePersonnel",
+            GalacticInformationFilterMode.ActivePersonnel
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowAvailableEnergy",
+            GalacticInformationFilterMode.AvailableEnergy
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowAvailableRawMaterial",
+            GalacticInformationFilterMode.AvailableRawMaterial
+        );
+        BindGalacticInformationAction(asset, "ShowMines", GalacticInformationFilterMode.Mines);
+        BindGalacticInformationAction(
+            asset,
+            "ShowRefineries",
+            GalacticInformationFilterMode.Refineries
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowShipyards",
+            GalacticInformationFilterMode.Shipyards
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowTrainingFacilities",
+            GalacticInformationFilterMode.TrainingFacilities
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowConstructionYards",
+            GalacticInformationFilterMode.ConstructionYards
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowIdleShipyards",
+            GalacticInformationFilterMode.IdleShipyards
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowIdleTrainingFacilities",
+            GalacticInformationFilterMode.IdleTrainingFacilities
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowIdleConstructionYards",
+            GalacticInformationFilterMode.IdleConstructionYards
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowTroopers",
+            GalacticInformationFilterMode.Troopers
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowFighterSquadrons",
+            GalacticInformationFilterMode.FighterSquadrons
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowDeathStarShields",
+            GalacticInformationFilterMode.DeathStarShields
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowPlanetaryShieldGenerators",
+            GalacticInformationFilterMode.PlanetaryShieldGenerators
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowPlanetaryDefenseBatteries",
+            GalacticInformationFilterMode.PlanetaryDefenseBatteries
+        );
+    }
+
+    /// <summary>
+    /// Applies the information filter selected by a keyboard shortcut.
+    /// </summary>
+    private void BindGalacticInformationAction(
+        InputActionAsset asset,
+        string actionName,
+        GalacticInformationFilterMode mode
+    )
+    {
+        BindInputAction(
+            asset,
+            $"Strategy/{actionName}",
+            () => galacticInformationDisplayController?.SelectFilterFromShortcut(mode)
+        );
+    }
+
+    /// <summary>
+    /// Adds a listener for an input action.
+    /// </summary>
+    /// <param name="asset">The input asset.</param>
+    /// <param name="actionPath">The map/action path.</param>
+    /// <param name="command">The command to run.</param>
+    private void BindInputAction(InputActionAsset asset, string actionPath, Action command)
+    {
+        InputAction action = asset.FindAction(actionPath, false);
+        if (action == null)
+            return;
+
+        void Callback(InputAction.CallbackContext context)
+        {
+            if (
+                context.performed
+                && !briefingActive
+                && _optionsMenuController?.IsOpen != true
+                && !UIInputFocus.IsTextEntryActive()
+            )
+                command();
+        }
+
+        action.performed += Callback;
+        _boundInputActions.Add((action, Callback));
+    }
+
+    /// <summary>
+    /// Steps the game speed one step faster or slower.
+    /// </summary>
+    /// <param name="faster">Whether to speed up.</param>
+    private void StepGameSpeed(bool faster)
+    {
+        if (gameManager == null)
+            return;
+
+        TickSpeed current = gameManager.GetGameSpeed();
+        gameManager.SetGameSpeed(
+            faster
+                ? AppInputController.GetFasterGameSpeed(current)
+                : AppInputController.GetSlowerGameSpeed(current)
+        );
+    }
+
+    /// <summary>
+    /// Removes the strategy key binding listeners.
+    /// </summary>
+    private void UnwireStrategyInputActions()
+    {
+        foreach (
+            (InputAction action, Action<InputAction.CallbackContext> callback) in _boundInputActions
+        )
+            action.performed -= callback;
+        _boundInputActions.Clear();
+    }
+
+    /// <summary>
+    /// Toggles the Options menu.
+    /// </summary>
+    private void HandleToggleOptions()
+    {
+        if (_optionsMenuController == null)
+            return;
+
+        // The tutorial uses Escape to open its confirmation dialog.
+        if (briefingActive)
+            return;
+
+        if (_optionsMenuController.IsOpen)
+            _optionsMenuController.TryCancel();
+        else
+            _optionsMenuController.Open();
+    }
+
+    /// <summary>
     /// Clears retained window move-preview state.
     /// </summary>
     private void ClearWindowMovePreview()
@@ -2756,7 +3079,12 @@ public sealed class StrategyController
     /// </summary>
     private void RegisterCancelHandlers()
     {
-        if (!initialized || !isActiveAndEnabled || cancelHandlersRegistered || cancelStack == null)
+        if (
+            !presentationActive
+            || !isActiveAndEnabled
+            || cancelHandlersRegistered
+            || cancelStack == null
+        )
             return;
 
         cancelStack.Register(strategyWindowManager);

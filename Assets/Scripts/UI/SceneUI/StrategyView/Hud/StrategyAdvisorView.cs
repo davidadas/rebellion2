@@ -325,7 +325,8 @@ public sealed class StrategyAdvisorView : MonoBehaviour
     private void FinishAnimation()
     {
         bool usedDroid = activeAnimation.UsesDroid;
-        SetIdleFrame(usedDroid);
+        if (!activeAnimation.HoldFinalFrame)
+            SetIdleFrame(usedDroid);
         activeAnimation = null;
         activeFrameIndex = 0;
         delayRemainingSeconds = 0f;

@@ -336,6 +336,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
 
             Assert.AreEqual(new Color(0.5f, 0.5f, 0.5f, 1f), data.BackgroundColor);
+            Assert.AreEqual("Briefing", data.ActiveFilterLabel.Text);
             Assert.IsNotNull(data.Clusters[0].Stars[0].StarTexture);
         }
 

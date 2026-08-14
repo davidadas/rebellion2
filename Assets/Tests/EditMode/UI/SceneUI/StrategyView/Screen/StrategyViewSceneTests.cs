@@ -26,7 +26,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             {
                 CanvasScaler canvasScaler = GetSceneCanvasScaler(scene);
                 RectTransform strategySurface =
-                    prefabRoot.transform.Find("Viewport") as RectTransform;
+                    prefabRoot.transform.Find("UI/Canvas/StrategyView/Viewport") as RectTransform;
 
                 Assert.IsNotNull(strategySurface);
                 Assert.AreEqual(
@@ -55,8 +55,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 
             try
             {
-                StrategyController controller = prefabRoot.GetComponent<StrategyController>();
-                CanvasGroup contentGroup = prefabRoot.GetComponent<CanvasGroup>();
+                StrategyController controller =
+                    prefabRoot.GetComponentInChildren<StrategyController>(true);
+                CanvasGroup contentGroup = controller.GetComponent<CanvasGroup>();
                 CanvasGroup assignedGroup = (CanvasGroup)
                     typeof(StrategyController)
                         .GetField("contentGroup", BindingFlags.Instance | BindingFlags.NonPublic)
@@ -78,7 +79,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 
             try
             {
-                AspectRatioFitter fitter = prefabRoot.GetComponent<AspectRatioFitter>();
+                AspectRatioFitter fitter = prefabRoot.GetComponentInChildren<AspectRatioFitter>(
+                    true
+                );
                 Assert.IsNotNull(fitter);
                 Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, fitter.aspectMode);
                 Assert.AreEqual(16f / 9f, fitter.aspectRatio, 0.0001f);
@@ -93,7 +96,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         {
             Transform gameRoot = scene
                 .GetRootGameObjects()
-                .Single(root => root.name == "GameRoot")
+                .Single(root => root.name == "StrategyViewRoot")
                 .transform;
             CanvasScaler canvasScaler = gameRoot.Find("UI/Canvas").GetComponent<CanvasScaler>();
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Input;
@@ -13,6 +14,11 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     private InputManager _inputManager;
     private CancelStack _cancelStack;
     private GameRuntime _runtime;
+
+    /// <summary>
+    /// Occurs when global input requests the scene's Options menu.
+    /// </summary>
+    public event Action OptionsMenuRequested;
 
     /// <summary>
     /// Gets the current input context.
@@ -122,7 +128,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (_cancelStack?.TryCancel() == true)
             return;
 
-        _runtime?.ToggleSettingsMenu();
+        OptionsMenuRequested?.Invoke();
     }
 
     /// <summary>
@@ -225,9 +231,12 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// <returns>True when gameplay shortcuts can run; otherwise false.</returns>
     private bool CanUseGameplayShortcuts()
     {
-        return CurrentContext == InputContext.Strategy
-            || CurrentContext == InputContext.Tactical
-            || CurrentContext == InputContext.None;
+        return !UIInputFocus.IsTextEntryActive()
+            && (
+                CurrentContext == InputContext.Strategy
+                || CurrentContext == InputContext.Tactical
+                || CurrentContext == InputContext.None
+            );
     }
 
     /// <summary>

@@ -62,6 +62,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
+            _windowManager.WindowCloseRequested += window =>
+            {
+                _closedWindow = window;
+                _windowManager.DestroyWindow(window);
+            };
             _controller = CreateController();
             _actions = new TestActions();
             _controller.Initialize(_actions);
@@ -132,18 +137,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies that repeating a mission target command closes its existing window.
+        /// </summary>
         [Test]
-        public void Open_ExistingWindow_ClosesPreviousAndCreatesReplacement()
+        public void Open_SameTarget_TogglesExistingWindowClosed()
         {
             OpenWindow(out UIWindow firstWindow);
 
-            MissionCreateWindowView secondView = OpenWindow(out UIWindow secondWindow);
+            _controller.Open(_target, new ISceneNode[] { _specialForces });
 
             Assert.AreSame(firstWindow, _closedWindow);
-            Assert.AreNotSame(firstWindow, secondWindow);
-            Assert.AreSame(secondView, secondWindow.Content);
-            Assert.AreEqual(1, _windowManager.Windows.Count);
-            Assert.AreEqual(2, _dirtyCount);
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.AreEqual(1, _dirtyCount);
         }
 
         [Test]

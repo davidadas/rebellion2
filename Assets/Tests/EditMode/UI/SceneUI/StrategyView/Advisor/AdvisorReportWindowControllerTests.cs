@@ -38,6 +38,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
+            _windowManager.WindowCloseRequested += _windowManager.DestroyWindow;
             _controller = new AdvisorReportWindowController(
                 () => uiContext,
                 _windowLayer,
@@ -85,19 +86,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies that requesting another advisor report replaces the exclusive window.
+        /// </summary>
         [Test]
-        public void Open_ExistingReport_ChangesModeWithoutCreatingAnotherWindow()
+        public void Open_DifferentReport_ReplacesExistingWindow()
         {
             _controller.Open(AdvisorReportMode.GalaxyOverview);
-            UIWindow window = _windowManager.Windows.Single();
-            _windowManager.TryGetWindowView(window, out AdvisorReportWindowView reportView);
+            UIWindow firstWindow = _windowManager.Windows.Single();
 
             _controller.Open(AdvisorReportMode.Objectives);
 
             Assert.AreEqual(1, _windowManager.Windows.Count);
-            Assert.AreSame(window, _windowManager.ActiveWindow);
+            UIWindow secondWindow = _windowManager.Windows.Single();
+            Assert.AreNotSame(firstWindow, secondWindow);
+            _windowManager.TryGetWindowView(secondWindow, out AdvisorReportWindowView reportView);
             Assert.AreEqual(AdvisorReportMode.Objectives, _controller.GetMode(reportView));
             Assert.AreEqual(2, _dirtyCount);
+        }
+
+        /// <summary>
+        /// Verifies that repeating one report command toggles its exclusive window closed.
+        /// </summary>
+        [Test]
+        public void Open_SameReport_TogglesExistingWindowClosed()
+        {
+            _controller.Open(AdvisorReportMode.GalaxyOverview);
+
+            _controller.Open(AdvisorReportMode.GalaxyOverview);
+
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.IsNull(_windowManager.ActiveWindow);
         }
 
         [Test]

@@ -134,7 +134,13 @@ internal static class MessagesWindowProjector
         if (pressed && enabled)
             texture = pressedTexture;
 
-        return new MessagesCommandButtonRenderData(texture, pressedTexture, visible, enabled);
+        return new MessagesCommandButtonRenderData(
+            texture,
+            pressedTexture,
+            GetSourceBounds(theme?.SourceLayout),
+            visible,
+            enabled
+        );
     }
 
     /// <summary>
@@ -155,7 +161,23 @@ internal static class MessagesWindowProjector
             : GetTexture(uiContext, theme?.SignalSilentImagePath);
         Texture pressedTexture =
             GetButtonTexture(uiContext, theme?.SignalButton, true, true) ?? texture;
-        return new MessagesCommandButtonRenderData(texture, pressedTexture, true, true);
+        return new MessagesCommandButtonRenderData(
+            texture,
+            pressedTexture,
+            GetSourceBounds(theme?.SignalButton?.SourceLayout),
+            true,
+            true
+        );
+    }
+
+    /// <summary>
+    /// Converts optional configured layout data into immutable source-space bounds.
+    /// </summary>
+    /// <param name="layout">The faction-authored button layout.</param>
+    /// <returns>The configured rectangle, or null when no layout is present.</returns>
+    private static RectInt? GetSourceBounds(SourceRectLayout layout)
+    {
+        return layout == null ? null : new RectInt(layout.X, layout.Y, layout.Width, layout.Height);
     }
 
     /// <summary>

@@ -75,4 +75,26 @@ public static class ContentBindings
         return contentAssets.GetSprite(address)
             ?? throw new InvalidOperationException($"Content sprite is missing: {address}");
     }
+
+    /// <summary>
+    /// Resolves a required bordered sprite from the content source, failing loudly with the address.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    /// <param name="address">The content address to resolve.</param>
+    /// <param name="border">The sprite's nine-slice border in pixels.</param>
+    /// <returns>The resolved sprite.</returns>
+    public static Sprite RequireSprite(
+        IContentAssetSource contentAssets,
+        string address,
+        Vector4 border
+    )
+    {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+        if (string.IsNullOrWhiteSpace(address))
+            throw new ArgumentException("A content sprite address is required.", nameof(address));
+
+        return contentAssets.GetSprite(address, border)
+            ?? throw new InvalidOperationException($"Content sprite is missing: {address}");
+    }
 }

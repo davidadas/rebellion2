@@ -4,6 +4,7 @@ using Rebellion.Generation;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -47,14 +48,13 @@ public static class StrategyViewPrefabBuilder
         "Assets/Prefabs/UI/StrategyView/MessagesWindow.prefab";
     private const string _encyclopediaWindowPrefabPath =
         "Assets/Prefabs/UI/StrategyView/EncyclopediaWindow.prefab";
+    private const string _optionsMenuWindowPrefabPath =
+        "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
     private const string _planetSystemClusterPrefabPath =
         "Assets/Prefabs/UI/StrategyView/PlanetSystemCluster.prefab";
     private const string _commonScrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _commonTextInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     private const string _strategyScenePath = "Assets/Scenes/StrategyView.unity";
-    private const string _strategySceneTemplatePath =
-        "Assets/Editor/PrefabBuilders/Templates/StrategyView.unity";
-    private const string _strategySceneRootParentPath = "GameRoot/UI/Canvas";
     private const string _sceneInstanceName = "StrategyViewRoot";
     private const string _surfaceName = "Viewport";
     private const string _galaxyMapName = "GalaxyMap";
@@ -254,7 +254,7 @@ public static class StrategyViewPrefabBuilder
     private const int _constructionCountButtonWidth = 13;
     private const int _constructionCountButtonHeight = 8;
     private static readonly Color32 _sectorWindowBackgroundOverlay = new Color32(57, 57, 57, 230);
-    private static readonly Color32 _modalBackgroundDimColor = new Color32(80, 80, 80, 160);
+    private static readonly Color32 _modalBackgroundDimColor = new Color32(0, 0, 0, 204);
 
     private static FactionThemes _previewThemes;
     private static string _previewThemeId;
@@ -570,7 +570,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void BuildStrategyViewRootPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         Directory.CreateDirectory(Path.GetDirectoryName(_prefabPath));
         _previewThemes = null;
         _previewThemeId = null;
@@ -613,10 +612,26 @@ public static class StrategyViewPrefabBuilder
         EncyclopediaWindowView encyclopediaWindowPrefab = LoadWindowPrefab<EncyclopediaWindowView>(
             _encyclopediaWindowPrefabPath
         );
+        OptionsMenuView optionsMenuWindowPrefab = LoadWindowPrefab<OptionsMenuView>(
+            _optionsMenuWindowPrefabPath
+        );
         PlanetSystemClusterView planetSystemClusterPrefab =
             LoadPrefabComponent<PlanetSystemClusterView>(_planetSystemClusterPrefabPath);
 
-        GameObject root = new GameObject(_sceneInstanceName, typeof(RectTransform));
+        GameObject sceneRoot = new GameObject(_sceneInstanceName);
+        BuildSceneInfrastructure(sceneRoot);
+        GameObject ui = new GameObject("UI");
+        ui.transform.SetParent(sceneRoot.transform, false);
+        GameObject canvasObject = CreateLayer("Canvas", ui.transform);
+        Canvas canvas = canvasObject.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        CanvasScaler canvasScaler = canvasObject.AddComponent<CanvasScaler>();
+        canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        canvasScaler.referenceResolution = new Vector2(853.3333f, 480f);
+        canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+        canvasObject.AddComponent<GraphicRaycaster>();
+
+        GameObject root = CreateLayer("StrategyView", canvasObject.transform);
         RectTransform rootRect = root.GetComponent<RectTransform>();
         FillParent(rootRect);
         AspectRatioFitter aspectRatio = root.AddComponent<AspectRatioFitter>();
@@ -824,21 +839,12 @@ public static class StrategyViewPrefabBuilder
             CreateGalacticInformationDisplayView(root.transform);
 
         StrategyContextMenuPresenter contextMenu = CreateContextMenu(root.transform);
-        SaveMenuConfirmDialogView briefingSkipConfirmation =
-            SaveMenuPrefabBuilder.CreateConfirmDialog(root.transform);
+        ConfirmationDialogView briefingSkipConfirmation =
+            CommonUIPrefabBuilder.InstantiateConfirmationDialog(root.transform);
+        briefingSkipConfirmation.gameObject.name = "ConfirmDialog";
         RectTransform briefingConfirmationRect =
             briefingSkipConfirmation.transform as RectTransform;
-        briefingConfirmationRect.anchorMin = new Vector2(0.5f, 0.5f);
-        briefingConfirmationRect.anchorMax = new Vector2(0.5f, 0.5f);
-        briefingConfirmationRect.pivot = new Vector2(0.5f, 0.5f);
-        briefingConfirmationRect.sizeDelta = new Vector2(_screenWidth, _screenHeight);
-        briefingConfirmationRect.anchoredPosition = Vector2.zero;
-        float briefingHorizontalOffset = (_screenWidth - 640f) / 2f;
-        foreach (RectTransform child in briefingConfirmationRect)
-        {
-            if (child.name != "InputBlocker")
-                child.anchoredPosition += Vector2.right * briefingHorizontalOffset;
-        }
+        FillParent(briefingConfirmationRect);
         briefingSkipConfirmation.transform.SetAsLastSibling();
 
         AssignReference(controller, "contentGroup", rootContentGroup);
@@ -874,7 +880,8 @@ public static class StrategyViewPrefabBuilder
             confirmDialogWindowPrefab,
             battleAlertWindowPrefab,
             finderWindowPrefab,
-            encyclopediaWindowPrefab
+            encyclopediaWindowPrefab,
+            optionsMenuWindowPrefab
         );
         AssignWindowLayerLayout(windowsView);
         AssignReference(hudView, "backgroundImage", hudBackgroundImage);
@@ -900,22 +907,54 @@ public static class StrategyViewPrefabBuilder
         AssignReference(galaxyMapView, "activeFilterLabel", activeFilterLabel);
         AssignReference(galaxyMapView, "planetSystemClusterPrefab", planetSystemClusterPrefab);
 
-        SaveGeneratedPrefabAsset(root, _prefabPath);
-        Object.DestroyImmediate(root);
+        SaveGeneratedPrefabAsset(sceneRoot, _prefabPath);
+        Object.DestroyImmediate(sceneRoot);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
     }
 
     /// <summary>
-    /// Rebuilds shared controls, every Strategy window, and the Strategy View root in dependency
-    /// order.
+    /// Authors the persistent services, camera, and event system required by the Strategy scene.
+    /// </summary>
+    private static void BuildSceneInfrastructure(GameObject sceneRoot)
+    {
+        GameObject services = new GameObject("Services");
+        services.transform.SetParent(sceneRoot.transform, false);
+        GameObject bootstrap = new GameObject("AppBootstrap");
+        bootstrap.transform.SetParent(services.transform, false);
+        bootstrap.AddComponent<AppBootstrap>();
+
+        GameObject audioObject = new GameObject("AudioManager");
+        audioObject.transform.SetParent(services.transform, false);
+        AudioSource music = audioObject.AddComponent<AudioSource>();
+        AudioSource sfx = audioObject.AddComponent<AudioSource>();
+        AudioSource ambience = audioObject.AddComponent<AudioSource>();
+        AudioManager audio = audioObject.AddComponent<AudioManager>();
+        AssignReference(audio, "musicSource", music);
+        AssignReference(audio, "sfxSource", sfx);
+        AssignReference(audio, "ambienceSource", ambience);
+
+        GameObject cameraObject = new GameObject("Main Camera");
+        cameraObject.transform.SetParent(sceneRoot.transform, false);
+        cameraObject.tag = "MainCamera";
+        Camera camera = cameraObject.AddComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = Color.black;
+        cameraObject.AddComponent<AudioListener>();
+
+        GameObject eventSystemObject = new GameObject("EventSystem");
+        eventSystemObject.transform.SetParent(sceneRoot.transform, false);
+        eventSystemObject.AddComponent<EventSystem>();
+        eventSystemObject.AddComponent<StandaloneInputModule>();
+    }
+
+    /// <summary>
+    /// Rebuilds every Strategy window and the Strategy View root in dependency order.
     /// </summary>
     public static void RebuildAllStrategyViewPrefabs()
     {
-        UIAuthoringGuard.EnsureEditMode();
         _previewThemes = null;
         _previewThemeId = null;
-        CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
 
         PlanetSystemPlanetView planetPrefab = BuildPlanetSystemPlanetPrefab();
         BuildPlanetSystemWindowPrefab(planetPrefab);
@@ -944,10 +983,6 @@ public static class StrategyViewPrefabBuilder
     public static void Rebuild()
     {
         RebuildAllStrategyViewPrefabs();
-        SceneRootPrefabInstaller.ResetSceneFromTemplate(
-            _strategySceneTemplatePath,
-            _strategyScenePath
-        );
         InstallStrategyViewRootPrefabInScene();
     }
 
@@ -956,7 +991,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void BuildPlanetSystemPrefabs()
     {
-        UIAuthoringGuard.EnsureEditMode();
         Directory.CreateDirectory(Path.GetDirectoryName(_planetSystemPlanetPrefabPath));
 
         PlanetSystemPlanetView planetPrefab = BuildPlanetSystemPlanetPrefab();
@@ -971,7 +1005,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildPlanetSystemClusterPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildPlanetSystemClusterPrefab();
     }
 
@@ -980,7 +1013,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RefreshStrategyViewRootWindowPrefabs()
     {
-        UIAuthoringGuard.EnsureEditMode();
         RegisterWindowPrefabsInRoot();
     }
 
@@ -989,7 +1021,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildConfirmDialogWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildConfirmDialogWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -999,7 +1030,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildBattleAlertWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildBattleAlertWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1009,7 +1039,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildFacilityWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildFacilityWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1019,7 +1048,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildConstructionWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildConstructionWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1029,7 +1057,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildDefenseWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildDefenseWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1039,7 +1066,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildFleetWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildFleetWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1049,7 +1075,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildMissionsWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildMissionsWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1059,7 +1084,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildMissionCreateWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildMissionCreateWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1069,7 +1093,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildStatusWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildStatusWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1079,7 +1102,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildAdvisorReportWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildAdvisorReportWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1089,7 +1111,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildFinderWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildFinderWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1099,7 +1120,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildMessagesWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildMessagesWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1109,7 +1129,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildEncyclopediaWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildEncyclopediaWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -3592,7 +3611,8 @@ public static class StrategyViewPrefabBuilder
                 LoadWindowPrefab<ConfirmDialogWindowView>(_confirmDialogWindowPrefabPath),
                 LoadWindowPrefab<BattleAlertWindowView>(_battleAlertWindowPrefabPath),
                 LoadWindowPrefab<FinderWindowView>(_finderWindowPrefabPath),
-                LoadWindowPrefab<EncyclopediaWindowView>(_encyclopediaWindowPrefabPath)
+                LoadWindowPrefab<EncyclopediaWindowView>(_encyclopediaWindowPrefabPath),
+                LoadWindowPrefab<OptionsMenuView>(_optionsMenuWindowPrefabPath)
             );
 
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath, out bool success);
@@ -6657,16 +6677,10 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void InstallStrategyViewRootPrefabInScene()
     {
-        UIAuthoringGuard.EnsureEditMode();
         if (AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath) == null)
             BuildStrategyViewRootPrefab();
 
-        SceneRootPrefabInstaller.InstallRootPrefabInScene(
-            _strategyScenePath,
-            _prefabPath,
-            _sceneInstanceName,
-            _strategySceneRootParentPath
-        );
+        SceneBuilder.Build(_strategyScenePath, _prefabPath, _sceneInstanceName);
     }
 
     /// <summary>
@@ -8577,6 +8591,7 @@ public static class StrategyViewPrefabBuilder
     /// <param name="battleAlertWindowPrefab">The battle-alert window prefab.</param>
     /// <param name="finderWindowPrefab">The Finder window prefab.</param>
     /// <param name="encyclopediaWindowPrefab">The encyclopedia window prefab.</param>
+    /// <param name="optionsMenuWindowPrefab">The shared Options window prefab.</param>
     private static void AssignWindowPrefabs(
         StrategyWindowLayerView target,
         PlanetSystemWindowView planetSystemWindowPrefab,
@@ -8592,7 +8607,8 @@ public static class StrategyViewPrefabBuilder
         ConfirmDialogWindowView confirmDialogWindowPrefab,
         BattleAlertWindowView battleAlertWindowPrefab,
         FinderWindowView finderWindowPrefab,
-        EncyclopediaWindowView encyclopediaWindowPrefab
+        EncyclopediaWindowView encyclopediaWindowPrefab,
+        OptionsMenuView optionsMenuWindowPrefab
     )
     {
         AssignWindowPrefab(target, "planetSystemWindowPrefab", planetSystemWindowPrefab);
@@ -8609,6 +8625,7 @@ public static class StrategyViewPrefabBuilder
         AssignWindowPrefab(target, "battleAlertWindowPrefab", battleAlertWindowPrefab);
         AssignWindowPrefab(target, "finderWindowPrefab", finderWindowPrefab);
         AssignWindowPrefab(target, "encyclopediaWindowPrefab", encyclopediaWindowPrefab);
+        AssignWindowPrefab(target, "_optionsMenuWindowPrefab", optionsMenuWindowPrefab);
     }
 
     /// <summary>

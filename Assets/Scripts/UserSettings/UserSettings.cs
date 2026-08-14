@@ -6,9 +6,6 @@ using System;
 [Serializable]
 public sealed class UserSettings
 {
-    public const int CurrentVersion = 2;
-
-    public int Version = CurrentVersion;
     public UserAudioSettings Audio = new UserAudioSettings();
     public UserVideoSettings Video = new UserVideoSettings();
     public UserInputSettings Input = new UserInputSettings();
@@ -21,12 +18,6 @@ public sealed class UserSettings
         Audio ??= new UserAudioSettings();
         Video ??= new UserVideoSettings();
         Input ??= new UserInputSettings();
-
-        if (Version < CurrentVersion)
-        {
-            Video.RestoreTacticalDefaults();
-            Version = CurrentVersion;
-        }
 
         Audio.Normalize();
         Video.Normalize();

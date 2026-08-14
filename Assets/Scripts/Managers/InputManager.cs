@@ -12,7 +12,10 @@ public sealed class InputManager : MonoBehaviour
     /// <summary>
     /// Gets the generated input action wrapper.
     /// </summary>
-    public PlayerInputActions Actions => _actions ??= new PlayerInputActions();
+    public PlayerInputActions Actions
+    {
+        get { return _actions ??= new PlayerInputActions(); }
+    }
 
     /// <summary>
     /// Gets the generated input action asset.
@@ -58,7 +61,8 @@ public sealed class InputManager : MonoBehaviour
     /// <returns>The serialized binding override data.</returns>
     public string SaveBindingOverrides()
     {
-        return InputActionRebindingExtensions.SaveBindingOverridesAsJson(Actions.asset);
+        RestoreReservedEscapeBinding(Actions.asset);
+        return Actions.asset.SaveBindingOverridesAsJson();
     }
 
     /// <summary>
@@ -67,14 +71,33 @@ public sealed class InputManager : MonoBehaviour
     /// <param name="bindingOverrides">The serialized binding override data.</param>
     public void LoadBindingOverrides(string bindingOverrides)
     {
-        InputActionRebindingExtensions.RemoveAllBindingOverrides(Actions.asset);
+        InputActionAsset asset = Actions.asset;
+        asset.RemoveAllBindingOverrides();
+        if (!string.IsNullOrWhiteSpace(bindingOverrides))
+            asset.LoadBindingOverridesFromJson(bindingOverrides);
+        RestoreReservedEscapeBinding(asset);
+    }
 
-        if (string.IsNullOrWhiteSpace(bindingOverrides))
-            return;
+    /// <summary>
+    /// Removes persisted overrides from the fixed Escape binding and its chord alternative.
+    /// </summary>
+    private static void RestoreReservedEscapeBinding(InputActionAsset asset)
+    {
+        InputAction action = asset.FindAction("Global/CancelOrSettings", true);
+        bool clearingPrimaryChord = false;
+        for (int index = 0; index < action.bindings.Count; index++)
+        {
+            InputBinding binding = action.bindings[index];
+            if (!binding.isPartOfComposite)
+            {
+                clearingPrimaryChord = binding.name == "PrimaryChord";
+                if (binding.name == "Primary" || clearingPrimaryChord)
+                    action.RemoveBindingOverride(index);
+                continue;
+            }
 
-        InputActionRebindingExtensions.LoadBindingOverridesFromJson(
-            Actions.asset,
-            bindingOverrides
-        );
+            if (clearingPrimaryChord)
+                action.RemoveBindingOverride(index);
+        }
     }
 }

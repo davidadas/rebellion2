@@ -54,8 +54,11 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             );
         }
 
+        /// <summary>
+        /// Verifies opening preload data excludes briefing segments that are not yet visible.
+        /// </summary>
         [Test]
-        public void CreatePreloadManifest_RepeatedAssets_ReturnsDistinctBriefingMedia()
+        public void CreateOpeningPreloadManifest_Briefing_ReturnsOpeningAndSkipMedia()
         {
             StrategyBriefingTheme theme = new StrategyBriefingTheme
             {
@@ -78,7 +81,7 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 }
             );
 
-            ContentPreloadManifest manifest = theme.CreatePreloadManifest();
+            ContentPreloadManifest manifest = theme.CreateOpeningPreloadManifest();
 
             Assert.AreEqual(64, manifest.TexturesPerFrame);
             CollectionAssert.AreEqual(
@@ -95,6 +98,38 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                     "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/Introduction",
                     "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/Skip",
                 },
+                manifest.Audio
+            );
+        }
+
+        /// <summary>
+        /// Verifies an incremental preload manifest contains only its requested segment.
+        /// </summary>
+        [Test]
+        public void CreateSegmentPreloadManifest_Segment_ReturnsOnlyRequestedMedia()
+        {
+            StrategyBriefingTheme theme = new StrategyBriefingTheme
+            {
+                AnimationImageRoot = "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings",
+                AudioRoot = "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings",
+            };
+            StrategyBriefingSegmentTheme segment = new StrategyBriefingSegmentTheme
+            {
+                Animation = "PopularSupport",
+                Audio = "PopularSupport",
+            };
+
+            ContentPreloadManifest manifest = theme.CreateSegmentPreloadManifest(segment);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings/PopularSupport",
+                },
+                manifest.TextureDirectories
+            );
+            CollectionAssert.AreEqual(
+                new[] { "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/PopularSupport" },
                 manifest.Audio
             );
         }

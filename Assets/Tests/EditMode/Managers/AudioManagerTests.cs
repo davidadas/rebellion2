@@ -60,6 +60,7 @@ public sealed class AudioManagerTests
         Assert.AreEqual(0.625f, snapshot.AmbienceVolume);
         Assert.AreEqual(0.875f, snapshot.VideoVolume);
         Assert.AreEqual(0.65625f, manager.EffectiveVideoVolume);
+        Assert.AreEqual(0.375f, GetAudioSource(manager, "sfxSource").volume);
     }
 
     [Test]

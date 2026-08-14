@@ -129,33 +129,29 @@ public sealed class MissionCreateWindowController
     }
 
     /// <summary>
-    /// Replaces the current Mission Create window with a requested target and participant set.
+    /// Toggles the exclusive Mission Create window for a requested target and participant set.
     /// </summary>
     /// <param name="target">The selected mission target.</param>
     /// <param name="sourceItems">The source selection in visual order.</param>
     public void Open(StrategyMissionTarget target, IReadOnlyList<ISceneNode> sourceItems)
     {
-        MissionCreateWindowView existing = FindWindow();
-        if (
-            existing != null
-            && sessions.TryGetValue(existing, out MissionCreateWindowSession existingSession)
-        )
-            closeWindow(existingSession.Window);
-
         Vector2Int position = getWindowPosition();
-        UIWindow window = windowManager.CreateWindow(
+        UIWindow window = windowManager.ToggleExclusiveWindow(
             windowLayer.MissionCreateWindowPrefab,
             windowLayer.GetWindowParent(true),
             $"MissionCreateWindow-{target?.Item?.GetDisplayName() ?? target?.Planet?.Planet?.GetDisplayName() ?? "UnknownTarget"}",
             position.x,
             position.y,
             windowLayer.GetWindowSize(windowLayer.MissionCreateWindowPrefab),
-            true,
-            true,
             false,
-            false,
+            existingView =>
+                sessions.TryGetValue(existingView, out MissionCreateWindowSession session)
+                && HaveSameTarget(session.Target, target),
             out MissionCreateWindowView view
         );
+        if (window == null)
+            return;
+
         if (
             !TryInitializeWindow(
                 view,
@@ -170,6 +166,56 @@ public sealed class MissionCreateWindowController
         }
 
         markDirty();
+    }
+
+    /// <summary>
+    /// Compares mission targets by their stable planet and scene-node identities.
+    /// </summary>
+    /// <param name="left">The current mission target.</param>
+    /// <param name="right">The requested mission target.</param>
+    /// <returns>True when both targets identify the same destination.</returns>
+    private static bool HaveSameTarget(StrategyMissionTarget left, StrategyMissionTarget right)
+    {
+        return left != null
+            && right != null
+            && HaveSamePlanet(left.Planet, right.Planet)
+            && HaveSameItem(left.Item, right.Item);
+    }
+
+    /// <summary>
+    /// Compares optional scene nodes by stable identity and then object identity when unsaved.
+    /// </summary>
+    /// <param name="left">The current scene node.</param>
+    /// <param name="right">The requested scene node.</param>
+    /// <returns>True when both values identify the same scene node.</returns>
+    private static bool HaveSameItem(ISceneNode left, ISceneNode right)
+    {
+        if (left == null || right == null)
+            return left == null && right == null;
+
+        string leftId = left.GetInstanceID();
+        string rightId = right.GetInstanceID();
+        return string.IsNullOrEmpty(leftId) || string.IsNullOrEmpty(rightId)
+            ? ReferenceEquals(left, right)
+            : string.Equals(leftId, rightId, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Compares optional galaxy-map planets by stable identity and then object identity when unsaved.
+    /// </summary>
+    /// <param name="left">The current galaxy-map planet.</param>
+    /// <param name="right">The requested galaxy-map planet.</param>
+    /// <returns>True when both values identify the same planet.</returns>
+    private static bool HaveSamePlanet(GalaxyMapPlanet left, GalaxyMapPlanet right)
+    {
+        if (left == null || right == null)
+            return left == null && right == null;
+
+        string leftId = left.Planet?.InstanceID;
+        string rightId = right.Planet?.InstanceID;
+        return string.IsNullOrEmpty(leftId) || string.IsNullOrEmpty(rightId)
+            ? ReferenceEquals(left, right)
+            : string.Equals(leftId, rightId, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -535,21 +581,6 @@ public sealed class MissionCreateWindowController
         string voicePath = officer.GetVoicePath(OfficerVoiceLineType.Order, getGame()?.Random);
         if (!string.IsNullOrEmpty(voicePath))
             playSfx(voicePath);
-    }
-
-    /// <summary>
-    /// Finds the registered Mission Create view.
-    /// </summary>
-    /// <returns>The registered view, or null when Mission Create is closed.</returns>
-    private MissionCreateWindowView FindWindow()
-    {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (windowManager.TryGetWindowView(window, out MissionCreateWindowView view))
-                return view;
-        }
-
-        return null;
     }
 
     /// <summary>

@@ -72,35 +72,26 @@ public sealed class AdvisorReportWindowController
     }
 
     /// <summary>
-    /// Opens or focuses the advisor report for a requested mode.
+    /// Toggles the exclusive advisor report for a requested mode.
     /// </summary>
     /// <param name="mode">The report mode to display.</param>
     public void Open(AdvisorReportMode mode)
     {
-        UIWindow existing = FindWindow();
-        if (existing != null)
-        {
-            if (windowManager.TryGetWindowView(existing, out AdvisorReportWindowView existingView))
-                BindWindow(existingView, mode);
-            windowManager.Focus(existing);
-            markDirty();
-            return;
-        }
-
         Vector2Int position = getWindowPosition();
-        windowManager.CreateWindow(
+        UIWindow window = windowManager.ToggleExclusiveWindow(
             windowLayer.AdvisorReportWindowPrefab,
             windowLayer.GetWindowParent(true),
             $"AdvisorReportWindow-{mode}",
             position.x,
             position.y,
             windowLayer.GetWindowSize(windowLayer.AdvisorReportWindowPrefab),
-            true,
-            true,
             false,
-            false,
+            existingView => GetMode(existingView) == mode,
             out AdvisorReportWindowView view
         );
+        if (window == null)
+            return;
+
         BindWindow(view, mode);
         markDirty();
     }
@@ -255,21 +246,6 @@ public sealed class AdvisorReportWindowController
 
         view.CloseRequested -= HandleCloseRequested;
         view.Destroyed -= HandleViewDestroyed;
-    }
-
-    /// <summary>
-    /// Finds the registered advisor-report window.
-    /// </summary>
-    /// <returns>The registered window, or null when the report is closed.</returns>
-    private UIWindow FindWindow()
-    {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (windowManager.TryGetWindowView(window, out AdvisorReportWindowView _))
-                return window;
-        }
-
-        return null;
     }
 
     /// <summary>
