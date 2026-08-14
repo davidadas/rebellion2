@@ -98,14 +98,25 @@ public static class UIBuilderMenu
         if (build == null)
             throw new ArgumentNullException(nameof(build));
 
+        if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            return;
+
         Scene activeScene = SceneManager.GetActiveScene();
         UnityEngine.Object[] selection = Selection.objects;
         bool usesBatchScene = Application.isBatchMode && string.IsNullOrEmpty(activeScene.path);
         Scene authoringScene = usesBatchScene
             ? activeScene
             : EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+        string authoringScenePath = null;
         if (!usesBatchScene)
+        {
+            authoringScenePath = AssetDatabase.GenerateUniqueAssetPath(
+                "Assets/Scenes/UIBuilderAuthoringTemp.unity"
+            );
+            if (!EditorSceneManager.SaveScene(authoringScene, authoringScenePath))
+                throw new InvalidOperationException("Could not create the temporary UI authoring scene.");
             SceneManager.SetActiveScene(authoringScene);
+        }
         try
         {
             build();
@@ -122,6 +133,8 @@ public static class UIBuilderMenu
                     SceneManager.SetActiveScene(activeScene);
                 if (authoringScene.IsValid() && authoringScene.isLoaded)
                     EditorSceneManager.CloseScene(authoringScene, true);
+                if (!string.IsNullOrEmpty(authoringScenePath))
+                    AssetDatabase.DeleteAsset(authoringScenePath);
             }
             Selection.objects = selection;
         }
