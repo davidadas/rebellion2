@@ -2127,6 +2127,7 @@ public static class MainMenuPrefabBuilder
             name = "Planet",
             antiAliasing = 4,
         };
+        EnsureAssetFolder(Path.GetDirectoryName(_renderTexturePath));
         AssetDatabase.CreateAsset(created, _renderTexturePath);
         return created;
     }
@@ -2480,8 +2481,25 @@ public static class MainMenuPrefabBuilder
             name = $"Icon_{factionId}",
             antiAliasing = 4,
         };
+        EnsureAssetFolder(Path.GetDirectoryName(path));
         AssetDatabase.CreateAsset(created, path);
         return created;
+    }
+
+    /// <summary>
+    /// Creates each missing segment of a generated asset folder.
+    /// </summary>
+    /// <param name="folderPath">The project-relative folder path to create.</param>
+    private static void EnsureAssetFolder(string folderPath)
+    {
+        string currentPath = "Assets";
+        foreach (string segment in folderPath.Replace('\\', '/').Split('/').Skip(1))
+        {
+            string childPath = $"{currentPath}/{segment}";
+            if (!AssetDatabase.IsValidFolder(childPath))
+                AssetDatabase.CreateFolder(currentPath, segment);
+            currentPath = childPath;
+        }
     }
 
     /// <summary>
@@ -2585,7 +2603,7 @@ public static class MainMenuPrefabBuilder
             lights.transform,
             "Rim",
             Quaternion.Euler(35f, 175f, 0f),
-            1.0f,
+            1f,
             Color.white,
             LightShadows.None
         );
@@ -2682,7 +2700,12 @@ public static class MainMenuPrefabBuilder
     public static void Rebuild()
     {
         RebuildMainMenuPrefab();
-        SceneBuilder.Build(_scenePath, _prefabPath, _sceneInstanceName);
+        SceneBuilder.Build(
+            _scenePath,
+            _prefabPath,
+            _sceneInstanceName,
+            () => RenderSettings.reflectionIntensity = 0f
+        );
     }
 
     /// <summary>

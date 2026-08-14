@@ -1,8 +1,10 @@
+using System;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Object = UnityEngine.Object;
 
 /// <summary>
 /// Maintains generated scenes containing one self-contained application root prefab.
@@ -15,7 +17,13 @@ public static class SceneBuilder
     /// <param name="scenePath">The generated scene asset path.</param>
     /// <param name="prefabPath">The self-contained scene-root prefab path.</param>
     /// <param name="instanceName">The root instance name.</param>
-    public static void Build(string scenePath, string prefabPath, string instanceName)
+    /// <param name="configureScene">Optional scene-specific configuration applied before saving.</param>
+    public static void Build(
+        string scenePath,
+        string prefabPath,
+        string instanceName,
+        Action configureScene = null
+    )
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         if (prefab == null)
@@ -59,6 +67,8 @@ public static class SceneBuilder
             instance.name = instanceName;
             ResetRootTransform(instance.transform);
             RemoveOtherRoots(scene, instance);
+            SceneManager.SetActiveScene(scene);
+            configureScene?.Invoke();
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene, scenePath))
                 throw new IOException($"Could not generate scene: {scenePath}");

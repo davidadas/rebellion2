@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -106,16 +107,13 @@ public static class UIBuilderMenu
             return;
 
         Scene activeScene = SceneManager.GetActiveScene();
-        if (!Application.isBatchMode && string.IsNullOrEmpty(activeScene.path))
-        {
-            EditorSceneManager.OpenScene(_mainMenuScenePath, OpenSceneMode.Single);
-            activeScene = SceneManager.GetActiveScene();
-        }
+        bool startedFromUntitledScene = string.IsNullOrEmpty(activeScene.path);
         UnityEngine.Object[] selection = Selection.objects;
-        bool usesBatchScene = Application.isBatchMode && string.IsNullOrEmpty(activeScene.path);
-        Scene authoringScene = usesBatchScene
-            ? activeScene
-            : EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+        bool usesBatchScene = Application.isBatchMode && startedFromUntitledScene;
+        Scene authoringScene =
+            usesBatchScene || startedFromUntitledScene
+                ? activeScene
+                : EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
         string authoringScenePath = null;
         if (!usesBatchScene)
         {
@@ -140,10 +138,21 @@ public static class UIBuilderMenu
             }
             else
             {
-                if (activeScene.IsValid() && activeScene.isLoaded)
+                if (!startedFromUntitledScene && activeScene.IsValid() && activeScene.isLoaded)
                     SceneManager.SetActiveScene(activeScene);
-                if (authoringScene.IsValid() && authoringScene.isLoaded)
+                if (
+                    !startedFromUntitledScene
+                    && authoringScene.IsValid()
+                    && authoringScene.isLoaded
+                )
                     EditorSceneManager.CloseScene(authoringScene, true);
+                if (startedFromUntitledScene)
+                {
+                    if (File.Exists(_mainMenuScenePath))
+                        EditorSceneManager.OpenScene(_mainMenuScenePath, OpenSceneMode.Single);
+                    else
+                        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                }
                 if (!string.IsNullOrEmpty(authoringScenePath))
                     AssetDatabase.DeleteAsset(authoringScenePath);
             }

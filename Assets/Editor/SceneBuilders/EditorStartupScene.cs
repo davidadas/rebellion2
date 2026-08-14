@@ -1,3 +1,4 @@
+using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
@@ -32,6 +33,7 @@ public static class EditorStartupScene
             !activeScene.IsValid()
             || !string.IsNullOrEmpty(activeScene.path)
             || activeScene.isDirty
+            || !File.Exists(_mainMenuScenePath)
         )
             return;
 
