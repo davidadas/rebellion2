@@ -498,11 +498,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         badge.gameObject.SetActive(true);
         if (badgeButton != null)
             badgeButton.interactable = editable;
-        badge.color = listening
-            ? _badgeListeningColor
-            : editable
-                ? _badgeColor
-                : _badgeLockedColor;
+        badge.color =
+            listening ? _badgeListeningColor
+            : editable ? _badgeColor
+            : _badgeLockedColor;
         UILayout.SetSourceRect(
             badge.rectTransform,
             x,
@@ -526,12 +525,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="bindingIndex">The source binding index, including headers.</param>
     /// <param name="top">The row's source-space top.</param>
     /// <param name="templateRect">The authored restore-control rectangle.</param>
-    private void RenderBindingRestore(
-        int index,
-        int bindingIndex,
-        int top,
-        RectInt templateRect
-    )
+    private void RenderBindingRestore(int index, int bindingIndex, int top, RectInt templateRect)
     {
         Image restore = GetBindingImage(
             _bindingRestoreImages,

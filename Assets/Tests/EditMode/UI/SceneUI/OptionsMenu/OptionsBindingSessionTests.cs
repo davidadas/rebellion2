@@ -203,7 +203,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             session.RestoreAllDefaults();
 
             Assert.IsFalse(
-                _inputManager.Asset.actionMaps.SelectMany(map => map.actions)
+                _inputManager
+                    .Asset.actionMaps.SelectMany(map => map.actions)
                     .SelectMany(action => action.bindings)
                     .Any(binding => binding.hasOverrides)
             );

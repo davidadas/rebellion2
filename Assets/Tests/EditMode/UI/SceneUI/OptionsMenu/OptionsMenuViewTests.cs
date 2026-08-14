@@ -200,12 +200,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         {
             OptionsBindingRow[] bindings =
             {
-                new OptionsBindingRow(
-                    "Open Game Menu",
-                    "ESC",
-                    "UNBOUND",
-                    primaryEditable: false
-                ),
+                new OptionsBindingRow("Open Game Menu", "ESC", "UNBOUND", primaryEditable: false),
             };
 
             _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
@@ -241,8 +236,16 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     .GetComponentsInChildren<Button>(true)
                     .Single(candidate => candidate.name == buttonName);
                 Assert.AreEqual(Selectable.Transition.ColorTint, button.transition, buttonName);
-                Assert.AreNotEqual(button.colors.normalColor, button.colors.highlightedColor, buttonName);
-                Assert.AreNotEqual(button.colors.normalColor, button.colors.pressedColor, buttonName);
+                Assert.AreNotEqual(
+                    button.colors.normalColor,
+                    button.colors.highlightedColor,
+                    buttonName
+                );
+                Assert.AreNotEqual(
+                    button.colors.normalColor,
+                    button.colors.pressedColor,
+                    buttonName
+                );
             }
         }
 
