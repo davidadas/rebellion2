@@ -84,7 +84,7 @@ namespace Rebellion.Tests.AI.Director
                 null,
                 null
             );
-            PlanetStatChangedResult result = new PlanetStatChangedResult();
+            BlockadeChangedResult result = new BlockadeChangedResult();
 
             context.AddResults(new GameResult[] { null, result });
 

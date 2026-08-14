@@ -54,21 +54,6 @@ namespace Rebellion.Game.Results
         Withdrawn,
     }
 
-    public enum PlanetStatType
-    {
-        Energy,
-        EnergyAllocated,
-        Loyalty,
-        ProductionModifier,
-        RawMaterial,
-        RawMaterialAllocated,
-        Smuggling,
-        TroopWithdrawPercent,
-        TroopSurplus,
-        TroopRequired,
-        ControlUprising,
-    }
-
     public enum IncidentType
     {
         Uprising,
@@ -86,18 +71,6 @@ namespace Rebellion.Game.Results
     #endregion
 
     #region System / Planet
-
-    /// <summary>
-    /// A numeric attribute of a planet changed for a faction (energy, loyalty, raw materials, etc.).
-    /// </summary>
-    public class PlanetStatChangedResult : GameResult
-    {
-        public Planet Planet { get; set; }
-        public Faction Faction { get; set; }
-        public PlanetStatType Stat { get; set; }
-        public int OldValue { get; set; }
-        public int NewValue { get; set; }
-    }
 
     /// <summary>
     /// A blockade at a system started or ended.
