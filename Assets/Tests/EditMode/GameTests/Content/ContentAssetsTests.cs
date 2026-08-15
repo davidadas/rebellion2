@@ -39,17 +39,19 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void GetReadableTexture_ApplicationCursor_RemainsReadableAndCached()
+        public void GetCursor_ApplicationCursor_MeetsRuntimeRequirementsAndRemainsCached()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             using ContentAssets assets = CreateAssets(pack);
             const string address = "Application/Common/UI/ui_common_cursor_default_outlined";
 
-            Texture2D first = assets.GetReadableTexture(address);
-            Texture2D second = assets.GetReadableTexture(address);
+            Texture2D first = assets.GetCursor(address);
+            Texture2D second = assets.GetCursor(address);
 
             Assert.IsNotNull(first);
             Assert.IsTrue(first.isReadable);
+            Assert.AreEqual(TextureFormat.RGBA32, first.format);
+            Assert.AreEqual(1, first.mipmapCount);
             Assert.AreSame(first, second);
             Assert.AreNotSame(first, assets.GetTexture(address));
         }

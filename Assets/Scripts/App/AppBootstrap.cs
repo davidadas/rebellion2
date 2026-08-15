@@ -104,7 +104,7 @@ public sealed class AppBootstrap : MonoBehaviour
         );
         _contentAssets = new ContentAssets(_contentPack.ContentRootPath, _contentPack.PackRootPath);
         Texture2D cursorTexture =
-            _contentAssets.GetReadableTexture(_defaultCursorAddress)
+            _contentAssets.GetCursor(_defaultCursorAddress)
             ?? throw new System.InvalidOperationException(
                 $"Application cursor is missing: {_defaultCursorAddress}"
             );
@@ -113,8 +113,7 @@ public sealed class AppBootstrap : MonoBehaviour
         GameLaunchContext.Reset(_contentPack);
         _runtime = new GameRuntime(_contentPack);
 
-        if (audioManager == null)
-            audioManager = AudioManager.EnsureExists(transform);
+        audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
         _cutsceneManager = GetComponent<CutsceneManager>();
@@ -313,9 +312,8 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <returns>The active application audio manager.</returns>
     public AudioManager GetAudioManager()
     {
-        if (audioManager == null)
-            audioManager = AudioManager.EnsureExists(transform);
-
+        audioManager = AudioManager.EnsureExists(transform);
+        audioManager.InitializeContent(_contentAssets);
         return audioManager;
     }
 

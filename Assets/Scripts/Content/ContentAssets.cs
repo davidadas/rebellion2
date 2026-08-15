@@ -139,13 +139,27 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     }
 
     /// <summary>
-    /// Resolves and caches a CPU-readable texture for APIs such as the hardware cursor.
+    /// Resolves and caches a texture that meets Unity's hardware cursor requirements.
     /// </summary>
-    /// <param name="path">The application or pack content address.</param>
-    /// <returns>The loaded readable texture, or null when the address cannot be loaded.</returns>
-    public Texture2D GetReadableTexture(string path)
+    /// <param name="path">The application content address.</param>
+    /// <returns>The loaded cursor texture, or null when the address cannot be loaded.</returns>
+    public Texture2D GetCursor(string path)
     {
-        return GetTexture(path, readableTextures, false);
+        Texture2D texture = GetTexture(path, readableTextures, false);
+        if (texture == null || texture.format == TextureFormat.RGBA32)
+            return texture;
+
+        Texture2D cursor = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false)
+        {
+            name = texture.name,
+            filterMode = texture.filterMode,
+            wrapMode = texture.wrapMode,
+        };
+        cursor.SetPixels32(texture.GetPixels32());
+        cursor.Apply(false, false);
+        readableTextures[NormalizeAddress(path)] = cursor;
+        DestroyAsset(texture);
+        return cursor;
     }
 
     /// <summary>
@@ -163,7 +177,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
             return null;
         if (cache.TryGetValue(normalizedPath, out Texture2D texture))
         {
-            if (texture != null)
+            if (texture != null && (markNonReadable || texture.isReadable))
                 return texture;
 
             // Unity can destroy transient editor-preview objects when a prefab stage closes while

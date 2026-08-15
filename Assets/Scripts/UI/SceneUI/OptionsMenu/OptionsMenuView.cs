@@ -16,7 +16,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private static readonly Color _textColor = new Color(0.875f, 0.910f, 0.941f);
     private static readonly Color _badgeColor = new Color(0.204f, 0.243f, 0.302f);
     private static readonly Color _badgeListeningColor = new Color(0.373f, 0.659f, 0.925f);
-    private static readonly Color _badgeLockedColor = new Color(0.145f, 0.169f, 0.208f);
 
     private readonly List<TextMeshProUGUI> _bindingHeaderFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> _bindingActionFields = new List<TextMeshProUGUI>();
@@ -498,10 +497,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         badge.gameObject.SetActive(true);
         if (badgeButton != null)
             badgeButton.interactable = editable;
-        badge.color =
-            listening ? _badgeListeningColor
-            : editable ? _badgeColor
-            : _badgeLockedColor;
+        if (badgeButton != null)
+            ApplyBindingButtonColors(badgeButton, listening ? _badgeListeningColor : _badgeColor);
         UILayout.SetSourceRect(
             badge.rectTransform,
             x,
@@ -537,7 +534,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             button.onClick.AddListener(() => BindingRestoreRequested?.Invoke(bindingIndex));
 
         restore.gameObject.SetActive(true);
-        restore.color = _badgeColor;
+        if (button != null)
+            ApplyBindingButtonColors(button, _badgeColor);
         UILayout.SetSourceRect(
             restore.rectTransform,
             templateRect.x,
@@ -545,6 +543,21 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             templateRect.width,
             templateRect.height
         );
+    }
+
+    /// <summary>
+    /// Applies the binding button's base tint without suppressing its hover and pressed feedback.
+    /// </summary>
+    /// <param name="button">The binding button to style.</param>
+    /// <param name="normalColor">The button's resting tint.</param>
+    private static void ApplyBindingButtonColors(Button button, Color normalColor)
+    {
+        ColorBlock colors = button.colors;
+        colors.normalColor = normalColor;
+        colors.selectedColor = normalColor;
+        colors.highlightedColor = Color.Lerp(normalColor, Color.white, 0.35f);
+        colors.pressedColor = Color.Lerp(normalColor, Color.white, 0.6f);
+        button.colors = colors;
     }
 
     /// <summary>
