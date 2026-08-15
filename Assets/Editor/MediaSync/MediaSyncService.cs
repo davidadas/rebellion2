@@ -151,7 +151,7 @@ namespace Rebellion.Editor.Media
         }
 
         /// <summary>
-        /// Mirrors runtime content, Main Menu models, and the default cursor into the Unity project.
+        /// Mirrors runtime content and Main Menu models into the Unity project.
         /// </summary>
         public static MediaSyncResult Synchronize(
             string mediaRoot,
@@ -165,17 +165,9 @@ namespace Rebellion.Editor.Media
             );
             string sourceContent = Path.Combine(absoluteMediaRoot, "Content");
             string sourceModels = Path.Combine(absoluteMediaRoot, "Models", "MainMenu");
-            string sourceCursor = Path.Combine(
-                sourceContent,
-                "Application",
-                "Common",
-                "UI",
-                "ui_common_cursor_default_outlined.png"
-            );
 
             string[] contentFiles = GetSourceFiles(sourceContent);
             string[] modelFiles = GetSourceFiles(sourceModels);
-            ThrowIfLfsPointer(sourceCursor);
 
             MediaSyncResult result = new MediaSyncResult();
             result.Add(
@@ -194,19 +186,6 @@ namespace Rebellion.Editor.Media
                     reportProgress
                 )
             );
-
-            string destinationCursor = Path.Combine(
-                absoluteProjectRoot,
-                "Assets",
-                "Resources",
-                "UI",
-                "DefaultCursor.png"
-            );
-            Directory.CreateDirectory(Path.GetDirectoryName(destinationCursor));
-            if (CopyIfChanged(sourceCursor, destinationCursor))
-                result.CopiedFiles++;
-            else
-                result.UnchangedFiles++;
 
             reportProgress?.Invoke("Refreshing synchronized media", 1f);
             return result;
@@ -350,17 +329,6 @@ namespace Rebellion.Editor.Media
             );
             if (!File.Exists(schemaPath))
                 throw new FileNotFoundException("Media content schema not found.", schemaPath);
-
-            string cursorPath = Path.Combine(
-                absoluteMediaRoot,
-                "Content",
-                "Application",
-                "Common",
-                "UI",
-                "ui_common_cursor_default_outlined.png"
-            );
-            if (!File.Exists(cursorPath))
-                throw new FileNotFoundException("Default cursor asset not found.", cursorPath);
 
             return absoluteMediaRoot;
         }

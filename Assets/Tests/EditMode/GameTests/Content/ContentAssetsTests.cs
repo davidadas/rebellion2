@@ -38,6 +38,22 @@ namespace Rebellion.Tests.Content
             Assert.IsNull(assets.GetTexture("Application/Common/UI/missing"));
         }
 
+        [Test]
+        public void GetReadableTexture_ApplicationCursor_RemainsReadableAndCached()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            using ContentAssets assets = CreateAssets(pack);
+            const string address = "Application/Common/UI/ui_common_cursor_default_outlined";
+
+            Texture2D first = assets.GetReadableTexture(address);
+            Texture2D second = assets.GetReadableTexture(address);
+
+            Assert.IsNotNull(first);
+            Assert.IsTrue(first.isReadable);
+            Assert.AreSame(first, second);
+            Assert.AreNotSame(first, assets.GetTexture(address));
+        }
+
         /// <summary>
         /// Verifies sprite caching distinguishes explicit nine-slice borders.
         /// </summary>

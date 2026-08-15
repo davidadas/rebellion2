@@ -102,19 +102,9 @@ namespace Rebellion.Tests.Editor.MediaSync
                 "Schemas",
                 "game-config.xsd"
             );
-            string cursorPath = Path.Combine(
-                mediaRoot,
-                "Content",
-                "Application",
-                "Common",
-                "UI",
-                "ui_common_cursor_default_outlined.png"
-            );
             Directory.CreateDirectory(Path.GetDirectoryName(schemaPath));
-            Directory.CreateDirectory(Path.GetDirectoryName(cursorPath));
             Directory.CreateDirectory(Path.Combine(mediaRoot, "Models", "MainMenu"));
             File.WriteAllText(schemaPath, "schema");
-            File.WriteAllText(cursorPath, "cursor");
             RunGit(mediaRoot, "init", "-b", "main");
             RunGit(mediaRoot, "config", "user.name", "Media Sync Tests");
             RunGit(mediaRoot, "config", "user.email", "media-sync@example.invalid");

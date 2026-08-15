@@ -25,6 +25,10 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     private readonly Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>(
         StringComparer.Ordinal
     );
+    private readonly Dictionary<string, Texture2D> readableTextures = new Dictionary<
+        string,
+        Texture2D
+    >(StringComparer.Ordinal);
     private readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>(
         StringComparer.Ordinal
     );
@@ -131,18 +135,40 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <returns>The loaded texture, or null when the address cannot be loaded.</returns>
     public Texture2D GetTexture(string path)
     {
+        return GetTexture(path, textures, true);
+    }
+
+    /// <summary>
+    /// Resolves and caches a CPU-readable texture for APIs such as the hardware cursor.
+    /// </summary>
+    /// <param name="path">The application or pack content address.</param>
+    /// <returns>The loaded readable texture, or null when the address cannot be loaded.</returns>
+    public Texture2D GetReadableTexture(string path)
+    {
+        return GetTexture(path, readableTextures, false);
+    }
+
+    /// <summary>
+    /// Resolves and caches a texture with the requested CPU-readability.
+    /// </summary>
+    private Texture2D GetTexture(
+        string path,
+        IDictionary<string, Texture2D> cache,
+        bool markNonReadable
+    )
+    {
         ThrowIfDisposed();
         string normalizedPath = NormalizeAddress(path);
         if (string.IsNullOrEmpty(normalizedPath))
             return null;
-        if (textures.TryGetValue(normalizedPath, out Texture2D texture))
+        if (cache.TryGetValue(normalizedPath, out Texture2D texture))
         {
             if (texture != null)
                 return texture;
 
             // Unity can destroy transient editor-preview objects when a prefab stage closes while
             // domain reload is disabled. Never retain a dead Unity object in the content cache.
-            textures.Remove(normalizedPath);
+            cache.Remove(normalizedPath);
         }
         if (unavailableTextures.Contains(normalizedPath))
             return null;
@@ -158,7 +184,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         {
             byte[] bytes = File.ReadAllBytes(filePath);
             texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if (!ImageConversion.LoadImage(texture, bytes, true))
+            if (!ImageConversion.LoadImage(texture, bytes, markNonReadable))
             {
                 DestroyAsset(texture);
                 unavailableTextures.Add(normalizedPath);
@@ -179,7 +205,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         texture.name = Path.GetFileNameWithoutExtension(filePath);
         texture.filterMode = FilterMode.Point;
         texture.wrapMode = TextureWrapMode.Clamp;
-        textures.Add(normalizedPath, texture);
+        cache.Add(normalizedPath, texture);
         return texture;
     }
 
@@ -311,10 +337,13 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
             DestroyAsset(sprite);
         foreach (Texture2D texture in textures.Values)
             DestroyAsset(texture);
+        foreach (Texture2D texture in readableTextures.Values)
+            DestroyAsset(texture);
 
         audioClips.Clear();
         audioLoads.Clear();
         textures.Clear();
+        readableTextures.Clear();
         sprites.Clear();
         unavailableTextures.Clear();
         disposed = true;

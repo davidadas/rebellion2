@@ -11,7 +11,8 @@ using UnityEditor;
 /// </summary>
 public sealed class AppBootstrap : MonoBehaviour
 {
-    private const string _defaultCursorResourcePath = "UI/DefaultCursor";
+    private const string _defaultCursorAddress =
+        "Application/Common/UI/ui_common_cursor_default_outlined";
     private const string _mainMenuPreloadID = "main-menu";
     private const string _strategyPreloadID = "strategy";
 
@@ -103,9 +104,9 @@ public sealed class AppBootstrap : MonoBehaviour
         );
         _contentAssets = new ContentAssets(_contentPack.ContentRootPath, _contentPack.PackRootPath);
         Texture2D cursorTexture =
-            Resources.Load<Texture2D>(_defaultCursorResourcePath)
+            _contentAssets.GetReadableTexture(_defaultCursorAddress)
             ?? throw new System.InvalidOperationException(
-                $"Application cursor resource is missing: {_defaultCursorResourcePath}"
+                $"Application cursor is missing: {_defaultCursorAddress}"
             );
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
