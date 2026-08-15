@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Presentation.Advisor;
+using Rebellion.Game.Notifications;
 using Rebellion.Util.Serialization;
 
 /// <summary>

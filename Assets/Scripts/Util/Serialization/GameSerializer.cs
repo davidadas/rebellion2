@@ -320,25 +320,6 @@ namespace Rebellion.Util.Serialization
 
                 if (value != null)
                 {
-                    if (
-                        Attribute.IsDefined(member, typeof(PersistableInlineCollectionAttribute))
-                        && value is IEnumerable inlineItems
-                    )
-                    {
-                        foreach (object item in inlineItems)
-                        {
-                            if (item != null)
-                            {
-                                WriteValue(
-                                    item,
-                                    writer,
-                                    ReflectionHelper.GetPersistableElementName(item.GetType())
-                                );
-                            }
-                        }
-                        continue;
-                    }
-
                     string elementName = GetElementName(member, value);
                     PersistableCollectionItemAttribute collectionItem =
                         (PersistableCollectionItemAttribute)
@@ -729,10 +710,6 @@ namespace Rebellion.Util.Serialization
                         object value = ReadMember(member, reader);
                         ReflectionHelper.SetMemberValue(member, obj, value);
                     }
-                    else if (TryReadInlineCollection(actualType, obj, elementName, reader))
-                    {
-                        continue;
-                    }
                     else if (attributes.TryGetValue(elementName, out MemberInfo attributeMember))
                     {
                         if (populatedAttributes.Contains(attributeMember))
@@ -756,54 +733,6 @@ namespace Rebellion.Util.Serialization
             }
             reader.ReadEndElement();
             return obj;
-        }
-
-        private static bool TryReadInlineCollection(
-            Type objectType,
-            object instance,
-            string elementName,
-            XmlReader reader
-        )
-        {
-            Type[] namedTypes = ReflectionHelper.GetPersistableTypes(elementName).ToArray();
-            if (namedTypes.Length == 0)
-                return false;
-
-            List<(MemberInfo Member, Type ElementType)> compatibleMembers = ReflectionHelper
-                .GetPersistableMembers(objectType, ReflectionHelper.OperationType.Read)
-                .Where(member =>
-                    Attribute.IsDefined(member, typeof(PersistableInlineCollectionAttribute))
-                )
-                .SelectMany(member =>
-                {
-                    Type declaredType = ReflectionHelper
-                        .GetMemberType(member)
-                        .GetGenericArguments()
-                        .FirstOrDefault();
-                    return namedTypes
-                        .Where(type => declaredType?.IsAssignableFrom(type) == true)
-                        .Select(type => (Member: member, ElementType: type));
-                })
-                .ToList();
-            if (compatibleMembers.Count > 1)
-                throw new InvalidOperationException(
-                    $"Element '{elementName}' is ambiguous across inline collections on '{objectType.Name}'."
-                );
-            foreach ((MemberInfo member, Type actualElementType) in compatibleMembers)
-            {
-                Type collectionType = ReflectionHelper.GetMemberType(member);
-
-                IList collection = ReflectionHelper.GetMemberValue(member, instance) as IList;
-                if (collection == null)
-                {
-                    collection = (IList)Activator.CreateInstance(collectionType);
-                    ReflectionHelper.SetMemberValue(member, instance, collection);
-                }
-                collection.Add(ReadValue(actualElementType, reader));
-                return true;
-            }
-
-            return false;
         }
 
         /// <summary>

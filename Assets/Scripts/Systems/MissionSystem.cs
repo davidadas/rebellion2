@@ -17,9 +17,7 @@ namespace Rebellion.Systems
     /// Mission creation and scene graph attachment are delegated to MissionFactory.
     /// Participant movement and mission initiation are orchestrated here.
     /// </summary>
-    public class MissionSystem
-        : IGameResultHandler<PlanetUprisingStartedResult>,
-            IGameResultHandler<CustomMissionRequestedResult>
+    public class MissionSystem : IGameResultHandler<PlanetUprisingStartedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -27,7 +25,6 @@ namespace Rebellion.Systems
         private readonly UprisingSystem _uprisingSystem;
         private readonly OfficerLoyaltySystem _officerLoyaltySystem;
         private readonly MissionFactory _missionFactory;
-        private readonly Dictionary<string, CustomMissionDefinition> _customMissionDefinitions;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
@@ -38,14 +35,12 @@ namespace Rebellion.Systems
         /// <param name="movementManager">The movement system used for participant travel.</param>
         /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
         /// <param name="officerLoyaltySystem">The officer loyalty and betrayal resolver.</param>
-        /// <param name="customMissionDefinitions">The content-authored mission definitions.</param>
         public MissionSystem(
             GameRoot game,
             IRandomNumberProvider provider,
             MovementSystem movementManager,
             UprisingSystem uprisingSystem,
-            OfficerLoyaltySystem officerLoyaltySystem = null,
-            IEnumerable<CustomMissionDefinition> customMissionDefinitions = null
+            OfficerLoyaltySystem officerLoyaltySystem = null
         )
         {
             _game = game;
@@ -56,92 +51,6 @@ namespace Rebellion.Systems
             _officerLoyaltySystem =
                 officerLoyaltySystem ?? new OfficerLoyaltySystem(game, provider);
             _missionFactory = new MissionFactory(game);
-            _customMissionDefinitions = (
-                customMissionDefinitions ?? Array.Empty<CustomMissionDefinition>()
-            ).ToDictionary(definition => definition.InstanceID, StringComparer.Ordinal);
-        }
-
-        /// <summary>
-        /// Creates a persisted mission from a content definition and explicit role bindings.
-        /// </summary>
-        public List<GameResult> HandleResults(IReadOnlyList<CustomMissionRequestedResult> results)
-        {
-            List<GameResult> reactions = new List<GameResult>();
-            if (results == null)
-                return reactions;
-
-            foreach (CustomMissionRequestedResult result in results)
-            {
-                if (result == null)
-                    continue;
-                if (
-                    !_customMissionDefinitions.TryGetValue(
-                        result.MissionDefinitionID,
-                        out CustomMissionDefinition definition
-                    )
-                )
-                    throw new InvalidOperationException(
-                        $"Custom mission definition '{result.MissionDefinitionID}' is unavailable."
-                    );
-                definition.EnsureValid();
-
-                string rejectionReason = GetCustomMissionRejectionReason(
-                    result,
-                    out Planet location
-                );
-                if (rejectionReason != null)
-                    continue;
-
-                CustomMission mission = new CustomMission(
-                    definition,
-                    result.TargetInstanceID,
-                    location.InstanceID,
-                    result.MainParticipantInstanceIDs,
-                    result.DecoyParticipantInstanceIDs,
-                    result.SourceEventInstanceID,
-                    _game
-                );
-
-                _game.AttachNode(mission, location);
-                BeginMission(mission);
-            }
-
-            return reactions;
-        }
-
-        private string GetCustomMissionRejectionReason(
-            CustomMissionRequestedResult request,
-            out Planet location
-        )
-        {
-            ISceneNode target = _game.GetSceneNodeByInstanceID<ISceneNode>(
-                request.TargetInstanceID
-            );
-            location =
-                _game.GetSceneNodeByInstanceID<Planet>(request.LocationInstanceID)
-                ?? target as Planet
-                ?? target?.GetParentOfType<Planet>();
-            if (location == null)
-                return $"Mission location '{request.LocationInstanceID}' is unavailable.";
-
-            List<IMissionParticipant> participants = request
-                .MainParticipantInstanceIDs.Concat(request.DecoyParticipantInstanceIDs)
-                .Select(_game.GetSceneNodeByInstanceID<IMissionParticipant>)
-                .ToList();
-            if (
-                participants.Any(participant =>
-                    participant == null
-                    || participant is Officer { IsKilled: true }
-                    || participant is Officer { IsCaptured: true }
-                    || !participant.IsMovable()
-                    || participant.IsOnMission()
-                )
-            )
-                return "One or more mission participants are unavailable.";
-
-            if (target == null || target.GetParent() == null || _game.IsInVoid(target))
-                return $"Mission target '{request.TargetInstanceID}' is unavailable.";
-            return null;
         }
 
         /// <summary>
@@ -512,9 +421,6 @@ namespace Rebellion.Systems
         private List<GameResult> AdvanceMission(Mission mission)
         {
             List<GameResult> results = new List<GameResult>();
-
-            if (mission is CustomMission customMission)
-                customMission.SetDefinition(GetCustomMissionDefinition(customMission));
 
             if (mission.IsWaitingForParticipants())
                 return results;
@@ -1071,8 +977,6 @@ namespace Rebellion.Systems
         /// <returns>The mission duration in ticks.</returns>
         private int RollMissionDuration(Mission mission)
         {
-            if (mission is CustomMission customMission)
-                return customMission.RollDuration(_provider);
             GameConfig.MissionTickConfig tickConfig =
                 _game.Config?.ProbabilityTables?.Mission?.TickRanges?.GetTickConfig(
                     mission.ConfigKey
@@ -1080,21 +984,6 @@ namespace Rebellion.Systems
             int baseTicks = tickConfig?.Base ?? 0;
             int spreadTicks = tickConfig?.Spread ?? 0;
             return baseTicks + _provider.NextInt(0, spreadTicks + 1);
-        }
-
-        private CustomMissionDefinition GetCustomMissionDefinition(CustomMission mission)
-        {
-            if (
-                mission == null
-                || !_customMissionDefinitions.TryGetValue(
-                    mission.MissionDefinitionID,
-                    out CustomMissionDefinition definition
-                )
-            )
-                throw new InvalidOperationException(
-                    $"Mission definition '{mission?.MissionDefinitionID}' is unavailable."
-                );
-            return definition;
         }
 
         /// <summary>

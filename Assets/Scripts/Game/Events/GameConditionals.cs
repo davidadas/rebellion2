@@ -5,63 +5,9 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
-
-namespace Rebellion.Game.Events
-{
-    /// <summary>
-    /// Represents a condition evaluated within one game-event activation.
-    /// </summary>
-    [PersistableObject]
-    public abstract class GameConditional : BaseGameEntity
-    {
-        public abstract bool IsMet(GameConditionContext context);
-
-        public bool IsMet(GameRoot game) => IsMet(new GameConditionContext(game));
-
-        public bool IsMet(GameRoot game, GameResult triggerResult) =>
-            IsMet(new GameConditionContext(game, triggerResult));
-
-        internal bool IsMet(GameRoot game, GameEventExecutionContext activation) =>
-            IsMet(new GameConditionContext(game, activation));
-    }
-
-    /// <summary>
-    /// Supplies every dependency available during one condition evaluation.
-    /// </summary>
-    public sealed class GameConditionContext
-    {
-        public GameRoot Game { get; }
-        public GameEventExecutionContext Activation { get; }
-        public GameResult TriggerResult { get; }
-        public IRandomNumberProvider Random { get; }
-
-        public GameConditionContext(GameRoot game)
-            : this(game, null, null) { }
-
-        public GameConditionContext(GameRoot game, GameResult triggerResult)
-            : this(game, null, triggerResult) { }
-
-        public GameConditionContext(GameRoot game, GameEventExecutionContext activation)
-            : this(game, activation, activation?.TriggerResult) { }
-
-        private GameConditionContext(
-            GameRoot game,
-            GameEventExecutionContext activation,
-            GameResult triggerResult
-        )
-        {
-            Game = game ?? throw new ArgumentNullException(nameof(game));
-            Activation = activation;
-            TriggerResult = triggerResult;
-            Random = game.Random;
-        }
-    }
-}
 
 #region CompositeConditions
 namespace Rebellion.Game.Events
@@ -73,7 +19,6 @@ namespace Rebellion.Game.Events
     public sealed class AllConditional : GameConditional
     {
         [PersistableMember(Name = "Conditionals")]
-        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public AllConditional()
@@ -95,7 +40,6 @@ namespace Rebellion.Game.Events
     public sealed class AnyConditional : GameConditional
     {
         [PersistableMember(Name = "Conditionals")]
-        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public AnyConditional()
@@ -117,7 +61,6 @@ namespace Rebellion.Game.Events
     public sealed class NotConditional : GameConditional
     {
         [PersistableMember(Name = "Conditionals")]
-        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public NotConditional()
@@ -139,7 +82,6 @@ namespace Rebellion.Game.Events
     public sealed class XorConditional : GameConditional
     {
         [PersistableMember(Name = "Conditionals")]
-        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public XorConditional()
@@ -693,7 +635,6 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "ShareParent")]
     public sealed class ShareParentConditional : GameConditional
     {
-        [PersistableInlineCollection]
         public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
 
         public override bool IsMet(GameConditionContext context)
@@ -715,7 +656,6 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public SceneAncestorType Type { get; set; }
 
-        [PersistableInlineCollection]
         public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
 
         public override bool IsMet(GameConditionContext context)

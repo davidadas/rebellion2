@@ -73,17 +73,21 @@ a `$` prefix. Multiple triggers are alternatives; each matching result can activ
 
 ## Conditions
 
-Sibling conditions are an implicit AND. Composite conditions contain children directly:
+Sibling conditions are an implicit AND. Composite conditions wrap their child conditions explicitly:
 
 ```xml
 <Conditionals>
   <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
   <Not>
-    <Any>
-      <IsOnMission UnitInstanceID="LEIA_ORGANA"/>
-      <IsCaptured OfficerInstanceID="LEIA_ORGANA"/>
-      <IsInTransit UnitInstanceID="LEIA_ORGANA"/>
-    </Any>
+    <Conditionals>
+      <Any>
+        <Conditionals>
+          <IsOnMission UnitInstanceID="LEIA_ORGANA"/>
+          <IsCaptured OfficerInstanceID="LEIA_ORGANA"/>
+          <IsInTransit UnitInstanceID="LEIA_ORGANA"/>
+        </Conditionals>
+      </Any>
+    </Conditionals>
   </Not>
 </Conditionals>
 ```
@@ -97,14 +101,18 @@ ancestor of that type. Other conditions include `All`, `Any`, `Not`, `Xor`, `IsA
 
 ## Iteration and selectors
 
-`ForEach` selects activation targets and binds each one as `$target`:
+`Target` selects exactly one activation target and binds it as `$target`:
 
 ```xml
-<ForEach>
-  <SelectRandom Count="1">
-    <SelectPlanets SystemType="CoreSystem"/>
-  </SelectRandom>
-</ForEach>
+<Target>
+  <Candidates>
+    <SelectRandom Count="1">
+      <Candidates>
+        <SelectPlanets SystemType="CoreSystem"/>
+      </Candidates>
+    </SelectRandom>
+  </Candidates>
+</Target>
 ```
 
 Typed selectors include planets, planet systems, fleets, missions, officers, special forces,
@@ -115,10 +123,14 @@ the schema rejects statically incompatible combinations and runtime bindings are
 
 ```xml
 <DestroyUnits>
-  <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
-    <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
-    <SelectRegiments PlanetBinding="$target"/>
-  </SelectRandom>
+  <Units>
+    <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
+      <Candidates>
+        <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
+        <SelectRegiments PlanetBinding="$target"/>
+      </Candidates>
+    </SelectRandom>
+  </Units>
 </DestroyUnits>
 ```
 
@@ -168,25 +180,6 @@ Media references accept the schema-defined `Key`, `Path`, `Binding`, or `Preset`
 metadata remains transient delivery state rather than persisted message state.
 `SuppressNextAutomaticMessage` removes one automatic candidate matching its source result,
 message result type, and optional recipient; it never suppresses authored messages.
-
-## Definition-backed missions
-
-Reusable event missions live in the catalog referenced by `MissionDefinitionsPath`. Definitions
-own duration, cancellation policy, and resolution. Events create concrete instances using the
-normal target and participant collections:
-
-```xml
-<CreateMission MissionDefinitionID="MOD_OFFICER_CAPTURE">
-  <Target UnitInstanceID="HAN_SOLO"/>
-  <Participants>
-    <Participant UnitInstanceID="BOBA_FETT"/>
-  </Participants>
-</CreateMission>
-```
-
-Mission instances persist their definition ID and concrete assignments, then reconnect to content
-after loading. Mission completion emits the normal result; result-triggered events apply any
-story-specific consequences.
 
 ## Validation and compatibility
 

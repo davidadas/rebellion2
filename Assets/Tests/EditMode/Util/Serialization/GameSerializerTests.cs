@@ -13,8 +13,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
+using Rebellion.Game.Notifications;
 using Rebellion.Game.Units;
-using Rebellion.Presentation.Advisor;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Util.Serialization
@@ -393,11 +393,6 @@ namespace Rebellion.Tests.Util.Serialization
                         MinimumInjury = 1,
                         MaximumInjury = 100,
                     },
-                    new CreateMissionAction
-                    {
-                        MissionDefinitionID = "BOUNTY_HUNTER_CAPTURE",
-                        Target = new MissionUnitReference { UnitInstanceID = "HAN_SOLO" },
-                    },
                 },
             };
 
@@ -449,10 +444,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.IsNotNull(injury);
             Assert.AreEqual(1, injury.MinimumInjury);
             Assert.AreEqual(100, injury.MaximumInjury);
-            CreateMissionAction mission = deserialized.Actions[5] as CreateMissionAction;
-            Assert.IsNotNull(mission);
-            Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", mission.MissionDefinitionID);
-            Assert.AreEqual("HAN_SOLO", mission.Target.UnitInstanceID);
         }
 
         [Test]
@@ -551,7 +542,7 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_AfterAllSchedule_RoundTripsInlineDependencies()
+        public void Serialize_AfterAllSchedule_RoundTripsExplicitDependencies()
         {
             GameSerializer serializer = new GameSerializer(typeof(GameEventScheduler));
             GameEventScheduler scheduler = new GameEventScheduler
@@ -574,7 +565,7 @@ namespace Rebellion.Tests.Util.Serialization
             );
 
             StringAssert.Contains("<AfterAll DelayTicks=\"25\">", xml);
-            StringAssert.DoesNotContain("<Events>", xml);
+            StringAssert.Contains("<Events>", xml);
             CollectionAssert.AreEqual(
                 new[] { "FIRST", "SECOND" },
                 restored.AfterAll.Events.ConvertAll(dependency => dependency.EventInstanceID)
@@ -607,35 +598,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("SEND_OFFICER", deserialized.SourceEventInstanceID);
             Assert.AreEqual(new Point(12, 34), deserialized.OriginPosition);
             Assert.AreEqual(new Point(56, 78), deserialized.CurrentPosition);
-        }
-
-        [Test]
-        public void Serialize_RoundTripCustomMission_PreservesDefinitionAndTarget()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(CustomMission));
-            CustomMission mission = new CustomMission
-            {
-                InstanceID = "custom-mission",
-                MissionDefinitionID = "CUSTOM_CAPTURE",
-                TargetInstanceID = "target",
-                SourceEventInstanceID = "CAPTURE_EVENT",
-                MaxProgress = 3,
-                CurrentProgress = 2,
-                HasInitiated = true,
-            };
-
-            string serializedXml = SerializeToString(serializer, mission);
-            CustomMission deserialized = (CustomMission)DeserializeFromString(
-                serializer,
-                serializedXml
-            );
-
-            Assert.AreEqual("CUSTOM_CAPTURE", deserialized.MissionDefinitionID);
-            Assert.AreEqual("target", deserialized.TargetInstanceID);
-            Assert.AreEqual("CAPTURE_EVENT", deserialized.SourceEventInstanceID);
-            Assert.AreEqual(3, deserialized.MaxProgress);
-            Assert.AreEqual(2, deserialized.CurrentProgress);
-            Assert.IsTrue(deserialized.HasInitiated);
         }
 
         [Test]
@@ -2043,40 +2005,6 @@ namespace Rebellion.Tests.Util.Serialization
                     .GetOwnedUnitsByType<Fleet>()
                     .ToList()
             );
-        }
-
-        [Test]
-        public void Deserialize_GameEventRuntimeStateWithLegacyCompletion_MigratesCanonicalState()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(GameEventRuntimeState));
-            const string xml =
-                "<GameEventRuntimeState><CompletedEventIDs><String>EVENT</String></CompletedEventIDs></GameEventRuntimeState>";
-
-            GameEventRuntimeState runtime = (GameEventRuntimeState)DeserializeFromString(
-                serializer,
-                xml
-            );
-            GameEventState state = runtime.GetState("EVENT");
-
-            Assert.AreEqual(1, state.ExecutionCount);
-            Assert.IsTrue(state.IsExhausted);
-        }
-
-        [Test]
-        public void Serialize_GameEventRuntimeStateAfterLegacyMigration_OmitsLegacyCompletionSet()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(GameEventRuntimeState));
-            const string xml =
-                "<GameEventRuntimeState><CompletedEventIDs><String>EVENT</String></CompletedEventIDs></GameEventRuntimeState>";
-            GameEventRuntimeState runtime = (GameEventRuntimeState)DeserializeFromString(
-                serializer,
-                xml
-            );
-            runtime.GetState("EVENT");
-
-            string serialized = SerializeToString(serializer, runtime);
-
-            StringAssert.DoesNotContain("CompletedEventIDs", serialized);
         }
 
         private string SerializeToString(GameSerializer serializer, object obj)

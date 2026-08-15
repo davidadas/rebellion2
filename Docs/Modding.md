@@ -89,9 +89,8 @@ data, themes, and encyclopedia entries. Shared definitions include planet system
 events, and messages.
 
 IDs must be present and unique within their definition type. References between files use those
-IDs, so renaming one requires updating every reference to it. Event, message, and definition-backed
-mission catalogs are separate files selected by `GameEventsPath`, `MessageDefinitionsPath`, and
-`MissionDefinitionsPath` in `pack.xml`.
+IDs, so renaming one requires updating every reference to it. Event and message catalogs are
+separate files selected by `GameEventsPath` and `MessageDefinitionsPath` in `pack.xml`.
 
 ### UI appearance
 

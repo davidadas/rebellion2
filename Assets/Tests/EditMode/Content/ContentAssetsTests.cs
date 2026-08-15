@@ -171,5 +171,10 @@ namespace Rebellion.Tests.Content
         {
             return new ContentAssets(_contentRoot, _packRoot);
         }
+
+        private static ContentAssets CreateAssets(ContentPack pack)
+        {
+            return new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
+        }
     }
 }

@@ -18,8 +18,7 @@ namespace Rebellion.Game.Events
         public AfterEvents AfterAny { get; set; }
 
         [PersistableIgnore]
-        public bool IsOneShot =>
-            At != null || After != null || AfterAll != null || AfterAny != null;
+        public bool IsRecurring => Every != null || Random != null;
 
         /// <summary>
         /// Gets the inclusive delay range for an event's first activation.
@@ -58,7 +57,7 @@ namespace Rebellion.Game.Events
         public void GetRepeatRange(out int minimum, out int maximum)
         {
             EnsureSingleMode();
-            if (IsOneShot)
+            if (!IsRecurring)
                 throw new InvalidOperationException("One-shot schedules cannot repeat.");
 
             if (Every != null)
@@ -117,7 +116,6 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int DelayTicks { get; set; }
 
-        [PersistableInlineCollection]
         public List<EventDependency> Events { get; set; } = new List<EventDependency>();
     }
 

@@ -10,7 +10,6 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.Util.Serialization;
@@ -26,8 +25,6 @@ public static class ContentPackLoader
     private const string _contentPathArgument = "-contentPath";
     private const string _gameConfigSchemaRelativePath = "Application/Schemas/game-config.xsd";
     private const string _gameEventsSchemaRelativePath = "Application/Schemas/game-events.xsd";
-    private const string _missionDefinitionsSchemaRelativePath =
-        "Application/Schemas/mission-definitions.xsd";
     private const string _messageDefinitionsSchemaRelativePath =
         "Application/Schemas/message-definitions.xsd";
     private const string _packAddressPrefix = "Pack/";
@@ -253,13 +250,6 @@ public static class ContentPackLoader
             "MessageDefinitions",
             ResolveSafePath(contentRootPath, _messageDefinitionsSchemaRelativePath)
         );
-        CustomMissionDefinition[] missionDefinitions =
-            DeserializeGameData<CustomMissionDefinition[]>(
-                packRoot,
-                pack.MissionDefinitionsPath,
-                "MissionDefinitions",
-                ResolveSafePath(contentRootPath, _missionDefinitionsSchemaRelativePath)
-            );
         EncyclopediaEntries encyclopediaEntries = DeserializeGameData<EncyclopediaEntries>(
             packRoot,
             pack.EncyclopediaEntriesPath,
@@ -340,7 +330,6 @@ public static class ContentPackLoader
             officers.ToArray(),
             gameEvents,
             messageDefinitions,
-            missionDefinitions,
             encyclopediaEntries,
             themes
         );

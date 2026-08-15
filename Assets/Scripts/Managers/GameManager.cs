@@ -333,8 +333,7 @@ public sealed class GameManager
             _randomProvider,
             _movementSystem,
             _uprisingSystem,
-            _officerLoyaltySystem,
-            _gameData.MissionDefinitions
+            _officerLoyaltySystem
         );
         _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementSystem);
         _bombardmentSystem = new BombardmentSystem(
@@ -377,7 +376,6 @@ public sealed class GameManager
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_officerLoyaltySystem);
-        _resultProcessor.Subscribe<CustomMissionRequestedResult>(_missionSystem);
         _resultProcessor.Subscribe<HeadquartersDestroyedResult>(_victorySystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);

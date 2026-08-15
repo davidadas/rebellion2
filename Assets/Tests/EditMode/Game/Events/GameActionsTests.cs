@@ -712,44 +712,6 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void CreateMission_ValidTargetAndParticipants_EmitsDefinitionRequest()
-        {
-            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
-            Officer han = EntityFactory.CreateOfficer("han", "rebels");
-            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            Officer leia = EntityFactory.CreateOfficer("leia", "rebels");
-            game.AttachNode(han, rebelPlanet);
-            game.AttachNode(luke, rebelPlanet);
-            game.AttachNode(leia, rebelPlanet);
-            CreateMissionAction action = new CreateMissionAction
-            {
-                MissionDefinitionID = "BOUNTY_HUNTER_CAPTURE",
-                Target = new MissionUnitReference { UnitInstanceID = han.InstanceID },
-                Participants = new List<MissionUnitReference>
-                {
-                    new MissionUnitReference { UnitInstanceID = luke.InstanceID },
-                },
-                Decoys = new List<MissionUnitReference>
-                {
-                    new MissionUnitReference { UnitInstanceID = leia.InstanceID },
-                },
-            };
-
-            CustomMissionRequestedResult result = action
-                .Execute(game)
-                .OfType<CustomMissionRequestedResult>()
-                .Single();
-
-            Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", result.MissionDefinitionID);
-            Assert.AreEqual(han.InstanceID, result.TargetInstanceID);
-            CollectionAssert.AreEqual(new[] { luke.InstanceID }, result.MainParticipantInstanceIDs);
-            CollectionAssert.AreEqual(
-                new[] { leia.InstanceID },
-                result.DecoyParticipantInstanceIDs
-            );
-        }
-
-        [Test]
         public void AdjustOfficerStat_PercentOfEffectiveRank_AdjustsForceRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);

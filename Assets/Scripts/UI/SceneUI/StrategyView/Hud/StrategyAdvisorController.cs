@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Notifications;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Presentation.Advisor;
 using UnityEngine;
 
 /// <summary>

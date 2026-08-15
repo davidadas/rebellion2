@@ -4,10 +4,10 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Notifications;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Presentation.Advisor;
 using Rebellion.SceneGraph;
 
 #region Core
@@ -19,10 +19,9 @@ namespace Rebellion.Game.Messages
     public partial class MessageFactory
     {
         private readonly MessageDefinition[] _definitions;
-        private readonly MessageDefinitionResolver _definitionResolver;
         private readonly MessageTemplateBuilder _templateBuilder = new MessageTemplateBuilder();
-        private readonly AuthoredMessageDeliveryFactory _authoredMessageFactory;
-        private readonly MessageDeliveryBuilder _deliveryBuilder;
+        private readonly AuthoredMessageRequestFactory _authoredMessageRequestFactory;
+        private readonly Dictionary<Message, MessageRequestedResult> _requests = new();
 
         /// <summary>
         /// Creates a message factory backed by the supplied message definitions.
@@ -31,9 +30,7 @@ namespace Rebellion.Game.Messages
         public MessageFactory(IEnumerable<MessageDefinition> definitions)
         {
             _definitions = definitions?.ToArray() ?? Array.Empty<MessageDefinition>();
-            _definitionResolver = new MessageDefinitionResolver(_definitions);
-            _deliveryBuilder = new MessageDeliveryBuilder();
-            _authoredMessageFactory = new AuthoredMessageDeliveryFactory(_templateBuilder);
+            _authoredMessageRequestFactory = new AuthoredMessageRequestFactory(_templateBuilder);
         }
 
         /// <summary>
@@ -42,9 +39,12 @@ namespace Rebellion.Game.Messages
         /// <param name="results">The game results to translate into message deliveries.</param>
         /// <param name="game">The game state used to resolve affected factions and display names.</param>
         /// <returns>The messages to add to each recipient faction.</returns>
-        public List<MessageDelivery> CreateMessages(IEnumerable<GameResult> results, GameRoot game)
+        public List<MessageRequestedResult> CreateMessages(
+            IEnumerable<GameResult> results,
+            GameRoot game
+        )
         {
-            _deliveryBuilder.Clear();
+            _requests.Clear();
             GameResult[] batch =
                 results?.Where(result => result != null).ToArray() ?? Array.Empty<GameResult>();
             MissionCompletedResult[] missionResults = batch
@@ -60,7 +60,7 @@ namespace Rebellion.Game.Messages
             SystemsRevealedResult[] systemIntelligenceResults = batch
                 .OfType<SystemsRevealedResult>()
                 .ToArray();
-            List<MessageDelivery> deliveries = new List<MessageDelivery>();
+            List<MessageRequestedResult> deliveries = new List<MessageRequestedResult>();
 
             AddArrivalMessages(batch.OfType<UnitArrivedResult>(), game, deliveries);
             AddFacilityLossMessages(
@@ -145,9 +145,9 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Creates deliveries explicitly authored by event actions.
         /// </summary>
-        public List<MessageDelivery> CreateAuthoredMessages(
+        public List<MessageRequestedResult> CreateAuthoredMessages(
             IEnumerable<MessageRequestedResult> requests
-        ) => _authoredMessageFactory.CreateDeliveries(requests).ToList();
+        ) => _authoredMessageRequestFactory.CreateRequests(requests).ToList();
 
         /// <summary>
         /// Adds Force-assisted traitor discovery reports.
@@ -158,7 +158,7 @@ namespace Rebellion.Game.Messages
         private void AddTraitorDiscoveryMessages(
             IEnumerable<TraitorDiscoveredResult> results,
             GameRoot game,
-            List<MessageDelivery> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             foreach (TraitorDiscoveredResult result in results)
@@ -589,7 +589,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<GameObjectSabotagedResult> sabotageResults,
             IEnumerable<SystemsRevealedResult> systemIntelligenceResults,
             GameRoot game,
-            List<MessageDelivery> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             OfficerKilledResult[] killedArray =
@@ -649,7 +649,7 @@ namespace Rebellion.Game.Messages
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddRecruitmentMessages(
             IEnumerable<RecruitmentExhaustedResult> results,
-            List<MessageDelivery> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             foreach (RecruitmentExhaustedResult result in results)
@@ -673,7 +673,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<OfficerKilledResult> killedResults,
             IEnumerable<MissionCompletedResult> missionResults,
             GameRoot game,
-            List<MessageDelivery> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             OfficerKilledResult[] killedArray =
@@ -820,7 +820,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<ForceExperienceResult> experienceResults,
             IEnumerable<ForceDiscoveryResult> discoveryResults,
             GameRoot game,
-            List<MessageDelivery> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             ForceDiscoveryResult[] discoveryArray = (
@@ -869,7 +869,7 @@ namespace Rebellion.Game.Messages
         private void AddSabotageMessages(
             IEnumerable<GameObjectSabotagedResult> results,
             GameRoot game,
-            List<MessageDelivery> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             var reportItems = (results ?? Enumerable.Empty<GameObjectSabotagedResult>())
@@ -928,7 +928,7 @@ namespace Rebellion.Game.Messages
         private void AddSeatOfPowerMessages(
             IEnumerable<SeatOfPowerChangedResult> results,
             GameRoot game,
-            List<MessageDelivery> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             foreach (SeatOfPowerChangedResult result in results)
@@ -949,18 +949,38 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Adds a non-null message delivery for a non-null faction.
         /// </summary>
-        /// <param name="deliveries">The delivery list to append to.</param>
+        /// <param name="requests">The request list to append to.</param>
         /// <param name="faction">The faction that should receive the message.</param>
         /// <param name="message">The message to deliver.</param>
         /// <param name="sourceResults">The simulation results that produced the automatic message.</param>
         private void AddDelivery(
-            List<MessageDelivery> deliveries,
+            ICollection<MessageRequestedResult> requests,
             Faction faction,
             Message message,
             params GameResult[] sourceResults
         )
         {
-            _deliveryBuilder.Add(deliveries, faction, message, sourceResults);
+            _ = sourceResults;
+            if (faction == null || message == null)
+                return;
+
+            MessageRequestedResult request = GetRequest(message);
+            request.Recipient = faction;
+            request.Message = message;
+            requests.Add(request);
+        }
+
+        /// <summary>
+        /// Gets the transient request metadata associated with a constructed message.
+        /// </summary>
+        private MessageRequestedResult GetRequest(Message message)
+        {
+            if (!_requests.TryGetValue(message, out MessageRequestedResult request))
+            {
+                request = new MessageRequestedResult { Message = message };
+                _requests.Add(message, request);
+            }
+            return request;
         }
 
         /// <summary>
@@ -1009,7 +1029,9 @@ namespace Rebellion.Game.Messages
             AdvisorNotificationType notification
         )
         {
-            return _deliveryBuilder.WithNotification(message, notification);
+            if (message != null)
+                GetRequest(message).NotificationType = notification;
+            return message;
         }
 
         /// <summary>
@@ -1025,7 +1047,17 @@ namespace Rebellion.Game.Messages
             Officer officer
         )
         {
-            return _deliveryBuilder.WithSubject(message, notification, officer);
+            if (
+                message == null
+                || notification == AdvisorSubjectNotification.None
+                || officer == null
+            )
+                return message;
+
+            MessageRequestedResult request = GetRequest(message);
+            request.AdvisorSubjectNotification = notification;
+            request.AdvisorSubjectTypeID = officer.TypeID;
+            return message;
         }
 
         /// <summary>
@@ -1078,17 +1110,27 @@ namespace Rebellion.Game.Messages
             string factionInstanceId = null
         )
         {
-            return _definitionResolver.GetDefinition(
-                resultType,
-                outcome,
-                planetOwnership,
-                buildingType,
-                manufacturingType,
-                discipline,
-                gameObjectTypeId,
-                planetDestroyed,
-                factionInstanceId
-            );
+            return _definitions
+                .Where(definition =>
+                    definition.ResultType == resultType
+                    && definition.Outcome == outcome
+                    && definition.PlanetOwnership == planetOwnership
+                    && definition.BuildingType == buildingType
+                    && definition.ManufacturingType == manufacturingType
+                    && string.IsNullOrEmpty(definition.MissionTypeID)
+                    && definition.MissionCompletionReason == MissionCompletionReason.None
+                    && (!discipline.HasValue || definition.ResearchDiscipline == discipline.Value)
+                    && Matches(definition.GameObjectTypeID, gameObjectTypeId)
+                    && definition.PlanetDestroyed == planetDestroyed
+                    && Matches(definition.FactionInstanceID, factionInstanceId)
+                )
+                .OrderByDescending(definition =>
+                    !string.IsNullOrWhiteSpace(definition.GameObjectTypeID)
+                )
+                .ThenByDescending(definition =>
+                    !string.IsNullOrWhiteSpace(definition.FactionInstanceID)
+                )
+                .FirstOrDefault();
         }
 
         /// <summary>
@@ -1106,13 +1148,66 @@ namespace Rebellion.Game.Messages
             MissionCompletionReason completionReason = MissionCompletionReason.None
         )
         {
-            return _definitionResolver.GetMissionDefinition(
+            MessageDefinition definition = FindMissionDefinition(
                 resultType,
                 outcome,
                 missionTypeID,
                 completionReason
             );
+            if (definition != null)
+                return definition;
+
+            bool canUseGenericDefinition = CanUseGenericMissionDefinition(completionReason);
+            if (completionReason != MissionCompletionReason.None && canUseGenericDefinition)
+            {
+                definition = FindMissionDefinition(
+                    resultType,
+                    outcome,
+                    missionTypeID,
+                    MissionCompletionReason.None
+                );
+            }
+            if (definition != null || string.IsNullOrEmpty(missionTypeID))
+                return definition;
+
+            definition = FindMissionDefinition(resultType, outcome, null, completionReason);
+            if (definition != null || completionReason == MissionCompletionReason.None)
+                return definition;
+
+            return canUseGenericDefinition
+                ? FindMissionDefinition(resultType, outcome, null, MissionCompletionReason.None)
+                : null;
         }
+
+        private MessageDefinition FindMissionDefinition(
+            MessageResultType resultType,
+            MessageResultOutcome outcome,
+            string missionTypeID,
+            MissionCompletionReason completionReason
+        ) =>
+            _definitions.FirstOrDefault(candidate =>
+                candidate.ResultType == resultType
+                && candidate.Outcome == outcome
+                && candidate.PlanetOwnership == MessagePlanetOwnership.None
+                && candidate.BuildingType == BuildingType.None
+                && candidate.ManufacturingType == ManufacturingType.None
+                && string.Equals(
+                    candidate.MissionTypeID ?? string.Empty,
+                    missionTypeID ?? string.Empty,
+                    StringComparison.Ordinal
+                )
+                && candidate.MissionCompletionReason == completionReason
+            );
+
+        private static bool CanUseGenericMissionDefinition(
+            MissionCompletionReason completionReason
+        ) =>
+            completionReason
+                is MissionCompletionReason.None
+                    or MissionCompletionReason.Success
+                    or MissionCompletionReason.Failure
+                    or MissionCompletionReason.Foiled
+                    or MissionCompletionReason.ResearchBreakthrough;
 
         /// <summary>
         /// Gets the display name for a completed mission result.
@@ -1665,7 +1760,7 @@ namespace Rebellion.Game.Messages
         private void AddArrivalMessages(
             IEnumerable<UnitArrivedResult> arrivals,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             UnitArrivedResult[] arrivalResults = arrivals.ToArray();
@@ -1794,7 +1889,7 @@ namespace Rebellion.Game.Messages
                 }
             );
             SetArrivalLocation(message, destination, fleet);
-            return _deliveryBuilder.WithNotification(message, AdvisorNotificationType.FleetArrived);
+            return WithAdvisorNotification(message, AdvisorNotificationType.FleetArrived);
         }
 
         private Message CreateShips(
@@ -1815,7 +1910,7 @@ namespace Rebellion.Game.Messages
                 }
             );
             SetArrivalLocation(message, destination, array.FirstOrDefault());
-            return _deliveryBuilder.WithNotification(message, AdvisorNotificationType.UnitsArrived);
+            return WithAdvisorNotification(message, AdvisorNotificationType.UnitsArrived);
         }
 
         private Message CreateUnits(
@@ -1837,7 +1932,7 @@ namespace Rebellion.Game.Messages
                 }
             );
             SetArrivalLocation(message, destination, array[0] as ISceneNode);
-            return _deliveryBuilder.WithNotification(message, AdvisorNotificationType.UnitsArrived);
+            return WithAdvisorNotification(message, AdvisorNotificationType.UnitsArrived);
         }
 
         private Message CreatePersonnel(
@@ -1882,12 +1977,8 @@ namespace Rebellion.Game.Messages
             );
             SetArrivalLocation(message, destination, reporter ?? array[0] as ISceneNode);
             return reporter == null
-                ? _deliveryBuilder.WithNotification(message, AdvisorNotificationType.FieldPersonnel)
-                : _deliveryBuilder.WithSubject(
-                    message,
-                    AdvisorSubjectNotification.Report,
-                    reporter
-                );
+                ? WithAdvisorNotification(message, AdvisorNotificationType.FieldPersonnel)
+                : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
         }
 
         private Message CreateHeadquarters(
@@ -1896,7 +1987,7 @@ namespace Rebellion.Game.Messages
             Planet destination
         )
         {
-            MessageDefinition definition = _definitionResolver.GetDefinition(
+            MessageDefinition definition = GetDefinition(
                 MessageResultType.HeadquartersArrived,
                 factionInstanceId: faction?.InstanceID
             );
@@ -1910,7 +2001,7 @@ namespace Rebellion.Game.Messages
                 imageOverride: headquarters?.MessageImagePath
             );
             SetArrivalLocation(message, destination, headquarters);
-            return _deliveryBuilder.WithNotification(message, AdvisorNotificationType.UnitsArrived);
+            return WithAdvisorNotification(message, AdvisorNotificationType.UnitsArrived);
         }
 
         private Message BuildArrivalMessage(
@@ -1921,7 +2012,7 @@ namespace Rebellion.Game.Messages
             string officerVoicePath = null
         ) =>
             BuildArrivalMessage(
-                _definitionResolver.GetDefinition(resultType),
+                GetDefinition(resultType),
                 faction,
                 values,
                 overlayImagePath: overlayImagePath,
@@ -1945,7 +2036,7 @@ namespace Rebellion.Game.Messages
                 overlayImagePath: overlayImagePath,
                 officerVoicePath: officerVoicePath
             );
-            return _deliveryBuilder.WithNotification(
+            return WithAdvisorNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
@@ -1989,11 +2080,11 @@ namespace Rebellion.Game.Messages
         }
 
         private void AddArrivalDelivery(
-            ICollection<MessageDelivery> deliveries,
+            ICollection<MessageRequestedResult> deliveries,
             Faction faction,
             Message message,
             params GameResult[] sourceResults
-        ) => _deliveryBuilder.Add(deliveries, faction, message, sourceResults);
+        ) => AddDelivery(deliveries, faction, message, sourceResults);
 
         private static Faction GetArrivalFaction(GameRoot game, string ownerID) =>
             string.IsNullOrEmpty(ownerID)
@@ -2014,7 +2105,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<BlockadeChangedResult> blockadeResults,
             IEnumerable<EvacuationLossesResult> evacuationResults,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (BlockadeChangedResult result in blockadeResults)
@@ -2049,9 +2140,7 @@ namespace Rebellion.Game.Messages
             {
                 if (result == null)
                     continue;
-                MessageDefinition definition = _definitionResolver.GetDefinition(
-                    MessageResultType.EvacuationLosses
-                );
+                MessageDefinition definition = GetDefinition(MessageResultType.EvacuationLosses);
                 Message message = BuildBlockadeMessage(
                     definition,
                     result.Faction,
@@ -2062,12 +2151,12 @@ namespace Rebellion.Game.Messages
                     }
                 );
                 SetBlockadeLocation(message, result.Location, result.Location);
-                _deliveryBuilder.Add(deliveries, result.Faction, message, result);
+                AddDelivery(deliveries, result.Faction, message, result);
             }
         }
 
         private void AddBlockadeDelivery(
-            ICollection<MessageDelivery> deliveries,
+            ICollection<MessageRequestedResult> deliveries,
             Faction recipient,
             BlockadeChangedResult result,
             Faction otherFaction,
@@ -2088,7 +2177,7 @@ namespace Rebellion.Game.Messages
             if (resultType == MessageResultType.BlockadeInitiated)
                 values["target"] = otherFaction?.GetDisplayName() ?? string.Empty;
 
-            MessageDefinition definition = _definitionResolver.GetDefinition(resultType);
+            MessageDefinition definition = GetDefinition(resultType);
             Message message = BuildBlockadeMessage(
                 definition,
                 recipient,
@@ -2096,7 +2185,7 @@ namespace Rebellion.Game.Messages
                 resultType == MessageResultType.BlockadeInitiated ? otherFaction : null
             );
             SetBlockadeLocation(message, result.Planet, result.BlockadingFleet);
-            _deliveryBuilder.Add(deliveries, recipient, message, result);
+            AddDelivery(deliveries, recipient, message, result);
         }
 
         private Message BuildBlockadeMessage(
@@ -2107,7 +2196,7 @@ namespace Rebellion.Game.Messages
         )
         {
             Message message = _templateBuilder.Build(definition, recipient, values, imageFaction);
-            return _deliveryBuilder.WithNotification(
+            return WithAdvisorNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
@@ -2159,7 +2248,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<BombardmentResult> bombardments,
             IEnumerable<PlanetaryAssaultResult> assaults,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (SpaceCombatResult result in battles)
@@ -2238,10 +2327,7 @@ namespace Rebellion.Game.Messages
             if (outcome == MessageResultOutcome.None)
                 return null;
 
-            MessageDefinition definition = _definitionResolver.GetDefinition(
-                MessageResultType.SpaceBattle,
-                outcome
-            );
+            MessageDefinition definition = GetDefinition(MessageResultType.SpaceBattle, outcome);
             Dictionary<string, string> values = new Dictionary<string, string>
             {
                 { "faction", faction?.GetDisplayName() ?? string.Empty },
@@ -2260,7 +2346,7 @@ namespace Rebellion.Game.Messages
             Faction targetFaction
         )
         {
-            MessageDefinition definition = _definitionResolver.GetDefinition(
+            MessageDefinition definition = GetDefinition(
                 MessageResultType.Bombardment,
                 GetBombardmentOutcome(result),
                 GetBombardmentOwnership(result),
@@ -2271,7 +2357,7 @@ namespace Rebellion.Game.Messages
                 faction,
                 CombatValues(result.AttackingFaction, targetFaction, result.Planet)
             );
-            _deliveryBuilder.WithNotification(
+            WithAdvisorNotification(
                 message,
                 faction?.InstanceID == result.AttackingFaction?.InstanceID
                     ? AdvisorNotificationType.None
@@ -2287,7 +2373,7 @@ namespace Rebellion.Game.Messages
             Faction targetFaction
         )
         {
-            MessageDefinition definition = _definitionResolver.GetDefinition(
+            MessageDefinition definition = GetDefinition(
                 MessageResultType.PlanetaryAssault,
                 result.Success ? MessageResultOutcome.Success : MessageResultOutcome.Failed,
                 GetAssaultOwnership(result)
@@ -2298,7 +2384,7 @@ namespace Rebellion.Game.Messages
                 CombatValues(result.AttackingFaction, targetFaction, result.Planet),
                 result.AttackingFaction
             );
-            _deliveryBuilder.WithNotification(
+            WithAdvisorNotification(
                 message,
                 faction?.InstanceID == result.AttackingFaction?.InstanceID
                     ? AdvisorNotificationType.None
@@ -2316,7 +2402,7 @@ namespace Rebellion.Game.Messages
         )
         {
             Message message = _templateBuilder.Build(definition, faction, values, imageFaction);
-            return _deliveryBuilder.WithNotification(
+            return WithAdvisorNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
@@ -2573,11 +2659,11 @@ namespace Rebellion.Game.Messages
         }
 
         private void AddCombatDelivery(
-            ICollection<MessageDelivery> deliveries,
+            ICollection<MessageRequestedResult> deliveries,
             Faction faction,
             Message message,
             GameResult sourceResult
-        ) => _deliveryBuilder.Add(deliveries, faction, message, sourceResult);
+        ) => AddDelivery(deliveries, faction, message, sourceResult);
 
         private static Faction GetCombatFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
@@ -2597,7 +2683,7 @@ namespace Rebellion.Game.Messages
         private void AddDeploymentMessages(
             IEnumerable<GameObjectDeployedResult> results,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             GameObjectDeployedResult[] deploymentResults = (
@@ -2621,7 +2707,7 @@ namespace Rebellion.Game.Messages
                         ? CreateFacilityMessage(faction, building, destination)
                         : null
                     : CreateUnit(faction, unit as IGameEntity, destination, game);
-                _deliveryBuilder.Add(deliveries, faction, message, result);
+                AddDelivery(deliveries, faction, message, result);
             }
 
             var regimentItems = deploymentResults
@@ -2637,7 +2723,7 @@ namespace Rebellion.Game.Messages
                         Result = result,
                         Destination = destination,
                         Faction = faction,
-                        Definition = _definitionResolver.GetDefinition(
+                        Definition = GetDefinition(
                             MessageResultType.RegimentDeployed,
                             gameObjectTypeId: regiment.TypeID
                         ),
@@ -2655,7 +2741,7 @@ namespace Rebellion.Game.Messages
             )
             {
                 var first = group.First();
-                _deliveryBuilder.Add(
+                AddDelivery(
                     deliveries,
                     first.Faction,
                     CreateRegiments(
@@ -2672,7 +2758,7 @@ namespace Rebellion.Game.Messages
         private void AddFacilityLossMessages(
             IEnumerable<GameObjectDestroyedOnArrivalResult> results,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (GameObjectDestroyedOnArrivalResult result in results)
@@ -2681,9 +2767,7 @@ namespace Rebellion.Game.Messages
                     continue;
                 Planet destination = GetDeploymentPlanet(result.Context ?? result.Ref);
                 Faction faction = GetDeploymentFaction(game, building.GetOwnerInstanceID());
-                MessageDefinition definition = _definitionResolver.GetDefinition(
-                    MessageResultType.FacilityLost
-                );
+                MessageDefinition definition = GetDefinition(MessageResultType.FacilityLost);
                 Message message = BuildDeploymentMessage(
                     definition,
                     faction,
@@ -2694,7 +2778,7 @@ namespace Rebellion.Game.Messages
                     }
                 );
                 SetDeploymentLocation(message, destination, destination);
-                _deliveryBuilder.Add(deliveries, faction, message, result);
+                AddDelivery(deliveries, faction, message, result);
             }
         }
 
@@ -2703,7 +2787,7 @@ namespace Rebellion.Game.Messages
             BuildingType buildingType = building?.BuildingType ?? BuildingType.None;
             if (buildingType == BuildingType.None)
                 return null;
-            MessageDefinition definition = _definitionResolver.GetDefinition(
+            MessageDefinition definition = GetDefinition(
                 MessageResultType.FacilityDeployed,
                 buildingType: buildingType
             );
@@ -2740,10 +2824,7 @@ namespace Rebellion.Game.Messages
             if (resultType == MessageResultType.None)
                 return null;
             string itemName = unit.GetDisplayName() ?? string.Empty;
-            MessageDefinition definition = _definitionResolver.GetDefinition(
-                resultType,
-                gameObjectTypeId: unit.TypeID
-            );
+            MessageDefinition definition = GetDefinition(resultType, gameObjectTypeId: unit.TypeID);
             Message message = BuildDeploymentMessage(
                 definition,
                 faction,
@@ -2804,7 +2885,7 @@ namespace Rebellion.Game.Messages
                 values,
                 imageOverride: imageOverride
             );
-            return _deliveryBuilder.WithNotification(
+            return WithAdvisorNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
@@ -2847,7 +2928,7 @@ namespace Rebellion.Game.Messages
     {
         private void AddSmugglingMessages(
             IEnumerable<SmugglingChangedResult> results,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (SmugglingChangedResult result in results)
@@ -2859,7 +2940,7 @@ namespace Rebellion.Game.Messages
 
         private void AddManufacturingMessages(
             IEnumerable<ManufacturingIdleResult> results,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (ManufacturingIdleResult result in results)
@@ -2868,7 +2949,7 @@ namespace Rebellion.Game.Messages
                     continue;
 
                 Message message = BuildEconomyMessage(
-                    _definitionResolver.GetDefinition(
+                    GetDefinition(
                         MessageResultType.ManufacturingIdle,
                         manufacturingType: result.ManufacturingType
                     ),
@@ -2883,13 +2964,13 @@ namespace Rebellion.Game.Messages
                     message.EventLocationInstanceID = result.ProductionPlanet?.InstanceID;
                     message.NavigationTargetInstanceID = result.ProductionPlanet?.InstanceID;
                 }
-                _deliveryBuilder.WithNotification(message, AdvisorNotificationType.Manufacturing);
-                _deliveryBuilder.Add(deliveries, result.Faction, message, result);
+                WithAdvisorNotification(message, AdvisorNotificationType.Manufacturing);
+                AddDelivery(deliveries, result.Faction, message, result);
             }
         }
 
         private void AddSmugglingDelivery(
-            ICollection<MessageDelivery> deliveries,
+            ICollection<MessageRequestedResult> deliveries,
             Faction recipient,
             SmugglingChangedResult result,
             bool receivesBenefits
@@ -2904,7 +2985,7 @@ namespace Rebellion.Game.Messages
                 _ => MessageResultType.SmugglingBenefitsEnded,
             };
             Message message = BuildEconomyMessage(
-                _definitionResolver.GetDefinition(resultType),
+                GetDefinition(resultType),
                 recipient,
                 new Dictionary<string, string>
                 {
@@ -2916,7 +2997,7 @@ namespace Rebellion.Game.Messages
                 message.EventLocationInstanceID = result.Planet?.InstanceID;
                 message.NavigationTargetInstanceID = result.Planet?.InstanceID;
             }
-            _deliveryBuilder.Add(deliveries, recipient, message, result);
+            AddDelivery(deliveries, recipient, message, result);
         }
 
         private Message BuildEconomyMessage(
@@ -2926,7 +3007,7 @@ namespace Rebellion.Game.Messages
         )
         {
             Message message = _templateBuilder.Build(definition, faction, values);
-            return _deliveryBuilder.WithNotification(
+            return WithAdvisorNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
@@ -2945,12 +3026,10 @@ namespace Rebellion.Game.Messages
         private void AddMaintenanceMessages(
             IEnumerable<GameObjectAutoscrappedResult> results,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
-            MessageDefinition definition = _definitionResolver.GetDefinition(
-                MessageResultType.MaintenanceAutoscrap
-            );
+            MessageDefinition definition = GetDefinition(MessageResultType.MaintenanceAutoscrap);
             var reportItems = (results ?? Enumerable.Empty<GameObjectAutoscrappedResult>())
                 .Where(result => result != null)
                 .Select(result =>
@@ -3009,11 +3088,11 @@ namespace Rebellion.Game.Messages
                         (groupedResults[0].DestroyedObject as ISceneNode)?.InstanceID
                         ?? first.Location?.InstanceID;
                 }
-                _deliveryBuilder.WithNotification(
+                WithAdvisorNotification(
                     message,
                     AdvisorNotificationPolicy.GetDefault(definition.ResultType)
                 );
-                _deliveryBuilder.Add(
+                AddDelivery(
                     deliveries,
                     first.Faction,
                     message,
@@ -3056,7 +3135,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<PlanetUprisingStartedResult> startedResults,
             IEnumerable<PlanetUprisingEndedResult> endedResults,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (PlanetNearUprisingResult result in nearResults)
@@ -3106,7 +3185,7 @@ namespace Rebellion.Game.Messages
         private void AddOwnershipMessages(
             IEnumerable<PlanetOwnershipChangedResult> results,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (PlanetOwnershipChangedResult result in results)
@@ -3241,22 +3320,24 @@ namespace Rebellion.Game.Messages
             Faction imageFaction = null
         )
         {
-            MessageDefinition definition = _definitionResolver.GetDefinition(resultType);
+            MessageDefinition definition = GetDefinition(resultType);
             Message message = _templateBuilder.Build(definition, faction, values, imageFaction);
             if (message != null)
             {
                 message.EventLocationInstanceID = planetInstanceID;
                 message.NavigationTargetInstanceID = planetInstanceID;
             }
-            return _deliveryBuilder.WithNotification(message, notification);
+            if (message != null)
+                GetRequest(message).NotificationType = notification;
+            return message;
         }
 
         private void AddPoliticalDelivery(
-            ICollection<MessageDelivery> deliveries,
+            ICollection<MessageRequestedResult> deliveries,
             Faction faction,
             Message message,
             GameResult sourceResult
-        ) => _deliveryBuilder.Add(deliveries, faction, message, sourceResult);
+        ) => AddDelivery(deliveries, faction, message, sourceResult);
 
         private static Dictionary<string, string> Values(Faction faction, string system) =>
             new Dictionary<string, string>
@@ -3299,7 +3380,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<ShipHullDamageResult> shipResults,
             IEnumerable<FighterDamageResult> fighterResults,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (ShipHullDamageResult result in shipResults)
@@ -3330,7 +3411,7 @@ namespace Rebellion.Game.Messages
         }
 
         private void AddRepairDelivery(
-            ICollection<MessageDelivery> deliveries,
+            ICollection<MessageRequestedResult> deliveries,
             GameRoot game,
             ISceneNode unit,
             MessageResultType resultType,
@@ -3339,7 +3420,7 @@ namespace Rebellion.Game.Messages
         {
             Faction faction = game.GetFactions()
                 .FirstOrDefault(candidate => candidate.InstanceID == unit.GetOwnerInstanceID());
-            MessageDefinition definition = _definitionResolver.GetDefinition(resultType);
+            MessageDefinition definition = GetDefinition(resultType);
             Message message = _templateBuilder.Build(
                 definition,
                 faction,
@@ -3354,11 +3435,11 @@ namespace Rebellion.Game.Messages
                 message.EventLocationInstanceID = unit.GetParentOfType<Planet>()?.InstanceID;
                 message.NavigationTargetInstanceID = unit.InstanceID;
             }
-            _deliveryBuilder.WithNotification(
+            WithAdvisorNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
-            _deliveryBuilder.Add(deliveries, faction, message, sourceResult);
+            AddDelivery(deliveries, faction, message, sourceResult);
         }
     }
 }
@@ -3374,7 +3455,7 @@ namespace Rebellion.Game.Messages
         private void AddResearchMessages(
             IEnumerable<ResearchOrderedResult> completedResults,
             IEnumerable<ResearchExhaustedResult> exhaustedResults,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (ResearchOrderedResult result in completedResults)
@@ -3383,7 +3464,7 @@ namespace Rebellion.Game.Messages
                     continue;
 
                 Message message = BuildResearchMessage(
-                    _definitionResolver.GetDefinition(
+                    GetDefinition(
                         MessageResultType.ResearchComplete,
                         discipline: result.Discipline
                     ),
@@ -3393,7 +3474,7 @@ namespace Rebellion.Game.Messages
                         { "item", GetResearchDisplayName(result.Technology.GetReference()) },
                     }
                 );
-                _deliveryBuilder.Add(deliveries, result.Faction, message, result);
+                AddDelivery(deliveries, result.Faction, message, result);
             }
 
             foreach (ResearchExhaustedResult result in exhaustedResults)
@@ -3402,14 +3483,14 @@ namespace Rebellion.Game.Messages
                     continue;
 
                 Message message = BuildResearchMessage(
-                    _definitionResolver.GetDefinition(
+                    GetDefinition(
                         MessageResultType.ResearchExhausted,
                         discipline: result.Discipline
                     ),
                     result.Faction,
                     new Dictionary<string, string>()
                 );
-                _deliveryBuilder.Add(deliveries, result.Faction, message, result);
+                AddDelivery(deliveries, result.Faction, message, result);
             }
         }
 
@@ -3420,7 +3501,7 @@ namespace Rebellion.Game.Messages
         )
         {
             Message message = _templateBuilder.Build(definition, faction, values);
-            return _deliveryBuilder.WithNotification(
+            return WithAdvisorNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
@@ -3443,7 +3524,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<PlanetOwnershipChangedResult> ownershipResults,
             IEnumerable<HeadquartersDestroyedResult> headquartersResults,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (PlanetOwnershipChangedResult result in ownershipResults)
@@ -3475,7 +3556,7 @@ namespace Rebellion.Game.Messages
                         result.NewOwner
                     );
                     SetStrategicLocation(message, result.Planet, result.Planet);
-                    _deliveryBuilder.Add(deliveries, recipient, message, result);
+                    AddDelivery(deliveries, recipient, message, result);
                 }
             }
 
@@ -3509,7 +3590,7 @@ namespace Rebellion.Game.Messages
                         result.Attacker
                     );
                     SetStrategicLocation(message, result.Planet, result.Headquarters);
-                    _deliveryBuilder.Add(deliveries, recipient, message, result);
+                    AddDelivery(deliveries, recipient, message, result);
                 }
             }
         }
@@ -3517,7 +3598,7 @@ namespace Rebellion.Game.Messages
         private void AddIncidentMessages(
             IEnumerable<PlanetIncidentResult> results,
             GameRoot game,
-            ICollection<MessageDelivery> deliveries
+            ICollection<MessageRequestedResult> deliveries
         )
         {
             foreach (PlanetIncidentResult result in results)
@@ -3569,7 +3650,7 @@ namespace Rebellion.Game.Messages
                     result.Planet,
                     result.DestroyedObjects.OfType<ISceneNode>().FirstOrDefault()
                 );
-                _deliveryBuilder.Add(deliveries, recipient, message, result);
+                AddDelivery(deliveries, recipient, message, result);
             }
         }
 
@@ -3596,7 +3677,7 @@ namespace Rebellion.Game.Messages
         )
         {
             Message message = _templateBuilder.Build(definition, recipient, values, imageFaction);
-            return _deliveryBuilder.WithNotification(
+            return WithAdvisorNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
@@ -3640,17 +3721,17 @@ namespace Rebellion.Game.Messages
     }
 }
 #endregion
-#region AuthoredMessageDeliveryFactory
+#region AuthoredMessageRequestFactory
 namespace Rebellion.Game.Messages
 {
     /// <summary>
     /// Translates authored message requests into concrete faction deliveries.
     /// </summary>
-    internal sealed class AuthoredMessageDeliveryFactory
+    internal sealed class AuthoredMessageRequestFactory
     {
         private readonly MessageTemplateBuilder _templateBuilder;
 
-        public AuthoredMessageDeliveryFactory(MessageTemplateBuilder templateBuilder)
+        public AuthoredMessageRequestFactory(MessageTemplateBuilder templateBuilder)
         {
             _templateBuilder = templateBuilder;
         }
@@ -3658,19 +3739,19 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Creates deliveries for valid authored message requests.
         /// </summary>
-        public IEnumerable<MessageDelivery> CreateDeliveries(
+        public IEnumerable<MessageRequestedResult> CreateRequests(
             IEnumerable<MessageRequestedResult> results
         )
         {
             foreach (MessageRequestedResult result in results)
             {
-                MessageDelivery delivery = CreateDelivery(result);
+                MessageRequestedResult delivery = CreateRequest(result);
                 if (delivery != null)
                     yield return delivery;
             }
         }
 
-        private MessageDelivery CreateDelivery(MessageRequestedResult result)
+        private MessageRequestedResult CreateRequest(MessageRequestedResult result)
         {
             if (result?.Recipient == null)
                 return null;
@@ -3705,7 +3786,7 @@ namespace Rebellion.Game.Messages
             message.EventLocationInstanceID = result.Location?.InstanceID;
             message.NavigationTargetInstanceID = result.SubjectNode?.InstanceID;
 
-            MessageDelivery delivery = new MessageDelivery
+            MessageRequestedResult delivery = new MessageRequestedResult
             {
                 Recipient = result.Recipient,
                 Message = message,
@@ -3731,7 +3812,7 @@ namespace Rebellion.Game.Messages
             };
         }
 
-        private static void ApplyAdvisorPreset(MessageDelivery delivery)
+        private static void ApplyAdvisorPreset(MessageRequestedResult delivery)
         {
             AdvisorNotification notification = delivery.AdvisorNotification;
             if (notification?.Preset.HasValue != true)

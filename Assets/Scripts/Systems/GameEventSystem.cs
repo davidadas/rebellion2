@@ -234,7 +234,7 @@ namespace Rebellion.Systems
                 );
             ValidateTriggerBindings(gameEvent);
             int? triggerCount = gameEvent.GetTriggerCount();
-            if (triggerCount != 1 && gameEvent.Schedule?.IsOneShot == true)
+            if (triggerCount != 1 && gameEvent.Schedule?.IsRecurring == false)
                 throw new InvalidOperationException(
                     $"Event '{gameEvent.InstanceID}' cannot repeat with a one-shot schedule."
                 );

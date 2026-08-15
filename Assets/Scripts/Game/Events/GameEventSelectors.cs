@@ -21,7 +21,12 @@ namespace Rebellion.Game.Events
 
         protected IEnumerable<T> SelectOwned(GameRoot game)
         {
-            return Active<T>(game)
+            return SelectOwned(Active<T>(game));
+        }
+
+        protected IEnumerable<T> SelectOwned(IEnumerable<T> nodes)
+        {
+            return nodes
                 .Where(node =>
                     string.IsNullOrWhiteSpace(InstanceID) || node.InstanceID == InstanceID
                 )
@@ -46,7 +51,7 @@ namespace Rebellion.Game.Events
                 .Where(node => MatchesLocation(node, context, PlanetInstanceID, PlanetBinding));
     }
 
-    [PersistableObject(Name = "SelectPlanets")]
+    [PersistableObject]
     public sealed class SelectPlanets : OwnedSceneNodeSelector<Planet>
     {
         [PersistableAttribute]
@@ -65,7 +70,7 @@ namespace Rebellion.Game.Events
                 );
     }
 
-    [PersistableObject(Name = "SelectPlanetSystems")]
+    [PersistableObject]
     public sealed class SelectPlanetSystems : GameEventSelector
     {
         [PersistableAttribute]
@@ -86,7 +91,7 @@ namespace Rebellion.Game.Events
                 .Where(system => !SystemType.HasValue || system.SystemType == SystemType.Value);
     }
 
-    [PersistableObject(Name = "SelectOfficers")]
+    [PersistableObject]
     public sealed class SelectOfficers : LocatedSceneNodeSelector<Officer>
     {
         [PersistableAttribute]
@@ -99,19 +104,12 @@ namespace Rebellion.Game.Events
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventExecutionContext context
-        ) =>
-            (
-                IncludeRetained
-                    ? game.GetRegisteredSceneNodesByType<Officer>()
-                    : Active<Officer>(game)
-            )
-                .Where(node =>
-                    string.IsNullOrWhiteSpace(InstanceID) || node.InstanceID == InstanceID
-                )
-                .Where(node =>
-                    string.IsNullOrWhiteSpace(OwnerFactionInstanceID)
-                    || node.OwnerInstanceID == OwnerFactionInstanceID
-                )
+        )
+        {
+            IEnumerable<Officer> officers = IncludeRetained
+                ? game.GetRegisteredSceneNodesByType<Officer>()
+                : Active<Officer>(game);
+            return SelectOwned(officers)
                 .Where(node =>
                     MatchesActiveOrRecordedLocation(
                         game,
@@ -122,9 +120,10 @@ namespace Rebellion.Game.Events
                     )
                 )
                 .Where(officer => !IsCaptured.HasValue || officer.IsCaptured == IsCaptured.Value);
+        }
     }
 
-    [PersistableObject(Name = "SelectSpecialForces")]
+    [PersistableObject]
     public sealed class SelectSpecialForces : LocatedSceneNodeSelector<SpecialForces>
     {
         internal override IEnumerable<ISceneNode> Select(
@@ -134,7 +133,7 @@ namespace Rebellion.Game.Events
         ) => SelectLocated(game, context);
     }
 
-    [PersistableObject(Name = "SelectFleets")]
+    [PersistableObject]
     public sealed class SelectFleets : LocatedSceneNodeSelector<Fleet>
     {
         internal override IEnumerable<ISceneNode> Select(
@@ -144,7 +143,7 @@ namespace Rebellion.Game.Events
         ) => SelectLocated(game, context);
     }
 
-    [PersistableObject(Name = "SelectMissions")]
+    [PersistableObject]
     public sealed class SelectMissions : LocatedSceneNodeSelector<Mission>
     {
         internal override IEnumerable<ISceneNode> Select(
@@ -175,7 +174,7 @@ namespace Rebellion.Game.Events
                 );
     }
 
-    [PersistableObject(Name = "SelectCapitalShips")]
+    [PersistableObject]
     public sealed class SelectCapitalShips : ManufacturableSelector<CapitalShip>
     {
         internal override IEnumerable<ISceneNode> Select(
@@ -185,7 +184,7 @@ namespace Rebellion.Game.Events
         ) => SelectManufacturable(game, context);
     }
 
-    [PersistableObject(Name = "SelectStarfighters")]
+    [PersistableObject]
     public sealed class SelectStarfighters : ManufacturableSelector<Starfighter>
     {
         internal override IEnumerable<ISceneNode> Select(
@@ -195,7 +194,7 @@ namespace Rebellion.Game.Events
         ) => SelectManufacturable(game, context);
     }
 
-    [PersistableObject(Name = "SelectRegiments")]
+    [PersistableObject]
     public sealed class SelectRegiments : ManufacturableSelector<Regiment>
     {
         internal override IEnumerable<ISceneNode> Select(
@@ -212,7 +211,7 @@ namespace Rebellion.Game.Events
         ManufacturingFacility,
     }
 
-    [PersistableObject(Name = "SelectBuildings")]
+    [PersistableObject]
     public sealed class SelectBuildings : ManufacturableSelector<Building>
     {
         [PersistableAttribute]
@@ -239,7 +238,7 @@ namespace Rebellion.Game.Events
             };
     }
 
-    [PersistableObject(Name = "SelectManufacturingOrders")]
+    [PersistableObject]
     public sealed class SelectManufacturingOrders : GameEventSelector
     {
         [PersistableAttribute]
@@ -280,7 +279,7 @@ namespace Rebellion.Game.Events
         }
     }
 
-    [PersistableObject(Name = "SelectRandom")]
+    [PersistableObject]
     public sealed class SelectRandom : GameEventSelector
     {
         [PersistableAttribute]
@@ -295,7 +294,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int? MaximumCount { get; set; }
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Candidates")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         internal override IEnumerable<ISceneNode> Select(
@@ -346,10 +345,10 @@ namespace Rebellion.Game.Events
         }
     }
 
-    [PersistableObject(Name = "SelectFirst")]
+    [PersistableObject]
     public sealed class SelectFirst : GameEventSelector
     {
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Candidates")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         internal override IEnumerable<ISceneNode> Select(
@@ -365,7 +364,7 @@ namespace Rebellion.Game.Events
         ) => Selectors.SelectMany(selector => selector.Select(game, provider, context)).Distinct();
     }
 
-    [PersistableObject(Name = "SelectBinding")]
+    [PersistableObject]
     public sealed class SelectBinding : GameEventSelector
     {
         [PersistableAttribute]
@@ -408,13 +407,13 @@ namespace Rebellion.Game.Events
         }
     }
 
-    [PersistableObject(Name = "SelectAncestors")]
+    [PersistableObject]
     public sealed class SelectAncestors : GameEventSelector
     {
         [PersistableAttribute]
         public SceneAncestorType Type { get; set; }
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Candidates")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         internal override IEnumerable<ISceneNode> Select(
@@ -429,7 +428,7 @@ namespace Rebellion.Game.Events
                 .Distinct();
     }
 
-    [PersistableObject(Name = "SelectPreviousLocation")]
+    [PersistableObject]
     public sealed class SelectPreviousLocation : GameEventSelector
     {
         [PersistableAttribute]

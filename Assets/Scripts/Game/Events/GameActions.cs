@@ -5,95 +5,12 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Notifications;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Presentation.Advisor;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
-
-namespace Rebellion.Game.Events
-{
-    /// <summary>
-    /// Defines a contract for actions that modify the game state when executed.
-    /// Each action returns a list of results describing what changed, which the
-    /// caller can use for notifications, logging, or AI reactions.
-    /// </summary>
-    [PersistableObject]
-    public abstract class GameAction
-    {
-        /// <summary>
-        /// Executes the action within one event activation.
-        /// </summary>
-        /// <param name="context">The game, random source, and activation data.</param>
-        /// <returns>Results describing what changed.</returns>
-        public abstract List<GameResult> Execute(GameActionContext context);
-
-        /// <summary>
-        /// Executes an action outside an event activation using the game's random source.
-        /// </summary>
-        public List<GameResult> Execute(GameRoot game) =>
-            Execute(new GameActionContext(game, game?.Random));
-
-        /// <summary>
-        /// Executes an action outside an event activation using an injected random source.
-        /// </summary>
-        public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider) =>
-            Execute(new GameActionContext(game, provider));
-
-        internal List<GameResult> Execute(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        ) => Execute(new GameActionContext(game, provider, context));
-
-        internal static List<GameResult> ExecuteAll(
-            IEnumerable<GameAction> actions,
-            GameActionContext context
-        )
-        {
-            List<GameResult> results = new List<GameResult>();
-            foreach (GameAction action in actions ?? Enumerable.Empty<GameAction>())
-            {
-                foreach (GameResult result in action.Execute(context))
-                {
-                    if (result == null)
-                        continue;
-
-                    if (
-                        string.IsNullOrEmpty(result.SourceEventInstanceID)
-                        && context.Activation?.Event != null
-                    )
-                        result.SourceEventInstanceID = context.Activation.Event.InstanceID;
-                    context.Activation?.AddResult(result);
-                    results.Add(result);
-                }
-            }
-            return results;
-        }
-    }
-
-    /// <summary>
-    /// Supplies every dependency available to one action execution.
-    /// </summary>
-    public sealed class GameActionContext
-    {
-        public GameRoot Game { get; }
-        public IRandomNumberProvider Random { get; }
-        public GameEventExecutionContext Activation { get; }
-
-        public GameActionContext(
-            GameRoot game,
-            IRandomNumberProvider random,
-            GameEventExecutionContext activation = null
-        )
-        {
-            Game = game ?? throw new ArgumentNullException(nameof(game));
-            Random = random ?? throw new ArgumentNullException(nameof(random));
-            Activation = activation;
-        }
-    }
-}
 
 #region CompositeActions
 namespace Rebellion.Game.Events
@@ -112,7 +29,6 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Random")]
     public sealed class RandomAction : GameAction
     {
-        [PersistableInlineCollection]
         public List<RandomOutcome> Outcomes { get; set; } = new List<RandomOutcome>();
 
         public override List<GameResult> Execute(GameActionContext context)
@@ -214,7 +130,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string FactionInstanceID { get; set; }
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Subjects")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         public override List<GameResult> Execute(GameActionContext context)
@@ -427,73 +343,6 @@ namespace Rebellion.Game.Events
 }
 #endregion
 
-#region MissionActions
-namespace Rebellion.Game.Events
-{
-    /// <summary>
-    /// Starts a content-defined mission with its target and standard participant groups.
-    /// </summary>
-    [PersistableObject(Name = "CreateMission")]
-    public sealed class CreateMissionAction : GameAction
-    {
-        [PersistableAttribute]
-        public string MissionDefinitionID { get; set; }
-
-        [PersistableAttribute]
-        public string LocationInstanceID { get; set; }
-
-        public MissionUnitReference Target { get; set; }
-        public List<MissionUnitReference> Participants { get; set; } =
-            new List<MissionUnitReference>();
-        public List<MissionUnitReference> Decoys { get; set; } = new List<MissionUnitReference>();
-
-        public override List<GameResult> Execute(GameActionContext context)
-        {
-            GameRoot game = context.Game;
-            if (Target == null || string.IsNullOrWhiteSpace(Target.UnitInstanceID))
-                throw new InvalidOperationException("CreateMission requires a target unit.");
-            ResolveUnit(game, Target);
-            if (
-                !string.IsNullOrWhiteSpace(LocationInstanceID)
-                && game.GetSceneNodeByInstanceID<Planet>(LocationInstanceID) == null
-            )
-                throw new InvalidOperationException(
-                    $"CreateMission could not resolve location '{LocationInstanceID}'."
-                );
-            foreach (MissionUnitReference participant in Participants)
-                ResolveUnit(game, participant);
-            foreach (MissionUnitReference participant in Decoys)
-                ResolveUnit(game, participant);
-
-            return new List<GameResult>
-            {
-                new CustomMissionRequestedResult
-                {
-                    MissionDefinitionID = MissionDefinitionID,
-                    TargetInstanceID = Target.UnitInstanceID,
-                    LocationInstanceID = LocationInstanceID,
-                    MainParticipantInstanceIDs = Participants.ConvertAll(participant =>
-                        participant.UnitInstanceID
-                    ),
-                    DecoyParticipantInstanceIDs = Decoys.ConvertAll(participant =>
-                        participant.UnitInstanceID
-                    ),
-                    Tick = game.CurrentTick,
-                },
-            };
-        }
-
-        private static void ResolveUnit(GameRoot game, MissionUnitReference reference)
-        {
-            if (game.GetSceneNodeByInstanceID<ISceneNode>(reference?.UnitInstanceID) == null)
-                throw new InvalidOperationException(
-                    $"CreateMission could not resolve unit '{reference?.UnitInstanceID}'."
-                );
-        }
-    }
-}
-#endregion
-
 #region OfficerActions
 namespace Rebellion.Game.Events
 {
@@ -515,7 +364,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public bool CanEscape { get; set; } = true;
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Officers")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         public override List<GameResult> Execute(GameActionContext context)
@@ -590,7 +439,7 @@ namespace Rebellion.Game.Events
         public string ReferenceOfficerInstanceID { get; set; }
         public int MinimumAmount { get; set; }
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Officers")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         public override List<GameResult> Execute(GameActionContext context)
@@ -1048,7 +897,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string Name { get; set; }
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Targets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         public override List<GameResult> Execute(GameActionContext context)
@@ -1075,7 +924,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string Status { get; set; }
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Targets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         public override List<GameResult> Execute(GameActionContext context)
@@ -1099,7 +948,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string TargetInstanceID { get; set; }
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Targets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         public override List<GameResult> Execute(GameActionContext context)
@@ -1146,7 +995,7 @@ namespace Rebellion.Game.Events
         public int? Amount { get; set; }
         public int? PercentOfCurrent { get; set; }
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Planets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <inheritdoc />
@@ -1237,7 +1086,6 @@ namespace Rebellion.Game.Events
         [PersistableAttribute(Name = "MinimumTotalLoss")]
         public int MinimumTotalLoss { get; set; } = 1;
 
-        [PersistableInlineCollection]
         public List<PlanetStatReference> Stats { get; set; } = new List<PlanetStatReference>();
 
         /// <inheritdoc />
@@ -1407,7 +1255,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "DestroyUnits")]
     public sealed class DestroyUnitsAction : GameAction
     {
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Units")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <inheritdoc />
@@ -1637,7 +1485,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute(Name = "UnitInstanceID")]
         public string UnitInstanceID { get; set; }
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Units")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         public override List<GameResult> Execute(GameActionContext context)
@@ -1672,7 +1520,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
 
-        [PersistableInlineCollection]
+        [PersistableMember(Name = "Units")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         public override List<GameResult> Execute(GameActionContext context)

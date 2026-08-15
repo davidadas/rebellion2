@@ -2896,40 +2896,5 @@ namespace Rebellion.Tests.Systems
                 "Captured participant should not be moved to a separate captor planet"
             );
         }
-
-        [Test]
-        public void HandleResults_DetachedCustomMissionTarget_ReturnsRejection()
-        {
-            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
-                factionOwnsPlanet: true
-            );
-            Regiment target = CreateCompletedRegiment("target", "empire");
-            game.AttachNode(target, planet);
-            game.AddToVoid(target);
-            CustomMissionDefinition definition = new CustomMissionDefinition
-            {
-                InstanceID = "custom",
-                Duration = new MissionDuration { Fixed = new FixedMissionDuration { Ticks = 1 } },
-                Success = new MissionSuccessRule { Automatic = new AutomaticMissionSuccess() },
-            };
-            MissionSystem system = TestSystems.CreateMissionSystem(
-                game,
-                new StubRNG(),
-                movement,
-                new[] { definition }
-            );
-            CustomMissionRequestedResult request = new CustomMissionRequestedResult
-            {
-                MissionDefinitionID = definition.InstanceID,
-                TargetInstanceID = target.InstanceID,
-                LocationInstanceID = planet.InstanceID,
-                MainParticipantInstanceIDs = new List<string> { officer.InstanceID },
-            };
-
-            List<GameResult> results = system.HandleResults(new[] { request });
-
-            Assert.IsEmpty(results);
-            Assert.AreEqual(0, game.GetSceneNodesByType<CustomMission>().Count);
-        }
     }
 }

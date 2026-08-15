@@ -29,17 +29,6 @@ namespace Rebellion.Util.Serialization
     }
 
     /// <summary>
-    /// Writes collection items directly beneath the containing object and routes matching
-    /// polymorphic child elements back into that collection while reading.
-    /// </summary>
-    [AttributeUsage(
-        AttributeTargets.Field | AttributeTargets.Property,
-        Inherited = false,
-        AllowMultiple = false
-    )]
-    public sealed class PersistableInlineCollectionAttribute : Attribute { }
-
-    /// <summary>
     /// Overrides the XML element name written for each item in a collection member.
     /// </summary>
     [AttributeUsage(

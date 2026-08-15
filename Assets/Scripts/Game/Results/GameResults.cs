@@ -5,9 +5,9 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Notifications;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Presentation.Advisor;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Extensions;
@@ -547,6 +547,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class MessageRequestedResult : GameResult
     {
+        public Message Message { get; set; }
         public Faction Recipient { get; set; }
         public ISceneNode SubjectNode { get; set; }
         public ISceneNode RelatedSubjectNode { get; set; }
@@ -560,6 +561,9 @@ namespace Rebellion.Game.Results
         public string BackgroundAudioPath { get; set; }
         public string OfficerVoicePath { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
+        public AdvisorNotificationType NotificationType { get; set; }
+        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
+        public string AdvisorSubjectTypeID { get; set; }
     }
 
     /// <summary>
@@ -594,18 +598,6 @@ namespace Rebellion.Game.Results
         public List<IMovable> Units { get; set; } = new List<IMovable>();
         public ContainerNode Destination { get; set; }
         public List<ContainerNode> DestinationCandidates { get; set; } = new List<ContainerNode>();
-    }
-
-    /// <summary>
-    /// A game event requested a content-defined mission with a target and participant groups.
-    /// </summary>
-    public class CustomMissionRequestedResult : GameResult
-    {
-        public string MissionDefinitionID { get; set; }
-        public string TargetInstanceID { get; set; }
-        public string LocationInstanceID { get; set; }
-        public List<string> MainParticipantInstanceIDs { get; set; } = new List<string>();
-        public List<string> DecoyParticipantInstanceIDs { get; set; } = new List<string>();
     }
 
     /// <summary>

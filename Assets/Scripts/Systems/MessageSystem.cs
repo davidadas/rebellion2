@@ -40,25 +40,25 @@ namespace Rebellion.Systems
             );
             IEnumerable<MessageRequestedResult> authoredRequests =
                 resultBatch.OfType<MessageRequestedResult>();
-            IEnumerable<MessageDelivery> deliveries = _messageFactory
+            IEnumerable<MessageRequestedResult> requests = _messageFactory
                 .CreateMessages(automaticResults, _game)
                 .Concat(_messageFactory.CreateAuthoredMessages(authoredRequests));
             List<GameResult> deliveredResults = new List<GameResult>();
-            foreach (MessageDelivery delivery in deliveries)
+            foreach (MessageRequestedResult request in requests)
             {
-                if (delivery.Recipient == null || delivery.Message == null)
+                if (request.Recipient == null || request.Message == null)
                     continue;
 
-                delivery.Message.CreatedTick = _game.CurrentTick;
-                delivery.Recipient.AddMessage(delivery.Message);
+                request.Message.CreatedTick = _game.CurrentTick;
+                request.Recipient.AddMessage(request.Message);
                 MessageDeliveredResult delivered = new MessageDeliveredResult
                 {
-                    Recipient = delivery.Recipient,
-                    Message = delivery.Message,
-                    NotificationType = delivery.NotificationType,
-                    AdvisorSubjectNotification = delivery.AdvisorSubjectNotification,
-                    AdvisorSubjectTypeID = delivery.AdvisorSubjectTypeID,
-                    AdvisorNotification = delivery.AdvisorNotification,
+                    Recipient = request.Recipient,
+                    Message = request.Message,
+                    NotificationType = request.NotificationType,
+                    AdvisorSubjectNotification = request.AdvisorSubjectNotification,
+                    AdvisorSubjectTypeID = request.AdvisorSubjectTypeID,
+                    AdvisorNotification = request.AdvisorNotification,
                     Tick = _game.CurrentTick,
                 };
                 deliveredResults.Add(delivered);

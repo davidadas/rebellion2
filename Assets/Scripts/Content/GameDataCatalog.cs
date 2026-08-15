@@ -5,7 +5,6 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 
@@ -38,8 +37,6 @@ public sealed class GameDataCatalog
 
     public MessageDefinition[] MessageDefinitions { get; }
 
-    public CustomMissionDefinition[] MissionDefinitions { get; }
-
     public EncyclopediaEntries EncyclopediaEntries { get; }
 
     public FactionThemes FactionThemes { get; }
@@ -59,7 +56,6 @@ public sealed class GameDataCatalog
     /// <param name="officers">The officer templates.</param>
     /// <param name="gameEvents">The game-event definitions.</param>
     /// <param name="messageDefinitions">The message definitions.</param>
-    /// <param name="missionDefinitions">The custom mission definitions.</param>
     /// <param name="encyclopediaEntries">The authored encyclopedia entries.</param>
     /// <param name="factionThemes">The neutral and faction presentation themes.</param>
     public GameDataCatalog(
@@ -75,7 +71,6 @@ public sealed class GameDataCatalog
         Officer[] officers,
         GameEvent[] gameEvents,
         MessageDefinition[] messageDefinitions,
-        CustomMissionDefinition[] missionDefinitions,
         EncyclopediaEntries encyclopediaEntries,
         FactionThemes factionThemes
     )
@@ -94,8 +89,6 @@ public sealed class GameDataCatalog
         GameEvents = gameEvents ?? throw new ArgumentNullException(nameof(gameEvents));
         MessageDefinitions =
             messageDefinitions ?? throw new ArgumentNullException(nameof(messageDefinitions));
-        MissionDefinitions =
-            missionDefinitions ?? throw new ArgumentNullException(nameof(missionDefinitions));
         EncyclopediaEntries =
             encyclopediaEntries ?? throw new ArgumentNullException(nameof(encyclopediaEntries));
         FactionThemes = factionThemes ?? throw new ArgumentNullException(nameof(factionThemes));

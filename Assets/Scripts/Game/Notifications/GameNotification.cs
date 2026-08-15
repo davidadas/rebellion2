@@ -1,7 +1,7 @@
 using Rebellion.Game.Messages;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Presentation.Advisor
+namespace Rebellion.Game.Notifications
 {
     public enum AdvisorNotificationType
     {
