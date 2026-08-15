@@ -106,15 +106,8 @@ public static class StandalonePlayerBuild
     {
         _ = GetDefaultArtifact(target);
         outputPath = NormalizeOutputPath(target, outputPath);
-        try
-        {
-            UIBuilderMenu.BuildRuntimeUI();
-            return BuildGeneratedPlayer(target, outputPath);
-        }
-        finally
-        {
-            BootPrefabBuilder.DeleteScene();
-        }
+        UIBuilderMenu.BuildRuntimeUI();
+        return BuildGeneratedPlayer(target, outputPath);
     }
 
     /// <summary>

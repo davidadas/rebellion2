@@ -1,10 +1,8 @@
 using System;
 using System.IO;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
@@ -17,7 +15,6 @@ public static class BootPrefabBuilder
     private const int _cutsceneWidth = 1920;
     private const string _bootPrefabPath = "Assets/Prefabs/UI/Boot/BootRoot.prefab";
     private const string _bootScenePath = "Assets/Scenes/BootScene.unity";
-    private const string _mainMenuScenePath = "Assets/Scenes/MainMenu.unity";
     private const string _cutscenePrefabPath = "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
     private const string _cutsceneRenderTexturePath =
         "Assets/Prefabs/UI/Cutscenes/CutsceneRenderTexture.renderTexture";
@@ -31,31 +28,6 @@ public static class BootPrefabBuilder
         GameObject cutscenePrefab = BuildCutscenePrefab(renderTexture);
         BuildBootPrefab(cutscenePrefab);
         SceneBuilder.Build(_bootScenePath, _bootPrefabPath, "BootRoot");
-    }
-
-    /// <summary>
-    /// Removes the generated boot scene after switching away from it when necessary.
-    /// </summary>
-    public static void DeleteScene()
-    {
-        Scene bootScene = SceneManager.GetSceneByPath(_bootScenePath);
-        if (bootScene.IsValid() && bootScene.isLoaded)
-        {
-            if (SceneManager.GetActiveScene() == bootScene || SceneManager.sceneCount == 1)
-            {
-                if (File.Exists(_mainMenuScenePath))
-                    EditorSceneManager.OpenScene(_mainMenuScenePath, OpenSceneMode.Single);
-                else
-                    EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            }
-            else
-            {
-                EditorSceneManager.CloseScene(bootScene, true);
-            }
-        }
-
-        if (File.Exists(_bootScenePath) && !AssetDatabase.DeleteAsset(_bootScenePath))
-            throw new IOException($"Could not delete generated scene: {_bootScenePath}");
     }
 
     /// <summary>
