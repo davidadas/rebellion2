@@ -9,14 +9,13 @@ using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
-/// Provides strategy presentation state, theme lookup, and cached UI assets.
+/// Provides strategy presentation state, theme lookup, and UI assets.
 /// </summary>
 public sealed class UIContext
 {
     private GameRoot game;
     private readonly FactionThemeLibrary themeLibrary;
     private readonly Func<string, Texture2D> loadTexture;
-    private readonly Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>();
 
     /// <summary>
     /// Creates a presentation context for one active game.
@@ -101,7 +100,7 @@ public sealed class UIContext
     }
 
     /// <summary>
-    /// Resolves and caches a point-filtered texture by resource path.
+    /// Resolves a texture by resource path.
     /// </summary>
     /// <param name="path">The resource path.</param>
     /// <returns>The resolved texture, or <see langword="null"/>.</returns>
@@ -110,17 +109,7 @@ public sealed class UIContext
         if (string.IsNullOrEmpty(path))
             return null;
 
-        if (textures.TryGetValue(path, out Texture2D texture))
-            return texture;
-
-        texture = loadTexture(path);
-        if (texture == null)
-            return null;
-
-        texture.filterMode = FilterMode.Point;
-        texture.wrapMode = TextureWrapMode.Clamp;
-        textures[path] = texture;
-        return texture;
+        return loadTexture(path);
     }
 
     /// <summary>

@@ -104,7 +104,7 @@ namespace Rebellion.Tests.UI.Runtime
         }
 
         [Test]
-        public void GetTexture_ConfiguredPath_CachesPointFilteredClampedTexture()
+        public void GetTexture_ConfiguredPath_ReturnsCachedContentTexture()
         {
             string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
 

@@ -571,9 +571,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Array.Empty<OptionsSaveSlot>(),
                 -1,
                 false,
-                true,
-                false,
-                false,
                 -1,
                 false
             );
@@ -616,9 +613,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 },
                 Array.Empty<OptionsSaveSlot>(),
                 -1,
-                false,
-                false,
-                true,
                 true,
                 -1,
                 false
@@ -680,9 +674,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 bindings ?? Array.Empty<OptionsBindingRow>(),
                 saveSlots ?? Array.Empty<OptionsSaveSlot>(),
                 -1,
-                false,
-                true,
-                true,
                 true,
                 -1,
                 false
