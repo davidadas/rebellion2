@@ -283,7 +283,7 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.VoiceSet.MissionSuccess.Add("luke-success");
+            luke.VoiceSet.MissionSuccessPaths.Add("luke-success");
             game.AttachNode(luke, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
@@ -377,7 +377,7 @@ namespace Rebellion.Tests.Game.Events
                 .Single();
 
             CollectionAssert.AreEqual(new[] { officer }, result.Units);
-            Assert.AreSame(destination, result.Destination);
+            CollectionAssert.AreEqual(new[] { destination }, result.Destinations);
             Assert.AreSame(origin, officer.GetParent());
         }
 
@@ -435,7 +435,7 @@ namespace Rebellion.Tests.Game.Events
                 .OfType<UnitMovementRequestedResult>()
                 .Single();
 
-            CollectionAssert.AreEqual(new[] { first, second }, result.DestinationCandidates);
+            CollectionAssert.AreEqual(new[] { first, second }, result.Destinations);
         }
 
         [Test]
@@ -698,7 +698,7 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.VoiceSet.PersonnelArrived.Add("old");
+            luke.VoiceSet.PersonnelArrivedPaths.Add("old");
             game.AttachNode(luke, rebelPlanet);
             SetOfficerVoiceSetAction action = new SetOfficerVoiceSetAction
             {
@@ -708,20 +708,22 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.IsEmpty(action.Execute(game));
 
-            CollectionAssert.AreEqual(new[] { "jedi-arrived" }, luke.VoiceSet.PersonnelArrived);
+            CollectionAssert.AreEqual(
+                new[] { "jedi-arrived" },
+                luke.VoiceSet.PersonnelArrivedPaths
+            );
         }
 
         [Test]
-        public void AdjustOfficerStat_PercentOfEffectiveRank_AdjustsForceRating()
+        public void AdjustOfficerForce_PercentOfEffectiveRank_AdjustsForceRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.ForceValue = 40;
             game.AttachNode(luke, rebelPlanet);
-            AdjustOfficerStatAction action = new AdjustOfficerStatAction
+            AdjustOfficerForceAction action = new AdjustOfficerForceAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                Stat = OfficerStat.Force,
                 PercentOfEffective = 25,
             };
 
@@ -736,7 +738,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerStat_Amount_AdjustsStoredRating()
+        public void AdjustOfficerRating_Amount_AdjustsStoredRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -744,10 +746,10 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, rebelPlanet);
 
             Assert.IsEmpty(
-                new AdjustOfficerStatAction
+                new AdjustOfficerRatingAction
                 {
                     OfficerInstanceID = luke.InstanceID,
-                    Stat = OfficerStat.Diplomacy,
+                    Rating = OfficerRating.Diplomacy,
                     Amount = 5,
                 }.Execute(game)
             );
@@ -756,17 +758,17 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerStat_PercentOfStoredRating_AdjustsStoredRating()
+        public void AdjustOfficerRating_PercentOfStoredRating_AdjustsStoredRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.SetBaseRating(OfficerRating.ShipResearch, 40);
             game.AttachNode(luke, rebelPlanet);
 
-            new AdjustOfficerStatAction
+            new AdjustOfficerRatingAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                Stat = OfficerStat.ShipResearch,
+                Rating = OfficerRating.ShipResearch,
                 PercentOfStored = -25,
             }.Execute(game);
 
@@ -774,17 +776,17 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerStat_MultipleAdjustmentModes_Throws()
+        public void AdjustOfficerRating_MultipleAdjustmentModes_Throws()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, rebelPlanet);
 
             Assert.Throws<InvalidOperationException>(() =>
-                new AdjustOfficerStatAction
+                new AdjustOfficerRatingAction
                 {
                     OfficerInstanceID = luke.InstanceID,
-                    Stat = OfficerStat.Combat,
+                    Rating = OfficerRating.Combat,
                     Amount = 5,
                     PercentOfStored = 10,
                 }.Execute(game)

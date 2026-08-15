@@ -96,7 +96,7 @@ Sibling conditions are an implicit AND. Composite conditions wrap their child co
 `ShareParent` compares immediate parents. `ShareAncestor Type="Planet"` compares the nearest
 ancestor of that type. Other conditions include `All`, `Any`, `Not`, `Xor`, `IsAtLocation`,
 `IsOnMission`, `IsInTransit`, `IsCaptured`, `IsCapturedBy`, `IsKilled`, `IsInjured`,
-`IsForceEligible`, `HasForceRank`, `CompareOfficerStat`, `ComparePlanetStat`,
+`IsForceEligible`, `HasForceRank`, `CompareOfficerRating`, `CompareOfficerForce`, `ComparePlanetStat`,
 `IsEventComplete`, `EvaluateEventVariable`, and `EvaluateBinding`.
 
 ## Iteration and selectors
@@ -146,19 +146,19 @@ same activation. Principal actions include:
 - Composite: `If` with `Conditions`, `Actions`, and `Else`; and weighted `Random` outcomes with
   optional `When` guards.
 - Event state: `SetEventVariable`.
-- Units: `DestroyUnits`, `RequestMovement`, `AddToVoid`, and `RemoveFromVoid`.
-- Officers: `SetCaptureStatus`, `SetOfficerStatus`, `AdjustOfficerStat`,
-  `SetOfficerJediState`, `ApplyOfficerInjury`, `SetOfficerImageSet`, `SetOfficerVoiceSet`, and
+- Units: `DestroyUnits`, `PlaceUnits`, `SendUnits`, `AddToVoid`, `RemoveFromVoid`,
+  `SetDisplayName`, `SetDisplayStatus`, and `ClearDisplayStatus`.
+- Officers: `SetCaptureStatus`, `AdjustOfficerRating`, `AdjustOfficerForce`, `PerformSkillCheck`,
+  `SetOfficerJediState`, `ApplyOfficerInjury`, `SetOfficerImages`, `SetOfficerVoiceSet`, and
   `TriggerDuel`.
 - Planets and intelligence: `AdjustPlanetStat`, `ReducePlanetStats`, `RecordPlanetIncident`, and
   `RevealToFaction`.
-- Missions and messages: `CreateMission`, `SendMessage`, and
-  `SuppressNextAutomaticMessage`.
+- Messages: `SendMessage`.
 
-`AdjustOfficerStat` and `AdjustPlanetStat` each require exactly one signed calculation mode, such
-as `Amount`, `PercentOfBase`, or `PercentOfCurrent` where supported. Their matching comparators use
-the same closed stat vocabulary. The schema is authoritative for required attributes, children,
-and nesting.
+`AdjustOfficerRating`, `AdjustOfficerForce`, and `AdjustPlanetStat` each require exactly one signed
+calculation mode, such as `Amount`, `PercentOfBase`, or `PercentOfCurrent` where supported. Their
+matching comparators use the same closed rating or stat vocabulary. The schema is authoritative for
+required attributes, children, and nesting.
 
 ## Messages
 

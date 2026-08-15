@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
-using Rebellion.Game.Notifications;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using UnityEngine;

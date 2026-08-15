@@ -57,10 +57,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string As { get; set; }
     }
-}
 
-namespace Rebellion.Game.Events
-{
     /// <summary>
     /// Defines the stable, explicitly typed simulation-result contracts available to content.
     /// </summary>

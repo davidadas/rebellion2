@@ -57,36 +57,38 @@ namespace Rebellion.Systems
                 throw new ArgumentNullException(nameof(mission));
 
             results = new List<GameResult>();
-            Officer defector = mission
-                .GetAllParticipants()
-                .OfType<Officer>()
-                .FirstOrDefault(Defects);
+            Officer defector = FindBetrayingOfficer(mission);
             if (defector == null)
                 return false;
 
-            Officer discoverer = mission
-                .GetAllParticipants()
-                .OfType<Officer>()
-                .Where(officer => officer != defector && CanDiscover(officer))
-                .FirstOrDefault(officer => _provider.NextInt(0, 100) < officer.ForceRank);
+            Officer discoverer = FindOfficerWhoDiscoversBetrayal(mission, defector);
             if (discoverer != null)
-            {
-                defector.IsTraitor = true;
-                results.Add(
-                    new TraitorDiscoveredResult
-                    {
-                        Officer = defector,
-                        DiscoveredBy = discoverer,
-                        Context = mission.GetParent() as Planet,
-                        Tick = _game.CurrentTick,
-                    }
-                );
-            }
+                RevealTraitor(mission, defector, discoverer, results);
 
             return true;
         }
 
-        private bool Defects(Officer officer)
+        /// <summary>
+        /// Returns the first eligible participant whose loyalty roll causes them to betray the mission.
+        /// </summary>
+        private Officer FindBetrayingOfficer(Mission mission) =>
+            mission.GetAllParticipants().OfType<Officer>().FirstOrDefault(BetraysMission);
+
+        /// <summary>
+        /// Rolls an eligible companion's Force rank to determine who discovers the betrayal.
+        /// </summary>
+        private Officer FindOfficerWhoDiscoversBetrayal(Mission mission, Officer defector) =>
+            mission
+                .GetAllParticipants()
+                .OfType<Officer>()
+                .Where(officer => officer != defector && CanDiscoverMissionBetrayal(officer))
+                .FirstOrDefault(officer => _provider.NextInt(0, 100) < officer.ForceRank);
+
+        /// <summary>
+        /// Determines whether an eligible officer betrays a mission using inverse loyalty as
+        /// the percentage chance.
+        /// </summary>
+        private bool BetraysMission(Officer officer)
         {
             if (
                 officer
@@ -103,8 +105,33 @@ namespace Rebellion.Systems
             return _provider.NextInt(0, 100) < probability;
         }
 
-        private static bool CanDiscover(Officer officer) =>
+        /// <summary>
+        /// Returns whether an active Force-ranked officer can discover another participant's betrayal.
+        /// </summary>
+        private static bool CanDiscoverMissionBetrayal(Officer officer) =>
             officer is { IsCaptured: false, IsKilled: false } && officer.ForceRank > 0;
+
+        /// <summary>
+        /// Marks a discovered betrayer as a known traitor and records who exposed them and where.
+        /// </summary>
+        private void RevealTraitor(
+            Mission mission,
+            Officer defector,
+            Officer discoverer,
+            ICollection<GameResult> results
+        )
+        {
+            defector.IsTraitor = true;
+            results.Add(
+                new TraitorDiscoveredResult
+                {
+                    Officer = defector,
+                    DiscoveredBy = discoverer,
+                    Context = mission.GetParent() as Planet,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
 
         /// <summary>
         /// Applies one deterministic loyalty shift after a faction gains control.

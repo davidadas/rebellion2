@@ -375,7 +375,7 @@ namespace Rebellion.Systems
             if (!AdvanceResourceCycle(faction, mine))
                 return;
 
-            _smugglingSystem.GetResourceRecipient(faction, mine).RawMaterialStockpile++;
+            _smugglingSystem.ResolveProductionRecipient(faction, mine).RawMaterialStockpile++;
             mine.ProductionInputReserved = true;
         }
 
@@ -395,7 +395,9 @@ namespace Rebellion.Systems
             if (!AdvanceResourceCycle(faction, refinery))
                 return;
 
-            _smugglingSystem.GetResourceRecipient(faction, refinery).RefinedMaterialStockpile++;
+            _smugglingSystem
+                .ResolveProductionRecipient(faction, refinery)
+                .RefinedMaterialStockpile++;
             faction.RequestRawMaterial(refinery);
         }
 

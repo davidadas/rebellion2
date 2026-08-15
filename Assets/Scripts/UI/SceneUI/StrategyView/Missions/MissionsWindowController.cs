@@ -396,7 +396,7 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
     internal static List<StrategyMenuCommand> BuildContextMenu(Mission mission)
     {
         bool hasMission = mission != null;
-        bool canAbort = hasMission && mission.CanCancel && !mission.IsWaitingForParticipants();
+        bool canAbort = hasMission && !mission.IsWaitingForParticipants();
         return new List<StrategyMenuCommand>
         {
             new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", hasMission),

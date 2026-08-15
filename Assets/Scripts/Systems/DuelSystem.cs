@@ -32,7 +32,10 @@ namespace Rebellion.Systems
             );
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Validates queued duel requests and emits capture, injury, and duel outcomes for each
+        /// eligible opposing officer pair.
+        /// </summary>
         public List<GameResult> HandleResults(IReadOnlyList<DuelRequestedResult> results)
         {
             List<GameResult> reactions = new List<GameResult>();
@@ -86,62 +89,126 @@ namespace Rebellion.Systems
             Planet location = encountered.GetParentOfType<Planet>();
             int encounteredCombat = encountered.GetEffectiveRating(OfficerRating.Combat);
             int opposingCombat = opposing.GetEffectiveRating(OfficerRating.Combat);
-            GameConfig.DuelResolutionConfig config = _game.Config.DuelResolution;
+            bool captured = ResolveCapture(
+                encountered,
+                opposing,
+                location,
+                encounteredCombat,
+                opposingCombat,
+                request,
+                reactions
+            );
+            int encounteredInjury = ResolveEncounteredOfficerInjury(
+                captured,
+                encounteredCombat,
+                opposingCombat
+            );
+            int opposingInjury = ResolveOpposingOfficerInjury(encounteredCombat, opposingCombat);
 
+            ApplyInjury(encountered, encounteredInjury, opposing, request, reactions);
+            ApplyInjury(opposing, opposingInjury, encountered, request, reactions);
+            RecordDuelOutcome(
+                request,
+                location,
+                captured,
+                encounteredInjury,
+                opposingInjury,
+                reactions
+            );
+        }
+
+        /// <summary>
+        /// Resolves whether the encountered officer avoids capture and records capture state when
+        /// the opposing officer succeeds.
+        /// </summary>
+        private bool ResolveCapture(
+            Officer encountered,
+            Officer opposing,
+            Planet location,
+            int encounteredCombat,
+            int opposingCombat,
+            DuelRequestedResult request,
+            ICollection<GameResult> reactions
+        )
+        {
             int avoidanceChance = _captureAvoidance.Lookup(encounteredCombat - opposingCombat);
-            bool avoidedCapture = RollPercent(avoidanceChance);
-            bool captured = !avoidedCapture;
-            int encounteredInjury = 0;
+            if (RollPercent(avoidanceChance))
+                return false;
 
-            if (captured)
-            {
-                encountered.IsCaptured = true;
-                encountered.CaptorInstanceID = opposing.OwnerInstanceID;
-                encountered.CanEscape = true;
-                reactions.Add(
-                    Stamp(
-                        new OfficerCaptureStateResult
-                        {
-                            TargetOfficer = encountered,
-                            IsCaptured = true,
-                            CapturedOfficer = encountered,
-                            LinkedOfficer = opposing,
-                            Context = location,
-                            Tick = _game.CurrentTick,
-                        },
-                        request
-                    )
-                );
-            }
-            else
-            {
-                encounteredInjury = TryRollInjury(
+            encountered.IsCaptured = true;
+            encountered.CaptorInstanceID = opposing.OwnerInstanceID;
+            encountered.CanEscape = true;
+            reactions.Add(
+                Stamp(
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = encountered,
+                        IsCaptured = true,
+                        CapturedOfficer = encountered,
+                        LinkedOfficer = opposing,
+                        Context = location,
+                        Tick = _game.CurrentTick,
+                    },
+                    request
+                )
+            );
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves injury to the encountered officer after capture or successful evasion.
+        /// </summary>
+        private int ResolveEncounteredOfficerInjury(
+            bool captured,
+            int encounteredCombat,
+            int opposingCombat
+        )
+        {
+            GameConfig.DuelResolutionConfig config = _game.Config.DuelResolution;
+            int injury = captured
+                ? 0
+                : TryRollInjury(
                     Math.Max(
                         config.MinimumInjuryChance,
                         config.CaptureEvasionInjuryBaseChance - encounteredCombat
                     )
                 );
-            }
-
-            if (encounteredInjury == 0)
-            {
-                encounteredInjury = TryRollInjury(
+            return injury != 0
+                ? injury
+                : TryRollInjury(
                     Math.Max(config.MinimumInjuryChance, opposingCombat - encounteredCombat)
                 );
-            }
+        }
 
-            int opposingInjury = TryRollInjury(
-                Math.Max(config.MinimumInjuryChance, encounteredCombat - opposingCombat)
+        /// <summary>
+        /// Resolves injury to the opposing officer from the encountered officer's combat advantage.
+        /// </summary>
+        private int ResolveOpposingOfficerInjury(int encounteredCombat, int opposingCombat) =>
+            TryRollInjury(
+                Math.Max(
+                    _game.Config.DuelResolution.MinimumInjuryChance,
+                    encounteredCombat - opposingCombat
+                )
             );
 
-            ApplyInjury(encountered, encounteredInjury, opposing, request, reactions);
-            ApplyInjury(opposing, opposingInjury, encountered, request, reactions);
+        /// <summary>
+        /// Records the complete duel outcome after capture and injury consequences are applied.
+        /// </summary>
+        private void RecordDuelOutcome(
+            DuelRequestedResult request,
+            Planet location,
+            bool captured,
+            int encounteredInjury,
+            int opposingInjury,
+            ICollection<GameResult> reactions
+        )
+        {
             reactions.Add(
                 Stamp(
                     new DuelResult
                     {
-                        EncounteredOfficer = encountered,
-                        OpposingOfficer = opposing,
+                        EncounteredOfficer = request.EncounteredOfficer,
+                        OpposingOfficer = request.OpposingOfficer,
                         Location = location,
                         EncounteredOfficerCaptured = captured,
                         EncounteredOfficerInjury = encounteredInjury,

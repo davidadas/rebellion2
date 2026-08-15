@@ -246,8 +246,6 @@ namespace Rebellion.Systems
             Mission mission = _game.GetSceneNodeByInstanceID<Mission>(missionInstanceID);
             if (mission == null)
                 return false;
-            if (!mission.CanCancel)
-                return false;
             if (mission.IsWaitingForParticipants())
                 return false;
 

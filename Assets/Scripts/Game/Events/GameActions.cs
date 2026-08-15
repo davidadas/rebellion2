@@ -1,20 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Notifications;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
-#region CompositeActions
 namespace Rebellion.Game.Events
 {
+    #region CompositeActions
     [PersistableObject(Name = "Outcome")]
     public sealed class RandomOutcome
     {
@@ -77,12 +77,9 @@ namespace Rebellion.Game.Events
             return GameAction.ExecuteAll(selected, context);
         }
     }
-}
-#endregion
+    #endregion
 
-#region EventStateActions
-namespace Rebellion.Game.Events
-{
+    #region EventStateActions
     public enum EventVariableOperation
     {
         Set,
@@ -115,12 +112,9 @@ namespace Rebellion.Game.Events
             return new List<GameResult>();
         }
     }
-}
-#endregion
+    #endregion
 
-#region FogOfWarActions
-namespace Rebellion.Game.Events
-{
+    #region FogOfWarActions
     /// <summary>
     /// Supplies current observations about selected objects to one faction.
     /// </summary>
@@ -156,12 +150,9 @@ namespace Rebellion.Game.Events
             };
         }
     }
-}
-#endregion
+    #endregion
 
-#region MessageActions
-namespace Rebellion.Game.Events
-{
+    #region MessageActions
     /// <summary>
     /// Selects one authored narrative fragment from current simulation state.
     /// </summary>
@@ -340,12 +331,9 @@ namespace Rebellion.Game.Events
             );
         }
     }
-}
-#endregion
+    #endregion
 
-#region OfficerActions
-namespace Rebellion.Game.Events
-{
+    #region OfficerActions
     /// <summary>
     /// Sets one officer's captivity state and emits the standard state-change result.
     /// </summary>
@@ -423,14 +411,14 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Adjusts selected officers using one authored calculation.
     /// </summary>
-    [PersistableObject(Name = "AdjustOfficerStat")]
-    public sealed class AdjustOfficerStatAction : GameAction
+    [PersistableObject(Name = "AdjustOfficerRating")]
+    public sealed class AdjustOfficerRatingAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
 
         [PersistableAttribute]
-        public OfficerStat Stat { get; set; }
+        public OfficerRating Rating { get; set; }
 
         public int? Amount { get; set; }
         public int? PercentOfStored { get; set; }
@@ -454,7 +442,7 @@ namespace Rebellion.Game.Events
             }.Count(value => value.HasValue);
             if (modeCount != 1)
                 throw new InvalidOperationException(
-                    "AdjustOfficerStat requires exactly one adjustment value."
+                    "AdjustOfficerRating requires exactly one adjustment value."
                 );
             Officer referenceOfficer = null;
             if (PercentOfPositiveGap.HasValue)
@@ -464,7 +452,7 @@ namespace Rebellion.Game.Events
                 );
                 if (referenceOfficer == null)
                     throw new InvalidOperationException(
-                        $"AdjustOfficerStat could not resolve reference officer '{ReferenceOfficerInstanceID}'."
+                        $"AdjustOfficerRating could not resolve reference officer '{ReferenceOfficerInstanceID}'."
                     );
                 if (PercentOfPositiveGap.Value < 0 || MinimumAmount < 0)
                     throw new InvalidOperationException(
@@ -480,25 +468,25 @@ namespace Rebellion.Game.Events
                 Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
                 if (explicitOfficer == null)
                     throw new InvalidOperationException(
-                        $"AdjustOfficerStat could not resolve officer '{OfficerInstanceID}'."
+                        $"AdjustOfficerRating could not resolve officer '{OfficerInstanceID}'."
                     );
                 selected = new ISceneNode[] { explicitOfficer }.Concat(selected);
             }
             List<ISceneNode> nodes = selected.Distinct().ToList();
             if (nodes.Count == 0)
                 throw new InvalidOperationException(
-                    "AdjustOfficerStat requires an officer or a matching selector."
+                    "AdjustOfficerRating requires an officer or a matching selector."
                 );
             if (nodes.Any(node => node is not Officer))
                 throw new InvalidOperationException(
-                    "AdjustOfficerStat selectors may return only officers."
+                    "AdjustOfficerRating selectors may return only officers."
                 );
 
             List<GameResult> results = new List<GameResult>();
             foreach (Officer officer in nodes.Cast<Officer>())
             {
-                int baseValue = officer.GetBaseStat(Stat);
-                int currentValue = officer.GetCurrentStat(Stat);
+                int baseValue = officer.GetBaseRating(Rating);
+                int currentValue = officer.GetEffectiveRating(Rating);
                 int adjustment =
                     Amount
                     ?? (
@@ -508,16 +496,119 @@ namespace Rebellion.Game.Events
                         : Math.Max(
                             MinimumAmount,
                             checked(
-                                Math.Max(0, referenceOfficer.GetCurrentStat(Stat) - currentValue)
+                                Math.Max(
+                                    0,
+                                    referenceOfficer.GetEffectiveRating(Rating) - currentValue
+                                )
+                                * PercentOfPositiveGap.Value
+                                / 100
+                            )
+                        )
+                    );
+                officer.SetBaseRating(Rating, checked(baseValue + adjustment));
+            }
+            return results;
+        }
+    }
+
+    /// <summary>
+    /// Adjusts selected officers' stored Force values using one authored calculation.
+    /// </summary>
+    [PersistableObject(Name = "AdjustOfficerForce")]
+    public sealed class AdjustOfficerForceAction : GameAction
+    {
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        public int? Amount { get; set; }
+        public int? PercentOfStored { get; set; }
+        public int? PercentOfEffective { get; set; }
+        public int? PercentOfPositiveGap { get; set; }
+        public string ReferenceOfficerInstanceID { get; set; }
+        public int MinimumAmount { get; set; }
+
+        [PersistableMember(Name = "Officers")]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+
+        /// <summary>
+        /// Applies one Force adjustment mode to every explicitly named or selected officer.
+        /// </summary>
+        public override List<GameResult> Execute(GameActionContext context)
+        {
+            int modeCount = new int?[]
+            {
+                Amount,
+                PercentOfStored,
+                PercentOfEffective,
+                PercentOfPositiveGap,
+            }.Count(value => value.HasValue);
+            if (modeCount != 1)
+                throw new InvalidOperationException(
+                    "AdjustOfficerForce requires exactly one adjustment value."
+                );
+
+            GameRoot game = context.Game;
+            Officer referenceOfficer = null;
+            if (PercentOfPositiveGap.HasValue)
+            {
+                referenceOfficer = game.GetSceneNodeByInstanceID<Officer>(
+                    ReferenceOfficerInstanceID
+                );
+                if (referenceOfficer == null)
+                    throw new InvalidOperationException(
+                        $"AdjustOfficerForce could not resolve reference officer '{ReferenceOfficerInstanceID}'."
+                    );
+                if (PercentOfPositiveGap.Value < 0 || MinimumAmount < 0)
+                    throw new InvalidOperationException(
+                        "Force-gap adjustments require non-negative percentage and minimum values."
+                    );
+            }
+
+            IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
+                selector.Select(game, context.Random, context.Activation)
+            );
+            if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
+            {
+                Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+                if (explicitOfficer == null)
+                    throw new InvalidOperationException(
+                        $"AdjustOfficerForce could not resolve officer '{OfficerInstanceID}'."
+                    );
+                selected = new ISceneNode[] { explicitOfficer }.Concat(selected);
+            }
+
+            List<Officer> officers = selected.Distinct().OfType<Officer>().ToList();
+            if (officers.Count == 0)
+                throw new InvalidOperationException(
+                    "AdjustOfficerForce requires an officer or a matching selector."
+                );
+            if (selected.Any(node => node is not Officer))
+                throw new InvalidOperationException(
+                    "AdjustOfficerForce selectors may return only officers."
+                );
+
+            List<GameResult> results = new List<GameResult>();
+            foreach (Officer officer in officers)
+            {
+                int stored = officer.ForceValue;
+                int effective = officer.ForceRank;
+                int adjustment =
+                    Amount
+                    ?? (
+                        PercentOfStored.HasValue ? checked(stored * PercentOfStored.Value / 100)
+                        : PercentOfEffective.HasValue
+                            ? checked(effective * PercentOfEffective.Value / 100)
+                        : Math.Max(
+                            MinimumAmount,
+                            checked(
+                                Math.Max(0, referenceOfficer.ForceRank - effective)
                                 * PercentOfPositiveGap.Value
                                 / 100
                             )
                         )
                     );
                 int previousForceRank = officer.ForceRank;
-                officer.SetBaseStat(Stat, checked(baseValue + adjustment));
-                if (Stat != OfficerStat.Force)
-                    continue;
+                officer.ForceValue = Math.Max(0, checked(stored + adjustment));
                 results.Add(
                     new ForceExperienceResult
                     {
@@ -604,7 +695,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public bool? IsEligible { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>Applies authored Jedi eligibility and identity changes to one officer.</summary>
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -652,7 +743,7 @@ namespace Rebellion.Game.Events
         public int MinimumInjury { get; set; }
         public int MaximumInjury { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>Rolls and applies an injury within the authored severity range.</summary>
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -689,7 +780,7 @@ namespace Rebellion.Game.Events
         public string MessageImagePath { get; set; }
         public string EncyclopediaImagePath { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>Merges authored image paths into the officer's active image set.</summary>
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -757,7 +848,7 @@ namespace Rebellion.Game.Events
         [PersistableCollectionItem(Name = "Path")]
         public List<string> RescueAttempt { get; set; } = new List<string>();
 
-        /// <inheritdoc />
+        /// <summary>Merges authored voice categories into the officer's active voice set.</summary>
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -770,18 +861,18 @@ namespace Rebellion.Game.Events
             officer.VoiceSet.MergeFrom(
                 new OfficerVoiceSet
                 {
-                    Order = Order,
-                    PersonnelArrived = PersonnelArrived,
-                    MissionSuccess = MissionSuccess,
-                    MissionFailure = MissionFailure,
-                    MissionAbort = MissionAbort,
-                    Released = Released,
-                    Recovered = Recovered,
-                    EnemyDetected = EnemyDetected,
-                    ForceGrowth = ForceGrowth,
-                    ForceUserDiscovered = ForceUserDiscovered,
-                    TraitorDiscovered = TraitorDiscovered,
-                    RescueAttempt = RescueAttempt,
+                    OrderPaths = Order,
+                    PersonnelArrivedPaths = PersonnelArrived,
+                    MissionSuccessPaths = MissionSuccess,
+                    MissionFailurePaths = MissionFailure,
+                    MissionAbortPaths = MissionAbort,
+                    ReleasedPaths = Released,
+                    RecoveredPaths = Recovered,
+                    EnemyDetectedPaths = EnemyDetected,
+                    ForceGrowthPaths = ForceGrowth,
+                    ForceUserDiscoveredPaths = ForceUserDiscovered,
+                    TraitorDiscoveredPaths = TraitorDiscovered,
+                    RescueAttemptPaths = RescueAttempt,
                 }
             );
             return new List<GameResult>();
@@ -838,12 +929,9 @@ namespace Rebellion.Game.Events
             };
         }
     }
-}
-#endregion
+    #endregion
 
-#region PresentationActions
-namespace Rebellion.Game.Events
-{
+    #region PresentationActions
     internal static class DisplayActionTargets
     {
         internal static List<BaseGameEntity> Resolve(
@@ -965,12 +1053,9 @@ namespace Rebellion.Game.Events
             return new List<GameResult>();
         }
     }
-}
-#endregion
+    #endregion
 
-#region ResourceActions
-namespace Rebellion.Game.Events
-{
+    #region ResourceActions
     public enum PlanetStat
     {
         RawResourceNodes,
@@ -998,7 +1083,7 @@ namespace Rebellion.Game.Events
         [PersistableMember(Name = "Planets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        /// <inheritdoc />
+        /// <summary>Applies one signed adjustment to the selected planet statistic.</summary>
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -1088,7 +1173,7 @@ namespace Rebellion.Game.Events
 
         public List<PlanetStatReference> Stats { get; set; } = new List<PlanetStatReference>();
 
-        /// <inheritdoc />
+        /// <summary>Randomly reduces selected planet statistics while enforcing the minimum total loss.</summary>
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -1246,19 +1331,16 @@ namespace Rebellion.Game.Events
             };
         }
     }
-}
-#endregion
+    #endregion
 
-#region UnitActions
-namespace Rebellion.Game.Events
-{
+    #region UnitActions
     [PersistableObject(Name = "DestroyUnits")]
     public sealed class DestroyUnitsAction : GameAction
     {
         [PersistableMember(Name = "Units")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        /// <inheritdoc />
+        /// <summary>Deletes every unit selected by the authored unit selectors.</summary>
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -1468,8 +1550,7 @@ namespace Rebellion.Game.Events
                 new UnitMovementRequestedResult
                 {
                     Units = units,
-                    Destination = destinations[0],
-                    DestinationCandidates = destinations,
+                    Destinations = destinations,
                     Tick = context.Game.CurrentTick,
                 },
             };
@@ -1545,5 +1626,5 @@ namespace Rebellion.Game.Events
             return new List<GameResult>();
         }
     }
+    #endregion
 }
-#endregion

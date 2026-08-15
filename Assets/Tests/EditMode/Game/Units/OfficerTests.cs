@@ -375,7 +375,7 @@ namespace Rebellion.Tests.Game.Units
             {
                 VoiceSet = new OfficerVoiceSet
                 {
-                    PersonnelArrived = new List<string> { "configured" },
+                    PersonnelArrivedPaths = new List<string> { "configured" },
                 },
             };
 

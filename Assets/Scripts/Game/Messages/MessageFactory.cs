@@ -1,18 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Notifications;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
-#region Core
 namespace Rebellion.Game.Messages
 {
+    #region Core
     /// <summary>
     /// Builds faction message deliveries from game results and configured message definitions.
     /// </summary>
@@ -1747,11 +1747,8 @@ namespace Rebellion.Game.Messages
             return GetFaction(game, GetOwnerInstanceID(entity));
         }
     }
-}
-#endregion
-#region MessageFactory.Arrivals
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region MessageFactory.Arrivals
     /// <summary>
     /// Groups completed movement arrivals and translates them into faction reports.
     /// </summary>
@@ -2091,11 +2088,8 @@ namespace Rebellion.Game.Messages
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == ownerID);
     }
-}
-#endregion
-#region MessageFactory.Blockades
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region MessageFactory.Blockades
     /// <summary>
     /// Translates blockade and evacuation results into faction reports.
     /// </summary>
@@ -2233,11 +2227,8 @@ namespace Rebellion.Game.Messages
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
     }
-}
-#endregion
-#region MessageFactory.Combat
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region MessageFactory.Combat
     /// <summary>
     /// Translates space combat, bombardment, and planetary assault results into reports.
     /// </summary>
@@ -2670,11 +2661,8 @@ namespace Rebellion.Game.Messages
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
     }
-}
-#endregion
-#region MessageFactory.Deployments
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region MessageFactory.Deployments
     /// <summary>
     /// Translates completed deployments and failed facility arrivals into unit reports.
     /// </summary>
@@ -2706,7 +2694,7 @@ namespace Rebellion.Game.Messages
                     ? building.Movement == null
                         ? CreateFacilityMessage(faction, building, destination)
                         : null
-                    : CreateUnit(faction, unit as IGameEntity, destination, game);
+                    : CreateUnit(faction, unit as IGameEntity, destination);
                 AddDelivery(deliveries, faction, message, result);
             }
 
@@ -2805,16 +2793,11 @@ namespace Rebellion.Game.Messages
             return message;
         }
 
-        private Message CreateUnit(
-            Faction faction,
-            IGameEntity unit,
-            Planet destination,
-            GameRoot game
-        )
+        private Message CreateUnit(Faction faction, IGameEntity unit, Planet destination)
         {
             MessageResultType resultType = unit switch
             {
-                CapitalShip ship when IsPlanetDestroying(ship, game) =>
+                CapitalShip ship when IsPlanetDestroying(ship) =>
                     MessageResultType.DeathStarDeployed,
                 CapitalShip => MessageResultType.CapitalShipDeployed,
                 Starfighter => MessageResultType.StarfighterDeployed,
@@ -2891,11 +2874,7 @@ namespace Rebellion.Game.Messages
             );
         }
 
-        private static bool IsPlanetDestroying(CapitalShip ship, GameRoot game) =>
-            ship != null
-            && game?.Config?.Combat?.Bombardment?.PlanetDestroyingCapitalShipTypeIDs?.Contains(
-                ship.TypeID
-            ) == true;
+        private static bool IsPlanetDestroying(CapitalShip ship) => ship?.CanDestroyPlanets == true;
 
         private static Planet GetDeploymentPlanet(IGameEntity entity) =>
             entity is Planet planet ? planet
@@ -2916,11 +2895,8 @@ namespace Rebellion.Game.Messages
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
     }
-}
-#endregion
-#region MessageFactory.Economy
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region MessageFactory.Economy
     /// <summary>
     /// Translates economic simulation results into faction message deliveries.
     /// </summary>
@@ -3013,11 +2989,8 @@ namespace Rebellion.Game.Messages
             );
         }
     }
-}
-#endregion
-#region MessageFactory.Maintenance
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region MessageFactory.Maintenance
     /// <summary>
     /// Groups maintenance losses and translates them into faction reports.
     /// </summary>
@@ -3120,11 +3093,8 @@ namespace Rebellion.Game.Messages
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
     }
-}
-#endregion
-#region MessageFactory.Politics
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region MessageFactory.Politics
     /// <summary>
     /// Translates uprising and popular-support ownership results into faction messages.
     /// </summary>
@@ -3366,11 +3336,8 @@ namespace Rebellion.Game.Messages
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
     }
-}
-#endregion
-#region MessageFactory.Repairs
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region MessageFactory.Repairs
     /// <summary>
     /// Translates completed ship repairs into faction message deliveries.
     /// </summary>
@@ -3442,11 +3409,8 @@ namespace Rebellion.Game.Messages
             AddDelivery(deliveries, faction, message, sourceResult);
         }
     }
-}
-#endregion
-#region MessageFactory.Research
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region MessageFactory.Research
     /// <summary>
     /// Translates research results into faction message deliveries.
     /// </summary>
@@ -3510,11 +3474,8 @@ namespace Rebellion.Game.Messages
         private static string GetResearchDisplayName(IGameEntity entity) =>
             entity?.GetDisplayName() ?? string.Empty;
     }
-}
-#endregion
-#region MessageFactory.Strategy
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region MessageFactory.Strategy
     /// <summary>
     /// Translates strategic objectives and planet incidents into faction reports.
     /// </summary>
@@ -3719,11 +3680,8 @@ namespace Rebellion.Game.Messages
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
     }
-}
-#endregion
-#region AuthoredMessageRequestFactory
-namespace Rebellion.Game.Messages
-{
+    #endregion
+    #region AuthoredMessageRequestFactory
     /// <summary>
     /// Translates authored message requests into concrete faction deliveries.
     /// </summary>
@@ -3835,5 +3793,5 @@ namespace Rebellion.Game.Messages
             }
         }
     }
+    #endregion
 }
-#endregion

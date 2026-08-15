@@ -64,10 +64,6 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(6, config.Combat.PlanetaryAssault.CaptureGarrisonCount);
             Assert.AreEqual(-2, config.Combat.Bombardment.DestroySystemOuterRimSupportPenalty);
             Assert.AreEqual(90, config.Combat.Bombardment.DestroySystemOuterRimSupportThreshold);
-            CollectionAssert.Contains(
-                config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs,
-                "CSEM015"
-            );
             Assert.AreEqual(1f, config.GameSpeed.FastTickIntervalSeconds);
             Assert.AreEqual(10f, config.GameSpeed.MediumTickIntervalSeconds);
             Assert.AreEqual(60f, config.GameSpeed.SlowTickIntervalSeconds);

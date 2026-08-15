@@ -96,7 +96,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void GameEventSchema_AdjustOfficerStatWithPlanetSelector_RejectsDocument()
+        public void GameEventSchema_AdjustOfficerRatingWithPlanetSelector_RejectsDocument()
         {
             const string xml =
                 @"
@@ -104,10 +104,10 @@ namespace Rebellion.Tests.Content
   <GameEvent>
     <InstanceID>EVENT</InstanceID>
     <Actions>
-      <AdjustOfficerStat Stat=""Combat"">
+      <AdjustOfficerRating Rating=""Combat"">
         <Amount>1</Amount>
         <SelectPlanets InstanceID=""PLANET""/>
-      </AdjustOfficerStat>
+      </AdjustOfficerRating>
     </Actions>
   </GameEvent>
 </GameEvents>";

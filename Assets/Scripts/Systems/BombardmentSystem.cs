@@ -424,11 +424,15 @@ namespace Rebellion.Systems
                     continue;
 
                 result.DestroyedCapitalShips.Add(ship);
-                _movement.EvacuateDestroyedCapitalShip(ship);
-                foreach (Regiment regiment in ship.Regiments.ToList())
-                {
-                    _game.DeleteNode(regiment);
-                }
+                List<IMovable> units = ship
+                    .Officers.Cast<IMovable>()
+                    .Concat(
+                        ship.Starfighters.Where(starfighter =>
+                            starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                        )
+                    )
+                    .ToList();
+                _movement.RelocateUnits(units);
                 _game.DeleteNode(ship);
                 GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
             }
@@ -762,9 +766,7 @@ namespace Rebellion.Systems
         /// <returns>True when an active configured ship type is present.</returns>
         private bool HasPlanetDestroyingShip(IEnumerable<Fleet> fleets)
         {
-            HashSet<string> typeIds =
-                _game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs.ToHashSet();
-            return GetActiveCapitalShips(fleets).Any(ship => typeIds.Contains(ship.GetTypeID()));
+            return GetActiveCapitalShips(fleets).Any(ship => ship.CanDestroyPlanets);
         }
 
         /// <summary>

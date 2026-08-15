@@ -351,15 +351,12 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "death-star",
                 TypeID = "CUSTOM_PLANET_DESTROYER",
+                CanDestroyPlanets = true,
                 OwnerInstanceID = "rebels",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(fleet, enemyPlanet);
             game.AttachNode(deathStar, fleet);
-            game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs = new List<string>
-            {
-                deathStar.TypeID,
-            };
             game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int> { { 0, 0 } };
             game.Config.ProbabilityTables.Mission.DeathStarSabotage = new Dictionary<int, int>
             {

@@ -1967,11 +1967,15 @@ namespace Rebellion.Systems
 
                 if (damage.HullAfter <= 0)
                 {
-                    _movement.EvacuateDestroyedCapitalShip(ship);
-                    foreach (Regiment regiment in ship.Regiments.ToList())
-                    {
-                        _game.DeleteNode(regiment);
-                    }
+                    List<IMovable> units = ship
+                        .Officers.Cast<IMovable>()
+                        .Concat(
+                            ship.Starfighters.Where(starfighter =>
+                                starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                            )
+                        )
+                        .ToList();
+                    _movement.RelocateUnits(units);
                     _game.DeleteNode(ship);
                     GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                 }

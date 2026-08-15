@@ -37,8 +37,6 @@ namespace Rebellion.Game.Galaxy
         public bool IsDestroyed { get; set; }
         public bool IsHeadquarters { get; set; }
 
-        // Smuggling Status.
-
         // Uprising Status.
         public bool IsInUprising { get; set; }
         public int NextUprisingSupportDriftTick { get; set; }

@@ -30,91 +30,106 @@ namespace Rebellion.Game.Units
             EncyclopediaImagePath = authored.EncyclopediaImagePath ?? EncyclopediaImagePath;
         }
     }
-}
 
-namespace Rebellion.Game.Units
-{
     /// <summary>
     /// Groups the recordings an officer can use for simulation and message events.
     /// </summary>
     [PersistableObject]
     public sealed class OfficerVoiceSet
     {
+        [PersistableMember(Name = "Order")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> Order { get; set; } = new List<string>();
+        public List<string> OrderPaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "PersonnelArrived")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> PersonnelArrived { get; set; } = new List<string>();
+        public List<string> PersonnelArrivedPaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "MissionSuccess")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> MissionSuccess { get; set; } = new List<string>();
+        public List<string> MissionSuccessPaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "MissionFailure")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> MissionFailure { get; set; } = new List<string>();
+        public List<string> MissionFailurePaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "MissionAbort")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> MissionAbort { get; set; } = new List<string>();
+        public List<string> MissionAbortPaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "Released")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> Released { get; set; } = new List<string>();
+        public List<string> ReleasedPaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "Recovered")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> Recovered { get; set; } = new List<string>();
+        public List<string> RecoveredPaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "EnemyDetected")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> EnemyDetected { get; set; } = new List<string>();
+        public List<string> EnemyDetectedPaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "ForceGrowth")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> ForceGrowth { get; set; } = new List<string>();
+        public List<string> ForceGrowthPaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "ForceUserDiscovered")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> ForceUserDiscovered { get; set; } = new List<string>();
+        public List<string> ForceUserDiscoveredPaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "TraitorDiscovered")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> TraitorDiscovered { get; set; } = new List<string>();
+        public List<string> TraitorDiscoveredPaths { get; set; } = new List<string>();
 
+        [PersistableMember(Name = "RescueAttempt")]
         [PersistableCollectionItem(Name = "Path")]
-        public List<string> RescueAttempt { get; set; } = new List<string>();
+        public List<string> RescueAttemptPaths { get; set; } = new List<string>();
 
-        public IReadOnlyList<string> Get(OfficerVoiceLineType type)
+        /// <summary>
+        /// Returns the configured asset paths for one voice-line category.
+        /// </summary>
+        public IReadOnlyList<string> GetPaths(OfficerVoiceLineType type)
         {
-            return type switch
-            {
-                OfficerVoiceLineType.Order => Order,
-                OfficerVoiceLineType.PersonnelArrived => PersonnelArrived,
-                OfficerVoiceLineType.MissionSuccess => MissionSuccess,
-                OfficerVoiceLineType.MissionFailure => MissionFailure,
-                OfficerVoiceLineType.MissionAbort => MissionAbort,
-                OfficerVoiceLineType.Released => Released,
-                OfficerVoiceLineType.Recovered => Recovered,
-                OfficerVoiceLineType.EnemyDetected => EnemyDetected,
-                OfficerVoiceLineType.ForceGrowth => ForceGrowth,
-                OfficerVoiceLineType.ForceUserDiscovered => ForceUserDiscovered,
-                OfficerVoiceLineType.TraitorDiscovered => TraitorDiscovered,
-                OfficerVoiceLineType.RescueAttempt => RescueAttempt,
-                _ => null,
-            };
+            IReadOnlyList<string> paths = GetMutablePaths(type);
+            return paths ?? Array.Empty<string>();
         }
 
+        /// <summary>
+        /// Replaces each voice category for which the authored set supplies at least one path.
+        /// </summary>
         public void MergeFrom(OfficerVoiceSet authored)
         {
             if (authored == null)
                 return;
 
-            ReplaceWhenAuthored(authored.Order, Order);
-            ReplaceWhenAuthored(authored.PersonnelArrived, PersonnelArrived);
-            ReplaceWhenAuthored(authored.MissionSuccess, MissionSuccess);
-            ReplaceWhenAuthored(authored.MissionFailure, MissionFailure);
-            ReplaceWhenAuthored(authored.MissionAbort, MissionAbort);
-            ReplaceWhenAuthored(authored.Released, Released);
-            ReplaceWhenAuthored(authored.Recovered, Recovered);
-            ReplaceWhenAuthored(authored.EnemyDetected, EnemyDetected);
-            ReplaceWhenAuthored(authored.ForceGrowth, ForceGrowth);
-            ReplaceWhenAuthored(authored.ForceUserDiscovered, ForceUserDiscovered);
-            ReplaceWhenAuthored(authored.TraitorDiscovered, TraitorDiscovered);
-            ReplaceWhenAuthored(authored.RescueAttempt, RescueAttempt);
+            foreach (OfficerVoiceLineType type in Enum.GetValues(typeof(OfficerVoiceLineType)))
+                ReplaceWhenAuthored(authored.GetMutablePaths(type), GetMutablePaths(type));
         }
 
+        /// <summary>
+        /// Returns the mutable collection that canonically stores one voice-line category.
+        /// </summary>
+        private List<string> GetMutablePaths(OfficerVoiceLineType type) =>
+            type switch
+            {
+                OfficerVoiceLineType.Order => OrderPaths,
+                OfficerVoiceLineType.PersonnelArrived => PersonnelArrivedPaths,
+                OfficerVoiceLineType.MissionSuccess => MissionSuccessPaths,
+                OfficerVoiceLineType.MissionFailure => MissionFailurePaths,
+                OfficerVoiceLineType.MissionAbort => MissionAbortPaths,
+                OfficerVoiceLineType.Released => ReleasedPaths,
+                OfficerVoiceLineType.Recovered => RecoveredPaths,
+                OfficerVoiceLineType.EnemyDetected => EnemyDetectedPaths,
+                OfficerVoiceLineType.ForceGrowth => ForceGrowthPaths,
+                OfficerVoiceLineType.ForceUserDiscovered => ForceUserDiscoveredPaths,
+                OfficerVoiceLineType.TraitorDiscovered => TraitorDiscoveredPaths,
+                OfficerVoiceLineType.RescueAttempt => RescueAttemptPaths,
+                _ => null,
+            };
+
+        /// <summary>
+        /// Replaces a destination category only when authored paths are present.
+        /// </summary>
         private static void ReplaceWhenAuthored(List<string> authored, List<string> destination)
         {
             if (authored == null || authored.Count == 0)
@@ -124,10 +139,7 @@ namespace Rebellion.Game.Units
             destination.AddRange(authored);
         }
     }
-}
 
-namespace Rebellion.Game.Units
-{
     /// <summary>
     /// Defines the command rank levels an officer can hold.
     /// </summary>
@@ -150,18 +162,6 @@ namespace Rebellion.Game.Units
         ForceStudent,
         ForceKnight,
         ForceMaster,
-    }
-
-    public enum OfficerStat
-    {
-        Diplomacy,
-        Espionage,
-        Combat,
-        Leadership,
-        ShipResearch,
-        TroopResearch,
-        FacilityResearch,
-        Force,
     }
 
     public enum OfficerVoiceLineType
@@ -376,41 +376,6 @@ namespace Rebellion.Game.Units
             SetBaseRating(rating, GetBaseRating(rating) + amount);
         }
 
-        public int GetBaseStat(OfficerStat stat)
-        {
-            return stat == OfficerStat.Force ? ForceValue : GetBaseRating(ToOfficerRating(stat));
-        }
-
-        public int GetCurrentStat(OfficerStat stat)
-        {
-            return stat == OfficerStat.Force
-                ? ForceRank
-                : GetEffectiveRating(ToOfficerRating(stat));
-        }
-
-        public int SetBaseStat(OfficerStat stat, int value)
-        {
-            if (stat == OfficerStat.Force)
-            {
-                ForceValue = Math.Max(0, value);
-                return ForceValue;
-            }
-            return SetBaseRating(ToOfficerRating(stat), value);
-        }
-
-        private static OfficerRating ToOfficerRating(OfficerStat stat) =>
-            stat switch
-            {
-                OfficerStat.Diplomacy => OfficerRating.Diplomacy,
-                OfficerStat.Espionage => OfficerRating.Espionage,
-                OfficerStat.Combat => OfficerRating.Combat,
-                OfficerStat.Leadership => OfficerRating.Leadership,
-                OfficerStat.ShipResearch => OfficerRating.ShipResearch,
-                OfficerStat.TroopResearch => OfficerRating.TroopResearch,
-                OfficerStat.FacilityResearch => OfficerRating.FacilityResearch,
-                _ => OfficerRating.None,
-            };
-
         /// <summary>
         /// Returns the base research value for the given discipline.
         /// </summary>
@@ -536,7 +501,7 @@ namespace Rebellion.Game.Units
             IRandomNumberProvider provider
         )
         {
-            return SelectVoicePath(VoiceSet.Get(voiceLineType), provider);
+            return SelectVoicePath(VoiceSet.GetPaths(voiceLineType), provider);
         }
 
         /// <summary>
@@ -546,7 +511,7 @@ namespace Rebellion.Game.Units
         /// <returns>True when a matching voice path exists.</returns>
         public bool HasVoicePath(OfficerVoiceLineType voiceLineType)
         {
-            IReadOnlyList<string> paths = VoiceSet.Get(voiceLineType);
+            IReadOnlyList<string> paths = VoiceSet.GetPaths(voiceLineType);
             return paths?.Count > 0;
         }
 

@@ -95,6 +95,7 @@ namespace Rebellion.Game.Units
         public int TractorBeamPower;
         public int TractorBeamnRange;
         public bool HasGravityWell;
+        public bool CanDestroyPlanets { get; set; }
         public int DetectionRating;
 
         // Owner Info.

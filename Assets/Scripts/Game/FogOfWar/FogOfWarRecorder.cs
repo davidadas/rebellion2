@@ -226,6 +226,9 @@ namespace Rebellion.Game.FogOfWar
                 : null;
         }
 
+        /// <summary>
+        /// Records one capital ship without exposing any unselected embarked units.
+        /// </summary>
         private static void AddCapitalShipObservation(
             PlanetSnapshot snapshot,
             CapitalShip capitalShip
@@ -320,6 +323,9 @@ namespace Rebellion.Game.FogOfWar
             ship.Starfighters.Clear();
         }
 
+        /// <summary>
+        /// Adds one observed carried unit to the matching collection on a detached ship snapshot.
+        /// </summary>
         private static void AddCapitalShipChild(CapitalShip ship, ISceneNode child)
         {
             switch (child)
@@ -341,6 +347,9 @@ namespace Rebellion.Game.FogOfWar
             child.SetParent(ship);
         }
 
+        /// <summary>
+        /// Replaces a prior snapshot with the same instance ID or appends a newly observed item.
+        /// </summary>
         private static void Upsert<T>(List<T> items, T item)
             where T : class, ISceneNode
         {

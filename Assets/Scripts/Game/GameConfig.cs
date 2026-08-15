@@ -417,9 +417,6 @@ namespace Rebellion.Game
             public int StarfighterSuppression { get; set; } = 5;
 
             public int RegimentSuppression { get; set; } = 2;
-
-            public List<string> FullySuppressingCapitalShipTypeIDs { get; set; } =
-                new List<string>();
         }
 
         /// <summary>
@@ -470,8 +467,6 @@ namespace Rebellion.Game
             public int DestroySystemCoreSupportPenalty { get; set; }
             public int DestroySystemOuterRimSupportPenalty { get; set; }
             public int DestroySystemOuterRimSupportThreshold { get; set; }
-            public List<string> PlanetDestroyingCapitalShipTypeIDs { get; set; } =
-                new List<string>();
         }
 
         /// <summary>

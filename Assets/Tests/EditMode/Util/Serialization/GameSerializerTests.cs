@@ -7,13 +7,13 @@ using System.Xml;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Advisor;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
-using Rebellion.Game.Notifications;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
@@ -381,10 +381,9 @@ namespace Rebellion.Tests.Util.Serialization
                         },
                     },
                     new AddToVoidAction { UnitInstanceID = "LUKE_SKYWALKER" },
-                    new AdjustOfficerStatAction
+                    new AdjustOfficerForceAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",
-                        Stat = OfficerStat.Force,
                         Amount = 5,
                     },
                     new ApplyOfficerInjuryAction
@@ -436,8 +435,8 @@ namespace Rebellion.Tests.Util.Serialization
             AddToVoidAction addToVoid = deserialized.Actions[2] as AddToVoidAction;
             Assert.IsNotNull(addToVoid);
             Assert.AreEqual("LUKE_SKYWALKER", addToVoid.UnitInstanceID);
-            AdjustOfficerStatAction forceAdjustment =
-                deserialized.Actions[3] as AdjustOfficerStatAction;
+            AdjustOfficerForceAction forceAdjustment =
+                deserialized.Actions[3] as AdjustOfficerForceAction;
             Assert.IsNotNull(forceAdjustment);
             Assert.AreEqual(5, forceAdjustment.Amount);
             ApplyOfficerInjuryAction injury = deserialized.Actions[4] as ApplyOfficerInjuryAction;

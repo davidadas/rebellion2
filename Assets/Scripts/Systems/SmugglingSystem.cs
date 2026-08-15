@@ -26,7 +26,7 @@ namespace Rebellion.Systems
 
         private sealed class PlanetSmugglingState
         {
-            public int Percent { get; set; }
+            public int DiversionPercent { get; set; }
             public string ControllerInstanceID { get; set; }
             public string BeneficiaryInstanceID { get; set; }
         }
@@ -72,7 +72,6 @@ namespace Rebellion.Systems
                 throw new InvalidOperationException(
                     "Smuggling suppression values cannot be negative."
                 );
-            config.FullySuppressingCapitalShipTypeIDs ??= new List<string>();
         }
 
         /// <summary>
@@ -94,7 +93,7 @@ namespace Rebellion.Systems
 
                 _states[planet.InstanceID] = new PlanetSmugglingState
                 {
-                    Percent = percent,
+                    DiversionPercent = percent,
                     ControllerInstanceID = controller.InstanceID,
                     BeneficiaryInstanceID = beneficiary.InstanceID,
                 };
@@ -127,14 +126,14 @@ namespace Rebellion.Systems
         /// <param name="controller">The faction that ordinarily receives production.</param>
         /// <param name="facility">The facility producing the resource.</param>
         /// <returns>The controlling faction or the faction benefiting from smuggling.</returns>
-        public Faction GetResourceRecipient(Faction controller, Building facility)
+        public Faction ResolveProductionRecipient(Faction controller, Building facility)
         {
             Planet planet = facility.GetParentOfType<Planet>();
             if (
                 planet == null
                 || !_states.TryGetValue(planet.InstanceID, out PlanetSmugglingState state)
-                || state.Percent <= 0
-                || _game.Random.NextInt(0, _percentScale) >= state.Percent
+                || state.DiversionPercent <= 0
+                || _game.Random.NextInt(0, _percentScale) >= state.DiversionPercent
             )
                 return controller;
 
@@ -148,74 +147,117 @@ namespace Rebellion.Systems
         /// <param name="results">The result collection receiving changes.</param>
         private void RefreshPlanet(Planet planet, List<GameResult> results)
         {
-            Faction controller = FindFaction(planet.OwnerInstanceID);
-            _states.TryGetValue(planet.InstanceID, out PlanetSmugglingState state);
-            int oldPercent = state?.Percent ?? 0;
-            Faction oldController = FindFaction(state?.ControllerInstanceID);
-            Faction oldBeneficiary = FindFaction(state?.BeneficiaryInstanceID);
-            if (oldController == null && oldPercent > 0)
-                oldController = controller;
+            _states.TryGetValue(planet.InstanceID, out PlanetSmugglingState previous);
+            PlanetSmugglingState current = CalculateSmugglingState(planet);
 
-            if (oldPercent > 0 && oldController != controller)
+            if (!IsSameRelationship(previous, current))
             {
-                AddChange(results, planet, oldController, oldBeneficiary, oldPercent, 0);
-                oldPercent = 0;
-                oldController = controller;
-                oldBeneficiary = null;
+                if (previous != null)
+                    RecordSmugglingEnded(results, planet, previous);
+                if (current != null)
+                    RecordSmugglingStarted(results, planet, current);
             }
-
-            Faction beneficiary = FindBeneficiary(planet, controller);
-            int newPercent = CalculatePercent(planet, controller, beneficiary);
-            if (
-                oldPercent != newPercent
-                || (
-                    (oldPercent > 0 || newPercent > 0)
-                    && (oldController != controller || oldBeneficiary != beneficiary)
-                )
-            )
+            else if (previous != null && previous.DiversionPercent != current.DiversionPercent)
             {
-                bool beneficiaryChanged = oldPercent > 0 && oldBeneficiary != beneficiary;
-                if (beneficiaryChanged)
-                    AddChange(results, planet, oldController, oldBeneficiary, oldPercent, 0);
-                AddChange(
+                RecordDiversionChanged(
                     results,
                     planet,
-                    controller,
-                    beneficiary,
-                    beneficiaryChanged ? 0 : oldPercent,
-                    newPercent
+                    current,
+                    previous.DiversionPercent,
+                    current.DiversionPercent
                 );
             }
 
-            if (newPercent <= 0)
-            {
+            if (current == null)
                 _states.Remove(planet.InstanceID);
-            }
             else
-            {
-                _states[planet.InstanceID] = new PlanetSmugglingState
-                {
-                    Percent = newPercent,
-                    ControllerInstanceID = controller?.InstanceID,
-                    BeneficiaryInstanceID = beneficiary?.InstanceID,
-                };
-            }
+                _states[planet.InstanceID] = current;
         }
 
         /// <summary>
-        /// Records a smuggling percentage change and any start-or-end notification.
+        /// Calculates the current smuggling relationship for a planet, or null when no output is diverted.
         /// </summary>
-        /// <param name="results">The result collection receiving changes.</param>
-        /// <param name="planet">The affected planet.</param>
-        /// <param name="controller">The faction controlling production.</param>
-        /// <param name="beneficiary">The faction receiving diverted output.</param>
-        /// <param name="oldPercent">The previous diversion percentage.</param>
-        /// <param name="newPercent">The new diversion percentage.</param>
-        private void AddChange(
+        private PlanetSmugglingState CalculateSmugglingState(Planet planet)
+        {
+            Faction controller = FindFaction(planet.OwnerInstanceID);
+            Faction beneficiary = FindBeneficiary(planet, controller);
+            int diversionPercent = CalculatePercent(planet, controller, beneficiary);
+            return diversionPercent <= 0
+                ? null
+                : new PlanetSmugglingState
+                {
+                    DiversionPercent = diversionPercent,
+                    ControllerInstanceID = controller.InstanceID,
+                    BeneficiaryInstanceID = beneficiary.InstanceID,
+                };
+        }
+
+        /// <summary>
+        /// Returns whether two states describe smuggling between the same controlling and beneficiary factions.
+        /// </summary>
+        private static bool IsSameRelationship(
+            PlanetSmugglingState left,
+            PlanetSmugglingState right
+        ) =>
+            left == null && right == null
+            || left != null
+                && right != null
+                && left.ControllerInstanceID == right.ControllerInstanceID
+                && left.BeneficiaryInstanceID == right.BeneficiaryInstanceID;
+
+        /// <summary>
+        /// Records the beginning of resource diversion for a controller and beneficiary.
+        /// </summary>
+        private void RecordSmugglingStarted(
             List<GameResult> results,
             Planet planet,
-            Faction controller,
-            Faction beneficiary,
+            PlanetSmugglingState state
+        )
+        {
+            RecordDiversionChanged(results, planet, state, 0, state.DiversionPercent);
+            results.Add(
+                new SmugglingChangedResult
+                {
+                    Planet = planet,
+                    Controller = FindFaction(state.ControllerInstanceID),
+                    Beneficiary = FindFaction(state.BeneficiaryInstanceID),
+                    OldPercent = 0,
+                    NewPercent = state.DiversionPercent,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Records the end of resource diversion for a controller and beneficiary.
+        /// </summary>
+        private void RecordSmugglingEnded(
+            List<GameResult> results,
+            Planet planet,
+            PlanetSmugglingState state
+        )
+        {
+            RecordDiversionChanged(results, planet, state, state.DiversionPercent, 0);
+            results.Add(
+                new SmugglingChangedResult
+                {
+                    Planet = planet,
+                    Controller = FindFaction(state.ControllerInstanceID),
+                    Beneficiary = FindFaction(state.BeneficiaryInstanceID),
+                    OldPercent = state.DiversionPercent,
+                    NewPercent = 0,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Records a numeric diversion change without implying that the smuggling relationship changed.
+        /// </summary>
+        private void RecordDiversionChanged(
+            ICollection<GameResult> results,
+            Planet planet,
+            PlanetSmugglingState state,
             int oldPercent,
             int newPercent
         )
@@ -224,24 +266,10 @@ namespace Rebellion.Systems
                 new PlanetStatChangedResult
                 {
                     Planet = planet,
-                    Faction = controller,
+                    Faction = FindFaction(state.ControllerInstanceID),
                     Stat = PlanetStatType.Smuggling,
                     OldValue = oldPercent,
                     NewValue = newPercent,
-                    Tick = _game.CurrentTick,
-                }
-            );
-            if ((oldPercent == 0) == (newPercent == 0))
-                return;
-
-            results.Add(
-                new SmugglingChangedResult
-                {
-                    Planet = planet,
-                    Controller = controller,
-                    Beneficiary = beneficiary,
-                    OldPercent = oldPercent,
-                    NewPercent = newPercent,
                     Tick = _game.CurrentTick,
                 }
             );
@@ -274,41 +302,15 @@ namespace Rebellion.Systems
             if (
                 fleets
                     .SelectMany(fleet => fleet.CapitalShips)
-                    .Any(ship =>
-                        IsOperational(ship)
-                        && config.FullySuppressingCapitalShipTypeIDs.Contains(ship.TypeID)
-                    )
+                    .Any(ship => IsOperational(ship) && ship.CanDestroyPlanets)
             )
                 return 0;
 
             int percent = _lossPercentByMinimumSupport.Lookup(support);
             int capitalShips = fleets.Sum(fleet => fleet.GetOperationalCapitalShipCount());
-            int starfighters =
-                planet.Starfighters.Count(starfighter =>
-                    starfighter.OwnerInstanceID == controller.InstanceID
-                    && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
-                    && starfighter.Movement == null
-                )
-                + fleets.Sum(fleet =>
-                    fleet
-                        .GetStarfighters()
-                        .Count(starfighter =>
-                            starfighter.ManufacturingStatus == ManufacturingStatus.Complete
-                        )
-                );
-            int regiments =
-                planet.Regiments.Count(regiment =>
-                    regiment.OwnerInstanceID == controller.InstanceID
-                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                    && regiment.Movement == null
-                )
-                + fleets.Sum(fleet =>
-                    fleet
-                        .GetRegiments()
-                        .Count(regiment =>
-                            regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                        )
-                );
+            int starfighters = GetStationedStarfighters(planet, fleets, controller.InstanceID)
+                .Count();
+            int regiments = GetStationedRegiments(planet, fleets, controller.InstanceID).Count();
 
             return Math.Clamp(
                 percent
@@ -319,6 +321,40 @@ namespace Rebellion.Systems
                 _percentScale
             );
         }
+
+        /// <summary>
+        /// Returns completed, stationary starfighters owned by the controller that are stationed
+        /// directly on the planet or carried by a stationary local fleet.
+        /// </summary>
+        private static IEnumerable<Starfighter> GetStationedStarfighters(
+            Planet planet,
+            IEnumerable<Fleet> fleets,
+            string controllerInstanceID
+        ) =>
+            planet
+                .Starfighters.Concat(fleets.SelectMany(fleet => fleet.GetStarfighters()))
+                .Where(starfighter =>
+                    starfighter.OwnerInstanceID == controllerInstanceID
+                    && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    && starfighter.Movement == null
+                );
+
+        /// <summary>
+        /// Returns completed, stationary regiments owned by the controller that are stationed
+        /// directly on the planet or carried by a stationary local fleet.
+        /// </summary>
+        private static IEnumerable<Regiment> GetStationedRegiments(
+            Planet planet,
+            IEnumerable<Fleet> fleets,
+            string controllerInstanceID
+        ) =>
+            planet
+                .Regiments.Concat(fleets.SelectMany(fleet => fleet.GetRegiments()))
+                .Where(regiment =>
+                    regiment.OwnerInstanceID == controllerInstanceID
+                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                );
 
         /// <summary>
         /// Selects the opposing faction with the strongest local support.

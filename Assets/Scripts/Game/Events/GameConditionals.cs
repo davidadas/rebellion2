@@ -9,9 +9,9 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
-#region CompositeConditions
 namespace Rebellion.Game.Events
 {
+    #region CompositeConditions
     /// <summary>
     /// A <see cref="GameConditional"/> that is met when all child conditions are met.
     /// </summary>
@@ -95,12 +95,9 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context) =>
             Conditionals.Count(conditional => conditional.IsMet(context)) == 1;
     }
-}
-#endregion
+    #endregion
 
-#region EventStateConditions
-namespace Rebellion.Game.Events
-{
+    #region EventStateConditions
     /// <summary>
     /// Selects the comparison applied to a persistent event variable.
     /// </summary>
@@ -209,7 +206,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int CompareTo { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>Compares the current event variable value with the authored integer.</summary>
         public override bool IsMet(GameConditionContext context)
         {
             int current = context.Game.EventRuntime.GetVariable(Key);
@@ -332,12 +329,9 @@ namespace Rebellion.Game.Events
             return false;
         }
     }
-}
-#endregion
+    #endregion
 
-#region OfficerConditions
-namespace Rebellion.Game.Events
-{
+    #region OfficerConditions
     /// <summary>
     /// Selects one boolean officer state for a data-defined condition.
     /// </summary>
@@ -391,7 +385,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string CaptorFactionInstanceID { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>Returns whether the officer is captured by the configured faction.</summary>
         public override bool IsMet(GameConditionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
@@ -415,7 +409,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public ForceRankLabel Rank { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>Compares the officer's Force rank with the configured rank threshold.</summary>
         public override bool IsMet(GameConditionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
@@ -441,14 +435,14 @@ namespace Rebellion.Game.Events
         }
     }
 
-    [PersistableObject(Name = "CompareOfficerStat")]
-    public sealed class CompareOfficerStatConditional : GameConditional
+    [PersistableObject(Name = "CompareOfficerRating")]
+    public sealed class CompareOfficerRatingConditional : GameConditional
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
 
         [PersistableAttribute]
-        public OfficerStat Stat { get; set; }
+        public OfficerRating Rating { get; set; }
 
         [PersistableAttribute]
         public EventVariableComparison Comparison { get; set; }
@@ -461,7 +455,7 @@ namespace Rebellion.Game.Events
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
                 return false;
-            int current = officer.GetCurrentStat(Stat);
+            int current = officer.GetEffectiveRating(Rating);
             return Comparison switch
             {
                 EventVariableComparison.Equal => current == Value,
@@ -471,17 +465,53 @@ namespace Rebellion.Game.Events
                 EventVariableComparison.LessThan => current < Value,
                 EventVariableComparison.LessThanOrEqual => current <= Value,
                 _ => throw new InvalidOperationException(
-                    $"Unsupported officer-stat comparison '{Comparison}'."
+                    $"Unsupported officer-rating comparison '{Comparison}'."
                 ),
             };
         }
     }
-}
-#endregion
 
-#region SceneConditions
-namespace Rebellion.Game.Events
-{
+    /// <summary>
+    /// Compares an officer's current Force rank with an authored value.
+    /// </summary>
+    [PersistableObject(Name = "CompareOfficerForce")]
+    public sealed class CompareOfficerForceConditional : GameConditional
+    {
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public EventVariableComparison Comparison { get; set; }
+
+        [PersistableAttribute]
+        public int Value { get; set; }
+
+        /// <summary>
+        /// Evaluates the configured comparison against the officer's effective Force rank.
+        /// </summary>
+        public override bool IsMet(GameConditionContext context)
+        {
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                return false;
+            int current = officer.ForceRank;
+            return Comparison switch
+            {
+                EventVariableComparison.Equal => current == Value,
+                EventVariableComparison.NotEqual => current != Value,
+                EventVariableComparison.GreaterThan => current > Value,
+                EventVariableComparison.GreaterThanOrEqual => current >= Value,
+                EventVariableComparison.LessThan => current < Value,
+                EventVariableComparison.LessThanOrEqual => current <= Value,
+                _ => throw new InvalidOperationException(
+                    $"Unsupported officer-Force comparison '{Comparison}'."
+                ),
+            };
+        }
+    }
+    #endregion
+
+    #region SceneConditions
     [PersistableObject(Name = "ComparePlanetStat")]
     public sealed class ComparePlanetStatConditional : GameConditional
     {
@@ -764,7 +794,7 @@ namespace Rebellion.Game.Events
         public string UnitInstanceID { get; set; }
         public string LocationInstanceID { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>Returns whether the configured unit is contained by the configured location.</summary>
         public override bool IsMet(GameConditionContext context)
         {
             GameRoot game = context.Game;
@@ -779,5 +809,5 @@ namespace Rebellion.Game.Events
             return false;
         }
     }
+    #endregion
 }
-#endregion

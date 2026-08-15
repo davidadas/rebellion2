@@ -58,12 +58,6 @@ namespace Rebellion.Game.Missions
         public OfficerRating ParticipantRating { get; set; }
         public bool HasInitiated;
 
-        /// <summary>
-        /// Gets or sets whether player commands may abort this mission. Simulation invalidation
-        /// remains governed independently by <see cref="GetAbortReason"/>.
-        /// </summary>
-        public bool CanCancel { get; set; } = true;
-
         // Mission progress.
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }

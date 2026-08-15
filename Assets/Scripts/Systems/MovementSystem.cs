@@ -118,7 +118,8 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Routes data-defined event movement through the same validation and transit path as UI and AI orders.
+        /// Accepts event-authored movement requests, tries their destinations in authored order,
+        /// and submits the complete unit group through normal movement validation and transit.
         /// </summary>
         List<GameResult> IGameResultHandler<UnitMovementRequestedResult>.HandleResults(
             IReadOnlyList<UnitMovementRequestedResult> results
@@ -129,31 +130,46 @@ namespace Rebellion.Systems
 
             foreach (UnitMovementRequestedResult result in results)
             {
-                if (result?.Destination == null)
+                if (result?.Units == null || result.Destinations == null)
                     continue;
-
-                if (result.Units?.Count > 0 && result.DestinationCandidates?.Count > 1)
-                {
-                    foreach (ContainerNode candidate in result.DestinationCandidates)
-                    {
-                        if (
-                            TryRequestMoveGroup(
-                                result.Units,
-                                candidate,
-                                _pendingResults,
-                                result.SourceEventInstanceID
-                            )
-                        )
-                            break;
-                    }
-                }
-                else if (result.Units?.Count > 0)
-                    RequestMove(result.Units, result.Destination, result.SourceEventInstanceID);
-                else if (result.Unit != null)
-                    RequestMove(result.Unit, result.Destination, result.SourceEventInstanceID);
+                TryRequestMove(result.Units, result.Destinations, result.SourceEventInstanceID);
             }
 
             return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Attempts to move a complete unit group to the first destination that accepts it.
+        /// </summary>
+        /// <param name="units">The units that must move together.</param>
+        /// <param name="destinations">Candidate destinations in preference order.</param>
+        /// <param name="sourceEventInstanceID">The event requesting movement, when applicable.</param>
+        /// <returns>True when a destination accepted and received the movement request.</returns>
+        private bool TryRequestMove(
+            IReadOnlyList<IMovable> units,
+            IReadOnlyList<ContainerNode> destinations,
+            string sourceEventInstanceID
+        )
+        {
+            if (units == null || units.Count == 0 || destinations == null)
+                return false;
+
+            foreach (
+                ContainerNode destination in destinations.Where(candidate => candidate != null)
+            )
+            {
+                if (
+                    TryRequestMoveGroup(
+                        units.ToList(),
+                        destination,
+                        _pendingResults,
+                        sourceEventInstanceID
+                    )
+                )
+                    return true;
+            }
+
+            return false;
         }
 
         List<GameResult> IGameResultHandler<UnitPlacementRequestedResult>.HandleResults(
@@ -1717,47 +1733,31 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Moves surviving officers and starfighters away from a destroyed capital ship.
+        /// Relocates units to a compatible ship in their current fleet or, when none can accept
+        /// them, sends them toward the nearest eligible planet owned by their movement controller.
         /// </summary>
-        public void EvacuateDestroyedCapitalShip(CapitalShip destroyedShip)
+        /// <param name="units">The units to relocate from their current containers.</param>
+        public void RelocateUnits(IEnumerable<IMovable> units)
         {
-            if (destroyedShip == null)
-                throw new ArgumentNullException(nameof(destroyedShip));
+            if (units == null)
+                throw new ArgumentNullException(nameof(units));
 
-            Fleet fleet = destroyedShip.GetParentOfType<Fleet>();
-            CapitalShip survivingShip = fleet?.CapitalShips.FirstOrDefault(ship =>
-                ship != destroyedShip
-                && ship.ManufacturingStatus == ManufacturingStatus.Complete
-                && ship.Movement == null
-                && ship.CurrentHullStrength > 0
-            );
-            foreach (Officer officer in destroyedShip.Officers.ToList())
+            foreach (IMovable unit in units.Where(unit => unit != null).ToList())
             {
-                if (survivingShip != null)
-                    _game.MoveNode(officer, survivingShip);
-                else
-                    EvacuateToNearestFriendlyPlanet(officer);
-            }
-
-            foreach (
-                Starfighter starfighter in destroyedShip
-                    .Starfighters.Where(starfighter =>
-                        starfighter.ManufacturingStatus == ManufacturingStatus.Complete
-                    )
-                    .ToList()
-            )
-            {
-                CapitalShip survivingCarrier = fleet?.CapitalShips.FirstOrDefault(ship =>
-                    ship != destroyedShip
+                ISceneNode node = unit as ISceneNode;
+                CapitalShip currentShip = node?.GetParentOfType<CapitalShip>();
+                Fleet fleet = node?.GetParentOfType<Fleet>();
+                CapitalShip destination = fleet?.CapitalShips.FirstOrDefault(ship =>
+                    ship != currentShip
                     && ship.ManufacturingStatus == ManufacturingStatus.Complete
                     && ship.Movement == null
                     && ship.CurrentHullStrength > 0
-                    && ship.GetExcessStarfighterCapacity() > 0
+                    && ship.CanAcceptChild(node)
                 );
-                if (survivingCarrier != null)
-                    _game.MoveNode(starfighter, survivingCarrier);
+                if (destination != null)
+                    _game.MoveNode(node, destination);
                 else
-                    EvacuateToNearestFriendlyPlanet(starfighter);
+                    EvacuateToNearestFriendlyPlanet(unit);
             }
         }
 

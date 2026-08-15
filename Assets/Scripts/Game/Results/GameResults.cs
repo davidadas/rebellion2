@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Notifications;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -584,10 +584,8 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class UnitMovementRequestedResult : GameResult
     {
-        public IMovable Unit { get; set; }
         public List<IMovable> Units { get; set; } = new List<IMovable>();
-        public ContainerNode Destination { get; set; }
-        public List<ContainerNode> DestinationCandidates { get; set; } = new List<ContainerNode>();
+        public List<ContainerNode> Destinations { get; set; } = new List<ContainerNode>();
     }
 
     /// <summary>

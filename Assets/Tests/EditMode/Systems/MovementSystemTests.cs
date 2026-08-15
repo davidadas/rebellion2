@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Systems
     public class MovementSystemTests
     {
         [Test]
-        public void EvacuateDestroyedCapitalShip_UnfinishedCarrierAvailable_MovesStarfighterToFriendlyPlanet()
+        public void RelocateUnits_NoCompatibleShip_MovesStarfighterToFriendlyPlanet()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Systems
                 new FleetSystem(game)
             );
 
-            movement.EvacuateDestroyedCapitalShip(destroyedShip);
+            movement.RelocateUnits(new[] { starfighter });
 
             Assert.AreSame(friendlyPlanet, starfighter.GetParent());
         }
@@ -198,7 +198,11 @@ namespace Rebellion.Tests.Systems
             handler.HandleResults(
                 new[]
                 {
-                    new UnitMovementRequestedResult { Unit = officer, Destination = destination },
+                    new UnitMovementRequestedResult
+                    {
+                        Units = new List<IMovable> { officer },
+                        Destinations = new List<ContainerNode> { destination },
+                    },
                 }
             );
 
@@ -216,8 +220,8 @@ namespace Rebellion.Tests.Systems
                 {
                     new UnitMovementRequestedResult
                     {
-                        Unit = officer,
-                        Destination = destination,
+                        Units = new List<IMovable> { officer },
+                        Destinations = new List<ContainerNode> { destination },
                         SourceEventInstanceID = "SEND_OFFICER",
                     },
                 }
@@ -243,8 +247,8 @@ namespace Rebellion.Tests.Systems
                 {
                     new UnitMovementRequestedResult
                     {
-                        Unit = officer,
-                        Destination = origin,
+                        Units = new List<IMovable> { officer },
+                        Destinations = new List<ContainerNode> { origin },
                         SourceEventInstanceID = "SEND_OFFICER",
                     },
                 }
@@ -311,8 +315,7 @@ namespace Rebellion.Tests.Systems
                     new UnitMovementRequestedResult
                     {
                         Units = new List<IMovable> { officer },
-                        Destination = rejected,
-                        DestinationCandidates = new List<ContainerNode> { rejected, destination },
+                        Destinations = new List<ContainerNode> { rejected, destination },
                     },
                 }
             );

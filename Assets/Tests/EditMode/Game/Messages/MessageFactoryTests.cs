@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Notifications;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -346,7 +346,7 @@ namespace Rebellion.Tests.Game.Messages
                 MessageImagePath = "reporter-image",
                 VoiceSet = new OfficerVoiceSet
                 {
-                    PersonnelArrived = new List<string> { "arrival-voice" },
+                    PersonnelArrivedPaths = new List<string> { "arrival-voice" },
                 },
             };
             Officer passenger = new Officer
@@ -462,7 +462,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
                 VoiceSet = new OfficerVoiceSet
                 {
-                    PersonnelArrived = new List<string> { "arrival-voice" },
+                    PersonnelArrivedPaths = new List<string> { "arrival-voice" },
                 },
             };
             SpecialForces infiltrators = new SpecialForces
@@ -1038,10 +1038,6 @@ namespace Rebellion.Tests.Game.Messages
         public void CreateMessages_DeployedCombatUnits_UseUnitSpecificReports()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
-            game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs = new List<string>
-            {
-                "DEATH_STAR",
-            };
             Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = alliance.InstanceID };
             game.AttachNode(fleet, origin);
             CapitalShip ship = new CapitalShip
@@ -1054,6 +1050,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 DisplayName = "Death Star Alpha",
                 TypeID = "DEATH_STAR",
+                CanDestroyPlanets = true,
                 OwnerInstanceID = alliance.InstanceID,
                 EncyclopediaImagePath = "death-star-encyclopedia-image",
             };
@@ -1484,7 +1481,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
                 VoiceSet = new OfficerVoiceSet
                 {
-                    MissionSuccess = new List<string> { "success-voice" },
+                    MissionSuccessPaths = new List<string> { "success-voice" },
                 },
             };
             Officer recruit = new Officer
@@ -1544,7 +1541,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
                 VoiceSet = new OfficerVoiceSet
                 {
-                    MissionFailure = new List<string> { "failure-voice" },
+                    MissionFailurePaths = new List<string> { "failure-voice" },
                 },
             };
             Mission mission = new SabotageMission
@@ -1594,8 +1591,8 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
                 VoiceSet = new OfficerVoiceSet
                 {
-                    MissionFailure = new List<string> { "failure-voice" },
-                    MissionAbort = new List<string> { "abort-voice" },
+                    MissionFailurePaths = new List<string> { "failure-voice" },
+                    MissionAbortPaths = new List<string> { "abort-voice" },
                 },
             };
             Mission mission = new SabotageMission
@@ -1975,7 +1972,7 @@ namespace Rebellion.Tests.Game.Messages
                 MessageImagePath = "student-card",
                 VoiceSet = new OfficerVoiceSet
                 {
-                    MissionSuccess = new List<string> { "student-success" },
+                    MissionSuccessPaths = new List<string> { "student-success" },
                 },
             };
             Officer trainer = new Officer
@@ -1986,7 +1983,7 @@ namespace Rebellion.Tests.Game.Messages
                 MessageImagePath = "trainer-card",
                 VoiceSet = new OfficerVoiceSet
                 {
-                    MissionSuccess = new List<string> { "trainer-success" },
+                    MissionSuccessPaths = new List<string> { "trainer-success" },
                 },
             };
             JediTrainingMission mission = new JediTrainingMission
@@ -2402,7 +2399,7 @@ namespace Rebellion.Tests.Game.Messages
                 MessageImagePath = "agent-card",
                 VoiceSet = new OfficerVoiceSet
                 {
-                    Recovered = new List<string> { "recovered-voice" },
+                    RecoveredPaths = new List<string> { "recovered-voice" },
                 },
             };
             game.AttachNode(officer, origin);
@@ -2718,7 +2715,7 @@ namespace Rebellion.Tests.Game.Messages
                 MessageImagePath = "luke-card",
                 VoiceSet = new OfficerVoiceSet
                 {
-                    TraitorDiscovered = new List<string> { "luke-discovers-traitor" },
+                    TraitorDiscoveredPaths = new List<string> { "luke-discovers-traitor" },
                 },
             };
             Officer traitor = new Officer
@@ -2785,7 +2782,7 @@ namespace Rebellion.Tests.Game.Messages
                 MessageImagePath = "discoverer-image",
                 VoiceSet = new OfficerVoiceSet
                 {
-                    ForceUserDiscovered = new List<string> { "discovery-voice" },
+                    ForceUserDiscoveredPaths = new List<string> { "discovery-voice" },
                 },
             };
             Officer candidate = new Officer
