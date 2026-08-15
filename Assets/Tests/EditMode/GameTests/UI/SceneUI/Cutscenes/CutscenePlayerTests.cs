@@ -57,6 +57,13 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsFalse(_audioSource.playOnAwake);
             Assert.AreEqual(Color.black, _screen.color);
             Assert.IsTrue(_screen.raycastTarget);
+            Assert.AreEqual(1920, _videoPlayer.targetTexture.width);
+            Assert.AreEqual(1080, _videoPlayer.targetTexture.height);
+            Assert.AreEqual(0, _videoPlayer.targetTexture.depth);
+            AspectRatioFitter screenAspect = _screen.GetComponent<AspectRatioFitter>();
+            Assert.IsNotNull(screenAspect);
+            Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, screenAspect.aspectMode);
+            Assert.AreEqual(16f / 9f, screenAspect.aspectRatio, 0.0001f);
         }
 
         [Test]

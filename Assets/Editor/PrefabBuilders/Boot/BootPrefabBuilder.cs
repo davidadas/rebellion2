@@ -1,8 +1,10 @@
 using System;
 using System.IO;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
@@ -11,23 +13,56 @@ using UnityEngine.Video;
 /// </summary>
 public static class BootPrefabBuilder
 {
-    private const int _cutsceneHeight = 1944;
-    private const int _cutsceneWidth = 3840;
+    private const int _cutsceneHeight = 1080;
+    private const int _cutsceneWidth = 1920;
     private const string _bootPrefabPath = "Assets/Prefabs/UI/Boot/BootRoot.prefab";
     private const string _bootScenePath = "Assets/Scenes/BootScene.unity";
+    private const string _mainMenuScenePath = "Assets/Scenes/MainMenu.unity";
     private const string _cutscenePrefabPath = "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
     private const string _cutsceneRenderTexturePath =
         "Assets/Prefabs/UI/Cutscenes/CutsceneRenderTexture.renderTexture";
 
     /// <summary>
-    /// Rebuilds the complete boot asset graph from code.
+    /// Rebuilds the boot prefabs and cutscene render target from code.
     /// </summary>
     public static void Rebuild()
     {
         RenderTexture renderTexture = BuildRenderTexture();
         GameObject cutscenePrefab = BuildCutscenePrefab(renderTexture);
         BuildBootPrefab(cutscenePrefab);
+    }
+
+    /// <summary>
+    /// Generates the temporary boot scene consumed by a player build.
+    /// </summary>
+    public static void BuildScene()
+    {
         SceneBuilder.Build(_bootScenePath, _bootPrefabPath, "BootRoot");
+    }
+
+    /// <summary>
+    /// Removes the generated boot scene after switching away from it when necessary.
+    /// </summary>
+    public static void DeleteScene()
+    {
+        Scene bootScene = SceneManager.GetSceneByPath(_bootScenePath);
+        if (bootScene.IsValid() && bootScene.isLoaded)
+        {
+            if (SceneManager.GetActiveScene() == bootScene || SceneManager.sceneCount == 1)
+            {
+                if (File.Exists(_mainMenuScenePath))
+                    EditorSceneManager.OpenScene(_mainMenuScenePath, OpenSceneMode.Single);
+                else
+                    EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            }
+            else
+            {
+                EditorSceneManager.CloseScene(bootScene, true);
+            }
+        }
+
+        if (File.Exists(_bootScenePath) && !AssetDatabase.DeleteAsset(_bootScenePath))
+            throw new IOException($"Could not delete generated scene: {_bootScenePath}");
     }
 
     /// <summary>
@@ -44,7 +79,7 @@ public static class BootPrefabBuilder
             renderTexture = new RenderTexture(
                 _cutsceneWidth,
                 _cutsceneHeight,
-                24,
+                0,
                 RenderTextureFormat.ARGB32
             )
             {
@@ -56,6 +91,7 @@ public static class BootPrefabBuilder
         renderTexture.Release();
         renderTexture.width = _cutsceneWidth;
         renderTexture.height = _cutsceneHeight;
+        renderTexture.depth = 0;
         renderTexture.antiAliasing = 1;
         renderTexture.useMipMap = false;
         renderTexture.autoGenerateMips = false;
@@ -104,7 +140,8 @@ public static class BootPrefabBuilder
                 "VideoScreenImage",
                 typeof(RectTransform),
                 typeof(CanvasRenderer),
-                typeof(RawImage)
+                typeof(RawImage),
+                typeof(AspectRatioFitter)
             );
             RectTransform screenRect = screenObject.GetComponent<RectTransform>();
             screenRect.SetParent(rootRect, false);
@@ -113,6 +150,9 @@ public static class BootPrefabBuilder
             screen.texture = renderTexture;
             screen.color = Color.white;
             screen.raycastTarget = true;
+            AspectRatioFitter screenAspect = screen.GetComponent<AspectRatioFitter>();
+            screenAspect.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            screenAspect.aspectRatio = 16f / 9f;
 
             CutscenePlayer player = root.GetComponent<CutscenePlayer>();
             AssignReference(player, "screen", screen);

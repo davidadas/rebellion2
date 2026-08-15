@@ -10,6 +10,9 @@ public static class StandalonePlayerBuild
 {
     private const string _developmentContentAssetPrefix = "Assets/Content/";
     private const string _developmentModelAssetPrefix = "Assets/Art/Models/MainMenu/";
+    private const string _bootScenePath = "Assets/Scenes/BootScene.unity";
+    private const string _mainMenuScenePath = "Assets/Scenes/MainMenu.unity";
+    private const string _strategyScenePath = "Assets/Scenes/StrategyView.unity";
     private const string _buildTargetArgument = "-buildTarget";
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
@@ -103,21 +106,34 @@ public static class StandalonePlayerBuild
     {
         _ = GetDefaultArtifact(target);
         outputPath = NormalizeOutputPath(target, outputPath);
-        UIBuilderMenu.BuildRuntimeUI();
+        try
+        {
+            UIBuilderMenu.BuildRuntimeUI();
+            return BuildGeneratedPlayer(target, outputPath);
+        }
+        finally
+        {
+            BootPrefabBuilder.DeleteScene();
+        }
+    }
 
+    /// <summary>
+    /// Builds the player after all generated UI and scene assets are ready.
+    /// </summary>
+    /// <param name="target">The desktop platform to build.</param>
+    /// <param name="outputPath">The normalized player artifact path.</param>
+    /// <returns>The platform-correct player artifact path.</returns>
+    private static string BuildGeneratedPlayer(UnityEditor.BuildTarget target, string outputPath)
+    {
         string outputDirectory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(outputDirectory))
         {
             Directory.CreateDirectory(outputDirectory);
         }
-        string[] scenes = UnityEditor
-            .EditorBuildSettings.scenes.Where(scene => scene.enabled)
-            .Select(scene => scene.path)
-            .ToArray();
-        if (scenes.Length == 0)
-        {
-            throw new InvalidOperationException("No enabled scenes configured for player build.");
-        }
+        string[] scenes = { _bootScenePath, _mainMenuScenePath, _strategyScenePath };
+        string missingScene = scenes.FirstOrDefault(path => !File.Exists(path));
+        if (missingScene != null)
+            throw new FileNotFoundException("Generated player scene not found.", missingScene);
 
         UnityEditor.BuildPlayerOptions options = new UnityEditor.BuildPlayerOptions
         {
