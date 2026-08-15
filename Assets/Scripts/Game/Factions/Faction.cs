@@ -321,16 +321,6 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Returns the next technology to be researched for a manufacturing type.
-        /// </summary>
-        /// <param name="manufacturingType">The manufacturing type to query.</param>
-        /// <returns>The next technology to research, or null if all are unlocked.</returns>
-        public Technology GetCurrentResearchTarget(ManufacturingType manufacturingType)
-        {
-            return GetCurrentResearchTarget(manufacturingType.ToResearchDiscipline());
-        }
-
-        /// <summary>
         /// Returns the highest unlocked research order for a discipline.
         /// </summary>
         /// <param name="discipline">The research discipline to query.</param>

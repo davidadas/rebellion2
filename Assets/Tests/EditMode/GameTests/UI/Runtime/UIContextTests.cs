@@ -1,0 +1,231 @@
+using System;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
+using Rebellion.Game.Units;
+using UnityEngine;
+
+namespace Rebellion.Tests.UI.Runtime
+{
+    [TestFixture]
+    public class UIContextTests
+    {
+        private const string _playerFactionId = "FNALL1";
+
+        private UIContext _context;
+        private EncyclopediaCatalog _encyclopediaCatalog;
+        private GameRoot _game;
+        private FactionThemeLibrary _themeLibrary;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _game = CreateGame(_playerFactionId);
+            _themeLibrary = TestContent.CreateThemeLibrary();
+            _encyclopediaCatalog = new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>());
+            _context = new UIContext(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                TestContent.Assets.GetTexture
+            );
+        }
+
+        [Test]
+        public void Constructor_NullDependency_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                new UIContext(
+                    null,
+                    _themeLibrary,
+                    _encyclopediaCatalog,
+                    TestContent.Assets.GetTexture
+                )
+            );
+            Assert.Throws<ArgumentNullException>(() =>
+                new UIContext(_game, null, _encyclopediaCatalog, TestContent.Assets.GetTexture)
+            );
+            Assert.Throws<ArgumentNullException>(() =>
+                new UIContext(_game, _themeLibrary, null, TestContent.Assets.GetTexture)
+            );
+            Assert.Throws<ArgumentNullException>(() =>
+                new UIContext(_game, _themeLibrary, _encyclopediaCatalog, null)
+            );
+        }
+
+        [Test]
+        public void Properties_ConfiguredContext_ReturnSuppliedDependencies()
+        {
+            Assert.AreSame(_game, _context.Game);
+            Assert.AreSame(_encyclopediaCatalog, _context.EncyclopediaCatalog);
+            Assert.AreEqual(_playerFactionId, _context.GetPlayerFactionInstanceID());
+            Assert.AreSame(
+                _themeLibrary.GetTheme(_playerFactionId),
+                _context.GetPlayerFactionTheme()
+            );
+        }
+
+        [Test]
+        public void ReplaceGame_ReplacementGame_UpdatesPlayerContext()
+        {
+            GameRoot replacement = CreateGame("FNEMP1");
+
+            _context.ReplaceGame(replacement);
+
+            Assert.AreSame(replacement, _context.Game);
+            Assert.AreEqual("FNEMP1", _context.GetPlayerFactionInstanceID());
+            Assert.AreSame(_themeLibrary.GetTheme("FNEMP1"), _context.GetPlayerFactionTheme());
+        }
+
+        [Test]
+        public void ReplaceGame_NullGame_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => _context.ReplaceGame(null));
+        }
+
+        [Test]
+        public void ResolveFactionColor_KnownFaction_ReturnsConfiguredPrimaryColor()
+        {
+            Color color = _context.ResolveFactionColor(_playerFactionId);
+
+            Assert.AreEqual(_themeLibrary.GetTheme(_playerFactionId).GetPrimaryColor(), color);
+        }
+
+        [Test]
+        public void GetTexture_EmptyOrMissingPath_ReturnsNull()
+        {
+            Assert.IsNull(_context.GetTexture(null));
+            Assert.IsNull(_context.GetTexture(string.Empty));
+            Assert.IsNull(_context.GetTexture("Pack/Shared/Strategy/UI/missing/test-asset"));
+            Assert.IsNull(_context.GetTexture("Pack/Shared/Strategy/UI/missing/test-asset"));
+        }
+
+        [Test]
+        public void GetTexture_ConfiguredPath_ReturnsCachedContentTexture()
+        {
+            string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
+
+            Texture2D first = _context.GetTexture(path);
+            Texture2D second = _context.GetTexture(path);
+
+            Assert.IsNotNull(first);
+            Assert.AreSame(first, second);
+            Assert.AreEqual(FilterMode.Point, first.filterMode);
+            Assert.AreEqual(TextureWrapMode.Clamp, first.wrapMode);
+        }
+
+        [Test]
+        public void GetEntityTexture_NullOrUnmappedEntity_ReturnsNull()
+        {
+            Assert.IsNull(_context.GetEntityTexture(null, false));
+            Assert.IsNull(_context.GetEntityTexture(new Officer(), false));
+        }
+
+        [Test]
+        public void GetEntityTexture_CompactPath_PrefersConfiguredSmallArtwork()
+        {
+            FactionTheme theme = _context.GetPlayerFactionTheme();
+            Officer officer = new Officer
+            {
+                DisplayImagePath = theme.ConfirmDialogTheme.BackgroundImagePath,
+                SmallDisplayImagePath = theme.GalaxyBackground.DestroyedPlanetIconPath,
+            };
+
+            Texture2D texture = _context.GetEntityTexture(officer, true);
+
+            Assert.AreSame(
+                _context.GetTexture(theme.GalaxyBackground.DestroyedPlanetIconPath),
+                texture
+            );
+        }
+
+        [Test]
+        public void GetEntityStatusTexture_InjuredOfficer_ReturnsInjuryArtwork()
+        {
+            string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
+            Officer officer = new Officer { InjuryPoints = 1, InjuredImagePath = path };
+
+            Texture2D texture = _context.GetEntityStatusTexture(officer, false);
+
+            Assert.AreSame(_context.GetTexture(path), texture);
+        }
+
+        [Test]
+        public void GetEntityStatusTexture_ShipCarriedByMovingFleet_ReturnsTransitArtwork()
+        {
+            string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
+            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            Planet planet = new Planet { InstanceID = "planet" };
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "fleet",
+                Movement = new MovementState { TransitTicks = 10 },
+            };
+            CapitalShip ship = new CapitalShip { InstanceID = "ship", InTransitImagePath = path };
+            _game.AttachNode(system, _game.GetGalaxyMap());
+            _game.AttachNode(planet, system);
+            _game.AttachNode(fleet, planet);
+            _game.AttachNode(ship, fleet);
+
+            Texture2D texture = _context.GetEntityStatusTexture(ship, false);
+
+            Assert.AreSame(_context.GetTexture(path), texture);
+        }
+
+        [Test]
+        public void GetEntityCapturedOverlayTexture_CapturedOfficer_ReturnsConfiguredOverlay()
+        {
+            string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
+            Officer officer = new Officer { IsCaptured = true, CapturedOverlayImagePath = path };
+
+            Texture2D texture = _context.GetEntityCapturedOverlayTexture(officer);
+
+            Assert.AreSame(_context.GetTexture(path), texture);
+            Assert.IsNull(_context.GetEntityCapturedOverlayTexture(new Officer()));
+            Assert.IsNull(_context.GetEntityCapturedOverlayTexture(new Fleet()));
+        }
+
+        [Test]
+        public void GetEntityCapturedOverlayTexture_OfficerCatalog_ReturnsOverlayForEveryOfficer()
+        {
+            Officer[] officers = TestContent.Data.Officers;
+
+            Assert.IsNotEmpty(officers);
+            foreach (Officer officer in officers)
+            {
+                officer.IsCaptured = true;
+                Assert.IsFalse(
+                    string.IsNullOrEmpty(officer.CapturedOverlayImagePath),
+                    $"{officer.DisplayName} is missing captured overlay data."
+                );
+                Assert.IsNotNull(
+                    _context.GetEntityCapturedOverlayTexture(officer),
+                    $"{officer.DisplayName} captured overlay could not be loaded."
+                );
+            }
+        }
+
+        [Test]
+        public void GetPlanetTexture_DestroyedPlanet_ReturnsFactionDestroyedPlanetArtwork()
+        {
+            Planet planet = new Planet { IsDestroyed = true };
+            string path = _context.GetPlayerFactionTheme().GalaxyBackground.DestroyedPlanetIconPath;
+
+            Texture2D texture = _context.GetPlanetTexture(planet, "unused");
+
+            Assert.AreSame(_context.GetTexture(path), texture);
+            Assert.IsNull(_context.GetPlanetTexture(null, path));
+        }
+
+        private static GameRoot CreateGame(string playerFactionId)
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.Factions.Add(new Faction { InstanceID = playerFactionId });
+            game.Summary.PlayerFactionID = playerFactionId;
+            return game;
+        }
+    }
+}

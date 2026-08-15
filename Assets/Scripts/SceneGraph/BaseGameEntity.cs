@@ -22,11 +22,6 @@ namespace Rebellion.SceneGraph
             set => _instanceId = value;
         }
 
-        internal string PeekInstanceID()
-        {
-            return _instanceId ?? string.Empty;
-        }
-
         public string TypeID { get; set; }
         public string DisplayName { get; set; }
         public string DisplayStatus { get; set; }

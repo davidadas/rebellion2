@@ -221,8 +221,10 @@ namespace Rebellion.Game.FogOfWar
             if (ancestor != null)
                 return ancestor;
 
-            return observation is IManufacturable manufacturable
-                ? manufacturable.GetProducerPlanet(game)
+            return
+                observation is IManufacturable manufacturable
+                && !string.IsNullOrEmpty(manufacturable.ProducerPlanetID)
+                ? game.GetSceneNodeByInstanceID<Planet>(manufacturable.ProducerPlanetID)
                 : null;
         }
 

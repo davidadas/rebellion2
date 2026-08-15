@@ -13,28 +13,6 @@
 
 # Unity Files
 *.meta
-!Assets/Editor/Content.meta
-!Assets/Editor/Content/*.meta
-!Assets/Editor/Build.meta
-!Assets/Editor/Build/*.meta
-!Assets/Editor/PrefabBuilders.meta
-!Assets/Editor/PrefabBuilders/*.meta
-!Assets/Editor/PrefabBuilders/*/*.meta
-!Assets/Prefabs/UI/Cutscenes/CutsceneRenderTexture.renderTexture.meta
-!Assets/Scripts/App/SceneLoader.cs.meta
-!Assets/Shaders.meta
-!Assets/Shaders/*.meta
-!Assets/Scripts/Content.meta
-!Assets/Scripts/Content/*.meta
-!Assets/Scripts/UI/Components/AutoRotate.cs.meta
-!Assets/Tests/EditMode/App.meta
-!Assets/Tests/EditMode/App/AppBootstrapTests.cs.meta
-!Assets/Tests/EditMode/App/GameRuntimeTests.cs.meta
-!Assets/Tests/EditMode/Content.meta
-!Assets/Tests/EditMode/Content/ContentAssetsTests.cs.meta
-!Assets/Tests/EditMode/Content/ContentPackTests.cs.meta
-!Assets/Tests/EditMode/Helpers/TestContent.cs.meta
-!Assets/Tests/EditMode/UI/Runtime/Themes/StrategyAdvisorThemeTests.cs.meta
 Unity_lic.alf
 /temp
 /[Ll]ibrary/
@@ -67,19 +45,13 @@ Assets/_Recovery/
 Assets/Videos/
 Assets/TextMesh Pro/
 /Assets/Content/
-/Assets/Resources/UI/DefaultCursor.png
+/Assets/Resources/
 # Installed content is supplied by rebellion2-media beside the project/player.
 /Content/
 
-# UI builders are the source of truth for generated UI assets and scenes.
-/Assets/Prefabs/UI/Common/*.prefab
-/Assets/Prefabs/UI/MainMenu/*.prefab
-/Assets/Prefabs/UI/OptionsMenu/*.prefab
-/Assets/Prefabs/UI/StrategyView/**/*.prefab
-/Assets/Scenes/MainMenu.unity
-/Assets/Scenes/MainMenu.unity.meta
-/Assets/Scenes/StrategyView.unity
-/Assets/Scenes/StrategyView.unity.meta
+# UI builders are the source of truth for every prefab and scene.
+/Assets/Prefabs/
+/Assets/Scenes/
 
 # C# Files
 **/*.sln

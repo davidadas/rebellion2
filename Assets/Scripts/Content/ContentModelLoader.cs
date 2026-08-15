@@ -10,39 +10,6 @@ using UnityEngine;
 public static class ContentModelLoader
 {
     /// <summary>
-    /// Loads a GLB file and instantiates its main scene under the supplied parent.
-    /// </summary>
-    /// <param name="filePath">The absolute path to the .glb file.</param>
-    /// <param name="parent">The transform the instantiated model is parented to.</param>
-    /// <param name="cancellationToken">Token that cancels the load and instantiation.</param>
-    /// <returns>The loaded model and the resources that must remain alive with it.</returns>
-    public static async Task<ContentModelInstance> LoadAsync(
-        string filePath,
-        Transform parent,
-        CancellationToken cancellationToken
-    )
-    {
-        if (parent == null)
-            throw new ArgumentNullException(nameof(parent));
-
-        ContentModelResource resource = await LoadResourceAsync(filePath, cancellationToken);
-        try
-        {
-            ContentModelInstance instance = await resource.InstantiateAsync(
-                parent,
-                cancellationToken
-            );
-            instance.TakeOwnership(resource);
-            resource = null;
-            return instance;
-        }
-        finally
-        {
-            resource?.Dispose();
-        }
-    }
-
-    /// <summary>
     /// Parses a GLB into a reusable model resource without instantiating its scene.
     /// </summary>
     internal static async Task<ContentModelResource> LoadResourceAsync(

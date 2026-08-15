@@ -25,6 +25,11 @@ public static class SceneBuilder
         Action configureScene = null
     )
     {
+        string sceneDirectory = Path.GetDirectoryName(scenePath);
+        if (string.IsNullOrEmpty(sceneDirectory))
+            throw new IOException($"Scene path has no directory: {scenePath}");
+        Directory.CreateDirectory(sceneDirectory);
+
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         if (prefab == null)
             throw new FileNotFoundException(prefabPath);

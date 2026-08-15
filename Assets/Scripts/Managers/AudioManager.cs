@@ -232,34 +232,6 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Plays a playlist from already loaded clips.
-    /// </summary>
-    /// <param name="clips">The clips to play.</param>
-    /// <param name="shuffle">Whether the playlist should be shuffled before playback.</param>
-    public void PlayPlaylist(AudioClip[] clips, bool shuffle = false)
-    {
-        AudioClip[] playableClips = clips?.Where(clip => clip != null).ToArray();
-        if (playableClips == null || playableClips.Length == 0)
-            return;
-
-        EnsureAudioSources();
-        StopPlaylist();
-        StopFadeOut();
-        StopMusicLoad();
-        StopCurrentMusicClip();
-
-        _activeTrackPath = null;
-        _activeTrackLoop = false;
-        _activePlaylistPaths = null;
-        _requestedPlaylistPaths = null;
-        _clipPlaylist = shuffle ? playableClips.Shuffle().ToArray() : playableClips;
-        _playlistIndex = 0;
-        _shufflePlaylist = shuffle;
-
-        _playlistCoroutine = StartCoroutine(RunClipPlaylist());
-    }
-
-    /// <summary>
     /// Plays a playlist from content addresses.
     /// </summary>
     /// <param name="resourcePaths">The content addresses for the playlist tracks.</param>

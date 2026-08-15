@@ -152,7 +152,7 @@ namespace Rebellion.Game.Units
     }
 
     /// <summary>
-    /// Force rank display labels.
+    /// Defines the display labels assigned to Force-rating thresholds.
     /// </summary>
     public enum ForceRankLabel
     {
@@ -387,16 +387,6 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns the base research value for the given manufacturing type.
-        /// </summary>
-        /// <param name="manufacturingType">The manufacturing type to query.</param>
-        /// <returns>The officer's base research value for that manufacturing type.</returns>
-        public int GetBaseRating(ManufacturingType manufacturingType)
-        {
-            return GetBaseRating(manufacturingType.ToResearchDiscipline());
-        }
-
-        /// <summary>
         /// Adds the specified amount to the base research value for the given discipline.
         /// </summary>
         /// <param name="discipline">The research discipline to update.</param>
@@ -404,16 +394,6 @@ namespace Rebellion.Game.Units
         public void IncrementBaseRating(ResearchDiscipline discipline, int amount = 1)
         {
             IncrementBaseRating(GetRatingForResearchDiscipline(discipline), amount);
-        }
-
-        /// <summary>
-        /// Adds the specified amount to the base research value for the given manufacturing type.
-        /// </summary>
-        /// <param name="manufacturingType">The manufacturing type to update.</param>
-        /// <param name="amount">The amount to add.</param>
-        public void IncrementBaseRating(ManufacturingType manufacturingType, int amount = 1)
-        {
-            IncrementBaseRating(manufacturingType.ToResearchDiscipline(), amount);
         }
 
         /// <summary>

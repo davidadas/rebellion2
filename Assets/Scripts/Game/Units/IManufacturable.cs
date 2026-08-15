@@ -1,5 +1,4 @@
 using System;
-using Rebellion.Game.Galaxy;
 
 namespace Rebellion.Game.Units
 {
@@ -40,37 +39,6 @@ namespace Rebellion.Game.Units
         public string ProducerPlanetID { get; set; }
         public int ManufacturingProgress { get; set; }
         public ManufacturingStatus ManufacturingStatus { get; set; }
-
-        /// <summary>
-        /// Returns the owner ID of the producer.
-        /// </summary>
-        /// <returns>The owner ID of the producer.</returns>
-        public string GetProducerOwnerID()
-        {
-            return ProducerOwnerID;
-        }
-
-        /// <summary>
-        /// Returns the planet ID where this item is being manufactured.
-        /// </summary>
-        /// <returns>The InstanceID of the producing planet.</returns>
-        public string GetProducerPlanetID()
-        {
-            return ProducerPlanetID;
-        }
-
-        /// <summary>
-        /// Returns the planet where this item is being manufactured.
-        /// </summary>
-        /// <param name="game">The game instance to look up the planet.</param>
-        /// <returns>The producing planet, or null if not found.</returns>
-        public Planet GetProducerPlanet(GameRoot game)
-        {
-            if (string.IsNullOrEmpty(ProducerPlanetID))
-                return null;
-
-            return game.GetSceneNodeByInstanceID<Planet>(ProducerPlanetID);
-        }
 
         /// <summary>
         /// Returns the construction cost of the manufacturable.

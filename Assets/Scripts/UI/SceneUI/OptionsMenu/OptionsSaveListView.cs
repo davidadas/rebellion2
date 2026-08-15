@@ -168,8 +168,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             selected >= 0
             && selected < data.SaveSlots.Count
             && !data.SaveSlots[selected].IsCreateNew;
-        bool canSave = data.CanSave && existingSelected;
-        bool canLoad = data.CanLoad && existingSelected;
+        bool canSave = data.HasActiveGame && existingSelected;
+        bool canLoad = existingSelected;
         _saveButton.interactable = canSave;
         _loadButton.interactable = canLoad;
         SetButtonDisabledVisual(_saveButton, _saveDisabledImage, canSave);

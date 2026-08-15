@@ -195,14 +195,20 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return;
 
         _view.Render(
-            OptionsMenuProjector.Build(
-                _window,
+            new OptionsMenuRenderData(
+                _window.X,
+                _window.Y,
                 _activeTab,
-                _settingsSession,
-                _bindingSession,
+                _settingsSession.ResolutionLabel,
+                _settingsSession.FullScreenLabel,
+                _settingsSession.GetTacticalStates(),
+                _settingsSession.GetVolumes(),
+                _bindingSession.Rows,
                 _saveSlots,
                 _selectedSlot,
-                HasActiveGame()
+                HasActiveGame(),
+                _bindingSession.ListeningRow,
+                _bindingSession.ListeningSecondary
             )
         );
     }

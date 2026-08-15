@@ -100,16 +100,6 @@ namespace Rebellion.Util.Common
         }
 
         /// <summary>
-        /// Logs a message at the Error level.
-        /// </summary>
-        /// <typeparam name="T">The type of the message to log.</typeparam>
-        /// <param name="message">The message to log.</param>
-        public static void Error<T>(T message)
-        {
-            Log(message, LogLevel.Error);
-        }
-
-        /// <summary>
         /// Logs a formatted message to the Unity Console and optionally to a file.
         /// </summary>
         /// <param name="level">The log level (e.g., Info, Warning, Error).</param>
@@ -130,17 +120,6 @@ namespace Rebellion.Util.Common
         {
             string message =
                 $"Exception: {exception.GetType().Name}\nMessage: {exception.Message}\nStackTrace: {exception.StackTrace}";
-            Log(message, level);
-        }
-
-        /// <summary>
-        /// Logs an object as JSON to the Unity Console and optionally to a file.
-        /// </summary>
-        /// <param name="obj">The object to log.</param>
-        /// <param name="level">The log level (e.g., Info, Warning, Error).</param>
-        public static void LogObject(object obj, LogLevel level = LogLevel.Info)
-        {
-            string message = UnityEngine.JsonUtility.ToJson(obj, true);
             Log(message, level);
         }
 

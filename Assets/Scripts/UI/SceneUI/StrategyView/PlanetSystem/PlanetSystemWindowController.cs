@@ -344,21 +344,6 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Replaces the sector owned by one planet-system session.
-    /// </summary>
-    /// <param name="view">The planet-system view.</param>
-    /// <param name="sector">The replacement strategy sector.</param>
-    public void ReconcileWindow(PlanetSystemWindowView view, GalaxyMapSector sector)
-    {
-        if (
-            view != null
-            && sector != null
-            && sessions.TryGetValue(view, out PlanetSystemWindowSession session)
-        )
-            session.ReconcileSector(sector);
-    }
-
-    /// <summary>
     /// Changes the authored position slot owned by one planet-system session.
     /// </summary>
     /// <param name="view">The planet-system view.</param>

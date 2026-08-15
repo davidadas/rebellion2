@@ -101,17 +101,6 @@ public sealed class ContentPack
     }
 
     /// <summary>
-    /// Checks whether save metadata belongs to this pack, version, and scenario.
-    /// </summary>
-    /// <param name="metadata">The save metadata to compare.</param>
-    /// <returns>True when every content identity field matches.</returns>
-    public bool MatchesContentIdentity(GameMetadata metadata)
-    {
-        return metadata != null
-            && MatchesContentIdentity(metadata.PackID, metadata.PackVersion, metadata.ScenarioID);
-    }
-
-    /// <summary>
     /// Checks three serialized identity values against this pack.
     /// </summary>
     /// <param name="packID">The serialized pack identifier.</param>

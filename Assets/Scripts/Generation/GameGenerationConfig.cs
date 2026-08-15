@@ -350,15 +350,5 @@ namespace Rebellion.Generation
         public int Large;
     }
 
-    /// <summary>
-    /// Defines an inclusive integer range.
-    /// </summary>
-    [PersistableObject]
-    public class IntRange
-    {
-        public int Min;
-        public int Max;
-    }
-
     #endregion
 }

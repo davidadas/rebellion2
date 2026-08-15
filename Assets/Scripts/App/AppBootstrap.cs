@@ -11,7 +11,8 @@ using UnityEditor;
 /// </summary>
 public sealed class AppBootstrap : MonoBehaviour
 {
-    private const string _defaultCursorAddress = "Application/Common/UI/ui_common_cursor_default";
+    private const string _defaultCursorAddress =
+        "Application/Common/UI/ui_common_cursor_default_outlined";
     private const string _mainMenuPreloadID = "main-menu";
     private const string _strategyPreloadID = "strategy";
 
@@ -111,7 +112,11 @@ public sealed class AppBootstrap : MonoBehaviour
             _strategyPreloadID
         );
         _contentAssets = new ContentAssets(_contentPack.ContentRootPath, _contentPack.PackRootPath);
-        Texture2D cursorTexture = _contentAssets.GetCursor(_defaultCursorAddress);
+        Texture2D cursorTexture =
+            _contentAssets.GetCursor(_defaultCursorAddress)
+            ?? throw new System.InvalidOperationException(
+                $"Application cursor is missing: {_defaultCursorAddress}"
+            );
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
@@ -380,31 +385,6 @@ public sealed class AppBootstrap : MonoBehaviour
     public UserSettingsManager GetUserSettingsManager()
     {
         return _userSettingsManager;
-    }
-
-    /// <summary>
-    /// Returns the loaded user settings.
-    /// </summary>
-    /// <returns>The active user settings, or null when settings have not been loaded.</returns>
-    public UserSettings GetUserSettings()
-    {
-        return _userSettingsManager?.Settings;
-    }
-
-    /// <summary>
-    /// Applies the active user settings to runtime systems.
-    /// </summary>
-    public void ApplyUserSettings()
-    {
-        _userSettingsManager?.Apply();
-    }
-
-    /// <summary>
-    /// Captures and saves the active user settings.
-    /// </summary>
-    public void SaveUserSettings()
-    {
-        _userSettingsManager?.Save();
     }
 
     /// <summary>

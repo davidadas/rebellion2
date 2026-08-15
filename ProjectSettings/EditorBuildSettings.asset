@@ -7,12 +7,12 @@ EditorBuildSettings:
   m_Scenes:
   - enabled: 1
     path: Assets/Scenes/BootScene.unity
-    guid: f073a1f5d13904d5390a7522e2b60830
+    guid: 00000000000000000000000000000000
   - enabled: 1
     path: Assets/Scenes/MainMenu.unity
-    guid: b30acc370887141ab8b4dee8af4ebd3c
+    guid: 00000000000000000000000000000000
   - enabled: 1
     path: Assets/Scenes/StrategyView.unity
-    guid: 8806444e5c1414aa6a36b91b519ed6cd
+    guid: 00000000000000000000000000000000
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: a1b40d61e0eca344c90c01ce61bcaa91, type: 2}

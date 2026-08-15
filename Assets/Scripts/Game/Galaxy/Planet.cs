@@ -775,15 +775,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns the owner instance IDs of all factions with active missions on this planet.
-        /// </summary>
-        /// <returns>A list of faction instance IDs.</returns>
-        public List<string> GetMissionFactionInstanceIDs()
-        {
-            return Missions.ConvertAll(mission => mission.GetOwnerInstanceID());
-        }
-
-        /// <summary>
         /// Adds a mission to the planet.
         /// </summary>
         /// <param name="mission">The mission to add.</param>
@@ -875,15 +866,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns true if any regiments, officers, or starfighters are present on the planet.
-        /// </summary>
-        /// <returns>True if any garrison units are present; otherwise false.</returns>
-        public bool HasGarrison()
-        {
-            return Regiments.Count > 0 || Officers.Count > 0 || Starfighters.Count > 0;
-        }
-
-        /// <summary>
         /// Returns all officers on the planet.
         /// </summary>
         /// <returns>A list of officers currently on this planet.</returns>
@@ -925,15 +907,6 @@ namespace Rebellion.Game.Galaxy
                 && regiment.ManufacturingStatus == ManufacturingStatus.Complete
                 && regiment.Movement == null
             );
-        }
-
-        /// <summary>
-        /// Returns the number of officers on the planet.
-        /// </summary>
-        /// <returns>The count of officers currently on this planet.</returns>
-        public int GetOfficerCount()
-        {
-            return Officers.Count;
         }
 
         /// <summary>

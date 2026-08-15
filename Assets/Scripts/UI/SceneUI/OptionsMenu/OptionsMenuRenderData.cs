@@ -101,10 +101,7 @@ public sealed class OptionsMenuRenderData
     /// <param name="bindings">The read-only key-binding rows.</param>
     /// <param name="saveSlots">The save-slot rows.</param>
     /// <param name="selectedSlot">The selected save-slot index, or -1.</param>
-    /// <param name="canSave">Whether saving is currently available.</param>
-    /// <param name="canLoad">Whether loading is currently available.</param>
-    /// <param name="canReturnToGame">Whether a running game exists to return to.</param>
-    /// <param name="canReturnToMainMenu">Whether returning to the Main Menu is possible.</param>
+    /// <param name="hasActiveGame">Whether a game is currently active.</param>
     /// <param name="listeningRow">The binding row awaiting a key press, or -1.</param>
     /// <param name="listeningSecondary">Whether the secondary column is awaiting a key press.</param>
     public OptionsMenuRenderData(
@@ -118,10 +115,7 @@ public sealed class OptionsMenuRenderData
         IReadOnlyList<OptionsBindingRow> bindings,
         IReadOnlyList<OptionsSaveSlot> saveSlots,
         int selectedSlot,
-        bool canSave,
-        bool canLoad,
-        bool canReturnToGame,
-        bool canReturnToMainMenu,
+        bool hasActiveGame,
         int listeningRow,
         bool listeningSecondary
     )
@@ -136,10 +130,7 @@ public sealed class OptionsMenuRenderData
         Bindings = bindings ?? Array.Empty<OptionsBindingRow>();
         SaveSlots = saveSlots ?? Array.Empty<OptionsSaveSlot>();
         SelectedSlot = selectedSlot;
-        CanSave = canSave;
-        CanLoad = canLoad;
-        CanReturnToGame = canReturnToGame;
-        CanReturnToMainMenu = canReturnToMainMenu;
+        HasActiveGame = hasActiveGame;
         ListeningRow = listeningRow;
         ListeningSecondary = listeningSecondary;
     }
@@ -161,8 +152,5 @@ public sealed class OptionsMenuRenderData
     public IReadOnlyList<OptionsBindingRow> Bindings { get; }
     public IReadOnlyList<OptionsSaveSlot> SaveSlots { get; }
 
-    public bool CanSave { get; }
-    public bool CanLoad { get; }
-    public bool CanReturnToGame { get; }
-    public bool CanReturnToMainMenu { get; }
+    public bool HasActiveGame { get; }
 }

@@ -1039,32 +1039,6 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
-        /// Gets a dictionary mapping field names to their MemberInfo for all persistable fields of a type.
-        /// </summary>
-        /// <param name="classType">The type to get the field map for.</param>
-        /// <param name="operationType">The type of operation to get fields for.</param>
-        /// <returns>A dictionary mapping field names to MemberInfo objects.</returns>
-        public static IDictionary<string, MemberInfo> GetPersistableMemberMap(
-            Type classType,
-            OperationType operationType
-        )
-        {
-            return GetPersistableMembers(classType, operationType)
-                .ToDictionary(
-                    member =>
-                        (
-                            (PersistableMemberAttribute)
-                                Attribute.GetCustomAttribute(
-                                    member,
-                                    typeof(PersistableMemberAttribute)
-                                )
-                        )?.Name
-                        ?? member.Name,
-                    member => member
-                );
-        }
-
-        /// <summary>
         /// Gets a dictionary mapping attribute names to their MemberInfo for all persistable attributes of a type.
         /// </summary>
         /// <param name="classType">The type to get the attribute map for.</param>

@@ -157,6 +157,7 @@ public static class MainMenuPrefabBuilder
     /// </summary>
     public static void RebuildMainMenuPrefab()
     {
+        Directory.CreateDirectory(Path.GetDirectoryName(_prefabPath));
         GameObject root = new GameObject("MainMenuRoot");
         try
         {
