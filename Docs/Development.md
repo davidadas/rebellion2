@@ -14,16 +14,15 @@ or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyright
 ## Setup
 
 1. Clone `rebellion2` and `rebellion2-media` beside one another.
-2. Open `rebellion2` in Unity.
-3. Run **Rebellion > Build > Sync Media**, select the local media branch, and synchronize it.
-4. Run **Rebellion > Build > Build All UI**.
+2. Copy `rebellion2-media/Content/` into `rebellion2/Assets/Content/`.
+3. Copy `rebellion2-media/Models/MainMenu/` into
+   `rebellion2/Assets/Art/Models/MainMenu/`.
+4. Open `rebellion2` in Unity.
+5. Run **Rebellion > Build > Build All UI**.
 
 The copied content and models, all generated prefabs, and all generated scenes are local development
-artifacts and are ignored by Git. This includes the boot scene and cutscene playback assets. The sync
-window mirrors the selected media branch, removes local
-assets that no longer exist there, preserves Unity metadata for retained assets, and copies dirty
-media changes when synchronizing the currently checked-out branch. It refuses to switch media
-branches while that checkout has uncommitted changes.
+artifacts and are ignored by Git. This includes the boot scene and cutscene playback assets. Manage
+the media checkout and refresh these local copies outside Unity.
 
 CI installs clean media mirrors automatically with `rsync --delete` before Unity builds and tests.
 
