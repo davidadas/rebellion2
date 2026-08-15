@@ -50,21 +50,6 @@ public sealed class UIRaycastArea
     public event Action<UIRaycastArea, PointerEventData> Exited;
 
     /// <summary>
-    /// Applies source-space bounds to the authored hit area.
-    /// </summary>
-    /// <param name="hitArea">The configured hit-area bounds.</param>
-    public void Render(SourceRectLayout hitArea)
-    {
-        if (hitArea == null)
-        {
-            Render((RectInt?)null);
-            return;
-        }
-
-        Render(new RectInt(hitArea.X, hitArea.Y, hitArea.Width, hitArea.Height));
-    }
-
-    /// <summary>
     /// Applies immutable source-space bounds to the authored hit area.
     /// </summary>
     /// <param name="hitArea">The optional source-space hit-area bounds.</param>

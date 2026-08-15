@@ -64,16 +64,6 @@ public sealed class SelectableListSelection
     }
 
     /// <summary>
-    /// Applies an initial primary selection only when no selection exists.
-    /// </summary>
-    /// <param name="initialSelectedIndex">The initial source index.</param>
-    public void UseInitialSelection(int initialSelectedIndex)
-    {
-        if (SelectedIndex < 0 && initialSelectedIndex >= 0)
-            SelectOnly(initialSelectedIndex);
-    }
-
-    /// <summary>
     /// Moves primary selection by a signed offset.
     /// </summary>
     /// <param name="count">The current item count.</param>
@@ -105,16 +95,6 @@ public sealed class SelectableListSelection
             return direction < 0 ? count - 1 : 0;
 
         return System.Math.Max(0, System.Math.Min(count - 1, selectedIndex + direction));
-    }
-
-    /// <summary>
-    /// Reports whether an index belongs to the current selection.
-    /// </summary>
-    /// <param name="index">The source index.</param>
-    /// <returns>True when the index is selected.</returns>
-    public bool Contains(int index)
-    {
-        return selectedIndexes.Contains(index);
     }
 
     /// <summary>

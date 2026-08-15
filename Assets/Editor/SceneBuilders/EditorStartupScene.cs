@@ -4,7 +4,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Opens the committed boot scene when Unity starts without a saved scene selected.
+/// Opens the generated boot scene when Unity starts without a saved scene selected.
 /// </summary>
 [InitializeOnLoad]
 public static class EditorStartupScene
@@ -17,7 +17,7 @@ public static class EditorStartupScene
     }
 
     /// <summary>
-    /// Replaces Unity's clean untitled startup scene with the committed boot scene.
+    /// Replaces Unity's clean untitled startup scene with the generated boot scene.
     /// </summary>
     private static void OpenBootSceneWhenUntitled()
     {

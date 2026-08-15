@@ -21,6 +21,7 @@ public static class UIBuilderMenu
     {
         RunInAuthoringScene(() =>
         {
+            BootPrefabBuilder.Rebuild();
             RebuildOptionsMenuAndDependencies();
             MainMenuPrefabBuilder.Rebuild();
             StrategyViewPrefabBuilder.Rebuild();
@@ -42,7 +43,9 @@ public static class UIBuilderMenu
             "t:Prefab",
             new[]
             {
+                "Assets/Prefabs/UI/Boot",
                 "Assets/Prefabs/UI/Common",
+                "Assets/Prefabs/UI/Cutscenes",
                 "Assets/Prefabs/UI/MainMenu",
                 "Assets/Prefabs/UI/OptionsMenu",
                 "Assets/Prefabs/UI/StrategyView",
@@ -93,6 +96,16 @@ public static class UIBuilderMenu
     }
 
     /// <summary>
+    /// Rebuilds the boot scene and its generated prefabs.
+    /// </summary>
+    [MenuItem("Rebellion/Build/Build Boot UI", false, 23)]
+    public static void BuildBoot()
+    {
+        RunInAuthoringScene(BootPrefabBuilder.Rebuild);
+        SaveAndRefresh();
+    }
+
+    /// <summary>
     /// Isolates temporary prefab-authoring objects from the user's open scenes and restores editor focus afterward.
     /// </summary>
     /// <param name="build">The prefab and generated-scene work to perform.</param>
@@ -117,9 +130,7 @@ public static class UIBuilderMenu
         string authoringScenePath = null;
         if (!usesBatchScene)
         {
-            authoringScenePath = AssetDatabase.GenerateUniqueAssetPath(
-                "Assets/Scenes/UIBuilderAuthoringTemp.unity"
-            );
+            authoringScenePath = AssetDatabase.GenerateUniqueAssetPath("Assets/Scenes/Temp.unity");
             if (!EditorSceneManager.SaveScene(authoringScene, authoringScenePath))
                 throw new InvalidOperationException(
                     "Could not create the temporary UI authoring scene."

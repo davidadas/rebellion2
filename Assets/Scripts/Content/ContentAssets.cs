@@ -25,6 +25,10 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     private readonly Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>(
         StringComparer.Ordinal
     );
+    private readonly Dictionary<string, Texture2D> readableTextures = new Dictionary<
+        string,
+        Texture2D
+    >(StringComparer.Ordinal);
     private readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>(
         StringComparer.Ordinal
     );
@@ -131,17 +135,17 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <returns>The loaded texture, or null when the address cannot be loaded.</returns>
     public Texture2D GetTexture(string path)
     {
-        return GetTexture(path, true);
+        return GetTexture(path, textures, true);
     }
 
     /// <summary>
-    /// Resolves a readable texture suitable for use as a hardware cursor.
+    /// Resolves and caches a texture that meets Unity's hardware cursor requirements.
     /// </summary>
     /// <param name="path">The application content address.</param>
     /// <returns>The loaded cursor texture, or null when the address cannot be loaded.</returns>
     public Texture2D GetCursor(string path)
     {
-        Texture2D texture = GetTexture(path, false);
+        Texture2D texture = GetTexture(path, readableTextures, false);
         if (texture == null || texture.format == TextureFormat.RGBA32)
             return texture;
 
@@ -153,33 +157,32 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         };
         cursor.SetPixels32(texture.GetPixels32());
         cursor.Apply(false, false);
-        textures[NormalizeAddress(path)] = cursor;
+        readableTextures[NormalizeAddress(path)] = cursor;
         DestroyAsset(texture);
         return cursor;
     }
 
     /// <summary>
-    /// Resolves and caches a texture with the requested CPU readability.
+    /// Resolves and caches a texture with the requested CPU-readability.
     /// </summary>
-    /// <param name="path">The application or pack content address.</param>
-    /// <param name="markNonReadable">Whether to release the texture's CPU-side pixels.</param>
-    /// <returns>The loaded texture, or null when the address cannot be loaded.</returns>
-    private Texture2D GetTexture(string path, bool markNonReadable)
+    private Texture2D GetTexture(
+        string path,
+        IDictionary<string, Texture2D> cache,
+        bool markNonReadable
+    )
     {
         ThrowIfDisposed();
         string normalizedPath = NormalizeAddress(path);
         if (string.IsNullOrEmpty(normalizedPath))
             return null;
-        if (textures.TryGetValue(normalizedPath, out Texture2D texture))
+        if (cache.TryGetValue(normalizedPath, out Texture2D texture))
         {
             if (texture != null && (markNonReadable || texture.isReadable))
                 return texture;
 
             // Unity can destroy transient editor-preview objects when a prefab stage closes while
             // domain reload is disabled. Never retain a dead Unity object in the content cache.
-            if (texture != null)
-                DestroyAsset(texture);
-            textures.Remove(normalizedPath);
+            cache.Remove(normalizedPath);
         }
         if (unavailableTextures.Contains(normalizedPath))
             return null;
@@ -216,7 +219,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         texture.name = Path.GetFileNameWithoutExtension(filePath);
         texture.filterMode = FilterMode.Point;
         texture.wrapMode = TextureWrapMode.Clamp;
-        textures.Add(normalizedPath, texture);
+        cache.Add(normalizedPath, texture);
         return texture;
     }
 
@@ -348,10 +351,13 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
             DestroyAsset(sprite);
         foreach (Texture2D texture in textures.Values)
             DestroyAsset(texture);
+        foreach (Texture2D texture in readableTextures.Values)
+            DestroyAsset(texture);
 
         audioClips.Clear();
         audioLoads.Clear();
         textures.Clear();
+        readableTextures.Clear();
         sprites.Clear();
         unavailableTextures.Clear();
         disposed = true;

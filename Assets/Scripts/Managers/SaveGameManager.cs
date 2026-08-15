@@ -318,16 +318,6 @@ public class SaveGameManager
     }
 
     /// <summary>
-    /// Saves game data to one numbered save slot.
-    /// </summary>
-    /// <param name="game">The game data to save.</param>
-    /// <param name="slot">The zero-based save slot index.</param>
-    public void SaveSlotGameData(GameRoot game, int slot)
-    {
-        SaveSlotGameData(game, slot, null);
-    }
-
-    /// <summary>
     /// Saves game data to one numbered save slot with a display name.
     /// </summary>
     /// <param name="game">The game data to save.</param>

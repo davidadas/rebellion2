@@ -299,18 +299,6 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
-    /// Gets the primary selected message identifier in one controller-owned Messages session.
-    /// </summary>
-    /// <param name="view">The Messages view whose session should be inspected.</param>
-    /// <returns>The selected source message identifier, or null when none is selected.</returns>
-    internal string GetSelectedMessageID(MessagesWindowView view)
-    {
-        return TryGetSession(view, out MessagesWindowSession session)
-            ? session.SelectedMessageId
-            : null;
-    }
-
-    /// <summary>
     /// Returns message detail audio in playback order.
     /// </summary>
     /// <param name="message">The source message.</param>

@@ -278,10 +278,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private void RenderFooter(OptionsMenuRenderData data)
     {
         bool layoutChanged =
-            _backToGameButton.gameObject.activeSelf != data.CanReturnToGame
-            || _mainMenuButton.gameObject.activeSelf != data.CanReturnToMainMenu;
-        _backToGameButton.gameObject.SetActive(data.CanReturnToGame);
-        _mainMenuButton.gameObject.SetActive(data.CanReturnToMainMenu);
+            _backToGameButton.gameObject.activeSelf != data.HasActiveGame
+            || _mainMenuButton.gameObject.activeSelf != data.HasActiveGame;
+        _backToGameButton.gameObject.SetActive(data.HasActiveGame);
+        _mainMenuButton.gameObject.SetActive(data.HasActiveGame);
         if (layoutChanged && _backToGameButton.transform.parent is RectTransform navigationRoot)
             LayoutRebuilder.ForceRebuildLayoutImmediate(navigationRoot);
     }

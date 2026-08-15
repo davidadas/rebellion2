@@ -3,12 +3,6 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Units
 {
-    public enum MovementStatus
-    {
-        Idle,
-        InTransit,
-    }
-
     /// <summary>
     /// An interface for scene nodes/units that can be moved within the GalaxyMap.
     /// GetPosition/SetPosition provided via extension methods in Rebellion.Util.Extensions.

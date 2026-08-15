@@ -401,18 +401,6 @@ public sealed class FacilityWindowController
     public void OnTargetingCancelled(TargetingRequest request) { }
 
     /// <summary>
-    /// Gets the selected manufacturing facility tab for a facility view.
-    /// </summary>
-    /// <param name="view">The facility view.</param>
-    /// <returns>The selected manufacturing facility tab, or null.</returns>
-    public FacilityWindowTab? GetSelectedManufacturingTab(FacilityWindowView view)
-    {
-        return TryGetSession(view, out FacilityWindowSession session)
-            ? session.GetSelectedManufacturingTab()
-            : null;
-    }
-
-    /// <summary>
     /// Gets the context manufacturing facility tab for a facility view.
     /// </summary>
     /// <param name="view">The facility view.</param>

@@ -26,8 +26,6 @@ namespace Rebellion.Game.Events
             ActionValue = value;
         }
 
-        protected string GetActionType() => ActionType;
-
         protected string GetActionValue() => ActionValue;
 
         /// <summary>
