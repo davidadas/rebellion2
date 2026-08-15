@@ -175,8 +175,25 @@ public sealed class CutscenePlayer : MonoBehaviour
     /// <param name="frameIndex">The decoded frame index.</param>
     private void HandleFirstFrameReady(VideoPlayer source, long frameIndex)
     {
+        Texture texture = source.texture;
+        if (texture == null || texture.height <= 0)
+            return;
+
+        RevealFrame(texture, frameIndex);
+    }
+
+    /// <summary>
+    /// Presents one decoded frame using its native texture and aspect ratio.
+    /// </summary>
+    /// <param name="texture">The decoder-owned video texture.</param>
+    /// <param name="frameIndex">The decoded frame index.</param>
+    private void RevealFrame(Texture texture, long frameIndex)
+    {
         videoPlayer.frameReady -= HandleFirstFrameReady;
         videoPlayer.sendFrameReadyEvents = false;
+        screen.texture = texture;
+        screen.GetComponent<AspectRatioFitter>().aspectRatio =
+            (float)texture.width / texture.height;
         screen.color = authoredScreenColor;
         GameStartupTrace.Log($"Faction introduction first frame displayed (frame {frameIndex}).");
     }
@@ -220,7 +237,10 @@ public sealed class CutscenePlayer : MonoBehaviour
     private void BlankScreen()
     {
         if (screen != null)
+        {
+            screen.texture = null;
             screen.color = Color.black;
+        }
         if (videoPlayer == null)
             return;
 

@@ -11,65 +11,24 @@ using UnityEngine.Video;
 /// </summary>
 public static class BootPrefabBuilder
 {
-    private const int _cutsceneHeight = 1080;
-    private const int _cutsceneWidth = 1920;
     private const string _bootPrefabPath = "Assets/Prefabs/UI/Boot/BootRoot.prefab";
     private const string _bootScenePath = "Assets/Scenes/BootScene.unity";
     private const string _cutscenePrefabPath = "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
-    private const string _cutsceneRenderTexturePath =
-        "Assets/Prefabs/UI/Cutscenes/CutsceneRenderTexture.renderTexture";
 
     /// <summary>
     /// Rebuilds the complete boot asset graph from code.
     /// </summary>
     public static void Rebuild()
     {
-        RenderTexture renderTexture = BuildRenderTexture();
-        GameObject cutscenePrefab = BuildCutscenePrefab(renderTexture);
+        GameObject cutscenePrefab = BuildCutscenePrefab();
         BuildBootPrefab(cutscenePrefab);
         SceneBuilder.Build(_bootScenePath, _bootPrefabPath, "BootRoot");
     }
 
     /// <summary>
-    /// Creates or updates the render target used by cutscene video playback.
-    /// </summary>
-    private static RenderTexture BuildRenderTexture()
-    {
-        EnsureDirectory(_cutsceneRenderTexturePath);
-        RenderTexture renderTexture = AssetDatabase.LoadAssetAtPath<RenderTexture>(
-            _cutsceneRenderTexturePath
-        );
-        if (renderTexture == null)
-        {
-            renderTexture = new RenderTexture(
-                _cutsceneWidth,
-                _cutsceneHeight,
-                0,
-                RenderTextureFormat.ARGB32
-            )
-            {
-                name = "CutsceneRenderTexture",
-            };
-            AssetDatabase.CreateAsset(renderTexture, _cutsceneRenderTexturePath);
-        }
-
-        renderTexture.Release();
-        renderTexture.width = _cutsceneWidth;
-        renderTexture.height = _cutsceneHeight;
-        renderTexture.depth = 0;
-        renderTexture.antiAliasing = 1;
-        renderTexture.useMipMap = false;
-        renderTexture.autoGenerateMips = false;
-        renderTexture.filterMode = FilterMode.Bilinear;
-        renderTexture.wrapMode = TextureWrapMode.Clamp;
-        EditorUtility.SetDirty(renderTexture);
-        return renderTexture;
-    }
-
-    /// <summary>
     /// Authors the self-contained overlay used for one cutscene playback request.
     /// </summary>
-    private static GameObject BuildCutscenePrefab(RenderTexture renderTexture)
+    private static GameObject BuildCutscenePrefab()
     {
         GameObject root = new GameObject(
             "CutscenePlayer",
@@ -93,9 +52,7 @@ public static class BootPrefabBuilder
             videoPlayer.isLooping = false;
             videoPlayer.skipOnDrop = true;
             videoPlayer.waitForFirstFrame = true;
-            videoPlayer.renderMode = VideoRenderMode.RenderTexture;
-            videoPlayer.aspectRatio = VideoAspectRatio.FitInside;
-            videoPlayer.targetTexture = renderTexture;
+            videoPlayer.renderMode = VideoRenderMode.APIOnly;
             videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
 
             AudioSource audioSource = root.GetComponent<AudioSource>();
@@ -112,12 +69,10 @@ public static class BootPrefabBuilder
             screenRect.SetParent(rootRect, false);
             FillParent(screenRect);
             RawImage screen = screenObject.GetComponent<RawImage>();
-            screen.texture = renderTexture;
             screen.color = Color.white;
             screen.raycastTarget = true;
             AspectRatioFitter screenAspect = screen.GetComponent<AspectRatioFitter>();
             screenAspect.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
-            screenAspect.aspectRatio = 16f / 9f;
 
             CutscenePlayer player = root.GetComponent<CutscenePlayer>();
             AssignReference(player, "screen", screen);

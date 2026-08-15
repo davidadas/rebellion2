@@ -57,13 +57,12 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsFalse(_audioSource.playOnAwake);
             Assert.AreEqual(Color.black, _screen.color);
             Assert.IsTrue(_screen.raycastTarget);
-            Assert.AreEqual(1920, _videoPlayer.targetTexture.width);
-            Assert.AreEqual(1080, _videoPlayer.targetTexture.height);
-            Assert.AreEqual(0, _videoPlayer.targetTexture.depth);
+            Assert.AreEqual(VideoRenderMode.APIOnly, _videoPlayer.renderMode);
+            Assert.IsNull(_videoPlayer.targetTexture);
+            Assert.IsNull(_screen.texture);
             AspectRatioFitter screenAspect = _screen.GetComponent<AspectRatioFitter>();
             Assert.IsNotNull(screenAspect);
             Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, screenAspect.aspectMode);
-            Assert.AreEqual(16f / 9f, screenAspect.aspectRatio, 0.0001f);
         }
 
         [Test]
@@ -102,14 +101,27 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         }
 
         [Test]
-        public void HandleFirstFrameReady_NewFrame_RevealsVideoScreen()
+        public void RevealFrame_DecodedTexture_UsesNativeTextureAndAspectRatio()
         {
             _player.Play(_clip, null);
+            Texture2D frame = new Texture2D(640, 480);
+            try
+            {
+                Invoke("RevealFrame", frame, 0L);
 
-            Invoke("HandleFirstFrameReady", _videoPlayer, 0L);
-
-            Assert.AreEqual(_authoredScreenColor, _screen.color);
-            Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
+                Assert.AreSame(frame, _screen.texture);
+                Assert.AreEqual(_authoredScreenColor, _screen.color);
+                Assert.AreEqual(
+                    4f / 3f,
+                    _screen.GetComponent<AspectRatioFitter>().aspectRatio,
+                    0.0001f
+                );
+                Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(frame);
+            }
         }
 
         [Test]
@@ -123,6 +135,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 
             Assert.AreEqual(1, completedCount);
             Assert.AreEqual(Color.black, _screen.color);
+            Assert.IsNull(_screen.texture);
             Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
         }
 
@@ -154,6 +167,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 
             Assert.AreEqual(0, completedCount);
             Assert.AreEqual(Color.black, _screen.color);
+            Assert.IsNull(_screen.texture);
             Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
         }
 
