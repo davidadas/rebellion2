@@ -26,7 +26,6 @@ public static class UIBuilderMenu
             MainMenuPrefabBuilder.Rebuild();
             StrategyViewPrefabBuilder.Rebuild();
         });
-        BootPrefabBuilder.DeleteScene();
         SaveAndRefresh();
     }
 
@@ -39,7 +38,6 @@ public static class UIBuilderMenu
     public static void BuildRuntimeUI()
     {
         BuildAll();
-        BootPrefabBuilder.BuildScene();
 
         string[] prefabGuids = AssetDatabase.FindAssets(
             "t:Prefab",
@@ -98,13 +96,12 @@ public static class UIBuilderMenu
     }
 
     /// <summary>
-    /// Rebuilds the boot prefabs and cutscene render target.
+    /// Rebuilds the boot scene and its generated prefabs.
     /// </summary>
     [MenuItem("Rebellion/Build/Build Boot UI", false, 23)]
     public static void BuildBoot()
     {
         RunInAuthoringScene(BootPrefabBuilder.Rebuild);
-        BootPrefabBuilder.DeleteScene();
         SaveAndRefresh();
     }
 

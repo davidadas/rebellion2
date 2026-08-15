@@ -23,20 +23,13 @@ public static class BootPrefabBuilder
         "Assets/Prefabs/UI/Cutscenes/CutsceneRenderTexture.renderTexture";
 
     /// <summary>
-    /// Rebuilds the boot prefabs and cutscene render target from code.
+    /// Rebuilds the complete boot asset graph from code.
     /// </summary>
     public static void Rebuild()
     {
         RenderTexture renderTexture = BuildRenderTexture();
         GameObject cutscenePrefab = BuildCutscenePrefab(renderTexture);
         BuildBootPrefab(cutscenePrefab);
-    }
-
-    /// <summary>
-    /// Generates the temporary boot scene consumed by a player build.
-    /// </summary>
-    public static void BuildScene()
-    {
         SceneBuilder.Build(_bootScenePath, _bootPrefabPath, "BootRoot");
     }
 
