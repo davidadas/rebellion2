@@ -2538,6 +2538,32 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void CanCreateMission_RetainedOfficer_ReturnsFalse()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            game.AddToVoid(participant);
+
+            bool canCreate = missions.CanCreateMission(
+                CreateRequest(
+                    MissionTypeIDs.Abduction,
+                    participant,
+                    targetPlanet,
+                    selectedTarget: target
+                )
+            );
+
+            Assert.IsFalse(canCreate);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
+        }
+
+        [Test]
         public void InitiateMission_IneligibleSelectedTarget_ReturnsFalse()
         {
             (
