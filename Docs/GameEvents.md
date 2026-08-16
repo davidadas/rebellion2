@@ -1,8 +1,8 @@
 # Creating custom game events
 
 Game events compose reusable schedules, result triggers, conditions, selectors, and actions. This
-guide explains how those pieces execute. The generated [XML API reference](GameEvents.API.md)
-lists every accepted element, attribute, payload type, trigger argument, and enum value.
+guide explains how those pieces execute. The XML schema at
+`Assets/Content/Application/Schemas/game-events.xsd` defines the accepted document structure.
 
 The content pack's `pack.xml` identifies the event catalog through `GameEventsPath`. The standard
 catalog is `Packs/ClassicGalacticCivilWar/Shared/Data/game-events.xml`, and its root is:
@@ -98,8 +98,8 @@ names; references to those names begin with `$`:
 ```
 
 Multiple triggers are alternatives: any matching result may activate the event. All triggers on one
-event must expose the same aliases with compatible argument types. The generated reference lists
-the arguments offered by each trigger contract.
+event must expose the same aliases with compatible argument types. The runtime trigger registry in
+`GameEventTrigger.cs` defines the arguments offered by each trigger contract.
 
 Bindings retain their runtime type. Use scalar bindings with `EvaluateBinding`; use object and
 collection bindings through compatible conditions or `SelectBinding`. The runtime validates unknown
@@ -240,18 +240,12 @@ Messages keep gameplay references separate from optional presentation:
 
 The recipient may be a faction or a unit. Subject and location may be supplied by instance ID or a
 compatible binding. Media fields accept the `Key`, `Path`, `Binding`, or `Preset` forms allowed by
-their generated payload definition. `SendMessage` requests authored delivery directly; automatic
-messages remain the responsibility of the gameplay result pipeline.
+their schema definition. `SendMessage` requests authored delivery directly; automatic messages
+remain the responsibility of the gameplay result pipeline.
 
-## Generate and validate the reference
+## Validation
 
-The reference is generated from two authoritative sources:
-
-- `Assets/Content/Application/Schemas/game-events.xsd` supplies XML elements, nesting, attributes,
-  occurrence rules, constraints, and enum values.
-- `Assets/Scripts/Game/Events/GameEventTrigger.cs` supplies registered trigger IDs, result types, and
-  trigger arguments.
-
-Run `./build.sh docs` after changing either contract. `./build.sh lint` fails when the committed
-reference is stale. The schema and runtime catalog validation remain authoritative for semantic
-rules that XSD cannot express, such as exclusive modes, compatible bindings, and valid references.
+The content repository's build validates event catalogs against `game-events.xsd`. Runtime catalog
+validation handles semantic rules that XSD cannot express, including exclusive modes, compatible
+bindings, and valid references. Validate both a new campaign and a save/load cycle before publishing
+changes to event IDs, schedules, or variables.
