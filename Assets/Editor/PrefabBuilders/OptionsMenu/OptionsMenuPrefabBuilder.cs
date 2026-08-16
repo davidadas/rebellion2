@@ -11,6 +11,11 @@ using UnityEngine.UI;
 /// </summary>
 public static class OptionsMenuPrefabBuilder
 {
+    private const int _navigationRowHeight = 30;
+    private const int _navigationRowSpacing = 6;
+    private const int _navigationRowStride = _navigationRowHeight + _navigationRowSpacing;
+    private const int _tabNavigationStartY = 82;
+    private const int _footerNavigationStartY = _tabNavigationStartY + 4 * _navigationRowStride;
     private const string _optionsMenuWindowPrefabPath =
         "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
     private const string _optionsPanelAddress =
@@ -42,6 +47,7 @@ public static class OptionsMenuPrefabBuilder
 
     private static readonly Vector4 _panelBorder = new Vector4(7f, 7f, 7f, 7f);
     private static readonly Vector4 _badgeBorder = new Vector4(6f, 6f, 6f, 6f);
+    private static readonly Color32 _buttonSurfaceColor = new Color32(35, 56, 80, 255);
 
     /// <summary>
     /// Rebuilds the generated Options menu prefab.
@@ -209,6 +215,7 @@ public static class OptionsMenuPrefabBuilder
         string[] tabObjectNames = { "GraphicsTab", "AudioTab", "ControlsTab", "SaveLoadTab" };
         Button[] tabButtons = new Button[tabNames.Length];
         TextMeshProUGUI[] tabLabels = new TextMeshProUGUI[tabNames.Length];
+        Image[] tabSurfaces = new Image[tabNames.Length];
         for (int i = 0; i < tabNames.Length; i++)
         {
             Button tabButton = CreateSlicedButton(
@@ -217,14 +224,15 @@ public static class OptionsMenuPrefabBuilder
                 _optionsRowAddress,
                 _panelBorder,
                 38,
-                82 + i * 36,
+                _tabNavigationStartY + i * _navigationRowStride,
                 163,
-                30,
+                _navigationRowHeight,
                 Color.white
             );
             tabButtons[i] = tabButton;
             ApplyOptionsButtonFeedback(tabButton);
             AddOptionsButtonBorder(tabButton.targetGraphic);
+            tabSurfaces[i] = CreateOptionsButtonSurface(tabButton);
             TextMeshProUGUI tabLabel = CreateTextLabel(
                 $"{tabObjectNames[i]}Label",
                 tabButton.transform
@@ -240,6 +248,7 @@ public static class OptionsMenuPrefabBuilder
 
         AssignReferenceArray(view, "_tabButtons", tabButtons);
         AssignReferenceArray(view, "_tabLabelFields", tabLabels);
+        AssignReferenceArray(view, "_tabSurfaceImages", tabSurfaces);
     }
 
     /// <summary>
@@ -734,17 +743,23 @@ public static class OptionsMenuPrefabBuilder
             contentRoot,
             "BackToGame",
             "BACK TO GAME",
-            226,
+            _footerNavigationStartY,
             textDim
         );
         Button mainMenuButton = CreateOptionsNavRow(
             contentRoot,
             "MainMenu",
             "MAIN MENU",
-            265,
+            _footerNavigationStartY + _navigationRowStride,
             textDim
         );
-        Button quitButton = CreateOptionsNavRow(contentRoot, "Quit", "QUIT", 304, textDim);
+        Button quitButton = CreateOptionsNavRow(
+            contentRoot,
+            "Quit",
+            "QUIT",
+            _footerNavigationStartY + 2 * _navigationRowStride,
+            textDim
+        );
         RectTransform settingsActions = CreateChildLayer("SettingsActions", contentRoot);
         Button defaultsButton = CreateOptionsActionButton(
             settingsActions,
@@ -916,9 +931,10 @@ public static class OptionsMenuPrefabBuilder
             38,
             y,
             163,
-            30,
+            _navigationRowHeight,
             Color.white
         );
+        CreateOptionsButtonSurface(button);
         TextMeshProUGUI text = CreateTextLabel("Label", button.transform);
         text.text = label;
         text.color = color;
@@ -942,8 +958,8 @@ public static class OptionsMenuPrefabBuilder
     )
     {
         VerticalLayoutGroup layout = contentRoot.gameObject.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(38, 0, 226, 0);
-        layout.spacing = 9f;
+        layout.padding = new RectOffset(38, 0, _footerNavigationStartY, 0);
+        layout.spacing = _navigationRowSpacing;
         layout.childAlignment = TextAnchor.UpperLeft;
         layout.childControlWidth = false;
         layout.childControlHeight = false;
@@ -962,7 +978,7 @@ public static class OptionsMenuPrefabBuilder
             if (navigationChild)
             {
                 element.preferredWidth = 163f;
-                element.preferredHeight = 30f;
+                element.preferredHeight = _navigationRowHeight;
             }
         }
     }
@@ -997,6 +1013,7 @@ public static class OptionsMenuPrefabBuilder
             22,
             Color.white
         );
+        CreateOptionsButtonSurface(button);
         TextMeshProUGUI text = CreateTextLabel("Label", button.transform);
         text.text = label;
         text.color = color;
@@ -1007,6 +1024,49 @@ public static class OptionsMenuPrefabBuilder
         ApplyOptionsFillButtonFeedback(button);
         AddOptionsButtonBorder(button.targetGraphic);
         return button;
+    }
+
+    /// <summary>
+    /// Adds a high-contrast surface clipped to the button's authored cut-corner shape.
+    /// </summary>
+    /// <param name="button">The button receiving the surface.</param>
+    /// <returns>The clipped surface image.</returns>
+    private static Image CreateOptionsButtonSurface(Button button)
+    {
+        Image buttonImage = button.targetGraphic as Image;
+        GameObject maskObject = new GameObject(
+            "SurfaceMask",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Mask)
+        );
+        maskObject.transform.SetParent(button.transform, false);
+        maskObject.transform.SetAsFirstSibling();
+        RectTransform maskRect = maskObject.GetComponent<RectTransform>();
+        FillParent(maskRect);
+
+        Image maskImage = maskObject.GetComponent<Image>();
+        maskImage.sprite = buttonImage.sprite;
+        maskImage.type = buttonImage.type;
+        maskImage.pixelsPerUnitMultiplier = buttonImage.pixelsPerUnitMultiplier;
+        maskImage.raycastTarget = false;
+        Mask mask = maskObject.GetComponent<Mask>();
+        mask.showMaskGraphic = false;
+
+        GameObject surface = new GameObject(
+            "Surface",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        surface.transform.SetParent(maskObject.transform, false);
+        RectTransform surfaceRect = surface.GetComponent<RectTransform>();
+        FillParent(surfaceRect);
+        Image surfaceImage = surface.GetComponent<Image>();
+        surfaceImage.color = _buttonSurfaceColor;
+        surfaceImage.raycastTarget = false;
+        return surfaceImage;
     }
 
     /// <summary>

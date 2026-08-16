@@ -57,6 +57,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private TextMeshProUGUI[] _tabLabelFields = Array.Empty<TextMeshProUGUI>();
 
     [SerializeField]
+    private Image[] _tabSurfaceImages = Array.Empty<Image>();
+
+    [SerializeField]
     private GameObject _graphicsPage;
 
     [SerializeField]
@@ -258,6 +261,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             bool active = i == (int)activeTab;
             if (_tabLabelFields[i] != null)
                 _tabLabelFields[i].color = active ? _activeTabColor : _inactiveTabColor;
+            if (i < _tabSurfaceImages.Length && _tabSurfaceImages[i] != null)
+                _tabSurfaceImages[i].gameObject.SetActive(!active);
             if (i < _tabButtons.Length && _tabButtons[i]?.targetGraphic is Image tabImage)
             {
                 tabImage.sprite = active ? _rowActiveSprite : _rowIdleSprite;
@@ -856,7 +861,11 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || string.IsNullOrWhiteSpace(_rowActiveSpriteAddress)
         )
             throw new MissingReferenceException($"{name} is missing a row sprite address.");
-        if (_tabButtons.Length != 4 || _tabLabelFields.Length != 4)
+        if (
+            _tabButtons.Length != 4
+            || _tabLabelFields.Length != 4
+            || _tabSurfaceImages.Length != 4
+        )
             throw new MissingReferenceException($"{name} expects four tabs.");
         if (
             _graphicsPage == null

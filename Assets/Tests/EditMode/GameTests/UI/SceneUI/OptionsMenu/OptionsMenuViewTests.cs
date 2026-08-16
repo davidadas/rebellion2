@@ -554,6 +554,33 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies every left-side navigation row uses the same height and vertical gap.
+        /// </summary>
+        [Test]
+        public void NavigationRows_UseConsistentVerticalRhythm()
+        {
+            Button[] rows = GetField<Button[]>("_tabButtons")
+                .Concat(
+                    new[]
+                    {
+                        GetField<Button>("_backToGameButton"),
+                        GetField<Button>("_mainMenuButton"),
+                        GetField<Button>("_quitButton"),
+                    }
+                )
+                .ToArray();
+            RectInt[] rects = rows
+                .Select(row => UILayout.GetSourceRect((RectTransform)row.transform))
+                .ToArray();
+
+            CollectionAssert.AreEqual(
+                new[] { 82, 118, 154, 190, 226, 262, 298 },
+                rects.Select(rect => rect.y).ToArray()
+            );
+            Assert.IsTrue(rects.All(rect => rect.height == 30));
+        }
+
+        /// <summary>
         /// Verifies main-menu hosting removes unavailable in-game footer rows without gaps.
         /// </summary>
         [Test]

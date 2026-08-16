@@ -1290,6 +1290,112 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RecordEspionageSnapshot_MissionCompletionPreservesParticipantIntelligence()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            vader.DisplayName = "Darth Vader";
+            vader.DisplayImagePath = "officers/vader";
+            _game.AttachNode(vader, _coruscant);
+            Officer tarkin = CreateOfficer("TARKIN", _empire);
+            tarkin.DisplayName = "Grand Moff Tarkin";
+            _game.AttachNode(tarkin, _coruscant);
+
+            Mission empireMission = CreateMission("M1", _empire, _coruscant);
+            empireMission.MainParticipants.Add(vader);
+            empireMission.DecoyParticipants.Add(tarkin);
+            _game.AttachNode(empireMission, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            empireMission.MainParticipants.Clear();
+            empireMission.DecoyParticipants.Clear();
+            vader.DisplayName = "Changed live officer";
+            vader.DisplayImagePath = "officers/changed";
+            tarkin.DisplayName = "Changed live decoy";
+
+            Mission recordedMission = _alliance
+                .Fog
+                .Snapshots[_coreSystem.InstanceID]
+                .Planets[_coruscant.InstanceID]
+                .Missions.Single();
+            Officer recordedParticipant = recordedMission.MainParticipants.Single() as Officer;
+            Officer recordedDecoy = recordedMission.DecoyParticipants.Single() as Officer;
+
+            Assert.IsNotNull(recordedParticipant);
+            Assert.AreNotSame(vader, recordedParticipant);
+            Assert.AreEqual(vader.InstanceID, recordedParticipant.InstanceID);
+            Assert.AreEqual("Darth Vader", recordedParticipant.DisplayName);
+            Assert.AreEqual("officers/vader", recordedParticipant.DisplayImagePath);
+            Assert.IsNotNull(recordedDecoy);
+            Assert.AreNotSame(tarkin, recordedDecoy);
+            Assert.AreEqual(tarkin.InstanceID, recordedDecoy.InstanceID);
+            Assert.AreEqual("Grand Moff Tarkin", recordedDecoy.DisplayName);
+        }
+
+        [Test]
+        public void CaptureSnapshot_ParticipantSeenElsewherePreservesRecordedMissionIdentity()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            vader.DisplayName = "Darth Vader";
+            _game.AttachNode(vader, _coruscant);
+
+            Mission empireMission = CreateMission("M1", _empire, _coruscant);
+            empireMission.MainParticipants.Add(vader);
+            _game.AttachNode(empireMission, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            MakeTatooineImperial();
+            _game.MoveNode(vader, _tatooine);
+            vader.DisplayName = "Vader observed elsewhere";
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+
+            PlanetSnapshot coruscantSnapshot = _alliance
+                .Fog
+                .Snapshots[_coreSystem.InstanceID]
+                .Planets[_coruscant.InstanceID];
+            Officer recordedParticipant = coruscantSnapshot
+                .Missions.Single()
+                .MainParticipants.Single() as Officer;
+
+            Assert.IsEmpty(coruscantSnapshot.Officers);
+            Assert.IsNotNull(recordedParticipant);
+            Assert.AreNotSame(vader, recordedParticipant);
+            Assert.AreEqual(vader.InstanceID, recordedParticipant.InstanceID);
+            Assert.AreEqual("Darth Vader", recordedParticipant.DisplayName);
+        }
+
+        [Test]
+        public void PlanetSnapshot_MissionParticipantIntelligenceSurvivesSerializationRoundTrip()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            vader.DisplayName = "Darth Vader";
+            vader.DisplayImagePath = "officers/vader";
+            _game.AttachNode(vader, _coruscant);
+
+            Mission empireMission = CreateMission("M1", _empire, _coruscant);
+            empireMission.MainParticipants.Add(vader);
+            _game.AttachNode(empireMission, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            PlanetSnapshot snapshot = _alliance
+                .Fog
+                .Snapshots[_coreSystem.InstanceID]
+                .Planets[_coruscant.InstanceID];
+            string xml = SerializationHelper.Serialize(snapshot);
+            PlanetSnapshot restored = SerializationHelper.Deserialize<PlanetSnapshot>(xml);
+            Officer restoredParticipant = restored
+                .Missions.Single()
+                .MainParticipants.Single() as Officer;
+
+            Assert.IsNotNull(restoredParticipant);
+            Assert.AreEqual(vader.InstanceID, restoredParticipant.InstanceID);
+            Assert.AreEqual("Darth Vader", restoredParticipant.DisplayName);
+            Assert.AreEqual("officers/vader", restoredParticipant.DisplayImagePath);
+        }
+
+        [Test]
         public void RecordEspionageSnapshot_RevealsIncomingEnemyFleet()
         {
             Fleet empireFleet = CreateFleet("INCOMING_FLEET", _empire);

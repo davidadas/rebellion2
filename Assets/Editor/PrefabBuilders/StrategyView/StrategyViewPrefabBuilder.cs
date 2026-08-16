@@ -2878,10 +2878,10 @@ public static class StrategyViewPrefabBuilder
             "TargetPreviewImage",
             missionSelection,
             _planetPreviewPath,
-            50,
+            51,
             211
         );
-        SetSourceRect(targetPreview.rectTransform, 50, 211, 166, 78);
+        SetSourceRect(targetPreview.rectTransform, 51, 211, 165, 79);
         TextMeshProUGUI targetPreviewName = CreateTextLabel(
             "TargetPreviewNameTextField",
             missionSelection
