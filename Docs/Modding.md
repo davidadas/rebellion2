@@ -85,7 +85,7 @@ Add a new scenario's `scenario.xml` path to `ScenarioPaths` in `pack.xml`, then 
 
 The XML files referenced by `pack.xml` and each faction's `faction.xml` define the game's entities.
 Faction files point to capital ships, starfighters, regiments, special forces, officers, faction
-data, themes, and encyclopedia entries. Shared definitions include planet systems, buildings,
+data, themes, and encyclopedia entries. Pack-level definitions include planet systems, buildings,
 events, and messages.
 
 IDs must be present and unique within their definition type. References between files use those
