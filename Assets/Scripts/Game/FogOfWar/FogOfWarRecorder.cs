@@ -386,18 +386,46 @@ namespace Rebellion.Game.FogOfWar
             planet.AddVisitor(faction.InstanceID);
             SystemSnapshot systemSnapshot = GetOrCreateSystemSnapshot(faction, system);
             faction.Fog.PlanetToSystem[planet.InstanceID] = system.InstanceID;
-            if (!systemSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
-            {
-                snapshot = new PlanetSnapshot
-                {
-                    TickCaptured = currentTick,
-                    OwnerInstanceID = planet.OwnerInstanceID,
-                    IsColonized = planet.IsColonized,
-                    IsDestroyed = planet.IsDestroyed,
-                };
-                systemSnapshot.Planets[planet.InstanceID] = snapshot;
-            }
+            PlanetSnapshot snapshot = GetOrCreatePlanetSnapshot(
+                systemSnapshot,
+                planet,
+                currentTick
+            );
+            UpdateSelectedIntelligence(faction, planet, snapshot, currentTick, categories);
 
+            ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
+        }
+
+        /// <summary>Returns the existing planet snapshot or creates its initial strategic state.</summary>
+        private static PlanetSnapshot GetOrCreatePlanetSnapshot(
+            SystemSnapshot systemSnapshot,
+            Planet planet,
+            int currentTick
+        )
+        {
+            if (systemSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
+                return snapshot;
+
+            snapshot = new PlanetSnapshot
+            {
+                TickCaptured = currentTick,
+                OwnerInstanceID = planet.OwnerInstanceID,
+                IsColonized = planet.IsColonized,
+                IsDestroyed = planet.IsDestroyed,
+            };
+            systemSnapshot.Planets[planet.InstanceID] = snapshot;
+            return snapshot;
+        }
+
+        /// <summary>Refreshes only the intelligence categories revealed by this observation.</summary>
+        private void UpdateSelectedIntelligence(
+            Faction faction,
+            Planet planet,
+            PlanetSnapshot snapshot,
+            int currentTick,
+            PlanetIntelligenceCategory categories
+        )
+        {
             snapshot.TickCaptured = currentTick;
             PlanetIntelligenceCategory accumulatedCategories =
                 snapshot.RevealedCategories | categories;
@@ -410,8 +438,6 @@ namespace Rebellion.Game.FogOfWar
             UpdateStarfighterIntelligence(faction, planet, snapshot, categories);
             UpdateBuildingIntelligence(faction, planet, snapshot, categories);
             UpdateMissionIntelligence(faction, planet, snapshot, categories);
-
-            ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
         }
 
         /// <summary>

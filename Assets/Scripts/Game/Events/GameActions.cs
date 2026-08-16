@@ -220,16 +220,7 @@ namespace Rebellion.Game.Events
         /// <returns>A single narrative message result.</returns>
         internal override List<GameResult> Execute(GameActionContext context)
         {
-            return ExecuteCore(context);
-        }
-
-        /// <summary>
-        /// Builds the configured narrative result from the optional triggering result.
-        /// </summary>
-        private List<GameResult> ExecuteCore(GameActionContext context)
-        {
             GameRoot game = context.Game;
-            GameResult triggerResult = context.Activation?.TriggerResult;
             IRandomNumberProvider provider = context.Random;
             ISceneNode subject = !string.IsNullOrWhiteSpace(SubjectBinding)
                 ? context.Activation?.GetBindingReference<ISceneNode>(SubjectBinding)
@@ -281,7 +272,7 @@ namespace Rebellion.Game.Events
                     BackgroundImagePath = imagePath,
                     OverlayImagePath = OverlayImage?.Path ?? (subject as Officer)?.MessageImagePath,
                     BackgroundAudioPath = backgroundAudioPath,
-                    OfficerVoicePath = OfficerVoice?.Resolve(subject as Officer, provider),
+                    OfficerVoicePath = OfficerVoice?.ResolvePath(subject as Officer, provider),
                     AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
                 },
@@ -289,8 +280,12 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>
+    /// Validates authored message-media sources and resolves paths supplied by event bindings.
+    /// </summary>
     internal static class MessageMediaResolver
     {
+        /// <summary>Resolves one background-image source to its external content path.</summary>
         internal static string Resolve(MessageBackgroundImage image, GameActionContext context)
         {
             if (image == null)
@@ -306,6 +301,7 @@ namespace Rebellion.Game.Events
             return ResolvePath(image.Path, image.Binding, context);
         }
 
+        /// <summary>Resolves one background-audio source to its external content path.</summary>
         internal static string Resolve(MessageAudio audio, GameActionContext context)
         {
             if (audio == null)
@@ -464,30 +460,10 @@ namespace Rebellion.Game.Events
                     );
             }
 
-            IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
-                selector.Select(game, context.Random, context.Activation)
-            );
-            if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
-            {
-                Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
-                if (explicitOfficer == null)
-                    throw new InvalidOperationException(
-                        $"ChangeOfficerRating could not resolve officer '{OfficerInstanceID}'."
-                    );
-                selected = new ISceneNode[] { explicitOfficer }.Concat(selected);
-            }
-            List<ISceneNode> nodes = selected.Distinct().ToList();
-            if (nodes.Count == 0)
-                throw new InvalidOperationException(
-                    "ChangeOfficerRating requires an officer or a matching selector."
-                );
-            if (nodes.Any(node => node is not Officer))
-                throw new InvalidOperationException(
-                    "ChangeOfficerRating selectors may return only officers."
-                );
+            List<Officer> officers = ResolveOfficers(context);
 
             List<GameResult> results = new List<GameResult>();
-            foreach (Officer officer in nodes.Cast<Officer>())
+            foreach (Officer officer in officers)
             {
                 int baseValue = officer.GetBaseRating(Rating);
                 int currentValue = officer.GetEffectiveRating(Rating);
@@ -512,6 +488,35 @@ namespace Rebellion.Game.Events
                 officer.SetBaseRating(Rating, checked(baseValue + adjustment));
             }
             return results;
+        }
+
+        /// <summary>Resolves and validates every officer targeted by this rating change.</summary>
+        private List<Officer> ResolveOfficers(GameActionContext context)
+        {
+            GameRoot game = context.Game;
+            IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
+                selector.Select(game, context.Random, context.Activation)
+            );
+            if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
+            {
+                Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+                if (explicitOfficer == null)
+                    throw new InvalidOperationException(
+                        $"ChangeOfficerRating could not resolve officer '{OfficerInstanceID}'."
+                    );
+                selected = new ISceneNode[] { explicitOfficer }.Concat(selected);
+            }
+
+            List<ISceneNode> nodes = selected.Distinct().ToList();
+            if (nodes.Count == 0)
+                throw new InvalidOperationException(
+                    "ChangeOfficerRating requires an officer or a matching selector."
+                );
+            if (nodes.Any(node => node is not Officer))
+                throw new InvalidOperationException(
+                    "ChangeOfficerRating selectors may return only officers."
+                );
+            return nodes.Cast<Officer>().ToList();
         }
     }
 
@@ -942,6 +947,7 @@ namespace Rebellion.Game.Events
     #endregion
 
     #region PresentationActions
+    /// <summary>Resolves canonical game entities targeted by presentation actions.</summary>
     internal static class DisplayActionTargets
     {
         /// <summary>
@@ -1387,8 +1393,10 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>Resolves canonical movable units and valid destination containers.</summary>
     internal static class UnitActionTargets
     {
+        /// <summary>Resolves explicit and selected movable units for an action.</summary>
         internal static List<IMovable> ResolveUnits(
             string unitInstanceID,
             IEnumerable<GameEventSelector> selectors,
@@ -1428,6 +1436,7 @@ namespace Rebellion.Game.Events
             return resolved.Cast<IMovable>().ToList();
         }
 
+        /// <summary>Resolves explicit and selected destination containers for an action.</summary>
         internal static List<ContainerNode> ResolveDestinations(
             string destinationInstanceID,
             IEnumerable<GameEventSelector> selectors,

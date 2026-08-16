@@ -57,7 +57,10 @@ namespace Rebellion.Game.Messages
         [PersistableAttribute]
         public OfficerVoiceLineType? Preset { get; set; }
 
-        public string Resolve(Officer officer, IRandomNumberProvider provider)
+        /// <summary>
+        /// Resolves the explicit recording or selects one recording from the officer's preset.
+        /// </summary>
+        public string ResolvePath(Officer officer, IRandomNumberProvider provider)
         {
             bool hasPath = !string.IsNullOrWhiteSpace(Path);
             if (hasPath && Preset.HasValue)

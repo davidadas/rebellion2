@@ -490,7 +490,7 @@ namespace Rebellion.Systems
                 )
             )
             {
-                betrayalResults.AddRange(mission.ExecuteBetrayed(_game, _provider));
+                betrayalResults.AddRange(mission.ResolveBetrayedMission(_game, _provider));
                 return betrayalResults;
             }
 

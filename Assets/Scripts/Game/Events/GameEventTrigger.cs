@@ -15,11 +15,14 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string Event { get; set; }
 
+        /// <summary>Gets the authored mappings from public result arguments to local bindings.</summary>
         public List<GameEventTriggerBinding> Bindings { get; set; } =
             new List<GameEventTriggerBinding>();
 
+        /// <summary>Creates an empty trigger for deserialization.</summary>
         public GameEventTrigger() { }
 
+        /// <summary>Creates a trigger for a stable event contract and its local bindings.</summary>
         public GameEventTrigger(string eventID, params (string Argument, string As)[] bindings)
         {
             Event = eventID;
@@ -27,6 +30,7 @@ namespace Rebellion.Game.Events
                 Bindings.Add(new GameEventTriggerBinding { Argument = argument, As = localName });
         }
 
+        /// <summary>Gets the concrete result type consumed by this trigger.</summary>
         internal Type ResultType => GameEventTriggerRegistry.GetResultType(Event);
 
         /// <summary>
@@ -36,11 +40,14 @@ namespace Rebellion.Game.Events
         public IReadOnlyDictionary<string, Type> AvailableArguments =>
             GameEventTriggerRegistry.GetArguments(Event);
 
+        /// <summary>Returns whether a result satisfies this trigger contract.</summary>
         internal bool Matches(GameResult result) => GameEventTriggerRegistry.Matches(Event, result);
 
+        /// <summary>Gets the declared type of one public trigger argument.</summary>
         internal Type GetArgumentType(string argument) =>
             GameEventTriggerRegistry.GetArgumentType(Event, argument);
 
+        /// <summary>Copies authored result arguments into the event activation context.</summary>
         internal void Bind(GameEventExecutionContext context, GameResult result) =>
             GameEventTriggerRegistry.Bind(context, this, result);
     }
@@ -77,7 +84,10 @@ namespace Rebellion.Game.Events
         {
             private sealed class TriggerArgument
             {
+                /// <summary>Gets the stable public type of the argument.</summary>
                 internal Type Type { get; set; }
+
+                /// <summary>Gets the argument value from a typed result.</summary>
                 internal Func<TResult, object> Getter { get; set; }
             }
 
@@ -189,12 +199,6 @@ namespace Rebellion.Game.Events
         private static Dictionary<string, ITriggerContract> BuildContracts()
         {
             Dictionary<string, ITriggerContract> contracts = new(StringComparer.Ordinal);
-            Register<UnitArrivedResult>(contracts, "core:unit.arrived")
-                .Argument("Unit", result => result.Unit)
-                .Argument("UnitInstanceID", result => result.Unit?.InstanceID)
-                .Argument("Destination", result => result.Destination)
-                .Argument("DestinationInstanceID", result => result.Destination?.InstanceID)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<DuelResult>(contracts, "core:duel.completed")
                 .Argument("Officer", result => result.EncounteredOfficer)
                 .Argument("OfficerInstanceID", result => result.EncounteredOfficer?.InstanceID)
@@ -207,6 +211,19 @@ namespace Rebellion.Game.Events
                 .Argument("ImagePath", result => result.ImagePath)
                 .Argument("AudioPath", result => result.AudioPath)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<ForceDiscoveryResult>(contracts, "core:force.discovered")
+                .Argument("Officer", result => result.Officer)
+                .Argument("Discoverer", result => result.Discoverer)
+                .Argument("ForceRank", result => result.ForceRank)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<MissionCompletedResult>(contracts, "core:mission.completed")
+                .Argument("Mission", result => result.Mission)
+                .Argument("Outcome", result => result.Outcome)
+                .Argument("CompletionReason", result => result.CompletionReason)
+                .Argument("Participants", result => result.Participants)
+                .Argument("Location", result => result.Location)
+                .Argument("ReturnDestination", result => result.ReturnDestination)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<OfficerCaptureStateResult>(contracts, "core:officer.capture-changed")
                 .Argument("Officer", result => result.TargetOfficer ?? result.CapturedOfficer)
                 .Argument(
@@ -217,18 +234,11 @@ namespace Rebellion.Game.Events
                 .Argument("Context", result => result.Context)
                 .Argument("IsCaptured", result => result.IsCaptured)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<MissionCompletedResult>(contracts, "core:mission.completed")
-                .Argument("Mission", result => result.Mission)
-                .Argument("Outcome", result => result.Outcome)
-                .Argument("CompletionReason", result => result.CompletionReason)
-                .Argument("Participants", result => result.Participants)
-                .Argument("Location", result => result.Location)
-                .Argument("ReturnDestination", result => result.ReturnDestination)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<ForceDiscoveryResult>(contracts, "core:force.discovered")
-                .Argument("Officer", result => result.Officer)
-                .Argument("Discoverer", result => result.Discoverer)
-                .Argument("ForceRank", result => result.ForceRank)
+            Register<UnitArrivedResult>(contracts, "core:unit.arrived")
+                .Argument("Unit", result => result.Unit)
+                .Argument("UnitInstanceID", result => result.Unit?.InstanceID)
+                .Argument("Destination", result => result.Destination)
+                .Argument("DestinationInstanceID", result => result.Destination?.InstanceID)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             return contracts;
         }

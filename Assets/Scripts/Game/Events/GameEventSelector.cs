@@ -7,15 +7,24 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    /// <summary>
+    /// Selects registered scene nodes for an authored game-event operation.
+    /// </summary>
     [PersistableObject]
     public abstract class GameEventSelector
     {
+        /// <summary>
+        /// Selects nodes from the current game state for one event activation.
+        /// </summary>
         internal abstract IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventExecutionContext context
         );
 
+        /// <summary>
+        /// Returns registered nodes that remain attached to active gameplay containment.
+        /// </summary>
         protected static IEnumerable<T> Active<T>(GameRoot game)
             where T : class, ISceneNode
         {
@@ -23,6 +32,9 @@ namespace Rebellion.Game.Events
                 .Where(node => node.GetParent() != null && !game.IsInVoid(node));
         }
 
+        /// <summary>
+        /// Returns whether a node is located at the explicitly named or bound planet.
+        /// </summary>
         protected static bool MatchesLocation(
             ISceneNode node,
             GameEventExecutionContext context,
@@ -39,6 +51,9 @@ namespace Rebellion.Game.Events
                 || node.GetParentOfType<Planet>()?.InstanceID == expected;
         }
 
+        /// <summary>
+        /// Returns whether an active node or a retained node's remembered parent matches a planet.
+        /// </summary>
         protected static bool MatchesActiveOrRecordedLocation(
             GameRoot game,
             ISceneNode node,

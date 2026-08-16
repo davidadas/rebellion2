@@ -44,37 +44,34 @@ namespace Rebellion.Systems
 
             foreach (DuelRequestedResult request in results)
             {
-                string rejectionReason = GetRejectionReason(request);
-                if (rejectionReason == null)
-                    Resolve(request, reactions);
+                if (CanResolveDuel(request))
+                    ResolveDuel(request, reactions);
             }
 
             return reactions;
         }
 
         /// <summary>
-        /// Returns whether both officers remain eligible and share a planet.
+        /// Returns whether both officers remain eligible opponents at the same planet.
         /// </summary>
         /// <param name="request">The encounter request to validate.</param>
-        /// <returns>True when authoritative resolution may proceed.</returns>
-        private static string GetRejectionReason(DuelRequestedResult request)
+        /// <returns>True when authoritative duel resolution may proceed.</returns>
+        private static bool CanResolveDuel(DuelRequestedResult request)
         {
             Officer encountered = request?.EncounteredOfficer;
             Officer opposing = request?.OpposingOfficer;
             if (encountered == null || opposing == null)
-                return "Both officers are required.";
+                return false;
             if (encountered == opposing)
-                return "An officer cannot duel itself.";
+                return false;
             if (encountered.IsKilled || opposing.IsKilled)
-                return "A killed officer cannot duel.";
+                return false;
             if (encountered.IsCaptured || opposing.IsCaptured)
-                return "A captured officer cannot duel.";
+                return false;
             if (encountered.OwnerInstanceID == opposing.OwnerInstanceID)
-                return "Officers from the same faction cannot duel.";
+                return false;
             Planet location = encountered.GetParentOfType<Planet>();
-            if (location == null || opposing.GetParentOfType<Planet>() != location)
-                return "The officers are not at the same planet.";
-            return null;
+            return location != null && opposing.GetParentOfType<Planet>() == location;
         }
 
         /// <summary>
@@ -82,14 +79,14 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="request">The validated encounter request.</param>
         /// <param name="reactions">The result collection receiving authoritative outcomes.</param>
-        private void Resolve(DuelRequestedResult request, List<GameResult> reactions)
+        private void ResolveDuel(DuelRequestedResult request, List<GameResult> reactions)
         {
             Officer encountered = request.EncounteredOfficer;
             Officer opposing = request.OpposingOfficer;
             Planet location = encountered.GetParentOfType<Planet>();
             int encounteredCombat = encountered.GetEffectiveRating(OfficerRating.Combat);
             int opposingCombat = opposing.GetEffectiveRating(OfficerRating.Combat);
-            bool captured = ResolveCapture(
+            bool captured = TryCaptureEncounteredOfficer(
                 encountered,
                 opposing,
                 location,
@@ -98,12 +95,12 @@ namespace Rebellion.Systems
                 request,
                 reactions
             );
-            int encounteredInjury = ResolveEncounteredOfficerInjury(
+            int encounteredInjury = CalculateEncounteredOfficerInjury(
                 captured,
                 encounteredCombat,
                 opposingCombat
             );
-            int opposingInjury = ResolveOpposingOfficerInjury(encounteredCombat, opposingCombat);
+            int opposingInjury = CalculateOpposingOfficerInjury(encounteredCombat, opposingCombat);
 
             ApplyInjury(encountered, encounteredInjury, opposing, request, reactions);
             ApplyInjury(opposing, opposingInjury, encountered, request, reactions);
@@ -121,7 +118,7 @@ namespace Rebellion.Systems
         /// Resolves whether the encountered officer avoids capture and records capture state when
         /// the opposing officer succeeds.
         /// </summary>
-        private bool ResolveCapture(
+        private bool TryCaptureEncounteredOfficer(
             Officer encountered,
             Officer opposing,
             Planet location,
@@ -158,7 +155,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Resolves injury to the encountered officer after capture or successful evasion.
         /// </summary>
-        private int ResolveEncounteredOfficerInjury(
+        private int CalculateEncounteredOfficerInjury(
             bool captured,
             int encounteredCombat,
             int opposingCombat
@@ -183,7 +180,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Resolves injury to the opposing officer from the encountered officer's combat advantage.
         /// </summary>
-        private int ResolveOpposingOfficerInjury(int encounteredCombat, int opposingCombat) =>
+        private int CalculateOpposingOfficerInjury(int encounteredCombat, int opposingCombat) =>
             TryRollInjury(
                 Math.Max(
                     _game.Config.DuelResolution.MinimumInjuryChance,
