@@ -548,15 +548,31 @@ namespace Rebellion.Game
 
             public int EncounterProbabilityOffset { get; set; }
 
+            /// <summary>
+            /// Maps ascending minimum Force thresholds to the rank label active from each
+            /// threshold until the next authored threshold.
+            /// </summary>
             public Dictionary<int, int> RankLabelByMinimumForceRank { get; set; } =
                 new Dictionary<int, int>();
 
+            /// <summary>
+            /// Resolves the label for a numeric Force rank using the greatest configured threshold
+            /// that does not exceed the supplied rank.
+            /// </summary>
+            /// <param name="forceRank">The numeric rank to classify.</param>
+            /// <returns>The configured label active at that rank.</returns>
             public ForceRankLabel GetRankLabel(int forceRank)
             {
                 return (ForceRankLabel)
                     new ProbabilityTable(RankLabelByMinimumForceRank).Lookup(forceRank);
             }
 
+            /// <summary>
+            /// Returns the lowest configured threshold assigned to a label, or
+            /// <see cref="int.MaxValue"/> when the label is not authored.
+            /// </summary>
+            /// <param name="label">The configured label whose first threshold is requested.</param>
+            /// <returns>The label's minimum numeric Force rank.</returns>
             public int GetMinimumRank(ForceRankLabel label)
             {
                 return RankLabelByMinimumForceRank

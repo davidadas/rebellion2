@@ -453,7 +453,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Adds mission provenance to interruption results before returning them to the pipeline.
+        /// Adds the originating mission to interruption results before returning them to the pipeline.
         /// </summary>
         /// <param name="mission">The mission producing the results.</param>
         /// <param name="source">The results to stamp.</param>

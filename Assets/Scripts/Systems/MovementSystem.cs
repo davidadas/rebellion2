@@ -128,14 +128,20 @@ namespace Rebellion.Systems
             if (results == null)
                 return new List<GameResult>();
 
+            List<GameResult> reactions = new List<GameResult>();
             foreach (UnitMovementRequestedResult result in results)
             {
                 if (result?.Units == null || result.Destinations == null)
                     continue;
-                TryRequestMove(result.Units, result.Destinations, result.SourceEventInstanceID);
+                TryRequestMove(
+                    result.Units,
+                    result.Destinations,
+                    result.SourceEventInstanceID,
+                    reactions
+                );
             }
 
-            return new List<GameResult>();
+            return reactions;
         }
 
         /// <summary>
@@ -144,11 +150,13 @@ namespace Rebellion.Systems
         /// <param name="units">The units that must move together.</param>
         /// <param name="destinations">Candidate destinations in preference order.</param>
         /// <param name="sourceEventInstanceID">The event requesting movement, when applicable.</param>
+        /// <param name="reactions">The result collection receiving accepted movement outcomes.</param>
         /// <returns>True when a destination accepted and received the movement request.</returns>
         private bool TryRequestMove(
             IReadOnlyList<IMovable> units,
             IReadOnlyList<ContainerNode> destinations,
-            string sourceEventInstanceID
+            string sourceEventInstanceID,
+            List<GameResult> reactions
         )
         {
             if (units == null || units.Count == 0 || destinations == null)
@@ -162,7 +170,7 @@ namespace Rebellion.Systems
                     TryRequestMoveGroup(
                         units.ToList(),
                         destination,
-                        _pendingResults,
+                        reactions,
                         sourceEventInstanceID
                     )
                 )
@@ -181,13 +189,9 @@ namespace Rebellion.Systems
 
             foreach (UnitPlacementRequestedResult result in results)
             {
-                if (result?.Destination == null || result.Units == null)
+                if (result?.Units == null || result.Destinations == null)
                     continue;
-                IEnumerable<ContainerNode> candidates =
-                    result.DestinationCandidates?.Count > 0
-                        ? result.DestinationCandidates
-                        : new[] { result.Destination };
-                foreach (ContainerNode candidate in candidates)
+                foreach (ContainerNode candidate in result.Destinations)
                 {
                     if (TryPlaceGroup(result.Units, candidate))
                         break;
@@ -951,7 +955,7 @@ namespace Rebellion.Systems
                 ISceneNode unit = (ISceneNode)liveUnits[index];
                 ContainerNode resolvedDestination = destinations[index];
                 if (unit.GetParent() == null)
-                    _game.AttachRegisteredNode(unit, resolvedDestination);
+                    _game.AttachRetainedNode(unit, resolvedDestination);
                 else
                     _game.MoveNode(unit, resolvedDestination);
                 liveUnits[index].Movement = null;
@@ -1262,7 +1266,7 @@ namespace Rebellion.Systems
 
             if (destination is Mission)
             {
-                CompleteMissionParticipantArrival(movable, results);
+                CompleteMissionParticipantArrival(movable);
                 return;
             }
 
@@ -1322,21 +1326,9 @@ namespace Rebellion.Systems
         /// Completes arrival into a mission node.
         /// </summary>
         /// <param name="movable">The arriving unit.</param>
-        /// <param name="results">The results generated this tick.</param>
-        private void CompleteMissionParticipantArrival(IMovable movable, List<GameResult> results)
+        private void CompleteMissionParticipantArrival(IMovable movable)
         {
             movable.Movement = null;
-            if (movable is not IMissionParticipant missionParticipant)
-                return;
-
-            results.Add(
-                new RoleEnrouteActiveResult
-                {
-                    Participant = missionParticipant,
-                    IsActive = false,
-                    Tick = _game.CurrentTick,
-                }
-            );
         }
 
         /// <summary>
@@ -1970,18 +1962,6 @@ namespace Rebellion.Systems
                     Tick = _game.CurrentTick,
                 }
             );
-
-            if (unit is IMissionParticipant missionParticipant && destination is Mission)
-            {
-                results.Add(
-                    new RoleEnrouteActiveResult
-                    {
-                        Participant = missionParticipant,
-                        IsActive = true,
-                        Tick = _game.CurrentTick,
-                    }
-                );
-            }
 
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"

@@ -16,6 +16,28 @@ using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Events
 {
+    /// <summary>
+    /// Creates complete action contexts for focused action tests without expanding the production API.
+    /// </summary>
+    internal static class GameActionTestExtensions
+    {
+        internal static List<GameResult> Execute(this GameAction action, GameRoot game) =>
+            action.Execute(new GameActionContext(game, game.Random));
+
+        internal static List<GameResult> Execute(
+            this GameAction action,
+            GameRoot game,
+            IRandomNumberProvider random
+        ) => action.Execute(new GameActionContext(game, random));
+
+        internal static List<GameResult> Execute(
+            this GameAction action,
+            GameRoot game,
+            IRandomNumberProvider random,
+            GameEventExecutionContext activation
+        ) => action.Execute(new GameActionContext(game, random, activation));
+    }
+
     [TestFixture]
     public class GameActionsTests
     {
@@ -333,7 +355,7 @@ namespace Rebellion.Tests.Game.Events
                     new EvaluateEventVariableConditional
                     {
                         Key = "luke.stage",
-                        Comparison = EventVariableComparison.GreaterThanOrEqual,
+                        Comparison = ComparisonOperator.GreaterThanOrEqual,
                         CompareTo = 2,
                     },
                 },
@@ -624,7 +646,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SelectBinding_DetachedRegisteredNode_ThrowsInvalidOperationException()
+        public void SelectBinding_DetachedRegisteredNode_ReturnsCanonicalNode()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer officer = EntityFactory.CreateOfficer("han", "rebels");
@@ -638,11 +660,11 @@ namespace Rebellion.Tests.Game.Events
             );
             context.Bind("officer", officer);
 
-            Assert.Throws<InvalidOperationException>(() =>
-                new SelectBinding { Binding = "$officer" }
-                    .Select(game, new FixedRNG(0), context)
-                    .ToList()
-            );
+            ISceneNode selected = new SelectBinding { Binding = "$officer" }
+                .Select(game, new FixedRNG(0), context)
+                .Single();
+
+            Assert.AreSame(officer, selected);
         }
 
         [Test]
@@ -715,30 +737,26 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerForce_PercentOfEffectiveRank_AdjustsForceRating()
+        public void IncreaseOfficerForce_PercentOfEffectiveRank_AdjustsForceRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.ForceValue = 40;
             game.AttachNode(luke, rebelPlanet);
-            AdjustOfficerForceAction action = new AdjustOfficerForceAction
+            IncreaseOfficerForceAction action = new IncreaseOfficerForceAction
             {
                 OfficerInstanceID = luke.InstanceID,
                 PercentOfEffective = 25,
             };
 
-            ForceExperienceResult result = action
-                .Execute(game)
-                .OfType<ForceExperienceResult>()
-                .Single();
+            List<GameResult> results = action.Execute(game);
 
-            Assert.AreEqual(10, result.ExperienceGained);
+            Assert.IsEmpty(results);
             Assert.AreEqual(50, luke.ForceValue);
-            Assert.IsTrue(result.SuppressRankChangeMessage);
         }
 
         [Test]
-        public void AdjustOfficerRating_Amount_AdjustsStoredRating()
+        public void ChangeOfficerRating_Amount_AdjustsStoredRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -746,7 +764,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, rebelPlanet);
 
             Assert.IsEmpty(
-                new AdjustOfficerRatingAction
+                new ChangeOfficerRatingAction
                 {
                     OfficerInstanceID = luke.InstanceID,
                     Rating = OfficerRating.Diplomacy,
@@ -758,14 +776,14 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerRating_PercentOfStoredRating_AdjustsStoredRating()
+        public void ChangeOfficerRating_PercentOfStoredRating_AdjustsStoredRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.SetBaseRating(OfficerRating.ShipResearch, 40);
             game.AttachNode(luke, rebelPlanet);
 
-            new AdjustOfficerRatingAction
+            new ChangeOfficerRatingAction
             {
                 OfficerInstanceID = luke.InstanceID,
                 Rating = OfficerRating.ShipResearch,
@@ -776,14 +794,14 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerRating_MultipleAdjustmentModes_Throws()
+        public void ChangeOfficerRating_MultipleAdjustmentModes_Throws()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, rebelPlanet);
 
             Assert.Throws<InvalidOperationException>(() =>
-                new AdjustOfficerRatingAction
+                new ChangeOfficerRatingAction
                 {
                     OfficerInstanceID = luke.InstanceID,
                     Rating = OfficerRating.Combat,
@@ -959,33 +977,35 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetOfficerJediState_EligibilityTransition_InitializesForceOnce()
+        public void SetForceEligible_EligibilityTransition_InitializesForceOnce()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer leia = EntityFactory.CreateOfficer("leia", "rebels");
-            leia.IsJedi = false;
+            leia.IsForceSensitive = false;
             leia.IsForceEligible = false;
             leia.JediLevel = 10;
             leia.JediLevelVariance = 5;
             game.AttachNode(leia, rebelPlanet);
-            SetOfficerJediStateAction action = new SetOfficerJediStateAction
+            SetForceSensitiveAction sensitivity = new SetForceSensitiveAction
             {
                 OfficerInstanceID = leia.InstanceID,
-                IsJedi = true,
-                IsEligible = true,
+            };
+            SetForceEligibleAction eligibility = new SetForceEligibleAction
+            {
+                OfficerInstanceID = leia.InstanceID,
             };
 
-            ForceExperienceResult result = action
-                .Execute(game, new FixedRandomProvider(new[] { 0.5 }))
-                .OfType<ForceExperienceResult>()
-                .Single();
+            sensitivity.Execute(game);
+            List<GameResult> results = eligibility.Execute(
+                game,
+                new FixedRandomProvider(new[] { 0.5 })
+            );
 
-            Assert.IsTrue(leia.IsJedi);
+            Assert.IsTrue(leia.IsForceSensitive);
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(13, leia.ForceValue);
-            Assert.AreEqual(13, result.ExperienceGained);
-            Assert.IsTrue(result.SuppressRankChangeMessage);
-            action.Execute(game, new FixedRandomProvider(new[] { 0.5 }));
+            Assert.IsEmpty(results);
+            eligibility.Execute(game, new FixedRandomProvider(new[] { 0.5 }));
 
             Assert.AreEqual(13, leia.ForceValue);
         }
@@ -1013,12 +1033,12 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustPlanetStat_RawResourceNodes_IncreasesExplicitAmount()
+        public void ChangePlanetStat_RawResourceNodes_IncreasesExplicitAmount()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 4;
             planet.EnergyCapacity = 8;
-            AdjustPlanetStatAction action = new AdjustPlanetStatAction
+            ChangePlanetStatAction action = new ChangePlanetStatAction
             {
                 Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
@@ -1033,19 +1053,19 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.AreEqual(5, planet.NumRawResourceNodes);
             Assert.AreEqual(
-                PlanetStatType.RawMaterial,
-                results.OfType<PlanetStatChangedResult>().Single().Stat
+                PlanetChangeCategory.RawMaterial,
+                results.OfType<PlanetStatChangedResult>().Single().Category
             );
         }
 
         [Test]
-        public void AdjustPlanetStat_NeutralPlanet_ReportsNoFaction()
+        public void ChangePlanetStat_NeutralPlanet_ReportsNoFaction()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.OwnerInstanceID = null;
             planet.NumRawResourceNodes = 4;
             planet.EnergyCapacity = 8;
-            AdjustPlanetStatAction action = new AdjustPlanetStatAction
+            ChangePlanetStatAction action = new ChangePlanetStatAction
             {
                 Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
@@ -1142,7 +1162,7 @@ namespace Rebellion.Tests.Game.Events
                             },
                         },
                     },
-                    new RecordPlanetIncidentAction { IncidentType = IncidentType.Disaster },
+                    new RecordPlanetIncidentAction { IncidentType = PlanetIncidentType.Disaster },
                 },
             };
             GameEventExecutionContext context = new GameEventExecutionContext(

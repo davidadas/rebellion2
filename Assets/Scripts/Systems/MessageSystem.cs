@@ -46,25 +46,48 @@ namespace Rebellion.Systems
             List<GameResult> deliveredResults = new List<GameResult>();
             foreach (MessageRequestedResult request in requests)
             {
-                if (request.Recipient == null || request.Message == null)
+                if (request?.Recipient == null)
                     continue;
 
-                request.Message.CreatedTick = _game.CurrentTick;
-                request.Recipient.AddMessage(request.Message);
+                Message message = CreateMessage(request);
+                request.Recipient.AddMessage(message);
                 MessageDeliveredResult delivered = new MessageDeliveredResult
                 {
                     Recipient = request.Recipient,
-                    Message = request.Message,
+                    Message = message,
                     NotificationType = request.NotificationType,
                     AdvisorSubjectNotification = request.AdvisorSubjectNotification,
                     AdvisorSubjectTypeID = request.AdvisorSubjectTypeID,
                     AdvisorNotification = request.AdvisorNotification,
+                    SourceEventInstanceID = request.SourceEventInstanceID,
                     Tick = _game.CurrentTick,
                 };
                 deliveredResults.Add(delivered);
             }
             return deliveredResults;
         }
+
+        /// <summary>
+        /// Constructs the durable message represented by one resolved delivery request.
+        /// </summary>
+        /// <param name="request">The semantic and presentation data to persist.</param>
+        /// <returns>The message ready to attach to the recipient faction.</returns>
+        private Message CreateMessage(MessageRequestedResult request) =>
+            new Message(request.MessageType, request.Subject, request.Body)
+            {
+                ResultType = request.ResultType,
+                DisplayName = request.Subject,
+                BackgroundImageKey = request.BackgroundImageKey,
+                DisplayImagePath = request.BackgroundImagePath,
+                OverlayImagePath = request.OverlayImagePath,
+                BackgroundAudioPath = request.BackgroundAudioPath,
+                OfficerVoicePath = request.OfficerVoicePath,
+                EventLocationInstanceID = request.EventLocationInstanceID,
+                NavigationTargetInstanceID = request.NavigationTargetInstanceID,
+                NavigationSecondaryTargetInstanceID = request.NavigationSecondaryTargetInstanceID,
+                MissionInstanceID = request.MissionInstanceID,
+                CreatedTick = _game.CurrentTick,
+            };
 
         /// <summary>
         /// Returns whether an ordinary simulation result may produce an automatic message.

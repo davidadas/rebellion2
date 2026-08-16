@@ -304,6 +304,7 @@ public sealed class GameManager
     {
         _messageSystem = new MessageSystem(_game, _gameData.MessageDefinitions.GetDeepCopy());
         _eventSystem = new GameEventSystem(_game, _randomProvider);
+        _eventSystem.ValidateEvents(_game.GetEventPool());
         _fogOfWarSystem = new FogOfWarSystem(_game);
         _blockadeSystem = new BlockadeSystem(_game, _randomProvider);
         _fleetSystem = new FleetSystem(_game);
@@ -454,8 +455,6 @@ public sealed class GameManager
     /// <param name="resolvedResults">The already-processed results to extend in place.</param>
     private void ProcessMessageReactions(List<GameResult> resolvedResults)
     {
-        const int maximumDeliveryResults = 10000;
-        int deliveredResultCount = 0;
         List<GameResult> pendingMessageResults = new List<GameResult>(resolvedResults);
         while (pendingMessageResults.Count > 0)
         {
@@ -464,12 +463,6 @@ public sealed class GameManager
             );
             if (deliveredResults.Count == 0)
                 return;
-            deliveredResultCount += deliveredResults.Count;
-            if (deliveredResultCount > maximumDeliveryResults)
-                throw new InvalidOperationException(
-                    $"Message delivery reactions exceeded the {maximumDeliveryResults}-result safety limit."
-                );
-
             List<GameResult> deliveryReactions = _resultProcessor.Process(deliveredResults);
             resolvedResults.AddRange(deliveryReactions);
             foreach (

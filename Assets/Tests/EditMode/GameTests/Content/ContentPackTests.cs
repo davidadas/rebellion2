@@ -96,7 +96,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void GameEventSchema_AdjustOfficerRatingWithPlanetSelector_RejectsDocument()
+        public void GameEventSchema_ChangeOfficerRatingWithPlanetSelector_RejectsDocument()
         {
             const string xml =
                 @"
@@ -104,10 +104,10 @@ namespace Rebellion.Tests.Content
   <GameEvent>
     <InstanceID>EVENT</InstanceID>
     <Actions>
-      <AdjustOfficerRating Rating=""Combat"">
+      <ChangeOfficerRating Rating=""Combat"">
         <Amount>1</Amount>
         <SelectPlanets InstanceID=""PLANET""/>
-      </AdjustOfficerRating>
+      </ChangeOfficerRating>
     </Actions>
   </GameEvent>
 </GameEvents>";
@@ -116,7 +116,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void GameEventSchema_AdjustPlanetStatWithOfficerSelector_RejectsDocument()
+        public void GameEventSchema_ChangePlanetStatWithOfficerSelector_RejectsDocument()
         {
             const string xml =
                 @"
@@ -124,10 +124,10 @@ namespace Rebellion.Tests.Content
   <GameEvent>
     <InstanceID>EVENT</InstanceID>
     <Actions>
-      <AdjustPlanetStat Stat=""EnergyCapacity"">
+      <ChangePlanetStat Stat=""EnergyCapacity"">
         <Amount>1</Amount>
         <SelectOfficers InstanceID=""OFFICER""/>
-      </AdjustPlanetStat>
+      </ChangePlanetStat>
     </Actions>
   </GameEvent>
 </GameEvents>";

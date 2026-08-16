@@ -83,7 +83,7 @@ namespace Rebellion.Tests.Game.Events
             HasForceRankConditional condition = new HasForceRankConditional
             {
                 OfficerInstanceID = officer.InstanceID,
-                Comparison = EventVariableComparison.GreaterThanOrEqual,
+                Comparison = ComparisonOperator.GreaterThanOrEqual,
                 Rank = ForceRankLabel.ForceKnight,
             };
 

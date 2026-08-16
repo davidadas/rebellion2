@@ -43,7 +43,6 @@ namespace Rebellion.Game.Events
             Target = target;
             TriggerResult = triggerResult;
             Bind("target", target);
-            Bind("trigger", triggerResult);
             trigger?.Bind(this, triggerResult);
         }
 
@@ -59,13 +58,13 @@ namespace Rebellion.Game.Events
         /// Stores a named value for subsequent actions in this activation.
         /// </summary>
         /// <param name="name">The stable binding name.</param>
-        /// <param name="value">The value to expose; null values are ignored.</param>
+        /// <param name="value">The value to expose, including null when a typed trigger argument has no value.</param>
         public void Bind(string name, object value)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("A binding name is required.", nameof(name));
-            if (value != null)
-                _bindings[name] = value;
+            if (!_bindings.TryAdd(name, value))
+                throw new InvalidOperationException($"Binding '{name}' is already defined.");
         }
 
         /// <summary>

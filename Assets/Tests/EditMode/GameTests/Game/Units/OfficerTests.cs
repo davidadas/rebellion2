@@ -178,7 +178,7 @@ namespace Rebellion.Tests.Game.Units
                     { OfficerRating.Leadership, 25 },
                 },
                 Movement = null,
-                IsJedi = true,
+                IsForceSensitive = true,
                 IsForceEligible = true,
                 ForceValue = 75,
                 ForceTrainingAdjustment = 10,
@@ -201,7 +201,11 @@ namespace Rebellion.Tests.Game.Units
                 deserializedOfficer.Movement,
                 "MovementStatus mismatch"
             );
-            Assert.AreEqual(originalOfficer.IsJedi, deserializedOfficer.IsJedi, "IsJedi mismatch");
+            Assert.AreEqual(
+                originalOfficer.IsForceSensitive,
+                deserializedOfficer.IsForceSensitive,
+                "IsForceSensitive mismatch"
+            );
             Assert.AreEqual(
                 originalOfficer.IsForceEligible,
                 deserializedOfficer.IsForceEligible,

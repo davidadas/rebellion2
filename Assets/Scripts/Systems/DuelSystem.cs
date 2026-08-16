@@ -286,7 +286,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Copies event provenance from an encounter request to a reaction.
+        /// Copies the originating event ID from an encounter request to a reaction.
         /// </summary>
         /// <typeparam name="T">The emitted result type.</typeparam>
         /// <param name="reaction">The reaction to stamp.</param>

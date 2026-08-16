@@ -5,24 +5,61 @@ namespace Rebellion.Game.Advisor
     /// </summary>
     public enum AdvisorNotificationType
     {
-        None = 0,
-        PositivePopularSupport = 1,
-        NegativePopularSupport = 2,
-        Manufacturing = 3,
-        Research = 4,
-        FleetArrived = 5,
-        UnitsArrived = 6,
-        CapitalShipRepaired = 8,
-        StarfighterRepaired = 9,
-        Maintenance = 12,
-        BlockadeInitiated = 13,
-        BlockadeDetected = 14,
-        FieldPersonnel = 20,
-        AgentReport = 21,
-        PlanetaryStatus = 28,
-        PrisonerEscaped = 36,
-        InterceptedCommunication = 41,
-        Bombardment = 46,
-        PlanetaryAssault = 47,
+        /// <summary>No advisor interruption is requested.</summary>
+        None,
+
+        /// <summary>Popular support changed in the recipient's favor.</summary>
+        PositivePopularSupport,
+
+        /// <summary>Popular support changed against the recipient.</summary>
+        NegativePopularSupport,
+
+        /// <summary>A manufacturing update requires attention.</summary>
+        Manufacturing,
+
+        /// <summary>A research update requires attention.</summary>
+        Research,
+
+        /// <summary>A fleet completed transit.</summary>
+        FleetArrived,
+
+        /// <summary>One or more non-fleet units completed transit.</summary>
+        UnitsArrived,
+
+        /// <summary>A capital ship completed repairs.</summary>
+        CapitalShipRepaired,
+
+        /// <summary>A starfighter unit completed repairs.</summary>
+        StarfighterRepaired,
+
+        /// <summary>Maintenance requirements changed.</summary>
+        Maintenance,
+
+        /// <summary>The recipient established a blockade.</summary>
+        BlockadeInitiated,
+
+        /// <summary>The recipient detected an opposing blockade.</summary>
+        BlockadeDetected,
+
+        /// <summary>Personnel in the field submitted a report.</summary>
+        FieldPersonnel,
+
+        /// <summary>An agent submitted a mission report.</summary>
+        AgentReport,
+
+        /// <summary>A planet's strategic state changed.</summary>
+        PlanetaryStatus,
+
+        /// <summary>A prisoner escaped custody.</summary>
+        PrisonerEscaped,
+
+        /// <summary>The recipient intercepted a communication.</summary>
+        InterceptedCommunication,
+
+        /// <summary>An opposing bombardment occurred.</summary>
+        Bombardment,
+
+        /// <summary>An opposing planetary assault occurred.</summary>
+        PlanetaryAssault,
     }
 }

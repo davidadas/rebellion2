@@ -10,6 +10,45 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Galaxy
 {
     /// <summary>
+    /// Identifies a numeric planet property exposed to data-defined comparisons and changes.
+    /// </summary>
+    public enum PlanetStat
+    {
+        /// <summary>The number of raw-resource sites available on the planet.</summary>
+        RawResourceNodes,
+
+        /// <summary>The energy capacity available to support planetary facilities.</summary>
+        EnergyCapacity,
+    }
+
+    /// <summary>
+    /// Identifies the concrete kind of planet change recorded for message and reaction routing.
+    /// </summary>
+    public enum PlanetChangeCategory
+    {
+        Energy,
+        EnergyAllocated,
+        Loyalty,
+        ProductionModifier,
+        RawMaterial,
+        RawMaterialAllocated,
+        Smuggling,
+        TroopWithdrawPercent,
+        TroopSurplus,
+        TroopRequired,
+        ControlUprising,
+    }
+
+    /// <summary>Identifies the gameplay category assigned to a recorded planet incident.</summary>
+    public enum PlanetIncidentType
+    {
+        Uprising,
+        Intelligence,
+        Disaster,
+        Resource,
+    }
+
+    /// <summary>
     /// Represents a planet in the game. A planet is a scene node that can contain fleets,
     /// officers, regiments, missions, and buildings. It also has a popular support rating,
     /// which is a measure of how much the planet's population supports a given faction.
@@ -180,6 +219,20 @@ namespace Rebellion.Game.Galaxy
         {
             return EnergyCapacity;
         }
+
+        /// <summary>
+        /// Reads the explicit planet property identified by the supplied authored vocabulary.
+        /// </summary>
+        /// <param name="stat">The planet property to read.</param>
+        /// <returns>The current stored value of the selected property.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when the stat is unsupported.</exception>
+        public int GetStatValue(PlanetStat stat) =>
+            stat switch
+            {
+                PlanetStat.RawResourceNodes => NumRawResourceNodes,
+                PlanetStat.EnergyCapacity => EnergyCapacity,
+                _ => throw new ArgumentOutOfRangeException(nameof(stat), stat, null),
+            };
 
         /// <summary>
         /// Gets the number of energy units currently consumed by facilities on this planet.

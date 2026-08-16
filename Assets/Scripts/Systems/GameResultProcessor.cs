@@ -10,23 +10,10 @@ namespace Rebellion.Systems
     /// </summary>
     public sealed class GameResultProcessor
     {
-        private const int _defaultMaximumReactionResults = 10000;
-        private readonly int _maximumReactionResults;
         private readonly List<Func<IReadOnlyList<GameResult>, List<GameResult>>> _subscriptions =
             new List<Func<IReadOnlyList<GameResult>, List<GameResult>>>();
         private readonly List<Action<IReadOnlyList<GameResult>>> _observers =
             new List<Action<IReadOnlyList<GameResult>>>();
-
-        /// <summary>
-        /// Creates a processor with a bounded reaction queue.
-        /// </summary>
-        /// <param name="maximumReactionResults">The maximum number of results accepted per processing cycle.</param>
-        public GameResultProcessor(int maximumReactionResults = _defaultMaximumReactionResults)
-        {
-            if (maximumReactionResults < 1)
-                throw new ArgumentOutOfRangeException(nameof(maximumReactionResults));
-            _maximumReactionResults = maximumReactionResults;
-        }
 
         /// <summary>
         /// Adds a result handler at the end of the ordered subscription list.
@@ -93,13 +80,6 @@ namespace Rebellion.Systems
                 }
 
                 resolvedResults.AddRange(reactionResults);
-                if (resolvedResults.Count > _maximumReactionResults)
-                {
-                    throw new InvalidOperationException(
-                        $"Game result reactions exceeded the {_maximumReactionResults}-result safety limit. "
-                            + "This usually indicates a reaction cycle."
-                    );
-                }
                 pendingResults = reactionResults;
             }
 

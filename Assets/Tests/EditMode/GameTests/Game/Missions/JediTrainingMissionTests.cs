@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Game.Missions
         private Officer CreateJedi(string instanceID, int forceValue, bool isTrainer = false)
         {
             Officer officer = EntityFactory.CreateOfficer(instanceID, "rebels");
-            officer.IsJedi = true;
+            officer.IsForceSensitive = true;
             officer.IsJediTrainer = isTrainer;
             officer.IsForceEligible = true;
             officer.ForceValue = forceValue;
@@ -125,7 +125,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void TryCreate_NonJediParticipant_ReturnsNull()
         {
-            _student.IsJedi = false;
+            _student.IsForceSensitive = false;
 
             Assert.IsNull(CreateMission());
         }

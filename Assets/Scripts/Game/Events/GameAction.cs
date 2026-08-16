@@ -16,25 +16,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Executes the action within one event activation.
         /// </summary>
-        public abstract List<GameResult> Execute(GameActionContext context);
-
-        /// <summary>
-        /// Executes the action outside an event activation using the game's random source.
-        /// </summary>
-        public List<GameResult> Execute(GameRoot game) =>
-            Execute(new GameActionContext(game, game?.Random));
-
-        /// <summary>
-        /// Executes the action outside an event activation using an injected random source.
-        /// </summary>
-        public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider) =>
-            Execute(new GameActionContext(game, provider));
-
-        internal List<GameResult> Execute(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        ) => Execute(new GameActionContext(game, provider, context));
+        internal abstract List<GameResult> Execute(GameActionContext context);
 
         internal static List<GameResult> ExecuteAll(
             IEnumerable<GameAction> actions,

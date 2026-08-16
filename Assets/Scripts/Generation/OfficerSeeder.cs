@@ -192,7 +192,7 @@ namespace Rebellion.Generation
 
                 if (officer.IsKnownJedi)
                 {
-                    officer.IsJedi = true;
+                    officer.IsForceSensitive = true;
                     officer.IsForceEligible = true;
                     officer.ForceValue =
                         officer.JediLevel + rng.NextInt(0, officer.JediLevelVariance + 1);
@@ -202,7 +202,7 @@ namespace Rebellion.Generation
                     double jediProbability = officer.JediProbability / 100.0;
                     if (rng.NextDouble() < jediProbability)
                     {
-                        officer.IsJedi = true;
+                        officer.IsForceSensitive = true;
                         officer.IsForceEligible = false;
                         officer.ForceValue = 0;
                     }

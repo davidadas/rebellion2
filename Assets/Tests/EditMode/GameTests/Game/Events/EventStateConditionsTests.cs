@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Game.Events
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
                 Binding = "$unit",
-                Comparison = EventVariableComparison.Equal,
+                Comparison = ComparisonOperator.Equal,
                 CompareTo = emperor.InstanceID,
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
@@ -48,7 +48,7 @@ namespace Rebellion.Tests.Game.Events
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
                 Binding = "$destination",
-                Comparison = EventVariableComparison.Equal,
+                Comparison = ComparisonOperator.Equal,
                 CompareTo = empirePlanet.InstanceID,
             };
             GameEventExecutionContext context = new GameEventExecutionContext(

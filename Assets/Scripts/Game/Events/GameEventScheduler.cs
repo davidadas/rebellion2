@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
@@ -27,7 +26,6 @@ namespace Rebellion.Game.Events
         /// <param name="maximum">Receives the maximum initial delay.</param>
         public void GetInitialRange(out int minimum, out int maximum)
         {
-            EnsureSingleMode();
             if (At != null)
             {
                 minimum = maximum = At.Tick;
@@ -56,41 +54,13 @@ namespace Rebellion.Game.Events
         /// <param name="maximum">Receives the maximum repeat delay.</param>
         public void GetRepeatRange(out int minimum, out int maximum)
         {
-            EnsureSingleMode();
-            if (!IsRecurring)
-                throw new InvalidOperationException("One-shot schedules cannot repeat.");
-
             if (Every != null)
             {
-                if (Every.Ticks < 1)
-                    throw new InvalidOperationException("Every.Ticks must be at least one.");
                 minimum = maximum = Every.Ticks;
                 return;
             }
 
             Random.GetRange(out minimum, out maximum);
-            if (minimum < 1)
-                throw new InvalidOperationException(
-                    "A repeating random tick range must start at one or later."
-                );
-        }
-
-        /// <summary>
-        /// Ensures content configured exactly one mutually exclusive schedule mode.
-        /// </summary>
-        private void EnsureSingleMode()
-        {
-            int configuredModes =
-                (At == null ? 0 : 1)
-                + (Every == null ? 0 : 1)
-                + (Random == null ? 0 : 1)
-                + (After == null ? 0 : 1)
-                + (AfterAll == null ? 0 : 1)
-                + (AfterAny == null ? 0 : 1);
-            if (configuredModes != 1)
-                throw new InvalidOperationException(
-                    "Schedule requires exactly one of At, Every, Random, After, AfterAll, or AfterAny."
-                );
         }
     }
 
@@ -162,17 +132,12 @@ namespace Rebellion.Game.Events
         public int MaximumTicks { get; set; }
 
         /// <summary>
-        /// Validates and returns the configured inclusive delay range.
+        /// Returns the configured inclusive delay range after load-time validation.
         /// </summary>
         /// <param name="minimum">Receives the minimum delay.</param>
         /// <param name="maximum">Receives the maximum delay.</param>
         public void GetRange(out int minimum, out int maximum)
         {
-            if (MinimumTicks < 0)
-                throw new InvalidOperationException("MinimumTicks cannot be negative.");
-            if (MaximumTicks < MinimumTicks)
-                throw new InvalidOperationException("MaximumTicks cannot precede MinimumTicks.");
-
             minimum = MinimumTicks;
             maximum = MaximumTicks;
         }

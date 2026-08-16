@@ -262,7 +262,7 @@ namespace Rebellion.Tests.Util.Serialization
                     {
                         InstanceID = "TICK_CONDITION",
                         Ticks = 30,
-                        Comparison = EventVariableComparison.GreaterThan,
+                        Comparison = ComparisonOperator.GreaterThan,
                     },
                 },
             };
@@ -297,7 +297,7 @@ namespace Rebellion.Tests.Util.Serialization
             TickCountConditional conditional = deserialized.Conditionals[0] as TickCountConditional;
             Assert.IsNotNull(conditional);
             Assert.AreEqual(30, conditional.Ticks);
-            Assert.AreEqual(EventVariableComparison.GreaterThan, conditional.Comparison);
+            Assert.AreEqual(ComparisonOperator.GreaterThan, conditional.Comparison);
         }
 
         [Test]
@@ -366,7 +366,7 @@ namespace Rebellion.Tests.Util.Serialization
                             new EvaluateEventVariableConditional
                             {
                                 Key = "luke.stage",
-                                Comparison = EventVariableComparison.Equal,
+                                Comparison = ComparisonOperator.Equal,
                                 CompareTo = 1,
                             },
                         },
@@ -381,7 +381,7 @@ namespace Rebellion.Tests.Util.Serialization
                         },
                     },
                     new AddToVoidAction { UnitInstanceID = "LUKE_SKYWALKER" },
-                    new AdjustOfficerForceAction
+                    new IncreaseOfficerForceAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",
                         Amount = 5,
@@ -428,15 +428,15 @@ namespace Rebellion.Tests.Util.Serialization
                 conditional.Conditions[0] as EvaluateEventVariableConditional;
             Assert.IsNotNull(condition);
             Assert.AreEqual("luke.stage", condition.Key);
-            Assert.AreEqual(EventVariableComparison.Equal, condition.Comparison);
+            Assert.AreEqual(ComparisonOperator.Equal, condition.Comparison);
             SetEventVariableAction setVariable = conditional.Actions[0] as SetEventVariableAction;
             Assert.IsNotNull(setVariable);
             Assert.AreEqual(EventVariableOperation.Add, setVariable.Operation);
             AddToVoidAction addToVoid = deserialized.Actions[2] as AddToVoidAction;
             Assert.IsNotNull(addToVoid);
             Assert.AreEqual("LUKE_SKYWALKER", addToVoid.UnitInstanceID);
-            AdjustOfficerForceAction forceAdjustment =
-                deserialized.Actions[3] as AdjustOfficerForceAction;
+            IncreaseOfficerForceAction forceAdjustment =
+                deserialized.Actions[3] as IncreaseOfficerForceAction;
             Assert.IsNotNull(forceAdjustment);
             Assert.AreEqual(5, forceAdjustment.Amount);
             ApplyOfficerInjuryAction injury = deserialized.Actions[4] as ApplyOfficerInjuryAction;

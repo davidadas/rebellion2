@@ -56,36 +56,6 @@ namespace Rebellion.Game.Results
         Withdrawn,
     }
 
-    public enum PlanetStatType
-    {
-        Energy,
-        EnergyAllocated,
-        Loyalty,
-        ProductionModifier,
-        RawMaterial,
-        RawMaterialAllocated,
-        Smuggling,
-        TroopWithdrawPercent,
-        TroopSurplus,
-        TroopRequired,
-        ControlUprising,
-    }
-
-    public enum IncidentType
-    {
-        Uprising,
-        Intelligence,
-        Disaster,
-        Resource,
-    }
-
-    public enum SystemCombatStateType
-    {
-        Battle,
-        Bombardment,
-        Assault,
-    }
-
     public enum PlanetOwnershipChangeReason
     {
         None,
@@ -103,7 +73,7 @@ namespace Rebellion.Game.Results
     {
         public Planet Planet { get; set; }
         public Faction Faction { get; set; }
-        public PlanetStatType Stat { get; set; }
+        public PlanetChangeCategory Category { get; set; }
         public int OldValue { get; set; }
         public int NewValue { get; set; }
     }
@@ -118,17 +88,6 @@ namespace Rebellion.Game.Results
         public Faction Beneficiary { get; set; }
         public int OldPercent { get; set; }
         public int NewPercent { get; set; }
-    }
-
-    /// <summary>
-    /// Combat at a system started or ended (battle, bombardment, or assault).
-    /// </summary>
-    public class SystemCombatStateResult : GameResult
-    {
-        public Planet Planet { get; set; }
-        public Fleet Fleet { get; set; }
-        public SystemCombatStateType CombatState { get; set; }
-        public bool IsActive { get; set; }
     }
 
     /// <summary>
@@ -216,9 +175,9 @@ namespace Rebellion.Game.Results
     public class PlanetIncidentResult : GameResult
     {
         public Planet Planet { get; set; }
-        public IncidentType IncidentType { get; set; }
+        public PlanetIncidentType IncidentType { get; set; }
         public int Severity { get; set; }
-        public PlanetStatType ChangedStat { get; set; }
+        public PlanetChangeCategory ChangedStat { get; set; }
         public int OldValue { get; set; }
         public int NewValue { get; set; }
         public List<IGameEntity> DestroyedObjects { get; set; } = new List<IGameEntity>();
@@ -330,15 +289,6 @@ namespace Rebellion.Game.Results
         public List<PlanetSystem> AdditionalSystems { get; set; } = new List<PlanetSystem>();
     }
 
-    /// <summary>
-    /// A mission participant's en-route-to-mission active state changed.
-    /// </summary>
-    public class RoleEnrouteActiveResult : GameResult
-    {
-        public IMissionParticipant Participant { get; set; }
-        public bool IsActive { get; set; }
-    }
-
     #endregion
 
     #region Officer
@@ -443,16 +393,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A character's Force level changed.
-    /// </summary>
-    public class ForceChangedResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public int ForceLevel { get; set; }
-        public int Detail { get; set; }
-    }
-
-    /// <summary>
     /// A character's Force training progress changed.
     /// </summary>
     public class ForceTrainingResult : GameResult
@@ -471,7 +411,6 @@ namespace Rebellion.Game.Results
         public int ExperienceGained { get; set; }
         public int PreviousForceRank { get; set; }
         public int CurrentForceRank { get; set; }
-        public bool SuppressRankChangeMessage { get; set; }
         public int Detail { get; set; }
     }
 
@@ -480,8 +419,8 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class MessageRequestedResult : GameResult
     {
-        public Message Message { get; set; }
         public Faction Recipient { get; set; }
+        public MessageResultType ResultType { get; set; }
         public ISceneNode SubjectNode { get; set; }
         public ISceneNode RelatedSubjectNode { get; set; }
         public Planet Location { get; set; }
@@ -497,6 +436,9 @@ namespace Rebellion.Game.Results
         public AdvisorNotificationType NotificationType { get; set; }
         public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
         public string AdvisorSubjectTypeID { get; set; }
+        public string EventLocationInstanceID { get; set; }
+        public string NavigationTargetInstanceID { get; set; }
+        public string NavigationSecondaryTargetInstanceID { get; set; }
     }
 
     /// <summary>
@@ -527,17 +469,7 @@ namespace Rebellion.Game.Results
     public sealed class UnitPlacementRequestedResult : GameResult
     {
         public List<IMovable> Units { get; set; } = new List<IMovable>();
-        public ContainerNode Destination { get; set; }
-        public List<ContainerNode> DestinationCandidates { get; set; } = new List<ContainerNode>();
-    }
-
-    /// <summary>
-    /// A character's seat-of-power status changed.
-    /// </summary>
-    public class SeatOfPowerChangedResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public bool IsAtSeat { get; set; }
+        public List<ContainerNode> Destinations { get; set; } = new List<ContainerNode>();
     }
 
     #endregion
@@ -804,6 +736,9 @@ namespace Rebellion.Game.Results
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
         public Planet Planet { get; set; }
+        public string PlanetOwnerInstanceID { get; set; }
+        public string AttackerRetreatPlanetInstanceID { get; set; }
+        public string DefenderRetreatPlanetInstanceID { get; set; }
         public CombatSide Winner { get; set; }
         public SpaceCombatSideOutcome AttackerOutcome { get; set; }
         public SpaceCombatSideOutcome DefenderOutcome { get; set; }

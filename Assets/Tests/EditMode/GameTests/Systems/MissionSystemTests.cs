@@ -2055,12 +2055,12 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer trainer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
-            trainer.IsJedi = true;
+            trainer.IsForceSensitive = true;
             trainer.IsJediTrainer = true;
             trainer.IsForceEligible = true;
             trainer.ForceValue = 120;
             Officer student = EntityFactory.CreateOfficer("student", "empire");
-            student.IsJedi = true;
+            student.IsForceSensitive = true;
             student.IsForceEligible = true;
             student.ForceValue = 40;
             game.AttachNode(student, planet);
@@ -2266,7 +2266,7 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
-            officer.IsJedi = true;
+            officer.IsForceSensitive = true;
             officer.IsJediTrainer = true;
             officer.IsForceEligible = true;
             officer.ForceValue = 120;

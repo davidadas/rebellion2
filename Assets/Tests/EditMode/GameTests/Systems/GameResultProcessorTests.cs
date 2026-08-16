@@ -140,24 +140,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, results.Count);
         }
 
-        [Test]
-        public void Process_ReactionCycle_StopsAtConfiguredSafetyLimit()
-        {
-            GameResultProcessor processor = new GameResultProcessor(maximumReactionResults: 3);
-            processor.Subscribe(
-                new RecordingHandler<PlanetGarrisonChangedResult>(_ => new List<GameResult>
-                {
-                    new PlanetGarrisonChangedResult(),
-                })
-            );
-
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                processor.Process(new[] { new PlanetGarrisonChangedResult() })
-            );
-
-            StringAssert.Contains("reaction cycle", exception.Message);
-        }
-
         private sealed class RecordingHandler<T> : IGameResultHandler<T>
             where T : GameResult
         {

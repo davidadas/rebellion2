@@ -30,6 +30,41 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ValidateEvents_MultipleScheduleModes_ThrowsInvalidOperationException()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "INVALID_SCHEDULE",
+                Schedule = new GameEventScheduler
+                {
+                    At = new AtTick { Tick = 25 },
+                    Every = new EveryTicks { Ticks = 5 },
+                },
+            };
+
+            TestDelegate validate = () => _system.ValidateEvents(new[] { gameEvent });
+
+            Assert.Throws<InvalidOperationException>(validate);
+        }
+
+        [Test]
+        public void ValidateEvents_ReservedTargetBinding_ThrowsInvalidOperationException()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "INVALID_BINDING",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger("core:unit.arrived", ("Unit", "target")),
+                },
+            };
+
+            TestDelegate validate = () => _system.ValidateEvents(new[] { gameEvent });
+
+            Assert.Throws<InvalidOperationException>(validate);
+        }
+
+        [Test]
         public void ProcessEvents_UnmetOneShotEvent_RemainsPending()
         {
             GameEvent gameEvent = CreateTickEvent("PENDING", targetTick: 10, repeatable: false);
@@ -277,7 +312,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_MultipleTriggersWithDifferentAliases_ThrowsInvalidOperationException()
+        public void ValidateEvents_MultipleTriggersWithDifferentAliases_ThrowsInvalidOperationException()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -291,10 +326,8 @@ namespace Rebellion.Tests.Systems
                     new GameEventTrigger("core:duel.completed"),
                 },
             };
-            _game.EventPool.Add(gameEvent);
-
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                _system.HandleResults(new[] { new UnitArrivedResult() })
+                _system.ValidateEvents(new[] { gameEvent })
             );
 
             StringAssert.Contains("same binding aliases", exception.Message);
@@ -669,7 +702,7 @@ namespace Rebellion.Tests.Systems
                 {
                     new TickCountConditional
                     {
-                        Comparison = EventVariableComparison.GreaterThan,
+                        Comparison = ComparisonOperator.GreaterThan,
                         Ticks = targetTick,
                     },
                 },
@@ -690,13 +723,13 @@ namespace Rebellion.Tests.Systems
             new EvaluateBindingConditional
             {
                 Binding = "$" + name,
-                Comparison = EventVariableComparison.Equal,
+                Comparison = ComparisonOperator.Equal,
                 CompareTo = value,
             };
 
         private sealed class RecordScopedPlanetAction : GameAction
         {
-            public override List<GameResult> Execute(GameActionContext context)
+            internal override List<GameResult> Execute(GameActionContext context)
             {
                 GameRoot game = context.Game;
                 Planet planet = context.Activation.GetTarget<Planet>();
@@ -717,13 +750,13 @@ namespace Rebellion.Tests.Systems
 
         private sealed class EmitTestResultAction : GameAction
         {
-            public override List<GameResult> Execute(GameActionContext context) =>
+            internal override List<GameResult> Execute(GameActionContext context) =>
                 new List<GameResult> { new PlanetStatChangedResult() };
         }
 
         private sealed class ObserveTestResultAction : GameAction
         {
-            public override List<GameResult> Execute(GameActionContext context)
+            internal override List<GameResult> Execute(GameActionContext context)
             {
                 if (context.Activation.Results.Any())
                     context.Game.EventRuntime.SetVariable("result.observed", 1);

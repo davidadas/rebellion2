@@ -462,7 +462,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 InstanceID = "officer",
                 DisplayName = "Commander Antilles",
                 OwnerInstanceID = _ownerId,
-                IsJedi = true,
+                IsForceSensitive = true,
                 ForceValue = _game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceMaster),
                 ShipResearch = 1,
                 TroopResearch = 0,

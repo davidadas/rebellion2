@@ -1,4 +1,3 @@
-using System;
 using NUnit.Framework;
 using Rebellion.Game.Events;
 
@@ -8,33 +7,25 @@ namespace Rebellion.Tests.Game.Events
     public sealed class GameEventTests
     {
         [Test]
-        public void GetTriggerCount_PositiveInteger_ReturnsCount()
+        public void CanExecute_TriggerCountReached_ReturnsFalse()
         {
             GameEvent gameEvent = new GameEvent { TriggerCount = 3 };
+            GameEventState state = new GameEventState { ExecutionCount = 3 };
 
-            int? result = gameEvent.GetTriggerCount();
+            bool result = gameEvent.CanExecute(state);
 
-            Assert.AreEqual(3, result);
+            Assert.IsFalse(result);
         }
 
         [Test]
-        public void GetTriggerCount_Omitted_ReturnsNull()
+        public void CanExecute_UnlimitedEvent_ReturnsTrue()
         {
             GameEvent gameEvent = new GameEvent();
+            GameEventState state = new GameEventState { ExecutionCount = 100 };
 
-            int? result = gameEvent.GetTriggerCount();
+            bool result = gameEvent.CanExecute(state);
 
-            Assert.IsNull(result);
-        }
-
-        [Test]
-        public void GetTriggerCount_InvalidValue_ThrowsInvalidOperationException()
-        {
-            GameEvent gameEvent = new GameEvent { TriggerCount = 0 };
-
-            TestDelegate getTriggerCount = () => gameEvent.GetTriggerCount();
-
-            Assert.Throws<InvalidOperationException>(getTriggerCount);
+            Assert.IsTrue(result);
         }
     }
 }

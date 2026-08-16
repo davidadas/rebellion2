@@ -31,7 +31,7 @@ namespace Rebellion.Game.Events
     {
         public List<RandomOutcome> Outcomes { get; set; } = new List<RandomOutcome>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             List<RandomOutcome> eligible = Outcomes
                 .Where(outcome =>
@@ -67,7 +67,7 @@ namespace Rebellion.Game.Events
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
         public List<GameAction> Else { get; set; } = new List<GameAction>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             IEnumerable<GameAction> selected = Conditions.TrueForAll(condition =>
                 condition.IsMet(context.Game, context.Activation)
@@ -95,7 +95,7 @@ namespace Rebellion.Game.Events
         public EventVariableOperation Operation { get; set; }
         public int Operand { get; set; }
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             int previousValue = context.Game.EventRuntime.GetVariable(Key);
             int currentValue = Operation switch
@@ -127,7 +127,7 @@ namespace Rebellion.Game.Events
         [PersistableMember(Name = "Subjects")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             Faction recipient = context.Game.GetFactionByOwnerInstanceID(FactionInstanceID);
             List<ISceneNode> observations = Selectors
@@ -218,7 +218,7 @@ namespace Rebellion.Game.Events
         /// </summary>
         /// <param name="context">The dependencies and activation data for this action.</param>
         /// <returns>A single narrative message result.</returns>
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             return ExecuteCore(context);
         }
@@ -355,7 +355,7 @@ namespace Rebellion.Game.Events
         [PersistableMember(Name = "Officers")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             if (IsCaptured && string.IsNullOrWhiteSpace(CaptorFactionInstanceID))
@@ -411,8 +411,8 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Adjusts selected officers using one authored calculation.
     /// </summary>
-    [PersistableObject(Name = "AdjustOfficerRating")]
-    public sealed class AdjustOfficerRatingAction : GameAction
+    [PersistableObject(Name = "ChangeOfficerRating")]
+    public sealed class ChangeOfficerRatingAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -424,13 +424,17 @@ namespace Rebellion.Game.Events
         public int? PercentOfStored { get; set; }
         public int? PercentOfEffective { get; set; }
         public int? PercentOfPositiveGap { get; set; }
+
+        [PersistableAttribute]
         public string ReferenceOfficerInstanceID { get; set; }
+
+        [PersistableAttribute]
         public int MinimumAmount { get; set; }
 
         [PersistableMember(Name = "Officers")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             int modeCount = new int?[]
@@ -442,7 +446,7 @@ namespace Rebellion.Game.Events
             }.Count(value => value.HasValue);
             if (modeCount != 1)
                 throw new InvalidOperationException(
-                    "AdjustOfficerRating requires exactly one adjustment value."
+                    "ChangeOfficerRating requires exactly one adjustment value."
                 );
             Officer referenceOfficer = null;
             if (PercentOfPositiveGap.HasValue)
@@ -452,7 +456,7 @@ namespace Rebellion.Game.Events
                 );
                 if (referenceOfficer == null)
                     throw new InvalidOperationException(
-                        $"AdjustOfficerRating could not resolve reference officer '{ReferenceOfficerInstanceID}'."
+                        $"ChangeOfficerRating could not resolve reference officer '{ReferenceOfficerInstanceID}'."
                     );
                 if (PercentOfPositiveGap.Value < 0 || MinimumAmount < 0)
                     throw new InvalidOperationException(
@@ -468,18 +472,18 @@ namespace Rebellion.Game.Events
                 Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
                 if (explicitOfficer == null)
                     throw new InvalidOperationException(
-                        $"AdjustOfficerRating could not resolve officer '{OfficerInstanceID}'."
+                        $"ChangeOfficerRating could not resolve officer '{OfficerInstanceID}'."
                     );
                 selected = new ISceneNode[] { explicitOfficer }.Concat(selected);
             }
             List<ISceneNode> nodes = selected.Distinct().ToList();
             if (nodes.Count == 0)
                 throw new InvalidOperationException(
-                    "AdjustOfficerRating requires an officer or a matching selector."
+                    "ChangeOfficerRating requires an officer or a matching selector."
                 );
             if (nodes.Any(node => node is not Officer))
                 throw new InvalidOperationException(
-                    "AdjustOfficerRating selectors may return only officers."
+                    "ChangeOfficerRating selectors may return only officers."
                 );
 
             List<GameResult> results = new List<GameResult>();
@@ -512,10 +516,10 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Adjusts selected officers' stored Force values using one authored calculation.
+    /// Increases selected officers' stored Force progression using one authored calculation.
     /// </summary>
-    [PersistableObject(Name = "AdjustOfficerForce")]
-    public sealed class AdjustOfficerForceAction : GameAction
+    [PersistableObject(Name = "IncreaseOfficerForce")]
+    public sealed class IncreaseOfficerForceAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -524,16 +528,20 @@ namespace Rebellion.Game.Events
         public int? PercentOfStored { get; set; }
         public int? PercentOfEffective { get; set; }
         public int? PercentOfPositiveGap { get; set; }
+
+        [PersistableAttribute]
         public string ReferenceOfficerInstanceID { get; set; }
+
+        [PersistableAttribute]
         public int MinimumAmount { get; set; }
 
         [PersistableMember(Name = "Officers")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <summary>
-        /// Applies one Force adjustment mode to every explicitly named or selected officer.
+        /// Applies one positive Force increase mode to every explicitly named or selected officer.
         /// </summary>
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             int modeCount = new int?[]
             {
@@ -544,7 +552,20 @@ namespace Rebellion.Game.Events
             }.Count(value => value.HasValue);
             if (modeCount != 1)
                 throw new InvalidOperationException(
-                    "AdjustOfficerForce requires exactly one adjustment value."
+                    "IncreaseOfficerForce requires exactly one increase value."
+                );
+            if (
+                Amount is <= 0
+                || PercentOfStored is <= 0
+                || PercentOfEffective is <= 0
+                || PercentOfPositiveGap is <= 0
+            )
+                throw new InvalidOperationException(
+                    "IncreaseOfficerForce values must be greater than zero."
+                );
+            if (MinimumAmount < 0)
+                throw new InvalidOperationException(
+                    "IncreaseOfficerForce MinimumAmount cannot be negative."
                 );
 
             GameRoot game = context.Game;
@@ -556,11 +577,7 @@ namespace Rebellion.Game.Events
                 );
                 if (referenceOfficer == null)
                     throw new InvalidOperationException(
-                        $"AdjustOfficerForce could not resolve reference officer '{ReferenceOfficerInstanceID}'."
-                    );
-                if (PercentOfPositiveGap.Value < 0 || MinimumAmount < 0)
-                    throw new InvalidOperationException(
-                        "Force-gap adjustments require non-negative percentage and minimum values."
+                        $"IncreaseOfficerForce could not resolve reference officer '{ReferenceOfficerInstanceID}'."
                     );
             }
 
@@ -572,7 +589,7 @@ namespace Rebellion.Game.Events
                 Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
                 if (explicitOfficer == null)
                     throw new InvalidOperationException(
-                        $"AdjustOfficerForce could not resolve officer '{OfficerInstanceID}'."
+                        $"IncreaseOfficerForce could not resolve officer '{OfficerInstanceID}'."
                     );
                 selected = new ISceneNode[] { explicitOfficer }.Concat(selected);
             }
@@ -580,19 +597,18 @@ namespace Rebellion.Game.Events
             List<Officer> officers = selected.Distinct().OfType<Officer>().ToList();
             if (officers.Count == 0)
                 throw new InvalidOperationException(
-                    "AdjustOfficerForce requires an officer or a matching selector."
+                    "IncreaseOfficerForce requires an officer or a matching selector."
                 );
             if (selected.Any(node => node is not Officer))
                 throw new InvalidOperationException(
-                    "AdjustOfficerForce selectors may return only officers."
+                    "IncreaseOfficerForce selectors may return only officers."
                 );
 
-            List<GameResult> results = new List<GameResult>();
             foreach (Officer officer in officers)
             {
                 int stored = officer.ForceValue;
                 int effective = officer.ForceRank;
-                int adjustment =
+                int increase =
                     Amount
                     ?? (
                         PercentOfStored.HasValue ? checked(stored * PercentOfStored.Value / 100)
@@ -607,21 +623,13 @@ namespace Rebellion.Game.Events
                             )
                         )
                     );
-                int previousForceRank = officer.ForceRank;
-                officer.ForceValue = Math.Max(0, checked(stored + adjustment));
-                results.Add(
-                    new ForceExperienceResult
-                    {
-                        Officer = officer,
-                        ExperienceGained = adjustment,
-                        PreviousForceRank = previousForceRank,
-                        CurrentForceRank = officer.ForceRank,
-                        SuppressRankChangeMessage = true,
-                        Tick = game.CurrentTick,
-                    }
-                );
+                if (increase <= 0)
+                    throw new InvalidOperationException(
+                        $"IncreaseOfficerForce calculated no increase for '{officer.InstanceID}'."
+                    );
+                officer.ForceValue = checked(stored + increase);
             }
-            return results;
+            return new List<GameResult>();
         }
     }
 
@@ -646,7 +654,7 @@ namespace Rebellion.Game.Events
         public List<GameAction> OnSuccess { get; set; } = new List<GameAction>();
         public List<GameAction> OnFailure { get; set; } = new List<GameAction>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
@@ -681,54 +689,56 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Sets authored Force-state flags and initializes Force value on eligibility transition.
+    /// Marks one officer as having latent Force potential.
     /// </summary>
-    [PersistableObject(Name = "SetOfficerJediState")]
-    public sealed class SetOfficerJediStateAction : GameAction
+    [PersistableObject(Name = "SetForceSensitive")]
+    public sealed class SetForceSensitiveAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
 
-        [PersistableAttribute]
-        public bool? IsJedi { get; set; }
-
-        [PersistableAttribute]
-        public bool? IsEligible { get; set; }
-
-        /// <summary>Applies authored Jedi eligibility and identity changes to one officer.</summary>
-        public override List<GameResult> Execute(GameActionContext context)
+        /// <summary>Marks the configured officer as Force-sensitive without revealing that potential.</summary>
+        internal override List<GameResult> Execute(GameActionContext context)
         {
-            GameRoot game = context.Game;
-            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
                 throw new InvalidOperationException(
-                    $"SetOfficerJediState could not resolve {nameof(OfficerInstanceID)} '{OfficerInstanceID}'."
+                    $"SetForceSensitive could not resolve officer '{OfficerInstanceID}'."
                 );
+            officer.IsForceSensitive = true;
+            return new List<GameResult>();
+        }
+    }
 
-            int previousRank = officer.ForceRank;
-            bool becameEligible = !officer.IsForceEligible && IsEligible == true;
-            if (IsJedi.HasValue)
-                officer.IsJedi = IsJedi.Value;
-            if (IsEligible.HasValue)
-                officer.IsForceEligible = IsEligible.Value;
-            if (becameEligible)
-            {
-                int startingValue =
-                    officer.JediLevel + context.Random.NextInt(0, officer.JediLevelVariance + 1);
-                officer.ForceValue = Math.Max(officer.ForceValue, startingValue);
-            }
-            return new List<GameResult>
-            {
-                new ForceExperienceResult
-                {
-                    Officer = officer,
-                    ExperienceGained = Math.Max(0, officer.ForceRank - previousRank),
-                    PreviousForceRank = previousRank,
-                    CurrentForceRank = officer.ForceRank,
-                    SuppressRankChangeMessage = true,
-                    Tick = game.CurrentTick,
-                },
-            };
+    /// <summary>
+    /// Reveals one Force-sensitive officer's potential and initializes usable Force progression.
+    /// </summary>
+    [PersistableObject(Name = "SetForceEligible")]
+    public sealed class SetForceEligibleAction : GameAction
+    {
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        /// <summary>Reveals and initializes an officer's existing latent Force potential once.</summary>
+        internal override List<GameResult> Execute(GameActionContext context)
+        {
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                throw new InvalidOperationException(
+                    $"SetForceEligible could not resolve officer '{OfficerInstanceID}'."
+                );
+            if (!officer.IsForceSensitive)
+                throw new InvalidOperationException(
+                    $"SetForceEligible requires Force-sensitive officer '{OfficerInstanceID}'."
+                );
+            if (officer.IsForceEligible)
+                return new List<GameResult>();
+
+            officer.IsForceEligible = true;
+            int startingValue =
+                officer.JediLevel + context.Random.NextInt(0, officer.JediLevelVariance + 1);
+            officer.ForceValue = Math.Max(officer.ForceValue, startingValue);
+            return new List<GameResult>();
         }
     }
 
@@ -744,7 +754,7 @@ namespace Rebellion.Game.Events
         public int MaximumInjury { get; set; }
 
         /// <summary>Rolls and applies an injury within the authored severity range.</summary>
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
@@ -781,7 +791,7 @@ namespace Rebellion.Game.Events
         public string EncyclopediaImagePath { get; set; }
 
         /// <summary>Merges authored image paths into the officer's active image set.</summary>
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
@@ -849,7 +859,7 @@ namespace Rebellion.Game.Events
         public List<string> RescueAttempt { get; set; } = new List<string>();
 
         /// <summary>Merges authored voice categories into the officer's active voice set.</summary>
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
@@ -894,7 +904,7 @@ namespace Rebellion.Game.Events
         public string ImagePath { get; set; }
         public string AudioPath { get; set; }
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Officer first = game.GetSceneNodeByInstanceID<Officer>(FirstOfficerInstanceID);
@@ -934,7 +944,11 @@ namespace Rebellion.Game.Events
     #region PresentationActions
     internal static class DisplayActionTargets
     {
-        internal static List<BaseGameEntity> Resolve(
+        /// <summary>
+        /// Resolves the union of an explicit instance and selector results into unique registered
+        /// game entities, failing when the action would mutate no valid target.
+        /// </summary>
+        internal static List<BaseGameEntity> ResolveTargets(
             string targetInstanceID,
             IEnumerable<GameEventSelector> selectors,
             GameActionContext context,
@@ -976,6 +990,7 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>Replaces the display name of every explicitly named or selected entity.</summary>
     [PersistableObject(Name = "SetDisplayName")]
     public sealed class SetDisplayNameAction : GameAction
     {
@@ -988,10 +1003,11 @@ namespace Rebellion.Game.Events
         [PersistableMember(Name = "Targets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        /// <summary>Resolves all authored targets and applies the configured display name.</summary>
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             foreach (
-                BaseGameEntity target in DisplayActionTargets.Resolve(
+                BaseGameEntity target in DisplayActionTargets.ResolveTargets(
                     TargetInstanceID,
                     Selectors,
                     context,
@@ -1003,6 +1019,7 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>Replaces the optional status text of every explicitly named or selected entity.</summary>
     [PersistableObject(Name = "SetDisplayStatus")]
     public sealed class SetDisplayStatusAction : GameAction
     {
@@ -1015,10 +1032,11 @@ namespace Rebellion.Game.Events
         [PersistableMember(Name = "Targets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        /// <summary>Resolves all authored targets and applies the configured status text.</summary>
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             foreach (
-                BaseGameEntity target in DisplayActionTargets.Resolve(
+                BaseGameEntity target in DisplayActionTargets.ResolveTargets(
                     TargetInstanceID,
                     Selectors,
                     context,
@@ -1030,6 +1048,7 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>Clears the optional status text of every explicitly named or selected entity.</summary>
     [PersistableObject(Name = "ClearDisplayStatus")]
     public sealed class ClearDisplayStatusAction : GameAction
     {
@@ -1039,10 +1058,11 @@ namespace Rebellion.Game.Events
         [PersistableMember(Name = "Targets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        /// <summary>Resolves all authored targets and removes their current status text.</summary>
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             foreach (
-                BaseGameEntity target in DisplayActionTargets.Resolve(
+                BaseGameEntity target in DisplayActionTargets.ResolveTargets(
                     TargetInstanceID,
                     Selectors,
                     context,
@@ -1056,17 +1076,11 @@ namespace Rebellion.Game.Events
     #endregion
 
     #region ResourceActions
-    public enum PlanetStat
-    {
-        RawResourceNodes,
-        EnergyCapacity,
-    }
-
     /// <summary>
     /// Applies one explicit signed resource adjustment to the scoped planet.
     /// </summary>
-    [PersistableObject(Name = "AdjustPlanetStat")]
-    public sealed class AdjustPlanetStatAction : GameAction
+    [PersistableObject(Name = "ChangePlanetStat")]
+    public sealed class ChangePlanetStatAction : GameAction
     {
         [PersistableAttribute]
         public PlanetStat Stat { get; set; }
@@ -1084,12 +1098,12 @@ namespace Rebellion.Game.Events
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <summary>Applies one signed adjustment to the selected planet statistic.</summary>
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             if ((Amount.HasValue ? 1 : 0) + (PercentOfCurrent.HasValue ? 1 : 0) != 1)
                 throw new InvalidOperationException(
-                    "AdjustPlanetStat requires exactly one adjustment value."
+                    "ChangePlanetStat requires exactly one adjustment value."
                 );
             IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
                 selector.Select(game, context.Random, context.Activation)
@@ -1103,28 +1117,28 @@ namespace Rebellion.Game.Events
             List<ISceneNode> nodes = selected.Distinct().ToList();
             if (nodes.Count == 0)
                 throw new InvalidOperationException(
-                    "AdjustPlanetStat requires a planet, planet binding, target, or matching selector."
+                    "ChangePlanetStat requires a planet, planet binding, target, or matching selector."
                 );
             if (nodes.Any(node => node is not Planet))
                 throw new InvalidOperationException(
-                    "AdjustPlanetStat selectors may return only planets."
+                    "ChangePlanetStat selectors may return only planets."
                 );
 
             List<GameResult> results = new List<GameResult>();
             foreach (Planet planet in nodes.Cast<Planet>())
             {
-                int oldValue = GetValue(planet, Stat);
+                int oldValue = planet.GetStatValue(Stat);
                 int adjustment = Amount ?? checked(oldValue * PercentOfCurrent.Value / 100);
                 int newValue = Math.Max(0, checked(oldValue + adjustment));
-                PlanetStatType resultStat;
+                PlanetChangeCategory resultCategory;
                 if (Stat == PlanetStat.RawResourceNodes)
                 {
-                    resultStat = PlanetStatType.RawMaterial;
+                    resultCategory = PlanetChangeCategory.RawMaterial;
                     planet.NumRawResourceNodes = newValue;
                 }
                 else
                 {
-                    resultStat = PlanetStatType.Energy;
+                    resultCategory = PlanetChangeCategory.Energy;
                     planet.EnergyCapacity = newValue;
                 }
                 Faction faction = FindOwner(game, planet);
@@ -1133,7 +1147,7 @@ namespace Rebellion.Game.Events
                     {
                         Planet = planet,
                         Faction = faction,
-                        Stat = resultStat,
+                        Category = resultCategory,
                         OldValue = oldValue,
                         NewValue = newValue,
                         Tick = game.CurrentTick,
@@ -1142,14 +1156,6 @@ namespace Rebellion.Game.Events
             }
             return results;
         }
-
-        internal static int GetValue(Planet planet, PlanetStat stat) =>
-            stat switch
-            {
-                PlanetStat.RawResourceNodes => planet.NumRawResourceNodes,
-                PlanetStat.EnergyCapacity => planet.EnergyCapacity,
-                _ => throw new InvalidOperationException($"Unsupported planet stat '{stat}'."),
-            };
 
         /// <summary>
         /// Resolves the faction that currently owns the planet.
@@ -1174,7 +1180,7 @@ namespace Rebellion.Game.Events
         public List<PlanetStatReference> Stats { get; set; } = new List<PlanetStatReference>();
 
         /// <summary>Randomly reduces selected planet statistics while enforcing the minimum total loss.</summary>
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Planet planet = context.Activation?.GetTarget<Planet>();
@@ -1188,7 +1194,7 @@ namespace Rebellion.Game.Events
                 );
             Dictionary<PlanetStat, int> oldValues = selectedStats.ToDictionary(
                 stat => stat,
-                stat => AdjustPlanetStatAction.GetValue(planet, stat)
+                stat => planet.GetStatValue(stat)
             );
             if (oldValues.Values.Sum() == 0)
                 return new List<GameResult>();
@@ -1237,8 +1243,8 @@ namespace Rebellion.Game.Events
                     game,
                     planet,
                     stat == PlanetStat.RawResourceNodes
-                        ? PlanetStatType.RawMaterial
-                        : PlanetStatType.Energy,
+                        ? PlanetChangeCategory.RawMaterial
+                        : PlanetChangeCategory.Energy,
                     oldValues[stat],
                     newValue
                 );
@@ -1259,7 +1265,7 @@ namespace Rebellion.Game.Events
             ICollection<GameResult> results,
             GameRoot game,
             Planet planet,
-            PlanetStatType stat,
+            PlanetChangeCategory category,
             int oldValue,
             int newValue
         )
@@ -1272,7 +1278,7 @@ namespace Rebellion.Game.Events
                     Planet = planet,
                     Faction = game.GetFactions()
                         .FirstOrDefault(faction => faction.InstanceID == planet.OwnerInstanceID),
-                    Stat = stat,
+                    Category = category,
                     OldValue = oldValue,
                     NewValue = newValue,
                     Tick = game.CurrentTick,
@@ -1292,9 +1298,9 @@ namespace Rebellion.Game.Events
     public sealed class RecordPlanetIncidentAction : GameAction
     {
         [PersistableAttribute(Name = "Type")]
-        public IncidentType IncidentType { get; set; }
+        public PlanetIncidentType IncidentType { get; set; }
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             Planet planet = context.Activation?.GetTarget<Planet>();
             if (planet == null)
@@ -1341,7 +1347,7 @@ namespace Rebellion.Game.Events
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <summary>Deletes every unit selected by the authored unit selectors.</summary>
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             if (Selectors.Count == 0)
@@ -1460,6 +1466,7 @@ namespace Rebellion.Game.Events
                 .Where(node => node != null)
                 .Select(node => game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID))
                 .OfType<ContainerNode>()
+                .Where(node => node.GetParent() != null)
                 .GroupBy(node => node.InstanceID, StringComparer.Ordinal)
                 .Select(group => group.First())
                 .ToList();
@@ -1504,7 +1511,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "PlaceUnits")]
     public sealed class PlaceUnitsAction : UnitTransferAction
     {
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             (List<IMovable> units, List<ContainerNode> destinations) = Resolve(
                 context,
@@ -1515,8 +1522,7 @@ namespace Rebellion.Game.Events
                 new UnitPlacementRequestedResult
                 {
                     Units = units,
-                    Destination = destinations[0],
-                    DestinationCandidates = destinations,
+                    Destinations = destinations,
                     Tick = context.Game.CurrentTick,
                 },
             };
@@ -1529,7 +1535,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "SendUnits")]
     public sealed class SendUnitsAction : UnitTransferAction
     {
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             (List<IMovable> units, List<ContainerNode> destinations) = Resolve(
                 context,
@@ -1569,7 +1575,7 @@ namespace Rebellion.Game.Events
         [PersistableMember(Name = "Units")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             List<IMovable> units = UnitActionTargets.ResolveUnits(
@@ -1604,7 +1610,7 @@ namespace Rebellion.Game.Events
         [PersistableMember(Name = "Units")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        public override List<GameResult> Execute(GameActionContext context)
+        internal override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             List<IMovable> units = UnitActionTargets.ResolveUnits(

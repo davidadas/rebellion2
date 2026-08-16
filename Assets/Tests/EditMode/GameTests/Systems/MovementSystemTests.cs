@@ -242,7 +242,7 @@ namespace Rebellion.Tests.Systems
             (_, Planet origin, _, Officer officer, MovementSystem movement) = BuildScene();
             IGameResultHandler<UnitMovementRequestedResult> handler = movement;
 
-            handler.HandleResults(
+            List<GameResult> results = handler.HandleResults(
                 new[]
                 {
                     new UnitMovementRequestedResult
@@ -253,7 +253,7 @@ namespace Rebellion.Tests.Systems
                     },
                 }
             );
-            UnitArrivedResult arrival = movement.ProcessTick().OfType<UnitArrivedResult>().Single();
+            UnitArrivedResult arrival = results.OfType<UnitArrivedResult>().Single();
 
             Assert.AreSame(officer, arrival.Unit);
             Assert.AreSame(origin, arrival.Destination);
@@ -280,7 +280,7 @@ namespace Rebellion.Tests.Systems
                     new UnitPlacementRequestedResult
                     {
                         Units = new List<IMovable> { officer },
-                        Destination = destination,
+                        Destinations = new List<ContainerNode> { destination },
                     },
                 }
             );
@@ -371,7 +371,7 @@ namespace Rebellion.Tests.Systems
                     new UnitPlacementRequestedResult
                     {
                         Units = new List<IMovable> { first, second },
-                        Destination = destinationFleet,
+                        Destinations = new List<ContainerNode> { destinationFleet },
                     },
                 }
             );
@@ -1184,12 +1184,6 @@ namespace Rebellion.Tests.Systems
                 "Officer should remain parented to the mission node, not be rerouted"
             );
             Assert.IsTrue(results.OfType<GameObjectEnrouteResult>().Any());
-            Assert.IsTrue(results.OfType<RoleEnrouteActiveResult>().Any(r => r.IsActive));
-            RoleEnrouteActiveResult arrived = results
-                .OfType<RoleEnrouteActiveResult>()
-                .FirstOrDefault(r => !r.IsActive);
-            Assert.IsNotNull(arrived);
-            Assert.AreEqual(officer, arrived.Participant);
         }
 
         [Test]
@@ -1228,16 +1222,6 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNull(specialForces.Movement);
             Assert.AreEqual(mission, specialForces.GetParent());
-            Assert.IsTrue(
-                results
-                    .OfType<RoleEnrouteActiveResult>()
-                    .Any(r => r.IsActive && r.Participant == specialForces)
-            );
-            Assert.IsTrue(
-                results
-                    .OfType<RoleEnrouteActiveResult>()
-                    .Any(r => !r.IsActive && r.Participant == specialForces)
-            );
         }
 
         [Test]

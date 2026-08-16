@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -162,31 +163,6 @@ namespace Rebellion.Game.Messages
     }
 
     /// <summary>
-    /// Defines the situation and fleet-disposition text used to assemble a space battle
-    /// report. Keeping these fragments in content allows total-conversion packs to replace the
-    /// complete battle vocabulary without changing message routing code.
-    /// </summary>
-    [PersistableObject]
-    public class SpaceBattleNarrativeTemplates
-    {
-        public string VictoryHeadline { get; set; }
-        public string DefeatHeadline { get; set; }
-        public string StalemateHeadline { get; set; }
-        public string NeutralVictory { get; set; }
-        public string NeutralDefeat { get; set; }
-        public string SuccessfullyDefended { get; set; }
-        public string BlockadeEstablished { get; set; }
-        public string AttackFailed { get; set; }
-        public string BlockadeMaintained { get; set; }
-        public string BlockadeBroken { get; set; }
-        public string NoVictor { get; set; }
-        public string FleetDestroyed { get; set; }
-        public string FleetWithdrawn { get; set; }
-        public string FleetWithdrawnTo { get; set; }
-        public string AllShipsDestroyed { get; set; }
-    }
-
-    /// <summary>
     /// Defines the templates, selectors, and image map for one generated message.
     /// </summary>
     public class MessageDefinition : BaseGameEntity
@@ -205,14 +181,13 @@ namespace Rebellion.Game.Messages
         public string NewOwnerInstanceID { get; set; }
         public string FactionInstanceID { get; set; }
         public string GameObjectTypeID { get; set; }
-        public PlanetStatType PlanetStat { get; set; }
+        public PlanetChangeCategory PlanetChange { get; set; }
         public bool HasDestroyedObjects { get; set; }
         public bool PlanetDestroyed { get; set; }
         public string Subject { get; set; }
         public string Body { get; set; }
         public string DetailListHeaderTemplate { get; set; }
         public string DetailListItemTemplate { get; set; }
-        public SpaceBattleNarrativeTemplates SpaceBattleNarrative { get; set; }
         public bool ShowOfficerOverlay { get; set; }
         public MessageBackgroundImage BackgroundImage { get; set; }
         public Dictionary<string, string> ImagePaths { get; set; } =

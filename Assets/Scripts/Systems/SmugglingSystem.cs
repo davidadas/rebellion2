@@ -267,7 +267,7 @@ namespace Rebellion.Systems
                 {
                     Planet = planet,
                     Faction = FindFaction(state.ControllerInstanceID),
-                    Stat = PlanetStatType.Smuggling,
+                    Category = PlanetChangeCategory.Smuggling,
                     OldValue = oldPercent,
                     NewValue = newPercent,
                     Tick = _game.CurrentTick,

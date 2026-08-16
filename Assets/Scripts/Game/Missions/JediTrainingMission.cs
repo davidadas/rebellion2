@@ -139,7 +139,7 @@ namespace Rebellion.Game.Missions
         /// <returns>True when the officer is a known, active Jedi.</returns>
         private static bool CanParticipate(Officer officer)
         {
-            return officer?.IsJedi == true
+            return officer?.IsForceSensitive == true
                 && officer.IsForceEligible
                 && !officer.IsCaptured
                 && !officer.IsKilled;

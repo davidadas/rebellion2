@@ -396,9 +396,9 @@ namespace Rebellion.Game.Events
                     node == null
                         ? null
                         : game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID);
-                if (canonical == null || canonical.GetParent() == null)
+                if (canonical == null)
                     throw new InvalidOperationException(
-                        $"SelectBinding '{Binding}' contains an unresolved or detached scene node."
+                        $"SelectBinding '{Binding}' contains an unregistered scene node."
                     );
                 if (selected.All(existing => existing.InstanceID != canonical.InstanceID))
                     selected.Add(canonical);
@@ -434,13 +434,24 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
 
+        [PersistableAttribute]
+        public string UnitBinding { get; set; }
+
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventExecutionContext context
         )
         {
-            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
+            bool hasInstanceID = !string.IsNullOrWhiteSpace(UnitInstanceID);
+            bool hasBinding = !string.IsNullOrWhiteSpace(UnitBinding);
+            if (hasInstanceID == hasBinding)
+                throw new InvalidOperationException(
+                    "SelectPreviousLocation requires exactly one of UnitInstanceID or UnitBinding."
+                );
+            ISceneNode unit = hasBinding
+                ? context?.GetBindingReference<ISceneNode>(UnitBinding)
+                : game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
             if (unit == null)
                 return Enumerable.Empty<ISceneNode>();
             ISceneNode parent = game.GetSceneNodeByInstanceID<ISceneNode>(

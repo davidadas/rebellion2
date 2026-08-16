@@ -99,9 +99,9 @@ namespace Rebellion.Game.Events
 
     #region EventStateConditions
     /// <summary>
-    /// Selects the comparison applied to a persistent event variable.
+    /// Selects the comparison applied to two authored scalar values.
     /// </summary>
-    public enum EventVariableComparison
+    public enum ComparisonOperator
     {
         Equal,
         NotEqual,
@@ -112,13 +112,36 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Applies the shared authored comparison vocabulary to integer values.
+    /// </summary>
+    internal static class IntegerComparison
+    {
+        /// <summary>
+        /// Compares an actual integer with an expected integer using the selected operator.
+        /// </summary>
+        internal static bool Evaluate(int actual, ComparisonOperator operation, int expected) =>
+            operation switch
+            {
+                ComparisonOperator.Equal => actual == expected,
+                ComparisonOperator.NotEqual => actual != expected,
+                ComparisonOperator.GreaterThan => actual > expected,
+                ComparisonOperator.GreaterThanOrEqual => actual >= expected,
+                ComparisonOperator.LessThan => actual < expected,
+                ComparisonOperator.LessThanOrEqual => actual <= expected,
+                _ => throw new InvalidOperationException(
+                    $"Unsupported comparison operator '{operation}'."
+                ),
+            };
+    }
+
+    /// <summary>
     /// A <see cref="GameConditional"/> that is met when the current tick count satisfies a comparison against a target value.
     /// </summary>
     [PersistableObject(Name = "TickCount")]
     public sealed class TickCountConditional : GameConditional
     {
         [PersistableAttribute]
-        public EventVariableComparison Comparison { get; set; }
+        public ComparisonOperator Comparison { get; set; }
 
         [PersistableAttribute]
         public int Ticks { get; set; }
@@ -131,18 +154,7 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             GameRoot game = context.Game;
-            return Comparison switch
-            {
-                EventVariableComparison.Equal => game.CurrentTick == Ticks,
-                EventVariableComparison.NotEqual => game.CurrentTick != Ticks,
-                EventVariableComparison.GreaterThan => game.CurrentTick > Ticks,
-                EventVariableComparison.GreaterThanOrEqual => game.CurrentTick >= Ticks,
-                EventVariableComparison.LessThan => game.CurrentTick < Ticks,
-                EventVariableComparison.LessThanOrEqual => game.CurrentTick <= Ticks,
-                _ => throw new InvalidOperationException(
-                    $"Invalid comparison type \"{Comparison}\" for TickCountConditional."
-                ),
-            };
+            return IntegerComparison.Evaluate(game.CurrentTick, Comparison, Ticks);
         }
     }
 
@@ -186,7 +198,7 @@ namespace Rebellion.Game.Events
                 .Find(gameEvent =>
                     string.Equals(gameEvent.InstanceID, EventInstanceID, StringComparison.Ordinal)
                 );
-            int? triggerCount = definition?.GetTriggerCount();
+            int? triggerCount = definition?.TriggerCount;
             return triggerCount.HasValue && state.ExecutionCount >= triggerCount.Value;
         }
     }
@@ -201,7 +213,7 @@ namespace Rebellion.Game.Events
         public string Key { get; set; }
 
         [PersistableAttribute]
-        public EventVariableComparison Comparison { get; set; }
+        public ComparisonOperator Comparison { get; set; }
 
         [PersistableAttribute]
         public int CompareTo { get; set; }
@@ -210,18 +222,7 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             int current = context.Game.EventRuntime.GetVariable(Key);
-            return Comparison switch
-            {
-                EventVariableComparison.Equal => current == CompareTo,
-                EventVariableComparison.NotEqual => current != CompareTo,
-                EventVariableComparison.GreaterThan => current > CompareTo,
-                EventVariableComparison.GreaterThanOrEqual => current >= CompareTo,
-                EventVariableComparison.LessThan => current < CompareTo,
-                EventVariableComparison.LessThanOrEqual => current <= CompareTo,
-                _ => throw new InvalidOperationException(
-                    $"Unsupported event variable comparison '{Comparison}'."
-                ),
-            };
+            return IntegerComparison.Evaluate(current, Comparison, CompareTo);
         }
     }
 
@@ -235,7 +236,7 @@ namespace Rebellion.Game.Events
         public string Binding { get; set; }
 
         [PersistableAttribute]
-        public EventVariableComparison Comparison { get; set; }
+        public ComparisonOperator Comparison { get; set; }
 
         [PersistableAttribute]
         public string CompareTo { get; set; }
@@ -250,10 +251,10 @@ namespace Rebellion.Game.Events
 
             if (
                 Comparison
-                    is EventVariableComparison.GreaterThan
-                        or EventVariableComparison.GreaterThanOrEqual
-                        or EventVariableComparison.LessThan
-                        or EventVariableComparison.LessThanOrEqual
+                    is ComparisonOperator.GreaterThan
+                        or ComparisonOperator.GreaterThanOrEqual
+                        or ComparisonOperator.LessThan
+                        or ComparisonOperator.LessThanOrEqual
                 && actual is not int
             )
                 throw new InvalidOperationException(
@@ -263,12 +264,12 @@ namespace Rebellion.Game.Events
             int comparison = Compare(actual, CompareTo);
             return Comparison switch
             {
-                EventVariableComparison.Equal => comparison == 0,
-                EventVariableComparison.NotEqual => comparison != 0,
-                EventVariableComparison.GreaterThan => comparison > 0,
-                EventVariableComparison.GreaterThanOrEqual => comparison >= 0,
-                EventVariableComparison.LessThan => comparison < 0,
-                EventVariableComparison.LessThanOrEqual => comparison <= 0,
+                ComparisonOperator.Equal => comparison == 0,
+                ComparisonOperator.NotEqual => comparison != 0,
+                ComparisonOperator.GreaterThan => comparison > 0,
+                ComparisonOperator.GreaterThanOrEqual => comparison >= 0,
+                ComparisonOperator.LessThan => comparison < 0,
+                ComparisonOperator.LessThanOrEqual => comparison <= 0,
                 _ => throw new InvalidOperationException(
                     $"Unsupported binding comparison '{Comparison}'."
                 ),
@@ -404,7 +405,7 @@ namespace Rebellion.Game.Events
         public string OfficerInstanceID { get; set; }
 
         [PersistableAttribute]
-        public EventVariableComparison Comparison { get; set; }
+        public ComparisonOperator Comparison { get; set; }
 
         [PersistableAttribute]
         public ForceRankLabel Rank { get; set; }
@@ -420,18 +421,7 @@ namespace Rebellion.Game.Events
             int expected = context.Game.GetConfig().Jedi.GetMinimumRank(Rank);
             if (expected == int.MaxValue)
                 throw new InvalidOperationException($"Force rank '{Rank}' is not configured.");
-            return Comparison switch
-            {
-                EventVariableComparison.Equal => current == expected,
-                EventVariableComparison.NotEqual => current != expected,
-                EventVariableComparison.GreaterThan => current > expected,
-                EventVariableComparison.GreaterThanOrEqual => current >= expected,
-                EventVariableComparison.LessThan => current < expected,
-                EventVariableComparison.LessThanOrEqual => current <= expected,
-                _ => throw new InvalidOperationException(
-                    $"Unsupported Force-rank comparison '{Comparison}'."
-                ),
-            };
+            return IntegerComparison.Evaluate(current, Comparison, expected);
         }
     }
 
@@ -445,7 +435,7 @@ namespace Rebellion.Game.Events
         public OfficerRating Rating { get; set; }
 
         [PersistableAttribute]
-        public EventVariableComparison Comparison { get; set; }
+        public ComparisonOperator Comparison { get; set; }
 
         [PersistableAttribute]
         public int Value { get; set; }
@@ -456,18 +446,7 @@ namespace Rebellion.Game.Events
             if (officer == null)
                 return false;
             int current = officer.GetEffectiveRating(Rating);
-            return Comparison switch
-            {
-                EventVariableComparison.Equal => current == Value,
-                EventVariableComparison.NotEqual => current != Value,
-                EventVariableComparison.GreaterThan => current > Value,
-                EventVariableComparison.GreaterThanOrEqual => current >= Value,
-                EventVariableComparison.LessThan => current < Value,
-                EventVariableComparison.LessThanOrEqual => current <= Value,
-                _ => throw new InvalidOperationException(
-                    $"Unsupported officer-rating comparison '{Comparison}'."
-                ),
-            };
+            return IntegerComparison.Evaluate(current, Comparison, Value);
         }
     }
 
@@ -481,7 +460,7 @@ namespace Rebellion.Game.Events
         public string OfficerInstanceID { get; set; }
 
         [PersistableAttribute]
-        public EventVariableComparison Comparison { get; set; }
+        public ComparisonOperator Comparison { get; set; }
 
         [PersistableAttribute]
         public int Value { get; set; }
@@ -495,18 +474,7 @@ namespace Rebellion.Game.Events
             if (officer == null)
                 return false;
             int current = officer.ForceRank;
-            return Comparison switch
-            {
-                EventVariableComparison.Equal => current == Value,
-                EventVariableComparison.NotEqual => current != Value,
-                EventVariableComparison.GreaterThan => current > Value,
-                EventVariableComparison.GreaterThanOrEqual => current >= Value,
-                EventVariableComparison.LessThan => current < Value,
-                EventVariableComparison.LessThanOrEqual => current <= Value,
-                _ => throw new InvalidOperationException(
-                    $"Unsupported officer-Force comparison '{Comparison}'."
-                ),
-            };
+            return IntegerComparison.Evaluate(current, Comparison, Value);
         }
     }
     #endregion
@@ -519,7 +487,7 @@ namespace Rebellion.Game.Events
         public PlanetStat Stat { get; set; }
 
         [PersistableAttribute]
-        public EventVariableComparison Comparison { get; set; }
+        public ComparisonOperator Comparison { get; set; }
 
         [PersistableAttribute]
         public int Value { get; set; }
@@ -538,17 +506,8 @@ namespace Rebellion.Game.Events
             planet ??= context.Activation?.GetTarget<Planet>();
             if (planet == null)
                 return false;
-            int current = AdjustPlanetStatAction.GetValue(planet, Stat);
-            return Comparison switch
-            {
-                EventVariableComparison.Equal => current == Value,
-                EventVariableComparison.NotEqual => current != Value,
-                EventVariableComparison.GreaterThan => current > Value,
-                EventVariableComparison.GreaterThanOrEqual => current >= Value,
-                EventVariableComparison.LessThan => current < Value,
-                EventVariableComparison.LessThanOrEqual => current <= Value,
-                _ => false,
-            };
+            int current = planet.GetStatValue(Stat);
+            return IntegerComparison.Evaluate(current, Comparison, Value);
         }
     }
 

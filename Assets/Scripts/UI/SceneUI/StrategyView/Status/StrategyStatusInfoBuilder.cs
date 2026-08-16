@@ -901,7 +901,7 @@ internal sealed class StrategyStatusInfoBuilder
     /// <returns>The displayed Force-rank label.</returns>
     private string GetForceRankText(Officer officer)
     {
-        if (jediConfig == null || !officer.IsJedi)
+        if (jediConfig == null || !officer.IsForceSensitive)
             return "None";
 
         return jediConfig.GetRankLabel(officer.ForceRank) switch

@@ -30,18 +30,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int? TriggerCount { get; set; }
 
-        public int? GetTriggerCount()
-        {
-            if (TriggerCount <= 0)
-                throw new System.InvalidOperationException(
-                    $"Event '{InstanceID}' TriggerCount must be a positive integer."
-                );
-            return TriggerCount;
-        }
-
         public bool CanExecute(GameEventState state) =>
             !state.IsExhausted
-            && (!GetTriggerCount().HasValue || state.ExecutionCount < GetTriggerCount().Value);
+            && (!TriggerCount.HasValue || state.ExecutionCount < TriggerCount.Value);
 
         // Result Triggers.
         public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
@@ -70,36 +61,12 @@ namespace Rebellion.Game.Events
         }
 
         /// <summary>
-        /// Returns true if all conditions are met.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if every conditional is satisfied.</returns>
-        public bool AreConditionsMet(GameRoot game)
-        {
-            return AreConditionsMet(game, (GameResult)null);
-        }
-
-        /// <summary>
-        /// Returns true if all conditions accept the current game and triggering result.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="triggerResult">The result that activated this event, if any.</param>
-        /// <returns>True if every conditional is satisfied.</returns>
-        public bool AreConditionsMet(GameRoot game, GameResult triggerResult)
-        {
-            return AreConditionsMet(
-                game,
-                new GameEventExecutionContext(this, null, null, triggerResult)
-            );
-        }
-
-        /// <summary>
         /// Returns true if all conditions accept the supplied execution context.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <returns>True if every conditional is satisfied.</returns>
-        public bool AreConditionsMet(GameRoot game, GameEventExecutionContext context)
+        internal bool AreConditionsMet(GameRoot game, GameEventExecutionContext context)
         {
             foreach (GameConditional conditional in Conditionals)
             {
@@ -114,20 +81,9 @@ namespace Rebellion.Game.Events
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">Random number provider for stochastic actions.</param>
+        /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <returns>Combined results from all executed actions.</returns>
-        public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
-        {
-            return Execute(game, provider, null);
-        }
-
-        /// <summary>
-        /// Executes the event for one concrete global or scoped schedule.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">Random number provider for stochastic actions.</param>
-        /// <param name="context">The execution state and bindings for this activation.</param>
-        /// <returns>Combined results from all executed actions.</returns>
-        public List<GameResult> Execute(
+        internal List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventExecutionContext context

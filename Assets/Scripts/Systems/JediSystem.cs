@@ -125,7 +125,7 @@ namespace Rebellion.Systems
         {
             int threshold = _game.Config.Jedi.DiscoveringForceUserThreshold;
             bool shouldDiscover =
-                officer.IsJedi
+                officer.IsForceSensitive
                 && officer.IsForceEligible
                 && officer.IsJediTrainer
                 && officer.ForceRank >= threshold

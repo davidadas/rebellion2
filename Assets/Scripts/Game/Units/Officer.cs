@@ -218,7 +218,7 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         public bool IsKnownJedi { get; set; }
 
-        public bool IsJedi { get; set; }
+        public bool IsForceSensitive { get; set; }
         public bool IsForceEligible { get; set; }
         public int ForceValue { get; set; }
         public int ForceTrainingAdjustment { get; set; }
@@ -411,7 +411,11 @@ namespace Rebellion.Game.Units
         /// <returns>True if this officer is an undiscovered Force user.</returns>
         public bool IsUndiscoveredForceUser()
         {
-            return IsJedi && !IsForceEligible && !IsCaptured && !IsKilled && !IsOnMission();
+            return IsForceSensitive
+                && !IsForceEligible
+                && !IsCaptured
+                && !IsKilled
+                && !IsOnMission();
         }
 
         /// <summary>

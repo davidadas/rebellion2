@@ -19,6 +19,8 @@ namespace Rebellion.Tests.Game.Messages
     {
         private static readonly Dictionary<Message, MessageRequestedResult> DeliveriesByMessage =
             new Dictionary<Message, MessageRequestedResult>();
+        private static readonly Dictionary<MessageRequestedResult, Message> MessagesByDelivery =
+            new Dictionary<MessageRequestedResult, Message>();
 
         [Test]
         public void CreateMessages_RequestedMessage_UsesDataDefinedPresentation()
@@ -57,7 +59,7 @@ namespace Rebellion.Tests.Game.Messages
                     }
                 )
                 .Single();
-            Message message = delivery.Message;
+            Message message = AsMessage(delivery);
 
             Assert.AreEqual("Luke Skywalker at Yavin", message.Title);
             Assert.AreEqual("Luke Skywalker confronts Darth Vader for Alliance", message.Body);
@@ -97,7 +99,7 @@ namespace Rebellion.Tests.Game.Messages
                 }
             );
 
-            Assert.AreEqual("Captured", deliveries.Single().Message.Title);
+            Assert.AreEqual("Captured", AsMessage(deliveries.Single()).Title);
         }
 
         [Test]
@@ -127,7 +129,7 @@ namespace Rebellion.Tests.Game.Messages
                 }
             );
 
-            Assert.AreEqual("Captured", deliveries.Single().Message.Title);
+            Assert.AreEqual("Captured", AsMessage(deliveries.Single()).Title);
         }
 
         [Test]
@@ -545,10 +547,10 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(1, deliveries.Count);
-            Assert.AreEqual("Units Arrive at Yavin", deliveries[0].Message.Title);
+            Assert.AreEqual("Units Arrive at Yavin", AsMessage(deliveries[0]).Title);
             Assert.AreEqual(
                 "Units:\nInfantry Regiment\nX-wing Squadron",
-                deliveries[0].Message.Body
+                AsMessage(deliveries[0]).Body
             );
             Assert.AreEqual(AdvisorNotificationType.UnitsArrived, deliveries[0].NotificationType);
         }
@@ -713,7 +715,7 @@ namespace Rebellion.Tests.Game.Messages
                 }
             );
 
-            List<Message> messages = deliveries.ConvertAll(delivery => delivery.Message);
+            List<Message> messages = deliveries.ConvertAll(AsMessage);
 
             Assert.AreEqual(2, messages.Count);
             Assert.IsTrue(messages.Any(message => message.Body == "body:Nebulon-B Frigate"));
@@ -926,46 +928,6 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_SeatOfPowerChanged_ReturnsSeatOfPowerReport()
-        {
-            (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
-            Officer officer = new Officer
-            {
-                TypeID = "OFEM001",
-                OwnerInstanceID = alliance.InstanceID,
-            };
-
-            MessageDefinition definition = Definition(
-                MessageResultType.EmperorSeatOfPower,
-                MessageType.Mission,
-                "seat",
-                "body",
-                DefaultImage("seat-image")
-            );
-            definition.OfficerVoicePath = "seat-voice";
-
-            Message message = FirstMessageFor(
-                CreateMessages(
-                    game,
-                    new[] { definition },
-                    new SeatOfPowerChangedResult { Officer = officer, IsAtSeat = true }
-                ),
-                alliance
-            );
-
-            Assert.AreEqual(MessageType.Mission, message.Type);
-            Assert.AreEqual("seat", message.Title);
-            Assert.AreEqual("body", message.Body);
-            Assert.AreEqual("seat-image", message.DisplayImagePath);
-            Assert.AreEqual("seat-voice", message.OfficerVoicePath);
-            Assert.AreEqual(
-                AdvisorSubjectNotification.Report,
-                DeliveryFor(message).AdvisorSubjectNotification
-            );
-            Assert.AreEqual(officer.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
-        }
-
-        [Test]
         public void CreateMessages_DeployedFacility_UsesBuildingSpecificDefinition()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
@@ -1118,7 +1080,7 @@ namespace Rebellion.Tests.Game.Messages
                 new GameObjectDeployedResult { GameObject = secondRegiment }
             );
 
-            Message[] messages = deliveries.Select(delivery => delivery.Message).ToArray();
+            Message[] messages = deliveries.Select(AsMessage).ToArray();
             Assert.AreEqual(4, messages.Length);
             Assert.AreEqual("Nebulon-B Frigate Deployed at Coruscant", messages[0].Title);
             Assert.AreEqual(
@@ -2116,7 +2078,7 @@ namespace Rebellion.Tests.Game.Messages
                     new RecruitmentExhaustedResult { Faction = alliance, Planet = origin }
                 )
                 .Where(delivery => delivery.Recipient == alliance)
-                .Select(delivery => delivery.Message)
+                .Select(AsMessage)
                 .ToList();
 
             Assert.AreEqual(1, messages.Count);
@@ -2466,7 +2428,7 @@ namespace Rebellion.Tests.Game.Messages
 
             List<Message> messages = deliveries
                 .Where(delivery => delivery.Recipient == alliance)
-                .Select(delivery => delivery.Message)
+                .Select(AsMessage)
                 .ToList();
             Assert.AreEqual(1, messages.Count);
             Assert.AreEqual("killed:Agent:Coruscant", messages[0].Title);
@@ -2529,7 +2491,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 DisplayName = "Student",
                 OwnerInstanceID = alliance.InstanceID,
-                IsJedi = true,
+                IsForceSensitive = true,
                 ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight),
                 MessageImagePath = "student-card",
             };
@@ -2575,7 +2537,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 DisplayName = "Student",
                 OwnerInstanceID = alliance.InstanceID,
-                IsJedi = true,
+                IsForceSensitive = true,
                 ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight) + 1,
             };
             game.AttachNode(officer, origin);
@@ -2600,13 +2562,13 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_ForceExperience_WithSuppressedRankMessage_DoesNotReturnForceGrowthMessage()
+        public void CreateMessages_ForceExperience_ReachesRankThreshold_ReturnsForceGrowthMessage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer officer = new Officer
             {
                 OwnerInstanceID = alliance.InstanceID,
-                IsJedi = true,
+                IsForceSensitive = true,
                 ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight),
             };
             game.AttachNode(officer, origin);
@@ -2623,11 +2585,10 @@ namespace Rebellion.Tests.Game.Messages
                     PreviousForceRank =
                         game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight) - 1,
                     CurrentForceRank = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight),
-                    SuppressRankChangeMessage = true,
                 }
             );
 
-            Assert.IsEmpty(deliveries);
+            Assert.AreEqual(1, deliveries.Count);
         }
 
         [TestCase(true, 0, "qualified")]
@@ -2645,7 +2606,7 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Discoverer",
                 InstanceID = "discoverer",
                 OwnerInstanceID = alliance.InstanceID,
-                IsJedi = true,
+                IsForceSensitive = true,
                 IsForceEligible = true,
                 IsJediTrainer = isJediTrainer,
                 ForceValue = game.Config.Jedi.ForceQualifiedThreshold + rankOffset,
@@ -2656,7 +2617,7 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Student",
                 InstanceID = "student",
                 OwnerInstanceID = alliance.InstanceID,
-                IsJedi = true,
+                IsForceSensitive = true,
                 ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.Trainee),
                 MessageImagePath = "student-card",
             };
@@ -2749,7 +2710,7 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual(1, deliveries.Count);
             Assert.AreSame(alliance, deliveries[0].Recipient);
-            Message message = deliveries[0].Message;
+            Message message = AsMessage(deliveries[0]);
             Assert.AreEqual("Luke Skywalker Discovers Traitor", message.Title);
             Assert.AreEqual(
                 "Through the use of the Force, I have discovered that Lando Calrissian has betrayed us to the Empire.",
@@ -2775,7 +2736,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 TypeID = "OFAL003",
                 OwnerInstanceID = alliance.InstanceID,
-                IsJedi = true,
+                IsForceSensitive = true,
                 IsForceEligible = true,
                 IsJediTrainer = true,
                 ForceValue = game.Config.Jedi.ForceQualifiedThreshold,
@@ -2896,10 +2857,10 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(1, deliveries.Count);
-            Assert.AreEqual("Saboteurs Strike at Yavin", deliveries[0].Message.Title);
+            Assert.AreEqual("Saboteurs Strike at Yavin", AsMessage(deliveries[0]).Title);
             Assert.AreEqual(
                 "Destroyed at Yavin:\nShield Generator\nStormtrooper Regiment",
-                deliveries[0].Message.Body
+                AsMessage(deliveries[0]).Body
             );
         }
 
@@ -2941,10 +2902,10 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual(2, deliveries.Count);
             Assert.IsTrue(
-                deliveries.Any(delivery => delivery.Message.Title == "Death Star Sabotaged")
+                deliveries.Any(delivery => AsMessage(delivery).Title == "Death Star Sabotaged")
             );
             Assert.IsTrue(
-                deliveries.Any(delivery => delivery.Message.Body == "generic:Shield Generator")
+                deliveries.Any(delivery => AsMessage(delivery).Body == "generic:Shield Generator")
             );
         }
 
@@ -3113,19 +3074,19 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(1, deliveries.Count);
             Assert.AreEqual(empire, deliveries[0].Recipient);
             Assert.AreNotEqual(alliance, deliveries[0].Recipient);
-            Assert.AreEqual(MessageType.PopularSupport, deliveries[0].Message.Type);
-            Assert.AreEqual("Yavin Near Uprising", deliveries[0].Message.Title);
+            Assert.AreEqual(MessageType.PopularSupport, AsMessage(deliveries[0]).Type);
+            Assert.AreEqual("Yavin Near Uprising", AsMessage(deliveries[0]).Title);
             Assert.AreEqual(
                 "Unrest has pushed Yavin close to uprising.",
-                deliveries[0].Message.Body
+                AsMessage(deliveries[0]).Body
             );
-            Assert.AreEqual("empire-image", deliveries[0].Message.DisplayImagePath);
-            Assert.AreEqual("empire-unrest", deliveries[0].Message.BackgroundAudioPath);
+            Assert.AreEqual("empire-image", AsMessage(deliveries[0]).DisplayImagePath);
+            Assert.AreEqual("empire-unrest", AsMessage(deliveries[0]).BackgroundAudioPath);
             Assert.AreEqual(
                 AdvisorNotificationType.NegativePopularSupport,
                 deliveries[0].NotificationType
             );
-            Assert.AreEqual(target.InstanceID, deliveries[0].Message.EventLocationInstanceID);
+            Assert.AreEqual(target.InstanceID, AsMessage(deliveries[0]).EventLocationInstanceID);
         }
 
         [Test]
@@ -3432,7 +3393,7 @@ namespace Rebellion.Tests.Game.Messages
                 "New Resources on {system}",
                 "New raw materials on {system}"
             );
-            newRawMaterials.PlanetStat = PlanetStatType.RawMaterial;
+            newRawMaterials.PlanetChange = PlanetChangeCategory.RawMaterial;
 
             List<MessageRequestedResult> deliveries = CreateMessages(
                 game,
@@ -3440,8 +3401,8 @@ namespace Rebellion.Tests.Game.Messages
                 new PlanetIncidentResult
                 {
                     Planet = target,
-                    IncidentType = IncidentType.Resource,
-                    ChangedStat = PlanetStatType.RawMaterial,
+                    IncidentType = PlanetIncidentType.Resource,
+                    ChangedStat = PlanetChangeCategory.RawMaterial,
                     OldValue = 4,
                     NewValue = 5,
                 }
@@ -3478,7 +3439,7 @@ namespace Rebellion.Tests.Game.Messages
                     new PlanetIncidentResult
                     {
                         Planet = target,
-                        IncidentType = IncidentType.Disaster,
+                        IncidentType = PlanetIncidentType.Disaster,
                         DestroyedObjects = new List<IGameEntity> { shipyard },
                     }
                 ),
@@ -3665,7 +3626,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(2, deliveries.Count);
             CollectionAssert.AreEquivalent(
                 new[] { "maintenance:Coruscant", "maintenance:Corellia" },
-                deliveries.Select(delivery => delivery.Message.Title)
+                deliveries.Select(delivery => AsMessage(delivery).Title)
             );
         }
 
@@ -3706,14 +3667,14 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_SpaceBattle_ComposesSituationAndFleetOutcome()
+        public void CreateMessages_SpaceBattle_RendersRecordedFleetOutcomes()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
             List<MessageRequestedResult> deliveries = CreateMessages(
                 game,
-                SpaceBattleNarrativeDefinitions(),
+                SpaceBattleOutcomeDefinitions(),
                 new SpaceCombatResult
                 {
                     AttackerFleet = new Fleet { OwnerInstanceID = alliance.InstanceID },
@@ -3727,18 +3688,12 @@ namespace Rebellion.Tests.Game.Messages
                 }
             );
 
-            Assert.AreEqual(
-                "won|blockade:Alliance:Yavin|Empire:destroyed",
-                FirstMessageFor(deliveries, alliance).Body
-            );
-            Assert.AreEqual(
-                "lost|blockade:Empire:Yavin|Empire:destroyed",
-                FirstMessageFor(deliveries, empire).Body
-            );
+            Assert.AreEqual("Active|Destroyed||", FirstMessageFor(deliveries, alliance).Body);
+            Assert.AreEqual("Destroyed|Active||", FirstMessageFor(deliveries, empire).Body);
         }
 
         [Test]
-        public void CreateMessages_SpaceBattle_ReportsRetreatDestinationOnlyToWithdrawingFaction()
+        public void CreateMessages_SpaceBattle_RendersRecordedRetreatDestination()
         {
             (GameRoot game, Faction alliance, Faction empire, Planet retreat, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -3749,7 +3704,7 @@ namespace Rebellion.Tests.Game.Messages
 
             List<MessageRequestedResult> deliveries = CreateMessages(
                 game,
-                SpaceBattleNarrativeDefinitions(),
+                SpaceBattleOutcomeDefinitions(),
                 new SpaceCombatResult
                 {
                     AttackerFleet = attacker,
@@ -3760,15 +3715,16 @@ namespace Rebellion.Tests.Game.Messages
                     Winner = CombatSide.Defender,
                     AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
                     DefenderOutcome = SpaceCombatSideOutcome.Active,
+                    AttackerRetreatPlanetInstanceID = retreat.InstanceID,
                 }
             );
 
             Assert.AreEqual(
-                "lost|attack-failed:Alliance:Yavin|Alliance:withdrew:Coruscant",
+                "Withdrawn|Active|Coruscant|",
                 FirstMessageFor(deliveries, alliance).Body
             );
             Assert.AreEqual(
-                "won|defended:Empire:Yavin|Alliance:withdrew",
+                "Active|Withdrawn||Coruscant",
                 FirstMessageFor(deliveries, empire).Body
             );
         }
@@ -3942,7 +3898,7 @@ namespace Rebellion.Tests.Game.Messages
             MessageFactory factory = new MessageFactory(definitions);
             List<MessageRequestedResult> deliveries = factory.CreateMessages(results, game);
             foreach (MessageRequestedResult delivery in deliveries)
-                DeliveriesByMessage[delivery.Message] = delivery;
+                DeliveriesByMessage[AsMessage(delivery)] = delivery;
             return deliveries;
         }
 
@@ -3951,7 +3907,7 @@ namespace Rebellion.Tests.Game.Messages
             Faction faction
         )
         {
-            return deliveries.First(delivery => delivery.Recipient == faction).Message;
+            return AsMessage(deliveries.First(delivery => delivery.Recipient == faction));
         }
 
         private static MessageRequestedResult FirstDeliveryFor(
@@ -3961,6 +3917,29 @@ namespace Rebellion.Tests.Game.Messages
 
         private static MessageRequestedResult DeliveryFor(Message message) =>
             DeliveriesByMessage[message];
+
+        private static Message AsMessage(MessageRequestedResult request)
+        {
+            if (MessagesByDelivery.TryGetValue(request, out Message existing))
+                return existing;
+
+            Message message = new Message(request.MessageType, request.Subject, request.Body)
+            {
+                ResultType = request.ResultType,
+                DisplayName = request.Subject,
+                BackgroundImageKey = request.BackgroundImageKey,
+                DisplayImagePath = request.BackgroundImagePath,
+                OverlayImagePath = request.OverlayImagePath,
+                BackgroundAudioPath = request.BackgroundAudioPath,
+                OfficerVoicePath = request.OfficerVoicePath,
+                EventLocationInstanceID = request.EventLocationInstanceID,
+                NavigationTargetInstanceID = request.NavigationTargetInstanceID,
+                NavigationSecondaryTargetInstanceID = request.NavigationSecondaryTargetInstanceID,
+                MissionInstanceID = request.MissionInstanceID,
+            };
+            MessagesByDelivery.Add(request, message);
+            return message;
+        }
 
         private static MessageDefinition Definition(
             MessageResultType resultType,
@@ -4051,32 +4030,12 @@ namespace Rebellion.Tests.Game.Messages
             };
         }
 
-        private static MessageDefinition[] SpaceBattleNarrativeDefinitions()
+        private static MessageDefinition[] SpaceBattleOutcomeDefinitions()
         {
             MessageDefinition[] definitions = SpaceBattleDefinitions();
-            SpaceBattleNarrativeTemplates narrative = new SpaceBattleNarrativeTemplates
-            {
-                VictoryHeadline = "won",
-                DefeatHeadline = "lost",
-                StalemateHeadline = "draw",
-                NeutralVictory = "neutral-victory:{faction}:{system}",
-                NeutralDefeat = "neutral-defeat:{faction}:{system}",
-                SuccessfullyDefended = "defended:{faction}:{system}",
-                BlockadeEstablished = "blockade:{faction}:{system}",
-                AttackFailed = "attack-failed:{faction}:{system}",
-                BlockadeMaintained = "maintained:{faction}:{system}",
-                BlockadeBroken = "broken:{faction}:{system}",
-                NoVictor = "no-victor:{system}",
-                FleetDestroyed = "{fleetFaction}:destroyed",
-                FleetWithdrawn = "{fleetFaction}:withdrew",
-                FleetWithdrawnTo = "{fleetFaction}:withdrew:{retreatSystem}",
-                AllShipsDestroyed = "all-destroyed",
-            };
             foreach (MessageDefinition definition in definitions)
-            {
-                definition.Body = "{headline}|{situation}|{fleetOutcome}";
-                definition.SpaceBattleNarrative = narrative;
-            }
+                definition.Body =
+                    "{factionOutcome}|{opponentOutcome}|{retreatSystem}|{opponentRetreatSystem}";
             return definitions;
         }
 

@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Results;
 
 namespace Rebellion.Game.Messages
 {
     /// <summary>
-    /// Builds concrete faction messages from configured message templates.
+    /// Resolves configured message templates into transient delivery requests.
     /// </summary>
     internal sealed class MessageTemplateBuilder
     {
@@ -16,7 +17,7 @@ namespace Rebellion.Game.Messages
         );
 
         /// <summary>
-        /// Builds a concrete message from a message definition and template values.
+        /// Resolves a message definition and template values into a delivery request.
         /// </summary>
         /// <param name="definition">The message definition to build from.</param>
         /// <param name="faction">The faction receiving the message.</param>
@@ -25,8 +26,8 @@ namespace Rebellion.Game.Messages
         /// <param name="imageOverride">The image path to use instead of the definition image path.</param>
         /// <param name="overlayImagePath">The overlay image path to assign to the message.</param>
         /// <param name="officerVoicePath">The officer voice path to assign to the message.</param>
-        /// <returns>The built message, or null when no definition was provided.</returns>
-        public Message Build(
+        /// <returns>The resolved request, or null when no definition was provided.</returns>
+        public MessageRequestedResult Build(
             MessageDefinition definition,
             Faction faction,
             Dictionary<string, string> values,
@@ -55,12 +56,15 @@ namespace Rebellion.Game.Messages
             string title = Interpolate(definition.Subject, values);
             string body = Interpolate(definition.Body, values);
 
-            return new Message(definition.MessageType, title, body)
+            return new MessageRequestedResult
             {
+                Recipient = faction,
+                MessageType = definition.MessageType,
                 ResultType = definition.ResultType,
-                DisplayName = title,
+                Subject = title,
+                Body = body,
                 BackgroundImageKey = definition.BackgroundImage?.Key,
-                DisplayImagePath =
+                BackgroundImagePath =
                     imageOverride
                     ?? GetAssetPath(
                         definition.BackgroundImage?.Path,

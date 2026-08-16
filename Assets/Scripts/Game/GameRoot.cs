@@ -252,6 +252,11 @@ namespace Rebellion.Game
             return Galaxy;
         }
 
+        /// <summary>
+        /// Detaches an active node, remembers its direct parent, and retains the detached subtree
+        /// in the game registry without changing faction ownership.
+        /// </summary>
+        /// <param name="node">The active root node to retain.</param>
         public void AddToVoid(ISceneNode node)
         {
             if (node == null)
@@ -274,6 +279,11 @@ namespace Rebellion.Game
             RetainedNodes.Add(node);
         }
 
+        /// <summary>
+        /// Removes a detached subtree root from retained storage while leaving it registered,
+        /// detached, owned, and available for an explicit subsequent placement operation.
+        /// </summary>
+        /// <param name="node">The retained subtree root to release.</param>
         public void RemoveFromVoid(ISceneNode node)
         {
             if (node == null)
@@ -294,7 +304,7 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="node">The registered detached node.</param>
         /// <param name="parent">The receiving scene container.</param>
-        internal void AttachRegisteredNode(ISceneNode node, ContainerNode parent)
+        internal void AttachRetainedNode(ISceneNode node, ContainerNode parent)
         {
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
@@ -324,11 +334,22 @@ namespace Rebellion.Game
             node.LastParentNode = lastParent;
         }
 
+        /// <summary>
+        /// Returns whether a node belongs to a retained detached subtree, including descendants
+        /// whose retained root is stored directly by the game.
+        /// </summary>
+        /// <param name="node">The node to inspect.</param>
+        /// <returns>True when the node is retained outside the active scene graph.</returns>
         public bool IsInVoid(ISceneNode node)
         {
             return node != null && RetainedNodes.Contains(GetRetainedRoot(node));
         }
 
+        /// <summary>
+        /// Removes an active or retained subtree from containment, faction ownership indexes, and
+        /// the global instance registry so it can no longer participate in gameplay.
+        /// </summary>
+        /// <param name="node">The subtree root to delete.</param>
         public void DeleteNode(ISceneNode node)
         {
             if (node == null)
@@ -347,6 +368,12 @@ namespace Rebellion.Game
             });
         }
 
+        /// <summary>
+        /// Transfers a registered node between faction ownership indexes without changing its
+        /// parent, descendants, retained state, or remembered parent.
+        /// </summary>
+        /// <param name="node">The node whose owner changes.</param>
+        /// <param name="ownerInstanceId">The receiving faction's stable instance ID.</param>
         public void ChangeOwnership(ISceneNode node, string ownerInstanceId)
         {
             if (node == null)

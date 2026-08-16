@@ -996,7 +996,7 @@ namespace Rebellion.Systems
                 new PlanetIncidentResult
                 {
                     Planet = planet,
-                    IncidentType = IncidentType.Uprising,
+                    IncidentType = PlanetIncidentType.Uprising,
                     Severity = severity,
                     Tick = _game.CurrentTick,
                 }

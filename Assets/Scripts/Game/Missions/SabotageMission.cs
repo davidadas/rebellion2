@@ -134,7 +134,7 @@ namespace Rebellion.Game.Missions
         protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             ISceneNode target = GetSabotageTarget(game);
-            if (!IsPlanetDestroyingCapitalShip(target))
+            if (target is not CapitalShip { CanDestroyPlanets: true })
                 return base.GetAgentProbability(agent, game);
 
             int score = agent.GetEffectiveRating(ParticipantRating);
@@ -222,11 +222,6 @@ namespace Rebellion.Game.Missions
         private ISceneNode GetSabotageTarget(GameRoot game)
         {
             return game.GetSceneNodeByInstanceID<ISceneNode>(SabotageTargetInstanceID);
-        }
-
-        private static bool IsPlanetDestroyingCapitalShip(ISceneNode target)
-        {
-            return target is CapitalShip { CanDestroyPlanets: true };
         }
 
         /// <summary>

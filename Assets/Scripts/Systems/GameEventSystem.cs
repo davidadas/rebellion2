@@ -29,6 +29,182 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Validates the authored trigger, schedule, binding, and dependency contracts for the
+        /// complete event pool before gameplay begins.
+        /// </summary>
+        /// <param name="events">The event definitions installed in the game.</param>
+        /// <exception cref="InvalidOperationException">Thrown when an event contract is ambiguous or references an unknown event.</exception>
+        public void ValidateEvents(IReadOnlyCollection<GameEvent> events)
+        {
+            GameEvent[] definitions =
+                events?.Where(gameEvent => gameEvent != null).ToArray() ?? Array.Empty<GameEvent>();
+            HashSet<string> eventIDs = new HashSet<string>(StringComparer.Ordinal);
+            foreach (GameEvent gameEvent in definitions)
+            {
+                if (
+                    string.IsNullOrWhiteSpace(gameEvent.InstanceID)
+                    || !eventIDs.Add(gameEvent.InstanceID)
+                )
+                    throw new InvalidOperationException(
+                        $"Game event instance ID '{gameEvent.InstanceID}' is missing or duplicated."
+                    );
+                if (gameEvent.TriggerCount is <= 0)
+                    throw new InvalidOperationException(
+                        $"Event '{gameEvent.InstanceID}' TriggerCount must be positive."
+                    );
+                if (gameEvent.Triggers.Count > 0 && gameEvent.Schedule != null)
+                    throw new InvalidOperationException(
+                        $"Event '{gameEvent.InstanceID}' cannot combine triggers with a schedule."
+                    );
+                ValidateSchedule(gameEvent);
+                if (gameEvent.TriggerCount != 1 && gameEvent.Schedule is { IsRecurring: false })
+                    throw new InvalidOperationException(
+                        $"Event '{gameEvent.InstanceID}' cannot repeat with a one-shot schedule."
+                    );
+
+                Dictionary<string, Type> aliases = new Dictionary<string, Type>(
+                    StringComparer.Ordinal
+                );
+                HashSet<string> sharedAliases = null;
+                foreach (GameEventTrigger trigger in gameEvent.Triggers)
+                {
+                    _ = trigger.ResultType;
+                    HashSet<string> triggerAliases = new HashSet<string>(StringComparer.Ordinal);
+                    foreach (GameEventTriggerBinding binding in trigger.Bindings)
+                    {
+                        if (
+                            string.IsNullOrWhiteSpace(binding.As)
+                            || string.Equals(binding.As, "target", StringComparison.Ordinal)
+                            || !triggerAliases.Add(binding.As)
+                        )
+                            throw new InvalidOperationException(
+                                $"Event '{gameEvent.InstanceID}' trigger '{trigger.Event}' has a missing, duplicate, or reserved binding alias '{binding.As}'."
+                            );
+                        Type argumentType = trigger.GetArgumentType(binding.Argument);
+                        if (
+                            aliases.TryGetValue(binding.As, out Type existingType)
+                            && existingType != argumentType
+                        )
+                            throw new InvalidOperationException(
+                                $"Event '{gameEvent.InstanceID}' binds '{binding.As}' with incompatible types."
+                            );
+                        aliases[binding.As] = argumentType;
+                    }
+
+                    if (sharedAliases == null)
+                        sharedAliases = triggerAliases;
+                    else if (!sharedAliases.SetEquals(triggerAliases))
+                        throw new InvalidOperationException(
+                            $"Event '{gameEvent.InstanceID}' must expose the same binding aliases on every trigger path."
+                        );
+                }
+
+                for (int first = 0; first < gameEvent.Triggers.Count; first++)
+                {
+                    for (int second = first + 1; second < gameEvent.Triggers.Count; second++)
+                    {
+                        Type firstType = gameEvent.Triggers[first].ResultType;
+                        Type secondType = gameEvent.Triggers[second].ResultType;
+                        if (
+                            firstType.IsAssignableFrom(secondType)
+                            || secondType.IsAssignableFrom(firstType)
+                        )
+                            throw new InvalidOperationException(
+                                $"Event '{gameEvent.InstanceID}' has overlapping result triggers."
+                            );
+                    }
+                }
+            }
+
+            foreach (GameEvent gameEvent in definitions)
+            {
+                IEnumerable<string> dependencies =
+                    gameEvent.Schedule?.After != null
+                        ? new[] { gameEvent.Schedule.After.EventInstanceID }
+                        : (
+                            gameEvent.Schedule?.AfterAll ?? gameEvent.Schedule?.AfterAny
+                        )?.Events.Select(dependency => dependency.EventInstanceID)
+                            ?? Enumerable.Empty<string>();
+                foreach (string dependencyID in dependencies)
+                {
+                    if (!eventIDs.Contains(dependencyID))
+                        throw new InvalidOperationException(
+                            $"Event '{gameEvent.InstanceID}' references unknown event '{dependencyID}'."
+                        );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates the immutable scheduling contract for one event before gameplay begins.
+        /// </summary>
+        /// <param name="gameEvent">The event whose authored schedule is validated.</param>
+        private static void ValidateSchedule(GameEvent gameEvent)
+        {
+            GameEventScheduler schedule = gameEvent.Schedule;
+            if (schedule == null)
+                return;
+
+            int configuredModes =
+                (schedule.At == null ? 0 : 1)
+                + (schedule.Every == null ? 0 : 1)
+                + (schedule.Random == null ? 0 : 1)
+                + (schedule.After == null ? 0 : 1)
+                + (schedule.AfterAll == null ? 0 : 1)
+                + (schedule.AfterAny == null ? 0 : 1);
+            if (configuredModes != 1)
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' schedule requires exactly one mode."
+                );
+            if (schedule.At is { Tick: < 0 })
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' At.Tick cannot be negative."
+                );
+            if (schedule.Every is { Ticks: < 1 })
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' Every.Ticks must be positive."
+                );
+            if (schedule.Every is { InitialDelayTicks: < 0 })
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' Every.InitialDelayTicks cannot be negative."
+                );
+            if (
+                schedule.Random != null
+                && (
+                    schedule.Random.MinimumTicks < 1
+                    || schedule.Random.MaximumTicks < schedule.Random.MinimumTicks
+                )
+            )
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' Random requires a positive ordered tick range."
+                );
+            if (schedule.After is { DelayTicks: < 0 })
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' After.DelayTicks cannot be negative."
+                );
+
+            AfterEvents dependencies = schedule.AfterAll ?? schedule.AfterAny;
+            if (dependencies == null)
+                return;
+            if (dependencies.DelayTicks < 0 || dependencies.Events.Count == 0)
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' dependent schedule requires events and a nonnegative delay."
+                );
+            if (
+                dependencies.Events.Any(dependency =>
+                    string.IsNullOrWhiteSpace(dependency.EventInstanceID)
+                )
+                || dependencies
+                    .Events.Select(dependency => dependency.EventInstanceID)
+                    .Distinct(StringComparer.Ordinal)
+                    .Count() != dependencies.Events.Count
+            )
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' dependent schedule contains a missing or duplicate event ID."
+                );
+        }
+
+        /// <summary>
         /// Processes all eligible events and returns the aggregate results.
         /// </summary>
         /// <param name="gameEvents">The events to evaluate.</param>
@@ -40,7 +216,6 @@ namespace Rebellion.Systems
 
             foreach (GameEvent gameEvent in gameEvents.ToArray())
             {
-                EnsureExecutionMode(gameEvent);
                 if (HasResultTrigger(gameEvent))
                     continue;
 
@@ -83,7 +258,6 @@ namespace Rebellion.Systems
                         || !trigger.Matches(triggerResult)
                     )
                         continue;
-                    EnsureExecutionMode(gameEvent);
                     processedEvents.Add(gameEvent);
                     if (
                         !TryProcessEvent(
@@ -189,6 +363,8 @@ namespace Rebellion.Systems
 
             state.ExecutionCount++;
             state.LastExecutionTick = _game.CurrentTick;
+            if (gameEvent.Schedule is { IsRecurring: false })
+                state.IsExhausted = true;
             bool isExhausted = ShouldExhaust(gameEvent, state);
             if (!isExhausted)
             {
@@ -203,7 +379,7 @@ namespace Rebellion.Systems
             if (state.IsExhausted)
                 return true;
 
-            int? triggerCount = gameEvent.GetTriggerCount();
+            int? triggerCount = gameEvent.TriggerCount;
             bool reachedCount = triggerCount.HasValue && state.ExecutionCount >= triggerCount.Value;
             bool reachedUntil =
                 gameEvent.Until.Count > 0
@@ -226,69 +402,6 @@ namespace Rebellion.Systems
         /// <returns>True when a typed result trigger is configured.</returns>
         private static bool HasResultTrigger(GameEvent gameEvent) => gameEvent.Triggers.Count > 0;
 
-        private static void EnsureExecutionMode(GameEvent gameEvent)
-        {
-            if (gameEvent.Triggers.Count > 0 && gameEvent.Schedule != null)
-                throw new InvalidOperationException(
-                    $"Event '{gameEvent.InstanceID}' cannot combine result triggers with a tick schedule."
-                );
-            ValidateTriggerBindings(gameEvent);
-            int? triggerCount = gameEvent.GetTriggerCount();
-            if (triggerCount != 1 && gameEvent.Schedule?.IsRecurring == false)
-                throw new InvalidOperationException(
-                    $"Event '{gameEvent.InstanceID}' cannot repeat with a one-shot schedule."
-                );
-        }
-
-        private static void ValidateTriggerBindings(GameEvent gameEvent)
-        {
-            Dictionary<string, Type> aliases = new Dictionary<string, Type>(StringComparer.Ordinal);
-            HashSet<string> sharedAliases = null;
-            foreach (GameEventTrigger trigger in gameEvent.Triggers)
-            {
-                HashSet<string> triggerAliases = new HashSet<string>(StringComparer.Ordinal);
-                foreach (GameEventTriggerBinding binding in trigger.Bindings)
-                {
-                    if (string.IsNullOrWhiteSpace(binding.As) || !triggerAliases.Add(binding.As))
-                        throw new InvalidOperationException(
-                            $"Event '{gameEvent.InstanceID}' trigger '{trigger.Event}' has a missing or duplicate binding alias."
-                        );
-                    Type argumentType = trigger.GetArgumentType(binding.Argument);
-                    if (
-                        aliases.TryGetValue(binding.As, out Type existingType)
-                        && existingType != argumentType
-                    )
-                        throw new InvalidOperationException(
-                            $"Event '{gameEvent.InstanceID}' binds '{binding.As}' with incompatible types."
-                        );
-                    aliases[binding.As] = argumentType;
-                }
-
-                if (sharedAliases == null)
-                    sharedAliases = triggerAliases;
-                else if (!sharedAliases.SetEquals(triggerAliases))
-                    throw new InvalidOperationException(
-                        $"Event '{gameEvent.InstanceID}' must expose the same binding aliases on every trigger path."
-                    );
-            }
-
-            for (int first = 0; first < gameEvent.Triggers.Count; first++)
-            {
-                for (int second = first + 1; second < gameEvent.Triggers.Count; second++)
-                {
-                    Type firstType = gameEvent.Triggers[first].ResultType;
-                    Type secondType = gameEvent.Triggers[second].ResultType;
-                    if (
-                        firstType.IsAssignableFrom(secondType)
-                        || secondType.IsAssignableFrom(firstType)
-                    )
-                        throw new InvalidOperationException(
-                            $"Event '{gameEvent.InstanceID}' has overlapping result triggers."
-                        );
-                }
-            }
-        }
-
         /// <summary>
         /// Initializes an event's absolute first eligible tick from its authored schedule.
         /// </summary>
@@ -302,10 +415,6 @@ namespace Rebellion.Systems
             AfterEvent after = gameEvent.Schedule?.After;
             if (after != null)
             {
-                if (string.IsNullOrWhiteSpace(after.EventInstanceID))
-                    throw new InvalidOperationException("After.EventInstanceID is required.");
-                if (after.DelayTicks < 0)
-                    throw new InvalidOperationException("After.DelayTicks cannot be negative.");
                 GameEventState predecessor = _game.EventRuntime.GetState(after.EventInstanceID);
                 if (predecessor.ExecutionCount == 0)
                     return false;
@@ -318,27 +427,9 @@ namespace Rebellion.Systems
             AfterEvents dependencies = gameEvent.Schedule?.AfterAll ?? gameEvent.Schedule?.AfterAny;
             if (dependencies != null)
             {
-                if (dependencies.DelayTicks < 0)
-                    throw new InvalidOperationException(
-                        "Dependent schedule delay cannot be negative."
-                    );
-                if (dependencies.Events == null || dependencies.Events.Count == 0)
-                    throw new InvalidOperationException(
-                        "AfterAll and AfterAny require at least one event dependency."
-                    );
-
                 List<GameEventState> predecessorStates = new List<GameEventState>();
-                HashSet<string> dependencyIDs = new HashSet<string>(StringComparer.Ordinal);
                 foreach (EventDependency dependency in dependencies.Events)
                 {
-                    if (string.IsNullOrWhiteSpace(dependency.EventInstanceID))
-                        throw new InvalidOperationException(
-                            "Event dependency instance ID is required."
-                        );
-                    if (!dependencyIDs.Add(dependency.EventInstanceID))
-                        throw new InvalidOperationException(
-                            $"Duplicate event dependency '{dependency.EventInstanceID}'."
-                        );
                     predecessorStates.Add(_game.EventRuntime.GetState(dependency.EventInstanceID));
                 }
                 bool isAfterAll = gameEvent.Schedule.AfterAll != null;

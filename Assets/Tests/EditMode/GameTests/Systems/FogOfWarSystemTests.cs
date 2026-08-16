@@ -87,7 +87,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_UnexploredPlanet_EmptyShell()
+        public void BuildFactionView_UnexploredPlanet_EmptySnapshot()
         {
             Assert.AreEqual(
                 2,
@@ -887,7 +887,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_NoSnapshotsAnywhere_AllPlanetsEmptyShells()
+        public void BuildFactionView_NoSnapshotsAnywhere_AllPlanetsEmptySnapshots()
         {
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
@@ -1285,7 +1285,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_SelectedCapitalShip_RevealsFleetShellWithoutSiblingsOrCargo()
+        public void HandleResults_SelectedCapitalShip_RevealsPartialFleetWithoutSiblingsOrCargo()
         {
             Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
             _game.AttachNode(fleet, _coruscant);
