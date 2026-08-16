@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
+using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game
@@ -15,6 +18,8 @@ namespace Rebellion.Game
 
         public ProductionConfig Production { get; set; } = new ProductionConfig();
 
+        public SmugglingConfig Smuggling { get; set; } = new SmugglingConfig();
+
         public PlanetConfig Planet { get; set; } = new PlanetConfig();
 
         public CombatConfig Combat { get; set; } = new CombatConfig();
@@ -29,6 +34,8 @@ namespace Rebellion.Game
 
         public JediConfig Jedi { get; set; } = new JediConfig();
 
+        public DuelResolutionConfig DuelResolution { get; set; } = new DuelResolutionConfig();
+
         public ResearchConfig Research { get; set; } = new ResearchConfig();
 
         public AssassinationConfig Assassination { get; set; } = new AssassinationConfig();
@@ -36,6 +43,8 @@ namespace Rebellion.Game
         public RecoveryConfig Recovery { get; set; } = new RecoveryConfig();
 
         public CaptiveConfig Captive { get; set; } = new CaptiveConfig();
+
+        public OfficerLoyaltyConfig OfficerLoyalty { get; set; } = new OfficerLoyaltyConfig();
 
         public GameSpeedConfig GameSpeed { get; set; } = new GameSpeedConfig();
 
@@ -304,18 +313,6 @@ namespace Rebellion.Game
         [PersistableObject]
         public class SupportShiftConfig
         {
-            public int ShiftThreshold { get; set; }
-
-            public int LowBracketCeiling { get; set; }
-
-            public int MidBracketCeiling { get; set; }
-
-            public int LowBracketShift { get; set; }
-
-            public int MidBracketShift { get; set; }
-
-            public int HighBracketShift { get; set; }
-
             public int FleetPenalty { get; set; }
 
             public int FighterPenalty { get; set; }
@@ -407,6 +404,22 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// System smuggling calculation and resource-redirection rules.
+        /// </summary>
+        [PersistableObject]
+        public class SmugglingConfig
+        {
+            public Dictionary<int, int> LossPercentByMinimumSupport { get; set; } =
+                new Dictionary<int, int>();
+
+            public int CapitalShipSuppression { get; set; } = 10;
+
+            public int StarfighterSuppression { get; set; } = 5;
+
+            public int RegimentSuppression { get; set; } = 2;
+        }
+
+        /// <summary>
         /// Per-planet generation limits.
         /// </summary>
         [PersistableObject]
@@ -454,8 +467,6 @@ namespace Rebellion.Game
             public int DestroySystemCoreSupportPenalty { get; set; }
             public int DestroySystemOuterRimSupportPenalty { get; set; }
             public int DestroySystemOuterRimSupportThreshold { get; set; }
-            public List<string> PlanetDestroyingCapitalShipTypeIDs { get; set; } =
-                new List<string>();
         }
 
         /// <summary>
@@ -537,15 +548,59 @@ namespace Rebellion.Game
 
             public int EncounterProbabilityOffset { get; set; }
 
-            public int RankLabelNovice { get; set; }
+            /// <summary>
+            /// Maps ascending minimum Force thresholds to the rank label active from each
+            /// threshold until the next authored threshold.
+            /// </summary>
+            public Dictionary<int, int> RankLabelByMinimumForceRank { get; set; } =
+                new Dictionary<int, int>();
 
-            public int RankLabelTrainee { get; set; }
+            /// <summary>
+            /// Resolves the label for a numeric Force rank using the greatest configured threshold
+            /// that does not exceed the supplied rank.
+            /// </summary>
+            /// <param name="forceRank">The numeric rank to classify.</param>
+            /// <returns>The configured label active at that rank.</returns>
+            public ForceRankLabel GetRankLabel(int forceRank)
+            {
+                return (ForceRankLabel)
+                    new ProbabilityTable(RankLabelByMinimumForceRank).Lookup(forceRank);
+            }
 
-            public int RankLabelForceStudent { get; set; }
+            /// <summary>
+            /// Returns the lowest configured threshold assigned to a label, or
+            /// <see cref="int.MaxValue"/> when the label is not authored.
+            /// </summary>
+            /// <param name="label">The configured label whose first threshold is requested.</param>
+            /// <returns>The label's minimum numeric Force rank.</returns>
+            public int GetMinimumRank(ForceRankLabel label)
+            {
+                return RankLabelByMinimumForceRank
+                    .Where(entry => entry.Value == (int)label)
+                    .Select(entry => entry.Key)
+                    .DefaultIfEmpty(int.MaxValue)
+                    .Min();
+            }
+        }
 
-            public int RankLabelForceKnight { get; set; }
+        /// <summary>
+        /// Linked-officer capture, injury, and combat-growth rules.
+        /// </summary>
+        [PersistableObject]
+        public class DuelResolutionConfig
+        {
+            public Dictionary<int, int> CombatCaptureAvoidance { get; set; } =
+                new Dictionary<int, int>();
 
-            public int RankLabelForceMaster { get; set; }
+            public int CaptureEvasionInjuryBaseChance { get; set; } = 100;
+
+            public int MinimumInjuryChance { get; set; } = 1;
+
+            public int InjuryBase { get; set; } = 1;
+
+            public int InjurySecondaryRollMaximum { get; set; } = 29;
+
+            public int CombatReward { get; set; } = 1;
         }
 
         /// <summary>
@@ -608,6 +663,26 @@ namespace Rebellion.Game
             public Dictionary<int, int> EscapeTable { get; set; } = new Dictionary<int, int>();
 
             public int EscapeLoyaltyShift { get; set; }
+        }
+
+        /// <summary>
+        /// Officer loyalty reactions to strategic control changes.
+        /// </summary>
+        [PersistableObject]
+        public class OfficerLoyaltyConfig
+        {
+            public RandomRangeConfig PlanetAcquisitionLoyaltyShift { get; set; } =
+                new RandomRangeConfig();
+        }
+
+        /// <summary>
+        /// An authored inclusive integer range.
+        /// </summary>
+        [PersistableObject]
+        public class RandomRangeConfig
+        {
+            public int Minimum { get; set; }
+            public int Maximum { get; set; }
         }
 
         /// <summary>
@@ -741,6 +816,18 @@ namespace Rebellion.Game
                     "SubdueUprising" => SubdueUprising,
                     _ => null,
                 };
+            }
+
+            /// <summary>
+            /// Resolves a score through a named mission probability table.
+            /// </summary>
+            public int GetSuccessProbability(string key, int score)
+            {
+                Dictionary<int, int> table = GetSuccessTable(key);
+                if (table == null || table.Count == 0)
+                    return DefaultSuccessProbability;
+
+                return new ProbabilityTable(table).Lookup(score);
             }
         }
 

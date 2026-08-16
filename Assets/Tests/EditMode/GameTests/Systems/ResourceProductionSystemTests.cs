@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
@@ -54,6 +56,46 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, _faction.RawMaterialStockpile);
             Assert.IsTrue(mine.ProductionInputReserved);
             Assert.IsFalse(mine.ResourceStartupCyclePending);
+        }
+
+        [Test]
+        public void ProcessTick_SmugglingRoll_RedirectsCompletedResourceToBeneficiary()
+        {
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 15 },
+                { "FACTION2", 85 },
+            };
+            Building mine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 1);
+            mine.ProductionInputReserved = true;
+            mine.ProductionCycleDuration = 1;
+            mine.ResourceStartupCyclePending = false;
+            Faction beneficiary = _game.GetFactionByOwnerInstanceID("FACTION2");
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(0, _faction.RawMaterialStockpile);
+            Assert.AreEqual(1, beneficiary.RawMaterialStockpile);
+        }
+
+        [Test]
+        public void ProcessTick_SmugglingRoll_RedirectsCompletedRefinedResourceToBeneficiary()
+        {
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 15 },
+                { "FACTION2", 85 },
+            };
+            Building refinery = AddCompleteBuilding(_planet, BuildingType.Refinery, processRate: 1);
+            refinery.ProductionInputReserved = true;
+            refinery.ProductionCycleDuration = 1;
+            refinery.ResourceStartupCyclePending = false;
+            Faction beneficiary = _game.GetFactionByOwnerInstanceID("FACTION2");
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(0, _faction.RefinedMaterialStockpile);
+            Assert.AreEqual(1, beneficiary.RefinedMaterialStockpile);
         }
 
         [Test]

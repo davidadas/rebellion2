@@ -1,11 +1,78 @@
 using System.Collections.Generic;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Messages
 {
+    /// <summary>
+    /// Selects either a themed message background key or an explicit content path.
+    /// </summary>
+    [PersistableObject]
+    public sealed class MessageBackgroundImage
+    {
+        [PersistableAttribute]
+        public string Key { get; set; }
+
+        [PersistableAttribute]
+        public string Path { get; set; }
+
+        [PersistableAttribute]
+        public string Binding { get; set; }
+    }
+
+    /// <summary>
+    /// Selects an explicit audio asset used by an authored message.
+    /// </summary>
+    [PersistableObject]
+    public sealed class MessageAudio
+    {
+        [PersistableAttribute]
+        public string Path { get; set; }
+
+        [PersistableAttribute]
+        public string Binding { get; set; }
+    }
+
+    [PersistableObject]
+    public sealed class MessageImage
+    {
+        [PersistableAttribute]
+        public string Path { get; set; }
+    }
+
+    /// <summary>
+    /// Selects an explicit officer recording or one of the subject officer's authored voice sets.
+    /// </summary>
+    [PersistableObject]
+    public sealed class MessageOfficerVoice
+    {
+        [PersistableAttribute]
+        public string Path { get; set; }
+
+        [PersistableAttribute]
+        public OfficerVoiceLineType? Preset { get; set; }
+
+        /// <summary>
+        /// Resolves the explicit recording or selects one recording from the officer's preset.
+        /// </summary>
+        public string ResolvePath(Officer officer, IRandomNumberProvider provider)
+        {
+            bool hasPath = !string.IsNullOrWhiteSpace(Path);
+            if (hasPath && Preset.HasValue)
+                throw new System.InvalidOperationException(
+                    "OfficerVoice requires exactly one of Path or Preset."
+                );
+            if (hasPath)
+                return Path;
+            return Preset.HasValue ? officer?.GetVoicePath(Preset.Value, provider) : null;
+        }
+    }
+
     /// <summary>
     /// Selects the game result category that can produce a message.
     /// </summary>
@@ -19,6 +86,15 @@ namespace Rebellion.Game.Messages
         PersonnelArrivedByOfficerWithCompany,
         EmperorSeatOfPower,
         FacilityDeployed,
+        CapitalShipDeployed,
+        DeathStarDeployed,
+        StarfighterDeployed,
+        RegimentDeployed,
+        FacilityLost,
+        SmugglingLosses,
+        SmugglingLossesEnded,
+        SmugglingBenefits,
+        SmugglingBenefitsEnded,
         ManufacturingIdle,
         MissionReport,
         EnemyMissionFoiled,
@@ -29,12 +105,10 @@ namespace Rebellion.Game.Messages
         OfficerInjured,
         OfficerRecovered,
         OfficerKilled,
+        TraitorDiscovered,
         ForceGrowth,
         ForceUserDiscovered,
         ForceUserDiscoveredByStudent,
-        ForceAbilityRevealed,
-        DagobahCompleted,
-        HeritageRevealed,
         CapitalShipRepaired,
         StarfighterRepaired,
         SabotageStrike,
@@ -46,6 +120,11 @@ namespace Rebellion.Game.Messages
         PlanetJoinedBySupport,
         PlanetJoinedEnemyBySupport,
         PlanetDeclaredNeutralityBySupport,
+        PlanetCaptured,
+        HeadquartersDestroyed,
+        NaturalDisaster,
+        NewResources,
+        ResourcesDepleted,
         BlockadeInitiated,
         BlockadeDetected,
         EvacuationLosses,
@@ -54,6 +133,9 @@ namespace Rebellion.Game.Messages
         SpaceBattle,
         Bombardment,
         PlanetaryAssault,
+        OfficerAssassinated,
+        UnitsArrived,
+        HeadquartersArrived,
     }
 
     /// <summary>
@@ -97,15 +179,25 @@ namespace Rebellion.Game.Messages
         public BuildingType BuildingType { get; set; }
         public ManufacturingType ManufacturingType { get; set; }
         public ResearchDiscipline ResearchDiscipline { get; set; }
-        public string TitleTemplate { get; set; }
-        public string BodyTemplate { get; set; }
+        public string PlanetInstanceID { get; set; }
+        public string PreviousOwnerInstanceID { get; set; }
+        public string NewOwnerInstanceID { get; set; }
+        public string FactionInstanceID { get; set; }
+        public string GameObjectTypeID { get; set; }
+        public PlanetChangeCategory PlanetChange { get; set; }
+        public bool HasDestroyedObjects { get; set; }
+        public bool PlanetDestroyed { get; set; }
+        public string Subject { get; set; }
+        public string Body { get; set; }
+        public string DetailListHeaderTemplate { get; set; }
+        public string DetailListItemTemplate { get; set; }
         public bool ShowOfficerOverlay { get; set; }
-        public string ImageKey { get; set; }
-        public string ImagePath { get; set; }
+        public MessageBackgroundImage BackgroundImage { get; set; }
         public Dictionary<string, string> ImagePaths { get; set; } =
             new Dictionary<string, string>();
-        public string VoicePath { get; set; }
-        public Dictionary<string, string> VoicePaths { get; set; } =
+        public string BackgroundAudioPath { get; set; }
+        public Dictionary<string, string> BackgroundAudioPaths { get; set; } =
             new Dictionary<string, string>();
+        public string OfficerVoicePath { get; set; }
     }
 }

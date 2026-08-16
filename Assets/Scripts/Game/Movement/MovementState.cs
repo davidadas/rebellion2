@@ -30,6 +30,11 @@ namespace Rebellion.Game.Movement
         public string MovementGroupID { get; set; }
 
         /// <summary>
+        /// The authored event that requested this movement, when applicable.
+        /// </summary>
+        public string SourceEventInstanceID { get; set; }
+
+        /// <summary>
         /// Position at the start of transit (origin planet coordinates).
         /// Used for interpolating position during transit.
         /// </summary>

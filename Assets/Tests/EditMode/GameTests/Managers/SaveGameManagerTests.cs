@@ -92,21 +92,50 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void SaveSlotAccessors_ReturnCanonicalNamesAndValidateBounds()
+        public void SaveSlotCount_DefaultConfiguration_ReturnsSix()
         {
-            SaveGameManager manager = _saveGameManager;
+            int count = _saveGameManager.SaveSlotCount;
 
-            Assert.AreEqual(6, manager.SaveSlotCount);
-            Assert.IsFalse(manager.IsValidSaveSlot(-1));
-            Assert.IsTrue(manager.IsValidSaveSlot(0));
-            Assert.IsTrue(manager.IsValidSaveSlot(5));
-            Assert.IsFalse(manager.IsValidSaveSlot(6));
-            Assert.AreEqual("save_slot_1", manager.GetSaveSlotFileName(0));
-            Assert.AreEqual("save_slot_6", manager.GetSaveSlotFileName(5));
-            Assert.AreEqual("Save Slot 1", manager.GetSaveSlotDisplayName(0));
-            Assert.AreEqual("Save Slot 6", manager.GetSaveSlotDisplayName(5));
-            Assert.Throws<ArgumentOutOfRangeException>(() => manager.GetSaveSlotFileName(-1));
-            Assert.Throws<ArgumentOutOfRangeException>(() => manager.GetSaveSlotDisplayName(6));
+            Assert.AreEqual(6, count);
+        }
+
+        [Test]
+        public void IsValidSaveSlot_BoundaryValues_ValidatesBounds()
+        {
+            Assert.IsFalse(_saveGameManager.IsValidSaveSlot(-1));
+            Assert.IsTrue(_saveGameManager.IsValidSaveSlot(0));
+            Assert.IsTrue(_saveGameManager.IsValidSaveSlot(5));
+            Assert.IsFalse(_saveGameManager.IsValidSaveSlot(6));
+        }
+
+        [Test]
+        public void GetSaveSlotFileName_ValidSlots_ReturnsCanonicalNames()
+        {
+            Assert.AreEqual("save_slot_1", _saveGameManager.GetSaveSlotFileName(0));
+            Assert.AreEqual("save_slot_6", _saveGameManager.GetSaveSlotFileName(5));
+        }
+
+        [Test]
+        public void GetSaveSlotFileName_InvalidSlot_ThrowsArgumentOutOfRangeException()
+        {
+            TestDelegate getName = () => _saveGameManager.GetSaveSlotFileName(-1);
+
+            Assert.Throws<ArgumentOutOfRangeException>(getName);
+        }
+
+        [Test]
+        public void GetSaveSlotDisplayName_ValidSlots_ReturnsCanonicalNames()
+        {
+            Assert.AreEqual("Save Slot 1", _saveGameManager.GetSaveSlotDisplayName(0));
+            Assert.AreEqual("Save Slot 6", _saveGameManager.GetSaveSlotDisplayName(5));
+        }
+
+        [Test]
+        public void GetSaveSlotDisplayName_InvalidSlot_ThrowsArgumentOutOfRangeException()
+        {
+            TestDelegate getName = () => _saveGameManager.GetSaveSlotDisplayName(6);
+
+            Assert.Throws<ArgumentOutOfRangeException>(getName);
         }
 
         [Test]
@@ -409,8 +438,15 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            GameEvent event1 = new GameEvent { InstanceID = "EVENT1", DisplayName = "Event1" };
-            GameEvent event2 = new GameEvent { InstanceID = "EVENT2", DisplayName = "Event2" };
+            GameEvent event1 = new GameEvent
+            {
+                InstanceID = "EVENT1",
+                Schedule = new GameEventScheduler
+                {
+                    Random = new RandomTickRange { MinimumTicks = 300, MaximumTicks = 400 },
+                },
+            };
+            GameEvent event2 = new GameEvent { InstanceID = "EVENT2" };
 
             GameRoot game = new GameRoot
             {
@@ -426,10 +462,12 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, loadedGame.EventPool.Count);
             Assert.AreEqual("EVENT1", loadedGame.EventPool[0].InstanceID);
             Assert.AreEqual("EVENT2", loadedGame.EventPool[1].InstanceID);
+            Assert.AreEqual(300, loadedGame.EventPool[0].Schedule.Random.MinimumTicks);
+            Assert.AreEqual(400, loadedGame.EventPool[0].Schedule.Random.MaximumTicks);
         }
 
         [Test]
-        public void SaveAndLoadGame_GameWithCompletedEvents_PreservesCompletedEventIDs()
+        public void SaveAndLoadGame_GameWithExhaustedEvents_PreservesEventStates()
         {
             GameSummary summary = new GameSummary
             {
@@ -443,7 +481,15 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = summary,
-                CompletedEventIDs = new HashSet<string> { "EVENT1", "EVENT2", "EVENT3" },
+                EventRuntime = new GameEventRuntimeState
+                {
+                    States = new Dictionary<string, GameEventState>
+                    {
+                        ["EVENT1"] = new GameEventState { IsExhausted = true },
+                        ["EVENT2"] = new GameEventState { IsExhausted = true },
+                        ["EVENT3"] = new GameEventState { IsExhausted = true },
+                    },
+                },
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
@@ -451,10 +497,72 @@ namespace Rebellion.Tests.Managers
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(3, loadedGame.CompletedEventIDs.Count);
-            Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT1"));
-            Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT2"));
-            Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT3"));
+            Assert.AreEqual(3, loadedGame.EventRuntime.States.Count);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT1"].IsExhausted);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT2"].IsExhausted);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT3"].IsExhausted);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithEventState_PreservesScheduleAndHistory()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                EventRuntime = new GameEventRuntimeState
+                {
+                    States = new Dictionary<string, GameEventState>
+                    {
+                        {
+                            "STORY_EVENT",
+                            new GameEventState
+                            {
+                                IsInitialized = true,
+                                NextEligibleTick = 412,
+                                ExecutionCount = 3,
+                                LastExecutionTick = 400,
+                            }
+                        },
+                    },
+                },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            GameEventState state = loadedGame.EventRuntime.States["STORY_EVENT"];
+            Assert.IsTrue(state.IsInitialized);
+            Assert.AreEqual(412, state.NextEligibleTick);
+            Assert.AreEqual(3, state.ExecutionCount);
+            Assert.AreEqual(400, state.LastExecutionTick);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithEventVariables_PreservesStoryState()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                EventRuntime = new GameEventRuntimeState
+                {
+                    Variables = new Dictionary<string, int>
+                    {
+                        { "luke.dagobah.stage", 8 },
+                        { "luke.heritage.revealed", 1 },
+                    },
+                },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(8, loadedGame.EventRuntime.GetVariable("luke.dagobah.stage"));
+            Assert.AreEqual(1, loadedGame.EventRuntime.GetVariable("luke.heritage.revealed"));
+            Assert.AreEqual(0, loadedGame.EventRuntime.GetVariable("unset"));
         }
 
         // TODO: Officer serialization needs investigation - officers have complex initialization requirements
@@ -633,7 +741,7 @@ namespace Rebellion.Tests.Managers
                 Summary = summary,
                 Factions = new List<Faction>(),
                 EventPool = new List<GameEvent>(),
-                CompletedEventIDs = new HashSet<string>(),
+                EventRuntime = new GameEventRuntimeState(),
                 UnrecruitedOfficers = new List<Officer>(),
                 Galaxy = new GalaxyMap(),
             };
@@ -645,8 +753,8 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, loadedGame.Factions.Count);
             Assert.IsNotNull(loadedGame.EventPool);
             Assert.AreEqual(0, loadedGame.EventPool.Count);
-            Assert.IsNotNull(loadedGame.CompletedEventIDs);
-            Assert.AreEqual(0, loadedGame.CompletedEventIDs.Count);
+            Assert.IsNotNull(loadedGame.EventRuntime.States);
+            Assert.AreEqual(0, loadedGame.EventRuntime.States.Count);
             Assert.IsNotNull(loadedGame.UnrecruitedOfficers);
             Assert.AreEqual(0, loadedGame.UnrecruitedOfficers.Count);
         }
@@ -666,7 +774,7 @@ namespace Rebellion.Tests.Managers
             List<GameEvent> events = new List<GameEvent>();
             for (int i = 0; i < 10; i++)
             {
-                events.Add(new GameEvent { InstanceID = $"EVENT{i}", DisplayName = $"Event {i}" });
+                events.Add(new GameEvent { InstanceID = $"EVENT{i}" });
             }
 
             GameRoot game = new GameRoot
@@ -684,7 +792,6 @@ namespace Rebellion.Tests.Managers
             for (int i = 0; i < 10; i++)
             {
                 Assert.AreEqual($"EVENT{i}", loadedGame.EventPool[i].InstanceID);
-                Assert.AreEqual($"Event {i}", loadedGame.EventPool[i].DisplayName);
             }
         }
 
@@ -700,16 +807,17 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            HashSet<string> completedEvents = new HashSet<string>();
+            Dictionary<string, GameEventState> eventStates =
+                new Dictionary<string, GameEventState>();
             for (int i = 0; i < 50; i++)
             {
-                completedEvents.Add($"EVENT{i}");
+                eventStates.Add($"EVENT{i}", new GameEventState { IsExhausted = true });
             }
 
             GameRoot game = new GameRoot
             {
                 Summary = summary,
-                CompletedEventIDs = completedEvents,
+                EventRuntime = new GameEventRuntimeState { States = eventStates },
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
@@ -717,10 +825,10 @@ namespace Rebellion.Tests.Managers
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(50, loadedGame.CompletedEventIDs.Count);
+            Assert.AreEqual(50, loadedGame.EventRuntime.States.Count);
             for (int i = 0; i < 50; i++)
             {
-                Assert.IsTrue(loadedGame.CompletedEventIDs.Contains($"EVENT{i}"));
+                Assert.IsTrue(loadedGame.EventRuntime.States[$"EVENT{i}"].IsExhausted);
             }
         }
 

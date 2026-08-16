@@ -244,7 +244,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
-        public void Render_PersonnelList_UsesPersonnelRowAndCompactTitleTemplates()
+        public void Render_PersonnelList_UsesPersonnelRowAndCompactSubjects()
         {
             FinderWindowRenderData data = CreateRenderData(
                 FinderMode.Personnel,
@@ -272,7 +272,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
-        public void Render_PersonnelPanel_UsesPanelRowAndDefaultTitleTemplates()
+        public void Render_PersonnelPanel_UsesPanelRowAndDefaultSubjects()
         {
             FinderWindowRenderData data = CreateRenderData(
                 FinderMode.Personnel,

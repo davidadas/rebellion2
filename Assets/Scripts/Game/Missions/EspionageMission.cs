@@ -161,7 +161,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider used to select bonus planets.</param>
-        /// <returns>An empty list; the snapshot is applied directly to faction fog state.</returns>
+        /// <returns>A result identifying any additional systems revealed by the mission.</returns>
         protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
         {
             Planet planet = GetParent() as Planet;
@@ -174,6 +174,7 @@ namespace Rebellion.Game.Missions
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(faction, planet, system, game.CurrentTick);
 
+            List<PlanetSystem> additionalSystems = new List<PlanetSystem>();
             foreach (Planet bonusPlanet in SelectBonusPlanets(game, provider, planet, system))
             {
                 PlanetSystem bonusSystem = bonusPlanet.GetParentOfType<PlanetSystem>();
@@ -183,13 +184,33 @@ namespace Rebellion.Game.Missions
                     bonusSystem,
                     game.CurrentTick
                 );
+
+                if (
+                    bonusSystem != null
+                    && additionalSystems.All(candidate =>
+                        candidate.InstanceID != bonusSystem.InstanceID
+                    )
+                )
+                    additionalSystems.Add(bonusSystem);
             }
 
-            return new List<GameResult>();
+            if (additionalSystems.Count == 0)
+                return new List<GameResult>();
+
+            return new List<GameResult>
+            {
+                new SystemsRevealedResult
+                {
+                    Tick = game.CurrentTick,
+                    MissionInstanceID = InstanceID,
+                    SourceEventInstanceID = SourceEventInstanceID,
+                    AdditionalSystems = additionalSystems,
+                },
+            };
         }
 
         /// <summary>
-        /// Selects distinct bonus planets using the original mission's target-specific pools.
+        /// Selects distinct bonus planets using the mission's target-specific pools.
         /// </summary>
         private IEnumerable<Planet> SelectBonusPlanets(
             GameRoot game,

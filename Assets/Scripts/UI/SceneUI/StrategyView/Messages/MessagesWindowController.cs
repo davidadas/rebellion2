@@ -309,7 +309,7 @@ public sealed class MessagesWindowController
             return Array.Empty<string>();
 
         List<string> paths = new List<string>();
-        AddDetailAudioPath(paths, message.MessageVoicePath);
+        AddDetailAudioPath(paths, message.BackgroundAudioPath);
         AddDetailAudioPath(paths, message.OfficerVoicePath);
         return paths;
     }

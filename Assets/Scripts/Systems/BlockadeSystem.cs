@@ -76,7 +76,7 @@ namespace Rebellion.Systems
                 Faction faction = _game.Factions.FirstOrDefault(f =>
                     f.InstanceID == unit.GetOwnerInstanceID()
                 );
-                _game.DetachNode(unit);
+                _game.DeleteNode(unit);
                 GameLogger.Log(
                     $"{unit.GetDisplayName()} destroyed running blockade at {originPlanet.GetDisplayName()}"
                 );

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
@@ -54,14 +56,6 @@ namespace Rebellion.Game.Results
         Withdrawn,
     }
 
-    public enum IncidentType
-    {
-        Uprising,
-        Intelligence,
-        Disaster,
-        Resource,
-    }
-
     public enum PlanetOwnershipChangeReason
     {
         None,
@@ -71,6 +65,30 @@ namespace Rebellion.Game.Results
     #endregion
 
     #region System / Planet
+
+    /// <summary>
+    /// A numeric attribute of a planet changed for a faction (energy, loyalty, raw materials, etc.).
+    /// </summary>
+    public class PlanetStatChangedResult : GameResult
+    {
+        public Planet Planet { get; set; }
+        public Faction Faction { get; set; }
+        public PlanetChangeCategory Category { get; set; }
+        public int OldValue { get; set; }
+        public int NewValue { get; set; }
+    }
+
+    /// <summary>
+    /// A system began or ended diverting produced resources through smuggling.
+    /// </summary>
+    public class SmugglingChangedResult : GameResult
+    {
+        public Planet Planet { get; set; }
+        public Faction Controller { get; set; }
+        public Faction Beneficiary { get; set; }
+        public int OldPercent { get; set; }
+        public int NewPercent { get; set; }
+    }
 
     /// <summary>
     /// A blockade at a system started or ended.
@@ -157,8 +175,21 @@ namespace Rebellion.Game.Results
     public class PlanetIncidentResult : GameResult
     {
         public Planet Planet { get; set; }
-        public IncidentType IncidentType { get; set; }
+        public PlanetIncidentType IncidentType { get; set; }
         public int Severity { get; set; }
+        public PlanetChangeCategory ChangedStat { get; set; }
+        public int OldValue { get; set; }
+        public int NewValue { get; set; }
+        public List<IGameEntity> DestroyedObjects { get; set; } = new List<IGameEntity>();
+    }
+
+    /// <summary>
+    /// Current observations about selected game objects were supplied to a faction.
+    /// </summary>
+    public class IntelligenceRevealedResult : GameResult
+    {
+        public Faction Recipient { get; set; }
+        public List<ISceneNode> Observations { get; set; } = new List<ISceneNode>();
     }
 
     #endregion
@@ -241,6 +272,8 @@ namespace Rebellion.Game.Results
         public string MissionName { get; set; }
         public string MissionTypeID { get; set; }
         public string TargetName { get; set; }
+        public Planet Location { get; set; }
+        public ContainerNode ReturnDestination { get; set; }
         public List<IMissionParticipant> Participants { get; set; } =
             new List<IMissionParticipant>();
         public MissionOutcome Outcome { get; set; }
@@ -249,12 +282,11 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A mission participant's en-route-to-mission active state changed.
+    /// An espionage mission revealed intelligence about systems beyond its primary target.
     /// </summary>
-    public class RoleEnrouteActiveResult : GameResult
+    public class SystemsRevealedResult : GameResult
     {
-        public IMissionParticipant Participant { get; set; }
-        public bool IsActive { get; set; }
+        public List<PlanetSystem> AdditionalSystems { get; set; } = new List<PlanetSystem>();
     }
 
     #endregion
@@ -305,6 +337,62 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A character's command type changed.
+    /// </summary>
+    public class CommandKindChangedResult : GameResult
+    {
+        public Officer Officer { get; set; }
+        public int CommandKind { get; set; }
+        public int Detail { get; set; }
+    }
+
+    /// <summary>
+    /// A character is now commanding a target.
+    /// </summary>
+    public class OfficerCommandingResult : GameResult
+    {
+        public Officer Officer { get; set; }
+        public IGameEntity CommandTarget { get; set; }
+        public IGameEntity Context { get; set; }
+    }
+
+    /// <summary>
+    /// Requests authoritative resolution of a linked-officer encounter.
+    /// </summary>
+    public class DuelRequestedResult : GameResult
+    {
+        public Officer EncounteredOfficer { get; set; }
+        public Officer OpposingOfficer { get; set; }
+        public string ImagePath { get; set; }
+        public string AudioPath { get; set; }
+    }
+
+    /// <summary>
+    /// Records the complete outcome of a linked-officer encounter.
+    /// </summary>
+    public class DuelResult : GameResult
+    {
+        public Officer EncounteredOfficer { get; set; }
+        public Officer OpposingOfficer { get; set; }
+        public Planet Location { get; set; }
+        public bool EncounteredOfficerCaptured { get; set; }
+        public int EncounteredOfficerInjury { get; set; }
+        public int OpposingOfficerInjury { get; set; }
+        public string ImagePath { get; set; }
+        public string AudioPath { get; set; }
+    }
+
+    /// <summary>
+    /// A traitor was discovered.
+    /// </summary>
+    public class TraitorDiscoveredResult : GameResult
+    {
+        public Officer Officer { get; set; }
+        public IGameEntity DiscoveredBy { get; set; }
+        public IGameEntity Context { get; set; }
+    }
+
+    /// <summary>
     /// A character's Force training progress changed.
     /// </summary>
     public class ForceTrainingResult : GameResult
@@ -327,28 +415,61 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Luke completed Dagobah training.
+    /// A data-defined event requested a faction message.
     /// </summary>
-    public class DagobahCompletedResult : GameResult
+    public class MessageRequestedResult : GameResult
     {
-        public Officer Officer { get; set; }
+        public Faction Recipient { get; set; }
+        public MessageResultType ResultType { get; set; }
+        public ISceneNode SubjectNode { get; set; }
+        public ISceneNode RelatedSubjectNode { get; set; }
+        public Planet Location { get; set; }
+        public MessageType MessageType { get; set; }
+        public string Subject { get; set; }
+        public string Body { get; set; }
+        public string BackgroundImageKey { get; set; }
+        public string BackgroundImagePath { get; set; }
+        public string OverlayImagePath { get; set; }
+        public string BackgroundAudioPath { get; set; }
+        public string OfficerVoicePath { get; set; }
+        public AdvisorNotification AdvisorNotification { get; set; }
+        public AdvisorNotificationType NotificationType { get; set; }
+        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
+        public string AdvisorSubjectTypeID { get; set; }
+        public string EventLocationInstanceID { get; set; }
+        public string NavigationTargetInstanceID { get; set; }
+        public string NavigationSecondaryTargetInstanceID { get; set; }
     }
 
     /// <summary>
-    /// Luke learned about his heritage.
+    /// A message was created and delivered to a faction.
     /// </summary>
-    public class HeritageRevealedResult : GameResult
+    public sealed class MessageDeliveredResult : GameResult
     {
-        public Officer Officer { get; set; }
+        public Faction Recipient { get; set; }
+        public Message Message { get; set; }
+        public AdvisorNotificationType NotificationType { get; set; }
+        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
+        public string AdvisorSubjectTypeID { get; set; }
+        public AdvisorNotification AdvisorNotification { get; set; }
     }
 
     /// <summary>
-    /// A character's seat-of-power status changed.
+    /// A data-defined event requested movement through the authoritative movement system.
     /// </summary>
-    public class SeatOfPowerChangedResult : GameResult
+    public class UnitMovementRequestedResult : GameResult
     {
-        public Officer Officer { get; set; }
-        public bool IsAtSeat { get; set; }
+        public List<IMovable> Units { get; set; } = new List<IMovable>();
+        public List<ContainerNode> Destinations { get; set; } = new List<ContainerNode>();
+    }
+
+    /// <summary>
+    /// A data-defined event requested immediate placement without transit.
+    /// </summary>
+    public sealed class UnitPlacementRequestedResult : GameResult
+    {
+        public List<IMovable> Units { get; set; } = new List<IMovable>();
+        public List<ContainerNode> Destinations { get; set; } = new List<ContainerNode>();
     }
 
     #endregion
@@ -615,6 +736,9 @@ namespace Rebellion.Game.Results
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
         public Planet Planet { get; set; }
+        public string PlanetOwnerInstanceID { get; set; }
+        public string AttackerRetreatPlanetInstanceID { get; set; }
+        public string DefenderRetreatPlanetInstanceID { get; set; }
         public CombatSide Winner { get; set; }
         public SpaceCombatSideOutcome AttackerOutcome { get; set; }
         public SpaceCombatSideOutcome DefenderOutcome { get; set; }
@@ -712,15 +836,6 @@ namespace Rebellion.Game.Results
             new List<CombatUnitSnapshot>();
         public List<GameResult> Events { get; set; } = new List<GameResult>();
         public PlanetOwnershipChangedResult OwnershipChange { get; set; }
-    }
-
-    /// <summary>
-    /// A lightsaber duel was triggered between Force users.
-    /// </summary>
-    public class DuelTriggeredResult : GameResult
-    {
-        public List<Officer> Attackers { get; set; } = new List<Officer>();
-        public List<Officer> Defenders { get; set; } = new List<Officer>();
     }
 
     /// <summary>

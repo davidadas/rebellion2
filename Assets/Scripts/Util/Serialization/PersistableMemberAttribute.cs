@@ -27,4 +27,17 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         public PersistableMemberAttribute() { }
     }
+
+    /// <summary>
+    /// Overrides the XML element name written for each item in a collection member.
+    /// </summary>
+    [AttributeUsage(
+        AttributeTargets.Field | AttributeTargets.Property,
+        Inherited = false,
+        AllowMultiple = false
+    )]
+    public sealed class PersistableCollectionItemAttribute : Attribute
+    {
+        public string Name { get; set; }
+    }
 }

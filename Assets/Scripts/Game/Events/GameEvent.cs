@@ -1,22 +1,59 @@
 using System.Collections.Generic;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
     /// <summary>
+    /// Persists the scheduling history for one authored event definition.
+    /// </summary>
+    [PersistableObject]
+    public sealed class GameEventState
+    {
+        public bool IsInitialized { get; set; }
+        public int NextEligibleTick { get; set; }
+        public int ExecutionCount { get; set; }
+        public int LastExecutionTick { get; set; } = -1;
+        public bool IsExhausted { get; set; }
+    }
+
+    /// <summary>
     /// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.
     /// Execute returns the results of those actions for notification and logging.
     /// </summary>
-    public class GameEvent : BaseGameEntity
+    [PersistableObject]
+    public sealed class GameEvent
     {
-        public bool IsRepeatable { get; set; }
+        public string InstanceID { get; set; }
+
+        [PersistableAttribute]
+        public int? TriggerCount { get; set; }
+
+        public bool CanExecute(GameEventState state) =>
+            !state.IsExhausted
+            && (!TriggerCount.HasValue || state.ExecutionCount < TriggerCount.Value);
+
+        // Result Triggers.
+        public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
+
+        // Schedule and Execution Pipeline.
+        public GameEventScheduler Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
+        public List<GameConditional> Until { get; set; } = new List<GameConditional>();
+        public GameEventTarget Target { get; set; }
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
+        /// <summary>
+        /// Creates an empty event definition for deserialization.
+        /// </summary>
         public GameEvent() { }
 
+        /// <summary>
+        /// Creates an event from an in-memory condition and action pipeline.
+        /// </summary>
+        /// <param name="conditionals">The conditions that must all pass.</param>
+        /// <param name="actions">The actions executed in authored order.</param>
         public GameEvent(List<GameConditional> conditionals, List<GameAction> actions)
         {
             Conditionals = conditionals;
@@ -24,15 +61,16 @@ namespace Rebellion.Game.Events
         }
 
         /// <summary>
-        /// Returns true if all conditions are met.
+        /// Returns true if all conditions accept the supplied execution context.
         /// </summary>
         /// <param name="game">The current game state.</param>
+        /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <returns>True if every conditional is satisfied.</returns>
-        public bool AreConditionsMet(GameRoot game)
+        internal bool AreConditionsMet(GameRoot game, GameEventExecutionContext context)
         {
             foreach (GameConditional conditional in Conditionals)
             {
-                if (!conditional.IsMet(game))
+                if (!conditional.IsMet(game, context))
                     return false;
             }
             return true;
@@ -43,22 +81,16 @@ namespace Rebellion.Game.Events
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">Random number provider for stochastic actions.</param>
+        /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <returns>Combined results from all executed actions.</returns>
-        public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
         {
-            List<GameResult> results = new List<GameResult>();
-
-            foreach (GameAction action in Actions)
-            {
-                if (action is RandomOutcomeAction randomAction)
-                    randomAction.SetRandomProvider(provider);
-                else if (action is TriggerEventAction triggerAction)
-                    triggerAction.SetRandomProvider(provider);
-
-                results.AddRange(action.Execute(game));
-            }
-
-            return results;
+            GameActionContext actionContext = new GameActionContext(game, provider, context);
+            return GameAction.ExecuteAll(Actions, actionContext);
         }
     }
 }

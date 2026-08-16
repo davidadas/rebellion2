@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -10,8 +11,8 @@ public sealed class ContentModelCacheTests
     [Test]
     public async Task InstantiateAsync_PreloadedModel_CreatesIndependentInstancesAsync()
     {
-        ContentPack pack = ContentPackLoader.OpenActive();
-        using ContentAssets assets = new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
+        string contentRoot = Path.Combine(Application.dataPath, "Content");
+        using ContentAssets assets = new ContentAssets(contentRoot, contentRoot);
         using ContentModelCache cache = new ContentModelCache(assets);
         GameObject firstParent = new GameObject("FirstModelParent");
         GameObject secondParent = new GameObject("SecondModelParent");

@@ -5,12 +5,10 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -82,7 +80,6 @@ public sealed class StrategyController
 
     private CancelStack cancelStack;
     private GameManager gameManager;
-    private MessageSystem messageSystem;
     private StrategyBriefingController briefingController;
     private bool briefingActive;
     private EventSystem briefingEventSystem;
@@ -165,7 +162,7 @@ public sealed class StrategyController
         gameManager.GameSpeedChanged += MarkDirty;
         gameManager.GameReplaced += HandleGameReplaced;
         gameManager.TickCompleted += RefreshStrategyState;
-        BindMessageSystem(gameManager.MessageSystem);
+        gameManager.MessageDelivered += HandleMessageDelivered;
 
         InitializeScreenControllers();
         IContentAssetSource contentAssets = AppBootstrap.Instance.GetContentAssets();
@@ -734,8 +731,8 @@ public sealed class StrategyController
             gameManager.GameSpeedChanged -= MarkDirty;
             gameManager.GameReplaced -= HandleGameReplaced;
             gameManager.TickCompleted -= RefreshStrategyState;
+            gameManager.MessageDelivered -= HandleMessageDelivered;
         }
-        BindMessageSystem(null);
     }
 
     /// <summary>
@@ -1460,18 +1457,17 @@ public sealed class StrategyController
     /// <summary>
     /// Offers a newly delivered player message to the advisor notification controller.
     /// </summary>
-    /// <param name="faction">The message recipient.</param>
-    /// <param name="message">The delivered message.</param>
-    private void HandleMessageDelivered(Faction faction, Message message)
+    /// <param name="delivery">The delivered message and transient presentation request.</param>
+    private void HandleMessageDelivered(MessageDeliveredResult delivery)
     {
-        if (faction?.InstanceID != PlayerFactionId)
+        if (delivery?.Recipient?.InstanceID != PlayerFactionId)
             return;
 
         messagesWindowController.ReconcileWindows();
         strategyHudController.NotifyAdvisor(
-            message,
+            delivery,
             gameManager.GetCurrentTick(),
-            faction.IsAdvisorMessageNotificationEnabled(message.Type)
+            delivery.Recipient.IsAdvisorMessageNotificationEnabled(delivery.Message.Type)
         );
         MarkDirty();
     }
@@ -1485,7 +1481,6 @@ public sealed class StrategyController
         ResetStrategyPresentation();
         uiContext.ReplaceGame(game);
         PreloadStrategySfx();
-        BindMessageSystem(gameManager.MessageSystem);
         strategyMusicController.Resume();
         RefreshStrategyState();
         PlayStrategyReadySound();
@@ -1529,20 +1524,6 @@ public sealed class StrategyController
     {
         FactionTheme playerTheme = uiContext?.GetPlayerFactionTheme();
         AudioManager.EnsureExists().PreloadSfx(StrategyUISoundPaths.GetPreloadPaths(playerTheme));
-    }
-
-    /// <summary>
-    /// Connects advisor notifications to the active message system.
-    /// </summary>
-    /// <param name="system">The message system to observe, or null while disposing.</param>
-    private void BindMessageSystem(MessageSystem system)
-    {
-        if (messageSystem != null)
-            messageSystem.MessageDelivered -= HandleMessageDelivered;
-
-        messageSystem = system;
-        if (messageSystem != null)
-            messageSystem.MessageDelivered += HandleMessageDelivered;
     }
 
     /// <summary>

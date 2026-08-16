@@ -500,7 +500,10 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f2"), "Defender fleet destroyed");
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Fleet>(allianceFleet.InstanceID),
+                "Defender fleet destroyed"
+            );
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f1"), "Attacker survives");
         }
 
@@ -526,7 +529,10 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f1"), "Attacker fleet destroyed");
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID),
+                "Attacker fleet destroyed"
+            );
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f2"), "Defender survives");
         }
 
@@ -571,8 +577,8 @@ namespace Rebellion.Tests.Systems
             RunCombat(manager);
 
             bool anyDestroyed =
-                game.GetSceneNodeByInstanceID<Fleet>("f1") == null
-                || game.GetSceneNodeByInstanceID<Fleet>("f2") == null;
+                game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID) == null
+                || game.GetSceneNodeByInstanceID<Fleet>(allianceFleet.InstanceID) == null;
             Assert.IsTrue(
                 anyDestroyed,
                 "At least one fleet should be destroyed in evenly-matched combat"
@@ -725,7 +731,7 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f2"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(allianceFleet.InstanceID));
             bool foundFleet = false;
             foreach (Fleet fleet in planet.GetChildren<Fleet>(null, recurse: false))
             {
@@ -1365,7 +1371,16 @@ namespace Rebellion.Tests.Systems
             CreatePlanet(game, "empireHome", owner: "empire");
             CreatePlanet(game, "allianceHome", owner: "alliance");
 
-            CreateFleet(game, "ef1", "empire", combatPlanet, 1, 1, 1, shieldRechargeRate: 0);
+            Fleet empireFleet = CreateFleet(
+                game,
+                "ef1",
+                "empire",
+                combatPlanet,
+                1,
+                1,
+                1,
+                shieldRechargeRate: 0
+            );
             Fleet allianceFleet = CreateFleet(
                 game,
                 "af1",
@@ -1382,7 +1397,7 @@ namespace Rebellion.Tests.Systems
 
             manager.ProcessTick();
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("ef1"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID));
             Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
@@ -1484,7 +1499,16 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
-            CreateFleet(game, "ef1", "empire", planet, 1, 1, 0, shieldRechargeRate: 0);
+            Fleet fleet = CreateFleet(
+                game,
+                "ef1",
+                "empire",
+                planet,
+                1,
+                1,
+                0,
+                shieldRechargeRate: 0
+            );
             Starfighter defender = new Starfighter
             {
                 InstanceID = "planet-fighter",
@@ -1506,7 +1530,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(CombatSide.Defender, result.Winner);
             Assert.AreEqual("alliance", result.DefenderOwnerInstanceID);
             Assert.AreSame(planet, defender.GetParentOfType<Planet>());
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("ef1"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID));
         }
 
         [Test]
@@ -1546,7 +1570,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(CombatSide.Attacker, result.Winner);
             Assert.AreEqual(500, corvette.CurrentHullStrength);
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>("planet-tie"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(tie.InstanceID));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("alliance-fleet"));
         }
 
@@ -1775,63 +1799,6 @@ namespace Rebellion.Tests.Systems
                 strongShip.Officers,
                 "Officer should be evacuated to the surviving ship"
             );
-        }
-
-        [Test]
-        public void EvacuateStarfighters_SurvivingShipUnderConstruction_MovesToFriendlyPlanet()
-        {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction faction = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(faction);
-
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
-            game.AttachNode(system, game.Galaxy);
-            Planet combatPlanet = new Planet { InstanceID = "combat" };
-            Planet friendlyPlanet = new Planet
-            {
-                InstanceID = "friendly",
-                OwnerInstanceID = faction.InstanceID,
-                IsColonized = true,
-            };
-            game.AttachNode(combatPlanet, system);
-            game.AttachNode(friendlyPlanet, system);
-
-            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
-            CapitalShip destroyedShip = new CapitalShip
-            {
-                InstanceID = "destroyed",
-                OwnerInstanceID = faction.InstanceID,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-                StarfighterCapacity = 1,
-            };
-            CapitalShip unfinishedCarrier = new CapitalShip
-            {
-                InstanceID = "unfinished",
-                OwnerInstanceID = faction.InstanceID,
-                ManufacturingStatus = ManufacturingStatus.Building,
-                CurrentHullStrength = 100,
-                StarfighterCapacity = 1,
-            };
-            Starfighter starfighter = new Starfighter
-            {
-                InstanceID = "fighter",
-                OwnerInstanceID = faction.InstanceID,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            game.AttachNode(fleet, combatPlanet);
-            game.AttachNode(destroyedShip, fleet);
-            game.AttachNode(unfinishedCarrier, fleet);
-            game.AttachNode(starfighter, destroyedShip);
-            MovementSystem movement = new MovementSystem(
-                game,
-                new FogOfWarSystem(game),
-                new FleetSystem(game)
-            );
-
-            CapitalShipDestruction.Resolve(game, movement, destroyedShip);
-
-            Assert.AreSame(friendlyPlanet, starfighter.GetParent());
-            Assert.IsFalse(unfinishedCarrier.Starfighters.Contains(starfighter));
         }
 
         [Test]

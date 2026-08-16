@@ -144,6 +144,24 @@ public class SequenceRNG : IRandomNumberProvider
         _ints.Count > 0 ? System.Math.Max(min, System.Math.Min(max - 1, _ints.Dequeue())) : min;
 }
 
+/// <summary>
+/// Returns a repeating sequence of normalized values and derives integer rolls from that sequence.
+/// </summary>
+public class FixedRandomProvider : IRandomNumberProvider
+{
+    private readonly double[] _values;
+    private int _index;
+
+    public FixedRandomProvider(double[] values)
+    {
+        _values = values;
+    }
+
+    public double NextDouble() => _values[_index++ % _values.Length];
+
+    public int NextInt(int min, int max) => (int)(NextDouble() * (max - min)) + min;
+}
+
 public static class TestConfig
 {
     private static string ConfigPath =>

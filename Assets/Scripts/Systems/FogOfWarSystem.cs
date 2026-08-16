@@ -16,7 +16,7 @@ namespace Rebellion.Systems
     /// Manages fog of war operations: capturing snapshots, invalidating moved entities, building faction views.
     /// Operates on faction state, does not hold its own state.
     /// </summary>
-    public class FogOfWarSystem
+    public class FogOfWarSystem : IGameResultHandler<IntelligenceRevealedResult>
     {
         private readonly GameRoot _game;
         private readonly FogOfWarRecorder _recorder;
@@ -46,6 +46,24 @@ namespace Rebellion.Systems
         )
         {
             _recorder.RecordPlanetSnapshot(faction, planet, system, currentTick);
+        }
+
+        /// <summary>
+        /// Applies category-limited planet intelligence emitted by a simulation event.
+        /// </summary>
+        /// <param name="results">The intelligence results to record.</param>
+        /// <returns>No reactions; snapshots are updated directly.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<IntelligenceRevealedResult> results)
+        {
+            foreach (IntelligenceRevealedResult result in results)
+                _recorder.RecordSelectedObservations(
+                    _game,
+                    result.Recipient,
+                    result.Observations,
+                    result.Tick
+                );
+
+            return new List<GameResult>();
         }
 
         /// <summary>
@@ -194,7 +212,7 @@ namespace Rebellion.Systems
         /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
         private static void AddObservedMissions(Planet viewPlanet, PlanetSnapshot snapshot)
         {
-            if (snapshot?.HasEspionageIntelligence != true)
+            if (snapshot?.RevealedCategories != PlanetIntelligenceCategory.All)
                 return;
 
             foreach (Mission mission in snapshot.Missions)
@@ -466,12 +484,7 @@ namespace Rebellion.Systems
             viewPlanet.PopularSupport = new Dictionary<string, int>(planetSnapshot.PopularSupport);
 
             viewPlanet.Officers.AddRange(
-                planetSnapshot
-                    .Officers.Where(officer =>
-                        planetSnapshot.HasEspionageIntelligence
-                        || FogOfWarRecorder.IsObservableAtPlanet(officer, faction.InstanceID)
-                    )
-                    .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
+                planetSnapshot.Officers.Select(FogOfWarRecorder.CopyOfficerForSnapshot)
             );
             viewPlanet.Officers.AddRange(
                 masterPlanet
@@ -479,50 +492,35 @@ namespace Rebellion.Systems
                     .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
             );
             viewPlanet.Fleets.AddRange(
-                planetSnapshot
-                    .Fleets.Select(fleet =>
-                        FogOfWarRecorder.CopyObservedFleetForSnapshot(
-                            fleet,
-                            faction.InstanceID,
-                            includeManufacturing: true,
-                            includeInTransit: planetSnapshot.HasEspionageIntelligence
-                        )
-                    )
-                    .Where(fleet => fleet != null)
+                planetSnapshot.Fleets.Select(FogOfWarRecorder.CopyFleetForSnapshot)
             );
             viewPlanet.Regiments.AddRange(
-                planetSnapshot
-                    .Regiments.Where(regiment =>
-                        planetSnapshot.HasEspionageIntelligence
-                        || FogOfWarRecorder.IsObservableAtPlanet(regiment, faction.InstanceID)
-                    )
-                    .Select(FogOfWarRecorder.CopyEntityForSnapshot)
+                planetSnapshot.Regiments.Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             viewPlanet.SpecialForces.AddRange(
-                planetSnapshot
-                    .SpecialForces.Where(specialForces =>
-                        planetSnapshot.HasEspionageIntelligence
-                        || FogOfWarRecorder.IsObservableAtPlanet(specialForces, faction.InstanceID)
-                    )
-                    .Select(FogOfWarRecorder.CopyEntityForSnapshot)
+                planetSnapshot.SpecialForces.Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             viewPlanet.Starfighters.AddRange(
-                planetSnapshot
-                    .Starfighters.Where(starfighter =>
-                        planetSnapshot.HasEspionageIntelligence
-                        || FogOfWarRecorder.IsObservableAtPlanet(starfighter, faction.InstanceID)
-                    )
-                    .Select(FogOfWarRecorder.CopyEntityForSnapshot)
+                planetSnapshot.Starfighters.Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             viewPlanet.Buildings.AddRange(
-                planetSnapshot
-                    .Buildings.Where(building =>
-                        planetSnapshot.HasEspionageIntelligence
-                        || FogOfWarRecorder.IsObservableAtPlanet(building, faction.InstanceID)
-                    )
-                    .Select(FogOfWarRecorder.CopyEntityForSnapshot)
+                planetSnapshot.Buildings.Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             ApplyManufacturingQueue(viewPlanet, planetSnapshot);
+        }
+
+        /// <summary>
+        /// Returns whether a snapshot reveals one category through full or selective intelligence.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to inspect.</param>
+        /// <param name="category">The requested intelligence category.</param>
+        /// <returns>True when the category is available.</returns>
+        private static bool HasIntelligence(
+            PlanetSnapshot snapshot,
+            PlanetIntelligenceCategory category
+        )
+        {
+            return snapshot.RevealedCategories.HasFlag(category);
         }
 
         /// <summary>
@@ -537,7 +535,10 @@ namespace Rebellion.Systems
             Faction faction
         )
         {
-            if (snapshot?.HasEspionageIntelligence != true)
+            if (
+                snapshot == null
+                || !HasIntelligence(snapshot, PlanetIntelligenceCategory.CapitalShips)
+            )
                 return;
 
             foreach (

@@ -178,7 +178,7 @@ namespace Rebellion.Tests.Game.Units
                     { OfficerRating.Leadership, 25 },
                 },
                 Movement = null,
-                IsJedi = true,
+                IsForceSensitive = true,
                 IsForceEligible = true,
                 ForceValue = 75,
                 ForceTrainingAdjustment = 10,
@@ -201,7 +201,11 @@ namespace Rebellion.Tests.Game.Units
                 deserializedOfficer.Movement,
                 "MovementStatus mismatch"
             );
-            Assert.AreEqual(originalOfficer.IsJedi, deserializedOfficer.IsJedi, "IsJedi mismatch");
+            Assert.AreEqual(
+                originalOfficer.IsForceSensitive,
+                deserializedOfficer.IsForceSensitive,
+                "IsForceSensitive mismatch"
+            );
             Assert.AreEqual(
                 originalOfficer.IsForceEligible,
                 deserializedOfficer.IsForceEligible,
@@ -230,6 +234,7 @@ namespace Rebellion.Tests.Game.Units
                 originalOfficer.MissionReturnLocationInstanceID,
                 deserializedOfficer.MissionReturnLocationInstanceID
             );
+            Assert.AreEqual(25, deserializedOfficer.GetEffectiveRating(OfficerRating.Leadership));
             Assert.AreEqual(
                 originalOfficer.GetBaseRating(OfficerRating.Espionage),
                 deserializedOfficer.GetBaseRating(OfficerRating.Espionage),
@@ -368,47 +373,20 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void GetVoicePath_AdvancedVoiceEnabled_UsesAdvancedEventPool()
+        public void GetVoicePath_ConfiguredEventPool_ReturnsConfiguredPath()
         {
             Officer officer = new Officer
             {
-                UsesAdvancedVoiceLines = true,
-                PersonnelArrivedVoicePaths = new List<string> { "standard" },
-                AdvancedPersonnelArrivedVoicePaths = new List<string> { "advanced" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    PersonnelArrivedPaths = new List<string> { "configured" },
+                },
             };
 
             Assert.AreEqual(
-                "advanced",
+                "configured",
                 officer.GetVoicePath(OfficerVoiceLineType.PersonnelArrived, null)
             );
-        }
-
-        [Test]
-        public void GetVoicePath_AdvancedVoiceEnabled_UsesAdvancedTraitorDiscoveredPool()
-        {
-            Officer officer = new Officer
-            {
-                UsesAdvancedVoiceLines = true,
-                TraitorDiscoveredVoicePaths = new List<string> { "standard" },
-                AdvancedTraitorDiscoveredVoicePaths = new List<string> { "advanced" },
-            };
-
-            Assert.AreEqual(
-                "advanced",
-                officer.GetVoicePath(OfficerVoiceLineType.TraitorDiscovered, null)
-            );
-        }
-
-        [Test]
-        public void GetVoicePath_AdvancedPoolMissing_FallsBackToStandardPool()
-        {
-            Officer officer = new Officer
-            {
-                UsesAdvancedVoiceLines = true,
-                ReleasedVoicePaths = new List<string> { "standard" },
-            };
-
-            Assert.AreEqual("standard", officer.GetVoicePath(OfficerVoiceLineType.Released, null));
         }
     }
 }

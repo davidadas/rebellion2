@@ -33,9 +33,9 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void InitializeRuntime_BlankLaunchContext_SetsActiveContentDefaults()
+        public void InitializeRuntimeCore_BlankLaunchContext_SetsActiveContentDefaults()
         {
-            UIComponentTestHelper.InvokeLifecycle(bootstrap, "InitializeRuntime");
+            UIComponentTestHelper.InvokeLifecycle(bootstrap, "InitializeRuntimeCore");
 
             Assert.AreEqual(
                 TestContent.Pack.Scenario.DefaultPlayerFactionID,

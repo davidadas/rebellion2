@@ -169,7 +169,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
             List<GameResult> secondResults = maintenanceSystem.ProcessTick();
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment1.InstanceID));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
             Assert.IsFalse(firstResults.OfType<GameObjectAutoscrappedResult>().Any());
             Assert.IsTrue(secondResults.OfType<GameObjectAutoscrappedResult>().Any());
@@ -408,7 +408,7 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = maintenanceSystem.ProcessTick();
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>("cs1"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(ship.InstanceID));
             Assert.AreSame(
                 ship,
                 results.OfType<GameObjectAutoscrappedResult>().Single().DestroyedObject
@@ -509,7 +509,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
             maintenanceSystem.ProcessTick();
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>("b1"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(defense.InstanceID));
         }
 
         [Test]
@@ -550,7 +550,7 @@ namespace Rebellion.Tests.Systems
             maintenanceSystem.ProcessTick();
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("mine1"));
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         [Test]

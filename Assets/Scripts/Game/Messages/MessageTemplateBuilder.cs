@@ -1,15 +1,23 @@
+using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Results;
 
 namespace Rebellion.Game.Messages
 {
     /// <summary>
-    /// Builds concrete faction messages from configured message templates.
+    /// Resolves configured message templates into transient delivery requests.
     /// </summary>
     internal sealed class MessageTemplateBuilder
     {
+        private static readonly Regex _tokenPattern = new Regex(
+            "\\{(?<name>[^{}]+)\\}",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant
+        );
+
         /// <summary>
-        /// Builds a concrete message from a message definition and template values.
+        /// Resolves a message definition and template values into a delivery request.
         /// </summary>
         /// <param name="definition">The message definition to build from.</param>
         /// <param name="faction">The faction receiving the message.</param>
@@ -18,8 +26,8 @@ namespace Rebellion.Game.Messages
         /// <param name="imageOverride">The image path to use instead of the definition image path.</param>
         /// <param name="overlayImagePath">The overlay image path to assign to the message.</param>
         /// <param name="officerVoicePath">The officer voice path to assign to the message.</param>
-        /// <returns>The built message, or null when no definition was provided.</returns>
-        public Message Build(
+        /// <returns>The resolved request, or null when no definition was provided.</returns>
+        public MessageRequestedResult Build(
             MessageDefinition definition,
             Faction faction,
             Dictionary<string, string> values,
@@ -32,28 +40,44 @@ namespace Rebellion.Game.Messages
             if (definition == null)
                 return null;
 
-            string title = Interpolate(definition.TitleTemplate, values);
-            string body = Interpolate(definition.BodyTemplate, values);
-
-            return new Message(definition.MessageType, title, body)
+            MessageBackgroundImage background = definition.BackgroundImage;
+            if (background != null)
             {
+                int sourceCount =
+                    (string.IsNullOrWhiteSpace(background.Key) ? 0 : 1)
+                    + (string.IsNullOrWhiteSpace(background.Path) ? 0 : 1)
+                    + (string.IsNullOrWhiteSpace(background.Binding) ? 0 : 1);
+                if (sourceCount != 1 || !string.IsNullOrWhiteSpace(background.Binding))
+                    throw new InvalidOperationException(
+                        "A message definition background requires exactly one Key or Path."
+                    );
+            }
+
+            string title = Interpolate(definition.Subject, values);
+            string body = Interpolate(definition.Body, values);
+
+            return new MessageRequestedResult
+            {
+                Recipient = faction,
+                MessageType = definition.MessageType,
                 ResultType = definition.ResultType,
-                DisplayName = title,
-                DisplayImageKey = definition.ImageKey,
-                DisplayImagePath =
+                Subject = title,
+                Body = body,
+                BackgroundImageKey = definition.BackgroundImage?.Key,
+                BackgroundImagePath =
                     imageOverride
                     ?? GetAssetPath(
-                        definition.ImagePath,
+                        definition.BackgroundImage?.Path,
                         definition.ImagePaths,
                         (imageFaction ?? faction)?.InstanceID
                     ),
                 OverlayImagePath = overlayImagePath,
-                MessageVoicePath = GetAssetPath(
-                    definition.VoicePath,
-                    definition.VoicePaths,
+                BackgroundAudioPath = GetAssetPath(
+                    definition.BackgroundAudioPath,
+                    definition.BackgroundAudioPaths,
                     faction?.InstanceID
                 ),
-                OfficerVoicePath = officerVoicePath,
+                OfficerVoicePath = officerVoicePath ?? definition.OfficerVoicePath,
             };
         }
 
@@ -87,16 +111,21 @@ namespace Rebellion.Game.Messages
         /// <param name="template">The text template.</param>
         /// <param name="values">The template values to apply.</param>
         /// <returns>The interpolated text.</returns>
-        private static string Interpolate(string template, Dictionary<string, string> values)
+        internal static string Interpolate(string template, Dictionary<string, string> values)
         {
-            string result = template ?? string.Empty;
-            if (values == null)
-                return result;
-
-            foreach (KeyValuePair<string, string> value in values)
-                result = result.Replace("{" + value.Key + "}", value.Value ?? string.Empty);
-
-            return result;
+            string source = template ?? string.Empty;
+            return _tokenPattern.Replace(
+                source,
+                match =>
+                {
+                    string name = match.Groups["name"].Value;
+                    if (values == null || !values.TryGetValue(name, out string value))
+                        throw new InvalidOperationException(
+                            $"Message template references unknown value '{name}'."
+                        );
+                    return value ?? string.Empty;
+                }
+            );
         }
     }
 }

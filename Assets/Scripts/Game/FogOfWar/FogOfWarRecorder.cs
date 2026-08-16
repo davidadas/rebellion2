@@ -55,6 +55,565 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Records current information about explicitly selected scene objects.
+        /// </summary>
+        public void RecordSelectedObservations(
+            GameRoot game,
+            Faction faction,
+            IEnumerable<ISceneNode> observations,
+            int currentTick
+        )
+        {
+            if (game == null || faction == null || observations == null)
+                return;
+
+            foreach (ISceneNode observation in observations.Where(node => node != null).Distinct())
+            {
+                if (observation is PlanetSystem selectedSystem)
+                {
+                    foreach (Planet systemPlanet in selectedSystem.Planets)
+                        RecordObservation(game, faction, systemPlanet, currentTick);
+                    continue;
+                }
+
+                RecordObservation(game, faction, observation, currentTick);
+            }
+        }
+
+        /// <summary>
+        /// Records one selected object in the snapshot for its containing or producing planet.
+        /// </summary>
+        private void RecordObservation(
+            GameRoot game,
+            Faction faction,
+            ISceneNode observation,
+            int currentTick
+        )
+        {
+            Planet planet = GetContainingOrProducingPlanet(game, observation);
+            PlanetSystem system = planet?.GetParentOfType<PlanetSystem>();
+            if (planet == null || system == null)
+                return;
+
+            PlanetSnapshot snapshot = GetOrCreateObservedPlanetSnapshot(
+                faction,
+                planet,
+                system,
+                currentTick
+            );
+            if (observation is Planet)
+            {
+                UpdatePlanetState(snapshot, planet, currentTick);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(observation.InstanceID))
+            {
+                RemoveEntityFromSnapshotState(faction, observation.InstanceID);
+                InvalidateEntityFromOtherSnapshots(
+                    faction,
+                    observation.InstanceID,
+                    planet.InstanceID
+                );
+            }
+
+            if (RecordManufacturingObservation(snapshot, planet, observation))
+                return;
+
+            RecordEntityObservation(snapshot, observation);
+        }
+
+        /// <summary>
+        /// Records a selected entity using the snapshot collection appropriate to its type.
+        /// </summary>
+        private static void RecordEntityObservation(PlanetSnapshot snapshot, ISceneNode observation)
+        {
+            switch (observation)
+            {
+                case Officer officer:
+                    RecordCarriedUnitSnapshot(snapshot, officer, CopyOfficerForSnapshot(officer));
+                    break;
+                case Fleet fleet:
+                    Upsert(snapshot.Fleets, CopyFleetForSnapshot(fleet));
+                    break;
+                case CapitalShip capitalShip:
+                    AddCapitalShipObservation(snapshot, capitalShip);
+                    break;
+                case Regiment regiment:
+                    RecordCarriedUnitSnapshot(snapshot, regiment, CopyEntityForSnapshot(regiment));
+                    break;
+                case SpecialForces specialForces:
+                    RecordCarriedUnitSnapshot(
+                        snapshot,
+                        specialForces,
+                        CopyEntityForSnapshot(specialForces)
+                    );
+                    break;
+                case Starfighter starfighter:
+                    RecordCarriedUnitSnapshot(
+                        snapshot,
+                        starfighter,
+                        CopyEntityForSnapshot(starfighter)
+                    );
+                    break;
+                case Building building:
+                    Upsert(snapshot.Buildings, CopyEntityForSnapshot(building));
+                    break;
+                case Mission mission:
+                    Upsert(snapshot.Missions, CopyEntityForSnapshot(mission));
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Gets the planet snapshot that receives one selected observation.
+        /// </summary>
+        private PlanetSnapshot GetOrCreateObservedPlanetSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSystem system,
+            int currentTick
+        )
+        {
+            planet.AddVisitor(faction.InstanceID);
+            SystemSnapshot systemSnapshot = GetOrCreateSystemSnapshot(faction, system);
+            faction.Fog.PlanetToSystem[planet.InstanceID] = system.InstanceID;
+            if (!systemSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
+            {
+                snapshot = new PlanetSnapshot();
+                systemSnapshot.Planets[planet.InstanceID] = snapshot;
+            }
+
+            snapshot.TickCaptured = currentTick;
+            return snapshot;
+        }
+
+        /// <summary>
+        /// Records a selected item from the planet's active manufacturing queue.
+        /// </summary>
+        private static bool RecordManufacturingObservation(
+            PlanetSnapshot snapshot,
+            Planet planet,
+            ISceneNode observation
+        )
+        {
+            if (
+                observation is not IManufacturable queuedItem
+                || queuedItem.ManufacturingStatus != ManufacturingStatus.Building
+                || !planet.ManufacturingQueue.Values.Any(queue => queue.Contains(queuedItem))
+            )
+                return false;
+
+            snapshot.HasManufacturingIntelligence = true;
+            Upsert(snapshot.ManufacturingQueueItems, CopyManufacturableForSnapshot(queuedItem));
+            return true;
+        }
+
+        /// <summary>
+        /// Gets the planet containing an active object or producing an object under construction.
+        /// </summary>
+        private static Planet GetContainingOrProducingPlanet(GameRoot game, ISceneNode observation)
+        {
+            if (observation is Planet planet)
+                return planet;
+
+            Planet ancestor = observation.GetParentOfType<Planet>();
+            if (ancestor != null)
+                return ancestor;
+
+            return
+                observation is IManufacturable manufacturable
+                && !string.IsNullOrEmpty(manufacturable.ProducerPlanetID)
+                ? game.GetSceneNodeByInstanceID<Planet>(manufacturable.ProducerPlanetID)
+                : null;
+        }
+
+        /// <summary>
+        /// Records one capital ship without exposing any unselected embarked units.
+        /// </summary>
+        private static void AddCapitalShipObservation(
+            PlanetSnapshot snapshot,
+            CapitalShip capitalShip
+        )
+        {
+            Fleet sourceFleet = capitalShip.GetParentOfType<Fleet>();
+            if (sourceFleet == null)
+                return;
+
+            Fleet fleet = GetOrCreatePartialFleetSnapshot(snapshot, sourceFleet);
+            CapitalShip copy = CopyCapitalShipForSnapshot(capitalShip);
+            RemoveUnobservedCargo(copy);
+            Upsert(fleet.CapitalShips, copy);
+            copy.SetParent(fleet);
+        }
+
+        /// <summary>
+        /// Records a unit directly at a planet or within a partial ship and fleet snapshot.
+        /// </summary>
+        private static void RecordCarriedUnitSnapshot<T>(PlanetSnapshot snapshot, T source, T copy)
+            where T : class, ISceneNode
+        {
+            CapitalShip sourceShip = source.GetParentOfType<CapitalShip>();
+            if (sourceShip != null)
+            {
+                Fleet sourceFleet = sourceShip.GetParentOfType<Fleet>();
+                if (sourceFleet == null)
+                    return;
+
+                Fleet fleet = GetOrCreatePartialFleetSnapshot(snapshot, sourceFleet);
+                CapitalShip ship = GetOrCreatePartialCapitalShipSnapshot(fleet, sourceShip);
+                AddCapitalShipChild(ship, copy);
+                return;
+            }
+
+            if (copy is Officer officer)
+                Upsert(snapshot.Officers, officer);
+            else if (copy is Regiment regiment)
+                Upsert(snapshot.Regiments, regiment);
+            else if (copy is SpecialForces specialForces)
+                Upsert(snapshot.SpecialForces, specialForces);
+            else if (copy is Starfighter starfighter)
+                Upsert(snapshot.Starfighters, starfighter);
+        }
+
+        /// <summary>
+        /// Gets a detached fleet snapshot containing only explicitly observed ships and cargo.
+        /// </summary>
+        private static Fleet GetOrCreatePartialFleetSnapshot(PlanetSnapshot snapshot, Fleet source)
+        {
+            Fleet existing = snapshot.Fleets.FirstOrDefault(fleet =>
+                fleet.InstanceID == source.InstanceID
+            );
+            if (existing != null)
+                return existing;
+
+            Fleet partialSnapshot = CopyFleetForSnapshot(source);
+            partialSnapshot.CapitalShips.Clear();
+            snapshot.Fleets.Add(partialSnapshot);
+            return partialSnapshot;
+        }
+
+        /// <summary>
+        /// Gets a detached ship snapshot containing only explicitly observed cargo.
+        /// </summary>
+        private static CapitalShip GetOrCreatePartialCapitalShipSnapshot(
+            Fleet fleet,
+            CapitalShip source
+        )
+        {
+            CapitalShip existing = fleet.CapitalShips.FirstOrDefault(ship =>
+                ship.InstanceID == source.InstanceID
+            );
+            if (existing != null)
+                return existing;
+
+            CapitalShip partialSnapshot = CopyCapitalShipForSnapshot(source);
+            RemoveUnobservedCargo(partialSnapshot);
+            fleet.CapitalShips.Add(partialSnapshot);
+            partialSnapshot.SetParent(fleet);
+            return partialSnapshot;
+        }
+
+        /// <summary>
+        /// Removes copied cargo that was not part of the current intelligence selection.
+        /// </summary>
+        private static void RemoveUnobservedCargo(CapitalShip ship)
+        {
+            ship.Officers.Clear();
+            ship.Regiments.Clear();
+            ship.SpecialForces.Clear();
+            ship.Starfighters.Clear();
+        }
+
+        /// <summary>
+        /// Adds one observed carried unit to the matching collection on a detached ship snapshot.
+        /// </summary>
+        private static void AddCapitalShipChild(CapitalShip ship, ISceneNode child)
+        {
+            switch (child)
+            {
+                case Officer officer:
+                    Upsert(ship.Officers, officer);
+                    break;
+                case Regiment regiment:
+                    Upsert(ship.Regiments, regiment);
+                    break;
+                case SpecialForces specialForces:
+                    Upsert(ship.SpecialForces, specialForces);
+                    break;
+                case Starfighter starfighter:
+                    Upsert(ship.Starfighters, starfighter);
+                    break;
+            }
+
+            child.SetParent(ship);
+        }
+
+        /// <summary>
+        /// Replaces a prior snapshot with the same instance ID or appends a newly observed item.
+        /// </summary>
+        private static void Upsert<T>(List<T> items, T item)
+            where T : class, ISceneNode
+        {
+            items.RemoveAll(existing => existing.InstanceID == item.InstanceID);
+            items.Add(item);
+        }
+
+        /// <summary>
+        /// Records current intelligence for only the requested planet categories.
+        /// </summary>
+        /// <param name="faction">The faction receiving intelligence.</param>
+        /// <param name="planet">The observed planet.</param>
+        /// <param name="system">The planet's containing system.</param>
+        /// <param name="currentTick">The observation tick.</param>
+        /// <param name="categories">The categories revealed by this observation.</param>
+        public void RecordIntelligenceSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSystem system,
+            int currentTick,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            if (
+                faction == null
+                || planet == null
+                || system == null
+                || categories == PlanetIntelligenceCategory.None
+            )
+                return;
+
+            planet.AddVisitor(faction.InstanceID);
+            SystemSnapshot systemSnapshot = GetOrCreateSystemSnapshot(faction, system);
+            faction.Fog.PlanetToSystem[planet.InstanceID] = system.InstanceID;
+            PlanetSnapshot snapshot = GetOrCreatePlanetSnapshot(
+                systemSnapshot,
+                planet,
+                currentTick
+            );
+            UpdateSelectedIntelligence(faction, planet, snapshot, currentTick, categories);
+
+            ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
+        }
+
+        /// <summary>Returns the existing planet snapshot or creates its initial strategic state.</summary>
+        private static PlanetSnapshot GetOrCreatePlanetSnapshot(
+            SystemSnapshot systemSnapshot,
+            Planet planet,
+            int currentTick
+        )
+        {
+            if (systemSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
+                return snapshot;
+
+            snapshot = new PlanetSnapshot
+            {
+                TickCaptured = currentTick,
+                OwnerInstanceID = planet.OwnerInstanceID,
+                IsColonized = planet.IsColonized,
+                IsDestroyed = planet.IsDestroyed,
+            };
+            systemSnapshot.Planets[planet.InstanceID] = snapshot;
+            return snapshot;
+        }
+
+        /// <summary>Refreshes only the intelligence categories revealed by this observation.</summary>
+        private void UpdateSelectedIntelligence(
+            Faction faction,
+            Planet planet,
+            PlanetSnapshot snapshot,
+            int currentTick,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            snapshot.TickCaptured = currentTick;
+            PlanetIntelligenceCategory accumulatedCategories =
+                snapshot.RevealedCategories | categories;
+            if (categories.HasFlag(PlanetIntelligenceCategory.System))
+                UpdatePlanetState(snapshot, planet, currentTick);
+            snapshot.RevealedCategories = accumulatedCategories;
+            UpdateOfficerIntelligence(faction, planet, snapshot, categories);
+            UpdateFleetIntelligence(faction, planet, snapshot, categories, accumulatedCategories);
+            UpdateGroundForceIntelligence(faction, planet, snapshot, categories);
+            UpdateStarfighterIntelligence(faction, planet, snapshot, categories);
+            UpdateBuildingIntelligence(faction, planet, snapshot, categories);
+            UpdateMissionIntelligence(faction, planet, snapshot, categories);
+        }
+
+        /// <summary>
+        /// Replaces the directly stationed officer intelligence when that category is revealed.
+        /// </summary>
+        private static void UpdateOfficerIntelligence(
+            Faction faction,
+            Planet planet,
+            PlanetSnapshot snapshot,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            if (!categories.HasFlag(PlanetIntelligenceCategory.Officers))
+                return;
+
+            snapshot.Officers.Clear();
+            snapshot.Officers.AddRange(
+                planet
+                    .GetChildren<Officer>(_ => true)
+                    .Where(officer => officer.OwnerInstanceID != faction.InstanceID)
+                    .Select(CopyOfficerForSnapshot)
+            );
+        }
+
+        /// <summary>
+        /// Rebuilds fleet intelligence and removes cargo categories that remain hidden.
+        /// </summary>
+        private void UpdateFleetIntelligence(
+            Faction faction,
+            Planet planet,
+            PlanetSnapshot snapshot,
+            PlanetIntelligenceCategory categories,
+            PlanetIntelligenceCategory accumulatedCategories
+        )
+        {
+            PlanetIntelligenceCategory fleetCategories =
+                PlanetIntelligenceCategory.CapitalShips
+                | PlanetIntelligenceCategory.Officers
+                | PlanetIntelligenceCategory.GroundForces
+                | PlanetIntelligenceCategory.Starfighters;
+            if (
+                !accumulatedCategories.HasFlag(PlanetIntelligenceCategory.CapitalShips)
+                || (categories & fleetCategories) == PlanetIntelligenceCategory.None
+            )
+                return;
+
+            snapshot.Fleets.Clear();
+            AddFleetsToSnapshot(faction, planet, snapshot, true);
+            FilterFleetIntelligence(snapshot.Fleets, accumulatedCategories);
+        }
+
+        /// <summary>
+        /// Replaces stationed regiment and special-forces intelligence when revealed.
+        /// </summary>
+        private void UpdateGroundForceIntelligence(
+            Faction faction,
+            Planet planet,
+            PlanetSnapshot snapshot,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            if (!categories.HasFlag(PlanetIntelligenceCategory.GroundForces))
+                return;
+
+            snapshot.Regiments.Clear();
+            snapshot.SpecialForces.Clear();
+            AddIntelligenceEntityCopies(
+                planet.GetChildren<Regiment>(_ => true),
+                snapshot.Regiments,
+                faction
+            );
+            AddEntityCopiesToSnapshot(
+                planet.GetChildren<SpecialForces>(_ => true),
+                snapshot.SpecialForces,
+                faction,
+                true
+            );
+        }
+
+        /// <summary>
+        /// Replaces stationed starfighter intelligence when revealed.
+        /// </summary>
+        private void UpdateStarfighterIntelligence(
+            Faction faction,
+            Planet planet,
+            PlanetSnapshot snapshot,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            if (!categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
+                return;
+
+            snapshot.Starfighters.Clear();
+            AddIntelligenceEntityCopies(
+                planet.GetChildren<Starfighter>(_ => true),
+                snapshot.Starfighters,
+                faction
+            );
+        }
+
+        /// <summary>
+        /// Replaces building intelligence when revealed.
+        /// </summary>
+        private void UpdateBuildingIntelligence(
+            Faction faction,
+            Planet planet,
+            PlanetSnapshot snapshot,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            if (!categories.HasFlag(PlanetIntelligenceCategory.Buildings))
+                return;
+
+            snapshot.Buildings.Clear();
+            AddEntityCopiesToSnapshot(planet.Buildings, snapshot.Buildings, faction, true);
+        }
+
+        /// <summary>
+        /// Replaces enemy mission intelligence when revealed.
+        /// </summary>
+        private void UpdateMissionIntelligence(
+            Faction faction,
+            Planet planet,
+            PlanetSnapshot snapshot,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            if (!categories.HasFlag(PlanetIntelligenceCategory.Missions))
+                return;
+
+            snapshot.Missions.Clear();
+            AddEnemyMissionsToSnapshot(faction, planet, snapshot);
+        }
+
+        /// <summary>
+        /// Adds fully revealed entity copies to a category-limited snapshot.
+        /// </summary>
+        /// <typeparam name="T">The scene-node type being copied.</typeparam>
+        /// <param name="source">The live entities.</param>
+        /// <param name="destination">The snapshot collection.</param>
+        /// <param name="faction">The observing faction.</param>
+        private void AddIntelligenceEntityCopies<T>(
+            IEnumerable<T> source,
+            List<T> destination,
+            Faction faction
+        )
+            where T : class, ISceneNode
+        {
+            AddEntityCopiesToSnapshot(source, destination, faction, true);
+        }
+
+        /// <summary>
+        /// Removes fleet cargo categories not included by an intelligence result.
+        /// </summary>
+        /// <param name="fleets">The copied fleets to filter.</param>
+        /// <param name="categories">The revealed intelligence categories.</param>
+        private static void FilterFleetIntelligence(
+            IEnumerable<Fleet> fleets,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            foreach (CapitalShip ship in fleets.SelectMany(fleet => fleet.CapitalShips))
+            {
+                if (!categories.HasFlag(PlanetIntelligenceCategory.Officers))
+                    ship.Officers.Clear();
+                if (!categories.HasFlag(PlanetIntelligenceCategory.GroundForces))
+                {
+                    ship.Regiments.Clear();
+                    ship.SpecialForces.Clear();
+                }
+                if (!categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
+                    ship.Starfighters.Clear();
+            }
+        }
+
+        /// <summary>
         /// Updates a faction's recorded owner for a planet without revealing other current state.
         /// </summary>
         /// <param name="faction">The faction receiving the ownership observation.</param>
@@ -145,14 +704,14 @@ namespace Rebellion.Game.FogOfWar
 
             if (includeEspionageIntelligence)
             {
-                planetSnapshot.HasEspionageIntelligence = true;
+                planetSnapshot.RevealedCategories = PlanetIntelligenceCategory.All;
                 AddEnemyMissionsToSnapshot(faction, planet, planetSnapshot);
                 AddManufacturingQueueToSnapshot(planet, planetSnapshot);
             }
             else
             {
-                planetSnapshot.HasEspionageIntelligence =
-                    previousSnapshot?.HasEspionageIntelligence == true;
+                planetSnapshot.RevealedCategories =
+                    previousSnapshot?.RevealedCategories ?? PlanetIntelligenceCategory.None;
                 CarryForwardRevealedMissions(previousSnapshot, planetSnapshot);
                 PreserveIncomingFleetIntelligence(previousSnapshot, planetSnapshot);
                 PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
@@ -191,7 +750,10 @@ namespace Rebellion.Game.FogOfWar
             PlanetSnapshot snapshot
         )
         {
-            if (previousSnapshot?.HasEspionageIntelligence != true)
+            if (
+                previousSnapshot?.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions)
+                != true
+            )
                 return;
 
             snapshot.Missions.AddRange(
@@ -209,7 +771,11 @@ namespace Rebellion.Game.FogOfWar
             PlanetSnapshot snapshot
         )
         {
-            if (previousSnapshot?.HasEspionageIntelligence != true)
+            if (
+                previousSnapshot?.RevealedCategories.HasFlag(
+                    PlanetIntelligenceCategory.CapitalShips
+                ) != true
+            )
                 return;
 
             foreach (
@@ -330,6 +896,30 @@ namespace Rebellion.Game.FogOfWar
                 AllocatedEnergy = planet.AllocatedEnergy,
                 PopularSupport = new Dictionary<string, int>(planet.PopularSupport),
             };
+        }
+
+        /// <summary>
+        /// Copies current strategic planet state into an existing snapshot.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to update.</param>
+        /// <param name="planet">The live planet state.</param>
+        /// <param name="currentTick">The observation tick.</param>
+        private static void UpdatePlanetState(
+            PlanetSnapshot snapshot,
+            Planet planet,
+            int currentTick
+        )
+        {
+            snapshot.TickCaptured = currentTick;
+            snapshot.OwnerInstanceID = planet.OwnerInstanceID;
+            snapshot.IsColonized = planet.IsColonized;
+            snapshot.IsInUprising = planet.IsInUprising;
+            snapshot.IsDestroyed = planet.IsDestroyed;
+            snapshot.IsHeadquarters = planet.IsHeadquarters;
+            snapshot.NumRawResourceNodes = planet.NumRawResourceNodes;
+            snapshot.EnergyCapacity = planet.EnergyCapacity;
+            snapshot.AllocatedEnergy = planet.AllocatedEnergy;
+            snapshot.PopularSupport = new Dictionary<string, int>(planet.PopularSupport);
         }
 
         /// <summary>
@@ -1050,6 +1640,9 @@ namespace Rebellion.Game.FogOfWar
             RemoveEntityFromSnapshot(oldPlanetSnapshot, entityId);
         }
 
+        /// <summary>
+        /// Removes an entity from every retained collection in a planet snapshot.
+        /// </summary>
         private static void RemoveEntityFromSnapshot(PlanetSnapshot snapshot, string entityId)
         {
             snapshot.Officers.RemoveAll(o => o.InstanceID == entityId);
@@ -1067,6 +1660,9 @@ namespace Rebellion.Game.FogOfWar
             snapshot.Fleets.RemoveAll(f => f.CapitalShips.Count == 0);
         }
 
+        /// <summary>
+        /// Removes an entity from a retained fleet and its nested capital ships.
+        /// </summary>
         private static void RemoveEntityFromFleet(Fleet fleet, string entityId)
         {
             foreach (CapitalShip ship in fleet.CapitalShips)
@@ -1075,6 +1671,9 @@ namespace Rebellion.Game.FogOfWar
             fleet.CapitalShips.RemoveAll(s => s.InstanceID == entityId);
         }
 
+        /// <summary>
+        /// Removes an entity from the retained contents of a capital ship.
+        /// </summary>
         private static void RemoveEntityFromCapitalShip(CapitalShip ship, string entityId)
         {
             ship.Officers.RemoveAll(o => o.InstanceID == entityId);

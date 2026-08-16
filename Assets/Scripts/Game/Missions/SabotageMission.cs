@@ -126,6 +126,30 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Uses the dedicated success table for planet-destroying capital ships.
+        /// </summary>
+        /// <param name="agent">The participant whose combat rating is evaluated.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The configured sabotage success probability.</returns>
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
+        {
+            ISceneNode target = GetSabotageTarget(game);
+            if (target is not CapitalShip { CanDestroyPlanets: true })
+                return base.GetAgentProbability(agent, game);
+
+            int score = agent.GetEffectiveRating(ParticipantRating);
+            Dictionary<int, int> table = game
+                ?.Config
+                ?.ProbabilityTables
+                ?.Mission
+                ?.DeathStarSabotage;
+            if (table == null || table.Count == 0)
+                return base.GetAgentProbability(agent, game);
+
+            return new ProbabilityTable(table).Lookup(score);
+        }
+
+        /// <summary>
         /// Returns whether the selected sabotage target is still present at the mission planet.
         /// </summary>
         /// <param name="game">The current game state.</param>

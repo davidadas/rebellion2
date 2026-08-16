@@ -24,6 +24,7 @@ namespace Rebellion.SceneGraph
 
         public string TypeID { get; set; }
         public string DisplayName { get; set; }
+        public string DisplayStatus { get; set; }
         public string DisplayImagePath { get; set; }
         public string SmallDisplayImagePath { get; set; }
         public string MessageImagePath { get; set; }

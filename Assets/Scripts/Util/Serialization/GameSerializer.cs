@@ -254,10 +254,12 @@ namespace Rebellion.Util.Serialization
         /// <param name="collection">The collection to write.</param>
         /// <param name="writer">The XmlWriter to use.</param>
         /// <param name="name">The optional name for the XML element.</param>
+        /// <param name="itemName">The optional element name for each collection item.</param>
         private static void WriteCollection(
             IEnumerable collection,
             XmlWriter writer,
-            string name = null
+            string name = null,
+            string itemName = null
         )
         {
             Type elementType =
@@ -271,7 +273,7 @@ namespace Rebellion.Util.Serialization
                 WriteValue(
                     item,
                     writer,
-                    ReflectionHelper.GetPersistableElementName(item.GetType())
+                    itemName ?? ReflectionHelper.GetPersistableElementName(item.GetType())
                 );
             }
             writer.WriteEndElement();
@@ -319,7 +321,24 @@ namespace Rebellion.Util.Serialization
                 if (value != null)
                 {
                     string elementName = GetElementName(member, value);
-                    WriteValue(value, writer, elementName);
+                    PersistableCollectionItemAttribute collectionItem =
+                        (PersistableCollectionItemAttribute)
+                            Attribute.GetCustomAttribute(
+                                member,
+                                typeof(PersistableCollectionItemAttribute)
+                            );
+                    if (collectionItem != null && value is IEnumerable collection)
+                    {
+                        if (string.IsNullOrWhiteSpace(collectionItem.Name))
+                            throw new InvalidOperationException(
+                                $"Collection member '{member.Name}' requires an item element name."
+                            );
+                        WriteCollection(collection, writer, elementName, collectionItem.Name);
+                    }
+                    else
+                    {
+                        WriteValue(value, writer, elementName);
+                    }
                 }
             }
             writer.WriteEndElement();
@@ -663,10 +682,9 @@ namespace Rebellion.Util.Serialization
                 actualType
             );
 
-            if (reader.HasAttributes)
-            {
-                ReadAttributes(reader, attributes, obj);
-            }
+            HashSet<MemberInfo> populatedAttributes = reader.HasAttributes
+                ? ReadAttributes(reader, attributes, obj)
+                : new HashSet<MemberInfo>();
 
             if (reader.IsEmptyElement)
             {
@@ -685,8 +703,21 @@ namespace Rebellion.Util.Serialization
 
                     if (member != null)
                     {
+                        if (populatedAttributes.Contains(member))
+                            throw new InvalidOperationException(
+                                $"Member '{elementName}' cannot be provided as both an attribute and an element."
+                            );
                         object value = ReadMember(member, reader);
                         ReflectionHelper.SetMemberValue(member, obj, value);
+                    }
+                    else if (attributes.TryGetValue(elementName, out MemberInfo attributeMember))
+                    {
+                        if (populatedAttributes.Contains(attributeMember))
+                            throw new InvalidOperationException(
+                                $"Member '{elementName}' cannot be provided as both an attribute and an element."
+                            );
+                        object value = ReadMember(attributeMember, reader);
+                        ReflectionHelper.SetMemberValue(attributeMember, obj, value);
                     }
                     else
                     {
@@ -732,12 +763,16 @@ namespace Rebellion.Util.Serialization
                 }
             }
 
-            IDictionary<string, Type> persistableMap = ReflectionHelper.GetPersistableObjectMap();
-            Type resolvedType = persistableMap.TryGetValue(actualTypeName, out Type persistableType)
-                ? persistableType
-                : objType;
-
-            if (!objType.IsAssignableFrom(resolvedType))
+            Type[] candidates = ReflectionHelper
+                .GetPersistableTypes(actualTypeName)
+                .Where(objType.IsAssignableFrom)
+                .ToArray();
+            if (candidates.Length > 1)
+                throw new InvalidOperationException(
+                    $"XML element '{actualTypeName}' is ambiguous for '{objType.Name}'."
+                );
+            Type resolvedType = candidates.SingleOrDefault();
+            if (resolvedType == null)
             {
                 throw new InvalidOperationException(
                     $"Could not find a valid type to instantiate for {objType.Name}. XML element: {actualTypeName}"
@@ -753,12 +788,13 @@ namespace Rebellion.Util.Serialization
         /// <param name="reader">The XmlReader to use.</param>
         /// <param name="attributes">The dictionary of persistable attributes.</param>
         /// <param name="obj">The object to set attributes on.</param>
-        private static void ReadAttributes(
+        private static HashSet<MemberInfo> ReadAttributes(
             XmlReader reader,
             IDictionary<string, MemberInfo> attributes,
             object obj
         )
         {
+            HashSet<MemberInfo> populated = new HashSet<MemberInfo>();
             for (int i = 0; i < reader.AttributeCount; i++)
             {
                 reader.MoveToAttribute(i);
@@ -767,9 +803,11 @@ namespace Rebellion.Util.Serialization
                     Type attributeType = ReflectionHelper.GetMemberType(attribute);
                     object value = TypeHelper.ConvertToScalar(reader.Value, attributeType);
                     ReflectionHelper.SetMemberValue(attribute, obj, value);
+                    populated.Add(attribute);
                 }
             }
             reader.MoveToElement();
+            return populated;
         }
 
         /// <summary>
@@ -1150,6 +1188,27 @@ namespace Rebellion.Util.Serialization
 
             _persistableObjectMap = persistableMap;
             return _persistableObjectMap;
+        }
+
+        public static IEnumerable<Type> GetPersistableTypes(string elementName)
+        {
+            return AppDomain
+                .CurrentDomain.GetAssemblies()
+                .SelectMany(assembly =>
+                {
+                    try
+                    {
+                        return assembly.GetTypes();
+                    }
+                    catch (ReflectionTypeLoadException exception)
+                    {
+                        return exception.Types.Where(type => type != null);
+                    }
+                })
+                .Where(type =>
+                    Attribute.IsDefined(type, typeof(PersistableObjectAttribute))
+                    && (type.Name == elementName || GetPersistableElementName(type) == elementName)
+                );
         }
 
         /// <summary>

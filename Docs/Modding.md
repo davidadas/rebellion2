@@ -89,7 +89,8 @@ data, themes, and encyclopedia entries. Pack-level definitions include planet sy
 events, and messages.
 
 IDs must be present and unique within their definition type. References between files use those
-IDs, so renaming one requires updating every reference to it.
+IDs, so renaming one requires updating every reference to it. Event and message catalogs are
+separate files selected by `GameEventsPath` and `MessageDefinitionsPath` in `pack.xml`.
 
 ### UI appearance
 
@@ -107,6 +108,12 @@ Audio and video are loose files referenced by extensionless content addresses. P
 expected by the XML or update the corresponding definition. Application-level main-menu and
 cutscene media lives under `Application/`; faction- and scenario-specific media belongs in the
 pack.
+
+### Game events
+
+Game events define scheduled and result-triggered narrative behavior without a code rebuild. See
+[Creating game events](GameEvents.md) for lifecycle, scheduling, targeting, conditions,
+actions, schema validation, and complete examples.
 
 ### Preloaded assets
 

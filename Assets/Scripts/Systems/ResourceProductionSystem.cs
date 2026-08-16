@@ -17,6 +17,7 @@ namespace Rebellion.Systems
         private const int _percentScale = 100;
 
         private readonly GameRoot _game;
+        private readonly SmugglingSystem _smugglingSystem;
 
         /// <summary>
         /// Creates a new ResourceProductionSystem.
@@ -25,18 +26,21 @@ namespace Rebellion.Systems
         public ResourceProductionSystem(GameRoot game)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
+            _smugglingSystem = new SmugglingSystem(game);
         }
 
         /// <summary>
         /// Services pending material requests and advances every active resource facility.
         /// </summary>
-        /// <returns>An empty result list.</returns>
+        /// <returns>State-change results produced while processing the tick.</returns>
         public List<GameResult> ProcessTick()
         {
+            List<GameResult> results = _smugglingSystem.ProcessTick();
+
             foreach (Faction faction in _game.GetFactions())
                 ProcessFaction(faction);
 
-            return new List<GameResult>();
+            return results;
         }
 
         /// <summary>
@@ -371,7 +375,7 @@ namespace Rebellion.Systems
             if (!AdvanceResourceCycle(faction, mine))
                 return;
 
-            faction.RawMaterialStockpile++;
+            _smugglingSystem.ResolveProductionRecipient(faction, mine).RawMaterialStockpile++;
             mine.ProductionInputReserved = true;
         }
 
@@ -391,7 +395,9 @@ namespace Rebellion.Systems
             if (!AdvanceResourceCycle(faction, refinery))
                 return;
 
-            faction.RefinedMaterialStockpile++;
+            _smugglingSystem
+                .ResolveProductionRecipient(faction, refinery)
+                .RefinedMaterialStockpile++;
             faction.RequestRawMaterial(refinery);
         }
 

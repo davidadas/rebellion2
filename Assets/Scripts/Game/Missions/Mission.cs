@@ -34,6 +34,13 @@ namespace Rebellion.Game.Missions
         public string LocationInstanceID { get; set; }
         public string OriginInstanceID { get; set; }
 
+        /// <summary>
+        /// Gets or sets the content event that authored this mission, when applicable.
+        /// Results inherit this identity so data-defined reactions can replace or extend
+        /// default presentation without coupling systems to particular event IDs.
+        /// </summary>
+        public string SourceEventInstanceID { get; set; }
+
         // Participants.
         public List<IMissionParticipant> MainParticipants { get; set; }
 
@@ -119,6 +126,9 @@ namespace Rebellion.Game.Missions
             return planet;
         }
 
+        /// <summary>
+        /// Returns whether a mission target remains attached to the playable scene graph.
+        /// </summary>
         internal static bool IsOperationalTarget(ISceneNode target)
         {
             if (target == null)
@@ -141,6 +151,11 @@ namespace Rebellion.Game.Missions
         internal virtual bool AppliesFoiledParticipantConsequences => true;
 
         /// <summary>
+        /// Returns whether successful participants stay at the mission location regardless of ownership.
+        /// </summary>
+        internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
+
+        /// <summary>
         /// Returns why this mission must stop before advancing.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -156,6 +171,15 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <returns>True if the mission should repeat; false to finish the mission.</returns>
         public abstract bool ShouldRepeatAfterCompletion(GameRoot game);
+
+        /// <summary>
+        /// Produces mission-specific state changes when the mission ends before normal execution.
+        /// The mission system remains responsible for participant teardown and terminal results.
+        /// </summary>
+        internal virtual List<GameResult> ResolveInterruption(
+            GameRoot game,
+            IRandomNumberProvider provider
+        ) => new List<GameResult>();
 
         /// <summary>
         /// Starts the mission and chooses its duration.
@@ -350,12 +374,24 @@ namespace Rebellion.Game.Missions
         /// <returns>The configured success probability.</returns>
         protected double LookupSuccessProbability(GameRoot game, int score)
         {
+            return LookupSuccessProbability(game, score, ConfigKey);
+        }
+
+        /// <summary>
+        /// Returns the success probability from an explicitly selected mission table.
+        /// </summary>
+        /// <param name="game">The game state containing probability configuration.</param>
+        /// <param name="score">The mission score to look up.</param>
+        /// <param name="probabilityTableKey">The authored mission probability-table key.</param>
+        /// <returns>The configured success probability.</returns>
+        protected double LookupSuccessProbability(
+            GameRoot game,
+            int score,
+            string probabilityTableKey
+        )
+        {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
-            return LookupProbability(
-                missionTables.GetSuccessTable(ConfigKey),
-                score,
-                missionTables.DefaultSuccessProbability
-            );
+            return missionTables.GetSuccessProbability(probabilityTableKey, score);
         }
 
         /// <summary>
@@ -665,6 +701,22 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Resolves a mission that an assigned officer deliberately betrayed.
+        /// Betrayal foils the objective without applying enemy-detection consequences.
+        /// </summary>
+        internal List<GameResult> ResolveBetrayedMission(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
+        {
+            List<GameResult> results = OnFailed(game, provider);
+            results.Add(
+                BuildCompletedResult(MissionOutcome.Foiled, MissionCompletionReason.Foiled, game)
+            );
+            return results;
+        }
+
+        /// <summary>
         /// Returns the completion reason for a failed mission success roll.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -693,11 +745,13 @@ namespace Rebellion.Game.Missions
                 MissionName = DisplayName,
                 MissionTypeID = TypeID,
                 TargetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
+                Location = GetParent() as Planet,
                 Participants = participants ?? GetAllParticipants(),
                 Outcome = outcome,
                 CompletionReason = GetDefaultCompletionReason(outcome),
                 CanContinue = ShouldRepeatAfterCompletion(game),
                 Tick = game.CurrentTick,
+                SourceEventInstanceID = SourceEventInstanceID,
             };
         }
 

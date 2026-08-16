@@ -18,6 +18,7 @@ namespace Rebellion.Util.Common
         /// <returns>True if the type is scalar, otherwise false.</returns>
         public static bool IsScalar(Type type)
         {
+            type = Nullable.GetUnderlyingType(type) ?? type;
             return type == typeof(string)
                 || type == typeof(bool)
                 || type == typeof(byte)
@@ -163,6 +164,10 @@ namespace Rebellion.Util.Common
         /// <returns>The converted scalar value.</returns>
         public static object ConvertToScalar(string content, Type targetType)
         {
+            Type nullableType = Nullable.GetUnderlyingType(targetType);
+            if (nullableType != null)
+                return ConvertToScalar(content, nullableType);
+
             if (targetType.IsEnum)
                 return Enum.Parse(targetType, content);
             if (targetType == typeof(string))

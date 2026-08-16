@@ -36,7 +36,6 @@ namespace Rebellion.Game.Factions
         };
 
         // Faction Info.
-        public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
         public List<string> DisallowedMissionTypeIDs { get; set; } = new List<string>();
         public FactionSettings Settings
         {
@@ -207,7 +206,21 @@ namespace Rebellion.Game.Factions
         public List<T> GetOwnedUnitsByType<T>()
             where T : ISceneNode
         {
-            return _ownedEntities[typeof(T)].Cast<T>().ToList();
+            if (_ownedEntities.TryGetValue(typeof(T), out List<ISceneNode> exactMatches))
+                return exactMatches.Cast<T>().ToList();
+
+            return _ownedEntities
+                .Where(entry => typeof(T).IsAssignableFrom(entry.Key))
+                .SelectMany(entry => entry.Value)
+                .Distinct()
+                .Cast<T>()
+                .ToList();
+        }
+
+        public void ClearOwnedUnits()
+        {
+            foreach (List<ISceneNode> units in _ownedEntities.Values)
+                units.Clear();
         }
 
         /// <summary>
@@ -807,6 +820,9 @@ namespace Rebellion.Game.Factions
                 );
         }
 
+        /// <summary>
+        /// Maps a manufacturable template to its faction research queue.
+        /// </summary>
         private static ManufacturingType GetResearchQueueType(IManufacturable template)
         {
             return template switch

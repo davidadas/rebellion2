@@ -1,5 +1,5 @@
-using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
@@ -14,8 +14,6 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot _game;
         private readonly MessageFactory _messageFactory;
-
-        public event Action<Faction, Message> MessageDelivered;
 
         /// <summary>
         /// Initializes a message system for the supplied game state and message definitions.
@@ -32,23 +30,72 @@ namespace Rebellion.Systems
         /// Creates and delivers faction messages for the supplied game results.
         /// </summary>
         /// <param name="results">The game results to process.</param>
-        public void ProcessResults(IEnumerable<GameResult> results)
+        public List<GameResult> ProcessResults(IEnumerable<GameResult> results)
         {
-            foreach (
-                (Faction faction, Message message) delivery in _messageFactory.CreateMessages(
-                    results,
-                    _game
-                )
-            )
+            GameResult[] resultBatch =
+                results?.Where(result => result != null).ToArray()
+                ?? System.Array.Empty<GameResult>();
+            IEnumerable<GameResult> automaticResults = resultBatch.Where(
+                IsEligibleForAutomaticMessage
+            );
+            IEnumerable<MessageRequestedResult> authoredRequests =
+                resultBatch.OfType<MessageRequestedResult>();
+            IEnumerable<MessageRequestedResult> requests = _messageFactory
+                .CreateMessages(automaticResults, _game)
+                .Concat(_messageFactory.CreateAuthoredMessages(authoredRequests));
+            List<GameResult> deliveredResults = new List<GameResult>();
+            foreach (MessageRequestedResult request in requests)
             {
-                if (delivery.faction == null || delivery.message == null)
+                if (request?.Recipient == null)
                     continue;
 
-                delivery.message.CreatedTick = _game.CurrentTick;
-                delivery.faction.AddMessage(delivery.message);
-                MessageDelivered?.Invoke(delivery.faction, delivery.message);
+                Message message = CreateMessage(request);
+                request.Recipient.AddMessage(message);
+                MessageDeliveredResult delivered = new MessageDeliveredResult
+                {
+                    Recipient = request.Recipient,
+                    Message = message,
+                    NotificationType = request.NotificationType,
+                    AdvisorSubjectNotification = request.AdvisorSubjectNotification,
+                    AdvisorSubjectTypeID = request.AdvisorSubjectTypeID,
+                    AdvisorNotification = request.AdvisorNotification,
+                    SourceEventInstanceID = request.SourceEventInstanceID,
+                    Tick = _game.CurrentTick,
+                };
+                deliveredResults.Add(delivered);
             }
+            return deliveredResults;
         }
+
+        /// <summary>
+        /// Constructs the durable message represented by one resolved delivery request.
+        /// </summary>
+        /// <param name="request">The semantic and presentation data to persist.</param>
+        /// <returns>The message ready to attach to the recipient faction.</returns>
+        private Message CreateMessage(MessageRequestedResult request) =>
+            new Message(request.MessageType, request.Subject, request.Body)
+            {
+                ResultType = request.ResultType,
+                DisplayName = request.Subject,
+                BackgroundImageKey = request.BackgroundImageKey,
+                DisplayImagePath = request.BackgroundImagePath,
+                OverlayImagePath = request.OverlayImagePath,
+                BackgroundAudioPath = request.BackgroundAudioPath,
+                OfficerVoicePath = request.OfficerVoicePath,
+                EventLocationInstanceID = request.EventLocationInstanceID,
+                NavigationTargetInstanceID = request.NavigationTargetInstanceID,
+                NavigationSecondaryTargetInstanceID = request.NavigationSecondaryTargetInstanceID,
+                MissionInstanceID = request.MissionInstanceID,
+                CreatedTick = _game.CurrentTick,
+            };
+
+        /// <summary>
+        /// Returns whether an ordinary simulation result may produce an automatic message.
+        /// Authored event effects must request their messages explicitly.
+        /// </summary>
+        private static bool IsEligibleForAutomaticMessage(GameResult result) =>
+            result is not MessageRequestedResult
+            && string.IsNullOrWhiteSpace(result.SourceEventInstanceID);
 
         /// <summary>
         /// Advances time-based message lifecycle state for the current game tick.

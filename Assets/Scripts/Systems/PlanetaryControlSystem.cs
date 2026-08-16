@@ -360,7 +360,7 @@ namespace Rebellion.Systems
                 }
                 else
                 {
-                    _game.ChangeUnitOwnership(planet, newOwnerId);
+                    _game.ChangeOwnership(planet, newOwnerId);
                 }
 
                 if (previousOwner?.InstanceID != newOwnerId)
@@ -656,7 +656,7 @@ namespace Rebellion.Systems
             foreach (Building building in planet.GetChildren<Building>(_ => true, recurse: false))
             {
                 building.AllowedOwnerInstanceIDs = new List<string> { newOwner.InstanceID };
-                _game.ChangeUnitOwnership(building, newOwner.InstanceID);
+                _game.ChangeOwnership(building, newOwner.InstanceID);
             }
         }
 

@@ -1,62 +1,57 @@
+using System;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Represents a condition that must be met for an event.
+    /// Represents a condition evaluated within one game-event activation.
     /// </summary>
-    /// <remarks>
-    /// Conditions are critical to the event system, as they determine when an event is
-    /// eligible to be executed. Conditions are evaluated at the time the event is scheduled
-    /// to occur, and if all conditions are met, the event is executed.
-    /// </remarks>
     [PersistableObject]
     public abstract class GameConditional : BaseGameEntity
     {
-        [PersistableAttribute(Name = "Value")]
-        public string ConditionalValue { get; set; }
+        public abstract bool IsMet(GameConditionContext context);
 
-        [PersistableAttribute(Name = "Type")]
-        public string ConditionalType { get; set; }
+        public bool IsMet(GameRoot game) => IsMet(new GameConditionContext(game));
 
-        /// <summary>
-        /// Default constructor used for deserialization.
-        /// </summary>
-        public GameConditional() { }
+        public bool IsMet(GameRoot game, GameResult triggerResult) =>
+            IsMet(new GameConditionContext(game, triggerResult));
 
-        /// <summary>
-        /// Creates a new GameConditional with a specific value (as an XML attribute).
-        /// </summary>
-        /// <param name="conditionalValue">The value of the condition.</param>
-        public GameConditional(string conditionalValue)
+        internal bool IsMet(GameRoot game, GameEventExecutionContext activation) =>
+            IsMet(new GameConditionContext(game, activation));
+    }
+
+    /// <summary>
+    /// Supplies the dependencies available during one condition evaluation.
+    /// </summary>
+    public sealed class GameConditionContext
+    {
+        public GameRoot Game { get; }
+        public GameEventExecutionContext Activation { get; }
+        public GameResult TriggerResult { get; }
+        public IRandomNumberProvider Random { get; }
+
+        public GameConditionContext(GameRoot game)
+            : this(game, null, null) { }
+
+        public GameConditionContext(GameRoot game, GameResult triggerResult)
+            : this(game, null, triggerResult) { }
+
+        public GameConditionContext(GameRoot game, GameEventExecutionContext activation)
+            : this(game, activation, activation?.TriggerResult) { }
+
+        private GameConditionContext(
+            GameRoot game,
+            GameEventExecutionContext activation,
+            GameResult triggerResult
+        )
         {
-            ConditionalValue = conditionalValue;
+            Game = game ?? throw new ArgumentNullException(nameof(game));
+            Activation = activation;
+            TriggerResult = triggerResult;
+            Random = game.Random;
         }
-
-        /// <summary>
-        /// Returns the conditional value string.
-        /// </summary>
-        /// <returns>The conditional value.</returns>
-        public string GetConditionalValue()
-        {
-            return ConditionalValue;
-        }
-
-        /// <summary>
-        /// Returns the conditional type string.
-        /// </summary>
-        /// <returns>The conditional type.</returns>
-        public string GetConditionalType()
-        {
-            return ConditionalType;
-        }
-
-        /// <summary>
-        /// Determines whether the condition is met in the specified game.
-        /// </summary>
-        /// <param name="game">The game instance to evaluate.</param>
-        /// <returns>True if the condition is met; otherwise, false.</returns>
-        public abstract bool IsMet(GameRoot game);
     }
 }
