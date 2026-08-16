@@ -1,74 +1,392 @@
-# Creating custom game events
+# Creating Game Events
 
-Game events compose reusable schedules, result triggers, conditions, selectors, and actions. This
-guide explains how those pieces execute. The XML schema at
-`Assets/Content/Application/Schemas/game-events.xsd` defines the accepted document structure.
+## Add an Event
 
-The content pack's `pack.xml` identifies the event catalog through `GameEventsPath`. The standard
-catalog is `Packs/ClassicGalacticCivilWar/Shared/Data/game-events.xml`, and its root is:
+Open the standard game-event catalog:
 
-```xml
-<GameEvents>
-  <GameEvent TriggerCount="1">
-    <InstanceID>MOD_EVENT_ID</InstanceID>
-    <!-- schedule or triggers, conditions, target, and actions -->
-  </GameEvent>
-</GameEvents>
+```text
+Assets/Content/Packs/ClassicGalacticCivilWar/Shared/Data/game-events.xml
 ```
 
-Every `InstanceID` must be unique and stable. It is runtime and save-state identity, not a
-player-facing title. Put text shown to the player in `SendMessage`.
-
-## Execution lifecycle
-
-An event becomes eligible in one of two ways:
-
-- A scheduled event is checked at its scheduled campaign tick.
-- A triggered event is checked whenever a matching game result is processed.
-
-An event cannot have both `Schedule` and `Triggers`. An event with neither is eligible from tick
-zero and is checked every tick. When eligible, the runtime resolves its optional `Target`, evaluates
-all top-level `Conditionals` as an implicit AND, and executes `Actions` in authored order.
-
-Omitting `TriggerCount` permits unlimited activations. `TriggerCount="1"` permits one activation;
-any other positive value sets that exact upper limit. The count advances only when the event reaches
-its actions. `Until` permanently exhausts the event as soon as all of its conditions are true,
-regardless of the remaining trigger count.
-
-Event schedules, activation counts, exhaustion, and event variables are saved. Preserve event IDs
-and variable keys after publishing a content pack.
-
-## Scheduling
-
-`Schedule` accepts exactly one mode:
+Add the event inside the existing `GameEvents` root:
 
 ```xml
+<GameEvent TriggerCount="1">
+  <InstanceID>MY_FIRST_EVENT</InstanceID>
+  <Schedule>
+    <At Tick="10"/>
+  </Schedule>
+  <Actions>
+    <SendMessage RecipientFactionInstanceID="FNALL1" Type="Advice">
+      <Subject>My First Event</Subject>
+      <Body>The event is working.</Body>
+    </SendMessage>
+  </Actions>
+</GameEvent>
+```
+
+`InstanceID` is the event's permanent runtime and save-game identity. Keep it unique and do not
+rename it after saves contain the event. Player-facing names belong in messages.
+
+## Available Options
+
+An event may contain these pieces:
+
+| Option | Purpose |
+| --- | --- |
+| `Schedule` | Runs according to campaign time or another event. |
+| `Triggers` | Reacts to a gameplay result such as an arrival or completed mission. |
+| `Conditionals` | Prevents the event from running unless every listed condition passes. |
+| `Until` | Permanently stops the event once every listed condition passes. |
+| `Target` | Selects exactly one node and makes it available as `$target`. |
+| `Actions` | Changes the game in authored order. |
+| `TriggerCount` | Limits activations to a positive number. If omitted, activations are unlimited. |
+
+Use either `Schedule` or `Triggers`, never both. With neither, the event is checked every tick.
+
+**Schedules**
+
+```xml
+<!-- At an absolute tick. -->
 <Schedule><At Tick="200"/></Schedule>
+
+<!-- Every 50 ticks, after an initial 10-tick delay. -->
 <Schedule><Every Ticks="50" InitialDelayTicks="10"/></Schedule>
+
+<!-- After a newly rolled delay of 25–75 ticks. -->
 <Schedule><Random MinimumTicks="25" MaximumTicks="75"/></Schedule>
-<Schedule><After EventInstanceID="MOD_PREDECESSOR" DelayTicks="20"/></Schedule>
+
+<!-- After another event. -->
+<Schedule><After EventInstanceID="EVENT_A" DelayTicks="20"/></Schedule>
+
+<!-- After all listed events. Use AfterAny to wait for the first one instead. -->
 <Schedule>
   <AfterAll DelayTicks="20">
     <Events>
-      <Event EventInstanceID="MOD_FIRST_PREDECESSOR"/>
-      <Event EventInstanceID="MOD_SECOND_PREDECESSOR"/>
+      <Event EventInstanceID="EVENT_A"/>
+      <Event EventInstanceID="EVENT_B"/>
     </Events>
   </AfterAll>
 </Schedule>
 ```
 
-`At` is an absolute campaign tick and can activate only once. `Every` uses a fixed recurring delay.
-`Random` rolls a new inclusive delay after each activation. `After` waits for one event. `AfterAll`
-waits for every listed event and anchors its delay to the most recent activation; `AfterAny` anchors
-to the first listed event that activates. Non-recurring schedules require `TriggerCount="1"`.
+`At`, `After`, `AfterAll`, and `AfterAny` are one-time schedules and require
+`TriggerCount="1"`. `Every` and `Random` can repeat. `TriggerCount="5"` permits five activations;
+omitting it permits unlimited activations.
 
-## Result triggers and bindings
+Use `Until` when game state decides when a repeating event ends:
 
-A trigger reacts to an existing simulation result. `Bind` gives selected result arguments local
-names; references to those names begin with `$`:
+```xml
+<Until>
+  <IsCapturedBy OfficerInstanceID="HAN_SOLO" CaptorFactionInstanceID="FNEMP1"/>
+</Until>
+```
+
+**Gameplay triggers and bindings**
+
+Triggers expose result information through named bindings. Binding references begin with `$`.
+
+```xml
+<Triggers>
+  <Trigger Event="core:unit.arrived">
+    <Bindings>
+      <Bind Argument="UnitInstanceID" As="unitInstanceID"/>
+      <Bind Argument="DestinationInstanceID" As="destinationInstanceID"/>
+    </Bindings>
+  </Trigger>
+</Triggers>
+<Conditionals>
+  <EvaluateBinding Binding="$unitInstanceID" Comparison="Equal"
+                   CompareTo="EMPEROR_PALPATINE"/>
+  <EvaluateBinding Binding="$destinationInstanceID" Comparison="Equal"
+                   CompareTo="CORUSCANT"/>
+</Conditionals>
+```
+
+| Trigger | Available arguments |
+| --- | --- |
+| `core:unit.arrived` | `Unit`, `UnitInstanceID`, `Destination`, `DestinationInstanceID`, `SourceEventInstanceID` |
+| `core:mission.completed` | `Mission`, `Outcome`, `CompletionReason`, `Participants`, `Location`, `ReturnDestination`, `SourceEventInstanceID` |
+| `core:duel.completed` | `Officer`, `OfficerInstanceID`, `Opponent`, `OpponentInstanceID`, `Location`, `OfficerCaptured`, `OfficerInjury`, `OpponentInjury`, `ImagePath`, `AudioPath`, `SourceEventInstanceID` |
+| `core:officer.capture-changed` | `Officer`, `OfficerInstanceID`, `LinkedOfficer`, `Context`, `IsCaptured`, `SourceEventInstanceID` |
+| `core:force.discovered` | `Officer`, `Discoverer`, `ForceRank`, `SourceEventInstanceID` |
+
+Multiple triggers are alternatives. Each trigger on one event must expose the same aliases with
+compatible types.
+
+**Conditions**
+
+Sibling conditions are ANDed. Use `Any` for OR, `Not` for negation, `All` for an explicit AND, and
+`Xor` when exactly one nested condition must pass:
+
+```xml
+<Conditionals>
+  <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
+  <Not>
+    <Conditionals>
+      <Any>
+        <Conditionals>
+          <IsCaptured OfficerInstanceID="LEIA_ORGANA"/>
+          <IsOnMission UnitInstanceID="LEIA_ORGANA"/>
+          <IsInTransit UnitInstanceID="LEIA_ORGANA"/>
+        </Conditionals>
+      </Any>
+    </Conditionals>
+  </Not>
+</Conditionals>
+```
+
+| Condition | What it checks |
+| --- | --- |
+| `All`, `Any`, `Not`, `Xor` | Nested boolean logic. |
+| `TickCount` | Current tick using `Comparison` and `Ticks`. |
+| `HasEventTriggered`, `IsEventExhausted` | Whether another event has run or can ever run again. |
+| `EvaluateEventVariable` | A saved integer using `Key`, `Comparison`, and `CompareTo`. |
+| `EvaluateBinding`, `BindingIncludesUnit` | A scalar binding or collection binding. |
+| `IsOwned`, `RollAgainstPopularSupport` | Planet ownership or a support roll for a faction. |
+| `IsAtLocation`, `ShareParent`, `ShareAncestor` | Unit location and scene relationships. |
+| `AreOnOpposingFactions` | Whether listed units belong to opposing factions. |
+| `IsOnMission`, `IsInTransit` | Unit activity. |
+| `IsCaptured`, `IsCapturedBy`, `IsKilled`, `IsInjured` | Officer state. |
+| `IsForceEligible`, `HasForceRank` | Force eligibility or configured rank label. |
+| `CompareOfficerRating`, `CompareOfficerForce` | Numeric officer values. |
+| `ComparePlanetStat`, `HasBuildingType` | Planet stats and facilities. |
+
+Comparisons are `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, and
+`LessThanOrEqual`. Officer ratings are `Diplomacy`, `Espionage`, `Combat`, `Leadership`,
+`ShipResearch`, `TroopResearch`, and `FacilityResearch`. Planet stats are `RawResourceNodes` and
+`EnergyCapacity`. Force ranks are `None`, `Novice`, `Trainee`, `ForceStudent`, `ForceKnight`, and
+`ForceMaster`.
+
+`ShareParent` checks the exact immediate parent. `ShareAncestor` checks a shared nearest `Galaxy`,
+`PlanetSystem`, `Planet`, `Fleet`, `Mission`, or `CapitalShip` ancestor:
+
+```xml
+<ShareAncestor Type="Planet">
+  <Units>
+    <Unit UnitInstanceID="LUKE_SKYWALKER"/>
+    <Unit UnitInstanceID="DARTH_VADER"/>
+  </Units>
+</ShareAncestor>
+```
+
+Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `ConstructionFacility`,
+`Defense`, `Weapon`, and `Headquarters`.
+
+**Targets and selectors**
+
+`Target` selects exactly one node and exposes it as `$target`:
+
+```xml
+<Target>
+  <Candidates>
+    <SelectRandom Count="1">
+      <Candidates>
+        <SelectPlanets SystemType="CoreSystem"/>
+      </Candidates>
+    </SelectRandom>
+  </Candidates>
+</Target>
+```
+
+| Selector | Filters or behavior |
+| --- | --- |
+| `SelectPlanets` | `InstanceID`, `OwnerFactionInstanceID`, `SystemType` |
+| `SelectPlanetSystems` | `InstanceID`, `SystemType` |
+| `SelectOfficers` | ID, planet, owner, capture state, and whether retained officers are included |
+| `SelectSpecialForces`, `SelectFleets`, `SelectMissions` | ID, planet, and owner |
+| `SelectCapitalShips`, `SelectStarfighters`, `SelectRegiments` | ID, planet, owner, `TypeID`, and `ManufacturingStatus` |
+| `SelectBuildings` | The same filters plus `Category` |
+| `SelectManufacturingOrders` | Planet, owner, and `ManufacturingType` |
+| `SelectRandom` | Samples its combined candidates by chance and count. |
+| `SelectFirst` | Returns the first valid destination candidate. |
+| `SelectBinding` | Returns the object or collection in a binding. |
+| `SelectAncestors` | Maps candidates to their nearest ancestor of `Type`. |
+| `SelectPreviousLocation` | Returns a retained unit's recorded previous location. |
+
+Planet location filters use `PlanetInstanceID` or `PlanetBinding`. System types are `CoreSystem` and
+`OuterRim`. Manufacturing statuses are `Building` and `Complete`. Manufacturing types are `Ship`,
+`Building`, and `Troop`. Building categories are `Any`, `PlanetaryDefense`, and
+`ManufacturingFacility`.
+
+`SelectRandom` accepts `ChancePercent`, exact `Count`, or `MinimumCount` and `MaximumCount`:
+
+```xml
+<SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
+  <Candidates>
+    <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
+    <SelectRegiments PlanetBinding="$target"/>
+  </Candidates>
+</SelectRandom>
+```
+
+**Actions**
+
+Actions run from top to bottom. Later actions see changes and results produced by earlier actions.
+
+| Action | What it does |
+| --- | --- |
+| `SendMessage` | Sends an authored strategy message. |
+| `If` | Runs `Actions` or optional `Else` based on `Conditions`. |
+| `Random` | Chooses one weighted outcome whose optional `When` passes. |
+| `PerformSkillCheck` | Uses an officer rating and probability table, then runs `OnSuccess` or `OnFailure`. |
+| `SetEventVariable` | Applies `Set`, `Add`, `Minimum`, or `Maximum` to a saved integer. |
+| `RevealToFaction` | Reveals selected planets, systems, fleets, missions, units, buildings, or manufacturing orders. |
+| `ChangePlanetStat` | Changes a planet stat by signed `Amount` or `PercentOfCurrent`. |
+| `ReducePlanetStats` | Applies probabilistic resource losses to selected planet stats. |
+| `RecordPlanetIncident` | Records `Uprising`, `Intelligence`, `Disaster`, or `Resource` from results already produced against `$target`. |
+| `DestroyUnits` | Permanently deletes selected units. |
+| `PlaceUnits` | Immediately places units at a valid destination. |
+| `SendUnits` | Sends units using normal movement and transit. |
+| `AddToVoid`, `RemoveFromVoid` | Retains units outside active play or releases that retention. |
+| `SetDisplayName`, `SetDisplayStatus`, `ClearDisplayStatus` | Changes display metadata for selected nodes. |
+| `SetCaptureStatus` | Captures or releases selected officers. |
+| `ChangeOfficerRating` | Changes an officer rating by a flat or percentage calculation. |
+| `IncreaseOfficerForce` | Increases an officer's Force value. |
+| `SetForceSensitive`, `SetForceEligible` | Adds latent Force sensitivity or reveals and initializes it. |
+| `ApplyOfficerInjury` | Applies a random injury in an inclusive range. |
+| `TriggerDuel` | Requests a duel between two officers. |
+| `SetOfficerImages`, `SetOfficerVoiceSet` | Replaces supplied officer presentation assets. |
+
+`If`, weighted `Random`, and `PerformSkillCheck` contain actions directly:
+
+```xml
+<PerformSkillCheck OfficerInstanceID="HAN_SOLO"
+                   Rating="Combat"
+                   ProbabilityTable="Abduction"
+                   RatingMultiplier="-1">
+  <OnSuccess>
+    <SetCaptureStatus OfficerInstanceID="HAN_SOLO"
+                      IsCaptured="true"
+                      CaptorFactionInstanceID="FNEMP1"/>
+  </OnSuccess>
+  <OnFailure>
+    <SendMessage RecipientFactionInstanceID="FNALL1"
+                 SubjectInstanceID="HAN_SOLO"
+                 Type="Mission">
+      <Subject>Han evades capture</Subject>
+      <Body>The attackers failed to capture Han Solo.</Body>
+    </SendMessage>
+  </OnFailure>
+</PerformSkillCheck>
+```
+
+`ChangeOfficerRating` accepts exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or
+`PercentOfPositiveGap`. Percentage-of-gap changes require `ReferenceOfficerInstanceID`.
+`IncreaseOfficerForce` offers the same calculations but only permits positive growth.
+
+```xml
+<ChangeOfficerRating OfficerInstanceID="LUKE_SKYWALKER" Rating="Combat">
+  <Amount>5</Amount>
+</ChangeOfficerRating>
+
+<IncreaseOfficerForce OfficerInstanceID="LUKE_SKYWALKER"
+                      ReferenceOfficerInstanceID="DARTH_VADER"
+                      MinimumAmount="1">
+  <PercentOfPositiveGap>25</PercentOfPositiveGap>
+</IncreaseOfficerForce>
+```
+
+`PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `DestinationInstanceID` attributes or
+typed `Units` and `Destination` selectors. `RemoveFromVoid` only releases retention; it does not
+choose a destination. Return a retained unit explicitly:
+
+```xml
+<RemoveFromVoid UnitInstanceID="LUKE_SKYWALKER"/>
+<PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
+  <Destination>
+    <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
+  </Destination>
+</PlaceUnits>
+```
+
+`SetOfficerImages` supports `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, and
+`EncyclopediaImagePath`. `SetOfficerVoiceSet` supports `Order`, `PersonnelArrived`, `MissionSuccess`,
+`MissionFailure`, `MissionAbort`, `Released`, `Recovered`, `EnemyDetected`, `ForceGrowth`,
+`ForceUserDiscovered`, `TraitorDiscovered`, and `RescueAttempt`; each contains one or more `Path`
+elements.
+
+**Messages**
+
+```xml
+<SendMessage RecipientFactionInstanceID="FNALL1"
+             SubjectInstanceID="LUKE_SKYWALKER"
+             LocationInstanceID="YAVIN"
+             Type="Mission">
+  <Subject>Luke Returns</Subject>
+  <Body>Luke has completed his training.</Body>
+  <BackgroundImage Path="Pack/Shared/Events/MessageBackgrounds/luke-returns"/>
+  <OverlayImage Path="Pack/Factions/Alliance/Units/Officers/OFAL003/message"/>
+  <BackgroundAudio Path="Pack/Factions/Alliance/Strategy/Audio/Messages/message-faction-report"/>
+  <OfficerVoice Preset="MissionSuccess"/>
+  <AdvisorNotification Preset="SubjectReport"/>
+</SendMessage>
+```
+
+Recipients use `RecipientFactionInstanceID` or `RecipientUnitInstanceID`. Subject and location use
+an instance ID or binding. `RelatedSubjectInstanceID` supplies a secondary subject. Message types
+are `PopularSupport`, `Fleet`, `Mission`, `Resource`, `Manufacturing`, `Defense`, `Conflict`, `Chat`,
+and `Advice`.
+
+`ConditionalBodies` can select alternate `Body` and `ElseBody` text with conditions. Message text
+may use supported context tokens such as `{subject}` and `{location}`.
+
+Presentation options are `BackgroundImage`, `OverlayImage`, `BackgroundAudio`, `OfficerVoice`, and
+`AdvisorNotification`. Images and audio accept the `Path`, `Key`, `Binding`, or `Preset` form allowed
+by that element. Officer voice presets are `Order`, `PersonnelArrived`, `MissionSuccess`,
+`MissionFailure`, `MissionAbort`, `Released`, `Recovered`, `EnemyDetected`, `ForceGrowth`,
+`ForceUserDiscovered`, `TraitorDiscovered`, and `RescueAttempt`. Advisor notifications may use a
+preset or explicit droid and protocol animation, audio, frame-count, delay, and announcement fields.
+
+## Complete Examples
+
+This repeating event selects one owned core planet, destroys a random sample of defensive units,
+records the incident, and sends a message:
 
 ```xml
 <GameEvent>
+  <InstanceID>MOD_PLANETARY_ATTACK</InstanceID>
+  <Schedule>
+    <Random MinimumTicks="100" MaximumTicks="300"/>
+  </Schedule>
+  <Target>
+    <Candidates>
+      <SelectRandom Count="1">
+        <Candidates>
+          <SelectPlanets SystemType="CoreSystem"/>
+        </Candidates>
+      </SelectRandom>
+    </Candidates>
+  </Target>
+  <Conditionals>
+    <IsOwned PlanetBinding="$target"/>
+  </Conditionals>
+  <Actions>
+    <DestroyUnits>
+      <Units>
+        <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
+          <Candidates>
+            <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
+            <SelectRegiments PlanetBinding="$target"/>
+          </Candidates>
+        </SelectRandom>
+      </Units>
+    </DestroyUnits>
+    <RecordPlanetIncident Type="Uprising"/>
+    <SendMessage LocationBinding="$target" Type="Defense">
+      <Subject>Planetary defenses attacked</Subject>
+      <Body>Hostile forces attacked defenses on {location}.</Body>
+      <BackgroundImage Path="Pack/Shared/Events/MessageBackgrounds/planetary-attack"/>
+      <AdvisorNotification Preset="SubjectReport"/>
+    </SendMessage>
+  </Actions>
+</GameEvent>
+```
+
+This one-time event reacts when a particular unit reaches a particular destination:
+
+```xml
+<GameEvent TriggerCount="1">
   <InstanceID>MOD_EMPEROR_REACHES_CORUSCANT</InstanceID>
   <Triggers>
     <Trigger Event="core:unit.arrived">
@@ -90,162 +408,67 @@ names; references to those names begin with `$`:
                  LocationInstanceID="CORUSCANT"
                  Type="Mission">
       <Subject>Emperor Arrives at Coruscant</Subject>
-      <Body>The Emperor has returned to Coruscant.</Body>
+      <Body>The Emperor has returned to the seat of power.</Body>
+      <BackgroundImage Path="Pack/Shared/Events/MessageBackgrounds/emperor-arrives-at-coruscant"/>
+      <OfficerVoice Path="Pack/Factions/Empire/Units/Officers/OFEM001/Voice/seat-of-power-01"/>
       <AdvisorNotification Preset="SubjectReport"/>
     </SendMessage>
   </Actions>
 </GameEvent>
 ```
 
-Multiple triggers are alternatives: any matching result may activate the event. All triggers on one
-event must expose the same aliases with compatible argument types. The runtime trigger registry in
-`GameEventTrigger.cs` defines the arguments offered by each trigger contract.
-
-Bindings retain their runtime type. Use scalar bindings with `EvaluateBinding`; use object and
-collection bindings through compatible conditions or `SelectBinding`. The runtime validates unknown
-arguments, missing aliases, duplicate aliases, and incompatible bindings while loading the catalog.
-
-## Conditions
-
-Siblings inside `Conditionals`, `Until`, `When`, or `Conditions` are an implicit AND. `All`, `Any`,
-`Not`, and `Xor` provide explicit boolean composition:
+A multi-stage chain uses stable event IDs and dependent schedules:
 
 ```xml
-<Conditionals>
-  <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
-  <Not>
-    <Conditionals>
-      <Any>
-        <Conditionals>
-          <IsCaptured OfficerInstanceID="LEIA_ORGANA"/>
-          <IsOnMission UnitInstanceID="LEIA_ORGANA"/>
-          <IsInTransit UnitInstanceID="LEIA_ORGANA"/>
-        </Conditionals>
-      </Any>
-    </Conditionals>
-  </Not>
-</Conditionals>
+<GameEvent TriggerCount="1">
+  <InstanceID>MOD_OFFICER_LEAVES</InstanceID>
+  <Schedule><At Tick="300"/></Schedule>
+  <Actions>
+    <AddToVoid UnitInstanceID="LUKE_SKYWALKER"/>
+    <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER" Status="Away on assignment"/>
+  </Actions>
+</GameEvent>
+
+<GameEvent TriggerCount="1">
+  <InstanceID>MOD_OFFICER_RETURNS</InstanceID>
+  <Schedule><After EventInstanceID="MOD_OFFICER_LEAVES" DelayTicks="100"/></Schedule>
+  <Actions>
+    <RemoveFromVoid UnitInstanceID="LUKE_SKYWALKER"/>
+    <PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
+      <Destination>
+        <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
+      </Destination>
+    </PlaceUnits>
+    <ClearDisplayStatus TargetInstanceID="LUKE_SKYWALKER"/>
+  </Actions>
+</GameEvent>
 ```
 
-`ShareParent` requires the exact same immediate parent. `ShareAncestor` compares the nearest ancestor
-of the requested scene-node type. `HasEventTriggered` means an event has activated at least once;
-`IsEventExhausted` means its trigger count or `Until` condition prevents future activation.
+## Testing Your Events
 
-## Targets and selectors
+Run the content repository's build first. It validates the XML against `game-events.xsd` and catches
+invalid elements, attributes, nesting, and enum values.
 
-`Target` must resolve exactly one scene node and exposes it as `$target` for that activation:
-
-```xml
-<Target>
-  <Candidates>
-    <SelectRandom Count="1">
-      <Candidates>
-        <SelectPlanets SystemType="CoreSystem"/>
-      </Candidates>
-    </SelectRandom>
-  </Candidates>
-</Target>
+```bash
+cd /path/to/rebellion2-media
+./build.sh
 ```
 
-Selectors return typed collections. Filters narrow a selector; wrapper selectors combine or reshape
-their candidates:
+Copy or install the updated content into `rebellion2/Assets/Content`, open the project in Unity, and
+start a new campaign using that content pack. For quick testing, temporarily use a small `At` tick or
+short `Random` range, then restore the intended schedule before committing.
 
-- `SelectRandom` deduplicates candidates, orders them by instance ID for deterministic selection,
-  applies `ChancePercent`, and then applies its count bounds.
-- `SelectFirst` returns the first destination candidate.
-- `SelectBinding` returns a bound object or collection.
-- `SelectAncestors` returns the requested ancestor type for its candidates.
-- `SelectPreviousLocation` returns the location recorded when a retained unit left active play.
+If an event does not run:
 
-Each action admits only compatible selector types in the schema. Dynamic bindings receive an
-additional runtime type check.
+- Check the Unity log for content-load or runtime validation errors.
+- Confirm `pack.xml` points to the correct `GameEventsPath`.
+- Confirm every `InstanceID`, referenced event, faction, planet, unit, and media path exists.
+- Confirm the event does not combine `Schedule` with `Triggers`.
+- Confirm trigger argument names and `$binding` aliases match exactly.
+- Confirm the target selector returns exactly one node.
+- Confirm conditions can pass in the tested game state.
+- Confirm the event has not reached `TriggerCount` or matched `Until`.
 
-```xml
-<DestroyUnits>
-  <Units>
-    <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
-      <Candidates>
-        <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
-        <SelectRegiments PlanetBinding="$target"/>
-      </Candidates>
-    </SelectRandom>
-  </Units>
-</DestroyUnits>
-```
-
-## Actions and control flow
-
-Actions execute in authored order. `If` evaluates one branch. `Random` first discards outcomes whose
-optional `When` conditions fail, then selects one remaining outcome by weight:
-
-```xml
-<Random>
-  <Outcomes>
-    <Outcome Weight="30">
-      <Actions>
-        <ChangePlanetStat PlanetBinding="$target" Stat="RawResourceNodes">
-          <Amount>1</Amount>
-        </ChangePlanetStat>
-      </Actions>
-    </Outcome>
-    <Outcome Weight="70">
-      <Actions>
-        <SendMessage LocationBinding="$target" Type="Resource">
-          <Subject>No discovery</Subject>
-          <Body>No useful deposits were found.</Body>
-        </SendMessage>
-      </Actions>
-    </Outcome>
-  </Outcomes>
-</Random>
-```
-
-`PerformSkillCheck` similarly executes its nested `OnSuccess` or `OnFailure` actions immediately; it
-does not publish a separate result that another event must catch.
-
-`ChangeOfficerRating` supports signed `Amount`, `PercentOfStored`, `PercentOfEffective`, or
-`PercentOfPositiveGap`. `IncreaseOfficerForce` uses the same positive calculation modes but cannot
-decrease Force growth. Exactly one calculation mode is required. `ChangePlanetStat` accepts either
-signed `Amount` or `PercentOfCurrent`.
-
-`PlaceUnits` immediately reparents units to a valid destination. `SendUnits` uses normal movement and
-transit rules. `AddToVoid` records the previous location, detaches the unit, and retains it outside
-active play. `RemoveFromVoid` only releases that retention; it does not choose or restore a parent.
-Compose it with `PlaceUnits` and `SelectPreviousLocation` when restoration is desired:
-
-```xml
-<RemoveFromVoid UnitInstanceID="LUKE_SKYWALKER"/>
-<PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
-  <Destination>
-    <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
-  </Destination>
-</PlaceUnits>
-```
-
-## Messages
-
-Messages keep gameplay references separate from optional presentation:
-
-```xml
-<SendMessage SubjectInstanceID="LUKE_SKYWALKER" Type="Mission">
-  <Subject>Luke Returns</Subject>
-  <Body>Luke has completed his training.</Body>
-  <BackgroundImage Path="Pack/Shared/Events/MessageBackgrounds/luke-returns"/>
-  <OverlayImage Path="Pack/Factions/Alliance/Units/Officers/OFAL003/message"/>
-  <BackgroundAudio Path="Pack/Factions/Alliance/Strategy/Audio/Messages/message-faction-report"/>
-  <OfficerVoice Preset="MissionSuccess"/>
-  <AdvisorNotification Preset="SubjectReport"/>
-</SendMessage>
-```
-
-The recipient may be a faction or a unit. Subject and location may be supplied by instance ID or a
-compatible binding. Media fields accept the `Key`, `Path`, `Binding`, or `Preset` forms allowed by
-their schema definition. `SendMessage` requests authored delivery directly; automatic messages
-remain the responsibility of the gameplay result pipeline.
-
-## Validation
-
-The content repository's build validates event catalogs against `game-events.xsd`. Runtime catalog
-validation handles semantic rules that XSD cannot express, including exclusive modes, compatible
-bindings, and valid references. Validate both a new campaign and a save/load cycle before publishing
-changes to event IDs, schedules, or variables.
+Finally, save and reload after the event has run. Verify recurring schedules, activation counts,
+event variables, retained units, display changes, and multi-stage chains still behave correctly.
+Event IDs and variable keys are persisted, so changing them can invalidate existing event state.
