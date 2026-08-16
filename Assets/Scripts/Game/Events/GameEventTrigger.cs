@@ -116,8 +116,10 @@ namespace Rebellion.Game.Events
                 return this;
             }
 
+            /// <summary>Returns whether a result belongs to this concrete trigger contract.</summary>
             public bool Matches(GameResult result) => result is TResult;
 
+            /// <summary>Reads a declared argument from a result handled by this contract.</summary>
             public bool TryReadArgument(GameResult result, string argument, out object value)
             {
                 if (
@@ -133,6 +135,7 @@ namespace Rebellion.Game.Events
                 return false;
             }
 
+            /// <summary>Gets the declared public type of one trigger argument.</summary>
             public bool TryGetArgumentType(string argument, out Type type)
             {
                 if (_arguments.TryGetValue(argument, out TriggerArgument contract))
