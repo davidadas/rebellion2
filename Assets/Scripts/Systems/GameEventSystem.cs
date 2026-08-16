@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -16,16 +17,23 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
+        private readonly IUnitMovement _unitMovement;
 
         /// <summary>
         /// Creates a new GameEventSystem.
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for stochastic event actions.</param>
-        public GameEventSystem(GameRoot game, IRandomNumberProvider provider)
+        /// <param name="unitMovement">The authoritative unit movement operations.</param>
+        public GameEventSystem(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IUnitMovement unitMovement = null
+        )
         {
             _game = game;
             _provider = provider;
+            _unitMovement = unitMovement;
         }
 
         /// <summary>
@@ -359,7 +367,7 @@ namespace Rebellion.Systems
             }
 
             GameLogger.Log($"Executing game event: {gameEvent.InstanceID}");
-            results = gameEvent.Execute(_game, _provider, context);
+            results = gameEvent.Execute(_game, _provider, context, _unitMovement);
 
             state.ExecutionCount++;
             state.LastExecutionTick = _game.CurrentTick;

@@ -1526,15 +1526,12 @@ namespace Rebellion.Game.Events
                 context,
                 "PlaceUnits"
             );
-            return new List<GameResult>
-            {
-                new UnitPlacementRequestedResult
-                {
-                    Units = units,
-                    Destinations = destinations,
-                    Tick = context.Game.CurrentTick,
-                },
-            };
+            if (context.UnitMovement == null)
+                throw new InvalidOperationException(
+                    "PlaceUnits requires the unit movement runtime."
+                );
+            context.UnitMovement.TryPlaceUnits(units, destinations);
+            return new List<GameResult>();
         }
     }
 
@@ -1560,15 +1557,17 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     "SendUnits requires active units at a valid scene location."
                 );
-            return new List<GameResult>
-            {
-                new UnitMovementRequestedResult
-                {
-                    Units = units,
-                    Destinations = destinations,
-                    Tick = context.Game.CurrentTick,
-                },
-            };
+            if (context.UnitMovement == null)
+                throw new InvalidOperationException(
+                    "SendUnits requires the unit movement runtime."
+                );
+            context.UnitMovement.TrySendUnits(
+                units,
+                destinations,
+                context.Activation?.Event?.InstanceID,
+                out IReadOnlyList<GameResult> results
+            );
+            return results.ToList();
         }
     }
 

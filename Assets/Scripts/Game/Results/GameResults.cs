@@ -454,24 +454,6 @@ namespace Rebellion.Game.Results
         public AdvisorNotification AdvisorNotification { get; set; }
     }
 
-    /// <summary>
-    /// A data-defined event requested movement through the authoritative movement system.
-    /// </summary>
-    public class UnitMovementRequestedResult : GameResult
-    {
-        public List<IMovable> Units { get; set; } = new List<IMovable>();
-        public List<ContainerNode> Destinations { get; set; } = new List<ContainerNode>();
-    }
-
-    /// <summary>
-    /// A data-defined event requested immediate placement without transit.
-    /// </summary>
-    public sealed class UnitPlacementRequestedResult : GameResult
-    {
-        public List<IMovable> Units { get; set; } = new List<IMovable>();
-        public List<ContainerNode> Destinations { get; set; } = new List<ContainerNode>();
-    }
-
     #endregion
 
     #region GameObject Lifecycle

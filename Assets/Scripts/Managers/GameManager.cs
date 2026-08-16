@@ -303,14 +303,14 @@ public sealed class GameManager
     private void InitializeSystems()
     {
         _messageSystem = new MessageSystem(_game, _gameData.MessageDefinitions.GetDeepCopy());
-        _eventSystem = new GameEventSystem(_game, _randomProvider);
-        _eventSystem.ValidateEvents(_game.GetEventPool());
         _fogOfWarSystem = new FogOfWarSystem(_game);
         _blockadeSystem = new BlockadeSystem(_game, _randomProvider);
         _fleetSystem = new FleetSystem(_game);
         _personnelSystem = new PersonnelSystem(_game);
         _duelSystem = new DuelSystem(_game, _randomProvider);
         _movementSystem = new MovementSystem(_game, _fogOfWarSystem, _fleetSystem, _blockadeSystem);
+        _eventSystem = new GameEventSystem(_game, _randomProvider, _movementSystem);
+        _eventSystem.ValidateEvents(_game.GetEventPool());
         _headquartersSystem = new HeadquartersSystem(_game, _movementSystem);
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
         _factionAutomationSystem = new FactionAutomationSystem(
@@ -371,8 +371,6 @@ public sealed class GameManager
         _resultProcessor = new GameResultProcessor();
         _resultProcessor.Subscribe<GameResult>(_eventSystem);
         _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
-        _resultProcessor.Subscribe<UnitMovementRequestedResult>(_movementSystem);
-        _resultProcessor.Subscribe<UnitPlacementRequestedResult>(_movementSystem);
         _resultProcessor.Subscribe<DuelRequestedResult>(_duelSystem);
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);

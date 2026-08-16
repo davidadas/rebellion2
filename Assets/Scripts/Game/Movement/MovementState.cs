@@ -1,8 +1,36 @@
+using System.Collections.Generic;
 using System.Drawing;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Movement
 {
+    /// <summary>
+    /// Defines the authoritative operations for placing units and sending them through transit.
+    /// </summary>
+    public interface IUnitMovement
+    {
+        /// <summary>
+        /// Sends a unit group to the first destination that accepts the complete group.
+        /// </summary>
+        bool TrySendUnits(
+            IReadOnlyList<IMovable> units,
+            IReadOnlyList<ContainerNode> destinations,
+            string sourceEventInstanceID,
+            out IReadOnlyList<GameResult> results
+        );
+
+        /// <summary>
+        /// Places a unit group immediately at the first destination that accepts it.
+        /// </summary>
+        bool TryPlaceUnits(
+            IReadOnlyList<IMovable> units,
+            IReadOnlyList<ContainerNode> destinations
+        );
+    }
+
     /// <summary>
     /// Encapsulates active movement state for IMovable units.
     /// Existence of this object means unit is in transit.

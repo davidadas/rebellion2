@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
@@ -52,16 +53,19 @@ namespace Rebellion.Game.Events
         public GameRoot Game { get; }
         public IRandomNumberProvider Random { get; }
         public GameEventExecutionContext Activation { get; }
+        public IUnitMovement UnitMovement { get; }
 
         public GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventExecutionContext activation = null
+            GameEventExecutionContext activation = null,
+            IUnitMovement unitMovement = null
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
             Random = random ?? throw new ArgumentNullException(nameof(random));
             Activation = activation;
+            UnitMovement = unitMovement;
         }
     }
 }

@@ -189,21 +189,15 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleMovementRequest_ValidRequest_RoutesThroughAuthoritativeMovePath()
+        public void TrySendUnits_ValidRequest_RoutesThroughAuthoritativeMovePath()
         {
             (GameRoot game, _, Planet destination, Officer officer, MovementSystem movement) =
                 BuildScene();
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
-
-            handler.HandleResults(
-                new[]
-                {
-                    new UnitMovementRequestedResult
-                    {
-                        Units = new List<IMovable> { officer },
-                        Destinations = new List<ContainerNode> { destination },
-                    },
-                }
+            movement.TrySendUnits(
+                new List<IMovable> { officer },
+                new List<ContainerNode> { destination },
+                null,
+                out _
             );
 
             Assert.AreEqual(destination, officer.GetParent());
@@ -211,20 +205,14 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleMovementRequest_EventOriginatedRequest_PropagatesSourceToArrival()
+        public void TrySendUnits_EventOriginatedRequest_PropagatesSourceToArrival()
         {
             (_, _, Planet destination, Officer officer, MovementSystem movement) = BuildScene();
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
-            handler.HandleResults(
-                new[]
-                {
-                    new UnitMovementRequestedResult
-                    {
-                        Units = new List<IMovable> { officer },
-                        Destinations = new List<ContainerNode> { destination },
-                        SourceEventInstanceID = "SEND_OFFICER",
-                    },
-                }
+            movement.TrySendUnits(
+                new List<IMovable> { officer },
+                new List<ContainerNode> { destination },
+                "SEND_OFFICER",
+                out _
             );
             int transitTicks = officer.Movement.TransitTicks;
 
@@ -237,21 +225,14 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleMovementRequest_EventOriginatedRequestAlreadyAtDestination_EmitsArrival()
+        public void TrySendUnits_EventOriginatedRequestAlreadyAtDestination_EmitsArrival()
         {
             (_, Planet origin, _, Officer officer, MovementSystem movement) = BuildScene();
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
-
-            List<GameResult> results = handler.HandleResults(
-                new[]
-                {
-                    new UnitMovementRequestedResult
-                    {
-                        Units = new List<IMovable> { officer },
-                        Destinations = new List<ContainerNode> { origin },
-                        SourceEventInstanceID = "SEND_OFFICER",
-                    },
-                }
+            movement.TrySendUnits(
+                new List<IMovable> { officer },
+                new List<ContainerNode> { origin },
+                "SEND_OFFICER",
+                out IReadOnlyList<GameResult> results
             );
             UnitArrivedResult arrival = results.OfType<UnitArrivedResult>().Single();
 
@@ -261,7 +242,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandlePlacementRequest_DetachedRetainedUnit_PlacesWithoutTransit()
+        public void TryPlaceUnits_DetachedRetainedUnit_PlacesWithoutTransit()
         {
             (
                 GameRoot game,
@@ -272,17 +253,9 @@ namespace Rebellion.Tests.Systems
             ) = BuildScene();
             game.AddToVoid(officer);
             game.RemoveFromVoid(officer);
-            IGameResultHandler<UnitPlacementRequestedResult> handler = movement;
-
-            handler.HandleResults(
-                new[]
-                {
-                    new UnitPlacementRequestedResult
-                    {
-                        Units = new List<IMovable> { officer },
-                        Destinations = new List<ContainerNode> { destination },
-                    },
-                }
+            movement.TryPlaceUnits(
+                new List<IMovable> { officer },
+                new List<ContainerNode> { destination }
             );
 
             Assert.AreSame(destination, officer.GetParent());
@@ -291,7 +264,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleMovementRequest_FirstCandidateRejectsGroup_UsesNextCandidate()
+        public void TrySendUnits_FirstCandidateRejectsGroup_UsesNextCandidate()
         {
             (
                 GameRoot game,
@@ -307,17 +280,11 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
             };
             game.AttachNode(rejected, origin.GetParent());
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
-
-            handler.HandleResults(
-                new[]
-                {
-                    new UnitMovementRequestedResult
-                    {
-                        Units = new List<IMovable> { officer },
-                        Destinations = new List<ContainerNode> { rejected, destination },
-                    },
-                }
+            movement.TrySendUnits(
+                new List<IMovable> { officer },
+                new List<ContainerNode> { rejected, destination },
+                null,
+                out _
             );
 
             Assert.AreSame(destination, officer.GetParent());
@@ -325,7 +292,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandlePlacementRequest_GroupExceedsCapacity_LeavesEveryUnitUnchanged()
+        public void TryPlaceUnits_GroupExceedsCapacity_LeavesEveryUnitUnchanged()
         {
             (GameRoot game, Planet origin, Planet destination, _, MovementSystem movement) =
                 BuildScene();
@@ -363,17 +330,9 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(second, sourceShip);
             game.AttachNode(destinationFleet, destination);
             game.AttachNode(destinationShip, destinationFleet);
-            IGameResultHandler<UnitPlacementRequestedResult> handler = movement;
-
-            handler.HandleResults(
-                new[]
-                {
-                    new UnitPlacementRequestedResult
-                    {
-                        Units = new List<IMovable> { first, second },
-                        Destinations = new List<ContainerNode> { destinationFleet },
-                    },
-                }
+            movement.TryPlaceUnits(
+                new List<IMovable> { first, second },
+                new List<ContainerNode> { destinationFleet }
             );
 
             Assert.AreSame(sourceShip, first.GetParent());

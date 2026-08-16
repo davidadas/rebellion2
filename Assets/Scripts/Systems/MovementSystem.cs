@@ -20,10 +20,7 @@ namespace Rebellion.Systems
     /// The only system that calls game.MoveNode() for movement purposes.
     /// Other systems request movement via RequestMove() — never call MoveNode() directly.
     /// </summary>
-    public class MovementSystem
-        : IGameResultHandler<BlockadeChangedResult>,
-            IGameResultHandler<UnitMovementRequestedResult>,
-            IGameResultHandler<UnitPlacementRequestedResult>
+    public class MovementSystem : IGameResultHandler<BlockadeChangedResult>, IUnitMovement
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
@@ -117,31 +114,18 @@ namespace Rebellion.Systems
             return reactions;
         }
 
-        /// <summary>
-        /// Accepts event-authored movement requests, tries their destinations in authored order,
-        /// and submits the complete unit group through normal movement validation and transit.
-        /// </summary>
-        List<GameResult> IGameResultHandler<UnitMovementRequestedResult>.HandleResults(
-            IReadOnlyList<UnitMovementRequestedResult> results
+        /// <inheritdoc />
+        public bool TrySendUnits(
+            IReadOnlyList<IMovable> units,
+            IReadOnlyList<ContainerNode> destinations,
+            string sourceEventInstanceID,
+            out IReadOnlyList<GameResult> results
         )
         {
-            if (results == null)
-                return new List<GameResult>();
-
             List<GameResult> reactions = new List<GameResult>();
-            foreach (UnitMovementRequestedResult result in results)
-            {
-                if (result?.Units == null || result.Destinations == null)
-                    continue;
-                TryRequestMove(
-                    result.Units,
-                    result.Destinations,
-                    result.SourceEventInstanceID,
-                    reactions
-                );
-            }
-
-            return reactions;
+            bool accepted = TryRequestMove(units, destinations, sourceEventInstanceID, reactions);
+            results = reactions;
+            return accepted;
         }
 
         /// <summary>
@@ -180,25 +164,21 @@ namespace Rebellion.Systems
             return false;
         }
 
-        List<GameResult> IGameResultHandler<UnitPlacementRequestedResult>.HandleResults(
-            IReadOnlyList<UnitPlacementRequestedResult> results
+        /// <inheritdoc />
+        public bool TryPlaceUnits(
+            IReadOnlyList<IMovable> units,
+            IReadOnlyList<ContainerNode> destinations
         )
         {
-            if (results == null)
-                return new List<GameResult>();
-
-            foreach (UnitPlacementRequestedResult result in results)
+            if (units == null || units.Count == 0 || destinations == null)
+                return false;
+            List<IMovable> unitGroup = units.ToList();
+            foreach (ContainerNode destination in destinations)
             {
-                if (result?.Units == null || result.Destinations == null)
-                    continue;
-                foreach (ContainerNode candidate in result.Destinations)
-                {
-                    if (TryPlaceGroup(result.Units, candidate))
-                        break;
-                }
+                if (destination != null && TryPlaceGroup(unitGroup, destination))
+                    return true;
             }
-
-            return new List<GameResult>();
+            return false;
         }
 
         /// <summary>

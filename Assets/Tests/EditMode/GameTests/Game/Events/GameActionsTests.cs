@@ -9,6 +9,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -34,8 +35,15 @@ namespace Rebellion.Tests.Game.Events
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventExecutionContext activation
-        ) => action.Execute(new GameActionContext(game, random, activation));
+            GameEventExecutionContext activation,
+            IUnitMovement unitMovement = null
+        ) => action.Execute(new GameActionContext(game, random, activation, unitMovement));
+
+        internal static List<GameResult> Execute(
+            this GameAction action,
+            GameRoot game,
+            IUnitMovement unitMovement
+        ) => action.Execute(new GameActionContext(game, game.Random, null, unitMovement));
     }
 
     [TestFixture]
@@ -382,7 +390,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SendUnits_ValidReferences_EmitsAuthoritativeRequest()
+        public void SendUnits_ValidReferences_UsesAuthoritativeMovement()
         {
             GameRoot game = BuildGame(out Planet destination, out Planet origin);
             Officer officer = EntityFactory.CreateOfficer("traveler", "rebels");
@@ -392,14 +400,32 @@ namespace Rebellion.Tests.Game.Events
                 UnitInstanceID = officer.InstanceID,
                 DestinationInstanceID = destination.InstanceID,
             };
+            RecordingUnitMovement movement = new RecordingUnitMovement();
 
-            UnitMovementRequestedResult result = action
-                .Execute(game)
-                .OfType<UnitMovementRequestedResult>()
-                .Single();
+            action.Execute(game, movement);
 
-            CollectionAssert.AreEqual(new[] { officer }, result.Units);
-            CollectionAssert.AreEqual(new[] { destination }, result.Destinations);
+            CollectionAssert.AreEqual(new[] { officer }, movement.Units);
+            CollectionAssert.AreEqual(new[] { destination }, movement.Destinations);
+            Assert.AreSame(origin, officer.GetParent());
+        }
+
+        [Test]
+        public void PlaceUnits_ValidReferences_UsesAuthoritativeMovement()
+        {
+            GameRoot game = BuildGame(out Planet destination, out Planet origin);
+            Officer officer = EntityFactory.CreateOfficer("traveler", "rebels");
+            game.AttachNode(officer, origin);
+            PlaceUnitsAction action = new PlaceUnitsAction
+            {
+                UnitInstanceID = officer.InstanceID,
+                DestinationInstanceID = destination.InstanceID,
+            };
+            RecordingUnitMovement movement = new RecordingUnitMovement();
+
+            action.Execute(game, movement);
+
+            CollectionAssert.AreEqual(new[] { officer }, movement.Units);
+            CollectionAssert.AreEqual(new[] { destination }, movement.Destinations);
             Assert.AreSame(origin, officer.GetParent());
         }
 
@@ -424,7 +450,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SendUnits_SelectFirstDestination_EmitsAllOrderedCandidates()
+        public void SendUnits_SelectFirstDestination_UsesAllOrderedCandidates()
         {
             GameRoot game = BuildGame(out Planet first, out Planet origin);
             Planet second = new Planet
@@ -451,13 +477,11 @@ namespace Rebellion.Tests.Game.Events
                     },
                 },
             };
+            RecordingUnitMovement movement = new RecordingUnitMovement();
 
-            UnitMovementRequestedResult result = action
-                .Execute(game)
-                .OfType<UnitMovementRequestedResult>()
-                .Single();
+            action.Execute(game, movement);
 
-            CollectionAssert.AreEqual(new[] { first, second }, result.Destinations);
+            CollectionAssert.AreEqual(new[] { first, second }, movement.Destinations);
         }
 
         [Test]
@@ -1285,6 +1309,35 @@ namespace Rebellion.Tests.Game.Events
             Assert.Zero(game.EventRuntime.GetVariable("wrong"));
             Assert.AreEqual(1, game.EventRuntime.GetVariable("first"));
             Assert.AreEqual(2, game.EventRuntime.GetVariable("second"));
+        }
+
+        private sealed class RecordingUnitMovement : IUnitMovement
+        {
+            public IReadOnlyList<IMovable> Units { get; private set; }
+            public IReadOnlyList<ContainerNode> Destinations { get; private set; }
+
+            public bool TrySendUnits(
+                IReadOnlyList<IMovable> units,
+                IReadOnlyList<ContainerNode> destinations,
+                string sourceEventInstanceID,
+                out IReadOnlyList<GameResult> results
+            )
+            {
+                Units = units;
+                Destinations = destinations;
+                results = Array.Empty<GameResult>();
+                return true;
+            }
+
+            public bool TryPlaceUnits(
+                IReadOnlyList<IMovable> units,
+                IReadOnlyList<ContainerNode> destinations
+            )
+            {
+                Units = units;
+                Destinations = destinations;
+                return true;
+            }
         }
     }
 }
