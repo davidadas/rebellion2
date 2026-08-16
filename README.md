@@ -50,6 +50,8 @@ shared under any circumstances.**
 
 - [Development setup and commands](Docs/Development.md)
 - [Modding and content packs](Docs/Modding.md)
+- [Creating custom game events](Docs/GameEvents.md)
+- [Generated game-event XML API reference](Docs/GameEvents.API.md)
 
 Game assets and generated UI artifacts are intentionally kept outside this source repository.
 For a development checkout, obtain the separate `rebellion2-media` repository and populate the

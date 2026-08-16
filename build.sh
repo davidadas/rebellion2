@@ -106,6 +106,7 @@ usage() {
     echo "Commands:"
     echo "  format    Check formatting with CSharpier"
     echo "  lint      Run Roslynator static analysis"
+    echo "  docs      Generate the game-event XML API reference"
     echo "  test      Run EditMode tests via Unity"
     echo "  coverage  Run EditMode tests with code coverage report"
     echo "  build     Build standalone player"
@@ -123,6 +124,12 @@ do_format() {
 }
 
 do_lint() {
+    require_command python3
+
+    echo "=== Generated Documentation ==="
+    python3 Tools/generate_game_event_docs.py --check
+    echo ""
+
     dotnet tool restore
     dotnet build "$MEMBER_ORDER_ANALYZER_PROJECT" --configuration Release --verbosity quiet
     dotnet test "$MEMBER_ORDER_ANALYZER_TEST_PROJECT" --configuration Release --verbosity quiet
@@ -192,6 +199,11 @@ do_lint() {
         --severity-level error
     echo ""
     echo "Lint complete."
+}
+
+do_docs() {
+    require_command python3
+    python3 Tools/generate_game_event_docs.py
 }
 
 do_test() {
@@ -329,6 +341,7 @@ do_all() {
 case "${1:-}" in
     format)    do_format ;;
     lint)      do_lint ;;
+    docs)      do_docs ;;
     test)     do_test ;;
     coverage) do_coverage ;;
     build)    do_build ;;
