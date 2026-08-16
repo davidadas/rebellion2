@@ -15,7 +15,7 @@ namespace Rebellion.Tests.Systems
     public class MessageSystemTests
     {
         [Test]
-        public void ProcessResults_WithMessageDelivery_AddsMessageToFaction()
+        public void ProcessResults_WithMessageRequestedResult_AddsMessageToFaction()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
@@ -42,8 +42,8 @@ namespace Rebellion.Tests.Systems
                     {
                         ResultType = MessageResultType.FleetArrived,
                         MessageType = MessageType.Fleet,
-                        TitleTemplate = "{fleet} arrived",
-                        BodyTemplate = "{system}",
+                        Subject = "{fleet} arrived",
+                        Body = "{system}",
                     },
                 }
             );

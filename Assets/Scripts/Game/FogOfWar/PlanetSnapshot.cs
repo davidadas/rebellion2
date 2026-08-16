@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
@@ -5,6 +6,20 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.FogOfWar
 {
+    [Flags]
+    public enum PlanetIntelligenceCategory
+    {
+        None = 0,
+        System = 1 << 0,
+        CapitalShips = 1 << 1,
+        Starfighters = 1 << 2,
+        GroundForces = 1 << 3,
+        Buildings = 1 << 4,
+        Officers = 1 << 5,
+        Missions = 1 << 6,
+        All = System | CapitalShips | Starfighters | GroundForces | Buildings | Officers | Missions,
+    }
+
     /// <summary>
     /// Stores the last known state of an observed planet.
     /// </summary>
@@ -34,8 +49,8 @@ namespace Rebellion.Game.FogOfWar
         public List<Starfighter> Starfighters;
         public List<Mission> Missions;
 
-        // Complete Espionage Intelligence.
-        public bool HasEspionageIntelligence;
+        // Intelligence categories revealed by espionage, informants, and other sources.
+        public PlanetIntelligenceCategory RevealedCategories;
 
         // Manufacturing Intelligence.
         public bool HasManufacturingIntelligence;

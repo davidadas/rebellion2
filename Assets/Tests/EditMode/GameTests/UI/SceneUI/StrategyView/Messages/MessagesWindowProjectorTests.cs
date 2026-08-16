@@ -337,11 +337,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void Project_ExplicitDetailImageKey_ReturnsConfiguredDetailImage()
+        public void Project_ExplicitBackgroundImageKey_ReturnsConfiguredDetailImage()
         {
             Message message = CreateMessage("message", "Message", MessageType.Conflict);
             MessageDetailImageTheme configuredImage = _theme.DetailImages.First();
-            message.DisplayImageKey = configuredImage.Key;
+            message.BackgroundImageKey = configuredImage.Key;
 
             MessagesWindowRenderData data = MessagesWindowProjector.Project(
                 _uiContext,

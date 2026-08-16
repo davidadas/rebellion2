@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Units;
 using Rebellion.Generation;
 
 namespace Rebellion.Tests.Game
@@ -63,10 +64,6 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(6, config.Combat.PlanetaryAssault.CaptureGarrisonCount);
             Assert.AreEqual(-2, config.Combat.Bombardment.DestroySystemOuterRimSupportPenalty);
             Assert.AreEqual(90, config.Combat.Bombardment.DestroySystemOuterRimSupportThreshold);
-            CollectionAssert.Contains(
-                config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs,
-                "CSEM015"
-            );
             Assert.AreEqual(1f, config.GameSpeed.FastTickIntervalSeconds);
             Assert.AreEqual(10f, config.GameSpeed.MediumTickIntervalSeconds);
             Assert.AreEqual(60f, config.GameSpeed.SlowTickIntervalSeconds);
@@ -250,6 +247,16 @@ namespace Rebellion.Tests.Game
                 0,
                 "SubdueUprising should have entries"
             );
+        }
+
+        [Test]
+        public void GetRankLabel_ConfiguredForceRank_ReturnsMatchingLabel()
+        {
+            GameConfig.JediConfig config = TestContent.Data.GameConfig.Jedi;
+
+            ForceRankLabel label = config.GetRankLabel(100);
+
+            Assert.AreEqual(ForceRankLabel.ForceKnight, label);
         }
 
         [Test]

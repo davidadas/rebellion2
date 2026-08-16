@@ -45,7 +45,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _bootstrapObject = new GameObject("OptionsBootstrapUnderTest");
             _bootstrapObject.SetActive(false);
             _bootstrap = _bootstrapObject.AddComponent<AppBootstrap>();
-            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntime");
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
 
             _windowRoot = new GameObject(
                 "OptionsWindowRootUnderTest",

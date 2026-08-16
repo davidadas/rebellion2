@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -92,6 +93,18 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
             Assert.AreEqual(empire, victory.Loser);
+        }
+
+        [Test]
+        public void ProcessTick_AfterVictoryDeclared_DoesNotDeclareVictoryAgain()
+        {
+            (_, _, _, _, VictorySystem system) = BuildScene();
+
+            List<GameResult> firstResults = system.ProcessTick();
+            List<GameResult> secondResults = system.ProcessTick();
+
+            Assert.AreEqual(1, firstResults.OfType<VictoryResult>().Count());
+            Assert.IsEmpty(secondResults);
         }
 
         [Test]

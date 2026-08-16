@@ -274,9 +274,7 @@ internal sealed class StrategyStatusInfoBuilder
         int torpedoRating = starfighter.Torpedoes * Math.Max(starfighter.CurrentSquadronSize, 0);
         int maxTorpedoRating = starfighter.Torpedoes * Math.Max(starfighter.MaxSquadronSize, 0);
 
-        info.Rows.Add(
-            new StrategyStatusRow("Attached:", GetStatusLocationName(target, starfighter))
-        );
+        AddAttachedRow(info, target, starfighter);
         AddEtaDestinationRow(info, starfighter);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", starfighter.MaintenanceCost.ToString())
@@ -333,7 +331,7 @@ internal sealed class StrategyStatusInfoBuilder
             "Trooper Regiment Status",
             regiment.GetDisplayName()
         );
-        info.Rows.Add(new StrategyStatusRow("Attached:", GetStatusLocationName(target, regiment)));
+        AddAttachedRow(info, target, regiment);
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(regiment)));
         AddEtaDestinationRow(info, regiment);
         info.Rows.Add(
@@ -369,9 +367,7 @@ internal sealed class StrategyStatusInfoBuilder
             "Trooper Regiment Status",
             specialForces.GetDisplayName()
         );
-        info.Rows.Add(
-            new StrategyStatusRow("Attached:", GetStatusLocationName(target, specialForces))
-        );
+        AddAttachedRow(info, target, specialForces);
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(specialForces)));
         AddEtaDestinationRow(info, specialForces);
         info.Rows.Add(
@@ -419,7 +415,7 @@ internal sealed class StrategyStatusInfoBuilder
             officer.GetDisplayName()
         );
         info.Rows.Add(new StrategyStatusRow("Commanding:", GetOfficerCommandingText(officer)));
-        info.Rows.Add(new StrategyStatusRow("Attached:", GetStatusLocationName(target, officer)));
+        AddAttachedRow(info, target, officer);
         info.Rows.Add(new StrategyStatusRow("Status:", GetOfficerStatusText(officer)));
         AddEtaDestinationRow(info, officer);
         info.Rows.Add(new StrategyStatusRow("Force Ranking:", GetForceRankText(officer)));
@@ -764,6 +760,22 @@ internal sealed class StrategyStatusInfoBuilder
     }
 
     /// <summary>
+    /// Adds the attachment row only when the selected node has an active parent.
+    /// </summary>
+    private static void AddAttachedRow(
+        StrategyStatusInfo info,
+        StrategyStatusTarget target,
+        ISceneNode item
+    )
+    {
+        if (item?.GetParent() == null)
+            return;
+        string location = GetStatusLocationName(target, item);
+        if (!string.IsNullOrWhiteSpace(location))
+            info.Rows.Add(new StrategyStatusRow("Attached:", location));
+    }
+
+    /// <summary>
     /// Resolves the displayed operational status for a manufacturable item.
     /// </summary>
     /// <param name="item">The manufacturable item.</param>
@@ -801,14 +813,20 @@ internal sealed class StrategyStatusInfoBuilder
     /// <returns>The displayed officer status.</returns>
     private static string GetOfficerStatusText(Officer officer)
     {
-        if (officer.GetTransitMovement() != null)
-            return "Enroute";
+        if (officer.IsKilled)
+            return "Killed";
+        if (officer.IsRetired)
+            return "Retired";
         if (officer.IsCaptured)
             return "Captured";
         if (officer.InjuryPoints > 0)
             return "Injured";
+        if (officer.GetTransitMovement() != null)
+            return "Enroute";
         if (officer.IsOnMission())
             return "On Mission";
+        if (!string.IsNullOrWhiteSpace(officer.DisplayStatus))
+            return officer.DisplayStatus;
         return "Awaiting Orders";
     }
 
@@ -883,20 +901,18 @@ internal sealed class StrategyStatusInfoBuilder
     /// <returns>The displayed Force-rank label.</returns>
     private string GetForceRankText(Officer officer)
     {
-        if (jediConfig == null || !officer.IsJedi)
+        if (jediConfig == null || !officer.IsForceSensitive)
             return "None";
 
-        if (officer.ForceRank >= jediConfig.RankLabelForceMaster)
-            return "Jedi Master";
-        if (officer.ForceRank >= jediConfig.RankLabelForceKnight)
-            return "Jedi Knight";
-        if (officer.ForceRank >= jediConfig.RankLabelForceStudent)
-            return "Jedi Student";
-        if (officer.ForceRank >= jediConfig.RankLabelTrainee)
-            return "Trainee";
-        if (officer.ForceRank >= jediConfig.RankLabelNovice)
-            return "Novice";
-        return "None";
+        return jediConfig.GetRankLabel(officer.ForceRank) switch
+        {
+            ForceRankLabel.ForceMaster => "Jedi Master",
+            ForceRankLabel.ForceKnight => "Jedi Knight",
+            ForceRankLabel.ForceStudent => "Jedi Student",
+            ForceRankLabel.Trainee => "Trainee",
+            ForceRankLabel.Novice => "Novice",
+            _ => "None",
+        };
     }
 
     /// <summary>

@@ -990,12 +990,13 @@ namespace Rebellion.Systems
             if (candidates.Count == 0)
                 return false;
 
-            _game.DetachNode(candidates[_provider.NextInt(0, candidates.Count)]);
+            ISceneNode destroyed = candidates[_provider.NextInt(0, candidates.Count)];
+            _game.DeleteNode(destroyed);
             results.Add(
                 new PlanetIncidentResult
                 {
                     Planet = planet,
-                    IncidentType = IncidentType.Uprising,
+                    IncidentType = PlanetIncidentType.Uprising,
                     Severity = severity,
                     Tick = _game.CurrentTick,
                 }

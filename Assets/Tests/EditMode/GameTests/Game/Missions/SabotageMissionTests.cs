@@ -337,6 +337,55 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_PlanetDestroyingShip_UsesDedicatedSuccessTable()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            CapitalShip deathStar = new CapitalShip
+            {
+                InstanceID = "death-star",
+                TypeID = "CUSTOM_PLANET_DESTROYER",
+                CanDestroyPlanets = true,
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(deathStar, fleet);
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int> { { 0, 0 } };
+            game.Config.ProbabilityTables.Mission.DeathStarSabotage = new Dictionary<int, int>
+            {
+                { 0, 100 },
+            };
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                deathStar
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.5));
+
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreSame(
+                deathStar,
+                results.OfType<GameObjectSabotagedResult>().Single().SabotagedObject
+            );
+        }
+
+        [Test]
         public void TryCreate_OfficerTarget_ReturnsNull()
         {
             (

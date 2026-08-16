@@ -1,5 +1,7 @@
 using System.IO;
 using System.Linq;
+using System.Xml;
+using System.Xml.Schema;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -91,6 +93,65 @@ namespace Rebellion.Tests.Content
             );
 
             Assert.AreEqual(Path.Combine(playerDirectory, "Content"), contentRoot);
+        }
+
+        [Test]
+        public void GameEventSchema_ChangeOfficerRatingWithPlanetSelector_RejectsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>EVENT</InstanceID>
+    <Actions>
+      <ChangeOfficerRating Rating=""Combat"">
+        <Amount>1</Amount>
+        <SelectPlanets InstanceID=""PLANET""/>
+      </ChangeOfficerRating>
+    </Actions>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.Throws<XmlSchemaValidationException>(() => ValidateGameEventsXml(xml));
+        }
+
+        [Test]
+        public void GameEventSchema_ChangePlanetStatWithOfficerSelector_RejectsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>EVENT</InstanceID>
+    <Actions>
+      <ChangePlanetStat Stat=""EnergyCapacity"">
+        <Amount>1</Amount>
+        <SelectOfficers InstanceID=""OFFICER""/>
+      </ChangePlanetStat>
+    </Actions>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.Throws<XmlSchemaValidationException>(() => ValidateGameEventsXml(xml));
+        }
+
+        private static void ValidateGameEventsXml(string xml)
+        {
+            string schemaPath = Path.Combine(
+                Application.dataPath,
+                "Content",
+                "Application",
+                "Schemas",
+                "game-events.xsd"
+            );
+            XmlReaderSettings settings = new XmlReaderSettings
+            {
+                ValidationType = ValidationType.Schema,
+            };
+            settings.Schemas.Add(null, schemaPath);
+            using StringReader stringReader = new StringReader(xml);
+            using XmlReader reader = XmlReader.Create(stringReader, settings);
+            while (reader.Read()) { }
         }
     }
 }

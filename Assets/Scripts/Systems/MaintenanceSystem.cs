@@ -276,7 +276,7 @@ namespace Rebellion.Systems
                     : null;
             Fleet parentFleet = item is CapitalShip ? node?.GetParent() as Fleet : null;
             RefundScrapMaterials(item);
-            _game.DetachNode(node);
+            _game.DeleteNode(node);
             _fleetSystem.RemoveIfEmpty(parentFleet);
 
             if (

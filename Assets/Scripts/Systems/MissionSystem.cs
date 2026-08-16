@@ -23,6 +23,7 @@ namespace Rebellion.Systems
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movementManager;
         private readonly UprisingSystem _uprisingSystem;
+        private readonly OfficerLoyaltySystem _officerLoyaltySystem;
         private readonly MissionFactory _missionFactory;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
@@ -33,11 +34,13 @@ namespace Rebellion.Systems
         /// <param name="provider">The random number provider for mission resolution.</param>
         /// <param name="movementManager">The movement system used for participant travel.</param>
         /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
+        /// <param name="officerLoyaltySystem">The officer loyalty and betrayal resolver.</param>
         public MissionSystem(
             GameRoot game,
             IRandomNumberProvider provider,
             MovementSystem movementManager,
-            UprisingSystem uprisingSystem
+            UprisingSystem uprisingSystem,
+            OfficerLoyaltySystem officerLoyaltySystem = null
         )
         {
             _game = game;
@@ -45,6 +48,8 @@ namespace Rebellion.Systems
             _movementManager = movementManager;
             _uprisingSystem =
                 uprisingSystem ?? throw new ArgumentNullException(nameof(uprisingSystem));
+            _officerLoyaltySystem =
+                officerLoyaltySystem ?? new OfficerLoyaltySystem(game, provider);
             _missionFactory = new MissionFactory(game);
         }
 
@@ -244,6 +249,11 @@ namespace Rebellion.Systems
             if (mission.IsWaitingForParticipants())
                 return false;
 
+            AddMissionResults(
+                mission,
+                mission.ResolveInterruption(_game, _provider),
+                _pendingResults
+            );
             TearDownMission(mission, null, _pendingResults);
             return true;
         }
@@ -276,6 +286,7 @@ namespace Rebellion.Systems
                     mission.GetAllParticipants()
                 );
                 result.MissionInstanceID = mission.InstanceID;
+                AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
                 results.Add(result);
                 TearDownMission(mission, null, results);
             }
@@ -415,6 +426,7 @@ namespace Rebellion.Systems
             MissionCompletionReason? abortReason = mission.GetAbortReason(_game);
             if (abortReason.HasValue)
             {
+                AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
                 results.Add(
                     BuildTerminatingMissionResult(
                         mission,
@@ -441,12 +453,47 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Adds the originating mission to interruption results before returning them to the pipeline.
+        /// </summary>
+        /// <param name="mission">The mission producing the results.</param>
+        /// <param name="source">The results to stamp.</param>
+        /// <param name="destination">The collection receiving stamped results.</param>
+        private static void AddMissionResults(
+            Mission mission,
+            IEnumerable<GameResult> source,
+            List<GameResult> destination
+        )
+        {
+            if (source == null)
+                return;
+
+            foreach (GameResult result in source.Where(result => result != null))
+            {
+                result.MissionInstanceID = mission.InstanceID;
+                if (string.IsNullOrEmpty(result.SourceEventInstanceID))
+                    result.SourceEventInstanceID = mission.SourceEventInstanceID;
+                destination.Add(result);
+            }
+        }
+
+        /// <summary>
         /// Executes a completed mission through its appropriate resolution system.
         /// </summary>
         /// <param name="mission">The mission ready to execute.</param>
         /// <returns>The results produced by mission resolution.</returns>
         private List<GameResult> ExecuteMission(Mission mission)
         {
+            if (
+                _officerLoyaltySystem.TryResolveMissionBetrayal(
+                    mission,
+                    out List<GameResult> betrayalResults
+                )
+            )
+            {
+                betrayalResults.AddRange(mission.ResolveBetrayedMission(_game, _provider));
+                return betrayalResults;
+            }
+
             if (_uprisingSystem.TryExecuteMission(mission, out List<GameResult> results))
             {
                 results.AddRange(
@@ -472,6 +519,7 @@ namespace Rebellion.Systems
             if (!missionFoiled)
                 return results;
 
+            AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
             results.Add(
                 BuildTerminatingMissionResult(
                     mission,
@@ -551,6 +599,10 @@ namespace Rebellion.Systems
             List<IMissionParticipant> freeParticipants = GetFreeMissionParticipants(mission)
                 .Distinct()
                 .ToList();
+            if (completedResult != null)
+                completedResult.ReturnDestination = freeParticipants
+                    .Select(_movementManager.ResolveMissionReturnDestination)
+                    .FirstOrDefault(destination => destination != null);
             List<IMovable> additionalPassengers = GetAdditionalReturnPassengers(
                     mission,
                     completedResult
@@ -562,7 +614,10 @@ namespace Rebellion.Systems
                 additionalPassengers.Count == 0
                     ? freeParticipants
                         .Where(participant =>
-                            CanRemainAtMissionLocation(participant, missionPlanet)
+                            (
+                                mission.SuccessfulParticipantsRemainAtLocation
+                                && completedResult?.Outcome == MissionOutcome.Success
+                            ) || CanRemainAtMissionLocation(participant, missionPlanet)
                         )
                         .ToList()
                     : new List<IMissionParticipant>();
@@ -805,7 +860,7 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            _game.DetachNode(specialForces);
+            _game.DeleteNode(specialForces);
             results.Add(
                 new GameObjectDestroyedResult
                 {
@@ -841,7 +896,7 @@ namespace Rebellion.Systems
             else
             {
                 officer.IsKilled = true;
-                _game.DetachNode(officer);
+                _game.DeleteNode(officer);
                 results.Add(
                     new OfficerKilledResult
                     {

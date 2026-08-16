@@ -22,6 +22,10 @@ public class FactionTheme
 
     public string IntroCutscenePath { get; set; }
 
+    public string VictoryCutscenePath { get; set; }
+
+    public string DefeatCutscenePath { get; set; }
+
     public TacticalHUDLayout TacticalHUDLayout { get; set; }
 
     public StrategyAdvisorTheme StrategyAdvisor { get; set; }

@@ -30,6 +30,7 @@ public sealed class GameManager
     // Unit Systems.
     private FleetSystem _fleetSystem;
     private PersonnelSystem _personnelSystem;
+    private DuelSystem _duelSystem;
     private MovementSystem _movementSystem;
     private HeadquartersSystem _headquartersSystem;
 
@@ -54,7 +55,7 @@ public sealed class GameManager
 
     // Strategic Systems.
     private ResearchSystem _researchSystem;
-    private BetrayalSystem _betrayalSystem;
+    private OfficerLoyaltySystem _officerLoyaltySystem;
     private VictorySystem _victorySystem;
     private AISystem _aiSystem;
 
@@ -70,6 +71,8 @@ public sealed class GameManager
     public event Action GameSpeedChanged;
     public event Action TickCompleted;
     public event Action<GameRoot> GameReplaced;
+    public event Action<VictoryResult> VictoryDeclared;
+    public event Action<MessageDeliveredResult> MessageDelivered;
 
     // Exposed Game Systems.
     internal MessageSystem MessageSystem => _messageSystem;
@@ -230,7 +233,7 @@ public sealed class GameManager
             return;
         }
 
-        _messageSystem.ProcessResults(messageResults);
+        ProcessMessageReactions(messageResults);
 
         ProcessResults(_missionSystem.ProcessTick());
         ProcessResults(_eventSystem.ProcessEvents(_game.GetEventPool()));
@@ -239,7 +242,6 @@ public sealed class GameManager
         ProcessResults(_blockadeSystem.ProcessTick());
         ProcessResults(_planetaryControlSystem.ProcessTick());
         ProcessResults(_uprisingSystem.ProcessTick());
-        ProcessResults(_betrayalSystem.ProcessTick());
 
         ProcessResults(_researchSystem.ProcessTick());
         ProcessResults(_jediSystem.ProcessTick());
@@ -286,6 +288,7 @@ public sealed class GameManager
         _game = game;
         if (_game.Config == null)
             _game.SetConfig(_gameData.GameConfig);
+        _game.RebuildSceneState();
 
         _randomProvider = _game.Random;
         InitializeSystems();
@@ -301,10 +304,12 @@ public sealed class GameManager
     {
         _messageSystem = new MessageSystem(_game, _gameData.MessageDefinitions.GetDeepCopy());
         _eventSystem = new GameEventSystem(_game, _randomProvider);
+        _eventSystem.ValidateEvents(_game.GetEventPool());
         _fogOfWarSystem = new FogOfWarSystem(_game);
         _blockadeSystem = new BlockadeSystem(_game, _randomProvider);
         _fleetSystem = new FleetSystem(_game);
         _personnelSystem = new PersonnelSystem(_game);
+        _duelSystem = new DuelSystem(_game, _randomProvider);
         _movementSystem = new MovementSystem(_game, _fogOfWarSystem, _fleetSystem, _blockadeSystem);
         _headquartersSystem = new HeadquartersSystem(_game, _movementSystem);
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
@@ -323,11 +328,13 @@ public sealed class GameManager
         );
         _uprisingSystem = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
         _jediSystem = new JediSystem(_game, _randomProvider);
+        _officerLoyaltySystem = new OfficerLoyaltySystem(_game, _randomProvider);
         _missionSystem = new MissionSystem(
             _game,
             _randomProvider,
             _movementSystem,
-            _uprisingSystem
+            _uprisingSystem,
+            _officerLoyaltySystem
         );
         _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementSystem);
         _bombardmentSystem = new BombardmentSystem(
@@ -342,7 +349,6 @@ public sealed class GameManager
             _planetaryControlSystem
         );
         _researchSystem = new ResearchSystem(_game, _randomProvider);
-        _betrayalSystem = new BetrayalSystem(_game);
         _victorySystem = new VictorySystem(_game);
         _aiSystem = new AISystem(
             _game,
@@ -363,14 +369,20 @@ public sealed class GameManager
     private void InitializeResultProcessing()
     {
         _resultProcessor = new GameResultProcessor();
+        _resultProcessor.Subscribe<GameResult>(_eventSystem);
         _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
+        _resultProcessor.Subscribe<UnitMovementRequestedResult>(_movementSystem);
+        _resultProcessor.Subscribe<UnitPlacementRequestedResult>(_movementSystem);
+        _resultProcessor.Subscribe<DuelRequestedResult>(_duelSystem);
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
+        _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_officerLoyaltySystem);
         _resultProcessor.Subscribe<HeadquartersDestroyedResult>(_victorySystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
+        _resultProcessor.Subscribe<IntelligenceRevealedResult>(_fogOfWarSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 
         _movementSystem.ResultsProduced += HandleSystemResultsProduced;
@@ -430,9 +442,35 @@ public sealed class GameManager
     {
         List<GameResult> resolvedResults = _resultProcessor.Process(results);
         if (processMessages)
-            _messageSystem.ProcessResults(resolvedResults);
+            ProcessMessageReactions(resolvedResults);
 
+        foreach (VictoryResult victory in resolvedResults.OfType<VictoryResult>())
+            VictoryDeclared?.Invoke(victory);
         return resolvedResults;
+    }
+
+    /// <summary>
+    /// Delivers messages and drains any result reactions that request additional messages.
+    /// </summary>
+    /// <param name="resolvedResults">The already-processed results to extend in place.</param>
+    private void ProcessMessageReactions(List<GameResult> resolvedResults)
+    {
+        List<GameResult> pendingMessageResults = new List<GameResult>(resolvedResults);
+        while (pendingMessageResults.Count > 0)
+        {
+            List<GameResult> deliveredResults = _messageSystem.ProcessResults(
+                pendingMessageResults
+            );
+            if (deliveredResults.Count == 0)
+                return;
+            List<GameResult> deliveryReactions = _resultProcessor.Process(deliveredResults);
+            resolvedResults.AddRange(deliveryReactions);
+            foreach (
+                MessageDeliveredResult delivery in deliveredResults.OfType<MessageDeliveredResult>()
+            )
+                MessageDelivered?.Invoke(delivery);
+            pendingMessageResults = deliveryReactions;
+        }
     }
 
     /// <summary>

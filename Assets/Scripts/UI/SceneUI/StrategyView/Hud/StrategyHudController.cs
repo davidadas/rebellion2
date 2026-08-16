@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Results;
 using UnityEngine;
 
 /// <summary>
@@ -94,12 +95,16 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// <summary>
     /// Queues an advisor notification derived from a newly delivered player message.
     /// </summary>
-    /// <param name="message">The delivered message.</param>
+    /// <param name="delivery">The delivered message and presentation request.</param>
     /// <param name="currentTick">The current game tick.</param>
     /// <param name="notificationEnabled">Whether its message category permits notification.</param>
-    public void NotifyAdvisor(Message message, int currentTick, bool notificationEnabled)
+    public void NotifyAdvisor(
+        MessageDeliveredResult delivery,
+        int currentTick,
+        bool notificationEnabled
+    )
     {
-        advisorController.Notify(message, currentTick, notificationEnabled);
+        advisorController.Notify(delivery, currentTick, notificationEnabled);
     }
 
     /// <summary>

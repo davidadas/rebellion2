@@ -356,7 +356,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _fleet.CapitalShips[0].Bombardment = 1;
             _planet.Planet.Fleets.Remove(_fleet);
             _fleet.SetParent(null);
-            _game.AttachNode(_fleet, _planet.Planet);
+            _planet.Planet.Fleets.Add(_fleet);
+            _fleet.SetParent(_planet.Planet);
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
             _controller.Initialize(_actions, _actions, _actions, (_, _) => { }, _ => { }, _ => { });

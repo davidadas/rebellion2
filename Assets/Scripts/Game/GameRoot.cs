@@ -72,7 +72,7 @@ namespace Rebellion.Game
 
         // Game events.
         public List<GameEvent> EventPool = new List<GameEvent>();
-        public HashSet<string> CompletedEventIDs = new HashSet<string>();
+        public GameEventRuntimeState EventRuntime { get; set; } = new GameEventRuntimeState();
 
         // Scene nodes.
         [PersistableIgnore]
@@ -82,6 +82,7 @@ namespace Rebellion.Game
         // Game objects.
         public List<Faction> Factions = new List<Faction>();
         public List<Officer> UnrecruitedOfficers = new List<Officer>();
+        public List<ISceneNode> RetainedNodes { get; set; } = new List<ISceneNode>();
 
         // Root scene node.
         public GalaxyMap Galaxy
@@ -252,6 +253,139 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Detaches an active node, remembers its direct parent, and retains the detached subtree
+        /// in the game registry without changing faction ownership.
+        /// </summary>
+        /// <param name="node">The active root node to retain.</param>
+        public void AddToVoid(ISceneNode node)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (node.GetParent() == null)
+                throw new InvalidOperationException(
+                    $"Cannot move '{node.GetDisplayName()}' to void because it has no parent."
+                );
+
+            if (IsInVoid(node))
+                throw new InvalidOperationException(
+                    $"'{node.GetDisplayName()}' is already in void."
+                );
+
+            ISceneNode parent = node.GetParent();
+            parent.RemoveChild(node);
+            node.LastParentInstanceID = parent.InstanceID;
+            node.LastParentNode = parent;
+            node.SetParent(null);
+            RetainedNodes.Add(node);
+        }
+
+        /// <summary>
+        /// Removes a detached subtree root from retained storage while leaving it registered,
+        /// detached, owned, and available for an explicit subsequent placement operation.
+        /// </summary>
+        /// <param name="node">The retained subtree root to release.</param>
+        public void RemoveFromVoid(ISceneNode node)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (!IsInVoid(node))
+                throw new InvalidOperationException($"'{node.GetDisplayName()}' is not in void.");
+
+            ISceneNode retainedRoot = GetRetainedRoot(node);
+            if (!ReferenceEquals(retainedRoot, node))
+                throw new InvalidOperationException(
+                    $"Cannot remove retained descendant '{node.GetDisplayName()}' independently."
+                );
+            RetainedNodes.Remove(node);
+        }
+
+        /// <summary>
+        /// Attaches a registered detached node without changing its registry or faction ownership.
+        /// </summary>
+        /// <param name="node">The registered detached node.</param>
+        /// <param name="parent">The receiving scene container.</param>
+        internal void AttachRetainedNode(ISceneNode node, ContainerNode parent)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (parent == null)
+                throw new ArgumentNullException(nameof(parent));
+            if (node.GetParent() != null)
+                throw new InvalidOperationException(
+                    $"Cannot attach '{node.GetDisplayName()}' because it already has a parent."
+                );
+            if (
+                !NodesByInstanceID.TryGetValue(node.InstanceID, out ISceneNode registered)
+                || !ReferenceEquals(node, registered)
+            )
+                throw new InvalidOperationException(
+                    $"Cannot attach unregistered node '{node.GetDisplayName()}'."
+                );
+            if (!parent.CanAcceptChild(node))
+                throw new InvalidOperationException(
+                    $"Cannot attach '{node.GetDisplayName()}' to '{parent.GetDisplayName()}'."
+                );
+
+            string lastParentInstanceID = node.LastParentInstanceID;
+            ISceneNode lastParent = node.LastParentNode;
+            parent.AddChild(node);
+            node.SetParent(parent);
+            node.LastParentInstanceID = lastParentInstanceID;
+            node.LastParentNode = lastParent;
+        }
+
+        /// <summary>
+        /// Returns whether a node belongs to a retained detached subtree, including descendants
+        /// whose retained root is stored directly by the game.
+        /// </summary>
+        /// <param name="node">The node to inspect.</param>
+        /// <returns>True when the node is retained outside the active scene graph.</returns>
+        public bool IsInVoid(ISceneNode node)
+        {
+            return node != null && RetainedNodes.Contains(GetRetainedRoot(node));
+        }
+
+        /// <summary>
+        /// Removes an active or retained subtree from containment, faction ownership indexes, and
+        /// the global instance registry so it can no longer participate in gameplay.
+        /// </summary>
+        /// <param name="node">The subtree root to delete.</param>
+        public void DeleteNode(ISceneNode node)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (node.GetParent() == null && !RetainedNodes.Remove(node))
+                throw new InvalidOperationException(
+                    $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
+                );
+            else
+                node.GetParent()?.RemoveChild(node);
+            node.SetParent(null);
+            node.Traverse(child =>
+            {
+                DeregsiterOwnedUnit(child);
+                RemoveSceneNodeByInstanceID(child);
+            });
+        }
+
+        /// <summary>
+        /// Transfers a registered node between faction ownership indexes without changing its
+        /// parent, descendants, retained state, or remembered parent.
+        /// </summary>
+        /// <param name="node">The node whose owner changes.</param>
+        /// <param name="ownerInstanceId">The receiving faction's stable instance ID.</param>
+        public void ChangeOwnership(ISceneNode node, string ownerInstanceId)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+
+            GetFactionByOwnerInstanceID(ownerInstanceId);
+            DeregsiterOwnedUnit(node);
+            node.SetOwnerInstanceID(ownerInstanceId);
+            RegisterOwnedUnit(node);
+        }
+
+        /// <summary>
         /// Attaches a node to a parent node.
         /// </summary>
         /// <param name="node">The node to attach.</param>
@@ -331,15 +465,21 @@ namespace Rebellion.Game
                 return;
             }
 
-            DetachNode(node);
+            if (!newParent.CanAcceptChild(node))
+                throw new InvalidOperationException(
+                    $"Cannot move '{node.GetDisplayName()}' to '{newParent.GetDisplayName()}'."
+                );
 
+            oldParent.RemoveChild(node);
             try
             {
-                AttachNode(node, newParent);
+                newParent.AddChild(node);
+                node.SetParent(newParent);
             }
             catch
             {
-                AttachNode(node, oldParent);
+                oldParent.AddChild(node);
+                node.SetParent(oldParent);
                 throw;
             }
         }
@@ -394,10 +534,7 @@ namespace Rebellion.Game
         public List<T> GetSceneNodesByOwnerInstanceID<T>(string ownerInstanceId)
             where T : ISceneNode
         {
-            return NodesByInstanceID
-                .Values.OfType<T>() // Filter nodes by the specified type T
-                .Where(node => node.OwnerInstanceID == ownerInstanceId) // Match by OwnerInstanceID
-                .ToList();
+            return GetFactionByOwnerInstanceID(ownerInstanceId).GetOwnedUnitsByType<T>();
         }
 
         /// <summary>
@@ -427,6 +564,18 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Retrieves every registered live scene node of a type, including nodes nested inside
+        /// containers whose public child projection intentionally omits runtime participants.
+        /// </summary>
+        /// <typeparam name="T">The scene-node type to retrieve.</typeparam>
+        /// <returns>All compatible registered nodes.</returns>
+        public List<T> GetRegisteredSceneNodesByType<T>()
+            where T : class
+        {
+            return NodesByInstanceID.Values.OfType<T>().ToList();
+        }
+
+        /// <summary>
         /// Registers a unit to the faction that owns the unit.
         /// </summary>
         /// <param name="node">The unit to register.</param>
@@ -448,23 +597,6 @@ namespace Rebellion.Game
             {
                 GetFactionByOwnerInstanceID(node.OwnerInstanceID).RemoveOwnedUnit(node);
             }
-        }
-
-        /// <summary>
-        /// Transfers ownership of a node to a different faction. Deregisters the node from
-        /// its current owner's index (if any), updates the owner ID on the node, and adds
-        /// it to the new owner's index.
-        /// </summary>
-        /// <param name="node">The node to transfer.</param>
-        /// <param name="ownerInstanceId">The new owner's faction instance ID.</param>
-        public void ChangeUnitOwnership(ISceneNode node, string ownerInstanceId)
-        {
-            Faction faction = GetFactionByOwnerInstanceID(ownerInstanceId);
-
-            DeregsiterOwnedUnit(node);
-
-            node.SetOwnerInstanceID(ownerInstanceId);
-            faction.AddOwnedUnit(node);
         }
 
         /// <summary>
@@ -493,25 +625,6 @@ namespace Rebellion.Game
         public GameEvent GetEventByInstanceID(string instanceId)
         {
             return EventPool.Find(gameEvent => gameEvent.InstanceID == instanceId);
-        }
-
-        /// <summary>
-        /// Adds a game event to the list of completed event IDs.
-        /// </summary>
-        /// <param name="gameEvent">The completed game event.</param>
-        public void AddCompletedEvent(GameEvent gameEvent)
-        {
-            CompletedEventIDs.Add(gameEvent.InstanceID);
-        }
-
-        /// <summary>
-        /// Checks if a game event has been completed.
-        /// </summary>
-        /// <param name="eventInstanceId">The ID of the game event to check.</param>
-        /// <returns>True if the game event has been completed; false otherwise.</returns>
-        public bool IsEventComplete(string eventInstanceId)
-        {
-            return CompletedEventIDs.Contains(eventInstanceId);
         }
 
         /// <summary>
@@ -563,33 +676,50 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Initializes the galaxy map by registering nodes and setting parents.
+        /// Rebuilds runtime parent links, node registration, and faction ownership indexes.
         /// </summary>
-        /// <param name="galaxy">The galaxy map to initialize.</param>
-        /// <returns>The initialized GalaxyMap.</returns>
+        public void RebuildSceneState()
+        {
+            NodesByInstanceID.Clear();
+            foreach (Faction faction in Factions)
+                faction.ClearOwnedUnits();
+
+            InitializeSceneRoot(Galaxy);
+            RetainedNodes ??= new List<ISceneNode>();
+            foreach (ISceneNode retainedNode in RetainedNodes)
+                InitializeSceneRoot(retainedNode);
+        }
+
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
-            galaxy.Traverse(
+            InitializeSceneRoot(galaxy);
+            return galaxy;
+        }
+
+        private void InitializeSceneRoot(ISceneNode root)
+        {
+            root.Traverse(
                 (ISceneNode node) =>
                 {
-                    // Register the node by its instance ID.
-                    AddSceneNodeByInstanceID(node);
+                    if (!NodesByInstanceID.ContainsKey(node.InstanceID))
+                        AddSceneNodeByInstanceID(node);
 
-                    // Set the parent of each child node.
                     foreach (ISceneNode child in node.GetChildren())
-                    {
                         child.SetParent(node);
-                    }
 
-                    // Register the node to the faction's list of owned units.
                     if (node.OwnerInstanceID != null)
-                    {
                         RegisterOwnedUnit(node);
-                    }
                 }
             );
+        }
 
-            return galaxy;
+        private static ISceneNode GetRetainedRoot(ISceneNode node)
+        {
+            if (node == null)
+                return null;
+            while (node.GetParent() != null)
+                node = node.GetParent();
+            return node;
         }
     }
 }

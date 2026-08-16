@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -11,10 +12,11 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Messages
 {
+    #region Core
     /// <summary>
     /// Builds faction message deliveries from game results and configured message definitions.
     /// </summary>
-    public class MessageFactory
+    public partial class MessageFactory
     {
         private readonly MessageDefinition[] _definitions;
         private readonly MessageTemplateBuilder _templateBuilder = new MessageTemplateBuilder();
@@ -34,223 +36,163 @@ namespace Rebellion.Game.Messages
         /// <param name="results">The game results to translate into message deliveries.</param>
         /// <param name="game">The game state used to resolve affected factions and display names.</param>
         /// <returns>The messages to add to each recipient faction.</returns>
-        public List<(Faction faction, Message message)> CreateMessages(
+        public List<MessageRequestedResult> CreateMessages(
             IEnumerable<GameResult> results,
             GameRoot game
         )
         {
-            GameResult[] resultArray = results?.ToArray() ?? Array.Empty<GameResult>();
-            MissionCompletedResult[] missionResults = resultArray
+            GameResult[] batch =
+                results?.Where(result => result != null).ToArray() ?? Array.Empty<GameResult>();
+            MissionCompletedResult[] missionResults = batch
                 .OfType<MissionCompletedResult>()
                 .ToArray();
-            OfficerKilledResult[] killedResults = resultArray
-                .OfType<OfficerKilledResult>()
-                .ToArray();
-            ForceDiscoveryResult[] forceDiscoveryResults = resultArray
+            OfficerKilledResult[] killedResults = batch.OfType<OfficerKilledResult>().ToArray();
+            ForceDiscoveryResult[] forceDiscoveryResults = batch
                 .OfType<ForceDiscoveryResult>()
                 .ToArray();
-            GameObjectSabotagedResult[] sabotageResults = resultArray
+            GameObjectSabotagedResult[] sabotageResults = batch
                 .OfType<GameObjectSabotagedResult>()
                 .ToArray();
-            List<(Faction faction, Message message)> deliveries =
-                new List<(Faction faction, Message message)>();
+            SystemsRevealedResult[] systemIntelligenceResults = batch
+                .OfType<SystemsRevealedResult>()
+                .ToArray();
+            List<MessageRequestedResult> deliveries = new List<MessageRequestedResult>();
 
-            AddArrivalMessages(resultArray.OfType<UnitArrivedResult>(), game, deliveries);
-            AddMissionMessages(missionResults, killedResults, sabotageResults, game, deliveries);
-            AddRecruitmentMessages(resultArray.OfType<RecruitmentExhaustedResult>(), deliveries);
+            AddArrivalMessages(batch.OfType<UnitArrivedResult>(), game, deliveries);
+            AddFacilityLossMessages(
+                batch.OfType<GameObjectDestroyedOnArrivalResult>(),
+                game,
+                deliveries
+            );
+            AddSmugglingMessages(batch.OfType<SmugglingChangedResult>(), deliveries);
+            AddMissionMessages(
+                missionResults,
+                killedResults,
+                sabotageResults,
+                systemIntelligenceResults,
+                game,
+                deliveries
+            );
+            AddRecruitmentMessages(batch.OfType<RecruitmentExhaustedResult>(), deliveries);
             AddOfficerMessages(
-                resultArray.OfType<OfficerRecruitedResult>(),
-                resultArray.OfType<OfficerCaptureStateResult>(),
-                resultArray.OfType<OfficerInjuredResult>(),
+                batch.OfType<OfficerRecruitedResult>(),
+                batch.OfType<OfficerCaptureStateResult>(),
+                batch.OfType<OfficerInjuredResult>(),
                 killedResults,
                 missionResults,
                 game,
                 deliveries
             );
+            AddTraitorDiscoveryMessages(batch.OfType<TraitorDiscoveredResult>(), game, deliveries);
             AddForceMessages(
-                resultArray.OfType<ForceExperienceResult>(),
+                batch.OfType<ForceExperienceResult>(),
                 forceDiscoveryResults,
-                game,
-                deliveries
-            );
-            AddNarrativeMessages(
-                resultArray.OfType<DagobahCompletedResult>(),
-                resultArray.OfType<HeritageRevealedResult>(),
                 game,
                 deliveries
             );
             AddSabotageMessages(sabotageResults, game, deliveries);
             AddResearchMessages(
-                resultArray.OfType<ResearchOrderedResult>(),
-                resultArray.OfType<ResearchExhaustedResult>(),
+                batch.OfType<ResearchOrderedResult>(),
+                batch.OfType<ResearchExhaustedResult>(),
                 deliveries
             );
             AddUprisingMessages(
-                resultArray.OfType<PlanetNearUprisingResult>(),
-                resultArray.OfType<PlanetUprisingStartedResult>(),
-                resultArray.OfType<PlanetUprisingEndedResult>(),
+                batch.OfType<PlanetNearUprisingResult>(),
+                batch.OfType<PlanetUprisingStartedResult>(),
+                batch.OfType<PlanetUprisingEndedResult>(),
                 game,
                 deliveries
             );
-            AddPopularSupportOwnershipMessages(
-                resultArray.OfType<PlanetOwnershipChangedResult>(),
+            AddOwnershipMessages(batch.OfType<PlanetOwnershipChangedResult>(), game, deliveries);
+            AddObjectiveMessages(
+                batch.OfType<PlanetOwnershipChangedResult>(),
+                batch.OfType<HeadquartersDestroyedResult>(),
                 game,
                 deliveries
             );
+            AddIncidentMessages(batch.OfType<PlanetIncidentResult>(), game, deliveries);
             AddBlockadeMessages(
-                resultArray.OfType<BlockadeChangedResult>(),
-                resultArray.OfType<EvacuationLossesResult>(),
+                batch.OfType<BlockadeChangedResult>(),
+                batch.OfType<EvacuationLossesResult>(),
                 game,
                 deliveries
             );
-            AddMaintenanceMessages(
-                resultArray.OfType<GameObjectAutoscrappedResult>(),
-                game,
-                deliveries
-            );
+            AddMaintenanceMessages(batch.OfType<GameObjectAutoscrappedResult>(), game, deliveries);
             AddRepairMessages(
-                resultArray.OfType<ShipHullDamageResult>(),
-                resultArray.OfType<FighterDamageResult>(),
+                batch.OfType<ShipHullDamageResult>(),
+                batch.OfType<FighterDamageResult>(),
                 game,
                 deliveries
             );
             AddCombatMessages(
-                resultArray.OfType<SpaceCombatResult>(),
-                resultArray.OfType<BombardmentResult>(),
-                resultArray.OfType<PlanetaryAssaultResult>(),
+                batch.OfType<SpaceCombatResult>(),
+                batch.OfType<BombardmentResult>(),
+                batch.OfType<PlanetaryAssaultResult>(),
                 game,
                 deliveries
             );
-            AddDeploymentMessages(resultArray.OfType<GameObjectDeployedResult>(), game, deliveries);
-            AddManufacturingMessages(resultArray.OfType<ManufacturingIdleResult>(), deliveries);
-            AddSeatOfPowerMessages(
-                resultArray.OfType<SeatOfPowerChangedResult>(),
-                game,
-                deliveries
-            );
+            AddDeploymentMessages(batch.OfType<GameObjectDeployedResult>(), game, deliveries);
+            AddManufacturingMessages(batch.OfType<ManufacturingIdleResult>(), deliveries);
 
             return deliveries;
         }
 
         /// <summary>
-        /// Creates a fleet arrival message.
+        /// Creates deliveries explicitly authored by event actions.
         /// </summary>
-        /// <param name="faction">The faction that owns the arriving fleet.</param>
-        /// <param name="fleet">The fleet that arrived.</param>
-        /// <param name="destination">The planet where the fleet arrived.</param>
-        /// <returns>The fleet arrival message, or null when no matching definition exists.</returns>
-        private Message CreateFleetArrived(Faction faction, Fleet fleet, Planet destination)
-        {
-            return WithAdvisorNotification(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.FleetArrived),
-                        faction,
-                        new Dictionary<string, string>
-                        {
-                            { "fleet", fleet?.GetDisplayName() ?? string.Empty },
-                            { "system", destination?.GetDisplayName() ?? string.Empty },
-                        }
-                    ),
-                    destination,
-                    fleet
-                ),
-                AdvisorNotificationCode.FleetArrived
-            );
-        }
+        public List<MessageRequestedResult> CreateAuthoredMessages(
+            IEnumerable<MessageRequestedResult> requests
+        ) => requests.Select(CreateAuthoredRequest).Where(request => request != null).ToList();
 
         /// <summary>
-        /// Creates a grouped capital ship arrival message.
+        /// Adds Force-assisted traitor discovery reports.
         /// </summary>
-        /// <param name="faction">The faction that owns the arriving ships.</param>
-        /// <param name="ships">The ships that arrived together.</param>
-        /// <param name="destination">The planet where the ships arrived.</param>
-        /// <returns>The ship arrival message, or null when no matching definition exists.</returns>
-        private Message CreateShipsArrived(
-            Faction faction,
-            IEnumerable<CapitalShip> ships,
-            Planet destination
+        /// <param name="results">The traitor discovery results to process.</param>
+        /// <param name="game">The game state used to resolve recipients and opposing factions.</param>
+        /// <param name="deliveries">The delivery list to append messages to.</param>
+        private void AddTraitorDiscoveryMessages(
+            IEnumerable<TraitorDiscoveredResult> results,
+            GameRoot game,
+            List<MessageRequestedResult> deliveries
         )
         {
-            CapitalShip[] shipArray =
-                ships?.Where(ship => ship != null).ToArray() ?? Array.Empty<CapitalShip>();
-            string shipList = string.Join("\n", shipArray.Select(ship => ship.GetDisplayName()));
-            return WithAdvisorNotification(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.ShipsArrived),
-                        faction,
-                        new Dictionary<string, string>
-                        {
-                            { "ships", shipList },
-                            { "system", destination?.GetDisplayName() ?? string.Empty },
-                        }
+            foreach (TraitorDiscoveredResult result in results)
+            {
+                Faction faction = GetOwnerFaction(game, result.DiscoveredBy ?? result.Officer);
+                Faction opposingFaction = game
+                    ?.GetFactions()
+                    .FirstOrDefault(candidate => candidate.InstanceID != faction?.InstanceID);
+                Planet planet = GetOfficerPlanet(result.Officer, result.Context);
+                Officer discoverer = result.DiscoveredBy as Officer;
+                MessageRequestedResult message = WithAdvisorSubject(
+                    WithEventLocation(
+                        CreateMessage(
+                            GetDefinition(MessageResultType.TraitorDiscovered),
+                            faction,
+                            new Dictionary<string, string>
+                            {
+                                {
+                                    "discoverer",
+                                    GetDisplayName(result.DiscoveredBy) ?? string.Empty
+                                },
+                                { "traitor", result.Officer?.GetDisplayName() ?? string.Empty },
+                                { "enemy", opposingFaction?.GetDisplayName() ?? string.Empty },
+                            },
+                            overlayImagePath: GetMessageImagePath(discoverer),
+                            officerVoicePath: discoverer?.GetVoicePath(
+                                OfficerVoiceLineType.TraitorDiscovered,
+                                game?.Random
+                            )
+                        ),
+                        planet,
+                        result.Officer,
+                        discoverer
                     ),
-                    destination,
-                    shipArray.FirstOrDefault()
-                ),
-                AdvisorNotificationCode.UnitsArrived
-            );
-        }
-
-        /// <summary>
-        /// Creates a grouped arrival report for personnel that traveled together.
-        /// </summary>
-        /// <param name="faction">The faction receiving the report.</param>
-        /// <param name="personnel">The officers included in the arrival.</param>
-        /// <param name="destination">The planet where the officers arrived.</param>
-        /// <param name="game">The game state used for voice selection randomness.</param>
-        /// <returns>The personnel arrival message, or null when no officers were provided.</returns>
-        private Message CreatePersonnelArrived(
-            Faction faction,
-            IEnumerable<Officer> personnel,
-            Planet destination,
-            GameRoot game
-        )
-        {
-            Officer[] officers =
-                personnel?.Where(officer => officer != null).ToArray() ?? Array.Empty<Officer>();
-            if (officers.Length == 0)
-                return null;
-
-            Officer reporter = officers.FirstOrDefault(officer =>
-                officer.HasVoicePath(OfficerVoiceLineType.PersonnelArrived)
-            );
-            Officer[] listedPersonnel =
-                reporter == null
-                    ? officers
-                    : officers.Where(officer => officer != reporter).ToArray();
-            string personnelList = string.Join(
-                "\n",
-                listedPersonnel.Select(officer => officer.GetDisplayName())
-            );
-            MessageResultType resultType =
-                reporter == null ? MessageResultType.PersonnelArrived
-                : listedPersonnel.Length == 0 ? MessageResultType.PersonnelArrivedByOfficer
-                : MessageResultType.PersonnelArrivedByOfficerWithCompany;
-            Message message = WithEventLocation(
-                CreateMessage(
-                    GetDefinition(resultType),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "officer", reporter?.GetDisplayName() ?? string.Empty },
-                        { "system", destination?.GetDisplayName() ?? string.Empty },
-                        { "personnel", personnelList },
-                    },
-                    overlayImagePath: GetMessageImagePath(reporter ?? officers[0]),
-                    officerVoicePath: reporter?.GetVoicePath(
-                        OfficerVoiceLineType.PersonnelArrived,
-                        game?.Random
-                    )
-                ),
-                destination,
-                reporter ?? officers[0]
-            );
-
-            return reporter == null
-                ? WithAdvisorNotification(message, AdvisorNotificationCode.FieldPersonnel)
-                : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
+                    AdvisorSubjectNotification.Report,
+                    discoverer
+                );
+                AddDelivery(deliveries, faction, message);
+            }
         }
 
         /// <summary>
@@ -258,9 +200,8 @@ namespace Rebellion.Game.Messages
         /// </summary>
         /// <param name="faction">The faction that owns the emperor.</param>
         /// <param name="officer">The officer returning to the seat of power.</param>
-        /// <param name="game">The game state used for voice selection randomness.</param>
         /// <returns>The seat-of-power message, or null when no matching definition exists.</returns>
-        private Message CreateEmperorSeatOfPower(Faction faction, Officer officer, GameRoot game)
+        private MessageRequestedResult CreateEmperorSeatOfPower(Faction faction, Officer officer)
         {
             return WithAdvisorSubject(
                 WithEventLocation(
@@ -269,84 +210,13 @@ namespace Rebellion.Game.Messages
                         faction,
                         new Dictionary<string, string>(),
                         overlayImagePath: GetMessageImagePath(officer),
-                        officerVoicePath: officer?.GetVoicePath(
-                            OfficerVoiceLineType.SeatOfPower,
-                            game?.Random
-                        )
+                        officerVoicePath: null
                     ),
                     GetOfficerPlanet(officer),
                     officer
                 ),
                 AdvisorSubjectNotification.Report,
                 officer
-            );
-        }
-
-        /// <summary>
-        /// Creates a facility deployment message.
-        /// </summary>
-        /// <param name="faction">The faction that owns the deployed building.</param>
-        /// <param name="building">The deployed building.</param>
-        /// <param name="destination">The planet where the building deployed.</param>
-        /// <returns>The facility deployment message, or null when no matching definition exists.</returns>
-        private Message CreateFacilityDeployed(
-            Faction faction,
-            Building building,
-            Planet destination
-        )
-        {
-            BuildingType buildingType = building?.BuildingType ?? BuildingType.None;
-            if (buildingType == BuildingType.None)
-                return null;
-
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.FacilityDeployed, buildingType: buildingType),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "item", building?.GetDisplayName() ?? string.Empty },
-                        { "system", destination?.GetDisplayName() ?? string.Empty },
-                    },
-                    imageOverride: GetMessageImagePath(building)
-                ),
-                destination,
-                building
-            );
-        }
-
-        /// <summary>
-        /// Creates a manufacturing idle message.
-        /// </summary>
-        /// <param name="faction">The faction whose manufacturing queue became idle.</param>
-        /// <param name="manufacturingType">The idle manufacturing queue type.</param>
-        /// <param name="planet">The planet where the queue became idle.</param>
-        /// <returns>The manufacturing idle message, or null when no matching definition exists.</returns>
-        private Message CreateManufacturingIdle(
-            Faction faction,
-            ManufacturingType manufacturingType,
-            Planet planet
-        )
-        {
-            if (manufacturingType == ManufacturingType.None)
-                return null;
-
-            return WithAdvisorNotification(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(
-                            MessageResultType.ManufacturingIdle,
-                            manufacturingType: manufacturingType
-                        ),
-                        faction,
-                        new Dictionary<string, string>
-                        {
-                            { "system", planet?.GetDisplayName() ?? string.Empty },
-                        }
-                    ),
-                    planet
-                ),
-                AdvisorNotificationCode.Manufacturing
             );
         }
 
@@ -360,15 +230,17 @@ namespace Rebellion.Game.Messages
         /// <param name="killedOfficerIDs">Officer ids killed by results in the current batch.</param>
         /// <param name="killedResults">Officer death results in the current batch.</param>
         /// <param name="sabotageResults">Sabotage results in the current batch.</param>
+        /// <param name="systemIntelligence">Additional systems revealed by this mission.</param>
         /// <returns>The mission report message, or null when no matching definition exists.</returns>
-        private Message CreateMissionReport(
+        private MessageRequestedResult CreateMissionReport(
             Faction faction,
             MissionCompletedResult result,
             Planet target,
             GameRoot game,
             HashSet<string> killedOfficerIDs,
             IEnumerable<OfficerKilledResult> killedResults,
-            IEnumerable<GameObjectSabotagedResult> sabotageResults
+            IEnumerable<GameObjectSabotagedResult> sabotageResults,
+            SystemsRevealedResult systemIntelligence
         )
         {
             if (result == null)
@@ -390,15 +262,20 @@ namespace Rebellion.Game.Messages
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
             OfficerVoiceLineType voiceLineType = GetMissionVoiceLineType(result);
             Officer reporter = jediTrainer ?? GetMissionParticipantOfficer(result, voiceLineType);
+            MessageDefinition definition = GetMissionDefinition(
+                MessageResultType.MissionReport,
+                outcome,
+                GetMissionTypeID(result),
+                completionReason
+            );
+            string missionDetails = BuildMissionDetailList(
+                definition,
+                systemIntelligence?.AdditionalSystems
+            );
 
-            Message message = WithEventLocation(
+            MessageRequestedResult message = WithEventLocation(
                 CreateMessage(
-                    GetMissionDefinition(
-                        MessageResultType.MissionReport,
-                        outcome,
-                        GetMissionTypeID(result),
-                        completionReason
-                    ),
+                    definition,
                     faction,
                     new Dictionary<string, string>
                     {
@@ -411,6 +288,7 @@ namespace Rebellion.Game.Messages
                         { "officer", string.IsNullOrEmpty(officerName) ? "target" : officerName },
                         { "target", string.IsNullOrEmpty(targetName) ? "target" : targetName },
                         { "assassination_result", assassinationResult },
+                        { "details", missionDetails },
                     },
                     overlayImagePath: jediTrainer == null
                         ? GetMissionParticipantOverlayImagePath(result)
@@ -426,8 +304,31 @@ namespace Rebellion.Game.Messages
                 message.MissionInstanceID = result.MissionInstanceID;
 
             return reporter == null
-                ? WithAdvisorNotification(message, AdvisorNotificationCode.FieldPersonnel)
+                ? WithAdvisorNotification(message, AdvisorNotificationType.FieldPersonnel)
                 : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
+        }
+
+        /// <summary>
+        /// Builds a configured mission-detail list for systems revealed beyond the primary target.
+        /// </summary>
+        private static string BuildMissionDetailList(
+            MessageDefinition definition,
+            IEnumerable<PlanetSystem> systems
+        )
+        {
+            PlanetSystem[] systemArray = systems?.Where(system => system != null).ToArray();
+            if (definition == null || systemArray == null || systemArray.Length == 0)
+                return string.Empty;
+
+            string items = string.Concat(
+                systemArray.Select(system =>
+                    MessageTemplateBuilder.Interpolate(
+                        definition.DetailListItemTemplate,
+                        new Dictionary<string, string> { { "system", system.GetDisplayName() } }
+                    )
+                )
+            );
+            return (definition.DetailListHeaderTemplate ?? string.Empty) + items;
         }
 
         /// <summary>
@@ -437,7 +338,7 @@ namespace Rebellion.Game.Messages
         /// <param name="result">The completed mission result.</param>
         /// <param name="target">The mission target planet.</param>
         /// <returns>The enemy mission foiled message, or null when the result is not foiled or no definition exists.</returns>
-        private Message CreateEnemyMissionFoiled(
+        private MessageRequestedResult CreateEnemyMissionFoiled(
             Faction faction,
             MissionCompletedResult result,
             Planet target
@@ -446,7 +347,7 @@ namespace Rebellion.Game.Messages
             if (result == null || result.Outcome != MissionOutcome.Foiled)
                 return null;
 
-            Message message = WithEventLocation(
+            MessageRequestedResult message = WithEventLocation(
                 CreateMessage(
                     GetMissionDefinition(
                         MessageResultType.EnemyMissionFoiled,
@@ -463,7 +364,7 @@ namespace Rebellion.Game.Messages
                 ),
                 target
             );
-            return WithAdvisorNotification(message, AdvisorNotificationCode.AgentReport);
+            return WithAdvisorNotification(message, AdvisorNotificationType.AgentReport);
         }
 
         /// <summary>
@@ -475,7 +376,7 @@ namespace Rebellion.Game.Messages
         /// <param name="planet">The planet associated with the officer state.</param>
         /// <param name="game">The game state used for voice selection randomness.</param>
         /// <returns>The officer status message, or null when no matching definition exists.</returns>
-        private Message CreateOfficerMessage(
+        private MessageRequestedResult CreateOfficerMessage(
             MessageResultType resultType,
             Faction faction,
             Officer officer,
@@ -487,7 +388,7 @@ namespace Rebellion.Game.Messages
                 return null;
 
             MessageDefinition definition = GetDefinition(resultType);
-            Message message = WithEventLocation(
+            MessageRequestedResult message = WithEventLocation(
                 CreateMessage(
                     definition,
                     faction,
@@ -518,6 +419,7 @@ namespace Rebellion.Game.Messages
                 MessageResultType.OfficerInjured => AdvisorSubjectNotification.Report,
                 MessageResultType.OfficerRecovered => AdvisorSubjectNotification.Report,
                 MessageResultType.OfficerKilled => AdvisorSubjectNotification.Report,
+                MessageResultType.OfficerAssassinated => AdvisorSubjectNotification.Report,
                 _ => AdvisorSubjectNotification.None,
             };
             return WithAdvisorSubject(message, notification, officer);
@@ -530,7 +432,7 @@ namespace Rebellion.Game.Messages
         /// <param name="result">The force experience result.</param>
         /// <param name="game">The game state used to resolve rank labels.</param>
         /// <returns>The force growth message, or null when no matching definition exists.</returns>
-        private Message CreateForceGrowth(
+        private MessageRequestedResult CreateForceGrowth(
             Faction faction,
             ForceExperienceResult result,
             GameRoot game
@@ -550,7 +452,7 @@ namespace Rebellion.Game.Messages
                                 "rank",
                                 GetForceRankText(
                                     GetCurrentForceRank(result),
-                                    result.Officer.IsJedi,
+                                    result.Officer.IsForceSensitive,
                                     game
                                 )
                             },
@@ -570,78 +472,13 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Creates the narrative report for completed Dagobah training.
-        /// </summary>
-        /// <param name="faction">The faction receiving the report.</param>
-        /// <param name="result">The completed narrative result.</param>
-        /// <param name="game">The game state used to select officer audio.</param>
-        /// <returns>The completed narrative message, or null when no officer is present.</returns>
-        private Message CreateDagobahCompleted(
-            Faction faction,
-            DagobahCompletedResult result,
-            GameRoot game
-        )
-        {
-            Officer officer = result?.Officer;
-            if (officer == null)
-                return null;
-
-            return WithAdvisorSubject(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.DagobahCompleted),
-                        faction,
-                        new Dictionary<string, string>(),
-                        overlayImagePath: GetMessageImagePath(officer),
-                        officerVoicePath: officer.GetVoicePath(
-                            OfficerVoiceLineType.DagobahCompleted,
-                            game?.Random
-                        )
-                    ),
-                    GetOfficerPlanet(officer),
-                    officer
-                ),
-                AdvisorSubjectNotification.Report,
-                officer
-            );
-        }
-
-        /// <summary>
-        /// Creates the narrative report for a revealed officer heritage.
-        /// </summary>
-        /// <param name="faction">The faction receiving the report.</param>
-        /// <param name="result">The revealed heritage result.</param>
-        /// <returns>The heritage message, or null when no officer is present.</returns>
-        private Message CreateHeritageRevealed(Faction faction, HeritageRevealedResult result)
-        {
-            Officer officer = result?.Officer;
-            if (officer == null)
-                return null;
-
-            return WithAdvisorSubject(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.HeritageRevealed),
-                        faction,
-                        new Dictionary<string, string>(),
-                        overlayImagePath: GetMessageImagePath(officer)
-                    ),
-                    GetOfficerPlanet(officer),
-                    officer
-                ),
-                AdvisorSubjectNotification.Report,
-                officer
-            );
-        }
-
-        /// <summary>
         /// Creates a report identifying an officer whose Force potential was discovered.
         /// </summary>
         /// <param name="faction">The faction receiving the report.</param>
         /// <param name="result">The Force discovery result.</param>
         /// <param name="game">The game state used to evaluate the discoverer's training rank.</param>
         /// <returns>The Force discovery message, or null when the result is incomplete.</returns>
-        private Message CreateForceUserDiscovered(
+        private MessageRequestedResult CreateForceUserDiscovered(
             Faction faction,
             ForceDiscoveryResult result,
             GameRoot game
@@ -650,13 +487,9 @@ namespace Rebellion.Game.Messages
             if (result?.Officer == null || result.Discoverer == null)
                 return null;
 
-            bool abilityRevealed = result.Officer.HasVoicePath(
-                OfficerVoiceLineType.ForceAbilityRevealed
-            );
             bool canTrain = JediTrainingMission.CanLeadTraining(result.Discoverer, game);
-            MessageResultType resultType =
-                abilityRevealed ? MessageResultType.ForceAbilityRevealed
-                : canTrain ? MessageResultType.ForceUserDiscovered
+            MessageResultType resultType = canTrain
+                ? MessageResultType.ForceUserDiscovered
                 : MessageResultType.ForceUserDiscoveredByStudent;
 
             return WithEventLocation(
@@ -667,9 +500,7 @@ namespace Rebellion.Game.Messages
                     {
                         { "officer", result.Officer.GetDisplayName() ?? string.Empty },
                     },
-                    overlayImagePath: GetMessageImagePath(
-                        abilityRevealed ? result.Officer : result.Discoverer
-                    )
+                    overlayImagePath: GetMessageImagePath(result.Discoverer)
                 ),
                 GetOfficerPlanet(result.Officer),
                 result.Officer
@@ -677,311 +508,44 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Creates a capital ship repair message when hull damage has been fully repaired.
-        /// </summary>
-        /// <param name="faction">The faction that owns the capital ship.</param>
-        /// <param name="result">The ship hull damage result.</param>
-        /// <returns>The repair message, or null when the ship is still damaged or no definition exists.</returns>
-        private Message CreateCapitalShipRepaired(Faction faction, ShipHullDamageResult result)
-        {
-            if (result?.Ship == null || result.Ship.IsDamaged())
-                return null;
-
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.CapitalShipRepaired),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "item", GetDisplayName(result.Ship) },
-                        { "attachment", GetAttachmentName(result.Ship) },
-                    }
-                ),
-                result.Ship.GetParentOfType<Planet>(),
-                result.Ship
-            );
-        }
-
-        /// <summary>
-        /// Creates a starfighter repair message when a squadron has returned to full strength.
-        /// </summary>
-        /// <param name="faction">The faction that owns the starfighter squadron.</param>
-        /// <param name="result">The fighter damage result.</param>
-        /// <returns>The repair message, or null when the squadron still has losses or no definition exists.</returns>
-        private Message CreateStarfighterRepaired(Faction faction, FighterDamageResult result)
-        {
-            if (result?.Fighter == null || result.Fighter.HasLosses())
-                return null;
-
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.StarfighterRepaired),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "item", GetDisplayName(result.Fighter) },
-                        { "attachment", GetAttachmentName(result.Fighter) },
-                    }
-                ),
-                result.Fighter.GetParentOfType<Planet>(),
-                result.Fighter
-            );
-        }
-
-        /// <summary>
         /// Creates a sabotage strike message for the owner of the destroyed object.
         /// </summary>
         /// <param name="faction">The faction that owned the sabotaged object.</param>
-        /// <param name="result">The sabotage result.</param>
+        /// <param name="results">The sabotage results grouped into this report.</param>
         /// <param name="target">The planet where sabotage occurred.</param>
+        /// <param name="definition">The content-defined presentation selected for the group.</param>
         /// <returns>The sabotage strike message, or null when no matching definition exists.</returns>
-        private Message CreateSabotageStrike(
+        private MessageRequestedResult CreateSabotageStrike(
             Faction faction,
-            GameObjectSabotagedResult result,
-            Planet target
+            IEnumerable<GameObjectSabotagedResult> results,
+            Planet target,
+            MessageDefinition definition
         )
         {
-            if (result == null)
+            GameObjectSabotagedResult[] resultArray = results
+                ?.Where(result => result != null)
+                .ToArray();
+            if (resultArray == null || resultArray.Length == 0)
                 return null;
 
             return WithEventLocation(
                 CreateMessage(
-                    GetDefinition(MessageResultType.SabotageStrike),
+                    definition,
                     faction,
                     new Dictionary<string, string>
                     {
-                        { "item", GetDisplayName(result.SabotagedObject) },
+                        {
+                            "item",
+                            string.Join(
+                                "\n",
+                                resultArray.Select(result => GetDisplayName(result.SabotagedObject))
+                            )
+                        },
                         { "system", target?.GetDisplayName() ?? string.Empty },
                     }
                 ),
                 target,
-                result.SabotagedObject as ISceneNode
-            );
-        }
-
-        /// <summary>
-        /// Creates a research completion message.
-        /// </summary>
-        /// <param name="faction">The faction that completed research.</param>
-        /// <param name="result">The completed research result.</param>
-        /// <returns>The research completion message, or null when no matching definition exists.</returns>
-        private Message CreateResearchComplete(Faction faction, ResearchOrderedResult result)
-        {
-            if (result?.Technology == null)
-                return null;
-
-            string item = GetDisplayName(result.Technology.GetReference());
-            return CreateMessage(
-                GetDefinition(MessageResultType.ResearchComplete, discipline: result.Discipline),
-                faction,
-                new Dictionary<string, string> { { "item", item } }
-            );
-        }
-
-        /// <summary>
-        /// Creates a research exhausted message.
-        /// </summary>
-        /// <param name="faction">The faction whose research discipline is exhausted.</param>
-        /// <param name="result">The exhausted research result.</param>
-        /// <returns>The research exhausted message, or null when no matching definition exists.</returns>
-        private Message CreateResearchExhausted(Faction faction, ResearchExhaustedResult result)
-        {
-            if (result == null)
-                return null;
-
-            return CreateMessage(
-                GetDefinition(MessageResultType.ResearchExhausted, discipline: result.Discipline),
-                faction,
-                new Dictionary<string, string>()
-            );
-        }
-
-        /// <summary>
-        /// Creates an uprising started message.
-        /// </summary>
-        /// <param name="faction">The faction that should receive the message.</param>
-        /// <param name="result">The uprising started result.</param>
-        /// <param name="controller">The faction that controls the planet.</param>
-        /// <returns>The uprising started message, or null when no matching definition exists.</returns>
-        private Message CreateUprisingStarted(
-            Faction faction,
-            PlanetUprisingStartedResult result,
-            Faction controller
-        )
-        {
-            if (result == null)
-                return null;
-
-            Message message = WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.UprisingStarted),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", controller?.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    }
-                ),
-                result.Planet
-            );
-            AdvisorNotificationCode notification =
-                faction?.InstanceID == controller?.InstanceID
-                    ? AdvisorNotificationCode.NegativePopularSupport
-                    : AdvisorNotificationCode.PositivePopularSupport;
-            return WithAdvisorNotification(message, notification);
-        }
-
-        /// <summary>
-        /// Creates a warning that a controlled planet is close to uprising.
-        /// </summary>
-        /// <param name="faction">The faction controlling the affected planet.</param>
-        /// <param name="result">The near-uprising result.</param>
-        /// <returns>The warning message, or null when no matching definition exists.</returns>
-        private Message CreateNearUprising(Faction faction, PlanetNearUprisingResult result)
-        {
-            if (result == null)
-                return null;
-
-            return WithAdvisorNotification(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.NearUprising),
-                        faction,
-                        new Dictionary<string, string>
-                        {
-                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                        }
-                    ),
-                    result.Planet
-                ),
-                AdvisorNotificationCode.NegativePopularSupport
-            );
-        }
-
-        /// <summary>
-        /// Creates an uprising ended message.
-        /// </summary>
-        /// <param name="faction">The faction that should receive the message.</param>
-        /// <param name="result">The uprising ended result.</param>
-        /// <param name="controller">The faction that controls the planet.</param>
-        /// <returns>The uprising ended message, or null when no matching definition exists.</returns>
-        private Message CreateUprisingEnded(
-            Faction faction,
-            PlanetUprisingEndedResult result,
-            Faction controller
-        )
-        {
-            if (result == null)
-                return null;
-
-            return WithAdvisorNotification(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.UprisingEnded),
-                        faction,
-                        new Dictionary<string, string>
-                        {
-                            { "faction", controller?.GetDisplayName() ?? string.Empty },
-                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                        },
-                        controller
-                    ),
-                    result.Planet
-                ),
-                AdvisorNotificationCode.PositivePopularSupport
-            );
-        }
-
-        /// <summary>
-        /// Creates a message for a planet joining a faction through popular support.
-        /// </summary>
-        /// <param name="result">The planet ownership change result.</param>
-        /// <returns>The planet joined message, or null when no matching definition exists.</returns>
-        private Message CreatePlanetJoinedBySupport(PlanetOwnershipChangedResult result)
-        {
-            if (result?.NewOwner == null)
-                return null;
-
-            return WithAdvisorNotification(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.PlanetJoinedBySupport),
-                        result.NewOwner,
-                        new Dictionary<string, string>
-                        {
-                            { "faction", result.NewOwner.GetDisplayName() ?? string.Empty },
-                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                        }
-                    ),
-                    result.Planet
-                ),
-                AdvisorNotificationCode.PositivePopularSupport
-            );
-        }
-
-        /// <summary>
-        /// Creates a message for a planet joining an opposing faction through popular support.
-        /// </summary>
-        /// <param name="result">The planet ownership change result.</param>
-        /// <param name="recipient">The faction that observed the ownership change.</param>
-        /// <returns>The planet joined enemy message, or null when no matching definition exists.</returns>
-        private Message CreatePlanetJoinedEnemyBySupport(
-            PlanetOwnershipChangedResult result,
-            Faction recipient
-        )
-        {
-            if (result?.NewOwner == null || recipient == null)
-                return null;
-
-            if (recipient.InstanceID == result.NewOwner.InstanceID)
-                return null;
-
-            return WithAdvisorNotification(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.PlanetJoinedEnemyBySupport),
-                        recipient,
-                        new Dictionary<string, string>
-                        {
-                            { "faction", result.NewOwner.GetDisplayName() ?? string.Empty },
-                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                        },
-                        result.NewOwner
-                    ),
-                    result.Planet
-                ),
-                AdvisorNotificationCode.NegativePopularSupport
-            );
-        }
-
-        /// <summary>
-        /// Creates a message for a planet becoming neutral through popular support.
-        /// </summary>
-        /// <param name="result">The planet ownership change result.</param>
-        /// <param name="recipient">The faction that observed the ownership change.</param>
-        /// <returns>The planet neutrality message, or null when no matching definition exists.</returns>
-        private Message CreatePlanetDeclaredNeutralityBySupport(
-            PlanetOwnershipChangedResult result,
-            Faction recipient
-        )
-        {
-            if (result?.PreviousOwner == null || result.NewOwner != null || recipient == null)
-                return null;
-
-            return WithAdvisorNotification(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.PlanetDeclaredNeutralityBySupport),
-                        recipient,
-                        new Dictionary<string, string>
-                        {
-                            { "faction", result.PreviousOwner.GetDisplayName() ?? string.Empty },
-                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                        }
-                    ),
-                    result.Planet
-                ),
-                AdvisorNotificationCode.NegativePopularSupport
+                resultArray[0].SabotagedObject as ISceneNode
             );
         }
 
@@ -990,7 +554,7 @@ namespace Rebellion.Game.Messages
         /// </summary>
         /// <param name="result">The recruitment exhausted result.</param>
         /// <returns>The recruitment exhausted message, or null when the result does not match.</returns>
-        private Message CreateRecruitmentExhausted(RecruitmentExhaustedResult result)
+        private MessageRequestedResult CreateRecruitmentExhausted(RecruitmentExhaustedResult result)
         {
             if (result?.Faction == null)
                 return null;
@@ -1006,379 +570,21 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Creates the blockading faction's blockade started message.
-        /// </summary>
-        /// <param name="faction">The faction that started the blockade.</param>
-        /// <param name="result">The blockade changed result.</param>
-        /// <param name="targetFaction">The faction that owns the blockaded planet.</param>
-        /// <returns>The blockade initiated message, or null when no matching definition exists.</returns>
-        private Message CreateBlockadeInitiated(
-            Faction faction,
-            BlockadeChangedResult result,
-            Faction targetFaction
-        )
-        {
-            if (result?.Blockaded != true)
-                return null;
-
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.BlockadeInitiated),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", faction?.GetDisplayName() ?? string.Empty },
-                        { "target", targetFaction?.GetDisplayName() ?? string.Empty },
-                        { "fleet", result.BlockadingFleet?.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    },
-                    targetFaction
-                ),
-                result.Planet,
-                result.BlockadingFleet
-            );
-        }
-
-        /// <summary>
-        /// Creates the target faction's blockade detected message.
-        /// </summary>
-        /// <param name="faction">The faction that owns the blockaded planet.</param>
-        /// <param name="result">The blockade changed result.</param>
-        /// <param name="blockadingFaction">The faction that started the blockade.</param>
-        /// <returns>The blockade detected message, or null when no matching definition exists.</returns>
-        private Message CreateBlockadeDetected(
-            Faction faction,
-            BlockadeChangedResult result,
-            Faction blockadingFaction
-        )
-        {
-            if (result?.Blockaded != true)
-                return null;
-
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.BlockadeDetected),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", blockadingFaction?.GetDisplayName() ?? string.Empty },
-                        { "fleet", result.BlockadingFleet?.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    }
-                ),
-                result.Planet,
-                result.BlockadingFleet
-            );
-        }
-
-        /// <summary>
-        /// Creates an evacuation losses message.
-        /// </summary>
-        /// <param name="faction">The faction that lost units during evacuation.</param>
-        /// <param name="result">The evacuation losses result.</param>
-        /// <returns>The evacuation losses message, or null when no matching definition exists.</returns>
-        private Message CreateEvacuationLosses(Faction faction, EvacuationLossesResult result)
-        {
-            if (result == null)
-                return null;
-
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.EvacuationLosses),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "system", result.Location?.GetDisplayName() ?? string.Empty },
-                        { "units", FormatLostUnits(result) },
-                    }
-                ),
-                result.Location
-            );
-        }
-
-        /// <summary>
-        /// Creates an autoscrap message for maintenance losses.
-        /// </summary>
-        /// <param name="faction">The faction that owned the destroyed object.</param>
-        /// <param name="result">The autoscrap result.</param>
-        /// <param name="location">The planet where the object was destroyed.</param>
-        /// <returns>The autoscrap message, or null when no matching definition exists.</returns>
-        private Message CreateMaintenanceAutoscrap(
-            Faction faction,
-            GameObjectAutoscrappedResult result,
-            Planet location
-        )
-        {
-            if (result == null)
-                return null;
-
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.MaintenanceAutoscrap),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "item", GetDisplayName(result.DestroyedObject) },
-                        { "system", location?.GetDisplayName() ?? string.Empty },
-                    }
-                ),
-                location,
-                result.DestroyedObject as ISceneNode
-            );
-        }
-
-        /// <summary>
-        /// Creates a space battle result message for one faction.
-        /// </summary>
-        /// <param name="faction">The faction that should receive the message.</param>
-        /// <param name="result">The space combat result.</param>
-        /// <param name="opponent">The opposing faction.</param>
-        /// <returns>The space battle message, or null when no matching definition exists.</returns>
-        private Message CreateSpaceBattle(
-            Faction faction,
-            SpaceCombatResult result,
-            Faction opponent
-        )
-        {
-            if (result == null)
-                return null;
-
-            MessageResultOutcome outcome = GetSpaceBattleOutcome(faction, result);
-            if (outcome == MessageResultOutcome.None)
-                return null;
-
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.SpaceBattle, outcome),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", faction?.GetDisplayName() ?? string.Empty },
-                        { "opponent", opponent?.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    }
-                ),
-                result.Planet,
-                GetSpaceBattleFleet(faction, result)
-            );
-        }
-
-        /// <summary>
-        /// Creates a bombardment result message for one faction.
-        /// </summary>
-        /// <param name="faction">The faction that should receive the message.</param>
-        /// <param name="result">The bombardment result.</param>
-        /// <param name="targetFaction">The faction that owned the target planet.</param>
-        /// <returns>The bombardment message, or null when no matching definition exists.</returns>
-        private Message CreateBombardment(
-            Faction faction,
-            BombardmentResult result,
-            Faction targetFaction
-        )
-        {
-            if (result == null)
-                return null;
-
-            Message message = CreateMessage(
-                GetDefinition(
-                    MessageResultType.Bombardment,
-                    GetBombardmentOutcome(result),
-                    GetBombardmentPlanetOwnership(result)
-                ),
-                faction,
-                new Dictionary<string, string>
-                {
-                    { "faction", result.AttackingFaction?.GetDisplayName() ?? string.Empty },
-                    { "target", targetFaction?.GetDisplayName() ?? string.Empty },
-                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                }
-            );
-            AdvisorNotificationCode notification =
-                faction?.InstanceID == result.AttackingFaction?.InstanceID
-                    ? AdvisorNotificationCode.None
-                    : AdvisorNotificationCode.Bombardment;
-
-            return WithEventLocation(WithAdvisorNotification(message, notification), result.Planet);
-        }
-
-        /// <summary>
-        /// Creates a planetary assault result message for one faction.
-        /// </summary>
-        /// <param name="faction">The faction that should receive the message.</param>
-        /// <param name="result">The planetary assault result.</param>
-        /// <param name="targetFaction">The faction that owned the assaulted planet.</param>
-        /// <returns>The planetary assault message, or null when no matching definition exists.</returns>
-        private Message CreatePlanetaryAssault(
-            Faction faction,
-            PlanetaryAssaultResult result,
-            Faction targetFaction
-        )
-        {
-            if (result == null)
-                return null;
-
-            Message message = CreateMessage(
-                GetDefinition(
-                    MessageResultType.PlanetaryAssault,
-                    result.Success ? MessageResultOutcome.Success : MessageResultOutcome.Failed,
-                    GetAssaultPlanetOwnership(result)
-                ),
-                faction,
-                new Dictionary<string, string>
-                {
-                    { "faction", result.AttackingFaction?.GetDisplayName() ?? string.Empty },
-                    { "target", targetFaction?.GetDisplayName() ?? string.Empty },
-                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                },
-                result.AttackingFaction
-            );
-            AdvisorNotificationCode notification =
-                faction?.InstanceID == result.AttackingFaction?.InstanceID
-                    ? AdvisorNotificationCode.None
-                    : AdvisorNotificationCode.PlanetaryAssault;
-
-            return WithEventLocation(WithAdvisorNotification(message, notification), result.Planet);
-        }
-
-        /// <summary>
-        /// Adds messages for arriving fleets, ships, personnel, and buildings.
-        /// </summary>
-        /// <param name="arrivals">The arrival results to process.</param>
-        /// <param name="game">The game state used to resolve owning factions.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddArrivalMessages(
-            IEnumerable<UnitArrivedResult> arrivals,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            var shipGroups =
-                new Dictionary<
-                    (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
-                    List<CapitalShip>
-                >();
-            var shipDestinations =
-                new Dictionary<
-                    (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
-                    Planet
-                >();
-            var personnelGroups =
-                new Dictionary<
-                    (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
-                    List<Officer>
-                >();
-            var personnelDestinations =
-                new Dictionary<
-                    (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
-                    Planet
-                >();
-
-            foreach (UnitArrivedResult arrival in arrivals)
-            {
-                if (arrival.Unit is Fleet fleet)
-                {
-                    Faction faction = GetFaction(game, fleet.GetOwnerInstanceID());
-                    AddDelivery(
-                        deliveries,
-                        faction,
-                        CreateFleetArrived(faction, fleet, arrival.Destination)
-                    );
-                    continue;
-                }
-
-                if (arrival.Unit is CapitalShip ship)
-                {
-                    string movementGroupID = string.IsNullOrEmpty(arrival.MovementGroupID)
-                        ? ship.GetInstanceID()
-                        : arrival.MovementGroupID;
-                    var key = (
-                        ship.GetOwnerInstanceID(),
-                        arrival.Destination?.GetInstanceID(),
-                        movementGroupID
-                    );
-                    if (!shipGroups.TryGetValue(key, out List<CapitalShip> ships))
-                    {
-                        ships = new List<CapitalShip>();
-                        shipGroups[key] = ships;
-                        shipDestinations[key] = arrival.Destination;
-                    }
-
-                    ships.Add(ship);
-                    continue;
-                }
-
-                if (arrival.Unit is Officer officer)
-                {
-                    string movementGroupID = string.IsNullOrEmpty(arrival.MovementGroupID)
-                        ? officer.GetInstanceID()
-                        : arrival.MovementGroupID;
-                    var key = (
-                        officer.GetOwnerInstanceID(),
-                        arrival.Destination?.GetInstanceID(),
-                        movementGroupID
-                    );
-                    if (!personnelGroups.TryGetValue(key, out List<Officer> personnel))
-                    {
-                        personnel = new List<Officer>();
-                        personnelGroups[key] = personnel;
-                        personnelDestinations[key] = arrival.Destination;
-                    }
-
-                    personnel.Add(officer);
-                    continue;
-                }
-
-                if (arrival.Unit is Building building)
-                {
-                    Faction faction = GetFaction(game, building.GetOwnerInstanceID());
-                    AddDelivery(
-                        deliveries,
-                        faction,
-                        CreateFacilityDeployed(faction, building, arrival.Destination)
-                    );
-                }
-            }
-
-            foreach (var group in shipGroups)
-            {
-                Faction faction = GetFaction(game, group.Key.OwnerInstanceID);
-                AddDelivery(
-                    deliveries,
-                    faction,
-                    CreateShipsArrived(faction, group.Value, shipDestinations[group.Key])
-                );
-            }
-
-            foreach (var group in personnelGroups)
-            {
-                Faction faction = GetFaction(game, group.Key.OwnerInstanceID);
-                AddDelivery(
-                    deliveries,
-                    faction,
-                    CreatePersonnelArrived(
-                        faction,
-                        group.Value,
-                        personnelDestinations[group.Key],
-                        game
-                    )
-                );
-            }
-        }
-
-        /// <summary>
         /// Adds messages for completed missions.
         /// </summary>
         /// <param name="results">The completed mission results to process.</param>
         /// <param name="killedResults">The officer death results in the current batch.</param>
         /// <param name="sabotageResults">The sabotage results in the current batch.</param>
+        /// <param name="systemIntelligenceResults">Additional-system intelligence results.</param>
         /// <param name="game">The game state used to resolve recipient factions.</param>
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddMissionMessages(
             IEnumerable<MissionCompletedResult> results,
             IEnumerable<OfficerKilledResult> killedResults,
             IEnumerable<GameObjectSabotagedResult> sabotageResults,
+            IEnumerable<SystemsRevealedResult> systemIntelligenceResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             OfficerKilledResult[] killedArray =
@@ -1387,11 +593,21 @@ namespace Rebellion.Game.Messages
                 .Select(result => result.TargetOfficer?.InstanceID)
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
+            Dictionary<string, SystemsRevealedResult> systemIntelligenceByMission = (
+                systemIntelligenceResults ?? Array.Empty<SystemsRevealedResult>()
+            )
+                .Where(result => !string.IsNullOrEmpty(result.MissionInstanceID))
+                .GroupBy(result => result.MissionInstanceID)
+                .ToDictionary(group => group.Key, group => group.Last());
 
             foreach (MissionCompletedResult result in results)
             {
                 Planet target = GetMissionTarget(result);
                 Faction actorFaction = GetFaction(game, result.Mission?.OwnerInstanceID);
+                systemIntelligenceByMission.TryGetValue(
+                    result.MissionInstanceID ?? string.Empty,
+                    out SystemsRevealedResult systemIntelligence
+                );
                 AddDelivery(
                     deliveries,
                     actorFaction,
@@ -1402,7 +618,8 @@ namespace Rebellion.Game.Messages
                         game,
                         killedOfficerIDs,
                         killedArray,
-                        sabotageResults
+                        sabotageResults,
+                        systemIntelligence
                     )
                 );
 
@@ -1425,7 +642,7 @@ namespace Rebellion.Game.Messages
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddRecruitmentMessages(
             IEnumerable<RecruitmentExhaustedResult> results,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             foreach (RecruitmentExhaustedResult result in results)
@@ -1449,7 +666,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<OfficerKilledResult> killedResults,
             IEnumerable<MissionCompletedResult> missionResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             OfficerKilledResult[] killedArray =
@@ -1568,7 +785,9 @@ namespace Rebellion.Game.Messages
                     deliveries,
                     faction,
                     CreateOfficerMessage(
-                        MessageResultType.OfficerKilled,
+                        result.Assassin == null
+                            ? MessageResultType.OfficerKilled
+                            : MessageResultType.OfficerAssassinated,
                         faction,
                         result.TargetOfficer,
                         planet,
@@ -1589,7 +808,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<ForceExperienceResult> experienceResults,
             IEnumerable<ForceDiscoveryResult> discoveryResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
             ForceDiscoveryResult[] discoveryArray = (
@@ -1625,33 +844,6 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Adds narrative event reports to the pending message deliveries.
-        /// </summary>
-        /// <param name="dagobahResults">The completed Dagobah narrative results.</param>
-        /// <param name="heritageResults">The revealed heritage results.</param>
-        /// <param name="game">The game state used to resolve message recipients.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddNarrativeMessages(
-            IEnumerable<DagobahCompletedResult> dagobahResults,
-            IEnumerable<HeritageRevealedResult> heritageResults,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (DagobahCompletedResult result in dagobahResults)
-            {
-                Faction faction = GetOwnerFaction(game, result.Officer);
-                AddDelivery(deliveries, faction, CreateDagobahCompleted(faction, result, game));
-            }
-
-            foreach (HeritageRevealedResult result in heritageResults)
-            {
-                Faction faction = GetOwnerFaction(game, result.Officer);
-                AddDelivery(deliveries, faction, CreateHeritageRevealed(faction, result));
-            }
-        }
-
-        /// <summary>
         /// Adds messages for sabotaged game objects.
         /// </summary>
         /// <param name="results">The sabotage results to process.</param>
@@ -1660,404 +852,51 @@ namespace Rebellion.Game.Messages
         private void AddSabotageMessages(
             IEnumerable<GameObjectSabotagedResult> results,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageRequestedResult> deliveries
         )
         {
-            foreach (GameObjectSabotagedResult result in results)
-            {
-                Planet target = GetSabotageTarget(result);
-                string ownerInstanceID = GetOwnerInstanceID(result.SabotagedObject);
-                if (string.IsNullOrEmpty(ownerInstanceID))
-                    ownerInstanceID = target?.OwnerInstanceID;
-
-                Faction faction = GetFaction(game, ownerInstanceID);
-                AddDelivery(deliveries, faction, CreateSabotageStrike(faction, result, target));
-            }
-        }
-
-        /// <summary>
-        /// Adds messages for completed and exhausted research.
-        /// </summary>
-        /// <param name="orderedResults">The completed research results to process.</param>
-        /// <param name="exhaustedResults">The exhausted research results to process.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddResearchMessages(
-            IEnumerable<ResearchOrderedResult> orderedResults,
-            IEnumerable<ResearchExhaustedResult> exhaustedResults,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (ResearchOrderedResult result in orderedResults)
-                AddDelivery(
-                    deliveries,
-                    result.Faction,
-                    CreateResearchComplete(result.Faction, result)
-                );
-
-            foreach (ResearchExhaustedResult result in exhaustedResults)
-                AddDelivery(
-                    deliveries,
-                    result.Faction,
-                    CreateResearchExhausted(result.Faction, result)
-                );
-        }
-
-        /// <summary>
-        /// Adds messages for uprising start and end results.
-        /// </summary>
-        /// <param name="nearResults">The near-uprising results to process.</param>
-        /// <param name="startedResults">The uprising started results to process.</param>
-        /// <param name="endedResults">The uprising ended results to process.</param>
-        /// <param name="game">The game state used to resolve recipient factions.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddUprisingMessages(
-            IEnumerable<PlanetNearUprisingResult> nearResults,
-            IEnumerable<PlanetUprisingStartedResult> startedResults,
-            IEnumerable<PlanetUprisingEndedResult> endedResults,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (PlanetNearUprisingResult result in nearResults)
-            {
-                Faction controller = GetFaction(game, result.Planet?.OwnerInstanceID);
-                AddDelivery(deliveries, controller, CreateNearUprising(controller, result));
-            }
-
-            foreach (PlanetUprisingStartedResult result in startedResults)
-            {
-                Faction controller = GetFaction(game, result.Planet?.OwnerInstanceID);
-                AddDelivery(
-                    deliveries,
-                    controller,
-                    CreateUprisingStarted(controller, result, controller)
-                );
-
-                if (result.InstigatorFaction?.InstanceID == controller?.InstanceID)
-                    continue;
-
-                AddDelivery(
-                    deliveries,
-                    result.InstigatorFaction,
-                    CreateUprisingStarted(result.InstigatorFaction, result, controller)
-                );
-            }
-
-            foreach (PlanetUprisingEndedResult result in endedResults)
-            {
-                Faction controller =
-                    GetFaction(game, result.Planet?.OwnerInstanceID) ?? result.Faction;
-                AddDelivery(
-                    deliveries,
-                    controller,
-                    CreateUprisingEnded(controller, result, controller)
-                );
-            }
-        }
-
-        /// <summary>
-        /// Adds messages for popular-support ownership changes.
-        /// </summary>
-        /// <param name="results">The planet ownership change results to process.</param>
-        /// <param name="game">The game state used to resolve observing factions.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddPopularSupportOwnershipMessages(
-            IEnumerable<PlanetOwnershipChangedResult> results,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (PlanetOwnershipChangedResult result in results)
-            {
-                if (result.Reason != PlanetOwnershipChangeReason.PopularSupport)
-                    continue;
-
-                foreach (Faction recipient in GetOwnershipChangeRecipients(result, game))
+            var reportItems = (results ?? Enumerable.Empty<GameObjectSabotagedResult>())
+                .Where(result => result != null)
+                .Select(result =>
                 {
-                    Message message =
-                        recipient == result.NewOwner ? CreatePlanetJoinedBySupport(result)
-                        : result.NewOwner != null
-                            ? CreatePlanetJoinedEnemyBySupport(result, recipient)
-                        : CreatePlanetDeclaredNeutralityBySupport(result, recipient);
-                    AddDelivery(deliveries, recipient, message);
-                }
-            }
-        }
+                    Planet target = GetSabotageTarget(result);
+                    string ownerInstanceID = GetOwnerInstanceID(result.SabotagedObject);
+                    if (string.IsNullOrEmpty(ownerInstanceID))
+                        ownerInstanceID = target?.OwnerInstanceID;
 
-        /// <summary>
-        /// Resolves every faction entitled to observe a planet ownership change.
-        /// </summary>
-        /// <param name="result">The ownership-change result.</param>
-        /// <param name="game">The game state containing candidate factions.</param>
-        /// <returns>The observing factions, including the previous and new owners.</returns>
-        private static IEnumerable<Faction> GetOwnershipChangeRecipients(
-            PlanetOwnershipChangedResult result,
-            GameRoot game
-        )
-        {
-            HashSet<string> recipientIds = new HashSet<string>(
-                result.ObserverFactionInstanceIDs ?? Enumerable.Empty<string>()
-            );
-            if (result.PreviousOwner != null)
-                recipientIds.Add(result.PreviousOwner.InstanceID);
-            if (result.NewOwner != null)
-                recipientIds.Add(result.NewOwner.InstanceID);
+                    return new
+                    {
+                        Result = result,
+                        Target = target,
+                        Faction = GetFaction(game, ownerInstanceID),
+                        Definition = GetDefinition(
+                            MessageResultType.SabotageStrike,
+                            gameObjectTypeId: result.SabotagedObject?.GetTypeID()
+                        ),
+                    };
+                })
+                .Where(item => item.Faction != null && item.Definition != null);
 
-            return game.GetFactions().Where(faction => recipientIds.Contains(faction.InstanceID));
-        }
-
-        /// <summary>
-        /// Adds messages for blockades and evacuation losses.
-        /// </summary>
-        /// <param name="blockadeResults">The blockade changed results to process.</param>
-        /// <param name="evacuationResults">The evacuation loss results to process.</param>
-        /// <param name="game">The game state used to resolve recipient factions.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddBlockadeMessages(
-            IEnumerable<BlockadeChangedResult> blockadeResults,
-            IEnumerable<EvacuationLossesResult> evacuationResults,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (BlockadeChangedResult result in blockadeResults)
-            {
-                if (!result.Blockaded)
-                    continue;
-
-                Faction blockadingFaction = GetFaction(
-                    game,
-                    result.BlockadingFleet?.GetOwnerInstanceID()
-                );
-                Faction targetFaction = GetFaction(game, result.Planet?.OwnerInstanceID);
-                AddDelivery(
-                    deliveries,
-                    blockadingFaction,
-                    CreateBlockadeInitiated(blockadingFaction, result, targetFaction)
-                );
-
-                if (targetFaction?.InstanceID == blockadingFaction?.InstanceID)
-                    continue;
-
-                AddDelivery(
-                    deliveries,
-                    targetFaction,
-                    CreateBlockadeDetected(targetFaction, result, blockadingFaction)
-                );
-            }
-
-            foreach (EvacuationLossesResult result in evacuationResults)
-                AddDelivery(
-                    deliveries,
-                    result.Faction,
-                    CreateEvacuationLosses(result.Faction, result)
-                );
-        }
-
-        /// <summary>
-        /// Adds messages for autoscrapped objects.
-        /// </summary>
-        /// <param name="autoscrapResults">The autoscrap results to process.</param>
-        /// <param name="game">The game state used to resolve recipient factions.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddMaintenanceMessages(
-            IEnumerable<GameObjectAutoscrappedResult> autoscrapResults,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (GameObjectAutoscrappedResult result in autoscrapResults)
-            {
-                Planet location = GetResultPlanet(
-                    result.Context ?? result.Ref ?? result.DestroyedObject
-                );
-                Faction faction =
-                    GetOwnerFaction(game, result.DestroyedObject)
-                    ?? GetOwnerFaction(game, result.Ref)
-                    ?? GetFaction(game, location?.OwnerInstanceID);
-                AddDelivery(
-                    deliveries,
-                    faction,
-                    CreateMaintenanceAutoscrap(faction, result, location)
-                );
-            }
-        }
-
-        /// <summary>
-        /// Adds messages for completed capital ship and starfighter repairs.
-        /// </summary>
-        /// <param name="shipResults">The capital ship hull damage results to process.</param>
-        /// <param name="fighterResults">The starfighter damage results to process.</param>
-        /// <param name="game">The game state used to resolve recipient factions.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddRepairMessages(
-            IEnumerable<ShipHullDamageResult> shipResults,
-            IEnumerable<FighterDamageResult> fighterResults,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (ShipHullDamageResult result in shipResults)
-            {
-                Faction faction = GetOwnerFaction(game, result.Ship);
-                AddDelivery(deliveries, faction, CreateCapitalShipRepaired(faction, result));
-            }
-
-            foreach (FighterDamageResult result in fighterResults)
-            {
-                Faction faction = GetOwnerFaction(game, result.Fighter);
-                AddDelivery(deliveries, faction, CreateStarfighterRepaired(faction, result));
-            }
-        }
-
-        /// <summary>
-        /// Adds messages for space combat, bombardment, and planetary assault results.
-        /// </summary>
-        /// <param name="battleResults">The space combat results to process.</param>
-        /// <param name="bombardmentResults">The bombardment results to process.</param>
-        /// <param name="assaultResults">The planetary assault results to process.</param>
-        /// <param name="game">The game state used to resolve recipient factions.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddCombatMessages(
-            IEnumerable<SpaceCombatResult> battleResults,
-            IEnumerable<BombardmentResult> bombardmentResults,
-            IEnumerable<PlanetaryAssaultResult> assaultResults,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (SpaceCombatResult result in battleResults)
-            {
-                Faction attacker = GetFaction(
-                    game,
-                    GetSpaceCombatOwnerInstanceID(result, CombatSide.Attacker)
-                );
-                Faction defender = GetFaction(
-                    game,
-                    GetSpaceCombatOwnerInstanceID(result, CombatSide.Defender)
-                );
-                AddDelivery(deliveries, attacker, CreateSpaceBattle(attacker, result, defender));
-                if (defender?.InstanceID != attacker?.InstanceID)
-                    AddDelivery(
-                        deliveries,
-                        defender,
-                        CreateSpaceBattle(defender, result, attacker)
-                    );
-            }
-
-            foreach (BombardmentResult result in bombardmentResults)
-            {
-                if (result?.AttackingFaction == null || result.Planet == null)
-                    continue;
-
-                Faction defender =
-                    result.OwnershipChange?.PreviousOwner
-                    ?? GetFaction(game, result.Planet?.OwnerInstanceID);
-                AddDelivery(
-                    deliveries,
-                    result.AttackingFaction,
-                    CreateBombardment(result.AttackingFaction, result, defender)
-                );
-                if (defender?.InstanceID != result.AttackingFaction?.InstanceID)
-                    AddDelivery(
-                        deliveries,
-                        defender,
-                        CreateBombardment(defender, result, defender)
-                    );
-            }
-
-            foreach (PlanetaryAssaultResult result in assaultResults)
-            {
-                if (result?.AttackingFaction == null || result.Planet == null)
-                    continue;
-
-                Faction defender =
-                    result.OwnershipChange?.PreviousOwner
-                    ?? GetFaction(game, result.Planet?.OwnerInstanceID);
-                AddDelivery(
-                    deliveries,
-                    result.AttackingFaction,
-                    CreatePlanetaryAssault(result.AttackingFaction, result, defender)
-                );
-                if (defender?.InstanceID != result.AttackingFaction?.InstanceID)
-                    AddDelivery(
-                        deliveries,
-                        defender,
-                        CreatePlanetaryAssault(defender, result, defender)
-                    );
-            }
-        }
-
-        /// <summary>
-        /// Adds messages for deployed buildings.
-        /// </summary>
-        /// <param name="results">The deployment results to process.</param>
-        /// <param name="game">The game state used to resolve recipient factions.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddDeploymentMessages(
-            IEnumerable<GameObjectDeployedResult> results,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (GameObjectDeployedResult result in results)
-            {
-                if (result.GameObject is not Building building || building.Movement != null)
-                    continue;
-
-                Faction faction = GetFaction(game, building.GetOwnerInstanceID());
-                AddDelivery(
-                    deliveries,
-                    faction,
-                    CreateFacilityDeployed(faction, building, building.GetParentOfType<Planet>())
-                );
-            }
-        }
-
-        /// <summary>
-        /// Adds messages for idle manufacturing queues.
-        /// </summary>
-        /// <param name="results">The manufacturing idle results to process.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddManufacturingMessages(
-            IEnumerable<ManufacturingIdleResult> results,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (ManufacturingIdleResult result in results)
-                AddDelivery(
-                    deliveries,
-                    result.Faction,
-                    CreateManufacturingIdle(
-                        result.Faction,
-                        result.ManufacturingType,
-                        result.ProductionPlanet
+            foreach (
+                var group in reportItems.GroupBy(item =>
+                    (
+                        item.Faction.InstanceID,
+                        TargetInstanceID: item.Target?.InstanceID,
+                        item.Definition
                     )
-                );
-        }
-
-        /// <summary>
-        /// Adds messages for seat-of-power changes.
-        /// </summary>
-        /// <param name="results">The seat-of-power changed results to process.</param>
-        /// <param name="game">The game state used to resolve recipient factions.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddSeatOfPowerMessages(
-            IEnumerable<SeatOfPowerChangedResult> results,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (SeatOfPowerChangedResult result in results)
+                )
+            )
             {
-                if (!result.IsAtSeat)
-                    continue;
-
-                Faction faction = GetFaction(game, result.Officer?.GetOwnerInstanceID());
+                var first = group.First();
                 AddDelivery(
                     deliveries,
-                    faction,
-                    CreateEmperorSeatOfPower(faction, result.Officer, game)
+                    first.Faction,
+                    CreateSabotageStrike(
+                        first.Faction,
+                        group.Select(item => item.Result),
+                        first.Target,
+                        first.Definition
+                    )
                 );
             }
         }
@@ -2065,19 +904,20 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Adds a non-null message delivery for a non-null faction.
         /// </summary>
-        /// <param name="deliveries">The delivery list to append to.</param>
+        /// <param name="requests">The request list to append to.</param>
         /// <param name="faction">The faction that should receive the message.</param>
         /// <param name="message">The message to deliver.</param>
-        private static void AddDelivery(
-            List<(Faction faction, Message message)> deliveries,
+        private void AddDelivery(
+            ICollection<MessageRequestedResult> requests,
             Faction faction,
-            Message message
+            MessageRequestedResult message
         )
         {
             if (faction == null || message == null)
                 return;
 
-            deliveries.Add((faction, message));
+            message.Recipient = faction;
+            requests.Add(message);
         }
 
         /// <summary>
@@ -2091,7 +931,7 @@ namespace Rebellion.Game.Messages
         /// <param name="overlayImagePath">The optional image path to render over the message background.</param>
         /// <param name="officerVoicePath">The optional officer voice line to play for this message.</param>
         /// <returns>The created message, or null when the definition is missing.</returns>
-        private Message CreateMessage(
+        private MessageRequestedResult CreateMessage(
             MessageDefinition definition,
             Faction faction,
             Dictionary<string, string> values,
@@ -2111,38 +951,8 @@ namespace Rebellion.Game.Messages
                     overlayImagePath,
                     officerVoicePath
                 ),
-                GetDefaultAdvisorNotification(definition?.ResultType)
+                AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
-        }
-
-        /// <summary>
-        /// Resolves the default advisor notification for a message result type.
-        /// </summary>
-        /// <param name="resultType">The message result type, or null.</param>
-        /// <returns>The matching advisor notification code.</returns>
-        private static AdvisorNotificationCode GetDefaultAdvisorNotification(
-            MessageResultType? resultType
-        )
-        {
-            return resultType switch
-            {
-                MessageResultType.FleetArrived => AdvisorNotificationCode.FleetArrived,
-                MessageResultType.ShipsArrived => AdvisorNotificationCode.UnitsArrived,
-                MessageResultType.ManufacturingIdle => AdvisorNotificationCode.Manufacturing,
-                MessageResultType.CapitalShipRepaired =>
-                    AdvisorNotificationCode.CapitalShipRepaired,
-                MessageResultType.StarfighterRepaired =>
-                    AdvisorNotificationCode.StarfighterRepaired,
-                MessageResultType.SabotageStrike => AdvisorNotificationCode.Maintenance,
-                MessageResultType.ResearchComplete => AdvisorNotificationCode.Research,
-                MessageResultType.ResearchExhausted => AdvisorNotificationCode.Research,
-                MessageResultType.BlockadeInitiated => AdvisorNotificationCode.BlockadeInitiated,
-                MessageResultType.BlockadeDetected => AdvisorNotificationCode.BlockadeDetected,
-                MessageResultType.MaintenanceAutoscrap => AdvisorNotificationCode.Maintenance,
-                MessageResultType.Bombardment => AdvisorNotificationCode.Bombardment,
-                MessageResultType.PlanetaryAssault => AdvisorNotificationCode.PlanetaryAssault,
-                _ => AdvisorNotificationCode.None,
-            };
         }
 
         /// <summary>
@@ -2151,14 +961,13 @@ namespace Rebellion.Game.Messages
         /// <param name="message">The message to update.</param>
         /// <param name="notification">The advisor notification code.</param>
         /// <returns>The updated message, or null when no message was supplied.</returns>
-        private static Message WithAdvisorNotification(
-            Message message,
-            AdvisorNotificationCode notification
+        private MessageRequestedResult WithAdvisorNotification(
+            MessageRequestedResult message,
+            AdvisorNotificationType notification
         )
         {
             if (message != null)
-                message.AdvisorNotificationCode = (int)notification;
-
+                message.NotificationType = notification;
             return message;
         }
 
@@ -2169,8 +978,8 @@ namespace Rebellion.Game.Messages
         /// <param name="notification">The officer notification kind.</param>
         /// <param name="officer">The officer represented by the notification.</param>
         /// <returns>The updated message.</returns>
-        private static Message WithAdvisorSubject(
-            Message message,
+        private MessageRequestedResult WithAdvisorSubject(
+            MessageRequestedResult message,
             AdvisorSubjectNotification notification,
             Officer officer
         )
@@ -2195,8 +1004,8 @@ namespace Rebellion.Game.Messages
         /// <param name="target">The primary navigation target.</param>
         /// <param name="secondaryTarget">The optional secondary navigation target.</param>
         /// <returns>The same message instance after the event location is assigned.</returns>
-        private static Message WithEventLocation(
-            Message message,
+        private static MessageRequestedResult WithEventLocation(
+            MessageRequestedResult message,
             Planet planet,
             ISceneNode target = null,
             ISceneNode secondaryTarget = null
@@ -2221,6 +1030,9 @@ namespace Rebellion.Game.Messages
         /// <param name="buildingType">The building type selector to match.</param>
         /// <param name="manufacturingType">The manufacturing type selector to match.</param>
         /// <param name="discipline">The research discipline selector to match.</param>
+        /// <param name="gameObjectTypeId">The affected game object's type selector to match.</param>
+        /// <param name="planetDestroyed">Whether the result destroyed its target planet.</param>
+        /// <param name="factionInstanceId">The recipient faction selector to match.</param>
         /// <returns>The matching message definition, or null when none exists.</returns>
         private MessageDefinition GetDefinition(
             MessageResultType resultType,
@@ -2228,19 +1040,33 @@ namespace Rebellion.Game.Messages
             MessagePlanetOwnership planetOwnership = MessagePlanetOwnership.None,
             BuildingType buildingType = BuildingType.None,
             ManufacturingType manufacturingType = ManufacturingType.None,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            string gameObjectTypeId = null,
+            bool planetDestroyed = false,
+            string factionInstanceId = null
         )
         {
-            return _definitions.FirstOrDefault(definition =>
-                definition.ResultType == resultType
-                && definition.Outcome == outcome
-                && definition.PlanetOwnership == planetOwnership
-                && definition.BuildingType == buildingType
-                && definition.ManufacturingType == manufacturingType
-                && string.IsNullOrEmpty(definition.MissionTypeID)
-                && definition.MissionCompletionReason == MissionCompletionReason.None
-                && (!discipline.HasValue || definition.ResearchDiscipline == discipline.Value)
-            );
+            return _definitions
+                .Where(definition =>
+                    definition.ResultType == resultType
+                    && definition.Outcome == outcome
+                    && definition.PlanetOwnership == planetOwnership
+                    && definition.BuildingType == buildingType
+                    && definition.ManufacturingType == manufacturingType
+                    && string.IsNullOrEmpty(definition.MissionTypeID)
+                    && definition.MissionCompletionReason == MissionCompletionReason.None
+                    && (!discipline.HasValue || definition.ResearchDiscipline == discipline.Value)
+                    && Matches(definition.GameObjectTypeID, gameObjectTypeId)
+                    && definition.PlanetDestroyed == planetDestroyed
+                    && Matches(definition.FactionInstanceID, factionInstanceId)
+                )
+                .OrderByDescending(definition =>
+                    !string.IsNullOrWhiteSpace(definition.GameObjectTypeID)
+                )
+                .ThenByDescending(definition =>
+                    !string.IsNullOrWhiteSpace(definition.FactionInstanceID)
+                )
+                .FirstOrDefault();
         }
 
         /// <summary>
@@ -2264,12 +1090,10 @@ namespace Rebellion.Game.Messages
                 missionTypeID,
                 completionReason
             );
-
             if (definition != null)
                 return definition;
 
             bool canUseGenericDefinition = CanUseGenericMissionDefinition(completionReason);
-
             if (completionReason != MissionCompletionReason.None && canUseGenericDefinition)
             {
                 definition = FindMissionDefinition(
@@ -2279,37 +1103,25 @@ namespace Rebellion.Game.Messages
                     MissionCompletionReason.None
                 );
             }
-
             if (definition != null || string.IsNullOrEmpty(missionTypeID))
                 return definition;
 
             definition = FindMissionDefinition(resultType, outcome, null, completionReason);
-
             if (definition != null || completionReason == MissionCompletionReason.None)
                 return definition;
 
-            if (!canUseGenericDefinition)
-                return null;
-
-            return FindMissionDefinition(resultType, outcome, null, MissionCompletionReason.None);
+            return canUseGenericDefinition
+                ? FindMissionDefinition(resultType, outcome, null, MissionCompletionReason.None)
+                : null;
         }
 
-        /// <summary>
-        /// Finds an exact mission message definition match.
-        /// </summary>
-        /// <param name="resultType">The message result type to match.</param>
-        /// <param name="outcome">The mission outcome selector to match.</param>
-        /// <param name="missionTypeID">The mission type selector to match.</param>
-        /// <param name="completionReason">The completion reason selector to match.</param>
-        /// <returns>The matching mission definition, or null when none exists.</returns>
         private MessageDefinition FindMissionDefinition(
             MessageResultType resultType,
             MessageResultOutcome outcome,
             string missionTypeID,
             MissionCompletionReason completionReason
-        )
-        {
-            return _definitions.FirstOrDefault(candidate =>
+        ) =>
+            _definitions.FirstOrDefault(candidate =>
                 candidate.ResultType == resultType
                 && candidate.Outcome == outcome
                 && candidate.PlanetOwnership == MessagePlanetOwnership.None
@@ -2322,22 +1134,16 @@ namespace Rebellion.Game.Messages
                 )
                 && candidate.MissionCompletionReason == completionReason
             );
-        }
 
-        /// <summary>
-        /// Checks whether a completion reason can fall back to a generic mission definition.
-        /// </summary>
-        /// <param name="completionReason">The completion reason to evaluate.</param>
-        /// <returns>True when a generic definition can be used; otherwise false.</returns>
-        private static bool CanUseGenericMissionDefinition(MissionCompletionReason completionReason)
-        {
-            return completionReason
+        private static bool CanUseGenericMissionDefinition(
+            MissionCompletionReason completionReason
+        ) =>
+            completionReason
                 is MissionCompletionReason.None
                     or MissionCompletionReason.Success
                     or MissionCompletionReason.Failure
                     or MissionCompletionReason.Foiled
                     or MissionCompletionReason.ResearchBreakthrough;
-        }
 
         /// <summary>
         /// Gets the display name for a completed mission result.
@@ -2647,19 +1453,6 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Gets the display name of an entity's immediate scene parent.
-        /// </summary>
-        /// <param name="entity">The entity whose parent should be described.</param>
-        /// <returns>The parent display name, or an empty string when none is available.</returns>
-        private static string GetAttachmentName(IGameEntity entity)
-        {
-            if (entity is not ISceneNode sceneNode)
-                return string.Empty;
-
-            return sceneNode.GetParent()?.GetDisplayName() ?? string.Empty;
-        }
-
-        /// <summary>
         /// Gets the display label for a force rank.
         /// </summary>
         /// <param name="forceRank">The numeric force rank to label.</param>
@@ -2672,17 +1465,15 @@ namespace Rebellion.Game.Messages
             if (config == null || !isJedi)
                 return "None";
 
-            if (forceRank >= config.RankLabelForceMaster)
-                return "Jedi Master";
-            if (forceRank >= config.RankLabelForceKnight)
-                return "Jedi Knight";
-            if (forceRank >= config.RankLabelForceStudent)
-                return "Jedi Student";
-            if (forceRank >= config.RankLabelTrainee)
-                return "Trainee";
-            if (forceRank >= config.RankLabelNovice)
-                return "Novice";
-            return "None";
+            return config.GetRankLabel(forceRank) switch
+            {
+                ForceRankLabel.ForceMaster => "Jedi Master",
+                ForceRankLabel.ForceKnight => "Jedi Knight",
+                ForceRankLabel.ForceStudent => "Jedi Student",
+                ForceRankLabel.Trainee => "Trainee",
+                ForceRankLabel.Novice => "Novice",
+                _ => "None",
+            };
         }
 
         /// <summary>
@@ -2701,12 +1492,12 @@ namespace Rebellion.Game.Messages
 
             string previousRank = GetForceRankText(
                 GetPreviousForceRank(result),
-                result.Officer.IsJedi,
+                result.Officer.IsForceSensitive,
                 game
             );
             string currentRank = GetForceRankText(
                 GetCurrentForceRank(result),
-                result.Officer.IsJedi,
+                result.Officer.IsForceSensitive,
                 game
             );
             return previousRank != currentRank;
@@ -2801,174 +1592,6 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Formats evacuation losses as a newline-separated unit list.
-        /// </summary>
-        /// <param name="result">The evacuation losses result.</param>
-        /// <returns>The formatted unit list.</returns>
-        private static string FormatLostUnits(EvacuationLossesResult result)
-        {
-            IEnumerable<IGameEntity> units = result
-                .LostShips.Cast<IGameEntity>()
-                .Concat(result.LostStarfighters)
-                .Concat(result.LostRegiments);
-
-            return string.Join("\n", units.Select(GetDisplayName).Where(name => name.Length > 0));
-        }
-
-        /// <summary>
-        /// Gets the message outcome for a space battle from one faction's perspective.
-        /// </summary>
-        /// <param name="faction">The faction whose perspective should be evaluated.</param>
-        /// <param name="result">The space combat result.</param>
-        /// <returns>The message outcome for the faction.</returns>
-        private static MessageResultOutcome GetSpaceBattleOutcome(
-            Faction faction,
-            SpaceCombatResult result
-        )
-        {
-            if (result.Winner == CombatSide.Draw)
-                return MessageResultOutcome.Stalemate;
-
-            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Attacker))
-                return result.Winner == CombatSide.Attacker
-                    ? MessageResultOutcome.Victory
-                    : MessageResultOutcome.Defeat;
-
-            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Defender))
-                return result.Winner == CombatSide.Defender
-                    ? MessageResultOutcome.Victory
-                    : MessageResultOutcome.Defeat;
-
-            return MessageResultOutcome.None;
-        }
-
-        /// <summary>
-        /// Resolves the fleet belonging to one faction in a space battle result.
-        /// </summary>
-        /// <param name="faction">The faction whose fleet should be returned.</param>
-        /// <param name="result">The space battle result.</param>
-        /// <returns>The faction's participating fleet, or null.</returns>
-        private static Fleet GetSpaceBattleFleet(Faction faction, SpaceCombatResult result)
-        {
-            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Attacker))
-                return result.AttackerFleet;
-
-            return faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Defender)
-                ? result.DefenderFleet
-                : null;
-        }
-
-        /// <summary>
-        /// Returns the owner identifier captured for one completed space-combat side.
-        /// </summary>
-        /// <param name="result">The completed space-combat result.</param>
-        /// <param name="side">The represented combat side.</param>
-        /// <returns>The captured owner identifier, with the participating fleet as fallback.</returns>
-        private static string GetSpaceCombatOwnerInstanceID(
-            SpaceCombatResult result,
-            CombatSide side
-        )
-        {
-            return side switch
-            {
-                CombatSide.Attacker => string.IsNullOrEmpty(result?.AttackerOwnerInstanceID)
-                    ? result?.AttackerFleet?.GetOwnerInstanceID()
-                    : result.AttackerOwnerInstanceID,
-                CombatSide.Defender => string.IsNullOrEmpty(result?.DefenderOwnerInstanceID)
-                    ? result?.DefenderFleet?.GetOwnerInstanceID()
-                    : result.DefenderOwnerInstanceID,
-                _ => null,
-            };
-        }
-
-        /// <summary>
-        /// Gets the message outcome for a bombardment result.
-        /// </summary>
-        /// <param name="result">The bombardment result.</param>
-        /// <returns>The bombardment message outcome.</returns>
-        private static MessageResultOutcome GetBombardmentOutcome(BombardmentResult result)
-        {
-            if (HasBombardmentTargetLosses(result))
-                return MessageResultOutcome.TargetLosses;
-
-            if (HasBombardmentAttackerLosses(result))
-                return MessageResultOutcome.AttackerLosses;
-
-            return MessageResultOutcome.NoLosses;
-        }
-
-        /// <summary>
-        /// Checks whether bombardment destroyed target-side assets.
-        /// </summary>
-        /// <param name="result">The bombardment result.</param>
-        /// <returns>True when target-side assets were destroyed; otherwise false.</returns>
-        private static bool HasBombardmentTargetLosses(BombardmentResult result)
-        {
-            return result.PlanetDestroyed
-                || result.HeadquartersDestroyed
-                || result.EnergyCapacityDamage > 0
-                || result.AllocatedEnergyDamage > 0
-                || result.DestroyedBuildings.Any()
-                || result.DestroyedRegiments.Any();
-        }
-
-        /// <summary>
-        /// Checks whether bombardment destroyed attacker-side regiments.
-        /// </summary>
-        /// <param name="result">The bombardment result.</param>
-        /// <returns>True when attacker-side regiments were destroyed; otherwise false.</returns>
-        private static bool HasBombardmentAttackerLosses(BombardmentResult result)
-        {
-            return result.DestroyedCapitalShips.Any() || result.AttackerShipDamage.Any();
-        }
-
-        /// <summary>
-        /// Gets the planet ownership selector that applied before bombardment changed control.
-        /// </summary>
-        /// <param name="result">The bombardment result.</param>
-        /// <returns>The planet ownership selector for the bombardment message.</returns>
-        private static MessagePlanetOwnership GetBombardmentPlanetOwnership(
-            BombardmentResult result
-        )
-        {
-            if (result?.OwnershipChange != null)
-                return result.OwnershipChange.PreviousOwner == null
-                    ? MessagePlanetOwnership.Neutral
-                    : MessagePlanetOwnership.Owned;
-
-            return GetPlanetOwnership(result?.Planet);
-        }
-
-        /// <summary>
-        /// Gets the planet ownership selector for a planetary assault result.
-        /// </summary>
-        /// <param name="result">The planetary assault result.</param>
-        /// <returns>The planet ownership selector for the assault message.</returns>
-        private static MessagePlanetOwnership GetAssaultPlanetOwnership(
-            PlanetaryAssaultResult result
-        )
-        {
-            if (result?.OwnershipChange != null)
-                return result.OwnershipChange.PreviousOwner == null
-                    ? MessagePlanetOwnership.Neutral
-                    : MessagePlanetOwnership.Owned;
-
-            return GetPlanetOwnership(result?.Planet);
-        }
-
-        /// <summary>
-        /// Gets the message ownership selector for a planet.
-        /// </summary>
-        /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>The planet ownership selector.</returns>
-        private static MessagePlanetOwnership GetPlanetOwnership(Planet planet)
-        {
-            return string.IsNullOrEmpty(planet?.OwnerInstanceID)
-                ? MessagePlanetOwnership.Neutral
-                : MessagePlanetOwnership.Owned;
-        }
-
-        /// <summary>
         /// Gets the planet targeted by a completed mission.
         /// </summary>
         /// <param name="result">The completed mission result.</param>
@@ -3060,4 +1683,1920 @@ namespace Rebellion.Game.Messages
             return GetFaction(game, GetOwnerInstanceID(entity));
         }
     }
+    #endregion
+    #region MessageFactory.Arrivals
+    /// <summary>
+    /// Groups completed movement arrivals and translates them into faction reports.
+    /// </summary>
+    public partial class MessageFactory
+    {
+        private void AddArrivalMessages(
+            IEnumerable<UnitArrivedResult> arrivals,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            UnitArrivedResult[] arrivalResults = arrivals.ToArray();
+            var shipGroups =
+                new Dictionary<
+                    (string Owner, string Destination, string Group),
+                    List<CapitalShip>
+                >();
+            var shipDestinations =
+                new Dictionary<(string Owner, string Destination, string Group), Planet>();
+            var personnelGroups =
+                new Dictionary<
+                    (string Owner, string Destination, string Group),
+                    List<IGameEntity>
+                >();
+            var personnelDestinations =
+                new Dictionary<(string Owner, string Destination, string Group), Planet>();
+            var unitGroups =
+                new Dictionary<
+                    (string Owner, string Destination, string Group),
+                    List<IGameEntity>
+                >();
+            var unitDestinations =
+                new Dictionary<(string Owner, string Destination, string Group), Planet>();
+
+            foreach (UnitArrivedResult arrival in arrivalResults)
+            {
+                if (arrival.Unit is Fleet fleet)
+                {
+                    Faction faction = GetArrivalFaction(game, fleet.GetOwnerInstanceID());
+                    AddArrivalDelivery(
+                        deliveries,
+                        faction,
+                        CreateFleet(faction, fleet, arrival.Destination)
+                    );
+                    continue;
+                }
+                if (arrival.Unit is CapitalShip ship)
+                {
+                    var key = Key(ship, arrival);
+                    AddGroup(shipGroups, shipDestinations, key, ship, arrival.Destination);
+                    continue;
+                }
+                if (arrival.Unit is Officer or SpecialForces)
+                {
+                    IGameEntity personnel = arrival.Unit;
+                    var key = Key(personnel, arrival);
+                    AddGroup(
+                        personnelGroups,
+                        personnelDestinations,
+                        key,
+                        personnel,
+                        arrival.Destination
+                    );
+                    continue;
+                }
+                if (arrival.Unit is Regiment or Starfighter)
+                {
+                    IGameEntity unit = arrival.Unit;
+                    var key = Key(unit, arrival);
+                    AddGroup(unitGroups, unitDestinations, key, unit, arrival.Destination);
+                    continue;
+                }
+                if (arrival.Unit is Building building)
+                {
+                    Faction faction = GetArrivalFaction(game, building.GetOwnerInstanceID());
+                    MessageRequestedResult message =
+                        building.BuildingType == BuildingType.Headquarters
+                            ? CreateHeadquarters(faction, building, arrival.Destination)
+                            : this.CreateFacilityMessage(faction, building, arrival.Destination);
+                    AddArrivalDelivery(deliveries, faction, message);
+                }
+            }
+
+            foreach (var group in shipGroups)
+            {
+                Faction faction = GetArrivalFaction(game, group.Key.Owner);
+                AddArrivalDelivery(
+                    deliveries,
+                    faction,
+                    CreateShips(faction, group.Value, shipDestinations[group.Key])
+                );
+            }
+            foreach (var group in personnelGroups)
+            {
+                Faction faction = GetArrivalFaction(game, group.Key.Owner);
+                AddArrivalDelivery(
+                    deliveries,
+                    faction,
+                    CreatePersonnel(faction, group.Value, personnelDestinations[group.Key], game)
+                );
+            }
+            foreach (var group in unitGroups)
+            {
+                Faction faction = GetArrivalFaction(game, group.Key.Owner);
+                AddArrivalDelivery(
+                    deliveries,
+                    faction,
+                    CreateUnits(faction, group.Value, unitDestinations[group.Key])
+                );
+            }
+        }
+
+        private MessageRequestedResult CreateFleet(Faction faction, Fleet fleet, Planet destination)
+        {
+            MessageRequestedResult message = BuildArrivalMessage(
+                MessageResultType.FleetArrived,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "fleet", fleet?.GetDisplayName() ?? string.Empty },
+                    { "system", destination?.GetDisplayName() ?? string.Empty },
+                }
+            );
+            SetArrivalLocation(message, destination, fleet);
+            return WithAdvisorNotification(message, AdvisorNotificationType.FleetArrived);
+        }
+
+        private MessageRequestedResult CreateShips(
+            Faction faction,
+            IEnumerable<CapitalShip> ships,
+            Planet destination
+        )
+        {
+            CapitalShip[] array =
+                ships?.Where(ship => ship != null).ToArray() ?? Array.Empty<CapitalShip>();
+            MessageRequestedResult message = BuildArrivalMessage(
+                MessageResultType.ShipsArrived,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "ships", string.Join("\n", array.Select(ship => ship.GetDisplayName())) },
+                    { "system", destination?.GetDisplayName() ?? string.Empty },
+                }
+            );
+            SetArrivalLocation(message, destination, array.FirstOrDefault());
+            return WithAdvisorNotification(message, AdvisorNotificationType.UnitsArrived);
+        }
+
+        private MessageRequestedResult CreateUnits(
+            Faction faction,
+            IEnumerable<IGameEntity> units,
+            Planet destination
+        )
+        {
+            IGameEntity[] array = units?.Where(unit => unit != null).ToArray();
+            if (array == null || array.Length == 0)
+                return null;
+            MessageRequestedResult message = BuildArrivalMessage(
+                MessageResultType.UnitsArrived,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "units", string.Join("\n", array.Select(unit => unit.GetDisplayName())) },
+                    { "system", destination?.GetDisplayName() ?? string.Empty },
+                }
+            );
+            SetArrivalLocation(message, destination, array[0] as ISceneNode);
+            return WithAdvisorNotification(message, AdvisorNotificationType.UnitsArrived);
+        }
+
+        private MessageRequestedResult CreatePersonnel(
+            Faction faction,
+            IEnumerable<IGameEntity> personnel,
+            Planet destination,
+            GameRoot game
+        )
+        {
+            IGameEntity[] array =
+                personnel?.Where(unit => unit != null).ToArray() ?? Array.Empty<IGameEntity>();
+            if (array.Length == 0)
+                return null;
+            Officer reporter = array
+                .OfType<Officer>()
+                .FirstOrDefault(officer =>
+                    officer.HasVoicePath(OfficerVoiceLineType.PersonnelArrived)
+                );
+            IGameEntity[] listed =
+                reporter == null ? array : array.Where(unit => unit != reporter).ToArray();
+            MessageResultType resultType =
+                reporter == null ? MessageResultType.PersonnelArrived
+                : listed.Length == 0 ? MessageResultType.PersonnelArrivedByOfficer
+                : MessageResultType.PersonnelArrivedByOfficerWithCompany;
+            MessageRequestedResult message = BuildArrivalMessage(
+                resultType,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "officer", reporter?.GetDisplayName() ?? string.Empty },
+                    { "system", destination?.GetDisplayName() ?? string.Empty },
+                    {
+                        "personnel",
+                        string.Join("\n", listed.Select(unit => unit.GetDisplayName()))
+                    },
+                },
+                overlayImagePath: (reporter ?? array[0]).MessageImagePath,
+                officerVoicePath: reporter?.GetVoicePath(
+                    OfficerVoiceLineType.PersonnelArrived,
+                    game.Random
+                )
+            );
+            SetArrivalLocation(message, destination, reporter ?? array[0] as ISceneNode);
+            return reporter == null
+                ? WithAdvisorNotification(message, AdvisorNotificationType.FieldPersonnel)
+                : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
+        }
+
+        private MessageRequestedResult CreateHeadquarters(
+            Faction faction,
+            Building headquarters,
+            Planet destination
+        )
+        {
+            MessageDefinition definition = GetDefinition(
+                MessageResultType.HeadquartersArrived,
+                factionInstanceId: faction?.InstanceID
+            );
+            MessageRequestedResult message = BuildArrivalMessage(
+                definition,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "system", destination?.GetDisplayName() ?? string.Empty },
+                },
+                imageOverride: headquarters?.MessageImagePath
+            );
+            SetArrivalLocation(message, destination, headquarters);
+            return WithAdvisorNotification(message, AdvisorNotificationType.UnitsArrived);
+        }
+
+        private MessageRequestedResult BuildArrivalMessage(
+            MessageResultType resultType,
+            Faction faction,
+            Dictionary<string, string> values,
+            string overlayImagePath = null,
+            string officerVoicePath = null
+        ) =>
+            BuildArrivalMessage(
+                GetDefinition(resultType),
+                faction,
+                values,
+                overlayImagePath: overlayImagePath,
+                officerVoicePath: officerVoicePath
+            );
+
+        private MessageRequestedResult BuildArrivalMessage(
+            MessageDefinition definition,
+            Faction faction,
+            Dictionary<string, string> values,
+            string imageOverride = null,
+            string overlayImagePath = null,
+            string officerVoicePath = null
+        )
+        {
+            MessageRequestedResult message = _templateBuilder.Build(
+                definition,
+                faction,
+                values,
+                imageOverride: imageOverride,
+                overlayImagePath: overlayImagePath,
+                officerVoicePath: officerVoicePath
+            );
+            return WithAdvisorNotification(
+                message,
+                AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
+            );
+        }
+
+        private static (string Owner, string Destination, string Group) Key(
+            IGameEntity unit,
+            UnitArrivedResult arrival
+        ) =>
+            (
+                (unit as ISceneNode)?.GetOwnerInstanceID(),
+                arrival.Destination?.InstanceID,
+                string.IsNullOrEmpty(arrival.MovementGroupID)
+                    ? unit.InstanceID
+                    : arrival.MovementGroupID
+            );
+
+        private static void AddGroup<T>(
+            IDictionary<(string Owner, string Destination, string Group), List<T>> groups,
+            IDictionary<(string Owner, string Destination, string Group), Planet> destinations,
+            (string Owner, string Destination, string Group) key,
+            T item,
+            Planet destination
+        )
+        {
+            if (!groups.TryGetValue(key, out List<T> items))
+            {
+                items = new List<T>();
+                groups.Add(key, items);
+                destinations.Add(key, destination);
+            }
+            items.Add(item);
+        }
+
+        private static void SetArrivalLocation(
+            MessageRequestedResult message,
+            Planet planet,
+            ISceneNode target
+        )
+        {
+            if (message == null)
+                return;
+            message.EventLocationInstanceID = planet?.InstanceID;
+            message.NavigationTargetInstanceID = (target ?? planet)?.InstanceID;
+        }
+
+        private void AddArrivalDelivery(
+            ICollection<MessageRequestedResult> deliveries,
+            Faction faction,
+            MessageRequestedResult message
+        ) => AddDelivery(deliveries, faction, message);
+
+        private static Faction GetArrivalFaction(GameRoot game, string ownerID) =>
+            string.IsNullOrEmpty(ownerID)
+                ? null
+                : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == ownerID);
+    }
+    #endregion
+    #region MessageFactory.Blockades
+    /// <summary>
+    /// Translates blockade and evacuation results into faction reports.
+    /// </summary>
+    public partial class MessageFactory
+    {
+        private void AddBlockadeMessages(
+            IEnumerable<BlockadeChangedResult> blockadeResults,
+            IEnumerable<EvacuationLossesResult> evacuationResults,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (BlockadeChangedResult result in blockadeResults)
+            {
+                if (!result.Blockaded)
+                    continue;
+                Faction blockadingFaction = GetBlockadeFaction(
+                    game,
+                    result.BlockadingFleet?.GetOwnerInstanceID()
+                );
+                Faction targetFaction = GetBlockadeFaction(game, result.Planet?.OwnerInstanceID);
+                AddBlockadeDelivery(
+                    deliveries,
+                    blockadingFaction,
+                    result,
+                    targetFaction,
+                    MessageResultType.BlockadeInitiated
+                );
+                if (targetFaction?.InstanceID != blockadingFaction?.InstanceID)
+                {
+                    AddBlockadeDelivery(
+                        deliveries,
+                        targetFaction,
+                        result,
+                        blockadingFaction,
+                        MessageResultType.BlockadeDetected
+                    );
+                }
+            }
+
+            foreach (EvacuationLossesResult result in evacuationResults)
+            {
+                if (result == null)
+                    continue;
+                MessageDefinition definition = GetDefinition(MessageResultType.EvacuationLosses);
+                MessageRequestedResult message = BuildBlockadeMessage(
+                    definition,
+                    result.Faction,
+                    new Dictionary<string, string>
+                    {
+                        { "system", result.Location?.GetDisplayName() ?? string.Empty },
+                        { "units", FormatLostUnits(result) },
+                    }
+                );
+                SetBlockadeLocation(message, result.Location, result.Location);
+                AddDelivery(deliveries, result.Faction, message);
+            }
+        }
+
+        private void AddBlockadeDelivery(
+            ICollection<MessageRequestedResult> deliveries,
+            Faction recipient,
+            BlockadeChangedResult result,
+            Faction otherFaction,
+            MessageResultType resultType
+        )
+        {
+            Dictionary<string, string> values = new Dictionary<string, string>
+            {
+                {
+                    "faction",
+                    (
+                        resultType == MessageResultType.BlockadeInitiated ? recipient : otherFaction
+                    )?.GetDisplayName() ?? string.Empty
+                },
+                { "fleet", result.BlockadingFleet?.GetDisplayName() ?? string.Empty },
+                { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+            };
+            if (resultType == MessageResultType.BlockadeInitiated)
+                values["target"] = otherFaction?.GetDisplayName() ?? string.Empty;
+
+            MessageDefinition definition = GetDefinition(resultType);
+            MessageRequestedResult message = BuildBlockadeMessage(
+                definition,
+                recipient,
+                values,
+                resultType == MessageResultType.BlockadeInitiated ? otherFaction : null
+            );
+            SetBlockadeLocation(message, result.Planet, result.BlockadingFleet);
+            AddDelivery(deliveries, recipient, message);
+        }
+
+        private MessageRequestedResult BuildBlockadeMessage(
+            MessageDefinition definition,
+            Faction recipient,
+            Dictionary<string, string> values,
+            Faction imageFaction = null
+        )
+        {
+            MessageRequestedResult message = _templateBuilder.Build(
+                definition,
+                recipient,
+                values,
+                imageFaction
+            );
+            return WithAdvisorNotification(
+                message,
+                AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
+            );
+        }
+
+        private static void SetBlockadeLocation(
+            MessageRequestedResult message,
+            ISceneNode planet,
+            ISceneNode target
+        )
+        {
+            if (message == null)
+                return;
+            message.EventLocationInstanceID = planet?.InstanceID;
+            message.NavigationTargetInstanceID = (target ?? planet)?.InstanceID;
+        }
+
+        private static string FormatLostUnits(EvacuationLossesResult result)
+        {
+            IEnumerable<IGameEntity> units = result
+                .LostShips.Cast<IGameEntity>()
+                .Concat(result.LostStarfighters)
+                .Concat(result.LostRegiments);
+            return string.Join(
+                "\n",
+                units
+                    .Select(unit => unit?.GetDisplayName() ?? string.Empty)
+                    .Where(name => name.Length > 0)
+            );
+        }
+
+        private static Faction GetBlockadeFaction(GameRoot game, string instanceID) =>
+            string.IsNullOrEmpty(instanceID)
+                ? null
+                : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
+    }
+    #endregion
+    #region MessageFactory.Combat
+    /// <summary>
+    /// Translates space combat, bombardment, and planetary assault results into reports.
+    /// </summary>
+    public partial class MessageFactory
+    {
+        private void AddCombatMessages(
+            IEnumerable<SpaceCombatResult> battles,
+            IEnumerable<BombardmentResult> bombardments,
+            IEnumerable<PlanetaryAssaultResult> assaults,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (SpaceCombatResult result in battles)
+            {
+                Faction attacker = GetCombatFaction(game, GetOwnerID(result, CombatSide.Attacker));
+                Faction defender = GetCombatFaction(game, GetOwnerID(result, CombatSide.Defender));
+                AddCombatDelivery(
+                    deliveries,
+                    attacker,
+                    CreateSpaceBattle(attacker, result, defender, game)
+                );
+                if (defender?.InstanceID != attacker?.InstanceID)
+                    AddCombatDelivery(
+                        deliveries,
+                        defender,
+                        CreateSpaceBattle(defender, result, attacker, game)
+                    );
+            }
+
+            foreach (BombardmentResult result in bombardments)
+            {
+                if (result?.AttackingFaction == null || result.Planet == null)
+                    continue;
+                Faction defender =
+                    result.OwnershipChange?.PreviousOwner
+                    ?? GetCombatFaction(game, result.Planet.OwnerInstanceID);
+                AddCombatDelivery(
+                    deliveries,
+                    result.AttackingFaction,
+                    CreateBombardment(result.AttackingFaction, result, defender)
+                );
+                if (defender?.InstanceID != result.AttackingFaction.InstanceID)
+                    AddCombatDelivery(
+                        deliveries,
+                        defender,
+                        CreateBombardment(defender, result, defender)
+                    );
+            }
+
+            foreach (PlanetaryAssaultResult result in assaults)
+            {
+                if (result?.AttackingFaction == null || result.Planet == null)
+                    continue;
+                Faction defender =
+                    result.OwnershipChange?.PreviousOwner
+                    ?? GetCombatFaction(game, result.Planet.OwnerInstanceID);
+                AddCombatDelivery(
+                    deliveries,
+                    result.AttackingFaction,
+                    CreateAssault(result.AttackingFaction, result, defender)
+                );
+                if (defender?.InstanceID != result.AttackingFaction.InstanceID)
+                    AddCombatDelivery(
+                        deliveries,
+                        defender,
+                        CreateAssault(defender, result, defender)
+                    );
+            }
+        }
+
+        private MessageRequestedResult CreateSpaceBattle(
+            Faction faction,
+            SpaceCombatResult result,
+            Faction opponent,
+            GameRoot game
+        )
+        {
+            if (result == null)
+                return null;
+            MessageResultOutcome outcome = GetOutcome(faction, result);
+            if (outcome == MessageResultOutcome.None)
+                return null;
+
+            MessageDefinition definition = GetDefinition(MessageResultType.SpaceBattle, outcome);
+            Dictionary<string, string> values = new Dictionary<string, string>
+            {
+                { "faction", faction?.GetDisplayName() ?? string.Empty },
+                { "opponent", opponent?.GetDisplayName() ?? string.Empty },
+                { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                { "factionOutcome", GetSideOutcome(faction, result).ToString() },
+                { "opponentOutcome", GetSideOutcome(opponent, result).ToString() },
+                {
+                    "retreatSystem",
+                    GetPlanetName(game, GetRetreatPlanetInstanceID(faction, result))
+                },
+                {
+                    "opponentRetreatSystem",
+                    GetPlanetName(game, GetRetreatPlanetInstanceID(opponent, result))
+                },
+            };
+            MessageRequestedResult message = BuildCombatMessage(definition, faction, values);
+            SetCombatLocation(message, result.Planet, GetFleet(faction, result));
+            return message;
+        }
+
+        private MessageRequestedResult CreateBombardment(
+            Faction faction,
+            BombardmentResult result,
+            Faction targetFaction
+        )
+        {
+            MessageDefinition definition = GetDefinition(
+                MessageResultType.Bombardment,
+                GetBombardmentOutcome(result),
+                GetBombardmentOwnership(result),
+                planetDestroyed: result.PlanetDestroyed
+            );
+            MessageRequestedResult message = BuildCombatMessage(
+                definition,
+                faction,
+                CombatValues(result.AttackingFaction, targetFaction, result.Planet)
+            );
+            WithAdvisorNotification(
+                message,
+                faction?.InstanceID == result.AttackingFaction?.InstanceID
+                    ? AdvisorNotificationType.None
+                    : AdvisorNotificationType.Bombardment
+            );
+            SetCombatLocation(message, result.Planet, result.Planet);
+            return message;
+        }
+
+        private MessageRequestedResult CreateAssault(
+            Faction faction,
+            PlanetaryAssaultResult result,
+            Faction targetFaction
+        )
+        {
+            MessageDefinition definition = GetDefinition(
+                MessageResultType.PlanetaryAssault,
+                result.Success ? MessageResultOutcome.Success : MessageResultOutcome.Failed,
+                GetAssaultOwnership(result)
+            );
+            MessageRequestedResult message = BuildCombatMessage(
+                definition,
+                faction,
+                CombatValues(result.AttackingFaction, targetFaction, result.Planet),
+                result.AttackingFaction
+            );
+            WithAdvisorNotification(
+                message,
+                faction?.InstanceID == result.AttackingFaction?.InstanceID
+                    ? AdvisorNotificationType.None
+                    : AdvisorNotificationType.PlanetaryAssault
+            );
+            SetCombatLocation(message, result.Planet, result.Planet);
+            return message;
+        }
+
+        private MessageRequestedResult BuildCombatMessage(
+            MessageDefinition definition,
+            Faction faction,
+            Dictionary<string, string> values,
+            Faction imageFaction = null
+        )
+        {
+            MessageRequestedResult message = _templateBuilder.Build(
+                definition,
+                faction,
+                values,
+                imageFaction
+            );
+            return WithAdvisorNotification(
+                message,
+                AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
+            );
+        }
+
+        private static MessageResultOutcome GetOutcome(Faction faction, SpaceCombatResult result)
+        {
+            if (result.Winner == CombatSide.Draw)
+                return MessageResultOutcome.Stalemate;
+            if (faction?.InstanceID == GetOwnerID(result, CombatSide.Attacker))
+                return result.Winner == CombatSide.Attacker
+                    ? MessageResultOutcome.Victory
+                    : MessageResultOutcome.Defeat;
+            if (faction?.InstanceID == GetOwnerID(result, CombatSide.Defender))
+                return result.Winner == CombatSide.Defender
+                    ? MessageResultOutcome.Victory
+                    : MessageResultOutcome.Defeat;
+            return MessageResultOutcome.None;
+        }
+
+        private static CombatSide GetSide(Faction faction, SpaceCombatResult result)
+        {
+            if (faction?.InstanceID == GetOwnerID(result, CombatSide.Attacker))
+                return CombatSide.Attacker;
+            if (faction?.InstanceID == GetOwnerID(result, CombatSide.Defender))
+                return CombatSide.Defender;
+            return CombatSide.Draw;
+        }
+
+        private static SpaceCombatSideOutcome GetSideOutcome(
+            Faction faction,
+            SpaceCombatResult result
+        ) =>
+            GetSide(faction, result) switch
+            {
+                CombatSide.Attacker => result.AttackerOutcome,
+                CombatSide.Defender => result.DefenderOutcome,
+                _ => SpaceCombatSideOutcome.Unknown,
+            };
+
+        /// <summary>Returns the recorded withdrawal destination for one battle perspective.</summary>
+        private static string GetRetreatPlanetInstanceID(
+            Faction faction,
+            SpaceCombatResult result
+        ) =>
+            GetSide(faction, result) switch
+            {
+                CombatSide.Attacker => result.AttackerRetreatPlanetInstanceID,
+                CombatSide.Defender => result.DefenderRetreatPlanetInstanceID,
+                _ => null,
+            };
+
+        /// <summary>Resolves a recorded planet ID for display without inferring combat state.</summary>
+        private static string GetPlanetName(GameRoot game, string planetInstanceID) =>
+            game.GetSceneNodeByInstanceID<Planet>(planetInstanceID)?.GetDisplayName()
+            ?? string.Empty;
+
+        private static Fleet GetFleet(Faction faction, SpaceCombatResult result)
+        {
+            if (faction?.InstanceID == GetOwnerID(result, CombatSide.Attacker))
+                return result.AttackerFleet;
+            return faction?.InstanceID == GetOwnerID(result, CombatSide.Defender)
+                ? result.DefenderFleet
+                : null;
+        }
+
+        private static string GetOwnerID(SpaceCombatResult result, CombatSide side) =>
+            side switch
+            {
+                CombatSide.Attacker => string.IsNullOrEmpty(result?.AttackerOwnerInstanceID)
+                    ? result?.AttackerFleet?.GetOwnerInstanceID()
+                    : result.AttackerOwnerInstanceID,
+                CombatSide.Defender => string.IsNullOrEmpty(result?.DefenderOwnerInstanceID)
+                    ? result?.DefenderFleet?.GetOwnerInstanceID()
+                    : result.DefenderOwnerInstanceID,
+                _ => null,
+            };
+
+        private static MessageResultOutcome GetBombardmentOutcome(BombardmentResult result)
+        {
+            if (
+                result.PlanetDestroyed
+                || result.HeadquartersDestroyed
+                || result.EnergyCapacityDamage > 0
+                || result.AllocatedEnergyDamage > 0
+                || result.DestroyedBuildings.Any()
+                || result.DestroyedRegiments.Any()
+            )
+                return MessageResultOutcome.TargetLosses;
+            return result.DestroyedCapitalShips.Any() || result.AttackerShipDamage.Any()
+                ? MessageResultOutcome.AttackerLosses
+                : MessageResultOutcome.NoLosses;
+        }
+
+        private static MessagePlanetOwnership GetBombardmentOwnership(BombardmentResult result) =>
+            result?.OwnershipChange != null
+                ? Ownership(result.OwnershipChange.PreviousOwner?.InstanceID)
+                : Ownership(result?.Planet?.OwnerInstanceID);
+
+        private static MessagePlanetOwnership GetAssaultOwnership(PlanetaryAssaultResult result) =>
+            result?.OwnershipChange != null
+                ? Ownership(result.OwnershipChange.PreviousOwner?.InstanceID)
+                : Ownership(result?.Planet?.OwnerInstanceID);
+
+        private static MessagePlanetOwnership Ownership(string ownerID) =>
+            string.IsNullOrEmpty(ownerID)
+                ? MessagePlanetOwnership.Neutral
+                : MessagePlanetOwnership.Owned;
+
+        private static Dictionary<string, string> CombatValues(
+            Faction attacker,
+            Faction target,
+            Planet planet
+        ) =>
+            new Dictionary<string, string>
+            {
+                { "faction", attacker?.GetDisplayName() ?? string.Empty },
+                { "target", target?.GetDisplayName() ?? string.Empty },
+                { "system", planet?.GetDisplayName() ?? string.Empty },
+            };
+
+        private static void SetCombatLocation(
+            MessageRequestedResult message,
+            Planet planet,
+            IGameEntity target
+        )
+        {
+            if (message == null)
+                return;
+            message.EventLocationInstanceID = planet?.InstanceID;
+            message.NavigationTargetInstanceID = target?.InstanceID ?? planet?.InstanceID;
+        }
+
+        private void AddCombatDelivery(
+            ICollection<MessageRequestedResult> deliveries,
+            Faction faction,
+            MessageRequestedResult message
+        ) => AddDelivery(deliveries, faction, message);
+
+        private static Faction GetCombatFaction(GameRoot game, string instanceID) =>
+            string.IsNullOrEmpty(instanceID)
+                ? null
+                : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
+    }
+    #endregion
+    #region MessageFactory.Deployments
+    /// <summary>
+    /// Translates completed deployments and failed facility arrivals into unit reports.
+    /// </summary>
+    public partial class MessageFactory
+    {
+        private void AddDeploymentMessages(
+            IEnumerable<GameObjectDeployedResult> results,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            GameObjectDeployedResult[] deploymentResults = (
+                results ?? Enumerable.Empty<GameObjectDeployedResult>()
+            )
+                .Where(result => result?.GameObject is IManufacturable)
+                .ToArray();
+
+            foreach (
+                GameObjectDeployedResult result in deploymentResults.Where(result =>
+                    result.GameObject is not Regiment
+                )
+            )
+            {
+                IManufacturable unit = (IManufacturable)result.GameObject;
+                ISceneNode node = unit as ISceneNode;
+                Planet destination = node?.GetParentOfType<Planet>();
+                Faction faction = GetDeploymentFaction(game, unit.GetOwnerInstanceID());
+                MessageRequestedResult message = unit is Building building
+                    ? building.Movement == null
+                        ? CreateFacilityMessage(faction, building, destination)
+                        : null
+                    : CreateUnit(faction, unit as IGameEntity, destination);
+                AddDelivery(deliveries, faction, message);
+            }
+
+            var regimentItems = deploymentResults
+                .Where(result => result.GameObject is Regiment)
+                .Select(result =>
+                {
+                    Regiment regiment = (Regiment)result.GameObject;
+                    Planet destination = regiment.GetParentOfType<Planet>();
+                    Faction faction = GetDeploymentFaction(game, regiment.GetOwnerInstanceID());
+                    return new
+                    {
+                        Regiment = regiment,
+                        Result = result,
+                        Destination = destination,
+                        Faction = faction,
+                        Definition = GetDefinition(
+                            MessageResultType.RegimentDeployed,
+                            gameObjectTypeId: regiment.TypeID
+                        ),
+                    };
+                })
+                .Where(item => item.Faction != null && item.Definition != null);
+            foreach (
+                var group in regimentItems.GroupBy(item =>
+                    (
+                        item.Faction.InstanceID,
+                        DestinationInstanceID: item.Destination?.InstanceID,
+                        item.Definition
+                    )
+                )
+            )
+            {
+                var first = group.First();
+                AddDelivery(
+                    deliveries,
+                    first.Faction,
+                    CreateRegiments(
+                        first.Faction,
+                        group.Select(item => item.Regiment),
+                        first.Destination,
+                        first.Definition
+                    )
+                );
+            }
+        }
+
+        private void AddFacilityLossMessages(
+            IEnumerable<GameObjectDestroyedOnArrivalResult> results,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (GameObjectDestroyedOnArrivalResult result in results)
+            {
+                if (result.DestroyedObject is not Building building)
+                    continue;
+                Planet destination = GetDeploymentPlanet(result.Context ?? result.Ref);
+                Faction faction = GetDeploymentFaction(game, building.GetOwnerInstanceID());
+                MessageDefinition definition = GetDefinition(MessageResultType.FacilityLost);
+                MessageRequestedResult message = BuildDeploymentMessage(
+                    definition,
+                    faction,
+                    new Dictionary<string, string>
+                    {
+                        { "item", building.GetDisplayName() ?? string.Empty },
+                        { "system", destination?.GetDisplayName() ?? string.Empty },
+                    }
+                );
+                SetDeploymentLocation(message, destination, destination);
+                AddDelivery(deliveries, faction, message);
+            }
+        }
+
+        public MessageRequestedResult CreateFacilityMessage(
+            Faction faction,
+            Building building,
+            Planet destination
+        )
+        {
+            BuildingType buildingType = building?.BuildingType ?? BuildingType.None;
+            if (buildingType == BuildingType.None)
+                return null;
+            MessageDefinition definition = GetDefinition(
+                MessageResultType.FacilityDeployed,
+                buildingType: buildingType
+            );
+            MessageRequestedResult message = BuildDeploymentMessage(
+                definition,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "item", building.GetDisplayName() ?? string.Empty },
+                    { "system", destination?.GetDisplayName() ?? string.Empty },
+                },
+                imageOverride: building.MessageImagePath
+            );
+            SetDeploymentLocation(message, destination, building);
+            return message;
+        }
+
+        private MessageRequestedResult CreateUnit(
+            Faction faction,
+            IGameEntity unit,
+            Planet destination
+        )
+        {
+            MessageResultType resultType = unit switch
+            {
+                CapitalShip { CanDestroyPlanets: true } => MessageResultType.DeathStarDeployed,
+                CapitalShip => MessageResultType.CapitalShipDeployed,
+                Starfighter => MessageResultType.StarfighterDeployed,
+                Regiment => MessageResultType.RegimentDeployed,
+                _ => MessageResultType.None,
+            };
+            if (resultType == MessageResultType.None)
+                return null;
+            string itemName = unit.GetDisplayName() ?? string.Empty;
+            MessageDefinition definition = GetDefinition(resultType, gameObjectTypeId: unit.TypeID);
+            MessageRequestedResult message = BuildDeploymentMessage(
+                definition,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "item", itemName },
+                    { "type", itemName },
+                    { "system", destination?.GetDisplayName() ?? string.Empty },
+                },
+                imageOverride: unit.EncyclopediaImagePath
+            );
+            SetDeploymentLocation(message, destination, unit as ISceneNode);
+            return message;
+        }
+
+        private MessageRequestedResult CreateRegiments(
+            Faction faction,
+            IEnumerable<Regiment> regiments,
+            Planet destination,
+            MessageDefinition definition
+        )
+        {
+            Regiment[] regimentArray = regiments?.Where(regiment => regiment != null).ToArray();
+            if (regimentArray == null || regimentArray.Length == 0)
+                return null;
+            string firstName = regimentArray[0].GetDisplayName() ?? string.Empty;
+            MessageRequestedResult message = BuildDeploymentMessage(
+                definition,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "item", firstName },
+                    {
+                        "items",
+                        string.Join(
+                            "\n",
+                            regimentArray.Select(regiment => regiment.GetDisplayName())
+                        )
+                    },
+                    { "system", destination?.GetDisplayName() ?? string.Empty },
+                },
+                imageOverride: regimentArray[0].EncyclopediaImagePath
+            );
+            SetDeploymentLocation(message, destination, regimentArray[0]);
+            return message;
+        }
+
+        private MessageRequestedResult BuildDeploymentMessage(
+            MessageDefinition definition,
+            Faction faction,
+            Dictionary<string, string> values,
+            string imageOverride = null
+        )
+        {
+            MessageRequestedResult message = _templateBuilder.Build(
+                definition,
+                faction,
+                values,
+                imageOverride: imageOverride
+            );
+            return WithAdvisorNotification(
+                message,
+                AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
+            );
+        }
+
+        private static Planet GetDeploymentPlanet(IGameEntity entity) =>
+            entity is Planet planet ? planet
+            : entity is ISceneNode node
+                ? node.GetParentOfType<Planet>() ?? node.GetLastParent() as Planet
+            : null;
+
+        private static void SetDeploymentLocation(
+            MessageRequestedResult message,
+            Planet planet,
+            ISceneNode target
+        )
+        {
+            if (message == null)
+                return;
+            message.EventLocationInstanceID = planet?.InstanceID;
+            message.NavigationTargetInstanceID = (target ?? planet)?.InstanceID;
+        }
+
+        private static Faction GetDeploymentFaction(GameRoot game, string instanceID) =>
+            string.IsNullOrEmpty(instanceID)
+                ? null
+                : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
+    }
+    #endregion
+    #region MessageFactory.Economy
+    /// <summary>
+    /// Translates economic simulation results into faction message deliveries.
+    /// </summary>
+    public partial class MessageFactory
+    {
+        private void AddSmugglingMessages(
+            IEnumerable<SmugglingChangedResult> results,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (SmugglingChangedResult result in results)
+            {
+                AddSmugglingDelivery(deliveries, result.Controller, result, false);
+                AddSmugglingDelivery(deliveries, result.Beneficiary, result, true);
+            }
+        }
+
+        private void AddManufacturingMessages(
+            IEnumerable<ManufacturingIdleResult> results,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (ManufacturingIdleResult result in results)
+            {
+                if (result.ManufacturingType == ManufacturingType.None)
+                    continue;
+
+                MessageRequestedResult message = BuildEconomyMessage(
+                    GetDefinition(
+                        MessageResultType.ManufacturingIdle,
+                        manufacturingType: result.ManufacturingType
+                    ),
+                    result.Faction,
+                    new Dictionary<string, string>
+                    {
+                        { "system", result.ProductionPlanet?.GetDisplayName() ?? string.Empty },
+                    }
+                );
+                if (message != null)
+                {
+                    message.EventLocationInstanceID = result.ProductionPlanet?.InstanceID;
+                    message.NavigationTargetInstanceID = result.ProductionPlanet?.InstanceID;
+                }
+                WithAdvisorNotification(message, AdvisorNotificationType.Manufacturing);
+                AddDelivery(deliveries, result.Faction, message);
+            }
+        }
+
+        private void AddSmugglingDelivery(
+            ICollection<MessageRequestedResult> deliveries,
+            Faction recipient,
+            SmugglingChangedResult result,
+            bool receivesBenefits
+        )
+        {
+            bool active = result.NewPercent != 0;
+            MessageResultType resultType = (receivesBenefits, active) switch
+            {
+                (false, true) => MessageResultType.SmugglingLosses,
+                (false, false) => MessageResultType.SmugglingLossesEnded,
+                (true, true) => MessageResultType.SmugglingBenefits,
+                _ => MessageResultType.SmugglingBenefitsEnded,
+            };
+            MessageRequestedResult message = BuildEconomyMessage(
+                GetDefinition(resultType),
+                recipient,
+                new Dictionary<string, string>
+                {
+                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                }
+            );
+            if (message != null)
+            {
+                message.EventLocationInstanceID = result.Planet?.InstanceID;
+                message.NavigationTargetInstanceID = result.Planet?.InstanceID;
+            }
+            AddDelivery(deliveries, recipient, message);
+        }
+
+        private MessageRequestedResult BuildEconomyMessage(
+            MessageDefinition definition,
+            Faction faction,
+            Dictionary<string, string> values
+        )
+        {
+            MessageRequestedResult message = _templateBuilder.Build(definition, faction, values);
+            return WithAdvisorNotification(
+                message,
+                AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
+            );
+        }
+    }
+    #endregion
+    #region MessageFactory.Maintenance
+    /// <summary>
+    /// Groups maintenance losses and translates them into faction reports.
+    /// </summary>
+    public partial class MessageFactory
+    {
+        private void AddMaintenanceMessages(
+            IEnumerable<GameObjectAutoscrappedResult> results,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            MessageDefinition definition = GetDefinition(MessageResultType.MaintenanceAutoscrap);
+            var reportItems = (results ?? Enumerable.Empty<GameObjectAutoscrappedResult>())
+                .Where(result => result != null)
+                .Select(result =>
+                {
+                    Planet location = GetMaintenancePlanet(
+                        result.Context ?? result.Ref ?? result.DestroyedObject
+                    );
+                    Faction faction =
+                        GetOwner(game, result.DestroyedObject)
+                        ?? GetOwner(game, result.Ref)
+                        ?? GetMaintenanceFaction(game, location?.OwnerInstanceID);
+                    return new
+                    {
+                        Result = result,
+                        Location = location,
+                        Faction = faction,
+                    };
+                })
+                .Where(item => item.Faction != null && definition != null);
+
+            foreach (
+                var group in reportItems.GroupBy(item =>
+                    (item.Faction.InstanceID, LocationInstanceID: item.Location?.InstanceID)
+                )
+            )
+            {
+                var first = group.First();
+                GameObjectAutoscrappedResult[] groupedResults = group
+                    .Select(item => item.Result)
+                    .ToArray();
+                MessageRequestedResult message = _templateBuilder.Build(
+                    definition,
+                    first.Faction,
+                    new Dictionary<string, string>
+                    {
+                        {
+                            "item",
+                            groupedResults[0].DestroyedObject?.GetDisplayName() ?? string.Empty
+                        },
+                        {
+                            "items",
+                            string.Join(
+                                "\n",
+                                groupedResults.Select(result =>
+                                    result.DestroyedObject?.GetDisplayName() ?? string.Empty
+                                )
+                            )
+                        },
+                        { "system", first.Location?.GetDisplayName() ?? string.Empty },
+                    }
+                );
+                if (message != null)
+                {
+                    message.EventLocationInstanceID = first.Location?.InstanceID;
+                    message.NavigationTargetInstanceID =
+                        (groupedResults[0].DestroyedObject as ISceneNode)?.InstanceID
+                        ?? first.Location?.InstanceID;
+                }
+                WithAdvisorNotification(
+                    message,
+                    AdvisorNotificationPolicy.GetDefault(definition.ResultType)
+                );
+                AddDelivery(deliveries, first.Faction, message);
+            }
+        }
+
+        private static Planet GetMaintenancePlanet(IGameEntity entity)
+        {
+            if (entity is Planet planet)
+                return planet;
+            return entity is ISceneNode node
+                ? node.GetParentOfType<Planet>() ?? node.GetLastParent() as Planet
+                : null;
+        }
+
+        private static Faction GetOwner(GameRoot game, IGameEntity entity) =>
+            entity is ISceneNode node
+                ? GetMaintenanceFaction(game, node.GetOwnerInstanceID())
+                : null;
+
+        private static Faction GetMaintenanceFaction(GameRoot game, string instanceID) =>
+            string.IsNullOrEmpty(instanceID)
+                ? null
+                : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
+    }
+    #endregion
+    #region MessageFactory.Politics
+    /// <summary>
+    /// Translates uprising and popular-support ownership results into faction messages.
+    /// </summary>
+    public partial class MessageFactory
+    {
+        private void AddUprisingMessages(
+            IEnumerable<PlanetNearUprisingResult> nearResults,
+            IEnumerable<PlanetUprisingStartedResult> startedResults,
+            IEnumerable<PlanetUprisingEndedResult> endedResults,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (PlanetNearUprisingResult result in nearResults)
+            {
+                Faction controller = GetPoliticalFaction(game, result.Planet?.OwnerInstanceID);
+                AddPoliticalDelivery(
+                    deliveries,
+                    controller,
+                    CreateNearUprising(controller, result)
+                );
+            }
+
+            foreach (PlanetUprisingStartedResult result in startedResults)
+            {
+                Faction controller = GetPoliticalFaction(game, result.Planet?.OwnerInstanceID);
+                AddPoliticalDelivery(
+                    deliveries,
+                    controller,
+                    CreateUprisingStarted(controller, result, controller)
+                );
+                if (result.InstigatorFaction?.InstanceID != controller?.InstanceID)
+                {
+                    AddPoliticalDelivery(
+                        deliveries,
+                        result.InstigatorFaction,
+                        CreateUprisingStarted(result.InstigatorFaction, result, controller)
+                    );
+                }
+            }
+
+            foreach (PlanetUprisingEndedResult result in endedResults)
+            {
+                Faction controller =
+                    GetPoliticalFaction(game, result.Planet?.OwnerInstanceID) ?? result.Faction;
+                AddPoliticalDelivery(
+                    deliveries,
+                    controller,
+                    CreateUprisingEnded(controller, result, controller)
+                );
+            }
+        }
+
+        private void AddOwnershipMessages(
+            IEnumerable<PlanetOwnershipChangedResult> results,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (PlanetOwnershipChangedResult result in results)
+            {
+                if (result.Reason != PlanetOwnershipChangeReason.PopularSupport)
+                    continue;
+
+                foreach (Faction recipient in GetRecipients(result, game))
+                {
+                    MessageRequestedResult message =
+                        recipient == result.NewOwner ? CreateJoined(result)
+                        : result.NewOwner != null ? CreateJoinedEnemy(result, recipient)
+                        : CreateNeutrality(result, recipient);
+                    AddPoliticalDelivery(deliveries, recipient, message);
+                }
+            }
+        }
+
+        private MessageRequestedResult CreateNearUprising(
+            Faction faction,
+            PlanetNearUprisingResult result
+        )
+        {
+            if (result == null)
+                return null;
+            return BuildPoliticalMessage(
+                MessageResultType.NearUprising,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                },
+                result.Planet?.InstanceID,
+                AdvisorNotificationType.NegativePopularSupport
+            );
+        }
+
+        private MessageRequestedResult CreateUprisingStarted(
+            Faction faction,
+            PlanetUprisingStartedResult result,
+            Faction controller
+        )
+        {
+            if (result == null)
+                return null;
+            AdvisorNotificationType notification =
+                faction?.InstanceID == controller?.InstanceID
+                    ? AdvisorNotificationType.NegativePopularSupport
+                    : AdvisorNotificationType.PositivePopularSupport;
+            return BuildPoliticalMessage(
+                MessageResultType.UprisingStarted,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "faction", controller?.GetDisplayName() ?? string.Empty },
+                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                },
+                result.Planet?.InstanceID,
+                notification
+            );
+        }
+
+        private MessageRequestedResult CreateUprisingEnded(
+            Faction faction,
+            PlanetUprisingEndedResult result,
+            Faction controller
+        )
+        {
+            if (result == null)
+                return null;
+            return BuildPoliticalMessage(
+                MessageResultType.UprisingEnded,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "faction", controller?.GetDisplayName() ?? string.Empty },
+                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                },
+                result.Planet?.InstanceID,
+                AdvisorNotificationType.PositivePopularSupport,
+                controller
+            );
+        }
+
+        private MessageRequestedResult CreateJoined(PlanetOwnershipChangedResult result)
+        {
+            if (result?.NewOwner == null)
+                return null;
+            return BuildPoliticalMessage(
+                MessageResultType.PlanetJoinedBySupport,
+                result.NewOwner,
+                Values(result.NewOwner, result.Planet?.GetDisplayName()),
+                result.Planet?.InstanceID,
+                AdvisorNotificationType.PositivePopularSupport
+            );
+        }
+
+        private MessageRequestedResult CreateJoinedEnemy(
+            PlanetOwnershipChangedResult result,
+            Faction recipient
+        )
+        {
+            if (
+                result?.NewOwner == null
+                || recipient == null
+                || recipient.InstanceID == result.NewOwner.InstanceID
+            )
+                return null;
+            return BuildPoliticalMessage(
+                MessageResultType.PlanetJoinedEnemyBySupport,
+                recipient,
+                Values(result.NewOwner, result.Planet?.GetDisplayName()),
+                result.Planet?.InstanceID,
+                AdvisorNotificationType.NegativePopularSupport,
+                result.NewOwner
+            );
+        }
+
+        private MessageRequestedResult CreateNeutrality(
+            PlanetOwnershipChangedResult result,
+            Faction recipient
+        )
+        {
+            if (result?.PreviousOwner == null || result.NewOwner != null || recipient == null)
+                return null;
+            return BuildPoliticalMessage(
+                MessageResultType.PlanetDeclaredNeutralityBySupport,
+                recipient,
+                Values(result.PreviousOwner, result.Planet?.GetDisplayName()),
+                result.Planet?.InstanceID,
+                AdvisorNotificationType.NegativePopularSupport
+            );
+        }
+
+        private MessageRequestedResult BuildPoliticalMessage(
+            MessageResultType resultType,
+            Faction faction,
+            Dictionary<string, string> values,
+            string planetInstanceID,
+            AdvisorNotificationType notification,
+            Faction imageFaction = null
+        )
+        {
+            MessageDefinition definition = GetDefinition(resultType);
+            MessageRequestedResult message = _templateBuilder.Build(
+                definition,
+                faction,
+                values,
+                imageFaction
+            );
+            if (message != null)
+            {
+                message.EventLocationInstanceID = planetInstanceID;
+                message.NavigationTargetInstanceID = planetInstanceID;
+            }
+            if (message != null)
+                message.NotificationType = notification;
+            return message;
+        }
+
+        private void AddPoliticalDelivery(
+            ICollection<MessageRequestedResult> deliveries,
+            Faction faction,
+            MessageRequestedResult message
+        ) => AddDelivery(deliveries, faction, message);
+
+        private static Dictionary<string, string> Values(Faction faction, string system) =>
+            new Dictionary<string, string>
+            {
+                { "faction", faction?.GetDisplayName() ?? string.Empty },
+                { "system", system ?? string.Empty },
+            };
+
+        private static IEnumerable<Faction> GetRecipients(
+            PlanetOwnershipChangedResult result,
+            GameRoot game
+        )
+        {
+            HashSet<string> recipientIds = new HashSet<string>(
+                result.ObserverFactionInstanceIDs ?? Enumerable.Empty<string>()
+            );
+            if (result.PreviousOwner != null)
+                recipientIds.Add(result.PreviousOwner.InstanceID);
+            if (result.NewOwner != null)
+                recipientIds.Add(result.NewOwner.InstanceID);
+            return game.GetFactions().Where(faction => recipientIds.Contains(faction.InstanceID));
+        }
+
+        private static Faction GetPoliticalFaction(GameRoot game, string instanceID) =>
+            string.IsNullOrEmpty(instanceID)
+                ? null
+                : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
+    }
+    #endregion
+    #region MessageFactory.Repairs
+    /// <summary>
+    /// Translates completed ship repairs into faction message deliveries.
+    /// </summary>
+    public partial class MessageFactory
+    {
+        private void AddRepairMessages(
+            IEnumerable<ShipHullDamageResult> shipResults,
+            IEnumerable<FighterDamageResult> fighterResults,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (ShipHullDamageResult result in shipResults)
+            {
+                if (result?.Ship == null || result.Ship.IsDamaged())
+                    continue;
+                AddRepairDelivery(
+                    deliveries,
+                    game,
+                    result.Ship,
+                    MessageResultType.CapitalShipRepaired
+                );
+            }
+
+            foreach (FighterDamageResult result in fighterResults)
+            {
+                if (result?.Fighter == null || result.Fighter.HasLosses())
+                    continue;
+                AddRepairDelivery(
+                    deliveries,
+                    game,
+                    result.Fighter,
+                    MessageResultType.StarfighterRepaired
+                );
+            }
+        }
+
+        private void AddRepairDelivery(
+            ICollection<MessageRequestedResult> deliveries,
+            GameRoot game,
+            ISceneNode unit,
+            MessageResultType resultType
+        )
+        {
+            Faction faction = game.GetFactions()
+                .FirstOrDefault(candidate => candidate.InstanceID == unit.GetOwnerInstanceID());
+            MessageDefinition definition = GetDefinition(resultType);
+            MessageRequestedResult message = _templateBuilder.Build(
+                definition,
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "item", unit.GetDisplayName() ?? string.Empty },
+                    { "attachment", unit.GetParent()?.GetDisplayName() ?? string.Empty },
+                }
+            );
+            if (message != null)
+            {
+                message.EventLocationInstanceID = unit.GetParentOfType<Planet>()?.InstanceID;
+                message.NavigationTargetInstanceID = unit.InstanceID;
+            }
+            WithAdvisorNotification(
+                message,
+                AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
+            );
+            AddDelivery(deliveries, faction, message);
+        }
+    }
+    #endregion
+    #region MessageFactory.Research
+    /// <summary>
+    /// Translates research results into faction message deliveries.
+    /// </summary>
+    public partial class MessageFactory
+    {
+        private void AddResearchMessages(
+            IEnumerable<ResearchOrderedResult> completedResults,
+            IEnumerable<ResearchExhaustedResult> exhaustedResults,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (ResearchOrderedResult result in completedResults)
+            {
+                if (result?.Technology == null)
+                    continue;
+
+                MessageRequestedResult message = BuildResearchMessage(
+                    GetDefinition(
+                        MessageResultType.ResearchComplete,
+                        discipline: result.Discipline
+                    ),
+                    result.Faction,
+                    new Dictionary<string, string>
+                    {
+                        { "item", GetResearchDisplayName(result.Technology.GetReference()) },
+                    }
+                );
+                AddDelivery(deliveries, result.Faction, message);
+            }
+
+            foreach (ResearchExhaustedResult result in exhaustedResults)
+            {
+                if (result == null)
+                    continue;
+
+                MessageRequestedResult message = BuildResearchMessage(
+                    GetDefinition(
+                        MessageResultType.ResearchExhausted,
+                        discipline: result.Discipline
+                    ),
+                    result.Faction,
+                    new Dictionary<string, string>()
+                );
+                AddDelivery(deliveries, result.Faction, message);
+            }
+        }
+
+        private MessageRequestedResult BuildResearchMessage(
+            MessageDefinition definition,
+            Faction faction,
+            Dictionary<string, string> values
+        )
+        {
+            MessageRequestedResult message = _templateBuilder.Build(definition, faction, values);
+            return WithAdvisorNotification(
+                message,
+                AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
+            );
+        }
+
+        private static string GetResearchDisplayName(IGameEntity entity) =>
+            entity?.GetDisplayName() ?? string.Empty;
+    }
+    #endregion
+    #region MessageFactory.Strategy
+    /// <summary>
+    /// Translates strategic objectives and planet incidents into faction reports.
+    /// </summary>
+    public partial class MessageFactory
+    {
+        private void AddObjectiveMessages(
+            IEnumerable<PlanetOwnershipChangedResult> ownershipResults,
+            IEnumerable<HeadquartersDestroyedResult> headquartersResults,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (PlanetOwnershipChangedResult result in ownershipResults)
+            {
+                MessageDefinition definition = Find(
+                    MessageResultType.PlanetCaptured,
+                    result.Planet?.InstanceID,
+                    result.PreviousOwner?.InstanceID,
+                    result.NewOwner?.InstanceID,
+                    null
+                );
+                if (definition == null)
+                    continue;
+
+                foreach (Faction recipient in GetOwnershipRecipients(result, game))
+                {
+                    MessageRequestedResult message = BuildStrategicMessage(
+                        definition,
+                        recipient,
+                        new Dictionary<string, string>
+                        {
+                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                            {
+                                "previousFaction",
+                                result.PreviousOwner?.GetDisplayName() ?? string.Empty
+                            },
+                            { "newFaction", result.NewOwner?.GetDisplayName() ?? string.Empty },
+                        },
+                        result.NewOwner
+                    );
+                    SetStrategicLocation(message, result.Planet, result.Planet);
+                    AddDelivery(deliveries, recipient, message);
+                }
+            }
+
+            foreach (HeadquartersDestroyedResult result in headquartersResults)
+            {
+                MessageDefinition definition = Find(
+                    MessageResultType.HeadquartersDestroyed,
+                    result.Planet?.InstanceID,
+                    null,
+                    null,
+                    result.Defender?.InstanceID
+                );
+                if (definition == null)
+                    continue;
+
+                foreach (
+                    Faction recipient in new[] { result.Attacker, result.Defender }
+                        .Where(faction => faction != null)
+                        .Distinct()
+                )
+                {
+                    MessageRequestedResult message = BuildStrategicMessage(
+                        definition,
+                        recipient,
+                        new Dictionary<string, string>
+                        {
+                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                            { "attacker", result.Attacker?.GetDisplayName() ?? string.Empty },
+                            { "defender", result.Defender?.GetDisplayName() ?? string.Empty },
+                        },
+                        result.Attacker
+                    );
+                    SetStrategicLocation(message, result.Planet, result.Headquarters);
+                    AddDelivery(deliveries, recipient, message);
+                }
+            }
+        }
+
+        private void AddIncidentMessages(
+            IEnumerable<PlanetIncidentResult> results,
+            GameRoot game,
+            ICollection<MessageRequestedResult> deliveries
+        )
+        {
+            foreach (PlanetIncidentResult result in results)
+            {
+                Faction recipient = GetStrategicFaction(game, result.Planet?.OwnerInstanceID);
+                if (recipient == null)
+                    continue;
+                MessageResultType resultType = result.IncidentType switch
+                {
+                    PlanetIncidentType.Disaster => MessageResultType.NaturalDisaster,
+                    PlanetIncidentType.Resource when result.NewValue > result.OldValue =>
+                        MessageResultType.NewResources,
+                    PlanetIncidentType.Resource => MessageResultType.ResourcesDepleted,
+                    _ => MessageResultType.None,
+                };
+                if (resultType == MessageResultType.None)
+                    continue;
+
+                bool hasDestroyedObjects = result.DestroyedObjects.Count > 0;
+                MessageDefinition definition = _definitions.FirstOrDefault(candidate =>
+                    candidate.ResultType == resultType
+                    && (
+                        resultType == MessageResultType.NaturalDisaster
+                            ? candidate.HasDestroyedObjects == hasDestroyedObjects
+                            : candidate.PlanetChange == result.ChangedStat
+                    )
+                );
+                if (definition == null)
+                    continue;
+
+                MessageRequestedResult message = BuildStrategicMessage(
+                    definition,
+                    recipient,
+                    new Dictionary<string, string>
+                    {
+                        { "system", result.Planet.GetDisplayName() },
+                        {
+                            "destroyedObjects",
+                            string.Join(
+                                Environment.NewLine,
+                                result.DestroyedObjects.Select(entity => entity.GetDisplayName())
+                            )
+                        },
+                    },
+                    recipient
+                );
+                SetStrategicLocation(
+                    message,
+                    result.Planet,
+                    result.DestroyedObjects.OfType<ISceneNode>().FirstOrDefault()
+                );
+                AddDelivery(deliveries, recipient, message);
+            }
+        }
+
+        private MessageDefinition Find(
+            MessageResultType resultType,
+            string planetInstanceID,
+            string previousOwnerInstanceID,
+            string newOwnerInstanceID,
+            string factionInstanceID
+        ) =>
+            _definitions.FirstOrDefault(definition =>
+                definition.ResultType == resultType
+                && Matches(definition.PlanetInstanceID, planetInstanceID)
+                && Matches(definition.PreviousOwnerInstanceID, previousOwnerInstanceID)
+                && Matches(definition.NewOwnerInstanceID, newOwnerInstanceID)
+                && Matches(definition.FactionInstanceID, factionInstanceID)
+            );
+
+        private MessageRequestedResult BuildStrategicMessage(
+            MessageDefinition definition,
+            Faction recipient,
+            Dictionary<string, string> values,
+            Faction imageFaction
+        )
+        {
+            MessageRequestedResult message = _templateBuilder.Build(
+                definition,
+                recipient,
+                values,
+                imageFaction
+            );
+            return WithAdvisorNotification(
+                message,
+                AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
+            );
+        }
+
+        private static void SetStrategicLocation(
+            MessageRequestedResult message,
+            ISceneNode planet,
+            ISceneNode target
+        )
+        {
+            if (message == null)
+                return;
+            message.EventLocationInstanceID = planet?.InstanceID;
+            message.NavigationTargetInstanceID = (target ?? planet)?.InstanceID;
+        }
+
+        private static IEnumerable<Faction> GetOwnershipRecipients(
+            PlanetOwnershipChangedResult result,
+            GameRoot game
+        )
+        {
+            HashSet<string> recipientIDs = new HashSet<string>(
+                result.ObserverFactionInstanceIDs ?? Enumerable.Empty<string>()
+            );
+            if (result.PreviousOwner != null)
+                recipientIDs.Add(result.PreviousOwner.InstanceID);
+            if (result.NewOwner != null)
+                recipientIDs.Add(result.NewOwner.InstanceID);
+            return game.GetFactions().Where(faction => recipientIDs.Contains(faction.InstanceID));
+        }
+
+        private static bool Matches(string selector, string value) =>
+            string.IsNullOrWhiteSpace(selector)
+            || string.Equals(selector, value, StringComparison.Ordinal);
+
+        private static Faction GetStrategicFaction(GameRoot game, string instanceID) =>
+            string.IsNullOrEmpty(instanceID)
+                ? null
+                : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
+
+        /// <summary>
+        /// Converts one valid authored request into the message shape consumed by delivery.
+        /// </summary>
+        private MessageRequestedResult CreateAuthoredRequest(MessageRequestedResult result)
+        {
+            if (result?.Recipient == null)
+                return null;
+
+            MessageDefinition definition = new MessageDefinition
+            {
+                MessageType = result.MessageType,
+                Subject = result.Subject,
+                Body = result.Body,
+                BackgroundImage = CreateBackground(result),
+                BackgroundAudioPath = result.BackgroundAudioPath,
+            };
+            MessageRequestedResult message = _templateBuilder.Build(
+                definition,
+                result.Recipient,
+                new Dictionary<string, string>
+                {
+                    { "subject", result.SubjectNode?.GetDisplayName() ?? string.Empty },
+                    {
+                        "relatedSubject",
+                        result.RelatedSubjectNode?.GetDisplayName() ?? string.Empty
+                    },
+                    { "location", result.Location?.GetDisplayName() ?? string.Empty },
+                    { "faction", result.Recipient.GetDisplayName() },
+                },
+                overlayImagePath: result.OverlayImagePath,
+                officerVoicePath: result.OfficerVoicePath
+            );
+            if (message == null)
+                return null;
+
+            message.EventLocationInstanceID = result.Location?.InstanceID;
+            message.NavigationTargetInstanceID = result.SubjectNode?.InstanceID;
+
+            MessageRequestedResult delivery = message;
+            delivery.AdvisorNotification = result.AdvisorNotification;
+            delivery.NotificationType = result.NotificationType;
+            delivery.AdvisorSubjectNotification = result.AdvisorSubjectNotification;
+            delivery.AdvisorSubjectTypeID =
+                result.AdvisorSubjectTypeID ?? result.SubjectNode?.TypeID;
+            delivery.SourceEventInstanceID = result.SourceEventInstanceID;
+            ApplyAdvisorPreset(delivery);
+            return delivery;
+        }
+
+        private static MessageBackgroundImage CreateBackground(MessageRequestedResult result)
+        {
+            if (
+                string.IsNullOrWhiteSpace(result.BackgroundImageKey)
+                && string.IsNullOrWhiteSpace(result.BackgroundImagePath)
+            )
+                return null;
+
+            return new MessageBackgroundImage
+            {
+                Key = result.BackgroundImageKey,
+                Path = result.BackgroundImagePath,
+            };
+        }
+
+        private static void ApplyAdvisorPreset(MessageRequestedResult delivery)
+        {
+            AdvisorNotification notification = delivery.AdvisorNotification;
+            if (notification?.Preset.HasValue != true)
+                return;
+
+            switch (notification.Preset.Value)
+            {
+                case AdvisorNotificationPreset.SubjectReport:
+                    delivery.AdvisorSubjectNotification = AdvisorSubjectNotification.Report;
+                    break;
+                case AdvisorNotificationPreset.SubjectCaptured:
+                    delivery.AdvisorSubjectNotification = AdvisorSubjectNotification.Captured;
+                    break;
+                case AdvisorNotificationPreset.SubjectReleased:
+                    delivery.AdvisorSubjectNotification = AdvisorSubjectNotification.Released;
+                    break;
+                default:
+                    delivery.NotificationType = notification.Preset.Value.ToNotificationType();
+                    break;
+            }
+        }
+    }
+    #endregion
 }

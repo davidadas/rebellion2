@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using UnityEngine;
 
@@ -128,24 +130,82 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <summary>
     /// Queues or replaces a pending notification derived from a delivered message.
     /// </summary>
-    /// <param name="message">The delivered message.</param>
+    /// <param name="delivery">The delivered message and transient presentation request.</param>
     /// <param name="currentTick">The current game tick.</param>
     /// <param name="notificationEnabled">Whether its message category permits notification.</param>
-    public void Notify(Message message, int currentTick, bool notificationEnabled)
+    public void Notify(MessageDeliveredResult delivery, int currentTick, bool notificationEnabled)
     {
-        if (message == null || theme == null || !notificationEnabled)
+        if (delivery?.Message == null || theme == null || !notificationEnabled)
             return;
 
-        int code = GetNotificationCode(theme, message);
-        StrategyAdvisorNotificationTheme notification = theme.GetNotification(
-            code,
+        StrategyAdvisorNotificationTheme notification = ResolveNotification(
+            delivery,
             out int lifetimeTicks
         );
         if (notification == null)
             return;
 
+        if (
+            notification.TableID < 0
+            && notificationsByPriority.TrueForAll(candidate => candidate.TableID >= 0)
+        )
+        {
+            notificationsByPriority.Add(notification);
+            notificationsByPriority.Sort((left, right) => left.TableID.CompareTo(right.TableID));
+        }
+
         pendingNotifications[notification.TableID] = notification;
         pendingExpirationTicks[notification.TableID] = currentTick + lifetimeTicks;
+    }
+
+    private StrategyAdvisorNotificationTheme ResolveNotification(
+        MessageDeliveredResult delivery,
+        out int lifetimeTicks
+    )
+    {
+        AdvisorNotification authored = delivery.AdvisorNotification;
+        StrategyAdvisorNotificationTheme preset = null;
+        lifetimeTicks = 0;
+        if (authored?.Preset.HasValue != false)
+        {
+            int code = GetNotificationCode(theme, delivery);
+            preset = theme.GetNotification(code, out lifetimeTicks);
+        }
+        if (authored?.HasOverrides != true)
+            return preset;
+
+        lifetimeTicks = authored.LifetimeTicks ?? lifetimeTicks;
+        if (lifetimeTicks <= 0)
+            lifetimeTicks = 1;
+        return new StrategyAdvisorNotificationTheme
+        {
+            TableID = preset?.TableID ?? -1,
+            Droid = MergeAnimation(preset?.Droid, authored.Droid),
+            Protocol = MergeAnimation(preset?.Protocol, authored.Protocol),
+        };
+    }
+
+    private static StrategyAdvisorAnimationTheme MergeAnimation(
+        StrategyAdvisorAnimationTheme preset,
+        AdvisorAnimation authored
+    )
+    {
+        if (authored == null)
+            return preset;
+
+        return new StrategyAdvisorAnimationTheme
+        {
+            Animation = authored.Animation ?? preset?.Animation,
+            AnimationPath = authored.AnimationPath ?? preset?.AnimationPath,
+            FrameCount = authored.FrameCount ?? preset?.FrameCount ?? 0,
+            Audio = authored.Audio ?? preset?.Audio,
+            AudioPath = authored.AudioPath ?? preset?.AudioPath,
+            DelayBeforeSeconds = authored.DelayBeforeSeconds ?? preset?.DelayBeforeSeconds ?? 0f,
+            RequiresAnnouncementsEnabled =
+                authored.RequiresAnnouncementsEnabled
+                ?? preset?.RequiresAnnouncementsEnabled
+                ?? false,
+        };
     }
 
     /// <summary>
@@ -287,21 +347,24 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// Resolves the notification code for a message, honoring subject-specific mappings.
     /// </summary>
     /// <param name="advisorTheme">The active advisor theme.</param>
-    /// <param name="message">The delivered message.</param>
+    /// <param name="delivery">The delivered message and transient presentation request.</param>
     /// <returns>The notification code mapped by the message.</returns>
-    internal static int GetNotificationCode(StrategyAdvisorTheme advisorTheme, Message message)
+    internal static int GetNotificationCode(
+        StrategyAdvisorTheme advisorTheme,
+        MessageDeliveredResult delivery
+    )
     {
         if (advisorTheme == null)
             throw new ArgumentNullException(nameof(advisorTheme));
-        if (message == null)
-            throw new ArgumentNullException(nameof(message));
+        if (delivery == null)
+            throw new ArgumentNullException(nameof(delivery));
 
-        if (message.AdvisorSubjectNotification == AdvisorSubjectNotification.None)
-            return message.AdvisorNotificationCode;
+        if (delivery.AdvisorSubjectNotification == AdvisorSubjectNotification.None)
+            return (int)delivery.NotificationType;
 
         return advisorTheme.GetSubjectNotificationCode(
-            message.AdvisorSubjectTypeID,
-            message.AdvisorSubjectNotification
+            delivery.AdvisorSubjectTypeID,
+            delivery.AdvisorSubjectNotification
         );
     }
 
@@ -581,9 +644,10 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         bool ready = true;
         for (int frameIndex = 0; frameIndex < animation.FrameCount; frameIndex++)
         {
-            frames[frameIndex] = ResolveTexture(
-                theme.GetFramePath(animation.Animation, frameIndex, usesDroid)
-            );
+            string framePath = string.IsNullOrWhiteSpace(animation.AnimationPath)
+                ? theme.GetFramePath(animation.Animation, frameIndex, usesDroid)
+                : $"{animation.AnimationPath}/frame-{frameIndex:D3}";
+            frames[frameIndex] = ResolveTexture(framePath);
             ready &= frames[frameIndex] != null;
         }
 
@@ -594,9 +658,10 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             new StrategyAdvisorAnimationViewData(
                 frames,
                 usesDroid,
-                string.IsNullOrWhiteSpace(animation.Audio)
-                    ? null
-                    : theme.GetAudioPath(animation.Audio)
+                !string.IsNullOrWhiteSpace(animation.AudioPath) ? animation.AudioPath
+                    : string.IsNullOrWhiteSpace(animation.Audio) ? null
+                    : theme.GetAudioPath(animation.Audio),
+                animation.DelayBeforeSeconds
             )
         );
         return true;

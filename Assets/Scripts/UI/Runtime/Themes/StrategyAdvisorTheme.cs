@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Game.Messages;
+using Rebellion.Game.Advisor;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -11,9 +11,13 @@ public class StrategyAdvisorAnimationTheme
 {
     public string Animation { get; set; }
 
+    public string AnimationPath { get; set; }
+
     public int FrameCount { get; set; }
 
     public string Audio { get; set; }
+
+    public string AudioPath { get; set; }
 
     public float DelayBeforeSeconds { get; set; }
 

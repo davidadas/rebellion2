@@ -287,6 +287,13 @@ namespace Rebellion.Systems
                 AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID,
                 DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
                 Planet = planet,
+                PlanetOwnerInstanceID = planet.OwnerInstanceID,
+                AttackerRetreatPlanetInstanceID = attackerRetreated
+                    ? attacker.GetParentOfType<Planet>()?.InstanceID
+                    : null,
+                DefenderRetreatPlanetInstanceID = attackerRetreated
+                    ? null
+                    : defender.GetParentOfType<Planet>()?.InstanceID,
                 Winner = attackerRetreated ? CombatSide.Defender : CombatSide.Attacker,
                 AttackerOutcome = attackerRetreated
                     ? SpaceCombatSideOutcome.Withdrawn
@@ -559,6 +566,9 @@ namespace Rebellion.Systems
                 AttackerOwnerInstanceID = roundResult.AttackerOwnerInstanceID,
                 DefenderOwnerInstanceID = roundResult.DefenderOwnerInstanceID,
                 Planet = roundResult.Planet,
+                PlanetOwnerInstanceID = roundResult.PlanetOwnerInstanceID,
+                AttackerRetreatPlanetInstanceID = roundResult.AttackerRetreatPlanetInstanceID,
+                DefenderRetreatPlanetInstanceID = roundResult.DefenderRetreatPlanetInstanceID,
                 Winner = roundResult.Winner,
                 AttackerOutcome = roundResult.AttackerOutcome,
                 DefenderOutcome = roundResult.DefenderOutcome,
@@ -640,6 +650,29 @@ namespace Rebellion.Systems
                 result.Planet,
                 result.DefenderOutcome
             );
+            result.AttackerRetreatPlanetInstanceID = GetRetreatPlanetInstanceID(
+                result.AttackerFleet,
+                result.Planet,
+                result.AttackerOutcome
+            );
+            result.DefenderRetreatPlanetInstanceID = GetRetreatPlanetInstanceID(
+                result.DefenderFleet,
+                result.Planet,
+                result.DefenderOutcome
+            );
+        }
+
+        /// <summary>Returns the final destination ID recorded for a withdrawn fleet.</summary>
+        private static string GetRetreatPlanetInstanceID(
+            Fleet fleet,
+            Planet battlePlanet,
+            SpaceCombatSideOutcome outcome
+        )
+        {
+            if (outcome != SpaceCombatSideOutcome.Withdrawn)
+                return null;
+            Planet destination = fleet?.GetParentOfType<Planet>();
+            return destination == battlePlanet ? null : destination?.InstanceID;
         }
 
         /// <summary>
@@ -1779,6 +1812,7 @@ namespace Rebellion.Systems
                 AttackerOwnerInstanceID = attackerOwnerInstanceId,
                 DefenderOwnerInstanceID = defenderOwnerInstanceId,
                 Planet = planet,
+                PlanetOwnerInstanceID = planet.OwnerInstanceID,
                 Winner = DetermineWinner(atkShips, defShips, atkFighters, defFighters),
                 AttackerOutcome = GetCombatSideRoundOutcome(atkShips, atkFighters),
                 DefenderOutcome = GetCombatSideRoundOutcome(defShips, defFighters),
@@ -1967,7 +2001,17 @@ namespace Rebellion.Systems
 
                 if (damage.HullAfter <= 0)
                 {
-                    CapitalShipDestruction.Resolve(_game, _movement, ship);
+                    List<IMovable> units = ship
+                        .Officers.Cast<IMovable>()
+                        .Concat(
+                            ship.Starfighters.Where(starfighter =>
+                                starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                            )
+                        )
+                        .ToList();
+                    _movement.RelocateUnits(units);
+                    _game.DeleteNode(ship);
+                    GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                 }
             }
 
@@ -1990,7 +2034,7 @@ namespace Rebellion.Systems
 
                 if (loss.SquadsAfter <= 0)
                 {
-                    _game.DetachNode(fighter);
+                    _game.DeleteNode(fighter);
                     GameLogger.Log($"Fighter squadron destroyed: {fighter.GetDisplayName()}");
                 }
             }
@@ -2002,7 +2046,7 @@ namespace Rebellion.Systems
         /// <param name="fleet">Empty fleet to remove.</param>
         private void RemoveFleetFromScene(Fleet fleet)
         {
-            _game.DetachNode(fleet);
+            _game.DeleteNode(fleet);
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
         }
 

@@ -424,7 +424,17 @@ namespace Rebellion.Systems
                     continue;
 
                 result.DestroyedCapitalShips.Add(ship);
-                CapitalShipDestruction.Resolve(_game, _movement, ship);
+                List<IMovable> units = ship
+                    .Officers.Cast<IMovable>()
+                    .Concat(
+                        ship.Starfighters.Where(starfighter =>
+                            starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                        )
+                    )
+                    .ToList();
+                _movement.RelocateUnits(units);
+                _game.DeleteNode(ship);
+                GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
             }
         }
 
@@ -666,12 +676,19 @@ namespace Rebellion.Systems
                 case BombardmentTargetType.Regiment:
                     Regiment regiment = (Regiment)target.Entity;
                     result.DestroyedRegiments.Add(regiment);
-                    _game.DetachNode(regiment);
+                    _game.DeleteNode(regiment);
                     break;
                 case BombardmentTargetType.Building:
                     Building building = (Building)target.Entity;
                     result.DestroyedBuildings.Add(building);
-                    _game.DetachNode(building);
+                    if (string.IsNullOrEmpty(building.OwnerInstanceID))
+                    {
+                        _game.DetachNode(building);
+                    }
+                    else
+                    {
+                        _game.DeleteNode(building);
+                    }
                     break;
                 case BombardmentTargetType.Headquarters:
                     DestroyHeadquarters(planet, defenderId, result);
@@ -749,9 +766,7 @@ namespace Rebellion.Systems
         /// <returns>True when an active configured ship type is present.</returns>
         private bool HasPlanetDestroyingShip(IEnumerable<Fleet> fleets)
         {
-            HashSet<string> typeIds =
-                _game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs.ToHashSet();
-            return GetActiveCapitalShips(fleets).Any(ship => typeIds.Contains(ship.GetTypeID()));
+            return GetActiveCapitalShips(fleets).Any(ship => ship.CanDestroyPlanets);
         }
 
         /// <summary>
@@ -804,7 +819,7 @@ namespace Rebellion.Systems
                         Tick = _game.CurrentTick,
                     }
                 );
-                _game.DetachNode(officer);
+                _game.DeleteNode(officer);
             }
         }
 

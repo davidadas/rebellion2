@@ -47,7 +47,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_EventResults_AddsMessages()
+        public void ProcessTick_EventResults_DoesNotAddAutomaticMessages()
         {
             GameRoot game = new GameRoot();
             Faction faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
@@ -73,7 +73,44 @@ namespace Rebellion.Tests.Managers
 
             manager.ProcessTick();
 
-            Assert.AreEqual(1, faction.Messages[MessageType.Manufacturing].Count);
+            Assert.IsEmpty(faction.Messages[MessageType.Manufacturing]);
+        }
+
+        [Test]
+        public void ProcessTick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create())
+            {
+                Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters },
+            };
+            Faction empire = new Faction
+            {
+                InstanceID = "empire",
+                DisplayName = "Empire",
+                HQInstanceID = "coruscant",
+            };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            PlanetSystem system = new PlanetSystem { InstanceID = "core" };
+            Planet coruscant = new Planet
+            {
+                InstanceID = "coruscant",
+                OwnerInstanceID = alliance.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(coruscant, system);
+            GameManager manager = TestContent.CreateGameManager(game);
+            List<VictoryResult> declarations = new List<VictoryResult>();
+            manager.VictoryDeclared += declarations.Add;
+
+            manager.ProcessTick();
+            manager.ProcessTick();
+
+            Assert.AreEqual(1, declarations.Count);
+            Assert.AreSame(alliance, declarations[0].Winner);
+            Assert.AreSame(empire, declarations[0].Loser);
         }
 
         [Test]
@@ -332,7 +369,7 @@ namespace Rebellion.Tests.Managers
 
             manager.ProcessTick();
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("ARRIVING"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(arrivingFleet.InstanceID));
             List<Message> fleetMessages = alliance.Messages.TryGetValue(
                 MessageType.Fleet,
                 out List<Message> messages
@@ -753,7 +790,7 @@ namespace Rebellion.Tests.Managers
                 _result = result;
             }
 
-            public override List<GameResult> Execute(GameRoot game)
+            internal override List<GameResult> Execute(GameActionContext context)
             {
                 return new List<GameResult> { _result };
             }

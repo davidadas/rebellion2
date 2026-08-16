@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -68,7 +69,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = id,
                 DisplayName = id,
                 OwnerInstanceID = _alliance.InstanceID,
-                IsJedi = true,
+                IsForceSensitive = true,
                 IsForceEligible = true,
                 ForceValue = forceValue,
                 ForceTrainingAdjustment = 0,
@@ -84,7 +85,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = id,
                 DisplayName = id,
                 OwnerInstanceID = _alliance.InstanceID,
-                IsJedi = true,
+                IsForceSensitive = true,
                 IsForceEligible = false,
                 ForceValue = 0,
                 ForceTrainingAdjustment = 0,
@@ -189,7 +190,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "HAN",
                 DisplayName = "Han",
                 OwnerInstanceID = _alliance.InstanceID,
-                IsJedi = false,
+                IsForceSensitive = false,
                 IsForceEligible = true,
                 ForceValue = 100,
                 IsDiscoveringForceUser = true,
@@ -320,7 +321,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "VADER",
                 DisplayName = "VADER",
                 OwnerInstanceID = _empire.InstanceID,
-                IsJedi = true,
+                IsForceSensitive = true,
                 IsForceEligible = false,
                 JediLevel = 10,
             };
@@ -480,6 +481,25 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(10, leia.ForceValue);
+        }
+
+        [Test]
+        public void ProcessTick_DormantOfficerWithStoryGrowth_PreservesHigherForceValue()
+        {
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = true;
+            Officer leia = CreateDormantJedi("LEIA");
+            leia.ForceValue = 25;
+            _system = new JediSystem(_game, new FixedRNG(0.0));
+
+            ForceExperienceResult result = _system
+                .ProcessTick()
+                .OfType<ForceExperienceResult>()
+                .Single(r => r.Officer == leia);
+
+            Assert.IsTrue(leia.IsForceEligible);
+            Assert.AreEqual(25, leia.ForceValue);
+            Assert.Zero(result.ExperienceGained);
         }
 
         [Test]

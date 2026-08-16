@@ -548,6 +548,7 @@ namespace Rebellion.Tests.Systems
                 bombardment: 0,
                 typeId: "CSEM015"
             );
+            fleet.CapitalShips[0].CanDestroyPlanets = true;
 
             BombardmentResult result = MakeBombardment(
                     game,
@@ -590,6 +591,7 @@ namespace Rebellion.Tests.Systems
                 typeId: "CSEM015"
             );
             CapitalShip deathStar = fleet.CapitalShips[0];
+            deathStar.CanDestroyPlanets = true;
 
             BombardmentResult result = MakeBombardment(
                     game,
@@ -629,6 +631,7 @@ namespace Rebellion.Tests.Systems
                 bombardment: 0,
                 typeId: "CSEM015"
             );
+            fleet.CapitalShips[0].CanDestroyPlanets = true;
 
             MakeBombardment(game, new SequenceRNG())
                 .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroySystem);

@@ -81,13 +81,22 @@ public sealed class AppBootstrap : MonoBehaviour
 
         DontDestroyOnLoad(gameObject);
 
-        InitializeRuntime();
+        try
+        {
+            InitializeRuntimeCore();
+        }
+        catch
+        {
+            ReleaseRuntimeServices();
+            Instance = null;
+            throw;
+        }
     }
 
     /// <summary>
-    /// Creates and connects the runtime services required by application-level systems.
+    /// Creates the runtime services after the lifecycle guard has admitted initialization.
     /// </summary>
-    private void InitializeRuntime()
+    private void InitializeRuntimeCore()
     {
         _cancelStack ??= new CancelStack();
         _sceneLoader = GetComponent<SceneLoader>();
@@ -260,9 +269,25 @@ public sealed class AppBootstrap : MonoBehaviour
             return;
 
         Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+        ReleaseRuntimeServices();
+        Instance = null;
+    }
+
+    /// <summary>
+    /// Releases managed runtime services after shutdown or incomplete initialization.
+    /// </summary>
+    private void ReleaseRuntimeServices()
+    {
         _contentModelCache?.Dispose();
         _contentAssets?.Dispose();
-        Instance = null;
+        _contentModelCache = null;
+        _contentAssets = null;
+        _contentPack = null;
+        _mainMenuApplicationPreload = null;
+        _strategyApplicationPreload = null;
+        _runtime = null;
+        _mainMenuContentTask = null;
+        _strategyContentTask = null;
     }
 
     /// <summary>

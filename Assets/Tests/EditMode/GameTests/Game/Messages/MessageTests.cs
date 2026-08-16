@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 InstanceID = "MSG1",
                 ResultType = MessageResultType.Bombardment,
-                DisplayImageKey = "mission_report",
+                BackgroundImageKey = "mission_report",
                 OverlayImagePath = "overlay-card",
                 EventLocationInstanceID = "PLANET1",
                 NavigationTargetInstanceID = "OFFICER1",
@@ -94,9 +94,9 @@ namespace Rebellion.Tests.Game.Messages
                 "Read should be correctly deserialized."
             );
             Assert.AreEqual(
-                message.DisplayImageKey,
-                deserialized.DisplayImageKey,
-                "DisplayImageKey should be correctly deserialized."
+                message.BackgroundImageKey,
+                deserialized.BackgroundImageKey,
+                "BackgroundImageKey should be correctly deserialized."
             );
             Assert.AreEqual(
                 message.OverlayImagePath,

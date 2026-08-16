@@ -181,7 +181,7 @@ namespace Rebellion.Tests.Systems
             );
             foreach (Regiment regiment in planet.Regiments.ToList())
                 game.DetachNode(regiment);
-            game.ChangeUnitOwnership(planet, "rebels");
+            game.ChangeOwnership(planet, "rebels");
             Regiment occupyingRegiment = EntityFactory.CreateRegiment("occupier", "rebels");
             occupyingRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(occupyingRegiment, planet);
@@ -216,7 +216,7 @@ namespace Rebellion.Tests.Systems
             system.ProcessTick();
 
             Assert.IsNull(
-                game.GetSceneNodeByInstanceID<Building>("b1"),
+                game.GetSceneNodeByInstanceID<Building>(facility.InstanceID),
                 "Facility should be destroyed by uprising case 1"
             );
             Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
@@ -569,7 +569,7 @@ namespace Rebellion.Tests.Systems
 
             system.ProcessTick();
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>("b1"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(facility.InstanceID));
             Assert.AreEqual(8, planet.GetPopularSupport("empire"));
             Assert.AreEqual(92, planet.GetPopularSupport("rebels"));
         }

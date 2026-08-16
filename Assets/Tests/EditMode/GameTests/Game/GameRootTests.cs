@@ -44,7 +44,12 @@ namespace Rebellion.Tests.Game
             // Create game objects.
             _galaxyMap = new GalaxyMap();
             _planetSystem = new PlanetSystem { InstanceID = "SYSTEM1" };
-            _planet = new Planet { InstanceID = "PLANET1", OwnerInstanceID = "FACTION1" };
+            _planet = new Planet
+            {
+                InstanceID = "PLANET1",
+                OwnerInstanceID = "FACTION1",
+                IsColonized = true,
+            };
             _fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
 
             // Initialize the _game.
@@ -83,10 +88,7 @@ namespace Rebellion.Tests.Game
             Assert.IsNotNull(_game.Galaxy, "Galaxy should be initialized");
             Assert.AreEqual(0, _game.CurrentTick, "Current tick should be initialized to 0");
             Assert.IsEmpty(_game.EventPool, "Event pool should be empty initially");
-            Assert.IsEmpty(
-                _game.CompletedEventIDs,
-                "Completed event IDs should be empty initially"
-            );
+            Assert.IsEmpty(_game.EventRuntime.States, "Event states should be empty initially");
         }
 
         [Test]
@@ -329,6 +331,8 @@ namespace Rebellion.Tests.Game
             // Add nodes to the _game.
             _game.AddSceneNodeByInstanceID(_planet);
             _game.AddSceneNodeByInstanceID(_fleet);
+            _game.RegisterOwnedUnit(_planet);
+            _game.RegisterOwnedUnit(_fleet);
 
             // Retrieve nodes by owner ID.
             List<ISceneNode> retrievedNodes = _game.GetSceneNodesByOwnerInstanceID<ISceneNode>(
@@ -435,35 +439,6 @@ namespace Rebellion.Tests.Game
             // Retrieve event and verify.
             GameEvent retrievedEvent = _game.GetEventByInstanceID("EVENT1");
             Assert.AreEqual(event1, retrievedEvent, "Should return the correct event");
-        }
-
-        [Test]
-        public void AddCompletedEvent_ValidEventID_AddsToCompletedList()
-        {
-            // Add completed event to the completed list.
-            GameEvent event1 = new GameEvent { InstanceID = "EVENT1" };
-            _game.AddCompletedEvent(event1);
-
-            // Verify addition to the completed list.
-            Assert.IsTrue(
-                _game.CompletedEventIDs.Contains(event1.InstanceID),
-                "Completed event IDs should contain the added event's ID"
-            );
-        }
-
-        [Test]
-        public void IsEventComplete_CompletedEvent_ReturnsTrue()
-        {
-            // Add completed event to the completed list.
-            GameEvent event1 = new GameEvent { InstanceID = "EVENT1" };
-            _game.AddCompletedEvent(event1);
-
-            // Check completion status.
-            Assert.IsTrue(_game.IsEventComplete("EVENT1"), "EVENT1 should be marked as complete");
-            Assert.IsFalse(
-                _game.IsEventComplete("EVENT2"),
-                "EVENT2 should not be marked as complete"
-            );
         }
 
         [Test]
@@ -631,54 +606,6 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void ChangeUnitOwnership_PlanetOwnedByFaction_ChangesOwnershipCorrectly()
-        {
-            // Register planet to _faction1.
-            _game.RegisterOwnedUnit(_planet);
-
-            // Verify planet is owned by _faction1.
-            Assert.IsTrue(
-                _faction1.GetOwnedUnitsByType<Planet>().Contains(_planet),
-                "Faction1 should initially own the planet"
-            );
-            Assert.IsFalse(
-                _faction2.GetOwnedUnitsByType<Planet>().Contains(_planet),
-                "Faction2 should not initially own the planet"
-            );
-
-            // Change ownership to _faction2.
-            _game.ChangeUnitOwnership(_planet, "FACTION2");
-
-            // Verify planet is now owned by _faction2.
-            Assert.IsFalse(
-                _faction1.GetOwnedUnitsByType<Planet>().Contains(_planet),
-                "Faction1 should no longer own the planet"
-            );
-            Assert.IsTrue(
-                _faction2.GetOwnedUnitsByType<Planet>().Contains(_planet),
-                "Faction2 should now own the planet"
-            );
-            Assert.AreEqual(
-                "FACTION2",
-                _planet.OwnerInstanceID,
-                "Planet.OwnerInstanceID should reflect the new owner"
-            );
-        }
-
-        [Test]
-        public void ChangeUnitOwnership_ThrowsException_WhenNewOwnerNotFound()
-        {
-            // Register planet to _faction1.
-            _game.RegisterOwnedUnit(_planet);
-
-            // Attempt to change ownership to non-existent faction.
-            Assert.Throws<SceneNodeNotFoundException>(
-                () => _game.ChangeUnitOwnership(_planet, "NONEXISTENT"),
-                "Should throw exception when new owner faction does not exist"
-            );
-        }
-
-        [Test]
         public void GetUnrecruitedOfficers_GameWithUnrecruitedOfficers_ReturnsOfficers()
         {
             // Create officers with different allowed owner IDs.
@@ -801,6 +728,98 @@ namespace Rebellion.Tests.Game
             // Next roll should match what a fresh provider at position 7 would yield.
             int expected = new SystemRandomProvider(12345, advanceTo: 7).NextInt(0, int.MaxValue);
             Assert.AreEqual(expected, game.Random.NextInt(0, int.MaxValue));
+        }
+
+        [Test]
+        public void AddToVoid_OwnedOfficer_RetainsDetachedOfficer()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "VOID_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+
+            _game.AddToVoid(officer);
+
+            Assert.IsNull(officer.GetParent());
+            Assert.IsTrue(_game.IsInVoid(officer));
+            Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
+            Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
+            Assert.Contains(officer, _faction1.GetOwnedUnitsByType<Officer>().ToList());
+            Assert.Contains(
+                officer,
+                _game.GetSceneNodesByOwnerInstanceID<ISceneNode>(_faction1.InstanceID)
+            );
+        }
+
+        [Test]
+        public void RemoveFromVoid_RetainedOfficer_DetachesAndPreservesPreviousParent()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "RETURNING_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+
+            _game.RemoveFromVoid(officer);
+
+            Assert.IsNull(officer.GetParent());
+            Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
+            Assert.IsFalse(_game.IsInVoid(officer));
+        }
+
+        [Test]
+        public void GetSceneNodesByType_RetainedOfficer_ExcludesOfficerFromActiveGalaxy()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "RETAINED_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+
+            List<Officer> activeOfficers = _game.GetSceneNodesByType<Officer>();
+
+            CollectionAssert.DoesNotContain(activeOfficers, officer);
+        }
+
+        [Test]
+        public void ChangeOwnership_OfficerInVoid_PreservesRetentionAndChangesOwner()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "DEFECTING_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+
+            _game.ChangeOwnership(officer, _faction2.InstanceID);
+
+            Assert.AreEqual(_faction2.InstanceID, officer.OwnerInstanceID);
+            Assert.IsNull(officer.GetParent());
+            Assert.IsTrue(_game.IsInVoid(officer));
+        }
+
+        [Test]
+        public void DeleteNode_RegisteredOfficer_RemovesOfficerFromGameState()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "DELETED_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+
+            _game.DeleteNode(officer);
+
+            Assert.IsNull(officer.GetParent());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
+            Assert.IsFalse(_faction1.GetOwnedUnitsByType<Officer>().Contains(officer));
         }
     }
 } // namespace Rebellion.Tests.Game

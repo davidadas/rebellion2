@@ -462,8 +462,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 InstanceID = "officer",
                 DisplayName = "Commander Antilles",
                 OwnerInstanceID = _ownerId,
-                IsJedi = true,
-                ForceValue = _game.Config.Jedi.RankLabelForceMaster,
+                IsForceSensitive = true,
+                ForceValue = _game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceMaster),
                 ShipResearch = 1,
                 TroopResearch = 0,
                 FacilityResearch = 2,
@@ -493,6 +493,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("Yes", info.Rows.Single(row => row.Left == "Admiral:").Right);
             Assert.AreEqual("No", info.Rows.Single(row => row.Left == "General:").Right);
             Assert.AreEqual("Yes", info.Rows.Single(row => row.Left == "Commander:").Right);
+        }
+
+        [Test]
+        public void Build_OfficerWithoutParent_OmitsAttachedLocation()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "officer-in-void",
+                DisplayName = "Luke Skywalker",
+                OwnerInstanceID = _ownerId,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "Attached:"));
+        }
+
+        [Test]
+        public void Build_OfficerWithDisplayStatus_ShowsDisplayStatus()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "officer-in-void",
+                DisplayName = "Luke Skywalker",
+                OwnerInstanceID = _ownerId,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+            officer.DisplayStatus = "Training";
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.AreEqual("Training", info.Rows.Single(row => row.Left == "Status:").Right);
         }
 
         [Test]
