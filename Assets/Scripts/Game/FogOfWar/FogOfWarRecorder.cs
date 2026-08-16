@@ -1351,12 +1351,8 @@ namespace Rebellion.Game.FogOfWar
                 return null;
 
             Mission copy = mission.GetShallowCopy(CloneMode.Full);
-            copy.MainParticipants = CopyMissionParticipantsForSnapshot(
-                mission.MainParticipants
-            );
-            copy.DecoyParticipants = CopyMissionParticipantsForSnapshot(
-                mission.DecoyParticipants
-            );
+            copy.MainParticipants = CopyMissionParticipantsForSnapshot(mission.MainParticipants);
+            copy.DecoyParticipants = CopyMissionParticipantsForSnapshot(mission.DecoyParticipants);
             ClearParentReferences(copy);
             return copy;
         }

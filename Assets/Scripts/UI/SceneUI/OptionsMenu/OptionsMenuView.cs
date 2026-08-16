@@ -861,11 +861,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || string.IsNullOrWhiteSpace(_rowActiveSpriteAddress)
         )
             throw new MissingReferenceException($"{name} is missing a row sprite address.");
-        if (
-            _tabButtons.Length != 4
-            || _tabLabelFields.Length != 4
-            || _tabSurfaceImages.Length != 4
-        )
+        if (_tabButtons.Length != 4 || _tabLabelFields.Length != 4 || _tabSurfaceImages.Length != 4)
             throw new MissingReferenceException($"{name} expects four tabs.");
         if (
             _graphicsPage == null

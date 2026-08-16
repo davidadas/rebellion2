@@ -1494,8 +1494,7 @@ namespace Rebellion.Tests.Systems
             tarkin.DisplayName = "Changed live decoy";
 
             Mission recordedMission = _alliance
-                .Fog
-                .Snapshots[_coreSystem.InstanceID]
+                .Fog.Snapshots[_coreSystem.InstanceID]
                 .Planets[_coruscant.InstanceID]
                 .Missions.Single();
             Officer recordedParticipant = recordedMission.MainParticipants.Single() as Officer;
@@ -1534,9 +1533,8 @@ namespace Rebellion.Tests.Systems
                 .Fog
                 .Snapshots[_coreSystem.InstanceID]
                 .Planets[_coruscant.InstanceID];
-            Officer recordedParticipant = coruscantSnapshot
-                .Missions.Single()
-                .MainParticipants.Single() as Officer;
+            Officer recordedParticipant =
+                coruscantSnapshot.Missions.Single().MainParticipants.Single() as Officer;
 
             Assert.IsEmpty(coruscantSnapshot.Officers);
             Assert.IsNotNull(recordedParticipant);
@@ -1559,15 +1557,13 @@ namespace Rebellion.Tests.Systems
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            PlanetSnapshot snapshot = _alliance
-                .Fog
-                .Snapshots[_coreSystem.InstanceID]
-                .Planets[_coruscant.InstanceID];
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
             string xml = SerializationHelper.Serialize(snapshot);
             PlanetSnapshot restored = SerializationHelper.Deserialize<PlanetSnapshot>(xml);
-            Officer restoredParticipant = restored
-                .Missions.Single()
-                .MainParticipants.Single() as Officer;
+            Officer restoredParticipant =
+                restored.Missions.Single().MainParticipants.Single() as Officer;
 
             Assert.IsNotNull(restoredParticipant);
             Assert.AreEqual(vader.InstanceID, restoredParticipant.InstanceID);

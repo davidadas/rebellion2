@@ -569,8 +569,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     }
                 )
                 .ToArray();
-            RectInt[] rects = rows
-                .Select(row => UILayout.GetSourceRect((RectTransform)row.transform))
+            RectInt[] rects = rows.Select(row =>
+                    UILayout.GetSourceRect((RectTransform)row.transform)
+                )
                 .ToArray();
 
             CollectionAssert.AreEqual(

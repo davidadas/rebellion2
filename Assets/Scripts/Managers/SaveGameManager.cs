@@ -488,5 +488,4 @@ public class SaveGameManager
             new GameSerializerSettings { RootName = _metadataElementName }
         );
     }
-
 }
