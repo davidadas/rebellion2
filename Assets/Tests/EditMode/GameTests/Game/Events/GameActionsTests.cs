@@ -178,6 +178,60 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void PlaceUnits_AuthoredSpawnSources_DeserializesStructure()
+        {
+            const string xml =
+                "<PlaceUnits DestinationInstanceID=\"NABOO\">"
+                + "<Units>"
+                + "<SpawnUnits TypeID=\"X_WING\" Count=\"3\" OwnerFactionInstanceID=\"FNALL1\"/>"
+                + "<SpawnUnits TypeID=\"ALLIANCE_REGIMENT\" Count=\"2\" OwnerFactionInstanceID=\"FNALL1\"/>"
+                + "</Units>"
+                + "</PlaceUnits>";
+
+            PlaceUnitsAction action = (PlaceUnitsAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            Assert.AreEqual("NABOO", action.DestinationInstanceID);
+            SpawnUnits[] sources = action.Units.OfType<SpawnUnits>().ToArray();
+            Assert.AreEqual(2, sources.Length);
+            Assert.AreEqual("X_WING", sources[0].TypeID);
+            Assert.AreEqual(3, sources[0].Count);
+            Assert.AreEqual("FNALL1", sources[0].OwnerFactionInstanceID);
+            Assert.AreEqual("ALLIANCE_REGIMENT", sources[1].TypeID);
+            Assert.AreEqual(2, sources[1].Count);
+            Assert.AreEqual("FNALL1", sources[1].OwnerFactionInstanceID);
+        }
+
+        [Test]
+        public void PlaceUnits_AuthoredSelectors_DeserializesStructure()
+        {
+            const string xml =
+                "<PlaceUnits>"
+                + "<Units><SelectBinding Binding=\"$participants\"/></Units>"
+                + "<Destination>"
+                + "<SelectFirst><From>"
+                + "<SelectPreviousLocation UnitInstanceID=\"LUKE_SKYWALKER\"/>"
+                + "<SelectPlanets InstanceID=\"YAVIN\"/>"
+                + "</From></SelectFirst>"
+                + "</Destination>"
+                + "</PlaceUnits>";
+
+            PlaceUnitsAction action = (PlaceUnitsAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            Assert.AreEqual("$participants", action.Units.OfType<SelectBinding>().Single().Binding);
+            SelectFirst destination = action.Destination.OfType<SelectFirst>().Single();
+            Assert.AreEqual(
+                "LUKE_SKYWALKER",
+                destination.Selectors.OfType<SelectPreviousLocation>().Single().UnitInstanceID
+            );
+            Assert.AreEqual(
+                "YAVIN",
+                destination.Selectors.OfType<SelectPlanets>().Single().InstanceID
+            );
+        }
+
+        [Test]
         public void ChangeOwner_UnitSelectors_EmitsOwnershipRequest()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
