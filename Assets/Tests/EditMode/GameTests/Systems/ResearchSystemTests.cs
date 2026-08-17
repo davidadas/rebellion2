@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Systems
                             DisplayName = t.name,
                             ResearchOrder = t.order,
                             ResearchDifficulty = t.difficulty,
-                            AllowedOwnerInstanceIDs = new List<string> { "FNALL1" },
+                            ProducerFactionInstanceIDs = new List<string> { "FNALL1" },
                         }
                 )
                 .ToArray();

@@ -151,6 +151,24 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A data-defined event requested a validated ownership transition for planets or units.
+    /// </summary>
+    public sealed class OwnershipChangeRequestedResult : GameResult
+    {
+        public Faction NewOwner { get; set; }
+        public List<Planet> Planets { get; set; } = new List<Planet>();
+        public List<ISceneNode> Units { get; set; } = new List<ISceneNode>();
+    }
+
+    /// <summary>Ownership of one unit changed hands.</summary>
+    public sealed class UnitOwnershipChangedResult : GameResult
+    {
+        public ISceneNode Unit { get; set; }
+        public Faction PreviousOwner { get; set; }
+        public Faction NewOwner { get; set; }
+    }
+
+    /// <summary>
     /// A mobile headquarters was destroyed when its planet fell to an enemy faction.
     /// </summary>
     public class HeadquartersDestroyedResult : GameResult
@@ -636,10 +654,6 @@ namespace Rebellion.Game.Results
 
             Unit = unit.GetShallowCopy();
             Unit.InstanceID = unit.GetInstanceID();
-            Unit.AllowedOwnerInstanceIDs =
-                unit.AllowedOwnerInstanceIDs == null
-                    ? null
-                    : new List<string>(unit.AllowedOwnerInstanceIDs);
             Unit.OwnerInstanceID = unit.GetOwnerInstanceID();
             Unit.ParentInstanceID = unit.ParentInstanceID;
             Unit.LastParentInstanceID = unit.LastParentInstanceID;

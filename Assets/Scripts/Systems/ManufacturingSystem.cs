@@ -164,7 +164,7 @@ namespace Rebellion.Systems
                     ownerInstanceId,
                     StringComparison.Ordinal
                 )
-                || !template.HasAllowedOwnerInstanceID(ownerInstanceId)
+                || !template.CanBeProducedBy(ownerInstanceId)
                 || producer.GetProductionFacilityCount(template.GetManufacturingType()) <= 0
                 || !HasDestinationCapacity(producer, destination, template, count)
             )

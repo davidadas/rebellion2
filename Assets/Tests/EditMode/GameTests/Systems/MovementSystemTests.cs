@@ -3875,7 +3875,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "b1",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             game.AttachNode(building, origin);
@@ -4019,7 +4018,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = $"{factionId}-ship-{planet.InstanceID}",
                 OwnerInstanceID = factionId,
-                AllowedOwnerInstanceIDs = new List<string> { factionId },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 4,
             };
@@ -4029,7 +4027,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = $"{factionId}-reg-{planet.InstanceID}",
                 OwnerInstanceID = factionId,
-                AllowedOwnerInstanceIDs = new List<string> { factionId },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 Movement = null,
             };
@@ -4105,7 +4102,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "reg-from-planet",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(regiment, origin);
@@ -4145,7 +4141,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "fighter-to-uncolonized",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(starfighter, origin);
@@ -4210,7 +4205,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "garrison-reg",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(regiment, destination);
@@ -4221,7 +4215,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "pickup-ship",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 4,
             };
@@ -4244,7 +4237,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "garrison-reg",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(regiment, destination);
@@ -4255,7 +4247,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "pickup-ship",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 4,
             };
@@ -4275,7 +4266,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "garrison-reg",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(regiment, origin);
@@ -4286,7 +4276,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "pickup-ship",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 1,
             };

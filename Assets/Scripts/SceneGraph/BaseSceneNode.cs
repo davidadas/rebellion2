@@ -34,7 +34,6 @@ namespace Rebellion.SceneGraph
             get => _ownerInstanceId;
             set => SetOwnerInstanceID(value);
         }
-        public List<string> AllowedOwnerInstanceIDs { get; set; }
 
         /// <summary>
         /// Default constructor.
@@ -123,28 +122,11 @@ namespace Rebellion.SceneGraph
             return null;
         }
 
-        /// <summary>
-        /// Sets the owner Instance ID. If the ID is not in the allowed list, throws an exception.
-        /// </summary>
+        /// <summary>Sets the current owner's stable faction instance ID.</summary>
         /// <param name="ownerInstanceId">The owner Instance ID to set.</param>
-        /// <exception cref="InvalidOperationException">Thrown when the owner Instance ID is invalid.</exception>
         public void SetOwnerInstanceID(string ownerInstanceId)
         {
-            if (
-                AllowedOwnerInstanceIDs == null
-                || AllowedOwnerInstanceIDs.Count == 0
-                || AllowedOwnerInstanceIDs.Contains(ownerInstanceId)
-                || ownerInstanceId == null
-            )
-            {
-                _ownerInstanceId = ownerInstanceId;
-            }
-            else
-            {
-                throw new InvalidOperationException(
-                    $"Invalid OwnerInstanceID \"{ownerInstanceId}\" for object \"{DisplayName}\". Allowed values: {string.Join(", ", AllowedOwnerInstanceIDs)}, or null."
-                );
-            }
+            _ownerInstanceId = ownerInstanceId;
         }
 
         /// <summary>
@@ -181,25 +163,6 @@ namespace Rebellion.SceneGraph
         /// <returns>An enumerable collection of children.</returns>
         public abstract IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recurse = true)
             where T : class, ISceneNode;
-
-        /// <summary>
-        /// Determines whether the specified owner instance ID is present in the allowed owner list.
-        /// </summary>
-        /// <param name="ownerInstanceId">The instance ID of the owner to validate.</param>
-        /// <returns>True if the owner instance ID exists in the allowed list; otherwise, false.</returns>
-        public bool HasAllowedOwnerInstanceID(string ownerInstanceId)
-        {
-            if (string.IsNullOrEmpty(ownerInstanceId))
-                return false;
-
-            // If null or empty, assumes universally that it is allowed.
-            // This is done so that when modding you do not need to add new faction IDs.
-            // to every single planet that exists inside of the game.
-            if (AllowedOwnerInstanceIDs == null || AllowedOwnerInstanceIDs.Count == 0)
-                return true;
-
-            return AllowedOwnerInstanceIDs.Contains(ownerInstanceId);
-        }
 
         /// <summary>
         /// Called to traverse this scene node and all of its children.

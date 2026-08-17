@@ -308,7 +308,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _capitalShip.StarfighterCapacity = 4;
             _capitalShip.RegimentCapacity = 3;
             Starfighter fighterDefinition = TestContent.Data.Starfighters.First(fighter =>
-                fighter.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                fighter.ProducerFactionInstanceIDs?.Contains(_ownerId) == true
             );
             _starfighter = new Starfighter
             {
@@ -326,7 +326,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 MaxSquadronSize = 12,
             };
             Regiment regimentDefinition = TestContent.Data.Regiments.First(regiment =>
-                regiment.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                regiment.ProducerFactionInstanceIDs?.Contains(_ownerId) == true
             );
             _regiment = new Regiment
             {
@@ -340,7 +340,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             Officer officerDefinition = TestContent.Data.Officers.First(officer =>
-                officer.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                officer.RecruitingFactionInstanceIDs?.Contains(_ownerId) == true
                 && !string.IsNullOrEmpty(officer.InjuredImagePath)
                 && !string.IsNullOrEmpty(officer.CapturedOverlayImagePath)
             );
@@ -357,7 +357,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 IsCaptured = true,
             };
             SpecialForces specialForcesDefinition = TestContent.Data.SpecialForces.First(unit =>
-                unit.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                unit.ProducerFactionInstanceIDs?.Contains(_ownerId) == true
             );
             _specialForces = new SpecialForces
             {
@@ -391,7 +391,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         )
         {
             CapitalShip definition = TestContent.Data.CapitalShips.First(ship =>
-                ship.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                ship.ProducerFactionInstanceIDs?.Contains(_ownerId) == true
             );
             return new CapitalShip
             {

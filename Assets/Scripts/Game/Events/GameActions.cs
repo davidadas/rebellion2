@@ -1393,6 +1393,68 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>Requests an ownership change for either selected planets or selected units.</summary>
+    [PersistableObject(Name = "ChangeOwner")]
+    public sealed class ChangeOwnerAction : GameAction
+    {
+        [PersistableAttribute]
+        public string FactionInstanceID { get; set; }
+
+        [PersistableMember(Name = "Planets")]
+        public List<GameEventSelector> Planets { get; set; } = new List<GameEventSelector>();
+
+        [PersistableMember(Name = "Units")]
+        public List<GameEventSelector> Units { get; set; } = new List<GameEventSelector>();
+
+        /// <summary>Resolves exactly one ownership domain and delegates the change to gameplay.</summary>
+        internal override List<GameResult> Execute(GameActionContext context)
+        {
+            bool hasPlanets = Planets.Count > 0;
+            bool hasUnits = Units.Count > 0;
+            if (hasPlanets == hasUnits)
+                throw new InvalidOperationException(
+                    "ChangeOwner requires exactly one of Planets or Units."
+                );
+
+            Faction faction = context.Game.GetFactionByOwnerInstanceID(FactionInstanceID);
+            List<ISceneNode> selected = (hasPlanets ? Planets : Units)
+                .SelectMany(selector =>
+                    selector.Select(context.Game, context.Random, context.Activation)
+                )
+                .Distinct()
+                .ToList();
+            if (selected.Count == 0)
+                throw new InvalidOperationException("ChangeOwner selected no objects.");
+            if (hasPlanets && selected.Any(node => node is not Planet))
+                throw new InvalidOperationException(
+                    "ChangeOwner Planets selectors may only return planets."
+                );
+            if (hasUnits && selected.Any(node => !IsSupportedUnit(node)))
+                throw new InvalidOperationException(
+                    "ChangeOwner Units selectors may only return officers, ships, regiments, special forces, or buildings."
+                );
+
+            return new List<GameResult>
+            {
+                new OwnershipChangeRequestedResult
+                {
+                    NewOwner = faction,
+                    Planets = selected.OfType<Planet>().ToList(),
+                    Units = hasUnits ? selected : new List<ISceneNode>(),
+                    Tick = context.Game.CurrentTick,
+                },
+            };
+        }
+
+        private static bool IsSupportedUnit(ISceneNode node) =>
+            node is Officer
+            || node is CapitalShip
+            || node is Starfighter
+            || node is Regiment
+            || node is SpecialForces
+            || node is Building;
+    }
+
     /// <summary>Resolves canonical movable units and valid destination containers.</summary>
     internal static class UnitActionTargets
     {
@@ -1401,13 +1463,27 @@ namespace Rebellion.Game.Events
             string unitInstanceID,
             IEnumerable<GameEventSelector> selectors,
             GameActionContext context,
-            string actionName
+            string actionName,
+            bool allowSpawn = false
         )
         {
             GameRoot game = context.Game;
-            IEnumerable<ISceneNode> selected = (
+            List<GameEventSelector> sources = (
                 selectors ?? Enumerable.Empty<GameEventSelector>()
-            ).SelectMany(selector => selector.Select(game, context.Random, context.Activation));
+            ).ToList();
+            List<ISceneNode> spawned = sources
+                .OfType<SpawnUnits>()
+                .SelectMany(source =>
+                    allowSpawn
+                        ? source.Spawn(context)
+                        : throw new InvalidOperationException(
+                            $"{actionName} cannot use SpawnUnits as a unit source."
+                        )
+                )
+                .ToList();
+            IEnumerable<ISceneNode> selected = sources
+                .Where(source => source is not SpawnUnits)
+                .SelectMany(selector => selector.Select(game, context.Random, context.Activation));
             if (!string.IsNullOrWhiteSpace(unitInstanceID))
             {
                 ISceneNode direct = game.GetSceneNodeByInstanceID<ISceneNode>(unitInstanceID);
@@ -1424,6 +1500,7 @@ namespace Rebellion.Game.Events
                 .Where(node => node != null)
                 .GroupBy(node => node.InstanceID, StringComparer.Ordinal)
                 .Select(group => group.First())
+                .Concat(spawned)
                 .ToList();
             if (resolved.Count == 0)
                 throw new InvalidOperationException(
@@ -1522,9 +1599,18 @@ namespace Rebellion.Game.Events
     {
         internal override List<GameResult> Execute(GameActionContext context)
         {
-            (List<IMovable> units, List<ContainerNode> destinations) = Resolve(
+            List<ContainerNode> destinations = UnitActionTargets.ResolveDestinations(
+                DestinationInstanceID,
+                Destination,
                 context,
                 "PlaceUnits"
+            );
+            List<IMovable> units = UnitActionTargets.ResolveUnits(
+                UnitInstanceID,
+                Units,
+                context,
+                "PlaceUnits",
+                allowSpawn: true
             );
             return new List<GameResult>
             {
@@ -1538,100 +1624,49 @@ namespace Rebellion.Game.Events
         }
     }
 
-    /// <summary>
-    /// Identifies a unit template and the number of runtime instances to create from it.
-    /// </summary>
+    /// <summary>Supplies newly instantiated units from one registered content definition.</summary>
     [PersistableObject]
-    public sealed class UnitCreationEntry
+    public sealed class SpawnUnits : GameEventSelector
     {
         [PersistableAttribute]
         public string TypeID { get; set; }
 
         [PersistableAttribute]
         public int Count { get; set; } = 1;
-    }
 
-    /// <summary>
-    /// Creates one atomic batch of complete units and requests their immediate initial placement.
-    /// </summary>
-    [PersistableObject(Name = "CreateUnits")]
-    public sealed class CreateUnitsAction : GameAction
-    {
         [PersistableAttribute]
         public string OwnerFactionInstanceID { get; set; }
 
-        [PersistableAttribute]
-        public string DestinationInstanceID { get; set; }
-
-        [PersistableCollectionItem(Name = "UnitType")]
-        public List<UnitCreationEntry> Buildings { get; set; } = new List<UnitCreationEntry>();
-
-        [PersistableCollectionItem(Name = "UnitType")]
-        public List<UnitCreationEntry> CapitalShips { get; set; } = new List<UnitCreationEntry>();
-
-        [PersistableCollectionItem(Name = "UnitType")]
-        public List<UnitCreationEntry> Starfighters { get; set; } = new List<UnitCreationEntry>();
-
-        [PersistableCollectionItem(Name = "UnitType")]
-        public List<UnitCreationEntry> Regiments { get; set; } = new List<UnitCreationEntry>();
-
-        [PersistableCollectionItem(Name = "UnitType")]
-        public List<UnitCreationEntry> SpecialForces { get; set; } = new List<UnitCreationEntry>();
-
-        public List<GameEventSelector> Destination { get; set; } = new List<GameEventSelector>();
-
-        internal override List<GameResult> Execute(GameActionContext context)
+        /// <summary>Creates detached runtime units for immediate placement.</summary>
+        internal IEnumerable<ISceneNode> Spawn(GameActionContext context)
         {
             if (context.UnitFactory == null)
                 throw new InvalidOperationException(
-                    "CreateUnits requires the active content unit factory."
+                    "SpawnUnits requires the active content unit factory."
+                );
+            if (string.IsNullOrWhiteSpace(TypeID) || Count < 1)
+                throw new InvalidOperationException(
+                    "SpawnUnits requires a TypeID and a positive Count."
                 );
             context.Game.GetFactionByOwnerInstanceID(OwnerFactionInstanceID);
 
-            List<ContainerNode> destinations = UnitActionTargets.ResolveDestinations(
-                DestinationInstanceID,
-                Destination,
-                context,
-                "CreateUnits"
-            );
-            List<IMovable> units = new List<IMovable>();
-            AddUnits<Building>(Buildings, units, context.UnitFactory);
-            AddUnits<CapitalShip>(CapitalShips, units, context.UnitFactory);
-            AddUnits<Starfighter>(Starfighters, units, context.UnitFactory);
-            AddUnits<Regiment>(Regiments, units, context.UnitFactory);
-            AddUnits<SpecialForces>(SpecialForces, units, context.UnitFactory);
-            if (units.Count == 0)
-                throw new InvalidOperationException(
-                    "CreateUnits requires at least one unit creation entry."
-                );
-
-            return new List<GameResult>
+            for (int index = 0; index < Count; index++)
             {
-                new UnitPlacementRequestedResult
-                {
-                    Units = units,
-                    Destinations = destinations,
-                    Tick = context.Game.CurrentTick,
-                },
-            };
+                ISceneNode unit = context.UnitFactory.Create(TypeID, OwnerFactionInstanceID);
+                unit.InstanceID = Guid.NewGuid().ToString("N");
+                yield return unit;
+            }
         }
 
-        private void AddUnits<T>(
-            IEnumerable<UnitCreationEntry> entries,
-            ICollection<IMovable> units,
-            UnitFactory factory
+        internal override IEnumerable<ISceneNode> Select(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
         )
-            where T : class, ISceneNode, IManufacturable, IMovable
         {
-            foreach (UnitCreationEntry entry in entries ?? Enumerable.Empty<UnitCreationEntry>())
-            {
-                if (entry == null || string.IsNullOrWhiteSpace(entry.TypeID) || entry.Count < 1)
-                    throw new InvalidOperationException(
-                        "CreateUnits entries require a TypeID and a positive Count."
-                    );
-                for (int index = 0; index < entry.Count; index++)
-                    units.Add(factory.Create<T>(entry.TypeID, OwnerFactionInstanceID));
-            }
+            throw new InvalidOperationException(
+                "SpawnUnits may only be used as a PlaceUnits unit source."
+            );
         }
     }
 

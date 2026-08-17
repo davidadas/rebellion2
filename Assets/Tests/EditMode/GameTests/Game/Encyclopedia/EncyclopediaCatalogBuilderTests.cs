@@ -183,13 +183,13 @@ namespace Rebellion.Tests.Game.Encyclopedia
         }
 
         [Test]
-        public void Build_WithSingleAllowedOwner_SetsEntryOwner()
+        public void Build_WithSingleProducerFaction_SetsEntryOwner()
         {
             Starfighter starfighter = new Starfighter
             {
                 TypeID = "FIGHTER1",
                 DisplayName = "A-Wing Squadron",
-                AllowedOwnerInstanceIDs = new List<string> { "FNALL1" },
+                ProducerFactionInstanceIDs = new List<string> { "FNALL1" },
                 EncyclopediaImagePath = "Pack/Starfighters/a-wing/encyclopedia",
             };
 

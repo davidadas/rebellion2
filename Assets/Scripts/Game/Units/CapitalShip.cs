@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Movement;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
 {
@@ -39,6 +40,9 @@ namespace Rebellion.Game.Units
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
         public int BaseBuildSpeed { get; set; }
+
+        [PersistableCollectionItem(Name = "FactionInstanceID")]
+        public List<string> ProducerFactionInstanceIDs { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
 

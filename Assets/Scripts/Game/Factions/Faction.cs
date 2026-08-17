@@ -764,13 +764,7 @@ namespace Rebellion.Game.Factions
 
             foreach (IManufacturable template in templates)
             {
-                if (template is Building { CanBeManufactured: false })
-                    continue;
-
-                if (
-                    template.AllowedOwnerInstanceIDs?.Count > 0
-                    && !template.AllowedOwnerInstanceIDs.Contains(InstanceID)
-                )
+                if (template.ProducerFactionInstanceIDs?.Contains(InstanceID) == false)
                     continue;
 
                 ResearchDiscipline discipline = template

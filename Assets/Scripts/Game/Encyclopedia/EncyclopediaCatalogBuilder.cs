@@ -221,8 +221,13 @@ namespace Rebellion.Game.Encyclopedia
             if (!string.IsNullOrEmpty(ownerInstanceId))
                 return ownerInstanceId;
 
-            return node.AllowedOwnerInstanceIDs?.Count == 1
-                ? node.AllowedOwnerInstanceIDs[0]
+            if (entity is IManufacturable manufacturable)
+                return manufacturable.ProducerFactionInstanceIDs?.Count == 1
+                    ? manufacturable.ProducerFactionInstanceIDs[0]
+                    : null;
+
+            return entity is Officer officer && officer.RecruitingFactionInstanceIDs?.Count == 1
+                ? officer.RecruitingFactionInstanceIDs[0]
                 : null;
         }
 

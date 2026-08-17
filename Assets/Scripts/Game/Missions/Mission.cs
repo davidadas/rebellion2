@@ -96,8 +96,6 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = configKey ?? throw new ArgumentNullException(nameof(configKey));
             DisplayName = displayName ?? configKey;
-            AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
-
             OwnerInstanceID = ownerInstanceId;
             LocationInstanceID = locationInstanceId;
 

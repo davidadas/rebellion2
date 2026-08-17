@@ -588,7 +588,6 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "SHIP",
                 OwnerInstanceID = owner.InstanceID,
-                AllowedOwnerInstanceIDs = new List<string> { owner.InstanceID },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 1,
             };
@@ -668,7 +667,6 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "SHIP",
                 OwnerInstanceID = owner.InstanceID,
-                AllowedOwnerInstanceIDs = new List<string> { owner.InstanceID },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 1,
             };

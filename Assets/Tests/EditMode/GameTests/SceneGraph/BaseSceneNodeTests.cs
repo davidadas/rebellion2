@@ -147,23 +147,10 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
-        public void SetOwnerInstanceID_AllowedID_SetsSuccessfully()
+        public void SetOwnerInstanceID_SetsCurrentOwner()
         {
-            _childNode1.AllowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
-
             Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID("Owner1"));
             Assert.AreEqual("Owner1", _childNode1.OwnerInstanceID);
-        }
-
-        [Test]
-        public void SetOwnerInstanceID_DisallowedID_ThrowsInvalidOperationException()
-        {
-            _childNode1.AllowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
-
-            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
-                _childNode1.SetOwnerInstanceID("InvalidOwner")
-            );
-            Assert.That(ex.Message, Does.Contain("Invalid OwnerInstanceID"));
         }
 
         [Test]
@@ -316,28 +303,15 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
-        public void SetOwnerInstanceID_NullAllowedOwnerInstanceIDs_AcceptsAnyValue()
+        public void SetOwnerInstanceID_AnyFaction_SetsSuccessfully()
         {
-            _childNode1.AllowedOwnerInstanceIDs = null;
-
             Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID("AnyOwner"));
             Assert.AreEqual("AnyOwner", _childNode1.OwnerInstanceID);
         }
 
         [Test]
-        public void SetOwnerInstanceID_EmptyAllowedOwnerInstanceIDs_AcceptsAnyValue()
+        public void SetOwnerInstanceID_NullValue_SetsSuccessfully()
         {
-            _childNode1.AllowedOwnerInstanceIDs = new List<string>();
-
-            Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID("AnyOwner"));
-            Assert.AreEqual("AnyOwner", _childNode1.OwnerInstanceID);
-        }
-
-        [Test]
-        public void SetOwnerInstanceID_NullValueWithAllowedList_SetsSuccessfully()
-        {
-            _childNode1.AllowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
-
             Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID(null));
             Assert.IsNull(_childNode1.OwnerInstanceID);
         }

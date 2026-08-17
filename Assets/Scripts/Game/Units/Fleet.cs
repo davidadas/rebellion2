@@ -57,7 +57,6 @@ namespace Rebellion.Game.Units
             List<CapitalShip> capitalShips = null
         )
         {
-            AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
             OwnerInstanceID = ownerInstanceId;
             DisplayName = displayName;
             CapitalShips = capitalShips ?? new List<CapitalShip>();

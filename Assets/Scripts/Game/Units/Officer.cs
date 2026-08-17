@@ -195,6 +195,10 @@ namespace Rebellion.Game.Units
         // Officer Info.
         public bool IsMain { get; set; }
         public bool IsRecruitable { get; set; }
+
+        [PersistableCollectionItem(Name = "FactionInstanceID")]
+        public List<string> RecruitingFactionInstanceIDs { get; set; } = new List<string>();
+
         public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }
         public bool CanEscape { get; set; }

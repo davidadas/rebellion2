@@ -29,9 +29,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 )
                 .First(building =>
                     ((IManufacturable)building).GetMaintenanceCost() == 0
-                    && building.AllowedOwnerInstanceIDs?.Count > 0
+                    && building.ProducerFactionInstanceIDs?.Count > 0
                 );
-            string ownerId = template.AllowedOwnerInstanceIDs[0];
+            string ownerId = template.ProducerFactionInstanceIDs[0];
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction owner = new Faction { InstanceID = ownerId };
             owner.SetHighestUnlockedOrder(
@@ -81,11 +81,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             List<IManufacturable> templates = TestContent
                 .Data.CapitalShips.Cast<IManufacturable>()
                 .Concat(TestContent.Data.Starfighters)
-                .Where(template => template.AllowedOwnerInstanceIDs?.Count > 0)
+                .Where(template => template.ProducerFactionInstanceIDs?.Count > 0)
                 .ToList();
             IGrouping<string, IManufacturable> ownerTemplates = templates
                 .SelectMany(template =>
-                    template.AllowedOwnerInstanceIDs.Select(ownerId => new { ownerId, template })
+                    template.ProducerFactionInstanceIDs.Select(ownerId => new { ownerId, template })
                 )
                 .GroupBy(entry => entry.ownerId, entry => entry.template)
                 .First(group =>

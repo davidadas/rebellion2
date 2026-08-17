@@ -241,17 +241,17 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void RebuildResearchCatalog_WithRestrictedBuilding_FiltersOwnership()
+        public void RebuildResearchCatalog_WithRestrictedBuilding_FiltersProducerFaction()
         {
             Building restrictedBuilding = new Building
             {
                 DisplayName = "Restricted Building",
                 ResearchOrder = 1,
                 ResearchDifficulty = 24,
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION2" },
+                ProducerFactionInstanceIDs = new List<string> { "FACTION2" },
             };
 
-            _building.AllowedOwnerInstanceIDs = new List<string> { "FACTION1" };
+            _building.ProducerFactionInstanceIDs = new List<string> { "FACTION1" };
 
             IManufacturable[] templates = new IManufacturable[] { _building, restrictedBuilding };
             _faction.RebuildResearchCatalog(templates);
@@ -263,6 +263,22 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        public void RebuildResearchCatalog_WithNoProducerFactions_ExcludesTechnology()
+        {
+            Starfighter starfighter = new Starfighter
+            {
+                DisplayName = "Event Starfighter",
+                ProducerFactionInstanceIDs = new List<string>(),
+                ResearchOrder = 1,
+                ResearchDifficulty = 24,
+            };
+
+            _faction.RebuildResearchCatalog(new IManufacturable[] { starfighter });
+
+            Assert.IsFalse(_faction.ResearchCatalog.ContainsKey(ResearchDiscipline.ShipDesign));
+        }
+
+        [Test]
         public void RebuildResearchCatalog_WithMultipleBuildings_SortsByResearchOrder()
         {
             Building b1 = new Building
@@ -270,21 +286,21 @@ namespace Rebellion.Tests.Game.Factions
                 DisplayName = "B1",
                 ResearchOrder = 3,
                 ResearchDifficulty = 60,
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
             };
             Building b2 = new Building
             {
                 DisplayName = "B2",
                 ResearchOrder = 1,
                 ResearchDifficulty = 24,
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
             };
             Building b3 = new Building
             {
                 DisplayName = "B3",
                 ResearchOrder = 0,
                 ResearchDifficulty = 0,
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
             };
 
             _faction.RebuildResearchCatalog(new IManufacturable[] { b1, b2, b3 });
@@ -307,7 +323,7 @@ namespace Rebellion.Tests.Game.Factions
                             DisplayName = t.name,
                             ResearchOrder = t.order,
                             ResearchDifficulty = t.difficulty,
-                            AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                            ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
                         }
                 )
                 .ToArray();
@@ -713,21 +729,21 @@ namespace Rebellion.Tests.Game.Factions
                 DisplayName = "Advanced Mine",
                 ResearchOrder = 4,
                 ResearchDifficulty = 60,
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
             };
             CapitalShip shipTechnology = new CapitalShip
             {
                 DisplayName = "Cruiser",
                 ResearchOrder = 2,
                 ResearchDifficulty = 24,
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
             };
             Regiment troopTechnology = new Regiment
             {
                 DisplayName = "Elite Troopers",
                 ResearchOrder = 6,
                 ResearchDifficulty = 48,
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
             };
 
             _faction.RebuildResearchCatalog(

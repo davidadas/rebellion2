@@ -73,9 +73,15 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void CreateUnits_MixedTypedEntries_EmitsDetachedPlacementBatch()
+        public void PlaceUnits_MixedExistingAndSpawnSources_EmitsPlacementBatch()
         {
             GameRoot game = BuildGame(out Planet destination, out _);
+            Officer officer = new Officer
+            {
+                InstanceID = "existing-officer",
+                OwnerInstanceID = "empire",
+            };
+            game.AttachNode(officer, destination);
             Starfighter fighterTemplate = new Starfighter
             {
                 TypeID = "X_WING",
@@ -93,17 +99,23 @@ namespace Rebellion.Tests.Game.Events
                 new[] { regimentTemplate },
                 Array.Empty<SpecialForces>()
             );
-            CreateUnitsAction action = new CreateUnitsAction
+            PlaceUnitsAction action = new PlaceUnitsAction
             {
-                OwnerFactionInstanceID = "empire",
                 DestinationInstanceID = destination.InstanceID,
-                Starfighters = new List<UnitCreationEntry>
+                Units = new List<GameEventSelector>
                 {
-                    new UnitCreationEntry { TypeID = "X_WING", Count = 2 },
-                },
-                Regiments = new List<UnitCreationEntry>
-                {
-                    new UnitCreationEntry { TypeID = "ALLIANCE_REGIMENT" },
+                    new SelectOfficers { InstanceID = officer.InstanceID },
+                    new SpawnUnits
+                    {
+                        TypeID = "X_WING",
+                        Count = 2,
+                        OwnerFactionInstanceID = "empire",
+                    },
+                    new SpawnUnits
+                    {
+                        TypeID = "ALLIANCE_REGIMENT",
+                        OwnerFactionInstanceID = "empire",
+                    },
                 },
             };
 
@@ -112,10 +124,17 @@ namespace Rebellion.Tests.Game.Events
                 .OfType<UnitPlacementRequestedResult>()
                 .Single();
 
-            Assert.AreEqual(3, result.Units.Count);
+            Assert.AreEqual(4, result.Units.Count);
+            Assert.AreSame(officer, result.Units.OfType<Officer>().Single());
             Assert.AreEqual(2, result.Units.OfType<Starfighter>().Count());
             Assert.AreEqual(1, result.Units.OfType<Regiment>().Count());
-            Assert.IsTrue(result.Units.Cast<ISceneNode>().All(unit => unit.GetParent() == null));
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsTrue(
+                result
+                    .Units.Where(unit => unit != officer)
+                    .Cast<ISceneNode>()
+                    .All(unit => unit.GetParent() == null)
+            );
             Assert.IsTrue(
                 result.Units.Cast<ISceneNode>().All(unit => unit.OwnerInstanceID == "empire")
             );
@@ -123,32 +142,103 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void CreateUnits_TypedEntries_RoundTripsAuthoredStructure()
+        public void PlaceUnits_SpawnSources_RoundTripsAuthoredStructure()
         {
-            CreateUnitsAction action = new CreateUnitsAction
+            PlaceUnitsAction action = new PlaceUnitsAction
             {
-                OwnerFactionInstanceID = "FNALL1",
                 DestinationInstanceID = "NABOO",
-                Starfighters = new List<UnitCreationEntry>
+                Units = new List<GameEventSelector>
                 {
-                    new UnitCreationEntry { TypeID = "X_WING", Count = 3 },
-                },
-                Regiments = new List<UnitCreationEntry>
-                {
-                    new UnitCreationEntry { TypeID = "ALLIANCE_REGIMENT", Count = 2 },
+                    new SpawnUnits
+                    {
+                        TypeID = "X_WING",
+                        Count = 3,
+                        OwnerFactionInstanceID = "FNALL1",
+                    },
+                    new SpawnUnits
+                    {
+                        TypeID = "ALLIANCE_REGIMENT",
+                        Count = 2,
+                        OwnerFactionInstanceID = "FNALL1",
+                    },
                 },
             };
 
             string xml = SerializationHelper.Serialize<GameAction>(action);
-            CreateUnitsAction restored = (CreateUnitsAction)
+            PlaceUnitsAction restored = (PlaceUnitsAction)
                 SerializationHelper.Deserialize<GameAction>(xml);
 
-            Assert.AreEqual("FNALL1", restored.OwnerFactionInstanceID);
             Assert.AreEqual("NABOO", restored.DestinationInstanceID);
-            Assert.AreEqual("X_WING", restored.Starfighters.Single().TypeID);
-            Assert.AreEqual(3, restored.Starfighters.Single().Count);
-            Assert.AreEqual("ALLIANCE_REGIMENT", restored.Regiments.Single().TypeID);
-            Assert.AreEqual(2, restored.Regiments.Single().Count);
+            SpawnUnits[] sources = restored.Units.OfType<SpawnUnits>().ToArray();
+            Assert.AreEqual("X_WING", sources[0].TypeID);
+            Assert.AreEqual(3, sources[0].Count);
+            Assert.AreEqual("FNALL1", sources[0].OwnerFactionInstanceID);
+            Assert.AreEqual("ALLIANCE_REGIMENT", sources[1].TypeID);
+            Assert.AreEqual(2, sources[1].Count);
+        }
+
+        [Test]
+        public void ChangeOwner_UnitSelectors_EmitsOwnershipRequest()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer officer = new Officer { InstanceID = "officer", OwnerInstanceID = "empire" };
+            game.AttachNode(officer, planet);
+            ChangeOwnerAction action = new ChangeOwnerAction
+            {
+                FactionInstanceID = "rebels",
+                Units = new List<GameEventSelector>
+                {
+                    new SelectOfficers { InstanceID = officer.InstanceID },
+                },
+            };
+
+            OwnershipChangeRequestedResult result = action
+                .Execute(game)
+                .OfType<OwnershipChangeRequestedResult>()
+                .Single();
+
+            Assert.AreEqual("rebels", result.NewOwner.InstanceID);
+            Assert.AreSame(officer, result.Units.Single());
+            Assert.IsEmpty(result.Planets);
+        }
+
+        [Test]
+        public void ChangeOwner_WithPlanetsAndUnits_RejectsAmbiguousRequest()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            ChangeOwnerAction action = new ChangeOwnerAction
+            {
+                FactionInstanceID = "rebels",
+                Planets = new List<GameEventSelector> { new SelectPlanets() },
+                Units = new List<GameEventSelector> { new SelectOfficers() },
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                action.Execute(game)
+            );
+
+            StringAssert.Contains("exactly one", exception.Message);
+        }
+
+        [Test]
+        public void ChangeOwner_PlanetSelectors_RoundTripsAuthoredStructure()
+        {
+            ChangeOwnerAction action = new ChangeOwnerAction
+            {
+                FactionInstanceID = "FNALL1",
+                Planets = new List<GameEventSelector>
+                {
+                    new SelectPlanets { InstanceID = "NABOO" },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize<GameAction>(action);
+            ChangeOwnerAction restored = (ChangeOwnerAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            Assert.AreEqual("FNALL1", restored.FactionInstanceID);
+            Assert.AreEqual("NABOO", restored.Planets.OfType<SelectPlanets>().Single().InstanceID);
+            Assert.IsEmpty(restored.Units);
         }
 
         [Test]

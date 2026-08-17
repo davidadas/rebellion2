@@ -635,7 +635,7 @@ namespace Rebellion.Game
         public List<Officer> GetUnrecruitedOfficers(string ownerInstanceId)
         {
             return UnrecruitedOfficers
-                .Where(officer => officer.AllowedOwnerInstanceIDs.Contains(ownerInstanceId))
+                .Where(officer => officer.RecruitingFactionInstanceIDs.Contains(ownerInstanceId))
                 .ToList();
         }
 

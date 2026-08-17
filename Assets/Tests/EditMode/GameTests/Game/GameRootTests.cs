@@ -608,21 +608,21 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetUnrecruitedOfficers_GameWithUnrecruitedOfficers_ReturnsOfficers()
         {
-            // Create officers with different allowed owner IDs.
+            // Create officers available to different recruiting factions.
             Officer officer1 = new Officer
             {
                 InstanceID = "OFFICER1",
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION1", "FACTION2" },
+                RecruitingFactionInstanceIDs = new List<string> { "FACTION1", "FACTION2" },
             };
             Officer officer2 = new Officer
             {
                 InstanceID = "OFFICER2",
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                RecruitingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
             Officer officer3 = new Officer
             {
                 InstanceID = "OFFICER3",
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION2" },
+                RecruitingFactionInstanceIDs = new List<string> { "FACTION2" },
             };
 
             _game.UnrecruitedOfficers.Add(officer1);
@@ -657,7 +657,7 @@ namespace Rebellion.Tests.Game
             Officer officer = new Officer
             {
                 InstanceID = "OFFICER1",
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                RecruitingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
             _game.UnrecruitedOfficers.Add(officer);
 
@@ -685,7 +685,7 @@ namespace Rebellion.Tests.Game
             Officer officer = new Officer
             {
                 InstanceID = "OFFICER1",
-                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                RecruitingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
 
             // Remove non-existent officer (should not throw exception).
@@ -794,6 +794,7 @@ namespace Rebellion.Tests.Game
             {
                 InstanceID = "DEFECTING_OFFICER",
                 OwnerInstanceID = _faction1.InstanceID,
+                RecruitingFactionInstanceIDs = new List<string> { _faction1.InstanceID },
             };
             _game.AttachNode(officer, _planet);
             _game.AddToVoid(officer);

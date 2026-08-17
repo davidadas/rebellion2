@@ -331,7 +331,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int? MaximumCount { get; set; }
 
-        [PersistableMember(Name = "Candidates")]
+        [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         internal override IEnumerable<ISceneNode> Select(
@@ -386,7 +386,7 @@ namespace Rebellion.Game.Events
     [PersistableObject]
     public sealed class SelectFirst : GameEventSelector
     {
-        [PersistableMember(Name = "Candidates")]
+        [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         internal override IEnumerable<ISceneNode> Select(
@@ -454,7 +454,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public SceneAncestorType Type { get; set; }
 
-        [PersistableMember(Name = "Candidates")]
+        [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         internal override IEnumerable<ISceneNode> Select(

@@ -92,7 +92,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void Build_SelectedCapturedOfficer_ReturnsPersonnelCardPresentation()
         {
             Officer definition = TestContent.Data.Officers.First(officer =>
-                officer.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                officer.RecruitingFactionInstanceIDs?.Contains(_ownerId) == true
                 && !string.IsNullOrEmpty(officer.CapturedOverlayImagePath)
             );
             Officer officer = new Officer
@@ -170,7 +170,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void Build_MovingOfficerWithoutTransitArtwork_UsesThemedEnrouteBackground()
         {
             Officer definition = TestContent.Data.Officers.First(officer =>
-                officer.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                officer.RecruitingFactionInstanceIDs?.Contains(_ownerId) == true
             );
             Officer officer = new Officer
             {
@@ -224,7 +224,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void Build_MovingDamagedStarfighter_ReturnsEnrouteAndDamageOverlays()
         {
             Starfighter definition = TestContent.Data.Starfighters.First(fighter =>
-                fighter.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                fighter.ProducerFactionInstanceIDs?.Contains(_ownerId) == true
                 && !string.IsNullOrEmpty(fighter.InTransitSmallImagePath)
                 && !string.IsNullOrEmpty(fighter.DamagedSmallImagePath)
             );
@@ -259,7 +259,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void Build_ShieldUnderConstruction_ReturnsDefenseBuildingCard()
         {
             Building definition = TestContent.Data.Buildings.First(building =>
-                building.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                building.ProducerFactionInstanceIDs?.Contains(_ownerId) == true
                 && building.DefenseFacilityClass == DefenseFacilityClass.Shield
             );
             Building shield = new Building
@@ -301,7 +301,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         private static Starfighter CreateStarfighter(string instanceId, string displayName)
         {
             Starfighter definition = TestContent.Data.Starfighters.First(fighter =>
-                fighter.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                fighter.ProducerFactionInstanceIDs?.Contains(_ownerId) == true
             );
             return new Starfighter
             {
