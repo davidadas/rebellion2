@@ -224,7 +224,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void Build_MovingDamagedStarfighter_ReturnsEnrouteAndDamageOverlays()
         {
             Starfighter definition = TestContent.Data.Starfighters.First(fighter =>
-                fighter.ProducerFactionInstanceIDs?.Contains(_ownerId) == true
+                fighter.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
                 && !string.IsNullOrEmpty(fighter.InTransitSmallImagePath)
                 && !string.IsNullOrEmpty(fighter.DamagedSmallImagePath)
             );
@@ -259,7 +259,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void Build_ShieldUnderConstruction_ReturnsDefenseBuildingCard()
         {
             Building definition = TestContent.Data.Buildings.First(building =>
-                building.ProducerFactionInstanceIDs?.Contains(_ownerId) == true
+                building.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
                 && building.DefenseFacilityClass == DefenseFacilityClass.Shield
             );
             Building shield = new Building
@@ -301,7 +301,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         private static Starfighter CreateStarfighter(string instanceId, string displayName)
         {
             Starfighter definition = TestContent.Data.Starfighters.First(fighter =>
-                fighter.ProducerFactionInstanceIDs?.Contains(_ownerId) == true
+                fighter.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
             );
             return new Starfighter
             {

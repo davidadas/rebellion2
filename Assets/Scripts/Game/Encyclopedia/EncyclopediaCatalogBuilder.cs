@@ -222,8 +222,8 @@ namespace Rebellion.Game.Encyclopedia
                 return ownerInstanceId;
 
             if (entity is IManufacturable manufacturable)
-                return manufacturable.ProducerFactionInstanceIDs?.Count == 1
-                    ? manufacturable.ProducerFactionInstanceIDs[0]
+                return manufacturable.ManufacturingFactionInstanceIDs?.Count == 1
+                    ? manufacturable.ManufacturingFactionInstanceIDs[0]
                     : null;
 
             return entity is Officer officer && officer.RecruitingFactionInstanceIDs?.Count == 1

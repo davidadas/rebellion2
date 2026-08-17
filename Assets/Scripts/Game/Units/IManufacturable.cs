@@ -30,7 +30,7 @@ namespace Rebellion.Game.Units
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
         public int BaseBuildSpeed { get; set; }
-        public List<string> ProducerFactionInstanceIDs { get; set; }
+        public List<string> ManufacturingFactionInstanceIDs { get; set; }
 
         // Research Info.
         public int ResearchOrder { get; set; }
@@ -149,9 +149,9 @@ namespace Rebellion.Game.Units
     public static class ManufacturableExtensions
     {
         /// <summary>Returns whether the specified faction may manufacture this definition.</summary>
-        public static bool CanBeProducedBy(
+        public static bool CanBeManufacturedBy(
             this IManufacturable manufacturable,
             string factionInstanceID
-        ) => manufacturable.ProducerFactionInstanceIDs?.Contains(factionInstanceID) != false;
+        ) => manufacturable.ManufacturingFactionInstanceIDs?.Contains(factionInstanceID) != false;
     }
 }

@@ -189,7 +189,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
             {
                 TypeID = "FIGHTER1",
                 DisplayName = "A-Wing Squadron",
-                ProducerFactionInstanceIDs = new List<string> { "FNALL1" },
+                ManufacturingFactionInstanceIDs = new List<string> { "FNALL1" },
                 EncyclopediaImagePath = "Pack/Starfighters/a-wing/encyclopedia",
             };
 

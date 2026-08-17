@@ -642,7 +642,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         )
         {
             CapitalShip definition = TestContent.Data.CapitalShips.First(item =>
-                item.ProducerFactionInstanceIDs?.Contains(ownerId) == true
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
             );
             return new CapitalShip
             {
@@ -662,7 +662,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         )
         {
             Building definition = TestContent.Data.Buildings.First(item =>
-                item.ProducerFactionInstanceIDs?.Contains(ownerId) == true
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
             );
             return new Building
             {
@@ -698,7 +698,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         )
         {
             Starfighter definition = TestContent.Data.Starfighters.First(item =>
-                item.ProducerFactionInstanceIDs?.Contains(ownerId) == true
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
             );
             return new Starfighter
             {

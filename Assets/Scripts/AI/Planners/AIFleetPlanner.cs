@@ -434,7 +434,7 @@ namespace Rebellion.AI.Planners
             return GetSelectableCapitalShipTechnologies(context)
                 .Any(technology =>
                     technology.GetReference() is CapitalShip capitalShip
-                    && capitalShip.CanBeProducedBy(context.Faction.InstanceID)
+                    && capitalShip.CanBeManufacturedBy(context.Faction.InstanceID)
                     && HasMaintenanceHeadroomFor(context, capitalShip)
                     && CapitalShipWouldHelpAttackFleet(
                         context,

@@ -16,7 +16,7 @@ namespace Rebellion.Game.Units
         public int BaseBuildSpeed { get; set; }
 
         [PersistableCollectionItem(Name = "FactionInstanceID")]
-        public List<string> ProducerFactionInstanceIDs { get; set; }
+        public List<string> ManufacturingFactionInstanceIDs { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
 

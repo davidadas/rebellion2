@@ -248,10 +248,10 @@ namespace Rebellion.Tests.Game.Factions
                 DisplayName = "Restricted Building",
                 ResearchOrder = 1,
                 ResearchDifficulty = 24,
-                ProducerFactionInstanceIDs = new List<string> { "FACTION2" },
+                ManufacturingFactionInstanceIDs = new List<string> { "FACTION2" },
             };
 
-            _building.ProducerFactionInstanceIDs = new List<string> { "FACTION1" };
+            _building.ManufacturingFactionInstanceIDs = new List<string> { "FACTION1" };
 
             IManufacturable[] templates = new IManufacturable[] { _building, restrictedBuilding };
             _faction.RebuildResearchCatalog(templates);
@@ -268,7 +268,7 @@ namespace Rebellion.Tests.Game.Factions
             Starfighter starfighter = new Starfighter
             {
                 DisplayName = "Event Starfighter",
-                ProducerFactionInstanceIDs = new List<string>(),
+                ManufacturingFactionInstanceIDs = new List<string>(),
                 ResearchOrder = 1,
                 ResearchDifficulty = 24,
             };
@@ -286,21 +286,21 @@ namespace Rebellion.Tests.Game.Factions
                 DisplayName = "B1",
                 ResearchOrder = 3,
                 ResearchDifficulty = 60,
-                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
+                ManufacturingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
             Building b2 = new Building
             {
                 DisplayName = "B2",
                 ResearchOrder = 1,
                 ResearchDifficulty = 24,
-                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
+                ManufacturingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
             Building b3 = new Building
             {
                 DisplayName = "B3",
                 ResearchOrder = 0,
                 ResearchDifficulty = 0,
-                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
+                ManufacturingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
 
             _faction.RebuildResearchCatalog(new IManufacturable[] { b1, b2, b3 });
@@ -323,7 +323,7 @@ namespace Rebellion.Tests.Game.Factions
                             DisplayName = t.name,
                             ResearchOrder = t.order,
                             ResearchDifficulty = t.difficulty,
-                            ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
+                            ManufacturingFactionInstanceIDs = new List<string> { "FACTION1" },
                         }
                 )
                 .ToArray();
@@ -729,21 +729,21 @@ namespace Rebellion.Tests.Game.Factions
                 DisplayName = "Advanced Mine",
                 ResearchOrder = 4,
                 ResearchDifficulty = 60,
-                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
+                ManufacturingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
             CapitalShip shipTechnology = new CapitalShip
             {
                 DisplayName = "Cruiser",
                 ResearchOrder = 2,
                 ResearchDifficulty = 24,
-                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
+                ManufacturingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
             Regiment troopTechnology = new Regiment
             {
                 DisplayName = "Elite Troopers",
                 ResearchOrder = 6,
                 ResearchDifficulty = 48,
-                ProducerFactionInstanceIDs = new List<string> { "FACTION1" },
+                ManufacturingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
 
             _faction.RebuildResearchCatalog(

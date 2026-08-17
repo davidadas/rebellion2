@@ -303,10 +303,10 @@ stationary:
 ```
 
 `SpawnUnits` requires a `TypeID` defined in the appropriate unit data file. A definition's optional
-`ProducerFactionInstanceIDs` controls which faction research and production catalogs include it;
+`ManufacturingFactionInstanceIDs` controls which faction research and production catalogs include it;
 an empty collection makes the definition available only to scenarios and events.
 
-Ownership does not restrict how a unit was acquired. `ProducerFactionInstanceIDs` controls who may
+Ownership does not restrict how a unit was acquired. `ManufacturingFactionInstanceIDs` controls who may
 manufacture a definition, while an officer's `RecruitingFactionInstanceIDs` controls who may recruit
 that officer. Once acquired or transferred, any faction may own either.
 

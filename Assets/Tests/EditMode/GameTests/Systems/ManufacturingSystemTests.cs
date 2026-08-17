@@ -508,7 +508,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "REBEL_BUILDING",
                 OwnerInstanceID = "REBELS",
                 BuildingType = BuildingType.Mine,
-                ProducerFactionInstanceIDs = new List<string> { "REBELS" },
+                ManufacturingFactionInstanceIDs = new List<string> { "REBELS" },
             };
 
             Assert.Throws<SceneAccessException>(
@@ -526,7 +526,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "REBEL_BUILDING",
                 OwnerInstanceID = "REBELS",
                 BuildingType = BuildingType.Mine,
-                ProducerFactionInstanceIDs = new List<string> { "REBELS" },
+                ManufacturingFactionInstanceIDs = new List<string> { "REBELS" },
             };
 
             bool result = _manager.Enqueue(_coruscant, rebelBuilding, _coruscant, ignoreCost: true);
@@ -2915,7 +2915,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "mine1",
                 OwnerInstanceID = "empire",
-                ProducerFactionInstanceIDs = new List<string> { "empire" },
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
                 ConstructionCost = 1,
                 BaseBuildSpeed = 1,
@@ -3012,7 +3012,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "mine1",
                 OwnerInstanceID = "empire",
-                ProducerFactionInstanceIDs = new List<string> { "empire" },
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
                 ConstructionCost = 1,
                 BaseBuildSpeed = 1,
@@ -3818,7 +3818,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "m1",
                 OwnerInstanceID = "empire",
-                ProducerFactionInstanceIDs = new List<string> { "empire" },
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
                 ConstructionCost = 1,
                 BaseBuildSpeed = 1,
@@ -3827,7 +3827,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "m2",
                 OwnerInstanceID = "empire",
-                ProducerFactionInstanceIDs = new List<string> { "empire" },
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
                 ConstructionCost = 1,
                 BaseBuildSpeed = 1,
@@ -3836,7 +3836,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "m3",
                 OwnerInstanceID = "empire",
-                ProducerFactionInstanceIDs = new List<string> { "empire" },
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
                 ConstructionCost = 1,
                 BaseBuildSpeed = 1,
@@ -3960,7 +3960,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "m1",
                 OwnerInstanceID = "empire",
-                ProducerFactionInstanceIDs = new List<string> { "empire" },
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
                 ConstructionCost = 1,
                 BaseBuildSpeed = 1,
@@ -3969,7 +3969,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "m2",
                 OwnerInstanceID = "empire",
-                ProducerFactionInstanceIDs = new List<string> { "empire" },
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
                 ConstructionCost = 1,
                 BaseBuildSpeed = 1,
@@ -3978,7 +3978,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "m3",
                 OwnerInstanceID = "empire",
-                ProducerFactionInstanceIDs = new List<string> { "empire" },
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
                 ConstructionCost = 1,
                 BaseBuildSpeed = 1,
