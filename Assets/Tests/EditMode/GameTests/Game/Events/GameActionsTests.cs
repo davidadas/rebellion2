@@ -21,15 +21,24 @@ namespace Rebellion.Tests.Game.Events
     /// </summary>
     internal static class GameActionTestExtensions
     {
+        /// <summary>
+        /// Executes an action with the game's random-number provider.
+        /// </summary>
         internal static List<GameResult> Execute(this GameAction action, GameRoot game) =>
             action.Execute(new GameActionContext(game, game.Random));
 
+        /// <summary>
+        /// Executes an action with a caller-supplied random-number provider.
+        /// </summary>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random
         ) => action.Execute(new GameActionContext(game, random));
 
+        /// <summary>
+        /// Executes an action with a caller-supplied event activation context.
+        /// </summary>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
@@ -37,6 +46,9 @@ namespace Rebellion.Tests.Game.Events
             GameEventExecutionContext activation
         ) => action.Execute(new GameActionContext(game, random, activation));
 
+        /// <summary>
+        /// Executes an action with the unit definitions required to spawn runtime units.
+        /// </summary>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
@@ -44,9 +56,15 @@ namespace Rebellion.Tests.Game.Events
         ) => action.Execute(new GameActionContext(game, game.Random, null, unitFactory));
     }
 
+    /// <summary>
+    /// Verifies data-defined action behavior and authored XML contracts.
+    /// </summary>
     [TestFixture]
     public class GameActionsTests
     {
+        /// <summary>
+        /// Creates a two-faction game with one colonized planet owned by each faction.
+        /// </summary>
         private GameRoot BuildGame(out Planet empPlanet, out Planet rebelPlanet)
         {
             GameConfig config = TestConfig.Create();
@@ -144,49 +162,62 @@ namespace Rebellion.Tests.Game.Events
         [Test]
         public void PlaceUnits_SpawnSources_RoundTripsAuthoredStructure()
         {
-            PlaceUnitsAction action = new PlaceUnitsAction
+            GameEvent gameEvent = new GameEvent
             {
-                DestinationInstanceID = "NABOO",
-                Units = new List<GameEventSelector>
+                InstanceID = "SPAWN_REINFORCEMENTS",
+                Actions = new List<GameAction>
                 {
-                    new SpawnUnits
+                    new PlaceUnitsAction
                     {
-                        TypeID = "X_WING",
-                        Count = 3,
-                        OwnerFactionInstanceID = "FNALL1",
-                    },
-                    new SpawnUnits
-                    {
-                        TypeID = "ALLIANCE_REGIMENT",
-                        Count = 2,
-                        OwnerFactionInstanceID = "FNALL1",
+                        DestinationInstanceID = "NABOO",
+                        Units = new List<GameEventSelector>
+                        {
+                            new SpawnUnits
+                            {
+                                TypeID = "X_WING",
+                                Count = 3,
+                                OwnerFactionInstanceID = "FNALL1",
+                            },
+                            new SpawnUnits
+                            {
+                                TypeID = "ALLIANCE_REGIMENT",
+                                Count = 2,
+                                OwnerFactionInstanceID = "FNALL1",
+                            },
+                        },
                     },
                 },
             };
 
-            string xml = SerializationHelper.Serialize<GameAction>(action);
-            PlaceUnitsAction restored = (PlaceUnitsAction)
-                SerializationHelper.Deserialize<GameAction>(xml);
+            string xml = SerializationHelper.Serialize(gameEvent);
+            GameEvent restoredEvent = SerializationHelper.Deserialize<GameEvent>(xml);
+            PlaceUnitsAction restored = restoredEvent.Actions.OfType<PlaceUnitsAction>().Single();
 
+            StringAssert.Contains("<PlaceUnits DestinationInstanceID=\"NABOO\">", xml);
+            StringAssert.Contains("<SpawnUnits", xml);
+            StringAssert.Contains("TypeID=\"X_WING\"", xml);
             Assert.AreEqual("NABOO", restored.DestinationInstanceID);
             SpawnUnits[] sources = restored.Units.OfType<SpawnUnits>().ToArray();
+            Assert.AreEqual(2, sources.Length);
             Assert.AreEqual("X_WING", sources[0].TypeID);
             Assert.AreEqual(3, sources[0].Count);
             Assert.AreEqual("FNALL1", sources[0].OwnerFactionInstanceID);
             Assert.AreEqual("ALLIANCE_REGIMENT", sources[1].TypeID);
             Assert.AreEqual(2, sources[1].Count);
+            Assert.AreEqual("FNALL1", sources[1].OwnerFactionInstanceID);
         }
 
         [Test]
         public void PlaceUnits_AuthoredSpawnSources_DeserializesStructure()
         {
             const string xml =
-                "<PlaceUnits DestinationInstanceID=\"NABOO\">"
-                + "<Units>"
-                + "<SpawnUnits TypeID=\"X_WING\" Count=\"3\" OwnerFactionInstanceID=\"FNALL1\"/>"
-                + "<SpawnUnits TypeID=\"ALLIANCE_REGIMENT\" Count=\"2\" OwnerFactionInstanceID=\"FNALL1\"/>"
-                + "</Units>"
-                + "</PlaceUnits>";
+                @"
+                <PlaceUnits DestinationInstanceID=""NABOO"">
+                  <Units>
+                    <SpawnUnits TypeID=""X_WING"" Count=""3"" OwnerFactionInstanceID=""FNALL1""/>
+                    <SpawnUnits TypeID=""ALLIANCE_REGIMENT"" Count=""2"" OwnerFactionInstanceID=""FNALL1""/>
+                  </Units>
+                </PlaceUnits>";
 
             PlaceUnitsAction action = (PlaceUnitsAction)
                 SerializationHelper.Deserialize<GameAction>(xml);
@@ -206,21 +237,67 @@ namespace Rebellion.Tests.Game.Events
         public void PlaceUnits_AuthoredSelectors_DeserializesStructure()
         {
             const string xml =
-                "<PlaceUnits>"
-                + "<Units><SelectBinding Binding=\"$participants\"/></Units>"
-                + "<Destination>"
-                + "<SelectFirst><From>"
-                + "<SelectPreviousLocation UnitInstanceID=\"LUKE_SKYWALKER\"/>"
-                + "<SelectPlanets InstanceID=\"YAVIN\"/>"
-                + "</From></SelectFirst>"
-                + "</Destination>"
-                + "</PlaceUnits>";
+                @"
+                <PlaceUnits>
+                  <Units>
+                    <SelectBinding Binding=""$participants""/>
+                  </Units>
+                  <Destination>
+                    <SelectFirst>
+                      <From>
+                        <SelectPreviousLocation UnitInstanceID=""LUKE_SKYWALKER""/>
+                        <SelectPlanets InstanceID=""YAVIN""/>
+                      </From>
+                    </SelectFirst>
+                  </Destination>
+                </PlaceUnits>";
 
             PlaceUnitsAction action = (PlaceUnitsAction)
                 SerializationHelper.Deserialize<GameAction>(xml);
 
             Assert.AreEqual("$participants", action.Units.OfType<SelectBinding>().Single().Binding);
             SelectFirst destination = action.Destination.OfType<SelectFirst>().Single();
+            Assert.AreEqual(
+                "LUKE_SKYWALKER",
+                destination.Selectors.OfType<SelectPreviousLocation>().Single().UnitInstanceID
+            );
+            Assert.AreEqual(
+                "YAVIN",
+                destination.Selectors.OfType<SelectPlanets>().Single().InstanceID
+            );
+        }
+
+        [Test]
+        public void PlaceUnits_Selectors_RoundTripsTransferStructure()
+        {
+            PlaceUnitsAction action = new PlaceUnitsAction
+            {
+                Units = new List<GameEventSelector>
+                {
+                    new SelectBinding { Binding = "$participants" },
+                },
+                Destination = new List<GameEventSelector>
+                {
+                    new SelectFirst
+                    {
+                        Selectors = new List<GameEventSelector>
+                        {
+                            new SelectPreviousLocation { UnitInstanceID = "LUKE_SKYWALKER" },
+                            new SelectPlanets { InstanceID = "YAVIN" },
+                        },
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize<GameAction>(action);
+            PlaceUnitsAction restored = (PlaceUnitsAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            Assert.AreEqual(
+                "$participants",
+                restored.Units.OfType<SelectBinding>().Single().Binding
+            );
+            SelectFirst destination = restored.Destination.OfType<SelectFirst>().Single();
             Assert.AreEqual(
                 "LUKE_SKYWALKER",
                 destination.Selectors.OfType<SelectPreviousLocation>().Single().UnitInstanceID
@@ -330,47 +407,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("$destination", selector.PlanetBinding);
             Assert.AreEqual(true, selector.IsCaptured);
             Assert.IsTrue(selector.IncludeRetained);
-        }
-
-        [Test]
-        public void PlaceUnits_Selectors_RoundTripsTransferStructure()
-        {
-            PlaceUnitsAction action = new PlaceUnitsAction
-            {
-                Units = new List<GameEventSelector>
-                {
-                    new SelectBinding { Binding = "$participants" },
-                },
-                Destination = new List<GameEventSelector>
-                {
-                    new SelectFirst
-                    {
-                        Selectors = new List<GameEventSelector>
-                        {
-                            new SelectPreviousLocation { UnitInstanceID = "LUKE_SKYWALKER" },
-                            new SelectPlanets { InstanceID = "YAVIN" },
-                        },
-                    },
-                },
-            };
-
-            string xml = SerializationHelper.Serialize<GameAction>(action);
-            PlaceUnitsAction restored = (PlaceUnitsAction)
-                SerializationHelper.Deserialize<GameAction>(xml);
-
-            Assert.AreEqual(
-                "$participants",
-                restored.Units.OfType<SelectBinding>().Single().Binding
-            );
-            SelectFirst destination = restored.Destination.OfType<SelectFirst>().Single();
-            Assert.AreEqual(
-                "LUKE_SKYWALKER",
-                destination.Selectors.OfType<SelectPreviousLocation>().Single().UnitInstanceID
-            );
-            Assert.AreEqual(
-                "YAVIN",
-                destination.Selectors.OfType<SelectPlanets>().Single().InstanceID
-            );
         }
 
         [Test]

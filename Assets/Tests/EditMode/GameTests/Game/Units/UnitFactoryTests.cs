@@ -4,6 +4,9 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Units
 {
+    /// <summary>
+    /// Verifies creation of independent runtime units from registered definitions.
+    /// </summary>
     [TestFixture]
     public sealed class UnitFactoryTests
     {
@@ -57,6 +60,9 @@ namespace Rebellion.Tests.Game.Units
             StringAssert.Contains("Unit TypeID 'X_WING' is not a Regiment", exception.Message);
         }
 
+        /// <summary>
+        /// Creates a unit factory containing only the supplied starfighter definitions.
+        /// </summary>
         private static UnitFactory CreateFactory(params Starfighter[] starfighters) =>
             new UnitFactory(
                 Array.Empty<Building>(),
