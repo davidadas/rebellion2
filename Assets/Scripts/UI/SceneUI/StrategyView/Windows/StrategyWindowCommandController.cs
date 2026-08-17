@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Executes and finalizes commands shared by strategy feature windows.
@@ -25,6 +26,7 @@ public sealed class StrategyWindowCommandController
     private readonly Action<UIWindow> clearWindowSelection;
     private readonly Action rebuildSnapshot;
     private readonly Action markDirty;
+    private readonly Action playInTransitOrderRejected;
 
     /// <summary>
     /// Creates the shared strategy-window command handler.
@@ -41,6 +43,7 @@ public sealed class StrategyWindowCommandController
     /// <param name="rebuildSnapshot">Rebuilds the visible strategy snapshot.</param>
     /// <param name="markDirty">Invalidates the strategy presentation.</param>
     /// <param name="getHeadquartersSystem">Returns the mobile-headquarters system.</param>
+    /// <param name="playInTransitOrderRejected">Plays the advisor's in-transit rejection.</param>
     public StrategyWindowCommandController(
         MissionCreateWindowController missionCreateWindowController,
         ConfirmDialogWindowController confirmDialogWindowController,
@@ -53,7 +56,8 @@ public sealed class StrategyWindowCommandController
         Action<UIWindow> clearWindowSelection,
         Action rebuildSnapshot,
         Action markDirty,
-        Func<HeadquartersSystem> getHeadquartersSystem = null
+        Func<HeadquartersSystem> getHeadquartersSystem = null,
+        Action playInTransitOrderRejected = null
     )
     {
         this.missionCreateWindowController =
@@ -79,6 +83,7 @@ public sealed class StrategyWindowCommandController
         this.rebuildSnapshot =
             rebuildSnapshot ?? throw new ArgumentNullException(nameof(rebuildSnapshot));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.playInTransitOrderRejected = playInTransitOrderRejected ?? (() => { });
     }
 
     /// <summary>
@@ -278,21 +283,55 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when the movement order was accepted.</returns>
     private bool TryMove(StrategyMissionTarget target, IReadOnlyList<ISceneNode> items)
     {
+        if (ContainsInTransitUnit(items))
+        {
+            playInTransitOrderRejected();
+            return false;
+        }
+
+        ContainerNode destination = target?.GetMoveDestination() as ContainerNode;
+        if (!ChangesDestination(items, destination))
+            return false;
+
         Building headquarters = items?.Count == 1 ? items[0] as Building : null;
         bool moved =
             headquarters?.BuildingType == BuildingType.Headquarters
                 ? getHeadquartersSystem?.Invoke()?.TryRelocate(headquarters, target?.Planet?.Planet)
                     == true
-                : getMovementSystem()
-                    ?.TryRequestMove(
-                        items,
-                        target?.GetMoveDestination() as ContainerNode,
-                        GetPlayerFactionID()
-                    ) == true;
+                : getMovementSystem()?.TryRequestMove(items, destination, GetPlayerFactionID())
+                    == true;
         if (moved)
             PlayMoveVoice(items);
 
         return moved;
+    }
+
+    /// <summary>
+    /// Returns whether at least one selected live unit would change its immediate container.
+    /// </summary>
+    private bool ChangesDestination(IReadOnlyList<ISceneNode> items, ContainerNode destination)
+    {
+        if (items == null || items.Count == 0 || destination == null)
+            return true;
+
+        GameRoot game = getGame();
+        return items.Any(item =>
+        {
+            ISceneNode liveItem = game?.GetSceneNodeByInstanceID<ISceneNode>(item?.InstanceID);
+            return liveItem?.GetParent()?.InstanceID != destination.InstanceID;
+        });
+    }
+
+    /// <summary>
+    /// Returns whether the selected live units include one already traveling through hyperspace.
+    /// </summary>
+    private bool ContainsInTransitUnit(IReadOnlyList<ISceneNode> items)
+    {
+        GameRoot game = getGame();
+        return items?.Any(item =>
+                game?.GetSceneNodeByInstanceID<ISceneNode>(item?.InstanceID) is IMovable movable
+                && movable.GetTransitMovement() != null
+            ) == true;
     }
 
     /// <summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -55,6 +56,12 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
 
     [SerializeField]
     private TextMeshProUGUI[] _tabLabelFields = Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private Image[] _tabSurfaceImages = Array.Empty<Image>();
+
+    [SerializeField]
+    private GameObject _gameplayPage;
 
     [SerializeField]
     private GameObject _graphicsPage;
@@ -113,6 +120,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private Button _fullScreenNextButton;
 
+    [Header("Gameplay page")]
+    [SerializeField]
+    private OptionsToggleRowView[] _gameplayRows = Array.Empty<OptionsToggleRowView>();
+
     [Header("Audio page")]
     [SerializeField]
     private NormalizedSliderView[] _volumeSliders = Array.Empty<NormalizedSliderView>();
@@ -166,6 +177,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action MainMenuRequested;
     public event Action QuitRequested;
     public event Action<UserTacticalOption> TacticalToggleRequested;
+    public event Action<UserGameplayOption> GameplayToggleRequested;
     public event Action<int> ResolutionStepRequested;
     public event Action<int> FullScreenStepRequested;
     public event Action<int, float> VolumeChanged;
@@ -230,6 +242,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         RenderFooter(data);
         switch (data.ActiveTab)
         {
+            case OptionsMenuTab.Gameplay:
+                RenderGameplayPage(data);
+                break;
             case OptionsMenuTab.Graphics:
                 RenderGraphicsPage(data);
                 break;
@@ -258,12 +273,15 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             bool active = i == (int)activeTab;
             if (_tabLabelFields[i] != null)
                 _tabLabelFields[i].color = active ? _activeTabColor : _inactiveTabColor;
-            if (i < _tabButtons.Length && _tabButtons[i]?.targetGraphic is Image tabImage)
+            if (i < _tabSurfaceImages.Length && _tabSurfaceImages[i] != null)
+                _tabSurfaceImages[i].gameObject.SetActive(!active);
+            if (i < _tabButtons.Length && _tabButtons[i]?.GetComponent<Image>() is Image tabImage)
             {
                 tabImage.sprite = active ? _rowActiveSprite : _rowIdleSprite;
             }
         }
 
+        SetPageActive(_gameplayPage, activeTab == OptionsMenuTab.Gameplay);
         SetPageActive(_graphicsPage, activeTab == OptionsMenuTab.Graphics);
         SetPageActive(_audioPage, activeTab == OptionsMenuTab.Audio);
         SetPageActive(_saveLoadPage, activeTab == OptionsMenuTab.SaveLoad);
@@ -272,16 +290,29 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Applies behavior-toggle values to the Gameplay page.
+    /// </summary>
+    private void RenderGameplayPage(OptionsMenuRenderData data)
+    {
+        foreach (OptionsToggleRowView row in _gameplayRows)
+        {
+            if (row == null)
+                continue;
+
+            UserGameplayOption option = (UserGameplayOption)row.OptionIndex;
+            bool enabled = data.GameplayStates.TryGetValue(option, out bool value) && value;
+            row.Render(enabled);
+        }
+    }
+
+    /// <summary>
     /// Applies footer action availability.
     /// </summary>
     /// <param name="data">The Options menu data.</param>
     private void RenderFooter(OptionsMenuRenderData data)
     {
-        bool layoutChanged =
-            _backToGameButton.gameObject.activeSelf != data.HasActiveGame
-            || _mainMenuButton.gameObject.activeSelf != data.HasActiveGame;
+        bool layoutChanged = _backToGameButton.gameObject.activeSelf != data.HasActiveGame;
         _backToGameButton.gameObject.SetActive(data.HasActiveGame);
-        _mainMenuButton.gameObject.SetActive(data.HasActiveGame);
         if (layoutChanged && _backToGameButton.transform.parent is RectTransform navigationRoot)
             LayoutRebuilder.ForceRebuildLayoutImmediate(navigationRoot);
     }
@@ -297,7 +328,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             if (row == null)
                 continue;
 
-            bool enabled = data.TacticalStates.TryGetValue(row.Option, out bool value) && value;
+            UserTacticalOption option = (UserTacticalOption)row.OptionIndex;
+            bool enabled = data.TacticalStates.TryGetValue(option, out bool value) && value;
             row.Render(enabled);
         }
 
@@ -659,6 +691,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     {
         return tab switch
         {
+            OptionsMenuTab.Gameplay => "GAMEPLAY",
             OptionsMenuTab.Graphics => "GRAPHICS",
             OptionsMenuTab.Audio => "AUDIO",
             OptionsMenuTab.SaveLoad => "SAVE / LOAD",
@@ -691,7 +724,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _saveListView.SlotRenamed += HandleSlotRenamed;
         _saveListView.SlotDeleteRequested += HandleSlotDeleteRequested;
         _saveListView.RenameEditingChanged += HandleRenameEditingChanged;
-        _applyButton.onClick.AddListener(() => ApplyRequested?.Invoke());
+        _applyButton.onClick.AddListener(HandleApplyClicked);
         _defaultsButton.onClick.AddListener(() => DefaultsRequested?.Invoke());
         _confirmDialog.Confirmed += HandleConfirmAccepted;
         _confirmDialog.Canceled += HandleConfirmDeclined;
@@ -700,6 +733,11 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         {
             if (row != null)
                 row.ToggleRequested += HandleTacticalToggle;
+        }
+        foreach (OptionsToggleRowView row in _gameplayRows)
+        {
+            if (row != null)
+                row.ToggleRequested += HandleGameplayToggle;
         }
 
         _resolutionPrevButton.onClick.AddListener(() => ResolutionStepRequested?.Invoke(-1));
@@ -726,6 +764,17 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Applies the settings and releases pointer focus so hover feedback resumes immediately.
+    /// </summary>
+    private void HandleApplyClicked()
+    {
+        ApplyRequested?.Invoke();
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem?.currentSelectedGameObject == _applyButton.gameObject)
+            eventSystem.SetSelectedGameObject(null);
+    }
+
+    /// <summary>
     /// Removes tactical-row listeners that outlive the Unity button lifetime.
     /// </summary>
     private void UnbindControls()
@@ -741,6 +790,11 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         {
             if (row != null)
                 row.ToggleRequested -= HandleTacticalToggle;
+        }
+        foreach (OptionsToggleRowView row in _gameplayRows)
+        {
+            if (row != null)
+                row.ToggleRequested -= HandleGameplayToggle;
         }
     }
 
@@ -802,9 +856,17 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// Forwards a detail-toggle request to subscribers.
     /// </summary>
     /// <param name="option">The toggled option.</param>
-    private void HandleTacticalToggle(UserTacticalOption option)
+    private void HandleTacticalToggle(int option)
     {
-        TacticalToggleRequested?.Invoke(option);
+        TacticalToggleRequested?.Invoke((UserTacticalOption)option);
+    }
+
+    /// <summary>
+    /// Forwards a gameplay-toggle request to subscribers.
+    /// </summary>
+    private void HandleGameplayToggle(int option)
+    {
+        GameplayToggleRequested?.Invoke((UserGameplayOption)option);
     }
 
     /// <summary>
@@ -856,15 +918,18 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || string.IsNullOrWhiteSpace(_rowActiveSpriteAddress)
         )
             throw new MissingReferenceException($"{name} is missing a row sprite address.");
-        if (_tabButtons.Length != 4 || _tabLabelFields.Length != 4)
-            throw new MissingReferenceException($"{name} expects four tabs.");
+        if (_tabButtons.Length != 5 || _tabLabelFields.Length != 5 || _tabSurfaceImages.Length != 5)
+            throw new MissingReferenceException($"{name} expects five tabs.");
         if (
-            _graphicsPage == null
+            _gameplayPage == null
+            || _graphicsPage == null
             || _audioPage == null
             || _saveLoadPage == null
             || _controlsPage == null
         )
             throw new MissingReferenceException($"{name} is missing a page container.");
+        if (_gameplayRows.Length != 2 || Array.Exists(_gameplayRows, row => row == null))
+            throw new MissingReferenceException($"{name} expects two gameplay rows.");
         if (_backToGameButton == null || _mainMenuButton == null || _quitButton == null)
             throw new MissingReferenceException($"{name} is missing a footer button.");
         if (_settingsActions == null || _applyButton == null || _defaultsButton == null)

@@ -79,11 +79,19 @@ public sealed class InputManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Removes persisted overrides from the fixed Escape binding and its chord alternative.
+    /// Removes persisted overrides from the fixed cancel and game-menu shortcuts.
     /// </summary>
     private static void RestoreReservedEscapeBinding(InputActionAsset asset)
     {
-        InputAction action = asset.FindAction("Global/CancelOrSettings", true);
+        RestoreReservedPrimary(asset.FindAction("Global/CancelOrSettings", true));
+        RestoreReservedPrimary(asset.FindAction("Global/OpenGameMenu", true));
+    }
+
+    /// <summary>
+    /// Removes overrides from one action's authored primary slot.
+    /// </summary>
+    private static void RestoreReservedPrimary(InputAction action)
+    {
         bool clearingPrimaryChord = false;
         for (int index = 0; index < action.bindings.Count; index++)
         {

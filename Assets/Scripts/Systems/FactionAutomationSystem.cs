@@ -42,16 +42,26 @@ namespace Rebellion.Systems
         public void ProcessTick()
         {
             foreach (Faction faction in _game.GetFactions())
-            {
-                if (faction.ManageGarrisons)
-                {
-                    while (QueueGarrisonRegiment(faction)) { }
-                }
+                ProcessFaction(faction);
+        }
 
-                if (faction.ManageProduction)
-                {
-                    while (QueueProductionFacility(faction)) { }
-                }
+        /// <summary>
+        /// Immediately fills idle capacity for one faction's delegated work.
+        /// </summary>
+        /// <param name="faction">The faction whose current automation choices should run.</param>
+        public void ProcessFaction(Faction faction)
+        {
+            if (faction == null)
+                throw new ArgumentNullException(nameof(faction));
+
+            if (faction.ManageGarrisons)
+            {
+                while (QueueGarrisonRegiment(faction)) { }
+            }
+
+            if (faction.ManageProduction)
+            {
+                while (QueueProductionFacility(faction)) { }
             }
         }
 

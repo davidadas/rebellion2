@@ -104,6 +104,15 @@ namespace Rebellion.Input
                     ""initialStateCheck"": false
                 },
                 {
+                    ""name"": ""OpenGameMenu"",
+                    ""type"": ""Button"",
+                    ""id"": ""10000000-0000-0000-0000-000000000002"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
                     ""name"": ""QuickSave"",
                     ""type"": ""Button"",
                     ""id"": ""00000000-0000-0000-0000-000000000003"",
@@ -208,6 +217,94 @@ namespace Rebellion.Input
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
                     ""action"": ""CancelOrSettings"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Primary"",
+                    ""id"": ""10000000-0000-0000-0000-000000000005"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenGameMenu"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""PrimaryChord"",
+                    ""id"": ""10000000-0000-0000-0000-000000000006"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenGameMenu"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Modifier"",
+                    ""id"": ""10000000-0000-0000-0000-000000000007"",
+                    ""path"": ""<Keyboard>/shift"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenGameMenu"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Binding"",
+                    ""id"": ""10000000-0000-0000-0000-000000000008"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenGameMenu"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Secondary"",
+                    ""id"": ""10000000-0000-0000-0000-000000000009"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenGameMenu"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""SecondaryChord"",
+                    ""id"": ""10000000-0000-0000-0000-000000000010"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenGameMenu"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Modifier"",
+                    ""id"": ""10000000-0000-0000-0000-000000000011"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenGameMenu"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Binding"",
+                    ""id"": ""10000000-0000-0000-0000-000000000012"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenGameMenu"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
                 },
@@ -5452,6 +5549,7 @@ namespace Rebellion.Input
             // Global
             m_Global = asset.FindActionMap("Global", throwIfNotFound: true);
             m_Global_CancelOrSettings = m_Global.FindAction("CancelOrSettings", throwIfNotFound: true);
+            m_Global_OpenGameMenu = m_Global.FindAction("OpenGameMenu", throwIfNotFound: true);
             m_Global_QuickSave = m_Global.FindAction("QuickSave", throwIfNotFound: true);
             m_Global_QuickLoad = m_Global.FindAction("QuickLoad", throwIfNotFound: true);
             // Strategy
@@ -5606,6 +5704,7 @@ namespace Rebellion.Input
         private readonly InputActionMap m_Global;
         private List<IGlobalActions> m_GlobalActionsCallbackInterfaces = new List<IGlobalActions>();
         private readonly InputAction m_Global_CancelOrSettings;
+        private readonly InputAction m_Global_OpenGameMenu;
         private readonly InputAction m_Global_QuickSave;
         private readonly InputAction m_Global_QuickLoad;
         /// <summary>
@@ -5623,6 +5722,10 @@ namespace Rebellion.Input
             /// Provides access to the underlying input action "Global/CancelOrSettings".
             /// </summary>
             public InputAction @CancelOrSettings => m_Wrapper.m_Global_CancelOrSettings;
+            /// <summary>
+            /// Provides access to the underlying input action "Global/OpenGameMenu".
+            /// </summary>
+            public InputAction @OpenGameMenu => m_Wrapper.m_Global_OpenGameMenu;
             /// <summary>
             /// Provides access to the underlying input action "Global/QuickSave".
             /// </summary>
@@ -5660,6 +5763,9 @@ namespace Rebellion.Input
                 @CancelOrSettings.started += instance.OnCancelOrSettings;
                 @CancelOrSettings.performed += instance.OnCancelOrSettings;
                 @CancelOrSettings.canceled += instance.OnCancelOrSettings;
+                @OpenGameMenu.started += instance.OnOpenGameMenu;
+                @OpenGameMenu.performed += instance.OnOpenGameMenu;
+                @OpenGameMenu.canceled += instance.OnOpenGameMenu;
                 @QuickSave.started += instance.OnQuickSave;
                 @QuickSave.performed += instance.OnQuickSave;
                 @QuickSave.canceled += instance.OnQuickSave;
@@ -5680,6 +5786,9 @@ namespace Rebellion.Input
                 @CancelOrSettings.started -= instance.OnCancelOrSettings;
                 @CancelOrSettings.performed -= instance.OnCancelOrSettings;
                 @CancelOrSettings.canceled -= instance.OnCancelOrSettings;
+                @OpenGameMenu.started -= instance.OnOpenGameMenu;
+                @OpenGameMenu.performed -= instance.OnOpenGameMenu;
+                @OpenGameMenu.canceled -= instance.OnOpenGameMenu;
                 @QuickSave.started -= instance.OnQuickSave;
                 @QuickSave.performed -= instance.OnQuickSave;
                 @QuickSave.canceled -= instance.OnQuickSave;
@@ -6735,6 +6844,13 @@ namespace Rebellion.Input
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnCancelOrSettings(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "OpenGameMenu" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnOpenGameMenu(InputAction.CallbackContext context);
             /// <summary>
             /// Method invoked when associated input action "QuickSave" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>

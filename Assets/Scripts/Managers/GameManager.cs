@@ -73,6 +73,7 @@ public sealed class GameManager
     public event Action<GameRoot> GameReplaced;
     public event Action<VictoryResult> VictoryDeclared;
     public event Action<MessageDeliveredResult> MessageDelivered;
+    public event Action<BombardmentResult> BombardmentCompleted;
 
     // Exposed Game Systems.
     internal MessageSystem MessageSystem => _messageSystem;
@@ -140,6 +141,15 @@ public sealed class GameManager
     /// </summary>
     /// <returns>The active FogOfWarSystem instance.</returns>
     public FogOfWarSystem GetFogOfWarSystem() => _fogOfWarSystem;
+
+    /// <summary>
+    /// Immediately applies the current advisor automation choices for one faction.
+    /// </summary>
+    /// <param name="faction">The faction whose delegated work should run.</param>
+    public void ProcessFactionAutomation(Faction faction)
+    {
+        _factionAutomationSystem?.ProcessFaction(faction);
+    }
 
     /// <summary>
     /// Returns the active game speed.
@@ -479,7 +489,9 @@ public sealed class GameManager
     /// <param name="results">The results emitted by the system.</param>
     private void HandleSystemResultsProduced(IReadOnlyList<GameResult> results)
     {
-        ProcessResults(results);
+        List<GameResult> resolvedResults = ProcessResults(results);
+        foreach (BombardmentResult result in resolvedResults.OfType<BombardmentResult>())
+            BombardmentCompleted?.Invoke(result);
     }
 
     /// <summary>

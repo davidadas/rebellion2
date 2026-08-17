@@ -255,23 +255,23 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies Controls precedes Save / Load in both tab presentation and selection routing.
+        /// Verifies Gameplay is first and Controls precedes Save / Load in selection routing.
         /// </summary>
         [Test]
         public void Tabs_PresentControlsBeforeSaveLoad_AndRouteSelections()
         {
             CollectionAssert.AreEqual(
-                new[] { "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" },
+                new[] { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" },
                 GetField<TextMeshProUGUI[]>("_tabLabelFields").Select(label => label.text).ToArray()
             );
 
-            OptionsMenuTab selectedTab = OptionsMenuTab.Graphics;
+            OptionsMenuTab selectedTab = OptionsMenuTab.Gameplay;
             _view.TabSelected += tab => selectedTab = tab;
             Button[] tabButtons = GetField<Button[]>("_tabButtons");
 
-            tabButtons[2].onClick.Invoke();
-            Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
             tabButtons[3].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
+            tabButtons[4].onClick.Invoke();
             Assert.AreEqual(OptionsMenuTab.SaveLoad, selectedTab);
         }
 
@@ -554,10 +554,45 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies main-menu hosting removes unavailable in-game footer rows without gaps.
+        /// Verifies every left-side navigation row uses the same height and vertical gap.
         /// </summary>
         [Test]
-        public void RenderFooter_MainMenuHost_HidesUnavailableRowsAndCollapsesQuitToTop()
+        public void NavigationRows_UseConsistentVerticalRhythm()
+        {
+            Button[] tabRows = GetField<Button[]>("_tabButtons");
+            Button[] footerRows =
+            {
+                GetField<Button>("_backToGameButton"),
+                GetField<Button>("_mainMenuButton"),
+                GetField<Button>("_quitButton"),
+            };
+            RectInt[] tabRects = tabRows
+                .Select(row => UILayout.GetSourceRect((RectTransform)row.transform))
+                .ToArray();
+            RectInt[] footerRects = footerRows
+                .Select(row => UILayout.GetSourceRect((RectTransform)row.transform))
+                .ToArray();
+            RectInt footerRoot = UILayout.GetSourceRect(
+                (RectTransform)footerRows[0].transform.parent
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { 82, 118, 154, 190, 226 },
+                tabRects.Select(rect => rect.y).ToArray()
+            );
+            CollectionAssert.AreEqual(
+                new[] { 0, 36, 72 },
+                footerRects.Select(rect => rect.y).ToArray()
+            );
+            Assert.AreEqual(new RectInt(38, 318, 163, 102), footerRoot);
+            Assert.IsTrue(tabRects.Concat(footerRects).All(rect => rect.height == 30));
+        }
+
+        /// <summary>
+        /// Verifies main-menu hosting replaces Back to Game with Back to Main Menu without gaps.
+        /// </summary>
+        [Test]
+        public void RenderFooter_MainMenuHost_ShowsBackToMainMenuAndQuitWithoutGap()
         {
             OptionsMenuRenderData data = new OptionsMenuRenderData(
                 0,
@@ -583,11 +618,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Button mainMenu = GetField<Button>("_mainMenuButton");
             Button quit = GetField<Button>("_quitButton");
             Assert.IsFalse(backToGame.gameObject.activeSelf);
-            Assert.IsFalse(mainMenu.gameObject.activeSelf);
+            Assert.IsTrue(mainMenu.gameObject.activeSelf);
             Assert.IsTrue(quit.gameObject.activeSelf);
             Assert.IsNotNull(quit.transform.parent.GetComponent<VerticalLayoutGroup>());
-            Assert.AreEqual(38, UILayout.GetSourceRect((RectTransform)quit.transform).x);
-            Assert.AreEqual(226, UILayout.GetSourceRect((RectTransform)quit.transform).y);
+            Assert.AreEqual(0, UILayout.GetSourceRect((RectTransform)mainMenu.transform).x);
+            Assert.AreEqual(36, UILayout.GetSourceRect((RectTransform)mainMenu.transform).y);
+            Assert.AreEqual(0, UILayout.GetSourceRect((RectTransform)quit.transform).x);
+            Assert.AreEqual(72, UILayout.GetSourceRect((RectTransform)quit.transform).y);
         }
 
         /// <summary>

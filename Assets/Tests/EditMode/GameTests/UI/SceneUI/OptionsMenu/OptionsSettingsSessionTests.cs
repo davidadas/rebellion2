@@ -103,6 +103,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies returning gameplay choices to their opening values clears pending state.
+        /// </summary>
+        [Test]
+        public void GameplayChanges_ReturnedToSnapshot_ClearDirtyState()
+        {
+            _session.ToggleGameplay(UserGameplayOption.PauseAfterEnemyBombardment);
+            Assert.IsTrue(_session.IsDirty);
+
+            _session.ToggleGameplay(UserGameplayOption.PauseAfterEnemyBombardment);
+
+            Assert.IsFalse(_session.IsDirty);
+        }
+
+        /// <summary>
         /// Verifies removing a newly staged binding override clears pending state.
         /// </summary>
         [Test]

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Manages pending changes to graphics, audio, and input settings.
+/// Manages pending changes to gameplay, graphics, audio, and input settings.
 /// </summary>
 internal sealed class OptionsSettingsSession
 {
@@ -24,6 +24,8 @@ internal sealed class OptionsSettingsSession
 
     private readonly Dictionary<UserTacticalOption, bool> _snapshotTactical =
         new Dictionary<UserTacticalOption, bool>();
+    private readonly Dictionary<UserGameplayOption, bool> _snapshotGameplay =
+        new Dictionary<UserGameplayOption, bool>();
 
     private float[] _snapshotVolumes = Array.Empty<float>();
     private int _snapshotResolutionWidth;
@@ -51,6 +53,8 @@ internal sealed class OptionsSettingsSession
     internal bool IsDirty { get; private set; }
 
     internal UserVideoSettings Video => _userSettings.Settings.Video;
+
+    internal UserGameplaySettings Gameplay => _userSettings.Settings.Gameplay;
 
     internal UserAudioSettings Audio => _userSettings.Settings.Audio;
 
@@ -93,6 +97,8 @@ internal sealed class OptionsSettingsSession
         Video.FullScreenMode = _snapshotFullScreenMode;
         foreach (KeyValuePair<UserTacticalOption, bool> entry in _snapshotTactical)
             Video.SetEnabled(entry.Key, entry.Value);
+        foreach (KeyValuePair<UserGameplayOption, bool> entry in _snapshotGameplay)
+            Gameplay.SetEnabled(entry.Key, entry.Value);
 
         _inputManager.LoadBindingOverrides(_snapshotBindingOverrides);
         _inputDiffersFromSnapshot = false;
@@ -109,6 +115,9 @@ internal sealed class OptionsSettingsSession
     {
         switch (tab)
         {
+            case OptionsMenuTab.Gameplay:
+                Gameplay.RestoreDefaults();
+                break;
             case OptionsMenuTab.Graphics:
                 Video.ResolutionWidth = 0;
                 Video.ResolutionHeight = 0;
@@ -127,6 +136,17 @@ internal sealed class OptionsSettingsSession
         }
 
         RefreshDirtyState();
+    }
+
+    /// <summary>
+    /// Copies the staged gameplay toggles for presentation.
+    /// </summary>
+    internal Dictionary<UserGameplayOption, bool> GetGameplayStates()
+    {
+        Dictionary<UserGameplayOption, bool> states = new Dictionary<UserGameplayOption, bool>();
+        foreach (UserGameplayOption option in Enum.GetValues(typeof(UserGameplayOption)))
+            states[option] = Gameplay.IsEnabled(option);
+        return states;
     }
 
     /// <summary>
@@ -162,6 +182,15 @@ internal sealed class OptionsSettingsSession
     internal void ToggleTactical(UserTacticalOption option)
     {
         Video.SetEnabled(option, !Video.IsEnabled(option));
+        RefreshDirtyState();
+    }
+
+    /// <summary>
+    /// Toggles a gameplay option and marks the session dirty.
+    /// </summary>
+    internal void ToggleGameplay(UserGameplayOption option)
+    {
+        Gameplay.SetEnabled(option, !Gameplay.IsEnabled(option));
         RefreshDirtyState();
     }
 
@@ -238,6 +267,9 @@ internal sealed class OptionsSettingsSession
         _snapshotTactical.Clear();
         foreach (UserTacticalOption option in Enum.GetValues(typeof(UserTacticalOption)))
             _snapshotTactical[option] = Video.IsEnabled(option);
+        _snapshotGameplay.Clear();
+        foreach (UserGameplayOption option in Enum.GetValues(typeof(UserGameplayOption)))
+            _snapshotGameplay[option] = Gameplay.IsEnabled(option);
     }
 
     /// <summary>
@@ -276,6 +308,18 @@ internal sealed class OptionsSettingsSession
             if (
                 !_snapshotTactical.TryGetValue(option, out bool enabled)
                 || Video.IsEnabled(option) != enabled
+            )
+            {
+                IsDirty = true;
+                return;
+            }
+        }
+
+        foreach (UserGameplayOption option in Enum.GetValues(typeof(UserGameplayOption)))
+        {
+            if (
+                !_snapshotGameplay.TryGetValue(option, out bool enabled)
+                || Gameplay.IsEnabled(option) != enabled
             )
             {
                 IsDirty = true;

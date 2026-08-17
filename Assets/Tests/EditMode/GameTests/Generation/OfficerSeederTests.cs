@@ -149,6 +149,48 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Seed_InitialOfficerCount_IsTotalRatherThanAdditionalRecruitableCount()
+        {
+            Officer main = MakeOfficer("M1", "FNALL1", isMain: true);
+            Officer recruitable1 = MakeOfficer("O1", "FNALL1");
+            Officer recruitable2 = MakeOfficer("O2", "FNALL1");
+            PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
+
+            var results = Deploy(
+                new[] { main, recruitable1, recruitable2 },
+                new[] { sys },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(2, results.Deployed.Length);
+            Assert.Contains(main, results.Deployed);
+        }
+
+        [Test]
+        public void Seed_GuaranteedStarter_IsIncludedWithoutBecomingMainCharacter()
+        {
+            _rules.Officers.NumInitialOfficers.Small = 1;
+            Officer starter = MakeOfficer("STARTER", "FNALL1");
+            starter.StartsInPlay = true;
+            Officer recruitable = MakeOfficer("RANDOM", "FNALL1");
+            PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
+
+            var results = Deploy(
+                new[] { starter, recruitable },
+                new[] { sys },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(1, results.Deployed.Length);
+            Assert.Contains(starter, results.Deployed);
+            Assert.IsFalse(starter.IsMain);
+        }
+
+        [Test]
         public void Seed_OfficerWithAmbiguousAllowedFactions_IsExcluded()
         {
             Officer ambiguous = new Officer

@@ -114,7 +114,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     }
 
     /// <summary>
-    /// Handles the cancel or settings action.
+    /// Handles the cancel action.
     /// </summary>
     /// <param name="context">The input callback context.</param>
     public void OnCancelOrSettings(InputAction.CallbackContext context)
@@ -125,7 +125,19 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (CurrentContext == InputContext.Cutscene)
             return;
 
-        if (_cancelStack?.TryCancel() == true)
+        if (Keyboard.current?.shiftKey.isPressed == true)
+            return;
+
+        _cancelStack?.TryCancel();
+    }
+
+    /// <summary>
+    /// Handles the dedicated game-menu shortcut.
+    /// </summary>
+    /// <param name="context">The input callback context.</param>
+    public void OnOpenGameMenu(InputAction.CallbackContext context)
+    {
+        if (!context.performed || CurrentContext == InputContext.Cutscene)
             return;
 
         OptionsMenuRequested?.Invoke();

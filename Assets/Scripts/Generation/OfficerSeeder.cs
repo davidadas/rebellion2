@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -128,26 +129,29 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Picks one faction's roster: all main officers, plus recruitable officers up
-        /// to the per-faction limit. Each picked officer is assigned the faction as owner.
+        /// Picks one faction's roster up to the configured total, while always retaining
+        /// officers whose authored data requires them to start in play.
         /// </summary>
         /// <param name="officers">The faction's grouped officers (owned officers first).</param>
         /// <param name="factionId">The owning faction ID.</param>
-        /// <param name="recruitableLimit">Maximum recruitable (non-main) officers to pick.</param>
+        /// <param name="initialOfficerCount">Configured total starting officers.</param>
         /// <returns>The officers picked for this faction.</returns>
         private List<Officer> PickFactionRoster(
             List<Officer> officers,
             string factionId,
-            int recruitableLimit
+            int initialOfficerCount
         )
         {
-            List<Officer> fixedStartOfficers = officers.Where(HasFixedStart).ToList();
-            List<Officer> picked = fixedStartOfficers
+            List<Officer> mandatoryOfficers = officers
+                .Where(officer => HasFixedStart(officer) || officer.IsMain || officer.StartsInPlay)
+                .ToList();
+            int remainingCount = Math.Max(0, initialOfficerCount - mandatoryOfficers.Count);
+            List<Officer> picked = mandatoryOfficers
                 .Concat(
                     officers
-                        .Except(fixedStartOfficers)
-                        .Where(o => o.IsMain || o.IsRecruitable)
-                        .TakeWhile((o, index) => o.IsMain || index < recruitableLimit)
+                        .Except(mandatoryOfficers)
+                        .Where(officer => officer.IsRecruitable)
+                        .Take(remainingCount)
                 )
                 .ToList();
             foreach (Officer officer in picked)

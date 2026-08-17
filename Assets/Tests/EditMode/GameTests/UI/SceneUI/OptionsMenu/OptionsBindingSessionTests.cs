@@ -121,27 +121,23 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies the global Escape command is exposed with its player-facing menu label.
+        /// Verifies the dedicated game-menu chord is exposed with its player-facing label.
         /// </summary>
         [Test]
         public void Rebuild_GlobalBindings_IncludesOpenGameMenu()
         {
             using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
-            InputAction openGameMenu = _inputManager.Asset.FindAction(
-                "Global/CancelOrSettings",
-                true
-            );
+            InputAction openGameMenu = _inputManager.Asset.FindAction("Global/OpenGameMenu", true);
 
             session.Rebuild();
 
             OptionsBindingRow row = session.Rows.Single(row => row.Action == "Open Game Menu");
             Assert.IsFalse(row.IsHeader);
-            Assert.AreNotEqual("UNBOUND", row.Primary);
+            Assert.AreEqual("SHIFT+ESC", row.Primary);
             Assert.IsFalse(row.PrimaryEditable);
-            Assert.AreEqual(
-                "<Keyboard>/escape",
-                openGameMenu.bindings[FindBinding(openGameMenu, "Primary")].effectivePath
-            );
+            int chord = FindBinding(openGameMenu, "PrimaryChord");
+            Assert.AreEqual("<Keyboard>/shift", openGameMenu.bindings[chord + 1].effectivePath);
+            Assert.AreEqual("<Keyboard>/escape", openGameMenu.bindings[chord + 2].effectivePath);
         }
 
         /// <summary>

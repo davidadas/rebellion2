@@ -65,6 +65,34 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("cannot be compared", exception.Message);
         }
 
+        [TestCase(ComparisonOperator.Equal, false)]
+        [TestCase(ComparisonOperator.NotEqual, true)]
+        [TestCase(ComparisonOperator.GreaterThan, false)]
+        [TestCase(ComparisonOperator.GreaterThanOrEqual, false)]
+        [TestCase(ComparisonOperator.LessThan, false)]
+        [TestCase(ComparisonOperator.LessThanOrEqual, false)]
+        public void EvaluateBinding_NullOptionalBinding_UsesPredicateSemantics(
+            ComparisonOperator comparison,
+            bool expected
+        )
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "$sourceEventInstanceID",
+                Comparison = comparison,
+                CompareTo = "EXPECTED_SOURCE",
+            };
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("sourceEventInstanceID", null);
+
+            Assert.AreEqual(expected, conditional.IsMet(game, context));
+        }
+
         [Test]
         public void IsEventExhausted_LoadedCountAtLimit_ReturnsTrueBeforeEventProcessing()
         {

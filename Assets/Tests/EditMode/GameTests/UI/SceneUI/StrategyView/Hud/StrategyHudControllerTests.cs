@@ -209,6 +209,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
 
             public void OpenMessagesTab(MessagesTab tab) { }
 
+            public void ProcessAdvisorAutomation(Faction faction) { }
+
             public void OpenSpeedContextMenu(
                 ContextMenuRequest request,
                 int sourceX,

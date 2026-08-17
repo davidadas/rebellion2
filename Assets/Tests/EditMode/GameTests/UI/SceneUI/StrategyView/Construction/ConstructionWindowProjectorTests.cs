@@ -139,7 +139,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(12, data.X);
             Assert.AreEqual(34, data.Y);
             Assert.IsNotNull(data.TitleTexture);
-            Assert.AreSame(_uiContext.GetEntityTexture(second, false), data.SelectedTexture);
+            Assert.AreSame(_uiContext.GetEntityTexture(second, true), data.SelectedTexture);
             Assert.AreEqual("Second Ship", data.SelectedName);
             Assert.AreEqual(3, data.BuildCount);
             Assert.AreEqual("150", data.ConstructionCost);
@@ -152,6 +152,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsTrue(data.CanStart);
             Assert.AreEqual(2, data.DropdownItems.Count);
             Assert.AreEqual("First Ship", data.DropdownItems[0].Label);
+            Assert.AreSame(_uiContext.GetEntityTexture(first, true), data.DropdownItems[0].Texture);
             Assert.AreEqual(new Color32(128, 128, 128, 255), data.DropdownItems[0].LabelColor);
             Assert.AreEqual("Second Ship", data.DropdownItems[1].Label);
             Assert.AreEqual(new Color32(255, 255, 255, 255), data.DropdownItems[1].LabelColor);

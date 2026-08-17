@@ -7,6 +7,7 @@ using UnityEngine;
 /// </summary>
 public enum OptionsMenuTab
 {
+    Gameplay,
     Graphics,
     Audio,
     Controls,
@@ -104,6 +105,7 @@ public sealed class OptionsMenuRenderData
     /// <param name="hasActiveGame">Whether a game is currently active.</param>
     /// <param name="listeningRow">The binding row awaiting a key press, or -1.</param>
     /// <param name="listeningSecondary">Whether the secondary column is awaiting a key press.</param>
+    /// <param name="gameplayStates">The current gameplay-toggle states keyed by option.</param>
     public OptionsMenuRenderData(
         int x,
         int y,
@@ -117,7 +119,8 @@ public sealed class OptionsMenuRenderData
         int selectedSlot,
         bool hasActiveGame,
         int listeningRow,
-        bool listeningSecondary
+        bool listeningSecondary,
+        IReadOnlyDictionary<UserGameplayOption, bool> gameplayStates = null
     )
     {
         X = x;
@@ -126,6 +129,7 @@ public sealed class OptionsMenuRenderData
         ResolutionLabel = resolutionLabel ?? string.Empty;
         FullScreenLabel = fullScreenLabel ?? string.Empty;
         TacticalStates = tacticalStates ?? new Dictionary<UserTacticalOption, bool>();
+        GameplayStates = gameplayStates ?? new Dictionary<UserGameplayOption, bool>();
         Volumes = volumes ?? Array.Empty<float>();
         Bindings = bindings ?? Array.Empty<OptionsBindingRow>();
         SaveSlots = saveSlots ?? Array.Empty<OptionsSaveSlot>();
@@ -146,6 +150,7 @@ public sealed class OptionsMenuRenderData
     public string ResolutionLabel { get; }
     public string FullScreenLabel { get; }
     public IReadOnlyDictionary<UserTacticalOption, bool> TacticalStates { get; }
+    public IReadOnlyDictionary<UserGameplayOption, bool> GameplayStates { get; }
 
     public IReadOnlyList<float> Volumes { get; }
 

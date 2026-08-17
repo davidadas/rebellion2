@@ -117,9 +117,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Button[] tabs = GetField<Button[]>(view, "_tabButtons");
             int initialDirtyCount = _dirtyCount;
 
-            tabs[(int)OptionsMenuTab.Graphics].onClick.Invoke();
+            Assert.IsTrue(GetField<GameObject>(view, "_gameplayPage").activeSelf);
+            tabs[(int)OptionsMenuTab.Gameplay].onClick.Invoke();
             Assert.AreEqual(initialDirtyCount, _dirtyCount);
 
+            tabs[(int)OptionsMenuTab.Graphics].onClick.Invoke();
             tabs[(int)OptionsMenuTab.Audio].onClick.Invoke();
             _controller.RenderWindows();
             Assert.IsTrue(GetField<GameObject>(view, "_audioPage").activeSelf);
@@ -134,9 +136,26 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void GraphicsActions_ChangePreviewAndRestoreDefaultsAfterConfirmation()
+        public void GameplayActions_ToggleAutomaticPausingOption()
         {
             OptionsMenuView view = OpenAndRender();
+            OptionsToggleRowView gameplayRow = GetField<OptionsToggleRowView[]>(
+                    view,
+                    "_gameplayRows"
+                )
+                .First();
+
+            GetField<Button>(gameplayRow, "_button").onClick.Invoke();
+
+            Assert.IsFalse(
+                _bootstrap.GetUserSettingsManager().Settings.Gameplay.PauseAfterEnemyBombardment
+            );
+        }
+
+        [Test]
+        public void GraphicsActions_ChangePreviewAndRestoreDefaultsAfterConfirmation()
+        {
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Graphics);
             int initialDirtyCount = _dirtyCount;
 
             GetField<Button>(view, "_resolutionNextButton").onClick.Invoke();
@@ -296,18 +315,23 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void FooterRequests_CancelDismissesMainMenuAndQuitConfirmations()
+        public void MainMenuFooter_BackToMainMenuClosesOverlay()
+        {
+            OptionsMenuView view = OpenAndRender();
+
+            GetField<Button>(view, "_mainMenuButton").onClick.Invoke();
+
+            Assert.IsFalse(_controller.IsOpen);
+        }
+
+        [Test]
+        public void FooterRequests_CancelDismissesQuitConfirmation()
         {
             OptionsMenuView view = OpenAndRender();
             ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
                 view,
                 "_confirmDialog"
             );
-
-            GetField<Button>(view, "_mainMenuButton").onClick.Invoke();
-            Assert.IsTrue(confirmation.gameObject.activeSelf);
-            Assert.IsTrue(_controller.TryCancel());
-            Assert.IsFalse(confirmation.gameObject.activeSelf);
 
             GetField<Button>(view, "_quitButton").onClick.Invoke();
             Assert.IsTrue(confirmation.gameObject.activeSelf);
@@ -365,7 +389,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
-        private OptionsMenuView OpenAndRender(OptionsMenuTab initialTab = OptionsMenuTab.Graphics)
+        private OptionsMenuView OpenAndRender(OptionsMenuTab initialTab = OptionsMenuTab.Gameplay)
         {
             _controller.Open(initialTab);
             OptionsMenuView view = GetOpenView();

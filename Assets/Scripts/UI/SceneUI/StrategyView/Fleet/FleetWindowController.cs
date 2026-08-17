@@ -219,6 +219,7 @@ public sealed class FleetWindowController
             throw new ArgumentNullException(nameof(window));
 
         FleetWindowSession session = GetSession(view);
+        session.Reconcile();
         view.Render(projector.Build(session, window, active));
     }
 

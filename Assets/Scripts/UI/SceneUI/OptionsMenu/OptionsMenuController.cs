@@ -31,7 +31,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool _pendingConfirmKeepsVisible;
     private OptionsMenuView _view;
     private UIWindow _window;
-    private OptionsMenuTab _activeTab = OptionsMenuTab.Graphics;
+    private OptionsMenuTab _activeTab = OptionsMenuTab.Gameplay;
     private TickSpeed _speedBeforeOptions;
     private bool _gamePaused;
     private bool _disposed;
@@ -97,7 +97,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <summary>
     /// Opens or focuses the Options menu.
     /// </summary>
-    public void Open(OptionsMenuTab initialTab = OptionsMenuTab.Graphics)
+    public void Open(OptionsMenuTab initialTab = OptionsMenuTab.Gameplay)
     {
         EnsureUsable();
         if (_window != null)
@@ -208,7 +208,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _selectedSlot,
                 HasActiveGame(),
                 _bindingSession.ListeningRow,
-                _bindingSession.ListeningSecondary
+                _bindingSession.ListeningSecondary,
+                _settingsSession.GetGameplayStates()
             )
         );
     }
@@ -261,6 +262,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.MainMenuRequested += HandleMainMenuRequested;
         target.QuitRequested += HandleQuitRequested;
         target.TacticalToggleRequested += HandleTacticalToggle;
+        target.GameplayToggleRequested += HandleGameplayToggle;
         target.ResolutionStepRequested += HandleResolutionStep;
         target.FullScreenStepRequested += HandleFullScreenStep;
         target.VolumeChanged += HandleVolumeChanged;
@@ -530,6 +532,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         switch (_activeTab)
         {
+            case OptionsMenuTab.Gameplay:
+                RequestConfirm("Reset gameplay settings to their defaults?", ApplyActiveDefaults);
+                break;
             case OptionsMenuTab.Graphics:
                 RequestConfirm("Reset display settings to their defaults?", ApplyActiveDefaults);
                 break;
@@ -568,8 +573,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return;
         }
 
+        string destination = HasActiveGame() ? "the game" : "the Main Menu";
         RequestConfirm(
-            "Discard unsaved settings and return to the game?",
+            $"Discard unsaved settings and return to {destination}?",
             () =>
             {
                 _settingsSession.Revert();
@@ -580,10 +586,16 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Confirms returning to the main menu, warning when settings are unsaved.
+    /// Returns to the Main Menu, or closes its Options overlay when already there.
     /// </summary>
     private void HandleMainMenuRequested()
     {
+        if (!HasActiveGame())
+        {
+            HandleBackToGame();
+            return;
+        }
+
         RequestConfirm(
             _settingsSession.IsDirty
                 ? "Return to the Main Menu? Unsaved settings will be lost."
@@ -711,6 +723,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Toggles a gameplay option and marks settings dirty.
+    /// </summary>
+    private void HandleGameplayToggle(UserGameplayOption option)
+    {
+        _settingsSession.ToggleGameplay(option);
+        _markDirty();
+    }
+
+    /// <summary>
     /// Steps the selected resolution and applies it immediately.
     /// </summary>
     /// <param name="delta">The step direction.</param>
@@ -767,6 +788,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.MainMenuRequested -= HandleMainMenuRequested;
         destroyed.QuitRequested -= HandleQuitRequested;
         destroyed.TacticalToggleRequested -= HandleTacticalToggle;
+        destroyed.GameplayToggleRequested -= HandleGameplayToggle;
         destroyed.ResolutionStepRequested -= HandleResolutionStep;
         destroyed.FullScreenStepRequested -= HandleFullScreenStep;
         destroyed.VolumeChanged -= HandleVolumeChanged;

@@ -685,11 +685,12 @@ internal sealed class OptionsBindingSession : IDisposable
     }
 
     /// <summary>
-    /// Identifies the system-reserved Escape slot used for consistent UI navigation.
+    /// Identifies system-reserved cancel and game-menu shortcuts.
     /// </summary>
     private static bool HasReservedPrimary(InputAction action)
     {
-        return action?.actionMap?.name == "Global" && action.name == "CancelOrSettings";
+        return action?.actionMap?.name == "Global"
+            && action.name is "CancelOrSettings" or "OpenGameMenu";
     }
 
     /// <summary>
@@ -758,7 +759,7 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <returns>The label displayed by the Controls page.</returns>
     private static string GetActionLabel(string actionName)
     {
-        return actionName == "CancelOrSettings" ? "Open Game Menu" : Humanize(actionName);
+        return actionName == "CancelOrSettings" ? "Cancel" : Humanize(actionName);
     }
 
     /// <summary>

@@ -352,7 +352,20 @@ namespace Rebellion.Systems
                 triggerResult,
                 trigger
             );
-            if (!gameEvent.AreConditionsMet(_game, context))
+            bool conditionsMet;
+            try
+            {
+                conditionsMet = gameEvent.AreConditionsMet(_game, context);
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException(
+                    $"Game event '{gameEvent.InstanceID}' failed while evaluating its conditions.",
+                    exception
+                );
+            }
+
+            if (!conditionsMet)
             {
                 results = new List<GameResult>();
                 return false;

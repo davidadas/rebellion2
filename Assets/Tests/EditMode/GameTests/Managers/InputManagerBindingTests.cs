@@ -45,10 +45,10 @@ namespace Rebellion.Tests.Managers
         }
 
         /// <summary>
-        /// Verifies persisted overrides cannot replace the reserved Escape binding.
+        /// Verifies persisted overrides cannot replace the reserved cancel binding.
         /// </summary>
         [Test]
-        public void LoadBindingOverrides_OpenGameMenuPrimary_RestoresEscapeAndKeepsSecondary()
+        public void LoadBindingOverrides_CancelPrimary_RestoresEscapeAndKeepsSecondary()
         {
             GameObject firstRoot = new GameObject("FirstInputManager");
             GameObject secondRoot = null;
@@ -88,6 +88,33 @@ namespace Rebellion.Tests.Managers
                     Object.DestroyImmediate(firstRoot);
                 if (secondRoot != null)
                     Object.DestroyImmediate(secondRoot);
+            }
+        }
+
+        /// <summary>
+        /// Verifies persisted overrides cannot replace the reserved game-menu chord.
+        /// </summary>
+        [Test]
+        public void LoadBindingOverrides_OpenGameMenuPrimary_RestoresShiftEscape()
+        {
+            GameObject root = new GameObject("InputManager");
+            try
+            {
+                InputManager inputManager = root.AddComponent<InputManager>();
+                InputAction action = inputManager.Asset.FindAction("Global/OpenGameMenu", true);
+                int chord = FindBinding(action, "PrimaryChord");
+                action.ApplyBindingOverride(chord + 1, "<Keyboard>/ctrl");
+                action.ApplyBindingOverride(chord + 2, "<Keyboard>/m");
+                string json = inputManager.Asset.SaveBindingOverridesAsJson();
+
+                inputManager.LoadBindingOverrides(json);
+
+                Assert.AreEqual("<Keyboard>/shift", action.bindings[chord + 1].effectivePath);
+                Assert.AreEqual("<Keyboard>/escape", action.bindings[chord + 2].effectivePath);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
             }
         }
 
