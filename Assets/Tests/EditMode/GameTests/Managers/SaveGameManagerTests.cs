@@ -1237,7 +1237,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void LoadGameData_SaveVersionMismatch_ThrowsInvalidOperationException()
+        public void LoadGameData_SaveVersionMismatch_LoadsWithoutVersionGate()
         {
             GameSummary summary = new GameSummary
             {
@@ -1265,16 +1265,13 @@ namespace Rebellion.Tests.Managers
             );
             File.WriteAllText(saveFilePath, bumped);
 
-            InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(() =>
-                _saveGameManager.LoadGameData(_saveFileName)
-            );
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.That(thrown.Message, Does.Contain(futureVersion.ToString()));
-            Assert.That(thrown.Message, Does.Contain(GameMetadata.CurrentSaveVersion.ToString()));
+            Assert.AreEqual(futureVersion, loadedGame.Metadata.SaveVersion);
         }
 
         [Test]
-        public void LoadGameData_SaveVersionMissing_ThrowsInvalidOperationException()
+        public void LoadGameData_SaveVersionMissing_DefaultsVersionToZero()
         {
             GameSummary summary = new GameSummary
             {
@@ -1302,12 +1299,9 @@ namespace Rebellion.Tests.Managers
             );
             File.WriteAllText(saveFilePath, stripped);
 
-            InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(() =>
-                _saveGameManager.LoadGameData(_saveFileName)
-            );
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.That(thrown.Message, Does.Contain("0"));
-            Assert.That(thrown.Message, Does.Contain(GameMetadata.CurrentSaveVersion.ToString()));
+            Assert.AreEqual(0, loadedGame.Metadata.SaveVersion);
         }
     }
 } // namespace Rebellion.Tests.Managers

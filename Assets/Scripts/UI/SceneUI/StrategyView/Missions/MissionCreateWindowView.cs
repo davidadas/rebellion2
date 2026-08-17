@@ -14,6 +14,7 @@ public sealed class MissionCreateWindowView
         IPointerClickHandler,
         IContentInitializable
 {
+    private const int _planetTargetPreviewSize = 37;
     private const int _titleImageCount = 2;
 
     private readonly List<MissionParticipantRowView> agentRowViews =
@@ -471,7 +472,20 @@ public sealed class MissionCreateWindowView
             data.TargetTexture ?? (data.UsePlanetTargetPreview ? planetTargetPreviewTexture : null);
         targetPreviewImage.gameObject.SetActive(targetTexture != null);
         if (targetTexture != null)
-            UILayout.SetCenteredImage(targetPreviewImage, targetTexture, targetPreviewSlotRect);
+        {
+            RectInt slot = targetPreviewSlotRect;
+            if (data.UsePlanetTargetPreview)
+            {
+                slot = new RectInt(
+                    slot.x + (slot.width - _planetTargetPreviewSize) / 2,
+                    slot.y + (slot.height - _planetTargetPreviewSize) / 2,
+                    _planetTargetPreviewSize,
+                    _planetTargetPreviewSize
+                );
+            }
+
+            UILayout.SetCenteredImage(targetPreviewImage, targetTexture, slot);
+        }
 
         targetPreviewNameTextField.gameObject.SetActive(!string.IsNullOrEmpty(data.TargetName));
         if (!string.IsNullOrEmpty(data.TargetName))
