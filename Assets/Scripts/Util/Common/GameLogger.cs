@@ -9,13 +9,16 @@ namespace Rebellion.Util.Common
     /// </summary>
     public static class GameLogger
     {
-        private static LogLevel _minimumLevel = LogLevel.Debug;
+        private const string _logLevelEnvironmentVariable = "LOG_LEVEL";
+
+        private static LogLevel _minimumLevel = GetConfiguredMinimumLevel();
 
         /// <summary>
         /// Defines the different levels of logging.
         /// </summary>
         public enum LogLevel
         {
+            None = -1,
             Error,
             Warning,
             Info,
@@ -27,6 +30,11 @@ namespace Rebellion.Util.Common
             $"{UnityEngine.Application.persistentDataPath}/log.txt";
         private static bool _logToFile;
         private static bool _includeTimestamp = true;
+
+        /// <summary>
+        /// Gets the minimum severity currently emitted by the logger.
+        /// </summary>
+        public static LogLevel MinimumLevel => _minimumLevel;
 
         /// <summary>
         /// Overrides the minimum log level. Messages with a level above this threshold are
@@ -132,6 +140,20 @@ namespace Rebellion.Util.Common
                 ? $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] "
                 : string.Empty;
             return $"{timestamp}[{level}] {message}";
+        }
+
+        /// <summary>
+        /// Resolves the initial minimum log level from the environment.
+        /// </summary>
+        /// <returns>The configured level, or Debug when no valid level was supplied.</returns>
+        private static LogLevel GetConfiguredMinimumLevel()
+        {
+            string configuredLevel = Environment.GetEnvironmentVariable(
+                _logLevelEnvironmentVariable
+            );
+            return Enum.TryParse(configuredLevel, ignoreCase: true, out LogLevel level)
+                ? level
+                : LogLevel.Debug;
         }
 
         /// <summary>

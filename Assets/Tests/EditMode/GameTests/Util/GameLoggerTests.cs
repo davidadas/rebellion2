@@ -8,11 +8,13 @@ namespace Rebellion.Tests.Util
     [TestFixture]
     public class GameLoggerTests
     {
+        private GameLogger.LogLevel _originalMinimumLevel;
         private string _tempFile;
 
         [SetUp]
         public void SetUp()
         {
+            _originalMinimumLevel = GameLogger.MinimumLevel;
             _tempFile = Path.GetTempFileName();
             GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
         }
@@ -21,9 +23,25 @@ namespace Rebellion.Tests.Util
         public void TearDown()
         {
             GameLogger.Configure(enableFileLogging: false, addTimestamps: true);
-            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
+            GameLogger.SetMinimumLevel(_originalMinimumLevel);
             if (File.Exists(_tempFile))
                 File.Delete(_tempFile);
+        }
+
+        [Test]
+        public void Log_MinimumLevelNone_DoesNotWriteToFile()
+        {
+            GameLogger.Configure(
+                filePath: _tempFile,
+                enableFileLogging: true,
+                addTimestamps: false
+            );
+            File.WriteAllText(_tempFile, string.Empty);
+            GameLogger.SetMinimumLevel(GameLogger.LogLevel.None);
+
+            GameLogger.Log("silent");
+
+            Assert.IsEmpty(File.ReadAllText(_tempFile));
         }
 
         [Test]
