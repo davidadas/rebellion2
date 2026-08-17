@@ -690,12 +690,18 @@ namespace Rebellion.Game
                 InitializeSceneRoot(retainedNode);
         }
 
+        /// <summary>
+        /// Initializes and returns the supplied galaxy scene root.
+        /// </summary>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
             InitializeSceneRoot(galaxy);
             return galaxy;
         }
 
+        /// <summary>
+        /// Rebuilds parent links and runtime indexes beneath one scene root.
+        /// </summary>
         private void InitializeSceneRoot(ISceneNode root)
         {
             root.Traverse(
@@ -713,6 +719,9 @@ namespace Rebellion.Game
             );
         }
 
+        /// <summary>
+        /// Returns the detached root that contains a retained scene node.
+        /// </summary>
         private static ISceneNode GetRetainedRoot(ISceneNode node)
         {
             if (node == null)

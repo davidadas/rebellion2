@@ -273,6 +273,9 @@ namespace Rebellion.Game.Units
         public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
         public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
 
+        /// <summary>
+        /// Applies authored image-set overrides to the officer's active image paths.
+        /// </summary>
         public void ApplyImageSet()
         {
             DisplayImagePath = ImageSet.DisplayImagePath ?? DisplayImagePath;

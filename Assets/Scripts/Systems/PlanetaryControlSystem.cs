@@ -80,7 +80,9 @@ namespace Rebellion.Systems
             return controlResults;
         }
 
-        /// <summary>Applies event-requested ownership changes through the authoritative rules.</summary>
+        /// <summary>
+        /// Applies event-requested ownership changes through the authoritative rules.
+        /// </summary>
         List<GameResult> IGameResultHandler<OwnershipChangeRequestedResult>.HandleResults(
             IReadOnlyList<OwnershipChangeRequestedResult> requests
         )

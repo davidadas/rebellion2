@@ -976,6 +976,9 @@ namespace Rebellion.Systems
             return true;
         }
 
+        /// <summary>
+        /// Resolves a valid destination for every unit without mutating scene state.
+        /// </summary>
         private bool TryPlanPlacementGroup(
             IReadOnlyList<IMovable> units,
             ContainerNode destination,

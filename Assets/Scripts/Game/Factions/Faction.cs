@@ -217,6 +217,9 @@ namespace Rebellion.Game.Factions
                 .ToList();
         }
 
+        /// <summary>
+        /// Clears the runtime ownership index before it is rebuilt from scene state.
+        /// </summary>
         public void ClearOwnedUnits()
         {
             foreach (List<ISceneNode> units in _ownedEntities.Values)

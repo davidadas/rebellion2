@@ -160,7 +160,9 @@ namespace Rebellion.Game.Results
         public List<ISceneNode> Units { get; set; } = new List<ISceneNode>();
     }
 
-    /// <summary>Ownership of one unit changed hands.</summary>
+    /// <summary>
+    /// Ownership of one unit changed hands.
+    /// </summary>
     public sealed class UnitOwnershipChangedResult : GameResult
     {
         public ISceneNode Unit { get; set; }

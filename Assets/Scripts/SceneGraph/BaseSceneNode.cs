@@ -122,7 +122,9 @@ namespace Rebellion.SceneGraph
             return null;
         }
 
-        /// <summary>Sets the current owner's stable faction instance ID.</summary>
+        /// <summary>
+        /// Sets the current owner's stable faction instance ID.
+        /// </summary>
         /// <param name="ownerInstanceId">The owner Instance ID to set.</param>
         public void SetOwnerInstanceID(string ownerInstanceId)
         {

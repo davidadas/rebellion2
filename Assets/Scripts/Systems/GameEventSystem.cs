@@ -382,6 +382,9 @@ namespace Rebellion.Systems
             return true;
         }
 
+        /// <summary>
+        /// Returns whether an event reached its trigger count or authored stop conditions.
+        /// </summary>
         private bool ShouldExhaust(GameEvent gameEvent, GameEventState state)
         {
             if (state.IsExhausted)

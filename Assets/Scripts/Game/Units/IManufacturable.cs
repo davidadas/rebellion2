@@ -145,10 +145,14 @@ namespace Rebellion.Game.Units
         }
     }
 
-    /// <summary>Provides acquisition rules shared by all manufacturable definitions.</summary>
+    /// <summary>
+    /// Provides acquisition rules shared by all manufacturable definitions.
+    /// </summary>
     public static class ManufacturableExtensions
     {
-        /// <summary>Returns whether the specified faction may manufacture this definition.</summary>
+        /// <summary>
+        /// Returns whether the specified faction may manufacture this definition.
+        /// </summary>
         public static bool CanBeManufacturedBy(
             this IManufacturable manufacturable,
             string factionInstanceID

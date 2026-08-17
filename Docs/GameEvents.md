@@ -203,6 +203,7 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 | `SelectBinding` | Returns the object or collection in a binding. |
 | `SelectAncestors` | Maps candidates to their nearest ancestor of `Type`. |
 | `SelectPreviousLocation` | Returns a retained unit's recorded previous location. |
+| `SpawnUnits` | Creates `Count` detached units from a catalog `TypeID` for immediate use by `PlaceUnits`. |
 
 Planet location filters use `PlanetInstanceID` or `PlanetBinding`. System types are `CoreSystem` and
 `OuterRim`. Manufacturing statuses are `Building` and `Complete`. Manufacturing types are `Ship`,

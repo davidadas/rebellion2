@@ -317,6 +317,9 @@ namespace Rebellion.Game.Units
             return false;
         }
 
+        /// <summary>
+        /// Returns whether the ship can accept a child alongside already planned additions.
+        /// </summary>
         internal override bool CanAcceptChild(
             ISceneNode child,
             IReadOnlyCollection<ISceneNode> plannedChildren

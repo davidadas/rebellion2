@@ -89,6 +89,9 @@ namespace Rebellion.Game.Units
             return manufacturable.GetMaintenanceCost();
         }
 
+        /// <summary>
+        /// Combines the available unit-definition categories into one template sequence.
+        /// </summary>
         private static IEnumerable<ISceneNode> Combine(
             params IEnumerable<ISceneNode>[] categories
         ) => categories.SelectMany(category => category ?? Enumerable.Empty<ISceneNode>());
