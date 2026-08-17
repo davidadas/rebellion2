@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -16,16 +17,23 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
+        private readonly UnitFactory _unitFactory;
 
         /// <summary>
         /// Creates a new GameEventSystem.
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for stochastic event actions.</param>
-        public GameEventSystem(GameRoot game, IRandomNumberProvider provider)
+        /// <param name="unitFactory">Factory for actions that create runtime units.</param>
+        public GameEventSystem(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            UnitFactory unitFactory = null
+        )
         {
             _game = game;
             _provider = provider;
+            _unitFactory = unitFactory;
         }
 
         /// <summary>
@@ -359,7 +367,7 @@ namespace Rebellion.Systems
             }
 
             GameLogger.Log($"Executing game event: {gameEvent.InstanceID}");
-            results = gameEvent.Execute(_game, _provider, context);
+            results = gameEvent.Execute(_game, _provider, context, _unitFactory);
 
             state.ExecutionCount++;
             state.LastExecutionTick = _game.CurrentTick;

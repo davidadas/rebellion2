@@ -236,6 +236,7 @@ Actions run from top to bottom. Later actions see changes and results produced b
 | `ReducePlanetStats` | Applies probabilistic resource losses to selected planet stats. |
 | `RecordPlanetIncident` | Records `Uprising`, `Intelligence`, `Disaster`, or `Resource` from results already produced against `$target`. |
 | `DestroyUnits` | Permanently deletes selected units. |
+| `CreateUnits` | Creates complete units from content templates and immediately places them. |
 | `PlaceUnits` | Immediately places units at a valid destination. |
 | `SendUnits` | Sends units using normal movement and transit. |
 | `AddToVoid`, `RemoveFromVoid` | Retains units outside active play or releases that retention. |
@@ -286,6 +287,23 @@ Actions run from top to bottom. Later actions see changes and results produced b
   <PercentOfPositiveGap>25</PercentOfPositiveGap>
 </IncreaseOfficerForce>
 ```
+
+`CreateUnits` accepts a faction owner and either a direct destination or destination selectors. Add
+typed entries under `Buildings`, `CapitalShips`, `Starfighters`, `Regiments`, or `SpecialForces`:
+
+```xml
+<CreateUnits OwnerFactionInstanceID="FNALL1" DestinationInstanceID="NABOO">
+  <Starfighters>
+    <UnitType TypeID="X_WING" Count="3"/>
+  </Starfighters>
+  <Regiments>
+    <UnitType TypeID="ALLIANCE_REGIMENT" Count="2"/>
+  </Regiments>
+</CreateUnits>
+```
+
+Each created unit receives a new runtime instance ID, starts complete and stationary, and enters the
+normal placement pipeline as one batch. Use `PlaceUnits` when the units already exist.
 
 `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `DestinationInstanceID` attributes or
 typed `Units` and `Destination` selectors. `RemoveFromVoid` only releases retention; it does not

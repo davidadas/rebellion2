@@ -935,14 +935,21 @@ namespace Rebellion.Systems
             HashSet<string> instanceIDs = new HashSet<string>(StringComparer.Ordinal);
             foreach (IMovable unit in units)
             {
-                if (
-                    unit is not ISceneNode node
-                    || !instanceIDs.Add(node.InstanceID)
-                    || ResolveRegisteredNode(node) is not IMovable live
-                    || _game.IsInVoid(node)
-                )
+                if (unit is not ISceneNode node || !instanceIDs.Add(node.InstanceID))
                     return false;
-                liveUnits.Add(live);
+
+                ISceneNode registered = ResolveRegisteredNode(node);
+                if (registered is IMovable live)
+                {
+                    if (_game.IsInVoid(node))
+                        return false;
+                    liveUnits.Add(live);
+                    continue;
+                }
+
+                if (node.GetParent() != null)
+                    return false;
+                liveUnits.Add(unit);
             }
 
             if (
@@ -955,7 +962,12 @@ namespace Rebellion.Systems
                 ISceneNode unit = (ISceneNode)liveUnits[index];
                 ContainerNode resolvedDestination = destinations[index];
                 if (unit.GetParent() == null)
-                    _game.AttachRetainedNode(unit, resolvedDestination);
+                {
+                    if (_game.NodesByInstanceID.ContainsKey(unit.InstanceID))
+                        _game.AttachRetainedNode(unit, resolvedDestination);
+                    else
+                        _game.AttachNode(unit, resolvedDestination);
+                }
                 else
                     _game.MoveNode(unit, resolvedDestination);
                 liveUnits[index].Movement = null;

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
@@ -82,14 +83,21 @@ namespace Rebellion.Game.Events
         /// <param name="game">The current game state.</param>
         /// <param name="provider">Random number provider for stochastic actions.</param>
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
+        /// <param name="unitFactory">Factory for actions that create runtime units.</param>
         /// <returns>Combined results from all executed actions.</returns>
         internal List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventExecutionContext context,
+            UnitFactory unitFactory = null
         )
         {
-            GameActionContext actionContext = new GameActionContext(game, provider, context);
+            GameActionContext actionContext = new GameActionContext(
+                game,
+                provider,
+                context,
+                unitFactory
+            );
             return GameAction.ExecuteAll(Actions, actionContext);
         }
     }

@@ -36,6 +36,12 @@ namespace Rebellion.Tests.Game.Events
             IRandomNumberProvider random,
             GameEventExecutionContext activation
         ) => action.Execute(new GameActionContext(game, random, activation));
+
+        internal static List<GameResult> Execute(
+            this GameAction action,
+            GameRoot game,
+            UnitFactory unitFactory
+        ) => action.Execute(new GameActionContext(game, game.Random, null, unitFactory));
     }
 
     [TestFixture]
@@ -64,6 +70,163 @@ namespace Rebellion.Tests.Game.Events
             };
             game.AttachNode(rebelPlanet, system);
             return game;
+        }
+
+        [Test]
+        public void CreateUnits_MixedTypedEntries_EmitsDetachedPlacementBatch()
+        {
+            GameRoot game = BuildGame(out Planet destination, out _);
+            Starfighter fighterTemplate = new Starfighter
+            {
+                TypeID = "X_WING",
+                DisplayName = "X-Wing",
+            };
+            Regiment regimentTemplate = new Regiment
+            {
+                TypeID = "ALLIANCE_REGIMENT",
+                DisplayName = "Alliance Regiment",
+            };
+            UnitFactory factory = new UnitFactory(
+                Array.Empty<Building>(),
+                Array.Empty<CapitalShip>(),
+                new[] { fighterTemplate },
+                new[] { regimentTemplate },
+                Array.Empty<SpecialForces>()
+            );
+            CreateUnitsAction action = new CreateUnitsAction
+            {
+                OwnerFactionInstanceID = "empire",
+                DestinationInstanceID = destination.InstanceID,
+                Starfighters = new List<UnitCreationEntry>
+                {
+                    new UnitCreationEntry { TypeID = "X_WING", Count = 2 },
+                },
+                Regiments = new List<UnitCreationEntry>
+                {
+                    new UnitCreationEntry { TypeID = "ALLIANCE_REGIMENT" },
+                },
+            };
+
+            UnitPlacementRequestedResult result = action
+                .Execute(game, factory)
+                .OfType<UnitPlacementRequestedResult>()
+                .Single();
+
+            Assert.AreEqual(3, result.Units.Count);
+            Assert.AreEqual(2, result.Units.OfType<Starfighter>().Count());
+            Assert.AreEqual(1, result.Units.OfType<Regiment>().Count());
+            Assert.IsTrue(result.Units.Cast<ISceneNode>().All(unit => unit.GetParent() == null));
+            Assert.IsTrue(
+                result.Units.Cast<ISceneNode>().All(unit => unit.OwnerInstanceID == "empire")
+            );
+            Assert.AreSame(destination, result.Destinations.Single());
+        }
+
+        [Test]
+        public void CreateUnits_TypedEntries_RoundTripsAuthoredStructure()
+        {
+            CreateUnitsAction action = new CreateUnitsAction
+            {
+                OwnerFactionInstanceID = "FNALL1",
+                DestinationInstanceID = "NABOO",
+                Starfighters = new List<UnitCreationEntry>
+                {
+                    new UnitCreationEntry { TypeID = "X_WING", Count = 3 },
+                },
+                Regiments = new List<UnitCreationEntry>
+                {
+                    new UnitCreationEntry { TypeID = "ALLIANCE_REGIMENT", Count = 2 },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize<GameAction>(action);
+            CreateUnitsAction restored = (CreateUnitsAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            Assert.AreEqual("FNALL1", restored.OwnerFactionInstanceID);
+            Assert.AreEqual("NABOO", restored.DestinationInstanceID);
+            Assert.AreEqual("X_WING", restored.Starfighters.Single().TypeID);
+            Assert.AreEqual(3, restored.Starfighters.Single().Count);
+            Assert.AreEqual("ALLIANCE_REGIMENT", restored.Regiments.Single().TypeID);
+            Assert.AreEqual(2, restored.Regiments.Single().Count);
+        }
+
+        [Test]
+        public void AddToVoid_ElementUnitInstanceID_DeserializesUnitInstanceID()
+        {
+            AddToVoidAction action = (AddToVoidAction)
+                SerializationHelper.Deserialize<GameAction>(
+                    "<AddToVoid><UnitInstanceID>LUKE_SKYWALKER</UnitInstanceID></AddToVoid>"
+                );
+
+            Assert.AreEqual("LUKE_SKYWALKER", action.UnitInstanceID);
+        }
+
+        [Test]
+        public void RemoveFromVoid_RetainedOfficerSelector_RoundTripsSelector()
+        {
+            RemoveFromVoidAction action = new RemoveFromVoidAction
+            {
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectOfficers
+                    {
+                        PlanetBinding = "$destination",
+                        IsCaptured = true,
+                        IncludeRetained = true,
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize<GameAction>(action);
+            RemoveFromVoidAction restored = (RemoveFromVoidAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            SelectOfficers selector = restored.Selectors.OfType<SelectOfficers>().Single();
+            Assert.AreEqual("$destination", selector.PlanetBinding);
+            Assert.AreEqual(true, selector.IsCaptured);
+            Assert.IsTrue(selector.IncludeRetained);
+        }
+
+        [Test]
+        public void PlaceUnits_Selectors_RoundTripsTransferStructure()
+        {
+            PlaceUnitsAction action = new PlaceUnitsAction
+            {
+                Units = new List<GameEventSelector>
+                {
+                    new SelectBinding { Binding = "$participants" },
+                },
+                Destination = new List<GameEventSelector>
+                {
+                    new SelectFirst
+                    {
+                        Selectors = new List<GameEventSelector>
+                        {
+                            new SelectPreviousLocation { UnitInstanceID = "LUKE_SKYWALKER" },
+                            new SelectPlanets { InstanceID = "YAVIN" },
+                        },
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize<GameAction>(action);
+            PlaceUnitsAction restored = (PlaceUnitsAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            Assert.AreEqual(
+                "$participants",
+                restored.Units.OfType<SelectBinding>().Single().Binding
+            );
+            SelectFirst destination = restored.Destination.OfType<SelectFirst>().Single();
+            Assert.AreEqual(
+                "LUKE_SKYWALKER",
+                destination.Selectors.OfType<SelectPreviousLocation>().Single().UnitInstanceID
+            );
+            Assert.AreEqual(
+                "YAVIN",
+                destination.Selectors.OfType<SelectPlanets>().Single().InstanceID
+            );
         }
 
         [Test]

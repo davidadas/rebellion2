@@ -1539,6 +1539,103 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Identifies a unit template and the number of runtime instances to create from it.
+    /// </summary>
+    [PersistableObject]
+    public sealed class UnitCreationEntry
+    {
+        [PersistableAttribute]
+        public string TypeID { get; set; }
+
+        [PersistableAttribute]
+        public int Count { get; set; } = 1;
+    }
+
+    /// <summary>
+    /// Creates one atomic batch of complete units and requests their immediate initial placement.
+    /// </summary>
+    [PersistableObject(Name = "CreateUnits")]
+    public sealed class CreateUnitsAction : GameAction
+    {
+        [PersistableAttribute]
+        public string OwnerFactionInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string DestinationInstanceID { get; set; }
+
+        [PersistableCollectionItem(Name = "UnitType")]
+        public List<UnitCreationEntry> Buildings { get; set; } = new List<UnitCreationEntry>();
+
+        [PersistableCollectionItem(Name = "UnitType")]
+        public List<UnitCreationEntry> CapitalShips { get; set; } = new List<UnitCreationEntry>();
+
+        [PersistableCollectionItem(Name = "UnitType")]
+        public List<UnitCreationEntry> Starfighters { get; set; } = new List<UnitCreationEntry>();
+
+        [PersistableCollectionItem(Name = "UnitType")]
+        public List<UnitCreationEntry> Regiments { get; set; } = new List<UnitCreationEntry>();
+
+        [PersistableCollectionItem(Name = "UnitType")]
+        public List<UnitCreationEntry> SpecialForces { get; set; } = new List<UnitCreationEntry>();
+
+        public List<GameEventSelector> Destination { get; set; } = new List<GameEventSelector>();
+
+        internal override List<GameResult> Execute(GameActionContext context)
+        {
+            if (context.UnitFactory == null)
+                throw new InvalidOperationException(
+                    "CreateUnits requires the active content unit factory."
+                );
+            context.Game.GetFactionByOwnerInstanceID(OwnerFactionInstanceID);
+
+            List<ContainerNode> destinations = UnitActionTargets.ResolveDestinations(
+                DestinationInstanceID,
+                Destination,
+                context,
+                "CreateUnits"
+            );
+            List<IMovable> units = new List<IMovable>();
+            AddUnits<Building>(Buildings, units, context.UnitFactory);
+            AddUnits<CapitalShip>(CapitalShips, units, context.UnitFactory);
+            AddUnits<Starfighter>(Starfighters, units, context.UnitFactory);
+            AddUnits<Regiment>(Regiments, units, context.UnitFactory);
+            AddUnits<SpecialForces>(SpecialForces, units, context.UnitFactory);
+            if (units.Count == 0)
+                throw new InvalidOperationException(
+                    "CreateUnits requires at least one unit creation entry."
+                );
+
+            return new List<GameResult>
+            {
+                new UnitPlacementRequestedResult
+                {
+                    Units = units,
+                    Destinations = destinations,
+                    Tick = context.Game.CurrentTick,
+                },
+            };
+        }
+
+        private void AddUnits<T>(
+            IEnumerable<UnitCreationEntry> entries,
+            ICollection<IMovable> units,
+            UnitFactory factory
+        )
+            where T : class, ISceneNode, IManufacturable, IMovable
+        {
+            foreach (UnitCreationEntry entry in entries ?? Enumerable.Empty<UnitCreationEntry>())
+            {
+                if (entry == null || string.IsNullOrWhiteSpace(entry.TypeID) || entry.Count < 1)
+                    throw new InvalidOperationException(
+                        "CreateUnits entries require a TypeID and a positive Count."
+                    );
+                for (int index = 0; index < entry.Count; index++)
+                    units.Add(factory.Create<T>(entry.TypeID, OwnerFactionInstanceID));
+            }
+        }
+    }
+
+    /// <summary>
     /// Sends one or more units through normal movement and transit.
     /// </summary>
     [PersistableObject(Name = "SendUnits")]

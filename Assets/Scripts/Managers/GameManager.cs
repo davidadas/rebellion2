@@ -303,7 +303,14 @@ public sealed class GameManager
     private void InitializeSystems()
     {
         _messageSystem = new MessageSystem(_game, _gameData.MessageDefinitions.GetDeepCopy());
-        _eventSystem = new GameEventSystem(_game, _randomProvider);
+        UnitFactory unitFactory = new UnitFactory(
+            _gameData.Buildings,
+            _gameData.CapitalShips,
+            _gameData.Starfighters,
+            _gameData.Regiments,
+            _gameData.SpecialForces
+        );
+        _eventSystem = new GameEventSystem(_game, _randomProvider, unitFactory);
         _eventSystem.ValidateEvents(_game.GetEventPool());
         _fogOfWarSystem = new FogOfWarSystem(_game);
         _blockadeSystem = new BlockadeSystem(_game, _randomProvider);

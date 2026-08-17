@@ -821,5 +821,42 @@ namespace Rebellion.Tests.Game
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
             Assert.IsFalse(_faction1.GetOwnedUnitsByType<Officer>().Contains(officer));
         }
+
+        [Test]
+        public void RebuildSceneState_SerializedRetainedFleet_RestoresRetainedHierarchy()
+        {
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "RETAINED_FLEET",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "RETAINED_SHIP",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(ship, fleet);
+            _game.AddToVoid(fleet);
+
+            string xml = SerializationHelper.Serialize(_game);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
+            restored.SetConfig(TestContent.Data.GameConfig);
+            restored.RebuildSceneState();
+
+            Fleet restoredFleet = restored.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID);
+            CapitalShip restoredShip = restored.GetSceneNodeByInstanceID<CapitalShip>(
+                ship.InstanceID
+            );
+            Assert.IsTrue(restored.IsInVoid(restoredFleet));
+            Assert.AreSame(restoredFleet, restoredShip.GetParent());
+            Assert.IsNull(restoredFleet.GetParent());
+            CollectionAssert.Contains(
+                restored
+                    .GetFactionByOwnerInstanceID(_faction1.InstanceID)
+                    .GetOwnedUnitsByType<Fleet>(),
+                restoredFleet
+            );
+        }
     }
 } // namespace Rebellion.Tests.Game

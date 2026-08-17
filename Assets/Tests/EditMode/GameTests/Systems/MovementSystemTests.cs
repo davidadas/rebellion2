@@ -291,6 +291,37 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandlePlacementRequest_NewDetachedUnit_AttachesAndRegistersUnit()
+        {
+            (GameRoot game, _, Planet destination, _, MovementSystem movement) = BuildScene();
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "created-regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            IGameResultHandler<UnitPlacementRequestedResult> handler = movement;
+
+            handler.HandleResults(
+                new[]
+                {
+                    new UnitPlacementRequestedResult
+                    {
+                        Units = new List<IMovable> { regiment },
+                        Destinations = new List<ContainerNode> { destination },
+                    },
+                }
+            );
+
+            Assert.AreSame(destination, regiment.GetParent());
+            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            CollectionAssert.Contains(
+                game.GetFactionByOwnerInstanceID("empire").GetOwnedUnitsByType<Regiment>(),
+                regiment
+            );
+        }
+
+        [Test]
         public void HandleMovementRequest_FirstCandidateRejectsGroup_UsesNextCandidate()
         {
             (
