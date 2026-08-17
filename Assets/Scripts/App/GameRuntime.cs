@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Rebellion.Game;
+using Rebellion.Util.Common;
 using UnityEngine;
 
 /// <summary>
@@ -10,6 +11,7 @@ public sealed class GameRuntime
 {
     private readonly ContentPack _contentPack;
     private readonly SaveGameManager _saveGameManager;
+    private readonly Func<UserGameplaySettings> _getGameplaySettings;
     private GameManager _activeGameSession;
 
     /// <summary>
@@ -22,10 +24,16 @@ public sealed class GameRuntime
     /// </summary>
     /// <param name="contentPack">The active content pack.</param>
     /// <param name="saveGameManager">The save manager, or null to use the application singleton.</param>
-    internal GameRuntime(ContentPack contentPack, SaveGameManager saveGameManager = null)
+    /// <param name="getGameplaySettings">Returns the current gameplay settings.</param>
+    internal GameRuntime(
+        ContentPack contentPack,
+        SaveGameManager saveGameManager = null,
+        Func<UserGameplaySettings> getGameplaySettings = null
+    )
     {
         _contentPack = contentPack ?? throw new ArgumentNullException(nameof(contentPack));
         _saveGameManager = saveGameManager ?? SaveGameManager.Instance;
+        _getGameplaySettings = getGameplaySettings;
     }
 
     /// <summary>
@@ -61,6 +69,7 @@ public sealed class GameRuntime
 
         ValidateGameContent(game);
         _activeGameSession = new GameManager(game, _contentPack.GameData);
+        _activeGameSession.TickCompleted += HandleTickCompleted;
         return _activeGameSession;
     }
 
@@ -73,6 +82,7 @@ public sealed class GameRuntime
         if (_activeGameSession == null)
             return;
 
+        _activeGameSession.TickCompleted -= HandleTickCompleted;
         _activeGameSession.SetGameSpeed(TickSpeed.Paused);
         _activeGameSession = null;
     }
@@ -106,6 +116,41 @@ public sealed class GameRuntime
             Debug.Log("Quick load completed.");
         else
             Debug.LogWarning("Quick load skipped because no quick save exists.");
+    }
+
+    /// <summary>
+    /// Saves and rotates autosaves after an eligible completed game tick.
+    /// </summary>
+    private void HandleTickCompleted()
+    {
+        AutosaveIfDue();
+    }
+
+    /// <summary>
+    /// Saves the active game when its current tick matches the configured autosave cadence.
+    /// </summary>
+    internal void AutosaveIfDue()
+    {
+        UserGameplaySettings settings = _getGameplaySettings?.Invoke();
+        GameRoot game = GetActiveGame();
+        if (
+            settings?.AutosaveEnabled != true
+            || game == null
+            || game.CurrentTick <= 0
+            || settings.AutosaveIntervalTicks <= 0
+            || game.CurrentTick % settings.AutosaveIntervalTicks != 0
+        )
+            return;
+
+        try
+        {
+            _saveGameManager.SaveAutosaveGameData(game, settings.AutosavesToKeep);
+            GameLogger.Log($"Autosave completed at tick {game.CurrentTick}.");
+        }
+        catch (Exception exception)
+        {
+            GameLogger.Warning($"Autosave failed at tick {game.CurrentTick}: {exception.Message}");
+        }
     }
 
     /// <summary>

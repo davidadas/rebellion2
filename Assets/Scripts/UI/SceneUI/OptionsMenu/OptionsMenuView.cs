@@ -124,6 +124,18 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private OptionsToggleRowView[] _gameplayRows = Array.Empty<OptionsToggleRowView>();
 
+    [SerializeField]
+    private TMP_InputField _autosaveIntervalInputField;
+
+    [SerializeField]
+    private Image _autosaveIntervalBadgeImage;
+
+    [SerializeField]
+    private TMP_InputField _autosavesToKeepInputField;
+
+    [SerializeField]
+    private Image _autosavesToKeepBadgeImage;
+
     [Header("Audio page")]
     [SerializeField]
     private NormalizedSliderView[] _volumeSliders = Array.Empty<NormalizedSliderView>();
@@ -167,7 +179,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action<int> SlotSelected;
     public event Action<int, string, bool> SlotRenamed;
     public event Action<int> SlotDeleteRequested;
-    public event Action<bool> RenameEditingChanged;
+    public event Action<bool> TextEditingChanged;
     public event Action ApplyRequested;
     public event Action DefaultsRequested;
     public event Action ConfirmAccepted;
@@ -178,6 +190,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action QuitRequested;
     public event Action<UserTacticalOption> TacticalToggleRequested;
     public event Action<UserGameplayOption> GameplayToggleRequested;
+    public event Action<string> AutosaveIntervalChanged;
+    public event Action<string> AutosavesToKeepChanged;
     public event Action<int> ResolutionStepRequested;
     public event Action<int> FullScreenStepRequested;
     public event Action<int, float> VolumeChanged;
@@ -303,6 +317,40 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             bool enabled = data.GameplayStates.TryGetValue(option, out bool value) && value;
             row.Render(enabled);
         }
+
+        bool autosaveEnabled =
+            data.GameplayStates.TryGetValue(
+                UserGameplayOption.AutosaveEnabled,
+                out bool configuredAutosaveEnabled
+            ) && configuredAutosaveEnabled;
+        RenderAutosaveInputState(
+            _autosaveIntervalInputField,
+            _autosaveIntervalBadgeImage,
+            autosaveEnabled
+        );
+        RenderAutosaveInputState(
+            _autosavesToKeepInputField,
+            _autosavesToKeepBadgeImage,
+            autosaveEnabled
+        );
+
+        if (!_autosaveIntervalInputField.isFocused)
+            _autosaveIntervalInputField.SetTextWithoutNotify(data.AutosaveIntervalTicks.ToString());
+        if (!_autosavesToKeepInputField.isFocused)
+            _autosavesToKeepInputField.SetTextWithoutNotify(data.AutosavesToKeep.ToString());
+    }
+
+    /// <summary>
+    /// Applies enabled and disabled presentation to one autosave numeric input.
+    /// </summary>
+    /// <param name="input">The numeric input.</param>
+    /// <param name="badge">The input background.</param>
+    /// <param name="enabled">Whether autosaving is enabled.</param>
+    private static void RenderAutosaveInputState(TMP_InputField input, Image badge, bool enabled)
+    {
+        input.interactable = enabled;
+        input.textComponent.color = enabled ? _textColor : _inactiveTabColor;
+        badge.color = enabled ? Color.white : new Color(0.6f, 0.6f, 0.6f, 1f);
     }
 
     /// <summary>
@@ -723,7 +771,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _saveListView.SlotSelected += HandleSlotSelected;
         _saveListView.SlotRenamed += HandleSlotRenamed;
         _saveListView.SlotDeleteRequested += HandleSlotDeleteRequested;
-        _saveListView.RenameEditingChanged += HandleRenameEditingChanged;
+        _saveListView.RenameEditingChanged += HandleTextEditingChanged;
         _applyButton.onClick.AddListener(HandleApplyClicked);
         _defaultsButton.onClick.AddListener(() => DefaultsRequested?.Invoke());
         _confirmDialog.Confirmed += HandleConfirmAccepted;
@@ -739,6 +787,17 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             if (row != null)
                 row.ToggleRequested += HandleGameplayToggle;
         }
+
+        _autosaveIntervalInputField.onEndEdit.AddListener(value =>
+            AutosaveIntervalChanged?.Invoke(value)
+        );
+        _autosaveIntervalInputField.onSelect.AddListener(_ => TextEditingChanged?.Invoke(true));
+        _autosaveIntervalInputField.onDeselect.AddListener(_ => TextEditingChanged?.Invoke(false));
+        _autosavesToKeepInputField.onEndEdit.AddListener(value =>
+            AutosavesToKeepChanged?.Invoke(value)
+        );
+        _autosavesToKeepInputField.onSelect.AddListener(_ => TextEditingChanged?.Invoke(true));
+        _autosavesToKeepInputField.onDeselect.AddListener(_ => TextEditingChanged?.Invoke(false));
 
         _resolutionPrevButton.onClick.AddListener(() => ResolutionStepRequested?.Invoke(-1));
         _resolutionNextButton.onClick.AddListener(() => ResolutionStepRequested?.Invoke(1));
@@ -784,7 +843,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _saveListView.SlotSelected -= HandleSlotSelected;
         _saveListView.SlotRenamed -= HandleSlotRenamed;
         _saveListView.SlotDeleteRequested -= HandleSlotDeleteRequested;
-        _saveListView.RenameEditingChanged -= HandleRenameEditingChanged;
+        _saveListView.RenameEditingChanged -= HandleTextEditingChanged;
 
         foreach (OptionsToggleRowView row in _tacticalRows)
         {
@@ -844,12 +903,12 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Forwards save-name editing state from the save-list subview.
+    /// Forwards text-field editing state to the Options controller.
     /// </summary>
     /// <param name="editing">Whether the text field currently owns input.</param>
-    private void HandleRenameEditingChanged(bool editing)
+    private void HandleTextEditingChanged(bool editing)
     {
-        RenameEditingChanged?.Invoke(editing);
+        TextEditingChanged?.Invoke(editing);
     }
 
     /// <summary>
@@ -928,8 +987,15 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || _controlsPage == null
         )
             throw new MissingReferenceException($"{name} is missing a page container.");
-        if (_gameplayRows.Length != 2 || Array.Exists(_gameplayRows, row => row == null))
-            throw new MissingReferenceException($"{name} expects two gameplay rows.");
+        if (_gameplayRows.Length != 3 || Array.Exists(_gameplayRows, row => row == null))
+            throw new MissingReferenceException($"{name} expects three gameplay rows.");
+        if (
+            _autosaveIntervalInputField == null
+            || _autosaveIntervalBadgeImage == null
+            || _autosavesToKeepInputField == null
+            || _autosavesToKeepBadgeImage == null
+        )
+            throw new MissingReferenceException($"{name} is missing an autosave input field.");
         if (_backToGameButton == null || _mainMenuButton == null || _quitButton == null)
             throw new MissingReferenceException($"{name} is missing a footer button.");
         if (_settingsActions == null || _applyButton == null || _defaultsButton == null)

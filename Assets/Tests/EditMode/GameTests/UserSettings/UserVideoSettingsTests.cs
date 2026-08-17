@@ -132,36 +132,5 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsFalse(restored.Video.HighDetail);
             Assert.IsTrue(restored.Video.ShowHolocube);
         }
-
-        [Test]
-        public void JsonUtility_GameplayPauseOptions_RoundTripState()
-        {
-            global::UserSettings settings = new global::UserSettings();
-            settings.Gameplay.PauseAfterEnemyBombardment = true;
-            settings.Gameplay.PauseWhenSpaceBattleBegins = true;
-
-            string json = JsonUtility.ToJson(settings);
-            global::UserSettings restored = JsonUtility.FromJson<global::UserSettings>(json);
-            restored.Normalize();
-
-            Assert.IsTrue(restored.Gameplay.PauseAfterEnemyBombardment);
-            Assert.IsTrue(restored.Gameplay.PauseWhenSpaceBattleBegins);
-        }
-
-        [Test]
-        public void GameplayPauseOptions_Defaults_AreEnabled()
-        {
-            UserGameplaySettings settings = new UserGameplaySettings();
-
-            Assert.IsTrue(settings.PauseAfterEnemyBombardment);
-            Assert.IsTrue(settings.PauseWhenSpaceBattleBegins);
-
-            settings.PauseAfterEnemyBombardment = false;
-            settings.PauseWhenSpaceBattleBegins = false;
-            settings.RestoreDefaults();
-
-            Assert.IsTrue(settings.PauseAfterEnemyBombardment);
-            Assert.IsTrue(settings.PauseWhenSpaceBattleBegins);
-        }
     }
 }

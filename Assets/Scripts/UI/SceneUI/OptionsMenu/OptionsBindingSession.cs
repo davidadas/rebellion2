@@ -698,10 +698,7 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     private static bool IsModifierAction(string actionName)
     {
-        return actionName
-            is "MultiSelectModifier"
-                or "RangeSelectModifier"
-                or "AlternateSelectModifier";
+        return actionName is "MultiSelectModifier" or "RangeSelectModifier";
     }
 
     /// <summary>
@@ -759,7 +756,13 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <returns>The label displayed by the Controls page.</returns>
     private static string GetActionLabel(string actionName)
     {
-        return actionName == "CancelOrSettings" ? "Cancel" : Humanize(actionName);
+        return actionName switch
+        {
+            "CancelOrSettings" => "Cancel",
+            "MultiSelectModifier" => "Toggle Selection Modifier",
+            "RangeSelectModifier" => "Range Selection Modifier",
+            _ => Humanize(actionName),
+        };
     }
 
     /// <summary>

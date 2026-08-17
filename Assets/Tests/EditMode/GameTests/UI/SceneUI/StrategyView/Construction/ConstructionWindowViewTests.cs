@@ -40,6 +40,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void BuildCountInput_TextRectIsInsetWithinField()
+        {
+            TMP_InputField input = FindComponent<TMP_InputField>("BuildCountInputField");
+
+            Assert.AreEqual(-196f, ((RectTransform)input.transform).anchoredPosition.y);
+            Assert.AreEqual(17f, ((RectTransform)input.transform).sizeDelta.y);
+            Assert.AreNotSame(input.transform, input.textViewport);
+            Assert.AreEqual(-1f, input.textViewport.anchoredPosition.y);
+            Assert.AreEqual(15f, input.textViewport.sizeDelta.y);
+            Assert.AreEqual(TextAlignmentOptions.Left, input.textComponent.alignment);
+            Assert.AreEqual(0f, input.textComponent.rectTransform.anchoredPosition.y);
+            Assert.AreEqual(15f, input.textComponent.rectTransform.sizeDelta.y);
+        }
+
+        [Test]
         public void Render_SelectedItemAndOpenDropdown_AppliesCompletePresentation()
         {
             ConstructionWindowRenderData data = CreateRenderData(

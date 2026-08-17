@@ -46,32 +46,14 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
-        public void TryCancel_NonFocusableWindow_EmitsCloseRequest()
-        {
-            UIWindowManager windowManager = CreateWindowManager();
-            UIWindow window = CreateWindow(windowManager, 1, modal: false, canFocus: false);
-            UIWindow closedWindow = null;
-            windowManager.WindowCloseRequested += requestedWindow => closedWindow = requestedWindow;
-
-            bool cancelled = windowManager.TryCancel();
-
-            Assert.IsTrue(cancelled);
-            Assert.AreSame(window, closedWindow);
-        }
-
-        [Test]
-        public void TryCancel_NonFocusableWindows_UsesMostRecentlyOpenedWindow()
+        public void TryCancel_WithoutActiveWindow_ReturnsFalse()
         {
             UIWindowManager windowManager = CreateWindowManager();
             CreateWindow(windowManager, 1, modal: false, canFocus: false);
-            UIWindow latestWindow = CreateWindow(windowManager, 2, modal: false, canFocus: false);
-            UIWindow closedWindow = null;
-            windowManager.WindowCloseRequested += requestedWindow => closedWindow = requestedWindow;
 
             bool cancelled = windowManager.TryCancel();
 
-            Assert.IsTrue(cancelled);
-            Assert.AreSame(latestWindow, closedWindow);
+            Assert.IsFalse(cancelled);
         }
 
         [Test]

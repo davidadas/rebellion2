@@ -23,6 +23,19 @@ public sealed class InputManager : MonoBehaviour
     public InputActionAsset Asset => Actions.asset;
 
     /// <summary>
+    /// Captures the currently held, user-configured strategy selection modifiers.
+    /// </summary>
+    /// <returns>The active selection modifier state.</returns>
+    public SelectionModifierState GetSelectionModifierState()
+    {
+        PlayerInputActions.StrategyActions strategy = Actions.Strategy;
+        return new SelectionModifierState(
+            strategy.MultiSelectModifier.IsPressed(),
+            strategy.RangeSelectModifier.IsPressed()
+        );
+    }
+
+    /// <summary>
     /// Attempts to return the generated input action wrapper without creating it.
     /// </summary>
     /// <param name="actions">The generated input action wrapper when one has been created.</param>

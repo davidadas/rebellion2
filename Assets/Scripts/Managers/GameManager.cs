@@ -344,14 +344,16 @@ public sealed class GameManager
             _randomProvider,
             _movementSystem,
             _uprisingSystem,
-            _officerLoyaltySystem
+            _officerLoyaltySystem,
+            _personnelSystem
         );
         _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementSystem);
         _bombardmentSystem = new BombardmentSystem(
             _game,
             _randomProvider,
             _movementSystem,
-            _planetaryControlSystem
+            _planetaryControlSystem,
+            _personnelSystem
         );
         _planetaryAssaultSystem = new PlanetaryAssaultSystem(
             _game,

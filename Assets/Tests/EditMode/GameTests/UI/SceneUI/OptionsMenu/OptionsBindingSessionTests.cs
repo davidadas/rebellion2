@@ -141,6 +141,22 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies selection controls expose only the two configured selection behaviors.
+        /// </summary>
+        [Test]
+        public void Rebuild_SelectionModifiers_ExposeToggleAndRangeOnly()
+        {
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+            session.Rebuild();
+
+            string[] labels = session.Rows.Select(row => row.Action).ToArray();
+
+            CollectionAssert.Contains(labels, "Toggle Selection Modifier");
+            CollectionAssert.Contains(labels, "Range Selection Modifier");
+            CollectionAssert.DoesNotContain(labels, "Alternate Select Modifier");
+        }
+
+        /// <summary>
         /// Verifies the reserved Escape slot cannot enter interactive capture.
         /// </summary>
         [Test]

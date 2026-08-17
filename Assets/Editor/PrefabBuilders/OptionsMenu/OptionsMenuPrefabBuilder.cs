@@ -273,28 +273,62 @@ public static class OptionsMenuPrefabBuilder
         Color accent
     )
     {
-        CreateOptionsSectionHeader(gameplayPage, "StrategyViewHeader", "STRATEGY VIEW", 16, accent);
+        CreateOptionsSectionHeader(gameplayPage, "SavingHeader", "SAVING", 16, accent);
+        OptionsToggleRowView autosaveRow = CreateOptionsToggleRow(
+            gameplayPage,
+            "GameplayAutosaveEnabled",
+            (int)UserGameplayOption.AutosaveEnabled,
+            "Enable Autosave",
+            20,
+            44
+        );
+        TMP_InputField autosaveIntervalInput = CreateOptionsNumericFieldRow(
+            gameplayPage,
+            "AutosaveInterval",
+            "Autosave Interval (Ticks)",
+            70,
+            out Image autosaveIntervalBadge
+        );
+        TMP_InputField autosavesToKeepInput = CreateOptionsNumericFieldRow(
+            gameplayPage,
+            "AutosavesToKeep",
+            "Autosaves to Keep",
+            97,
+            out Image autosavesToKeepBadge
+        );
 
+        CreateOptionsSectionHeader(
+            gameplayPage,
+            "GalacticModeHeader",
+            "GALACTIC MODE",
+            134,
+            accent
+        );
         UserGameplayOption[] options =
         {
             UserGameplayOption.PauseAfterEnemyBombardment,
             UserGameplayOption.PauseWhenSpaceBattleBegins,
         };
         string[] labels = { "Pause After Enemy Bombardment", "Pause on Space Battles" };
-        OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
+        OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length + 1];
+        rows[0] = autosaveRow;
         for (int i = 0; i < options.Length; i++)
         {
-            rows[i] = CreateOptionsToggleRow(
+            rows[i + 1] = CreateOptionsToggleRow(
                 gameplayPage,
                 $"Gameplay{options[i]}",
                 (int)options[i],
                 labels[i],
                 20,
-                44 + i * 26
+                162 + i * 26
             );
         }
 
         AssignReferenceArray(view, "_gameplayRows", rows);
+        AssignReference(view, "_autosaveIntervalInputField", autosaveIntervalInput);
+        AssignReference(view, "_autosaveIntervalBadgeImage", autosaveIntervalBadge);
+        AssignReference(view, "_autosavesToKeepInputField", autosavesToKeepInput);
+        AssignReference(view, "_autosavesToKeepBadgeImage", autosavesToKeepBadge);
     }
 
     /// <summary>
@@ -790,14 +824,14 @@ public static class OptionsMenuPrefabBuilder
         Button backToGameButton = CreateOptionsNavRow(
             footerNavigation,
             "BackToGame",
-            "BACK TO GAME",
+            "RETURN TO GAME",
             0,
             textDim
         );
         Button mainMenuButton = CreateOptionsNavRow(
             footerNavigation,
             "MainMenu",
-            "BACK TO MAIN MENU",
+            "RETURN TO MAIN MENU",
             _navigationRowStride,
             textDim
         );
@@ -1193,6 +1227,75 @@ public static class OptionsMenuPrefabBuilder
         SetSourceRect(valueField.rectTransform, 218, y, 107, 18);
         nextButton = CreateOptionsStepperButton(parent, $"{name}Next", ">", 272, y, 77, 51);
         return valueField;
+    }
+
+    /// <summary>
+    /// Creates a directly editable integer setting row.
+    /// </summary>
+    /// <param name="parent">The Options-page container.</param>
+    /// <param name="name">The row object-name prefix.</param>
+    /// <param name="caption">The row caption.</param>
+    /// <param name="y">The source-space row top.</param>
+    /// <param name="badgeImage">Receives the numeric-field background.</param>
+    /// <returns>The configured integer input field.</returns>
+    private static TMP_InputField CreateOptionsNumericFieldRow(
+        RectTransform parent,
+        string name,
+        string caption,
+        int y,
+        out Image badgeImage
+    )
+    {
+        const int fieldX = 293;
+        const int fieldWidth = 56;
+        const int inputInset = 4;
+        TextMeshProUGUI labelField = CreateTextLabel($"{name}Label", parent);
+        labelField.text = caption;
+        labelField.color = new Color(0.875f, 0.910f, 0.941f);
+        labelField.fontSize = 11;
+        labelField.alignment = TextAlignmentOptions.MidlineLeft;
+        SetSourceRect(labelField.rectTransform, 20, y + 2, 150, 14);
+
+        badgeImage = CreateSlicedImage(
+            $"{name}Badge",
+            parent,
+            _optionsBadgeAddress,
+            _badgeBorder,
+            fieldX,
+            y,
+            fieldWidth,
+            18,
+            Color.white
+        );
+        TMP_InputField input = CreateTextInputField(
+            $"{name}Input",
+            parent,
+            string.Empty,
+            fieldX + inputInset,
+            y,
+            fieldWidth - inputInset * 2,
+            18
+        );
+        SetSourceRect(input.textViewport, 0, 1, fieldWidth - inputInset * 2, 16);
+        input.contentType = TMP_InputField.ContentType.IntegerNumber;
+        input.characterValidation = TMP_InputField.CharacterValidation.Integer;
+        input.characterLimit = 10;
+        if (input.textComponent is TextMeshProUGUI text)
+        {
+            // TMP's geometry-based Midline alignment cannot place an empty-field caret
+            // reliably because there is no glyph geometry to center against. Middle uses
+            // stable font metrics, keeping the caret and entered text vertically aligned.
+            text.alignment = TextAlignmentOptions.Center;
+            text.fontSize = 10;
+            SetSourceRect(text.rectTransform, 0, 0, fieldWidth - inputInset * 2, 16);
+        }
+        if (input.placeholder is TextMeshProUGUI placeholder)
+        {
+            placeholder.alignment = TextAlignmentOptions.Center;
+            placeholder.fontSize = 10;
+            SetSourceRect(placeholder.rectTransform, 0, 0, fieldWidth - inputInset * 2, 16);
+        }
+        return input;
     }
 
     /// <summary>
@@ -1712,7 +1815,7 @@ public static class OptionsMenuPrefabBuilder
         text.color = Color.white;
         text.fontSize = 12;
         text.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(text.rectTransform, 2, 0, width - 2, height);
+        SetSourceRect(text.rectTransform, 2, 1, width - 2, height - 2);
 
         TextMeshProUGUI placeholder = input.placeholder as TextMeshProUGUI;
         if (placeholder == null)
@@ -1721,13 +1824,14 @@ public static class OptionsMenuPrefabBuilder
         placeholder.color = Color.white;
         placeholder.fontSize = 12;
         placeholder.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(placeholder.rectTransform, 2, 0, width - 2, height);
+        SetSourceRect(placeholder.rectTransform, 2, 1, width - 2, height - 2);
 
         input.enabled = true;
         input.targetGraphic = image;
         input.transition = Selectable.Transition.None;
         input.lineType = TMP_InputField.LineType.SingleLine;
-        input.textViewport = rect;
+        if (input.textViewport == null || input.textViewport == rect)
+            throw new MissingReferenceException($"{name}/TextViewport is missing or invalid.");
         input.textComponent = text;
         input.placeholder = placeholder;
         return input;

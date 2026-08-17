@@ -1,6 +1,27 @@
 using System.Collections.Generic;
-using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.Controls;
+
+/// <summary>
+/// Captures the configured selection-modifier actions for one selection operation.
+/// </summary>
+public readonly struct SelectionModifierState
+{
+    /// <summary>
+    /// Creates an immutable selection-modifier snapshot.
+    /// </summary>
+    /// <param name="multiSelect">Whether individual selection toggling is active.</param>
+    /// <param name="rangeSelect">Whether contiguous range selection is active.</param>
+    public SelectionModifierState(bool multiSelect, bool rangeSelect)
+    {
+        MultiSelect = multiSelect;
+        RangeSelect = rangeSelect;
+    }
+
+    public bool MultiSelect { get; }
+
+    public bool RangeSelect { get; }
+
+    public bool HasAnyModifier => MultiSelect || RangeSelect;
+}
 
 /// <summary>
 /// Owns list selection state and applies the shared modifier-key selection rules.
@@ -98,34 +119,28 @@ public sealed class SelectableListSelection
     }
 
     /// <summary>
-    /// Applies shared control, shift-grid, alt-range, or replacement selection rules.
+    /// Applies shared toggle, contiguous-range, or replacement selection rules.
     /// </summary>
     /// <param name="selection">The selection to update.</param>
     /// <param name="index">The requested source index.</param>
     /// <param name="count">The current item count.</param>
-    /// <param name="itemsPerRow">The number of items in each visual row.</param>
+    /// <param name="modifiers">The configured selection modifiers currently held.</param>
     public static void SelectIndexedItem(
         HashSet<int> selection,
         int index,
         int count,
-        int itemsPerRow = 1
+        SelectionModifierState modifiers = default
     )
     {
         if (selection == null || index < 0 || index >= count)
             return;
 
-        SelectionModifiers modifiers = GetSelectionModifiers();
-        if (modifiers.Control)
+        if (modifiers.MultiSelect)
         {
             if (!selection.Add(index))
                 selection.Remove(index);
         }
-        else if (modifiers.Shift)
-        {
-            selection.Add(index);
-            FillSelectionGrid(selection, count, itemsPerRow);
-        }
-        else if (modifiers.Alt)
+        else if (modifiers.RangeSelect)
         {
             selection.Add(index);
             FillSelectionRange(selection, count);
@@ -143,47 +158,35 @@ public sealed class SelectableListSelection
     /// <param name="selection">The selection to update.</param>
     /// <param name="index">The dragged source index.</param>
     /// <param name="count">The current item count.</param>
-    /// <param name="itemsPerRow">The number of items in each visual row.</param>
+    /// <param name="modifiers">The configured selection modifiers currently held.</param>
     public static void SelectIndexedItemForDrag(
         HashSet<int> selection,
         int index,
         int count,
-        int itemsPerRow = 1
+        SelectionModifierState modifiers = default
     )
     {
-        if (CanDragExistingSelection(selection, index))
+        if (CanDragExistingSelection(selection, index, modifiers))
             return;
 
-        SelectIndexedItem(selection, index, count, itemsPerRow);
+        SelectIndexedItem(selection, index, count, modifiers);
     }
 
     /// <summary>
-    /// Applies shared control, shift-range, alt-range, or replacement selection rules.
+    /// Applies shared toggle, contiguous-range, or replacement selection rules.
     /// </summary>
     /// <param name="selection">The selection to update.</param>
     /// <param name="index">The requested source index.</param>
     /// <param name="count">The current item count.</param>
-    public static void SelectRangeItem(HashSet<int> selection, int index, int count)
+    /// <param name="modifiers">The configured selection modifiers currently held.</param>
+    public static void SelectRangeItem(
+        HashSet<int> selection,
+        int index,
+        int count,
+        SelectionModifierState modifiers = default
+    )
     {
-        if (selection == null || index < 0 || index >= count)
-            return;
-
-        SelectionModifiers modifiers = GetSelectionModifiers();
-        if (modifiers.Control)
-        {
-            if (!selection.Add(index))
-                selection.Remove(index);
-        }
-        else if (modifiers.Shift || modifiers.Alt)
-        {
-            selection.Add(index);
-            FillSelectionRange(selection, count);
-        }
-        else
-        {
-            selection.Clear();
-            selection.Add(index);
-        }
+        SelectIndexedItem(selection, index, count, modifiers);
     }
 
     /// <summary>
@@ -191,19 +194,25 @@ public sealed class SelectableListSelection
     /// </summary>
     /// <param name="selection">The current selection.</param>
     /// <param name="index">The dragged source index.</param>
+    /// <param name="modifiers">The configured selection modifiers currently held.</param>
     /// <returns>True when the index is selected and no selection modifier is held.</returns>
-    public static bool CanDragExistingSelection(HashSet<int> selection, int index)
+    public static bool CanDragExistingSelection(
+        HashSet<int> selection,
+        int index,
+        SelectionModifierState modifiers = default
+    )
     {
-        return selection?.Contains(index) == true && !GetSelectionModifiers().HasAnyModifier;
+        return selection?.Contains(index) == true && !modifiers.HasAnyModifier;
     }
 
     /// <summary>
     /// Reports whether any supported selection modifier is currently held.
     /// </summary>
-    /// <returns>True when control, shift, or alt is held.</returns>
-    public static bool HasSelectionModifier()
+    /// <param name="modifiers">The configured selection modifiers currently held.</param>
+    /// <returns>True when a configured selection modifier is held.</returns>
+    public static bool HasSelectionModifier(SelectionModifierState modifiers = default)
     {
-        return GetSelectionModifiers().HasAnyModifier;
+        return modifiers.HasAnyModifier;
     }
 
     /// <summary>
@@ -218,44 +227,6 @@ public sealed class SelectableListSelection
 
         for (int i = start; i <= end && i < count; i++)
             selection.Add(i);
-    }
-
-    /// <summary>
-    /// Fills the rectangular item grid bounded by the current selection.
-    /// </summary>
-    /// <param name="selection">The selection to update.</param>
-    /// <param name="count">The current item count.</param>
-    /// <param name="itemsPerRow">The number of items in each visual row.</param>
-    private static void FillSelectionGrid(HashSet<int> selection, int count, int itemsPerRow)
-    {
-        if (!TryGetSelectionBounds(selection, out int start, out int end))
-            return;
-
-        if (itemsPerRow <= 1)
-        {
-            FillSelectionRange(selection, count);
-            return;
-        }
-
-        int startRow = start / itemsPerRow;
-        int startColumn = start % itemsPerRow;
-        int endRow = end / itemsPerRow;
-        int endColumn = end % itemsPerRow;
-        int rowMin = System.Math.Min(startRow, endRow);
-        int rowMax = System.Math.Max(startRow, endRow);
-        int columnMin = System.Math.Min(startColumn, endColumn);
-        int columnMax = System.Math.Max(startColumn, endColumn);
-
-        for (int row = rowMin; row <= rowMax; row++)
-        {
-            int baseIndex = row * itemsPerRow;
-            for (int column = columnMin; column <= columnMax; column++)
-            {
-                int itemIndex = baseIndex + column;
-                if (itemIndex >= 0 && itemIndex < count)
-                    selection.Add(itemIndex);
-            }
-        }
     }
 
     /// <summary>
@@ -281,59 +252,5 @@ public sealed class SelectableListSelection
         }
 
         return start <= end;
-    }
-
-    /// <summary>
-    /// Reads supported selection modifiers from the current keyboard.
-    /// </summary>
-    /// <returns>The current modifier state.</returns>
-    private static SelectionModifiers GetSelectionModifiers()
-    {
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard == null)
-            return default;
-
-        return new SelectionModifiers(
-            IsPressed(keyboard.leftCtrlKey) || IsPressed(keyboard.rightCtrlKey),
-            IsPressed(keyboard.leftShiftKey) || IsPressed(keyboard.rightShiftKey),
-            IsPressed(keyboard.leftAltKey) || IsPressed(keyboard.rightAltKey)
-        );
-    }
-
-    /// <summary>
-    /// Safely reads a keyboard key's held state.
-    /// </summary>
-    /// <param name="key">The optional key control.</param>
-    /// <returns>True when the key exists and is held.</returns>
-    private static bool IsPressed(KeyControl key)
-    {
-        return key?.isPressed == true;
-    }
-
-    /// <summary>
-    /// Captures the supported keyboard modifiers for one selection operation.
-    /// </summary>
-    private readonly struct SelectionModifiers
-    {
-        /// <summary>
-        /// Creates one immutable modifier snapshot.
-        /// </summary>
-        /// <param name="control">Whether control is held.</param>
-        /// <param name="shift">Whether shift is held.</param>
-        /// <param name="alt">Whether alt is held.</param>
-        public SelectionModifiers(bool control, bool shift, bool alt)
-        {
-            Control = control;
-            Shift = shift;
-            Alt = alt;
-        }
-
-        public bool Control { get; }
-
-        public bool Shift { get; }
-
-        public bool Alt { get; }
-
-        public bool HasAnyModifier => Control || Shift || Alt;
     }
 }

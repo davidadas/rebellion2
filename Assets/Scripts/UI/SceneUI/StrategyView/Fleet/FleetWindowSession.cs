@@ -11,6 +11,7 @@ internal sealed class FleetWindowSession
 {
     private readonly List<ISceneNode> detailItems = new List<ISceneNode>();
     private readonly List<Fleet> fleets = new List<Fleet>();
+    private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly HashSet<ISceneNode> selectedDetailNodes = new HashSet<ISceneNode>();
     private readonly HashSet<int> selectedDetailItems = new HashSet<int>();
     private readonly HashSet<ISceneNode> selectedFleetNodes = new HashSet<ISceneNode>();
@@ -26,10 +27,16 @@ internal sealed class FleetWindowSession
     /// </summary>
     /// <param name="planet">The represented strategy planet.</param>
     /// <param name="window">The owning window shell.</param>
-    public FleetWindowSession(GalaxyMapPlanet planet, UIWindow window)
+    /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
+    public FleetWindowSession(
+        GalaxyMapPlanet planet,
+        UIWindow window,
+        Func<SelectionModifierState> getSelectionModifiers = null
+    )
     {
         Planet = planet ?? throw new ArgumentNullException(nameof(planet));
         Window = window ?? throw new ArgumentNullException(nameof(window));
+        this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
         Reconcile();
     }
 
@@ -254,7 +261,12 @@ internal sealed class FleetWindowSession
             if (!TrySetFleetInteractionTarget(fleetIndex))
                 return false;
 
-            SelectableListSelection.SelectIndexedItem(selectedFleetItems, fleetIndex, fleets.Count);
+            SelectableListSelection.SelectIndexedItem(
+                selectedFleetItems,
+                fleetIndex,
+                fleets.Count,
+                getSelectionModifiers()
+            );
             CaptureSelection(selectedFleetItems, fleets, selectedFleetNodes);
             selectedDetailNodes.Clear();
             selectedDetailItems.Clear();
@@ -269,7 +281,8 @@ internal sealed class FleetWindowSession
         SelectableListSelection.SelectIndexedItem(
             selectedDetailItems,
             itemIndex,
-            detailItems.Count
+            detailItems.Count,
+            getSelectionModifiers()
         );
         CaptureSelection(selectedDetailItems, detailItems, selectedDetailNodes);
         SelectRequiredItems();
@@ -588,7 +601,7 @@ internal sealed class FleetWindowSession
     /// <param name="pressedIndex">The pressed visual index.</param>
     /// <param name="items">The current ordered items.</param>
     /// <param name="selectedNodes">The identity-backed selection.</param>
-    private static void PrepareDragSelection<T>(
+    private void PrepareDragSelection<T>(
         HashSet<int> selectedIndexes,
         int pressedIndex,
         IReadOnlyList<T> items,
@@ -599,7 +612,8 @@ internal sealed class FleetWindowSession
         SelectableListSelection.SelectIndexedItemForDrag(
             selectedIndexes,
             pressedIndex,
-            items.Count
+            items.Count,
+            getSelectionModifiers()
         );
         CaptureSelection(selectedIndexes, items, selectedNodes);
     }

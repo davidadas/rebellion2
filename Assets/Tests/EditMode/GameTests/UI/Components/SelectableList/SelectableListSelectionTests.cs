@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
@@ -117,6 +118,39 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsFalse(selection.Move(3, 1));
             Assert.AreEqual(2, selection.SelectedIndex);
             CollectionAssert.AreEqual(new[] { 2 }, selection.SelectedIndexes.ToArray());
+        }
+
+        [Test]
+        public void SelectIndexedItem_MultiSelectModifier_TogglesRequestedItem()
+        {
+            HashSet<int> selection = new HashSet<int> { 1 };
+            SelectionModifierState modifiers = new SelectionModifierState(true, false);
+
+            SelectableListSelection.SelectIndexedItem(selection, 2, 5, modifiers);
+            SelectableListSelection.SelectIndexedItem(selection, 1, 5, modifiers);
+
+            CollectionAssert.AreEquivalent(new[] { 2 }, selection);
+        }
+
+        [Test]
+        public void SelectIndexedItem_RangeSelectModifier_SelectsContiguousRange()
+        {
+            HashSet<int> selection = new HashSet<int> { 1 };
+            SelectionModifierState modifiers = new SelectionModifierState(false, true);
+
+            SelectableListSelection.SelectIndexedItem(selection, 4, 6, modifiers);
+
+            CollectionAssert.AreEquivalent(new[] { 1, 2, 3, 4 }, selection);
+        }
+
+        [Test]
+        public void SelectIndexedItem_NoModifier_ReplacesSelection()
+        {
+            HashSet<int> selection = new HashSet<int> { 1, 2 };
+
+            SelectableListSelection.SelectIndexedItem(selection, 4, 6);
+
+            CollectionAssert.AreEquivalent(new[] { 4 }, selection);
         }
     }
 }

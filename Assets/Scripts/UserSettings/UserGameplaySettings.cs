@@ -7,6 +7,7 @@ public enum UserGameplayOption
 {
     PauseAfterEnemyBombardment,
     PauseWhenSpaceBattleBegins,
+    AutosaveEnabled,
 }
 
 /// <summary>
@@ -15,6 +16,15 @@ public enum UserGameplayOption
 [Serializable]
 public sealed class UserGameplaySettings
 {
+    public const int DefaultAutosaveIntervalTicks = 100;
+    public const int DefaultAutosavesToKeep = 5;
+    public const int MinimumAutosaveIntervalTicks = 1;
+    public const int MinimumAutosavesToKeep = 1;
+    public const int MaximumAutosavesToKeep = 10;
+
+    public bool AutosaveEnabled = true;
+    public int AutosaveIntervalTicks = DefaultAutosaveIntervalTicks;
+    public int AutosavesToKeep = DefaultAutosavesToKeep;
     public bool PauseAfterEnemyBombardment = true;
     public bool PauseWhenSpaceBattleBegins = true;
 
@@ -29,6 +39,7 @@ public sealed class UserGameplaySettings
         {
             UserGameplayOption.PauseAfterEnemyBombardment => PauseAfterEnemyBombardment,
             UserGameplayOption.PauseWhenSpaceBattleBegins => PauseWhenSpaceBattleBegins,
+            UserGameplayOption.AutosaveEnabled => AutosaveEnabled,
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, null),
         };
     }
@@ -48,9 +59,44 @@ public sealed class UserGameplaySettings
             case UserGameplayOption.PauseWhenSpaceBattleBegins:
                 PauseWhenSpaceBattleBegins = enabled;
                 break;
+            case UserGameplayOption.AutosaveEnabled:
+                AutosaveEnabled = enabled;
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(option), option, null);
         }
+    }
+
+    /// <summary>
+    /// Constrains persisted autosave values to valid runtime ranges.
+    /// </summary>
+    public void Normalize()
+    {
+        AutosaveIntervalTicks = Math.Max(MinimumAutosaveIntervalTicks, AutosaveIntervalTicks);
+        AutosavesToKeep = Math.Max(
+            MinimumAutosavesToKeep,
+            Math.Min(MaximumAutosavesToKeep, AutosavesToKeep)
+        );
+    }
+
+    /// <summary>
+    /// Sets the autosave interval after constraining it to the supported range.
+    /// </summary>
+    /// <param name="ticks">The requested number of ticks between autosaves.</param>
+    public void SetAutosaveIntervalTicks(int ticks)
+    {
+        AutosaveIntervalTicks = ticks;
+        Normalize();
+    }
+
+    /// <summary>
+    /// Sets the retained autosave count after constraining it to the supported range.
+    /// </summary>
+    /// <param name="count">The requested number of autosaves to retain.</param>
+    public void SetAutosavesToKeep(int count)
+    {
+        AutosavesToKeep = count;
+        Normalize();
     }
 
     /// <summary>
@@ -58,6 +104,9 @@ public sealed class UserGameplaySettings
     /// </summary>
     public void RestoreDefaults()
     {
+        AutosaveEnabled = true;
+        AutosaveIntervalTicks = DefaultAutosaveIntervalTicks;
+        AutosavesToKeep = DefaultAutosavesToKeep;
         PauseAfterEnemyBombardment = true;
         PauseWhenSpaceBattleBegins = true;
     }

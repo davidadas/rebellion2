@@ -527,15 +527,6 @@ namespace Rebellion.Input
                     ""initialStateCheck"": true
                 },
                 {
-                    ""name"": ""AlternateSelectModifier"",
-                    ""type"": ""Button"",
-                    ""id"": ""00000000-0000-0000-0000-000000000015"",
-                    ""expectedControlType"": ""Button"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": true
-                },
-                {
                     ""name"": ""BookmarkSlot1"",
                     ""type"": ""Button"",
                     ""id"": ""00000000-0000-0000-0000-000000000201"",
@@ -1273,94 +1264,6 @@ namespace Rebellion.Input
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
                     ""action"": ""RangeSelectModifier"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
-                {
-                    ""name"": ""Primary"",
-                    ""id"": ""00000000-0000-0000-0000-000000000018"",
-                    ""path"": ""<Keyboard>/alt"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""AlternateSelectModifier"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": ""PrimaryChord"",
-                    ""id"": ""dd6b2ce3-bbeb-4115-80ca-372a9210dd2e"",
-                    ""path"": ""OneModifier(modifiersOrder=1)"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""AlternateSelectModifier"",
-                    ""isComposite"": true,
-                    ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": ""Modifier"",
-                    ""id"": ""1524d73f-b2ef-478d-a99c-e8d65901ab75"",
-                    ""path"": """",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""AlternateSelectModifier"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
-                {
-                    ""name"": ""Binding"",
-                    ""id"": ""9d65637d-5b7b-4e58-bb8f-0d6ecd38f2da"",
-                    ""path"": """",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""AlternateSelectModifier"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
-                {
-                    ""name"": ""Secondary"",
-                    ""id"": ""831c078c-3fdf-4fe7-8180-bb386838df1c"",
-                    ""path"": """",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""AlternateSelectModifier"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": ""SecondaryChord"",
-                    ""id"": ""fb45de8d-01fc-45cf-8571-2165b864f2a4"",
-                    ""path"": ""OneModifier(modifiersOrder=1)"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""AlternateSelectModifier"",
-                    ""isComposite"": true,
-                    ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": ""Modifier"",
-                    ""id"": ""797d50dd-818d-43da-902c-d120c04543c2"",
-                    ""path"": """",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""AlternateSelectModifier"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
-                {
-                    ""name"": ""Binding"",
-                    ""id"": ""55090699-3446-4b51-bbf7-6e2091f7e8a2"",
-                    ""path"": """",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""AlternateSelectModifier"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
                 },
@@ -5558,7 +5461,6 @@ namespace Rebellion.Input
             m_Strategy_IncreaseGameSpeed = m_Strategy.FindAction("IncreaseGameSpeed", throwIfNotFound: true);
             m_Strategy_MultiSelectModifier = m_Strategy.FindAction("MultiSelectModifier", throwIfNotFound: true);
             m_Strategy_RangeSelectModifier = m_Strategy.FindAction("RangeSelectModifier", throwIfNotFound: true);
-            m_Strategy_AlternateSelectModifier = m_Strategy.FindAction("AlternateSelectModifier", throwIfNotFound: true);
             m_Strategy_BookmarkSlot1 = m_Strategy.FindAction("BookmarkSlot1", throwIfNotFound: true);
             m_Strategy_BookmarkSlot2 = m_Strategy.FindAction("BookmarkSlot2", throwIfNotFound: true);
             m_Strategy_BookmarkSlot3 = m_Strategy.FindAction("BookmarkSlot3", throwIfNotFound: true);
@@ -5836,7 +5738,6 @@ namespace Rebellion.Input
         private readonly InputAction m_Strategy_IncreaseGameSpeed;
         private readonly InputAction m_Strategy_MultiSelectModifier;
         private readonly InputAction m_Strategy_RangeSelectModifier;
-        private readonly InputAction m_Strategy_AlternateSelectModifier;
         private readonly InputAction m_Strategy_BookmarkSlot1;
         private readonly InputAction m_Strategy_BookmarkSlot2;
         private readonly InputAction m_Strategy_BookmarkSlot3;
@@ -5907,10 +5808,6 @@ namespace Rebellion.Input
             /// Provides access to the underlying input action "Strategy/RangeSelectModifier".
             /// </summary>
             public InputAction @RangeSelectModifier => m_Wrapper.m_Strategy_RangeSelectModifier;
-            /// <summary>
-            /// Provides access to the underlying input action "Strategy/AlternateSelectModifier".
-            /// </summary>
-            public InputAction @AlternateSelectModifier => m_Wrapper.m_Strategy_AlternateSelectModifier;
             /// <summary>
             /// Provides access to the underlying input action "Strategy/BookmarkSlot1".
             /// </summary>
@@ -6121,9 +6018,6 @@ namespace Rebellion.Input
                 @RangeSelectModifier.started += instance.OnRangeSelectModifier;
                 @RangeSelectModifier.performed += instance.OnRangeSelectModifier;
                 @RangeSelectModifier.canceled += instance.OnRangeSelectModifier;
-                @AlternateSelectModifier.started += instance.OnAlternateSelectModifier;
-                @AlternateSelectModifier.performed += instance.OnAlternateSelectModifier;
-                @AlternateSelectModifier.canceled += instance.OnAlternateSelectModifier;
                 @BookmarkSlot1.started += instance.OnBookmarkSlot1;
                 @BookmarkSlot1.performed += instance.OnBookmarkSlot1;
                 @BookmarkSlot1.canceled += instance.OnBookmarkSlot1;
@@ -6276,9 +6170,6 @@ namespace Rebellion.Input
                 @RangeSelectModifier.started -= instance.OnRangeSelectModifier;
                 @RangeSelectModifier.performed -= instance.OnRangeSelectModifier;
                 @RangeSelectModifier.canceled -= instance.OnRangeSelectModifier;
-                @AlternateSelectModifier.started -= instance.OnAlternateSelectModifier;
-                @AlternateSelectModifier.performed -= instance.OnAlternateSelectModifier;
-                @AlternateSelectModifier.canceled -= instance.OnAlternateSelectModifier;
                 @BookmarkSlot1.started -= instance.OnBookmarkSlot1;
                 @BookmarkSlot1.performed -= instance.OnBookmarkSlot1;
                 @BookmarkSlot1.canceled -= instance.OnBookmarkSlot1;
@@ -6901,13 +6792,6 @@ namespace Rebellion.Input
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnRangeSelectModifier(InputAction.CallbackContext context);
-            /// <summary>
-            /// Method invoked when associated input action "AlternateSelectModifier" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
-            /// </summary>
-            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
-            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
-            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-            void OnAlternateSelectModifier(InputAction.CallbackContext context);
             /// <summary>
             /// Method invoked when associated input action "BookmarkSlot1" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>

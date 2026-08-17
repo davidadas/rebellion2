@@ -92,6 +92,43 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveAutosaveGameData_ExceedsRetention_DeletesOldestAutosaves()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            for (int tick = 100; tick <= 400; tick += 100)
+            {
+                game.CurrentTick = tick;
+                _saveGameManager.SaveAutosaveGameData(game, 2);
+            }
+
+            string[] autosaves = Directory.GetFiles(
+                _saveDirectoryPath,
+                $"{SaveGameManager.AutosaveFilePrefix}*.sav"
+            );
+
+            Assert.AreEqual(2, autosaves.Length);
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.AutosaveFilePrefix + "0000000300"
+                    )
+                )
+            );
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.AutosaveFilePrefix + "0000000400"
+                    )
+                )
+            );
+        }
+
+        [Test]
         public void SaveSlotCount_DefaultConfiguration_ReturnsSix()
         {
             int count = _saveGameManager.SaveSlotCount;

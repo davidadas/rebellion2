@@ -47,6 +47,27 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void Kill_ActiveOfficer_MarksKilledAndRetainsIdentity()
+        {
+            Officer officer = CreateOfficer("killed-officer");
+            officer.Movement = new MovementState();
+            _game.AttachNode(officer, _planet);
+
+            _personnelSystem.Kill(officer);
+
+            Assert.IsTrue(officer.IsKilled);
+            Assert.IsNull(officer.Movement);
+            Assert.IsNull(officer.GetParent());
+            Assert.IsTrue(_game.IsInVoid(officer));
+            Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
+            Assert.Contains(
+                officer,
+                _game.GetFactionByOwnerInstanceID(_ownerId).GetOwnedUnitsByType<Officer>()
+            );
+            CollectionAssert.DoesNotContain(_game.GetSceneNodesByType<Officer>(), officer);
+        }
+
+        [Test]
         public void CanRetire_OwnedOfficerAndSpecialForces_ReturnsTrue()
         {
             Officer officer = CreateOfficer("officer");

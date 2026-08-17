@@ -21,6 +21,7 @@ public sealed class UserSettings
         Video ??= new UserVideoSettings();
         Input ??= new UserInputSettings();
 
+        Gameplay.Normalize();
         Audio.Normalize();
         Video.Normalize();
     }

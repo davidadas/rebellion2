@@ -31,6 +31,7 @@ public sealed class SaveGameEntry
 public class SaveGameManager
 {
     public const int MaxDisplayNameLength = 64;
+    public const string AutosaveFilePrefix = "autosave_";
     public const string QuickSaveFileName = "quicksave";
     private const int _saveSlotCount = 6;
     private const string _quickSaveDisplayName = "Quicksave";
@@ -318,6 +319,24 @@ public class SaveGameManager
     }
 
     /// <summary>
+    /// Saves the current game to a tick-addressed autosave and removes older autosaves beyond
+    /// the configured retention count.
+    /// </summary>
+    /// <param name="game">The game data to save.</param>
+    /// <param name="autosavesToKeep">The maximum number of autosaves to retain.</param>
+    public void SaveAutosaveGameData(GameRoot game, int autosavesToKeep)
+    {
+        if (game == null)
+            throw new ArgumentNullException(nameof(game));
+        if (autosavesToKeep < 1)
+            throw new ArgumentOutOfRangeException(nameof(autosavesToKeep));
+
+        string fileName = AutosaveFilePrefix + game.CurrentTick.ToString("D10");
+        SaveGameData(game, fileName, $"Autosave - Tick {game.CurrentTick}");
+        DeleteAutosavesBeyond(autosavesToKeep);
+    }
+
+    /// <summary>
     /// Saves game data to one numbered save slot with a display name.
     /// </summary>
     /// <param name="game">The game data to save.</param>
@@ -348,6 +367,25 @@ public class SaveGameManager
         return normalized.Length <= MaxDisplayNameLength
             ? normalized
             : normalized.Substring(0, MaxDisplayNameLength).TrimEnd();
+    }
+
+    /// <summary>
+    /// Deletes the oldest tick-addressed autosaves beyond the retained count.
+    /// </summary>
+    /// <param name="autosavesToKeep">The maximum number of autosaves to retain.</param>
+    private void DeleteAutosavesBeyond(int autosavesToKeep)
+    {
+        string saveDirectory = GetSaveDirectoryPath();
+        if (!Directory.Exists(saveDirectory))
+            return;
+
+        FileInfo[] autosaves = new DirectoryInfo(saveDirectory)
+            .GetFiles($"{AutosaveFilePrefix}*.sav", SearchOption.TopDirectoryOnly)
+            .OrderByDescending(file => file.LastWriteTimeUtc)
+            .ThenByDescending(file => file.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        for (int index = autosavesToKeep; index < autosaves.Length; index++)
+            DeleteSave(Path.GetFileNameWithoutExtension(autosaves[index].Name));
     }
 
     /// <summary>

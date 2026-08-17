@@ -31,6 +31,8 @@ internal sealed class OptionsSettingsSession
     private int _snapshotResolutionWidth;
     private int _snapshotResolutionHeight;
     private int _snapshotFullScreenMode;
+    private int _snapshotAutosaveIntervalTicks;
+    private int _snapshotAutosavesToKeep;
     private string _snapshotBindingOverrides = string.Empty;
     private bool _inputDiffersFromSnapshot;
 
@@ -99,6 +101,8 @@ internal sealed class OptionsSettingsSession
             Video.SetEnabled(entry.Key, entry.Value);
         foreach (KeyValuePair<UserGameplayOption, bool> entry in _snapshotGameplay)
             Gameplay.SetEnabled(entry.Key, entry.Value);
+        Gameplay.SetAutosaveIntervalTicks(_snapshotAutosaveIntervalTicks);
+        Gameplay.SetAutosavesToKeep(_snapshotAutosavesToKeep);
 
         _inputManager.LoadBindingOverrides(_snapshotBindingOverrides);
         _inputDiffersFromSnapshot = false;
@@ -195,6 +199,26 @@ internal sealed class OptionsSettingsSession
     }
 
     /// <summary>
+    /// Sets the number of ticks between autosaves within the supported range.
+    /// </summary>
+    /// <param name="ticks">The requested autosave interval.</param>
+    internal void SetAutosaveInterval(int ticks)
+    {
+        Gameplay.SetAutosaveIntervalTicks(ticks);
+        RefreshDirtyState();
+    }
+
+    /// <summary>
+    /// Sets the number of retained autosaves within the supported range.
+    /// </summary>
+    /// <param name="count">The requested autosave retention count.</param>
+    internal void SetAutosavesToKeep(int count)
+    {
+        Gameplay.SetAutosavesToKeep(count);
+        RefreshDirtyState();
+    }
+
+    /// <summary>
     /// Selects and immediately applies an adjacent supported resolution.
     /// </summary>
     internal void StepResolution(int delta)
@@ -262,6 +286,8 @@ internal sealed class OptionsSettingsSession
         _snapshotResolutionWidth = Video.ResolutionWidth;
         _snapshotResolutionHeight = Video.ResolutionHeight;
         _snapshotFullScreenMode = Video.FullScreenMode;
+        _snapshotAutosaveIntervalTicks = Gameplay.AutosaveIntervalTicks;
+        _snapshotAutosavesToKeep = Gameplay.AutosavesToKeep;
         _snapshotBindingOverrides = _inputManager.SaveBindingOverrides();
         _inputDiffersFromSnapshot = false;
         _snapshotTactical.Clear();
@@ -325,6 +351,15 @@ internal sealed class OptionsSettingsSession
                 IsDirty = true;
                 return;
             }
+        }
+
+        if (
+            Gameplay.AutosaveIntervalTicks != _snapshotAutosaveIntervalTicks
+            || Gameplay.AutosavesToKeep != _snapshotAutosavesToKeep
+        )
+        {
+            IsDirty = true;
+            return;
         }
 
         IsDirty = _inputDiffersFromSnapshot;

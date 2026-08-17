@@ -560,6 +560,8 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(planet.IsDestroyed);
             Assert.IsTrue(minor.IsKilled);
             Assert.IsNull(minor.GetParent());
+            Assert.IsTrue(game.IsInVoid(minor));
+            Assert.AreSame(minor, game.GetSceneNodeByInstanceID<Officer>(minor.InstanceID));
             Assert.IsFalse(main.IsKilled);
             Assert.AreEqual(2, killedMinor.InjuryPoints);
             Assert.AreEqual(planet, killedMinor.GetParent());

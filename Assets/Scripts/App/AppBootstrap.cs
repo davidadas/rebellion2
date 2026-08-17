@@ -120,8 +120,6 @@ public sealed class AppBootstrap : MonoBehaviour
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
-        _runtime = new GameRuntime(_contentPack);
-
         audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
@@ -144,6 +142,10 @@ public sealed class AppBootstrap : MonoBehaviour
         _displayManager = new DisplayManager();
         _userSettingsManager = new UserSettingsManager(audioManager, _displayManager, inputManager);
         _userSettingsManager.Load();
+        _runtime = new GameRuntime(
+            _contentPack,
+            getGameplaySettings: () => _userSettingsManager.Settings.Gameplay
+        );
 
         if (inputController == null)
             inputController = CreateInputController();

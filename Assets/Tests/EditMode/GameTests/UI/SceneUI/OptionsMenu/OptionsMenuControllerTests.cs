@@ -143,7 +143,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     view,
                     "_gameplayRows"
                 )
-                .First();
+                .Single(row =>
+                    row.OptionIndex == (int)UserGameplayOption.PauseAfterEnemyBombardment
+                );
 
             GetField<Button>(gameplayRow, "_button").onClick.Invoke();
 
@@ -191,6 +193,44 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             GetField<Button>(view, "_backToGameButton").onClick.Invoke();
             Assert.IsFalse(_controller.IsOpen);
             Assert.AreEqual(TickSpeed.Fast, gameManager.GetGameSpeed());
+        }
+
+        [Test]
+        public void ActiveGame_ReturnToMainMenu_WarnsAboutUnsavedProgress()
+        {
+            _bootstrap.GetRuntime().StartGame(CreateGame());
+            OptionsMenuView view = OpenAndRender();
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+
+            GetField<Button>(view, "_mainMenuButton").onClick.Invoke();
+
+            Assert.IsTrue(confirmation.gameObject.activeSelf);
+            Assert.AreEqual(
+                "Return to the Main Menu? Any unsaved progress will be lost.",
+                GetField<TextMeshProUGUI>(confirmation, "messageTextField").text
+            );
+        }
+
+        [Test]
+        public void ActiveGame_Quit_WarnsAboutUnsavedProgress()
+        {
+            _bootstrap.GetRuntime().StartGame(CreateGame());
+            OptionsMenuView view = OpenAndRender();
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+
+            GetField<Button>(view, "_quitButton").onClick.Invoke();
+
+            Assert.IsTrue(confirmation.gameObject.activeSelf);
+            Assert.AreEqual(
+                "Quit to desktop? Any unsaved progress will be lost.",
+                GetField<TextMeshProUGUI>(confirmation, "messageTextField").text
+            );
         }
 
         [Test]
@@ -325,7 +365,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void FooterRequests_CancelDismissesQuitConfirmation()
+        public void MainMenu_Quit_CancelDismissesPromptWithoutUnsavedProgressWarning()
         {
             OptionsMenuView view = OpenAndRender();
             ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
@@ -335,6 +375,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             GetField<Button>(view, "_quitButton").onClick.Invoke();
             Assert.IsTrue(confirmation.gameObject.activeSelf);
+            Assert.AreEqual(
+                "Quit to desktop?",
+                GetField<TextMeshProUGUI>(confirmation, "messageTextField").text
+            );
             GetField<Button>(confirmation, "cancelButton").onClick.Invoke();
 
             Assert.IsFalse(confirmation.gameObject.activeSelf);

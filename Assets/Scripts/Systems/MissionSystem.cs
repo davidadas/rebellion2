@@ -24,6 +24,7 @@ namespace Rebellion.Systems
         private readonly MovementSystem _movementManager;
         private readonly UprisingSystem _uprisingSystem;
         private readonly OfficerLoyaltySystem _officerLoyaltySystem;
+        private readonly PersonnelSystem _personnelSystem;
         private readonly MissionFactory _missionFactory;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
@@ -35,12 +36,14 @@ namespace Rebellion.Systems
         /// <param name="movementManager">The movement system used for participant travel.</param>
         /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
         /// <param name="officerLoyaltySystem">The officer loyalty and betrayal resolver.</param>
+        /// <param name="personnelSystem">The personnel lifecycle service.</param>
         public MissionSystem(
             GameRoot game,
             IRandomNumberProvider provider,
             MovementSystem movementManager,
             UprisingSystem uprisingSystem,
-            OfficerLoyaltySystem officerLoyaltySystem = null
+            OfficerLoyaltySystem officerLoyaltySystem = null,
+            PersonnelSystem personnelSystem = null
         )
         {
             _game = game;
@@ -50,6 +53,7 @@ namespace Rebellion.Systems
                 uprisingSystem ?? throw new ArgumentNullException(nameof(uprisingSystem));
             _officerLoyaltySystem =
                 officerLoyaltySystem ?? new OfficerLoyaltySystem(game, provider);
+            _personnelSystem = personnelSystem ?? new PersonnelSystem(game);
             _missionFactory = new MissionFactory(game);
         }
 
@@ -483,6 +487,7 @@ namespace Rebellion.Systems
         /// <returns>The results produced by mission resolution.</returns>
         private List<GameResult> ExecuteMission(Mission mission)
         {
+            List<GameResult> results;
             if (
                 _officerLoyaltySystem.TryResolveMissionBetrayal(
                     mission,
@@ -491,18 +496,37 @@ namespace Rebellion.Systems
             )
             {
                 betrayalResults.AddRange(mission.ResolveBetrayedMission(_game, _provider));
-                return betrayalResults;
+                results = betrayalResults;
             }
-
-            if (_uprisingSystem.TryExecuteMission(mission, out List<GameResult> results))
+            else if (_uprisingSystem.TryExecuteMission(mission, out results))
             {
                 results.AddRange(
                     HandleResults(results.OfType<PlanetUprisingStartedResult>().ToList())
                 );
-                return results;
+            }
+            else
+            {
+                results = mission.Execute(_game, _provider);
             }
 
-            return mission.Execute(_game, _provider);
+            ApplyOfficerDeaths(results);
+            return results;
+        }
+
+        /// <summary>
+        /// Applies officer-death results before mission teardown relocates surviving participants.
+        /// </summary>
+        /// <param name="results">The mission results to apply.</param>
+        private void ApplyOfficerDeaths(IEnumerable<GameResult> results)
+        {
+            foreach (
+                Officer officer in results
+                    .OfType<OfficerKilledResult>()
+                    .Select(result => result.TargetOfficer)
+                    .Where(officer => officer?.IsKilled == false)
+                    .Distinct()
+            )
+                _personnelSystem.Kill(officer);
         }
 
         /// <summary>
@@ -895,8 +919,7 @@ namespace Rebellion.Systems
             }
             else
             {
-                officer.IsKilled = true;
-                _game.DeleteNode(officer);
+                _personnelSystem.Kill(officer);
                 results.Add(
                     new OfficerKilledResult
                     {

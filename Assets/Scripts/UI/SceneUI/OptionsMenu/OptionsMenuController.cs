@@ -209,7 +209,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 HasActiveGame(),
                 _bindingSession.ListeningRow,
                 _bindingSession.ListeningSecondary,
-                _settingsSession.GetGameplayStates()
+                _settingsSession.GetGameplayStates(),
+                _settingsSession.Gameplay.AutosaveIntervalTicks,
+                _settingsSession.Gameplay.AutosavesToKeep
             )
         );
     }
@@ -252,7 +254,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.SlotSelected += HandleSlotSelected;
         target.SlotRenamed += HandleSlotRenamed;
         target.SlotDeleteRequested += HandleSlotDeleteRequested;
-        target.RenameEditingChanged += HandleRenameEditingChanged;
+        target.TextEditingChanged += HandleTextEditingChanged;
         target.ApplyRequested += HandleApply;
         target.DefaultsRequested += HandleDefaults;
         target.ConfirmAccepted += HandleConfirmAccepted;
@@ -263,6 +265,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.QuitRequested += HandleQuitRequested;
         target.TacticalToggleRequested += HandleTacticalToggle;
         target.GameplayToggleRequested += HandleGameplayToggle;
+        target.AutosaveIntervalChanged += HandleAutosaveIntervalChanged;
+        target.AutosavesToKeepChanged += HandleAutosavesToKeepChanged;
         target.ResolutionStepRequested += HandleResolutionStep;
         target.FullScreenStepRequested += HandleFullScreenStep;
         target.VolumeChanged += HandleVolumeChanged;
@@ -417,10 +421,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Disables game shortcuts while a save name is being edited.
+    /// Disables game shortcuts while an Options text field is being edited.
     /// </summary>
     /// <param name="editing">True while a text field is focused for editing.</param>
-    private void HandleRenameEditingChanged(bool editing)
+    private void HandleTextEditingChanged(bool editing)
     {
         _bindingSession.SetTextEntryActive(editing);
     }
@@ -597,26 +601,23 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         }
 
         RequestConfirm(
-            _settingsSession.IsDirty
-                ? "Return to the Main Menu? Unsaved settings will be lost."
-                : "Return to the Main Menu?",
+            "Return to the Main Menu? Any unsaved progress will be lost.",
             () => ExitWithoutSaving(ReturnToMainMenu),
             true
         );
     }
 
     /// <summary>
-    /// Confirms quitting to desktop, warning when settings are unsaved.
+    /// Confirms quitting to desktop, warning about progress when a game is active.
     /// </summary>
     private void HandleQuitRequested()
     {
-        RequestConfirm(
-            _settingsSession.IsDirty
-                ? "Quit to desktop? Unsaved settings will be lost."
-                : "Quit to desktop?",
-            () => ExitWithoutSaving(QuitApplication),
-            true
-        );
+        string message =
+            HasActiveGame() ? "Quit to desktop? Any unsaved progress will be lost."
+            : _settingsSession.IsDirty ? "Quit to desktop? Unsaved settings will be lost."
+            : "Quit to desktop?";
+
+        RequestConfirm(message, () => ExitWithoutSaving(QuitApplication), true);
     }
 
     /// <summary>
@@ -732,6 +733,28 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Applies a directly entered autosave interval.
+    /// </summary>
+    /// <param name="value">The entered interval text.</param>
+    private void HandleAutosaveIntervalChanged(string value)
+    {
+        if (int.TryParse(value, out int ticks))
+            _settingsSession.SetAutosaveInterval(ticks);
+        _markDirty();
+    }
+
+    /// <summary>
+    /// Applies a directly entered autosave retention count.
+    /// </summary>
+    /// <param name="value">The entered retention-count text.</param>
+    private void HandleAutosavesToKeepChanged(string value)
+    {
+        if (int.TryParse(value, out int count))
+            _settingsSession.SetAutosavesToKeep(count);
+        _markDirty();
+    }
+
+    /// <summary>
     /// Steps the selected resolution and applies it immediately.
     /// </summary>
     /// <param name="delta">The step direction.</param>
@@ -778,7 +801,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.SlotSelected -= HandleSlotSelected;
         destroyed.SlotRenamed -= HandleSlotRenamed;
         destroyed.SlotDeleteRequested -= HandleSlotDeleteRequested;
-        destroyed.RenameEditingChanged -= HandleRenameEditingChanged;
+        destroyed.TextEditingChanged -= HandleTextEditingChanged;
         destroyed.ApplyRequested -= HandleApply;
         destroyed.DefaultsRequested -= HandleDefaults;
         destroyed.ConfirmAccepted -= HandleConfirmAccepted;
@@ -789,6 +812,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.QuitRequested -= HandleQuitRequested;
         destroyed.TacticalToggleRequested -= HandleTacticalToggle;
         destroyed.GameplayToggleRequested -= HandleGameplayToggle;
+        destroyed.AutosaveIntervalChanged -= HandleAutosaveIntervalChanged;
+        destroyed.AutosavesToKeepChanged -= HandleAutosavesToKeepChanged;
         destroyed.ResolutionStepRequested -= HandleResolutionStep;
         destroyed.FullScreenStepRequested -= HandleFullScreenStep;
         destroyed.VolumeChanged -= HandleVolumeChanged;

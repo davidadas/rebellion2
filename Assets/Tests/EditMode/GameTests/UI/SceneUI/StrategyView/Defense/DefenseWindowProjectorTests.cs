@@ -107,7 +107,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             };
             _planet.Officers.Add(officer);
             _session.Reconcile();
-            _session.SelectItem(0, 3);
+            _session.SelectItem(0);
 
             DefenseWindowRenderData data = _projector.Build(_session, _window, true);
 

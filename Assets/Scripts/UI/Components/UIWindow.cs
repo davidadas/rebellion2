@@ -345,12 +345,12 @@ public sealed class UIWindow : MonoBehaviour, IPointerDownHandler
     }
 
     /// <summary>
-    /// Determines whether this window may participate in manager-ordered cancellation.
+    /// Determines whether this window currently owns cancellation handling.
     /// </summary>
-    /// <returns>True when modal policy permits cancellation.</returns>
+    /// <returns>True when the active window may process cancellation.</returns>
     private bool CanCancel()
     {
-        return !windowManager || windowManager.CanInteractWithWindow(this);
+        return activeWindow && (!windowManager || windowManager.CanInteractWithWindow(this));
     }
 
     /// <summary>

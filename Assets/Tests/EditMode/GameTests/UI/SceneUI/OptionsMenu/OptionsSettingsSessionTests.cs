@@ -117,6 +117,23 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies autosave cadence and retention changes participate in staged settings.
+        /// </summary>
+        [Test]
+        public void AutosaveChanges_ReturnedToSnapshot_ClearDirtyState()
+        {
+            _session.SetAutosaveInterval(125);
+            Assert.IsTrue(_session.IsDirty);
+            _session.SetAutosaveInterval(UserGameplaySettings.DefaultAutosaveIntervalTicks);
+            Assert.IsFalse(_session.IsDirty);
+
+            _session.SetAutosavesToKeep(6);
+            Assert.IsTrue(_session.IsDirty);
+            _session.SetAutosavesToKeep(UserGameplaySettings.DefaultAutosavesToKeep);
+            Assert.IsFalse(_session.IsDirty);
+        }
+
+        /// <summary>
         /// Verifies removing a newly staged binding override clears pending state.
         /// </summary>
         [Test]

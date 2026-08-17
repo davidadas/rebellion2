@@ -9,7 +9,9 @@ namespace Rebellion.Tests.App
     public sealed class GameRuntimeTests
     {
         private ContentPack contentPack;
+        private UserGameplaySettings gameplaySettings;
         private GameRuntime runtime;
+        private SaveGameManager saveGameManager;
         private string saveDirectoryPath;
 
         [SetUp]
@@ -21,7 +23,9 @@ namespace Rebellion.Tests.App
                 nameof(GameRuntimeTests),
                 Guid.NewGuid().ToString("N")
             );
-            runtime = new GameRuntime(contentPack, new SaveGameManager(saveDirectoryPath));
+            gameplaySettings = new UserGameplaySettings();
+            saveGameManager = new SaveGameManager(saveDirectoryPath);
+            runtime = new GameRuntime(contentPack, saveGameManager, () => gameplaySettings);
         }
 
         [TearDown]
@@ -48,6 +52,34 @@ namespace Rebellion.Tests.App
             Assert.AreNotSame(game, replacement);
             Assert.AreSame(replacement, runtime.GetActiveGame());
             Assert.AreEqual(123, replacement.CurrentTick);
+        }
+
+        [Test]
+        public void AutosaveIfDue_EligibleTick_SavesTickAddressedGame()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = gameplaySettings.AutosaveIntervalTicks - 1;
+            runtime.StartGame(game);
+
+            runtime.AutosaveIfDue();
+            Assert.IsFalse(
+                File.Exists(
+                    saveGameManager.GetSaveFilePath(
+                        SaveGameManager.AutosaveFilePrefix + game.CurrentTick.ToString("D10")
+                    )
+                )
+            );
+
+            game.CurrentTick++;
+            runtime.AutosaveIfDue();
+
+            Assert.IsTrue(
+                File.Exists(
+                    saveGameManager.GetSaveFilePath(
+                        SaveGameManager.AutosaveFilePrefix + game.CurrentTick.ToString("D10")
+                    )
+                )
+            );
         }
 
         [Test]

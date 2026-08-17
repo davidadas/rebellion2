@@ -306,6 +306,8 @@ public sealed class StrategyController
         StrategyFleetCommandController fleetCommandController
     )
     {
+        Func<SelectionModifierState> getSelectionModifiers = () =>
+            AppBootstrap.Instance?.GetInputManager()?.GetSelectionModifierState() ?? default;
         fleetWindowController = new FleetWindowController(
             fleetCommandController,
             () => uiContext,
@@ -313,7 +315,8 @@ public sealed class StrategyController
             strategyWindowLayerView,
             strategyWindowManager,
             (x, y) => windowPlacementController.ClampPlanetWindowPosition(PlanetIcon.Fleet, x, y),
-            MarkDirty
+            MarkDirty,
+            getSelectionModifiers
         );
         constructionWindowController = new ConstructionWindowController(
             () => gameManager.GetGame(),
@@ -336,7 +339,8 @@ public sealed class StrategyController
             strategyWindowManager,
             (x, y) =>
                 windowPlacementController.ClampPlanetWindowPosition(PlanetIcon.Facility, x, y),
-            MarkDirty
+            MarkDirty,
+            getSelectionModifiers
         );
         defenseWindowController = new DefenseWindowController(
             () => uiContext,
@@ -344,7 +348,8 @@ public sealed class StrategyController
             strategyWindowLayerView,
             strategyWindowManager,
             (x, y) => windowPlacementController.ClampPlanetWindowPosition(PlanetIcon.Defense, x, y),
-            MarkDirty
+            MarkDirty,
+            getSelectionModifiers
         );
         planetSystemWindowController = new PlanetSystemWindowController(
             fleetCommandController,
@@ -456,7 +461,8 @@ public sealed class StrategyController
             strategyWindowManager,
             windowPlacementController.GetMissionCreateWindowPosition,
             CloseWindow,
-            MarkDirty
+            MarkDirty,
+            () => bootstrap.GetInputManager().GetSelectionModifierState()
         );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,

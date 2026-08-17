@@ -9,7 +9,6 @@ using UnityEngine.EventSystems;
 public sealed class UIWindowManager : MonoBehaviour, ICancelable
 {
     private readonly List<RaycastResult> raycastResults = new();
-    private readonly List<UIWindow> cancellationOrder = new();
     private readonly List<UIWindow> windows = new();
     private UIWindow exclusiveWindow;
     private RectTransform rectTransform;
@@ -237,8 +236,6 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
             throw new InvalidOperationException($"Window ID {window.Id} is already registered.");
 
         bool wasRegistered = windows.Remove(window);
-        if (!wasRegistered)
-            cancellationOrder.Add(window);
         if (behind)
             windows.Insert(0, window);
         else
@@ -269,8 +266,6 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         if (window == null || !windows.Remove(window))
             return;
 
-        cancellationOrder.Remove(window);
-
         if (exclusiveWindow == window)
             exclusiveWindow = null;
 
@@ -295,8 +290,6 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
 
         windows.Remove(window);
         windows.Add(window);
-        cancellationOrder.Remove(window);
-        cancellationOrder.Add(window);
         window.transform.SetAsLastSibling();
         ActiveWindow = window;
         ApplyActiveState();
@@ -416,19 +409,14 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Gives the most recently opened or focused interactable window the opportunity to cancel.
+    /// Gives the active interactable window the opportunity to cancel its current operation.
     /// </summary>
-    /// <returns>True when a window handled cancellation.</returns>
+    /// <returns>True when the active window handled cancellation.</returns>
     public bool TryCancel()
     {
-        for (int index = cancellationOrder.Count - 1; index >= 0; index--)
-        {
-            UIWindow window = cancellationOrder[index];
-            if (CanInteractWithWindow(window) && window.TryCancel())
-                return true;
-        }
-
-        return false;
+        return ActiveWindow != null
+            && CanInteractWithWindow(ActiveWindow)
+            && ActiveWindow.TryCancel();
     }
 
     /// <summary>
