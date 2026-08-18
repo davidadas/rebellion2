@@ -77,14 +77,14 @@ namespace Rebellion.Game.Events
         }
 
         /// <summary>
-        /// Executes the event's actions and returns all results.
+        /// Executes the event's actions and returns their shared context.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">Random number provider for stochastic actions.</param>
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
-        /// <returns>Combined results from all executed actions.</returns>
-        internal GameActionExecution Execute(
+        /// <returns>The context containing requests and results produced by the actions.</returns>
+        internal GameActionContext Execute(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventExecutionContext context,
@@ -97,7 +97,8 @@ namespace Rebellion.Game.Events
                 context,
                 unitFactory
             );
-            return GameAction.ExecuteAll(Actions, actionContext);
+            GameAction.ExecuteAll(Actions, actionContext);
+            return actionContext;
         }
     }
 }

@@ -371,20 +371,20 @@ namespace Rebellion.Systems
             }
 
             GameLogger.Log($"Executing game event: {gameEvent.InstanceID}");
-            GameActionExecution execution = gameEvent.Execute(
+            GameActionContext actionContext = gameEvent.Execute(
                 _game,
                 _provider,
                 context,
                 _unitFactory
             );
-            results = new List<GameResult>(execution.Results);
-            if (execution.Requests.Count > 0)
+            results = new List<GameResult>(actionContext.Results);
+            if (actionContext.Requests.Count > 0)
             {
                 if (_requestDispatcher == null)
                     throw new InvalidOperationException(
                         $"Event '{gameEvent.InstanceID}' produced requests without a configured dispatcher."
                     );
-                results.AddRange(_requestDispatcher.Process(execution.Requests));
+                results.AddRange(_requestDispatcher.Process(actionContext.Requests));
             }
 
             state.ExecutionCount++;

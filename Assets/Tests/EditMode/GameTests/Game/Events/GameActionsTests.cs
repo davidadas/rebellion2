@@ -25,8 +25,12 @@ namespace Rebellion.Tests.Game.Events
         /// <summary>
         /// Executes an action with the game's random-number provider.
         /// </summary>
-        internal static List<GameResult> Execute(this GameAction action, GameRoot game) =>
-            action.Execute(new GameActionContext(game, game.Random)).Results;
+        internal static List<GameResult> Execute(this GameAction action, GameRoot game)
+        {
+            GameActionContext context = new GameActionContext(game, game.Random);
+            action.Execute(context);
+            return context.Results;
+        }
 
         /// <summary>
         /// Executes an action with a caller-supplied random-number provider.
@@ -35,7 +39,12 @@ namespace Rebellion.Tests.Game.Events
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random
-        ) => action.Execute(new GameActionContext(game, random)).Results;
+        )
+        {
+            GameActionContext context = new GameActionContext(game, random);
+            action.Execute(context);
+            return context.Results;
+        }
 
         /// <summary>
         /// Executes an action with a caller-supplied event activation context.
@@ -45,7 +54,12 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game,
             IRandomNumberProvider random,
             GameEventExecutionContext activation
-        ) => action.Execute(new GameActionContext(game, random, activation)).Results;
+        )
+        {
+            GameActionContext context = new GameActionContext(game, random, activation);
+            action.Execute(context);
+            return context.Results;
+        }
 
         /// <summary>
         /// Executes an action with the unit definitions required to spawn runtime units.
@@ -54,13 +68,22 @@ namespace Rebellion.Tests.Game.Events
             this GameAction action,
             GameRoot game,
             UnitFactory unitFactory
-        ) => action.Execute(new GameActionContext(game, game.Random, null, unitFactory)).Results;
+        )
+        {
+            GameActionContext context = new GameActionContext(game, game.Random, null, unitFactory);
+            action.Execute(context);
+            return context.Results;
+        }
 
         /// <summary>
         /// Executes an action and returns the authoritative work it requested.
         /// </summary>
-        internal static List<GameRequest> ExecuteRequests(this GameAction action, GameRoot game) =>
-            action.Execute(new GameActionContext(game, game.Random)).Requests;
+        internal static List<GameRequest> ExecuteRequests(this GameAction action, GameRoot game)
+        {
+            GameActionContext context = new GameActionContext(game, game.Random);
+            action.Execute(context);
+            return context.Requests;
+        }
 
         /// <summary>
         /// Executes an action with a caller-supplied event activation and returns its requests.
@@ -70,7 +93,12 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game,
             IRandomNumberProvider random,
             GameEventExecutionContext activation
-        ) => action.Execute(new GameActionContext(game, random, activation)).Requests;
+        )
+        {
+            GameActionContext context = new GameActionContext(game, random, activation);
+            action.Execute(context);
+            return context.Requests;
+        }
 
         /// <summary>
         /// Executes an action with a unit factory and returns its authoritative requests.
@@ -79,7 +107,12 @@ namespace Rebellion.Tests.Game.Events
             this GameAction action,
             GameRoot game,
             UnitFactory unitFactory
-        ) => action.Execute(new GameActionContext(game, game.Random, null, unitFactory)).Requests;
+        )
+        {
+            GameActionContext context = new GameActionContext(game, game.Random, null, unitFactory);
+            action.Execute(context);
+            return context.Requests;
+        }
     }
 
     /// <summary>
