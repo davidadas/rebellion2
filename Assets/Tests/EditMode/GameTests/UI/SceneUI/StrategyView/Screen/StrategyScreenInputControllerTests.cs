@@ -347,6 +347,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
+        public void OnPointerUp_UnresolvedItemCandidate_ClearsDragAndMarksDirty()
+        {
+            _contextItems = new ISceneNode[] { new Officer() };
+            PointerEventData eventData = CreatePointerEvent(_window.gameObject);
+            _controller.StartItemDrag(_window, eventData);
+            _resolvePosition = false;
+
+            _controller.OnPointerUp(eventData);
+
+            Assert.AreEqual(1, _dirtyCount);
+            Assert.IsFalse(_dragController.TryGetOverlay(out _, out _));
+        }
+
+        [Test]
         public void CancelTargeting_ActiveThenInactive_ReturnsMatchingState()
         {
             BeginTargeting();
@@ -390,20 +404,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 
             Assert.AreEqual(1, _overlayCount);
             Assert.AreEqual(0, _openStatusCount);
-        }
-
-        [Test]
-        public void OnPointerUp_UnresolvedItemCandidate_ClearsDragAndMarksDirty()
-        {
-            _contextItems = new ISceneNode[] { new Officer() };
-            PointerEventData eventData = CreatePointerEvent(_window.gameObject);
-            _controller.StartItemDrag(_window, eventData);
-            _resolvePosition = false;
-
-            _controller.OnPointerUp(eventData);
-
-            Assert.AreEqual(1, _dirtyCount);
-            Assert.IsFalse(_dragController.TryGetOverlay(out _, out _));
         }
 
         [Test]

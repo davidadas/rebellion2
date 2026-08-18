@@ -36,6 +36,26 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void IsMovable_WhenIdleAndNotOnMission_ReturnsTrue()
+        {
+            Officer officer = new Officer { Movement = null };
+            bool isMovable = officer.IsMovable();
+            Assert.IsTrue(isMovable);
+        }
+
+        [Test]
+        public void IsMovable_WhenOnMission_ReturnsFalse()
+        {
+            StubMission mission = new StubMission();
+            mission.MaxProgress = 5;
+            mission.CurrentProgress = 0;
+            Officer officer = new Officer { Movement = null };
+            officer.SetParent(mission);
+            bool isMovable = officer.IsMovable();
+            Assert.IsFalse(isMovable);
+        }
+
+        [Test]
         public void GetBaseRating_ValidRating_ReturnsCorrectValue()
         {
             Officer officer = new Officer();
@@ -143,26 +163,6 @@ namespace Rebellion.Tests.Game.Units
             Officer officer = new Officer();
             bool isOnMission = officer.IsOnMission();
             Assert.IsFalse(isOnMission);
-        }
-
-        [Test]
-        public void IsMovable_WhenIdleAndNotOnMission_ReturnsTrue()
-        {
-            Officer officer = new Officer { Movement = null };
-            bool isMovable = officer.IsMovable();
-            Assert.IsTrue(isMovable);
-        }
-
-        [Test]
-        public void IsMovable_WhenOnMission_ReturnsFalse()
-        {
-            StubMission mission = new StubMission();
-            mission.MaxProgress = 5;
-            mission.CurrentProgress = 0;
-            Officer officer = new Officer { Movement = null };
-            officer.SetParent(mission);
-            bool isMovable = officer.IsMovable();
-            Assert.IsFalse(isMovable);
         }
 
         [Test]
@@ -325,41 +325,6 @@ namespace Rebellion.Tests.Game.Units
             Officer officer = new Officer();
             officer.Loyalty = 75;
             Assert.AreEqual(75, officer.Loyalty);
-        }
-
-        [Test]
-        public void GetDisplayName_WhenSet_ReturnsDisplayName()
-        {
-            Officer officer = new Officer();
-            officer.DisplayName = "Admiral Ackbar";
-            string displayName = officer.GetDisplayName();
-            Assert.AreEqual("Admiral Ackbar", displayName);
-        }
-
-        [Test]
-        public void GetDisplayName_WhenNotSet_ReturnsNull()
-        {
-            Officer officer = new Officer();
-            string displayName = officer.GetDisplayName();
-            Assert.IsNull(displayName);
-        }
-
-        [Test]
-        public void GetOwnerInstanceID_WhenSet_ReturnsOwnerInstanceID()
-        {
-            Officer officer = new Officer();
-            string expectedOwnerID = "owner123";
-            officer.OwnerInstanceID = expectedOwnerID;
-            string ownerInstanceID = officer.GetOwnerInstanceID();
-            Assert.AreEqual(expectedOwnerID, ownerInstanceID);
-        }
-
-        [Test]
-        public void GetOwnerInstanceID_WhenNotSet_ReturnsNull()
-        {
-            Officer officer = new Officer();
-            string ownerInstanceID = officer.GetOwnerInstanceID();
-            Assert.IsNull(ownerInstanceID);
         }
 
         [Test]

@@ -14,6 +14,29 @@ namespace Rebellion.Tests.Game.Events
     public class SceneConditionsTests
     {
         [Test]
+        public void RollAgainstPopularSupport_RollBelowSupport_ReturnsTrue()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            planet.PopularSupport["faction"] = 20;
+            game.Random = new FixedRandomProvider(new[] { 0.19 });
+            RollAgainstPopularSupportConditional conditional =
+                new RollAgainstPopularSupportConditional
+                {
+                    FactionInstanceID = "faction",
+                    PlanetBinding = "$target",
+                };
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent { InstanceID = "INFORMANTS" },
+                new GameEventState(),
+                planet
+            );
+
+            bool result = conditional.IsMet(new GameConditionContext(game, context));
+
+            Assert.IsTrue(result);
+        }
+
+        [Test]
         public void ShareParent_DifferentImmediateParents_DoesNotMatch()
         {
             GameRoot game = BuildHierarchy(
@@ -116,7 +139,9 @@ namespace Rebellion.Tests.Game.Events
             out CapitalShip ship
         )
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameConfig config = new GameConfig();
+            config.Jedi.RankLabelByMinimumForceRank[100] = (int)ForceRankLabel.ForceKnight;
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "faction" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             planet = new Planet

@@ -97,19 +97,6 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         }
 
         [Test]
-        public void OnDestroy_ActivePlayback_RestoresPreviousTimeScale()
-        {
-            Time.timeScale = 0.75f;
-            _manager.Play(_clip, null);
-
-            UIComponentTestHelper.InvokeLifecycle(_manager, "OnDestroy");
-            UnityEngine.Object.DestroyImmediate(_manager.gameObject);
-            _manager = null;
-
-            Assert.AreEqual(0.75f, Time.timeScale);
-        }
-
-        [Test]
         public void Play_ReplacementClip_PreservesInitialTimeScaleForRestoration()
         {
             Time.timeScale = 0.75f;
@@ -121,6 +108,19 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 
             Assert.AreNotSame(firstPlayer, secondPlayer);
             Assert.AreEqual(0f, Time.timeScale);
+
+            UIComponentTestHelper.InvokeLifecycle(_manager, "OnDestroy");
+            UnityEngine.Object.DestroyImmediate(_manager.gameObject);
+            _manager = null;
+
+            Assert.AreEqual(0.75f, Time.timeScale);
+        }
+
+        [Test]
+        public void OnDestroy_ActivePlayback_RestoresPreviousTimeScale()
+        {
+            Time.timeScale = 0.75f;
+            _manager.Play(_clip, null);
 
             UIComponentTestHelper.InvokeLifecycle(_manager, "OnDestroy");
             UnityEngine.Object.DestroyImmediate(_manager.gameObject);

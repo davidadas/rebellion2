@@ -138,6 +138,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void Render_InvalidTabOrder_ThrowsArgumentException()
+        {
+            DefenseWindowTabRenderData[] tabs = CreateTabs();
+            tabs[0] = new DefenseWindowTabRenderData(
+                DefenseWindowTab.Regiments,
+                _texture,
+                _texture
+            );
+            DefenseWindowRenderData data = new DefenseWindowRenderData(
+                0,
+                0,
+                _texture,
+                "Caption",
+                DefenseWindowTab.Personnel,
+                "Title",
+                string.Empty,
+                tabs,
+                Array.Empty<StrategyUnitCardRenderData>()
+            );
+
+            Assert.Throws<ArgumentException>(() => _view.Render(data));
+        }
+
+        [Test]
         public void AuthoredRegimentLabels_MatchSourceBounds()
         {
             RectInt titleRect = UILayout.GetSourceRect(
@@ -177,30 +201,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 FindCardObject(itemTemplate, "DamagedOverlayImage").transform.GetSiblingIndex(),
                 entity.GetSiblingIndex()
             );
-        }
-
-        [Test]
-        public void Render_InvalidTabOrder_ThrowsArgumentException()
-        {
-            DefenseWindowTabRenderData[] tabs = CreateTabs();
-            tabs[0] = new DefenseWindowTabRenderData(
-                DefenseWindowTab.Regiments,
-                _texture,
-                _texture
-            );
-            DefenseWindowRenderData data = new DefenseWindowRenderData(
-                0,
-                0,
-                _texture,
-                "Caption",
-                DefenseWindowTab.Personnel,
-                "Title",
-                string.Empty,
-                tabs,
-                Array.Empty<StrategyUnitCardRenderData>()
-            );
-
-            Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
         [Test]
@@ -402,6 +402,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void ItemQueries_MissingPointerTarget_ReturnFalseAndDefaultIndex()
+        {
+            bool found = _view.TryGetItemIndex(null, out int itemIndex);
+            bool selectionClick = _view.IsSelectionItemClick(null);
+            bool desktopPosition = _view.TryGetDesktopPosition(null, out int x, out int y);
+
+            Assert.IsFalse(found);
+            Assert.AreEqual(-1, itemIndex);
+            Assert.IsFalse(selectionClick);
+            Assert.IsFalse(desktopPosition);
+            Assert.AreEqual(0, x);
+            Assert.AreEqual(0, y);
+            Assert.IsNotNull(_view.WindowShell);
+        }
+
+        [Test]
         public void DragPreview_CardBackgroundAndEntity_PreserveTheirRenderedLayering()
         {
             _view.Render(
@@ -433,22 +449,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 "EntityImage",
                 preview.Images[1]
             );
-        }
-
-        [Test]
-        public void ItemQueries_MissingPointerTarget_ReturnFalseAndDefaultIndex()
-        {
-            bool found = _view.TryGetItemIndex(null, out int itemIndex);
-            bool selectionClick = _view.IsSelectionItemClick(null);
-            bool desktopPosition = _view.TryGetDesktopPosition(null, out int x, out int y);
-
-            Assert.IsFalse(found);
-            Assert.AreEqual(-1, itemIndex);
-            Assert.IsFalse(selectionClick);
-            Assert.IsFalse(desktopPosition);
-            Assert.AreEqual(0, x);
-            Assert.AreEqual(0, y);
-            Assert.IsNotNull(_view.WindowShell);
         }
 
         [Test]

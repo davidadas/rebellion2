@@ -63,6 +63,17 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void SetInteractiveTextures_NullNormalTexture_DisablesControl()
+        {
+            _visual.SetInteractiveTextures(null, _pressedTexture);
+
+            Assert.IsNull(_image.texture);
+            Assert.IsFalse(_image.enabled);
+            Assert.IsFalse(_image.raycastTarget);
+            Assert.IsFalse(_control.activeSelf);
+        }
+
+        [Test]
         public void OnPointerDown_InteractiveControl_UsesPressedTextureAndEmitsPress()
         {
             int pressedCount = 0;
@@ -95,28 +106,6 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
-        public void OnPointerUp_AfterPointerDown_RestoresNormalTexture()
-        {
-            _visual.SetInteractiveTextures(_normalTexture, _pressedTexture);
-            _visual.OnPointerDown(new PointerEventData(null));
-
-            _visual.OnPointerUp(new PointerEventData(null));
-
-            Assert.AreSame(_normalTexture, _image.texture);
-        }
-
-        [Test]
-        public void SetInteractiveTextures_NullNormalTexture_DisablesControl()
-        {
-            _visual.SetInteractiveTextures(null, _pressedTexture);
-
-            Assert.IsNull(_image.texture);
-            Assert.IsFalse(_image.enabled);
-            Assert.IsFalse(_image.raycastTarget);
-            Assert.IsFalse(_control.activeSelf);
-        }
-
-        [Test]
         public void OnPointerDown_DisabledButton_PreservesNormalTexture()
         {
             int pressedCount = 0;
@@ -143,6 +132,17 @@ namespace Rebellion.Tests.UI.Components
 
             Assert.AreSame(_normalTexture, _image.texture);
             Assert.AreEqual(0, pressedCount);
+        }
+
+        [Test]
+        public void OnPointerUp_AfterPointerDown_RestoresNormalTexture()
+        {
+            _visual.SetInteractiveTextures(_normalTexture, _pressedTexture);
+            _visual.OnPointerDown(new PointerEventData(null));
+
+            _visual.OnPointerUp(new PointerEventData(null));
+
+            Assert.AreSame(_normalTexture, _image.texture);
         }
     }
 }

@@ -124,14 +124,6 @@ namespace Rebellion.Tests.Util.Extensions
         }
 
         [Test]
-        public void GetShallowCopy_NullObject_ReturnsNull()
-        {
-            SimpleTestClass original = null;
-            SimpleTestClass copy = original.GetShallowCopy();
-            Assert.IsNull(copy);
-        }
-
-        [Test]
         public void GetDeepCopy_SimpleObject_CreatesDeepCopy()
         {
             SimpleTestClass original = new SimpleTestClass
@@ -140,21 +132,6 @@ namespace Rebellion.Tests.Util.Extensions
                 StringProperty = "Hello",
             };
             SimpleTestClass copy = original.GetDeepCopy();
-
-            Assert.AreNotSame(original, copy);
-            Assert.AreEqual(original.IntProperty, copy.IntProperty);
-            Assert.AreEqual(original.StringProperty, copy.StringProperty);
-        }
-
-        [Test]
-        public void GetShallowCopy_SimpleObject_CreatesShallowCopy()
-        {
-            SimpleTestClass original = new SimpleTestClass
-            {
-                IntProperty = 42,
-                StringProperty = "Hello",
-            };
-            SimpleTestClass copy = original.GetShallowCopy();
 
             Assert.AreNotSame(original, copy);
             Assert.AreEqual(original.IntProperty, copy.IntProperty);
@@ -174,27 +151,6 @@ namespace Rebellion.Tests.Util.Extensions
             };
 
             TestClassWithIgnore copy = original.GetDeepCopy();
-
-            Assert.AreEqual(original.IntProperty, copy.IntProperty);
-            Assert.AreEqual(original.StringProperty, copy.StringProperty);
-            Assert.AreEqual(0, copy.IgnoredIntProperty);
-            Assert.IsNull(copy.IgnoredStringProperty);
-            Assert.IsNull(copy.IgnoredListProperty);
-        }
-
-        [Test]
-        public void GetShallowCopy_ObjectWithCloneIgnore_IgnoresMarkedProperties()
-        {
-            TestClassWithIgnore original = new TestClassWithIgnore
-            {
-                IntProperty = 42,
-                StringProperty = "Hello",
-                IgnoredIntProperty = 100,
-                IgnoredStringProperty = "Ignore me",
-                IgnoredListProperty = new List<int> { 1, 2, 3 },
-            };
-
-            TestClassWithIgnore copy = original.GetShallowCopy();
 
             Assert.AreEqual(original.IntProperty, copy.IntProperty);
             Assert.AreEqual(original.StringProperty, copy.StringProperty);
@@ -236,34 +192,6 @@ namespace Rebellion.Tests.Util.Extensions
                 original.DictionaryProperty["Key"],
                 copy.DictionaryProperty["Key"]
             );
-        }
-
-        [Test]
-        public void GetShallowCopy_ComplexObject_SharesReferences()
-        {
-            ComplexTestClass original = new ComplexTestClass
-            {
-                IntProperty = 42,
-                StringProperty = "Hello",
-                ListProperty = new List<int> { 1, 2, 3 },
-                NestedObject = new SimpleTestClass { IntProperty = 10, StringProperty = "Nested" },
-                DictionaryProperty = new Dictionary<string, List<int>>
-                {
-                    {
-                        "Key",
-                        new List<int> { 4, 5, 6 }
-                    },
-                },
-            };
-
-            ComplexTestClass copy = original.GetShallowCopy();
-
-            Assert.AreNotSame(original, copy);
-            Assert.AreEqual(original.IntProperty, copy.IntProperty);
-            Assert.AreEqual(original.StringProperty, copy.StringProperty);
-            Assert.AreSame(original.ListProperty, copy.ListProperty);
-            Assert.AreSame(original.NestedObject, copy.NestedObject);
-            Assert.AreSame(original.DictionaryProperty, copy.DictionaryProperty);
         }
 
         [Test]
@@ -511,6 +439,98 @@ namespace Rebellion.Tests.Util.Extensions
         }
 
         [Test]
+        public void GetDeepCopy_FullMode_DeeplyCopiesNestedIgnoredObjects()
+        {
+            ComplexTestClass original = new ComplexTestClass
+            {
+                IntProperty = 42,
+                ListProperty = new List<int> { 1, 2, 3 },
+                NestedObject = new SimpleTestClass { IntProperty = 10, StringProperty = "Nested" },
+            };
+
+            ComplexTestClass copy = original.GetDeepCopy(CloneMode.Full);
+
+            Assert.AreNotSame(original, copy);
+            Assert.AreNotSame(original.ListProperty, copy.ListProperty);
+            Assert.AreNotSame(original.NestedObject, copy.NestedObject);
+            CollectionAssert.AreEqual(original.ListProperty, copy.ListProperty);
+            Assert.AreEqual(original.NestedObject.IntProperty, copy.NestedObject.IntProperty);
+            Assert.AreEqual(original.NestedObject.StringProperty, copy.NestedObject.StringProperty);
+        }
+
+        [Test]
+        public void GetShallowCopy_NullObject_ReturnsNull()
+        {
+            SimpleTestClass original = null;
+            SimpleTestClass copy = original.GetShallowCopy();
+            Assert.IsNull(copy);
+        }
+
+        [Test]
+        public void GetShallowCopy_SimpleObject_CreatesShallowCopy()
+        {
+            SimpleTestClass original = new SimpleTestClass
+            {
+                IntProperty = 42,
+                StringProperty = "Hello",
+            };
+            SimpleTestClass copy = original.GetShallowCopy();
+
+            Assert.AreNotSame(original, copy);
+            Assert.AreEqual(original.IntProperty, copy.IntProperty);
+            Assert.AreEqual(original.StringProperty, copy.StringProperty);
+        }
+
+        [Test]
+        public void GetShallowCopy_ObjectWithCloneIgnore_IgnoresMarkedProperties()
+        {
+            TestClassWithIgnore original = new TestClassWithIgnore
+            {
+                IntProperty = 42,
+                StringProperty = "Hello",
+                IgnoredIntProperty = 100,
+                IgnoredStringProperty = "Ignore me",
+                IgnoredListProperty = new List<int> { 1, 2, 3 },
+            };
+
+            TestClassWithIgnore copy = original.GetShallowCopy();
+
+            Assert.AreEqual(original.IntProperty, copy.IntProperty);
+            Assert.AreEqual(original.StringProperty, copy.StringProperty);
+            Assert.AreEqual(0, copy.IgnoredIntProperty);
+            Assert.IsNull(copy.IgnoredStringProperty);
+            Assert.IsNull(copy.IgnoredListProperty);
+        }
+
+        [Test]
+        public void GetShallowCopy_ComplexObject_SharesReferences()
+        {
+            ComplexTestClass original = new ComplexTestClass
+            {
+                IntProperty = 42,
+                StringProperty = "Hello",
+                ListProperty = new List<int> { 1, 2, 3 },
+                NestedObject = new SimpleTestClass { IntProperty = 10, StringProperty = "Nested" },
+                DictionaryProperty = new Dictionary<string, List<int>>
+                {
+                    {
+                        "Key",
+                        new List<int> { 4, 5, 6 }
+                    },
+                },
+            };
+
+            ComplexTestClass copy = original.GetShallowCopy();
+
+            Assert.AreNotSame(original, copy);
+            Assert.AreEqual(original.IntProperty, copy.IntProperty);
+            Assert.AreEqual(original.StringProperty, copy.StringProperty);
+            Assert.AreSame(original.ListProperty, copy.ListProperty);
+            Assert.AreSame(original.NestedObject, copy.NestedObject);
+            Assert.AreSame(original.DictionaryProperty, copy.DictionaryProperty);
+        }
+
+        [Test]
         public void GetShallowCopy_NormalMode_RespectsCloneIgnore()
         {
             TestClassWithIgnore original = new TestClassWithIgnore
@@ -550,26 +570,6 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.AreEqual(100, copy.IgnoredIntProperty);
             Assert.AreEqual("Ignore me", copy.IgnoredStringProperty);
             Assert.AreSame(original.IgnoredListProperty, copy.IgnoredListProperty);
-        }
-
-        [Test]
-        public void GetDeepCopy_FullMode_DeeplyCopiesNestedIgnoredObjects()
-        {
-            ComplexTestClass original = new ComplexTestClass
-            {
-                IntProperty = 42,
-                ListProperty = new List<int> { 1, 2, 3 },
-                NestedObject = new SimpleTestClass { IntProperty = 10, StringProperty = "Nested" },
-            };
-
-            ComplexTestClass copy = original.GetDeepCopy(CloneMode.Full);
-
-            Assert.AreNotSame(original, copy);
-            Assert.AreNotSame(original.ListProperty, copy.ListProperty);
-            Assert.AreNotSame(original.NestedObject, copy.NestedObject);
-            CollectionAssert.AreEqual(original.ListProperty, copy.ListProperty);
-            Assert.AreEqual(original.NestedObject.IntProperty, copy.NestedObject.IntProperty);
-            Assert.AreEqual(original.NestedObject.StringProperty, copy.NestedObject.StringProperty);
         }
     }
 } // namespace Rebellion.Tests.Util.Extensions

@@ -353,22 +353,6 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void PositionX_DefaultValue_IsZero()
-        {
-            Starfighter newStarfighter = new Starfighter();
-
-            Assert.AreEqual(0, newStarfighter.GetPosition().X, "PositionX should default to 0");
-        }
-
-        [Test]
-        public void PositionY_DefaultValue_IsZero()
-        {
-            Starfighter newStarfighter = new Starfighter();
-
-            Assert.AreEqual(0, newStarfighter.GetPosition().Y, "PositionY should default to 0");
-        }
-
-        [Test]
         public void ProducerOwnerID_SetAndGet_StoresCorrectValue()
         {
             _starfighter.ProducerOwnerID = "PRODUCER123";

@@ -65,6 +65,28 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ValidateEvents_MultipleTriggersWithDifferentAliases_ThrowsInvalidOperationException()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "MULTI_TRIGGER",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger(
+                        "core:unit.arrived",
+                        ("UnitInstanceID", "subjectInstanceID")
+                    ),
+                    new GameEventTrigger("core:duel.completed"),
+                },
+            };
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _system.ValidateEvents(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("same binding aliases", exception.Message);
+        }
+
+        [Test]
         public void ProcessEvents_UnmetOneShotEvent_RemainsPending()
         {
             GameEvent gameEvent = CreateTickEvent("PENDING", targetTick: 10, repeatable: false);
@@ -241,208 +263,6 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.EventPool);
 
             Assert.IsFalse(_game.EventPool.Contains(pending));
-        }
-
-        [Test]
-        public void HandleResults_MatchingEncounter_ExecutesResultTriggeredEventOnce()
-        {
-            Officer luke = new Officer { InstanceID = "luke" };
-            Officer vader = new Officer { InstanceID = "vader" };
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "HERITAGE",
-                TriggerCount = 1,
-                Triggers = EncounterTrigger(),
-                Conditionals = new List<GameConditional>
-                {
-                    BindingEquals("officer", luke.InstanceID),
-                    BindingEquals("opponent", vader.InstanceID),
-                },
-                Actions = new List<GameAction>
-                {
-                    new SetEventVariableAction { Key = "luke.heritage.revealed", Operand = 1 },
-                },
-            };
-            _game.EventPool.Add(gameEvent);
-
-            _system.HandleResults(
-                new[]
-                {
-                    new DuelResult { EncounteredOfficer = luke, OpposingOfficer = vader },
-                }
-            );
-
-            Assert.AreEqual(1, _game.EventRuntime.GetVariable("luke.heritage.revealed"));
-            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
-            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
-        }
-
-        [Test]
-        public void HandleResults_StableTriggerId_ExecutesWithoutClrTypeName()
-        {
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "ARRIVAL_REACTION",
-                Triggers = new List<GameEventTrigger>
-                {
-                    new GameEventTrigger(
-                        "core:unit.arrived",
-                        ("Unit", "unit"),
-                        ("Destination", "destination")
-                    ),
-                },
-                Conditionals = new List<GameConditional> { new HasArrivalBindingsConditional() },
-                Actions = new List<GameAction>
-                {
-                    new SetEventVariableAction { Key = "arrival.triggered", Operand = 1 },
-                },
-            };
-            _game.EventPool.Add(gameEvent);
-            Planet destination = new Planet { InstanceID = "destination" };
-            Officer officer = new Officer { InstanceID = "officer" };
-
-            _system.HandleResults(
-                new[]
-                {
-                    new UnitArrivedResult { Unit = officer, Destination = destination },
-                }
-            );
-
-            Assert.AreEqual(1, _game.EventRuntime.GetVariable("arrival.triggered"));
-        }
-
-        [Test]
-        public void HandleResults_MatchingOptionalSourceBinding_ExecutesEvent()
-        {
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "SOURCE_FILTERED_ARRIVAL",
-                Triggers = new List<GameEventTrigger>
-                {
-                    new GameEventTrigger(
-                        "core:unit.arrived",
-                        ("SourceEventInstanceID", "sourceEventInstanceID")
-                    ),
-                },
-                Conditionals = new List<GameConditional>
-                {
-                    BindingEquals("sourceEventInstanceID", "EXPECTED_SOURCE"),
-                },
-                Actions = new List<GameAction>
-                {
-                    new SetEventVariableAction { Key = "source.arrival.triggered", Operand = 1 },
-                },
-            };
-            _game.EventPool.Add(gameEvent);
-
-            _system.HandleResults(
-                new[] { new UnitArrivedResult { SourceEventInstanceID = "EXPECTED_SOURCE" } }
-            );
-
-            Assert.AreEqual(1, _game.EventRuntime.GetVariable("source.arrival.triggered"));
-        }
-
-        [Test]
-        public void ValidateEvents_MultipleTriggersWithDifferentAliases_ThrowsInvalidOperationException()
-        {
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "MULTI_TRIGGER",
-                Triggers = new List<GameEventTrigger>
-                {
-                    new GameEventTrigger(
-                        "core:unit.arrived",
-                        ("UnitInstanceID", "subjectInstanceID")
-                    ),
-                    new GameEventTrigger("core:duel.completed"),
-                },
-            };
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                _system.ValidateEvents(new[] { gameEvent })
-            );
-
-            StringAssert.Contains("same binding aliases", exception.Message);
-        }
-
-        [Test]
-        public void AvailableArguments_UnitArrivalTrigger_ExposesTypedContractMetadata()
-        {
-            GameEventTrigger trigger = new GameEventTrigger("core:unit.arrived");
-
-            IReadOnlyDictionary<string, Type> arguments = trigger.AvailableArguments;
-
-            Assert.AreEqual(typeof(IGameEntity), arguments["Unit"]);
-            Assert.AreEqual(typeof(string), arguments["UnitInstanceID"]);
-            Assert.AreEqual(typeof(Planet), arguments["Destination"]);
-            Assert.AreEqual(typeof(string), arguments["DestinationInstanceID"]);
-        }
-
-        [Test]
-        public void HandleResults_WithoutSuppression_PreservesTriggerAndSiblingMessages()
-        {
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "HIDDEN_MISSION_REPORT",
-                Triggers = new List<GameEventTrigger>
-                {
-                    new GameEventTrigger("core:mission.completed"),
-                },
-            };
-            _game.EventPool.Add(gameEvent);
-            OfficerCaptureStateResult release = new OfficerCaptureStateResult
-            {
-                SourceEventInstanceID = "PALACE_RESCUE",
-            };
-            MissionCompletedResult completion = new MissionCompletedResult
-            {
-                SourceEventInstanceID = "PALACE_RESCUE",
-            };
-
-            List<GameResult> reactions = _system.HandleResults(
-                new GameResult[] { release, completion }
-            );
-
-            Assert.IsEmpty(reactions);
-        }
-
-        [Test]
-        public void HandleResults_RepeatableEncounterEffect_ExecutesForEveryEncounter()
-        {
-            Officer luke = new Officer { InstanceID = "luke" };
-            Officer vader = new Officer { InstanceID = "vader" };
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "RECURRING_ENCOUNTER_EFFECTS",
-
-                Triggers = EncounterTrigger(),
-                Conditionals = new List<GameConditional>
-                {
-                    BindingEquals("officer", luke.InstanceID),
-                    BindingEquals("opponent", vader.InstanceID),
-                },
-                Actions = new List<GameAction>
-                {
-                    new SetEventVariableAction
-                    {
-                        Key = "encounter.count",
-                        Operation = EventVariableOperation.Add,
-                        Operand = 1,
-                    },
-                },
-            };
-            _game.EventPool.Add(gameEvent);
-            DuelResult encounter = new DuelResult
-            {
-                EncounteredOfficer = luke,
-                OpposingOfficer = vader,
-            };
-
-            _system.HandleResults(new[] { encounter });
-            _system.HandleResults(new[] { encounter });
-
-            Assert.Contains(gameEvent, _game.EventPool);
-            Assert.AreEqual(2, _game.EventRuntime.GetVariable("encounter.count"));
-            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }
 
         [Test]
@@ -666,6 +486,186 @@ namespace Rebellion.Tests.Systems
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.IsTrue(state.IsInitialized);
             Assert.AreEqual(10, state.NextEligibleTick);
+        }
+
+        [Test]
+        public void HandleResults_MatchingEncounter_ExecutesResultTriggeredEventOnce()
+        {
+            Officer luke = new Officer { InstanceID = "luke" };
+            Officer vader = new Officer { InstanceID = "vader" };
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "HERITAGE",
+                TriggerCount = 1,
+                Triggers = EncounterTrigger(),
+                Conditionals = new List<GameConditional>
+                {
+                    BindingEquals("officer", luke.InstanceID),
+                    BindingEquals("opponent", vader.InstanceID),
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "luke.heritage.revealed", Operand = 1 },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+
+            _system.HandleResults(
+                new[]
+                {
+                    new DuelResult { EncounteredOfficer = luke, OpposingOfficer = vader },
+                }
+            );
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("luke.heritage.revealed"));
+            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
+            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+        }
+
+        [Test]
+        public void HandleResults_StableTriggerId_ExecutesWithoutClrTypeName()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "ARRIVAL_REACTION",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger(
+                        "core:unit.arrived",
+                        ("Unit", "unit"),
+                        ("Destination", "destination")
+                    ),
+                },
+                Conditionals = new List<GameConditional> { new HasArrivalBindingsConditional() },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "arrival.triggered", Operand = 1 },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+            Planet destination = new Planet { InstanceID = "destination" };
+            Officer officer = new Officer { InstanceID = "officer" };
+
+            _system.HandleResults(
+                new[]
+                {
+                    new UnitArrivedResult { Unit = officer, Destination = destination },
+                }
+            );
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("arrival.triggered"));
+        }
+
+        [Test]
+        public void HandleResults_MatchingOptionalSourceBinding_ExecutesEvent()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SOURCE_FILTERED_ARRIVAL",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger(
+                        "core:unit.arrived",
+                        ("SourceEventInstanceID", "sourceEventInstanceID")
+                    ),
+                },
+                Conditionals = new List<GameConditional>
+                {
+                    BindingEquals("sourceEventInstanceID", "EXPECTED_SOURCE"),
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "source.arrival.triggered", Operand = 1 },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+
+            _system.HandleResults(
+                new[] { new UnitArrivedResult { SourceEventInstanceID = "EXPECTED_SOURCE" } }
+            );
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("source.arrival.triggered"));
+        }
+
+        [Test]
+        public void HandleResults_WithoutSuppression_PreservesTriggerAndSiblingMessages()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "HIDDEN_MISSION_REPORT",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger("core:mission.completed"),
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+            OfficerCaptureStateResult release = new OfficerCaptureStateResult
+            {
+                SourceEventInstanceID = "PALACE_RESCUE",
+            };
+            MissionCompletedResult completion = new MissionCompletedResult
+            {
+                SourceEventInstanceID = "PALACE_RESCUE",
+            };
+
+            List<GameResult> reactions = _system.HandleResults(
+                new GameResult[] { release, completion }
+            );
+
+            Assert.IsEmpty(reactions);
+        }
+
+        [Test]
+        public void HandleResults_RepeatableEncounterEffect_ExecutesForEveryEncounter()
+        {
+            Officer luke = new Officer { InstanceID = "luke" };
+            Officer vader = new Officer { InstanceID = "vader" };
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "RECURRING_ENCOUNTER_EFFECTS",
+
+                Triggers = EncounterTrigger(),
+                Conditionals = new List<GameConditional>
+                {
+                    BindingEquals("officer", luke.InstanceID),
+                    BindingEquals("opponent", vader.InstanceID),
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction
+                    {
+                        Key = "encounter.count",
+                        Operation = EventVariableOperation.Add,
+                        Operand = 1,
+                    },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+            DuelResult encounter = new DuelResult
+            {
+                EncounteredOfficer = luke,
+                OpposingOfficer = vader,
+            };
+
+            _system.HandleResults(new[] { encounter });
+            _system.HandleResults(new[] { encounter });
+
+            Assert.Contains(gameEvent, _game.EventPool);
+            Assert.AreEqual(2, _game.EventRuntime.GetVariable("encounter.count"));
+            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+        }
+
+        [Test]
+        public void AvailableArguments_UnitArrivalTrigger_ExposesTypedContractMetadata()
+        {
+            GameEventTrigger trigger = new GameEventTrigger("core:unit.arrived");
+
+            IReadOnlyDictionary<string, Type> arguments = trigger.AvailableArguments;
+
+            Assert.AreEqual(typeof(IGameEntity), arguments["Unit"]);
+            Assert.AreEqual(typeof(string), arguments["UnitInstanceID"]);
+            Assert.AreEqual(typeof(Planet), arguments["Destination"]);
+            Assert.AreEqual(typeof(string), arguments["DestinationInstanceID"]);
         }
 
         [Test]

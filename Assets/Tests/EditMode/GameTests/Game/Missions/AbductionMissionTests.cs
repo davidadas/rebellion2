@@ -15,41 +15,12 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class AbductionMissionTests
     {
-        private static Mission CreateAbductionMission(
-            GameRoot game,
-            string ownerInstanceId,
-            ISceneNode target,
-            List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants,
-            Officer targetOfficer
-        )
-        {
-            return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Abduction,
-                game,
-                ownerInstanceId,
-                target,
-                mainParticipants,
-                decoyParticipants,
-                targetOfficer: targetOfficer
-            );
-        }
-
-        private static void MakeAbductionAlwaysSucceed(GameRoot game)
-        {
-            game.Config.ProbabilityTables.Mission.Abduction = new Dictionary<int, int>
-            {
-                { 0, 100 },
-            };
-            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 0 } };
-        }
-
         [Test]
         public void TryCreate_TargetInTransit_ReturnsNull()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -71,11 +42,196 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_NullTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                null,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                null
+            );
+
+            Assert.IsNull(mission, "TryCreate should return null when target is null");
+        }
+
+        [Test]
+        public void TryCreate_NonPlanetTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                officer,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                null
+            );
+
+            Assert.IsNull(mission, "TryCreate should return null when target is not a Planet");
+        }
+
+        [Test]
+        public void TryCreate_NoValidTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                null
+            );
+
+            Assert.IsNull(
+                mission,
+                "TryCreate should return null when no valid target officers exist"
+            );
+        }
+
+        [Test]
+        public void TryCreate_FriendlyOfficerAsTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer friendly = EntityFactory.CreateOfficer("friendly", "empire");
+            game.AttachNode(friendly, empirePlanet);
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                friendly
+            );
+
+            Assert.IsNull(
+                mission,
+                "TryCreate should return null when target belongs to the same faction"
+            );
+        }
+
+        [Test]
+        public void TryCreate_TargetAlreadyCaptured_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsCaptured = true;
+            game.AttachNode(target, enemyPlanet);
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(mission, "TryCreate should return null when target is already captured");
+        }
+
+        [Test]
+        public void TryCreate_TargetOnWrongPlanet_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(
+                mission,
+                "TryCreate should return null when target is not on the mission target planet"
+            );
+        }
+
+        [Test]
+        public void TryCreate_ValidTarget_ReturnsNotNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNotNull(
+                mission,
+                "TryCreate should succeed with a valid enemy officer on the target planet"
+            );
+            Assert.AreEqual("target", ((AbductionMission)mission).TargetOfficerInstanceID);
+        }
+
+        [Test]
         public void Execute_TargetOnEnemyPlanet_SetsTargetCaptured()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -105,168 +261,11 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_SuccessfulAbduction_MovesTargetToAbductorOrigin()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, enemyPlanet);
-            MakeAbductionAlwaysSucceed(game);
-
-            Mission mission = CreateAbductionMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-            game.MoveNode(officer, mission);
-            mission.Initiate(0);
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
-                game,
-                new FixedRNG(0.0),
-                movement
-            );
-
-            missionSystem.UpdateMission(mission);
-
-            Assert.IsTrue(target.IsCaptured, "Target officer should remain captured");
-            Assert.AreEqual(
-                "empire",
-                target.CaptorInstanceID,
-                "CaptorInstanceID should be the abducting faction"
-            );
-            Assert.AreEqual(
-                empPlanet,
-                target.GetParent(),
-                "Abducted officer should return to the abductor's origin"
-            );
-        }
-
-        [Test]
-        public void GetSuccessfulReturnPassengers_TargetCapturedByOwner_ReturnsTarget()
-        {
-            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, enemyPlanet);
-            Mission mission = CreateAbductionMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            target.IsCaptured = true;
-            target.CaptorInstanceID = "empire";
-
-            List<IMovable> passengers = mission.GetSuccessfulReturnPassengers(game).ToList();
-
-            CollectionAssert.AreEqual(new IMovable[] { target }, passengers);
-        }
-
-        [Test]
-        public void GetSuccessfulReturnPassengers_TargetNotCapturedByOwner_ReturnsEmpty()
-        {
-            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, enemyPlanet);
-            Mission mission = CreateAbductionMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            target.IsCaptured = true;
-            target.CaptorInstanceID = "rebels";
-
-            List<IMovable> passengers = mission.GetSuccessfulReturnPassengers(game).ToList();
-
-            Assert.IsEmpty(passengers);
-        }
-
-        [Test]
-        public void UpdateMission_SuccessfulAbductionWithSpecialForces_MovesTargetToAbductorOrigin()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            SpecialForces commando = new SpecialForces
-            {
-                InstanceID = "sf1",
-                DisplayName = "sf1",
-                OwnerInstanceID = "empire",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Abduction },
-            };
-            game.AttachNode(commando, empPlanet);
-            commando.MissionReturnParentInstanceID = empPlanet.InstanceID;
-            commando.MissionReturnLocationInstanceID = empPlanet.InstanceID;
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, enemyPlanet);
-            MakeAbductionAlwaysSucceed(game);
-
-            Mission mission = CreateAbductionMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { commando },
-                new List<IMissionParticipant>(),
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-            game.MoveNode(commando, mission);
-            mission.Initiate(0);
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
-                game,
-                new FixedRNG(0.0),
-                movement
-            );
-
-            missionSystem.UpdateMission(mission);
-
-            Assert.IsTrue(target.IsCaptured, "Target officer should remain captured");
-            Assert.AreEqual(
-                empPlanet,
-                target.GetParent(),
-                "Abducted officer should return with the special-forces escort"
-            );
-        }
-
-        [Test]
         public void Execute_TargetOnEnemyPlanet_ReturnsCharacterCapturedResult()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -302,7 +301,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -342,7 +341,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -394,7 +393,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -429,174 +428,146 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_NullTarget_ReturnsNull()
+        public void UpdateMission_SuccessfulAbduction_MovesTargetToAbductorOrigin()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Mission mission = CreateAbductionMission(
-                game,
-                "empire",
-                null,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                null
-            );
-
-            Assert.IsNull(mission, "TryCreate should return null when target is null");
-        }
-
-        [Test]
-        public void TryCreate_NonPlanetTarget_ReturnsNull()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Mission mission = CreateAbductionMission(
-                game,
-                "empire",
-                officer,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                null
-            );
-
-            Assert.IsNull(mission, "TryCreate should return null when target is not a Planet");
-        }
-
-        [Test]
-        public void TryCreate_NoValidTarget_ReturnsNull()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-            Mission mission = CreateAbductionMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                null
-            );
-
-            Assert.IsNull(
-                mission,
-                "TryCreate should return null when no valid target officers exist"
-            );
-        }
-
-        [Test]
-        public void TryCreate_FriendlyOfficerAsTarget_ReturnsNull()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Officer friendly = EntityFactory.CreateOfficer("friendly", "empire");
-            game.AttachNode(friendly, empPlanet);
-
-            Mission mission = CreateAbductionMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                friendly
-            );
-
-            Assert.IsNull(
-                mission,
-                "TryCreate should return null when target belongs to the same faction"
-            );
-        }
-
-        [Test]
-        public void TryCreate_TargetAlreadyCaptured_ReturnsNull()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            missionSystem.UpdateMission(mission);
+
+            Assert.IsTrue(target.IsCaptured, "Target officer should remain captured");
+            Assert.AreEqual(
+                "empire",
+                target.CaptorInstanceID,
+                "CaptorInstanceID should be the abducting faction"
+            );
+            Assert.AreEqual(
+                empirePlanet,
+                target.GetParent(),
+                "Abducted officer should return to the abductor's origin"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_SuccessfulAbductionWithSpecialForces_MovesTargetToAbductorOrigin()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            SpecialForces commando = new SpecialForces
+            {
+                InstanceID = "sf1",
+                DisplayName = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Abduction },
+            };
+            game.AttachNode(commando, empirePlanet);
+            commando.MissionReturnParentInstanceID = empirePlanet.InstanceID;
+            commando.MissionReturnLocationInstanceID = empirePlanet.InstanceID;
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { commando },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(commando, mission);
+            mission.Initiate(0);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            missionSystem.UpdateMission(mission);
+
+            Assert.IsTrue(target.IsCaptured, "Target officer should remain captured");
+            Assert.AreEqual(
+                empirePlanet,
+                target.GetParent(),
+                "Abducted officer should return with the special-forces escort"
+            );
+        }
+
+        [Test]
+        public void GetSuccessfulReturnPassengers_TargetCapturedByOwner_ReturnsTarget()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
             target.IsCaptured = true;
-            game.AttachNode(target, enemyPlanet);
+            target.CaptorInstanceID = "empire";
 
-            Mission mission = CreateAbductionMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
+            List<IMovable> passengers = mission.GetSuccessfulReturnPassengers(game).ToList();
 
-            Assert.IsNull(mission, "TryCreate should return null when target is already captured");
+            CollectionAssert.AreEqual(new IMovable[] { target }, passengers);
         }
 
         [Test]
-        public void TryCreate_TargetOnWrongPlanet_ReturnsNull()
+        public void GetSuccessfulReturnPassengers_TargetNotCapturedByOwner_ReturnsEmpty()
         {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-
-            Mission mission = CreateAbductionMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-
-            Assert.IsNull(
-                mission,
-                "TryCreate should return null when target is not on the mission target planet"
-            );
-        }
-
-        [Test]
-        public void TryCreate_ValidTarget_ReturnsNotNull()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
-
             Mission mission = CreateAbductionMission(
                 game,
                 "empire",
@@ -605,12 +576,12 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>(),
                 target
             );
+            target.IsCaptured = true;
+            target.CaptorInstanceID = "rebels";
 
-            Assert.IsNotNull(
-                mission,
-                "TryCreate should succeed with a valid enemy officer on the target planet"
-            );
-            Assert.AreEqual("target", ((AbductionMission)mission).TargetOfficerInstanceID);
+            List<IMovable> passengers = mission.GetSuccessfulReturnPassengers(game).ToList();
+
+            Assert.IsEmpty(passengers);
         }
 
         [Test]
@@ -639,6 +610,35 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(OfficerRating.Espionage, deserialized.ParticipantRating);
             Assert.IsFalse(deserialized.HasInitiated);
             Assert.AreEqual(5, deserialized.MaxProgress);
+        }
+
+        private static Mission CreateAbductionMission(
+            GameRoot game,
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            Officer targetOfficer
+        )
+        {
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Abduction,
+                game,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                targetOfficer: targetOfficer
+            );
+        }
+
+        private static void MakeAbductionAlwaysSucceed(GameRoot game)
+        {
+            game.Config.ProbabilityTables.Mission.Abduction = new Dictionary<int, int>
+            {
+                { 0, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 0 } };
         }
     }
 }

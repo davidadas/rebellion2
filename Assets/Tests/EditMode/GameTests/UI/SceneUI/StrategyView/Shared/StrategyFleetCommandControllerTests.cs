@@ -213,33 +213,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void CanExecutePlanetaryCommands_NeutralSnapshotTarget_UsesLiveGraphObjects()
-        {
-            _planet.OwnerInstanceID = null;
-            GameFleet fleet = AddCombatFleet("fleet", bombardment: 1, includeRegiment: true);
-            GameFleet requestedFleet = new GameFleet(_playerFactionId, "fleet snapshot")
-            {
-                InstanceID = fleet.InstanceID,
-            };
-            Planet requestedTarget = new Planet { InstanceID = _planet.InstanceID };
-            StrategyFleetCommandController controller = CreateController();
-
-            bool canBombard = controller.CanExecutePlanetaryCombat(
-                new ISceneNode[] { requestedFleet },
-                requestedTarget,
-                StrategyMenuAction.GeneralBombardment
-            );
-            bool canAssault = controller.CanExecutePlanetaryCombat(
-                new ISceneNode[] { requestedFleet },
-                requestedTarget,
-                StrategyMenuAction.PlanetaryAssault
-            );
-
-            Assert.IsTrue(canBombard);
-            Assert.IsTrue(canAssault);
-        }
-
-        [Test]
         public void ExecutePlanetaryCombat_InvalidAssaultInputOrNullResult_ReturnsNull()
         {
             GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
@@ -264,6 +237,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsNull(noFleetResult);
             Assert.IsNull(missingTargetResult);
             Assert.IsNull(nullCommandResult);
+        }
+
+        [Test]
+        public void CanExecutePlanetaryCommands_NeutralSnapshotTarget_UsesLiveGraphObjects()
+        {
+            _planet.OwnerInstanceID = null;
+            GameFleet fleet = AddCombatFleet("fleet", bombardment: 1, includeRegiment: true);
+            GameFleet requestedFleet = new GameFleet(_playerFactionId, "fleet snapshot")
+            {
+                InstanceID = fleet.InstanceID,
+            };
+            Planet requestedTarget = new Planet { InstanceID = _planet.InstanceID };
+            StrategyFleetCommandController controller = CreateController();
+
+            bool canBombard = controller.CanExecutePlanetaryCombat(
+                new ISceneNode[] { requestedFleet },
+                requestedTarget,
+                StrategyMenuAction.GeneralBombardment
+            );
+            bool canAssault = controller.CanExecutePlanetaryCombat(
+                new ISceneNode[] { requestedFleet },
+                requestedTarget,
+                StrategyMenuAction.PlanetaryAssault
+            );
+
+            Assert.IsTrue(canBombard);
+            Assert.IsTrue(canAssault);
         }
 
         [Test]

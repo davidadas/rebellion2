@@ -119,21 +119,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(Vector3.one * 3f, dialogSurface.localScale);
         }
 
-        /// <summary>
-        /// Verifies the view exclusively controls Options overlay visibility.
-        /// </summary>
-        [Test]
-        public void RenderOptionsOverlay_ChangesAuthoredOverlayVisibility()
-        {
-            GameObject overlay = GetField<GameObject>("optionsOverlay");
-
-            _view.RenderOptionsOverlay(true);
-            Assert.IsTrue(overlay.activeSelf);
-
-            _view.RenderOptionsOverlay(false);
-            Assert.IsFalse(overlay.activeSelf);
-        }
-
         [Test]
         public void AuthoredPrefab_CockpitBackdropAndControlsShareFullCanvas()
         {
@@ -150,6 +135,21 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(viewport.Find("Cockpit"));
             Assert.AreSame(viewport, viewport.Find("MainMenuControls").parent);
             Assert.AreEqual(7, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
+        }
+
+        /// <summary>
+        /// Verifies the view exclusively controls Options overlay visibility.
+        /// </summary>
+        [Test]
+        public void RenderOptionsOverlay_ChangesAuthoredOverlayVisibility()
+        {
+            GameObject overlay = GetField<GameObject>("optionsOverlay");
+
+            _view.RenderOptionsOverlay(true);
+            Assert.IsTrue(overlay.activeSelf);
+
+            _view.RenderOptionsOverlay(false);
+            Assert.IsFalse(overlay.activeSelf);
         }
 
         [Test]

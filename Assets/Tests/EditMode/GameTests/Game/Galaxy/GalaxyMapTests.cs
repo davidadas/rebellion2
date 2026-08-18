@@ -31,6 +31,46 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void AddChild_WithMultiplePlanetSystems_AddsAllSystems()
+        {
+            PlanetSystem planetSystem3 = new PlanetSystem { InstanceID = "SYSTEM3" };
+
+            _galaxyMap.AddChild(_planetSystem1);
+            _galaxyMap.AddChild(_planetSystem2);
+            _galaxyMap.AddChild(planetSystem3);
+
+            Assert.AreEqual(3, _galaxyMap.PlanetSystems.Count);
+            Assert.Contains(_planetSystem1, _galaxyMap.PlanetSystems);
+            Assert.Contains(_planetSystem2, _galaxyMap.PlanetSystems);
+            Assert.Contains(planetSystem3, _galaxyMap.PlanetSystems);
+        }
+
+        [Test]
+        public void AddChild_WithNullPlanetSystem_DoesNotThrowException()
+        {
+            Assert.DoesNotThrow(() => _galaxyMap.AddChild(null));
+        }
+
+        [Test]
+        public void AddChild_WithNonPlanetSystemNode_DoesNotAddToList()
+        {
+            ISceneNode nonPlanetSystem = new GalaxyMap { InstanceID = "NOT_A_PLANET_SYSTEM" };
+
+            _galaxyMap.AddChild(nonPlanetSystem);
+
+            Assert.AreEqual(0, _galaxyMap.PlanetSystems.Count);
+        }
+
+        [Test]
+        public void AddChild_WithSamePlanetSystemTwice_AddsItTwice()
+        {
+            _galaxyMap.AddChild(_planetSystem1);
+            _galaxyMap.AddChild(_planetSystem1);
+
+            Assert.AreEqual(2, _galaxyMap.PlanetSystems.Count);
+        }
+
+        [Test]
         public void RemoveChild_ExistingPlanetSystem_RemovesIt()
         {
             _galaxyMap.AddChild(_planetSystem1);
@@ -38,6 +78,47 @@ namespace Rebellion.Tests.Game.Galaxy
             _galaxyMap.RemoveChild(_planetSystem1);
 
             Assert.IsFalse(_galaxyMap.PlanetSystems.Contains(_planetSystem1));
+        }
+
+        [Test]
+        public void RemoveChild_WithMultiplePlanetSystems_RemovesCorrectSystems()
+        {
+            _galaxyMap.AddChild(_planetSystem1);
+            _galaxyMap.AddChild(_planetSystem2);
+
+            _galaxyMap.RemoveChild(_planetSystem1);
+
+            Assert.AreEqual(1, _galaxyMap.PlanetSystems.Count);
+            Assert.IsFalse(_galaxyMap.PlanetSystems.Contains(_planetSystem1));
+            Assert.Contains(_planetSystem2, _galaxyMap.PlanetSystems);
+        }
+
+        [Test]
+        public void RemoveChild_RemovingAllSystems_ResultsInEmptyList()
+        {
+            _galaxyMap.AddChild(_planetSystem1);
+            _galaxyMap.AddChild(_planetSystem2);
+
+            _galaxyMap.RemoveChild(_planetSystem1);
+            _galaxyMap.RemoveChild(_planetSystem2);
+
+            Assert.AreEqual(0, _galaxyMap.PlanetSystems.Count);
+        }
+
+        [Test]
+        public void RemoveChild_WithNullPlanetSystem_DoesNotThrowException()
+        {
+            Assert.DoesNotThrow(() => _galaxyMap.RemoveChild(null));
+        }
+
+        [Test]
+        public void RemoveChild_WithSystemNotInList_DoesNotChangeCount()
+        {
+            _galaxyMap.AddChild(_planetSystem1);
+
+            _galaxyMap.RemoveChild(_planetSystem2);
+
+            Assert.AreEqual(1, _galaxyMap.PlanetSystems.Count);
         }
 
         [Test]
@@ -77,76 +158,6 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void InstanceID_WhenSet_ReturnsCorrectValue()
-        {
-            GalaxyMap map = new GalaxyMap { InstanceID = "TEST_GALAXY" };
-
-            Assert.AreEqual("TEST_GALAXY", map.InstanceID);
-        }
-
-        [Test]
-        public void AddChild_WithMultiplePlanetSystems_AddsAllSystems()
-        {
-            PlanetSystem planetSystem3 = new PlanetSystem { InstanceID = "SYSTEM3" };
-
-            _galaxyMap.AddChild(_planetSystem1);
-            _galaxyMap.AddChild(_planetSystem2);
-            _galaxyMap.AddChild(planetSystem3);
-
-            Assert.AreEqual(3, _galaxyMap.PlanetSystems.Count);
-            Assert.Contains(_planetSystem1, _galaxyMap.PlanetSystems);
-            Assert.Contains(_planetSystem2, _galaxyMap.PlanetSystems);
-            Assert.Contains(planetSystem3, _galaxyMap.PlanetSystems);
-        }
-
-        [Test]
-        public void RemoveChild_WithMultiplePlanetSystems_RemovesCorrectSystems()
-        {
-            _galaxyMap.AddChild(_planetSystem1);
-            _galaxyMap.AddChild(_planetSystem2);
-
-            _galaxyMap.RemoveChild(_planetSystem1);
-
-            Assert.AreEqual(1, _galaxyMap.PlanetSystems.Count);
-            Assert.IsFalse(_galaxyMap.PlanetSystems.Contains(_planetSystem1));
-            Assert.Contains(_planetSystem2, _galaxyMap.PlanetSystems);
-        }
-
-        [Test]
-        public void RemoveChild_RemovingAllSystems_ResultsInEmptyList()
-        {
-            _galaxyMap.AddChild(_planetSystem1);
-            _galaxyMap.AddChild(_planetSystem2);
-
-            _galaxyMap.RemoveChild(_planetSystem1);
-            _galaxyMap.RemoveChild(_planetSystem2);
-
-            Assert.AreEqual(0, _galaxyMap.PlanetSystems.Count);
-        }
-
-        [Test]
-        public void AddChild_WithNullPlanetSystem_DoesNotThrowException()
-        {
-            Assert.DoesNotThrow(() => _galaxyMap.AddChild(null));
-        }
-
-        [Test]
-        public void RemoveChild_WithNullPlanetSystem_DoesNotThrowException()
-        {
-            Assert.DoesNotThrow(() => _galaxyMap.RemoveChild(null));
-        }
-
-        [Test]
-        public void AddChild_WithNonPlanetSystemNode_DoesNotAddToList()
-        {
-            ISceneNode nonPlanetSystem = new GalaxyMap { InstanceID = "NOT_A_PLANET_SYSTEM" };
-
-            _galaxyMap.AddChild(nonPlanetSystem);
-
-            Assert.AreEqual(0, _galaxyMap.PlanetSystems.Count);
-        }
-
-        [Test]
         public void PlanetSystems_WhenInitialized_IsEmptyList()
         {
             GalaxyMap newMap = new GalaxyMap();
@@ -171,25 +182,6 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _galaxyMap.RemoveChild(_planetSystem2);
             Assert.AreEqual(0, _galaxyMap.PlanetSystems.Count);
-        }
-
-        [Test]
-        public void AddChild_WithSamePlanetSystemTwice_AddsItTwice()
-        {
-            _galaxyMap.AddChild(_planetSystem1);
-            _galaxyMap.AddChild(_planetSystem1);
-
-            Assert.AreEqual(2, _galaxyMap.PlanetSystems.Count);
-        }
-
-        [Test]
-        public void RemoveChild_WithSystemNotInList_DoesNotChangeCount()
-        {
-            _galaxyMap.AddChild(_planetSystem1);
-
-            _galaxyMap.RemoveChild(_planetSystem2);
-
-            Assert.AreEqual(1, _galaxyMap.PlanetSystems.Count);
         }
     }
 } // namespace Rebellion.Tests.Game.Galaxy

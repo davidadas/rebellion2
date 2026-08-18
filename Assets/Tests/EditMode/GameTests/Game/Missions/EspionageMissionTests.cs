@@ -16,30 +16,12 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class EspionageMissionTests
     {
-        private static Mission CreateMission(
-            GameRoot game,
-            string owner,
-            Planet target,
-            List<IMissionParticipant> main,
-            List<IMissionParticipant> decoy
-        )
-        {
-            return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Espionage,
-                game,
-                owner,
-                target,
-                main,
-                decoy
-            );
-        }
-
         [Test]
         public void Execute_EnemyPlanetTarget_CapturesSnapshotForFaction()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -76,7 +58,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -112,7 +94,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -149,7 +131,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -190,7 +172,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -240,7 +222,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -271,7 +253,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -313,7 +295,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -346,7 +328,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -372,7 +354,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -410,7 +392,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -443,7 +425,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -485,7 +467,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -519,23 +501,23 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            empPlanet.VisitingFactionIDs.Add("empire");
+            empirePlanet.VisitingFactionIDs.Add("empire");
             int ratingBefore = officer.GetBaseRating(OfficerRating.Espionage);
 
             Mission mission = CreateMission(
                 game,
                 "empire",
-                empPlanet,
+                empirePlanet,
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(mission, empPlanet);
+            game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
@@ -552,17 +534,17 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            // empPlanet has no VisitingFactionIDs — empire has not visited it
+            // empirePlanet has no VisitingFactionIDs — empire has not visited it
             Mission mission = CreateMission(
                 game,
                 "empire",
-                empPlanet,
+                empirePlanet,
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
@@ -575,18 +557,18 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            empPlanet.VisitingFactionIDs.Add("empire");
+            empirePlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
                 game,
                 "empire",
-                empPlanet,
+                empirePlanet,
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
@@ -595,39 +577,6 @@ namespace Rebellion.Tests.Game.Missions
                 mission,
                 "TryCreate should succeed for a visited planet regardless of ownership"
             );
-        }
-
-        private static PlanetSystem AddSystem(
-            GameRoot game,
-            string systemInstanceID,
-            string planetInstanceID,
-            PlanetSystemType systemType,
-            string ownerInstanceID = "rebels"
-        )
-        {
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = systemInstanceID,
-                SystemType = systemType,
-            };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(
-                new Planet
-                {
-                    InstanceID = planetInstanceID,
-                    OwnerInstanceID = ownerInstanceID,
-                    IsColonized = true,
-                },
-                system
-            );
-            return system;
-        }
-
-        private static List<string> RevealedPlanetIDs(Faction faction)
-        {
-            return faction
-                .Fog.Snapshots.Values.SelectMany(snapshot => snapshot.Planets.Keys)
-                .ToList();
         }
 
         [Test]
@@ -656,6 +605,57 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(10, deserialized.MaxProgress);
             Assert.AreEqual(5, deserialized.CurrentProgress);
+        }
+
+        private static Mission CreateMission(
+            GameRoot game,
+            string owner,
+            Planet target,
+            List<IMissionParticipant> main,
+            List<IMissionParticipant> decoy
+        )
+        {
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Espionage,
+                game,
+                owner,
+                target,
+                main,
+                decoy
+            );
+        }
+
+        private static PlanetSystem AddSystem(
+            GameRoot game,
+            string systemInstanceId,
+            string planetInstanceId,
+            PlanetSystemType systemType,
+            string ownerInstanceId = "rebels"
+        )
+        {
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = systemInstanceId,
+                SystemType = systemType,
+            };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(
+                new Planet
+                {
+                    InstanceID = planetInstanceId,
+                    OwnerInstanceID = ownerInstanceId,
+                    IsColonized = true,
+                },
+                system
+            );
+            return system;
+        }
+
+        private static List<string> RevealedPlanetIDs(Faction faction)
+        {
+            return faction
+                .Fog.Snapshots.Values.SelectMany(snapshot => snapshot.Planets.Keys)
+                .ToList();
         }
     }
 }

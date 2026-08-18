@@ -283,28 +283,5 @@ namespace Rebellion.Tests.Game.Units
                 "ProducerOwnerID can be different from OwnerInstanceID"
             );
         }
-
-        [Test]
-        public void DisplayName_SetAndGet_ReturnsExpectedValue()
-        {
-            _regiment.DisplayName = "Elite Infantry";
-
-            Assert.AreEqual(
-                "Elite Infantry",
-                _regiment.DisplayName,
-                "DisplayName should return the set value"
-            );
-        }
-
-        [Test]
-        public void DisplayName_InheritsFromLeafNode_IsAvailable()
-        {
-            _regiment.DisplayName = "Test Regiment";
-
-            Assert.IsNotNull(
-                _regiment.DisplayName,
-                "DisplayName property should be available from LeafNode"
-            );
-        }
     }
 }

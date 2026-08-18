@@ -15,78 +15,6 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class DiplomacyMissionTests
     {
-        private static Mission CreateDiplomacyMission(
-            string ownerInstanceId,
-            ISceneNode target,
-            List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants
-        )
-        {
-            return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Diplomacy,
-                null,
-                ownerInstanceId,
-                target,
-                mainParticipants,
-                decoyParticipants
-            );
-        }
-
-        private GameRoot BuildGame(
-            out Planet planet,
-            int empireSupport,
-            string planetOwner = "empire"
-        )
-        {
-            GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
-
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            game.AttachNode(system, game.Galaxy);
-
-            planet = new Planet
-            {
-                InstanceID = "p1",
-                OwnerInstanceID = planetOwner,
-                IsColonized = true,
-                PopularSupport = new Dictionary<string, int> { { "empire", empireSupport } },
-                VisitingFactionIDs = new List<string> { "empire" },
-            };
-            game.AttachNode(planet, system);
-            return game;
-        }
-
-        private Mission CreateAndAttachMission(GameRoot game, Planet planet)
-        {
-            Officer officer = EntityFactory.CreateOfficer("diplomat", "empire");
-            officer.SetBaseRating(OfficerRating.Diplomacy, 100);
-
-            Mission mission = CreateDiplomacyMission(
-                "empire",
-                planet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, planet);
-            return mission;
-        }
-
-        private static List<GameResult> ExecuteDiplomacySuccess(
-            Mission mission,
-            GameRoot game,
-            IRandomNumberProvider rng
-        )
-        {
-            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
-            {
-                { -10000, 100 },
-            };
-            mission.Initiate(0);
-            return mission.Execute(game, rng);
-        }
-
         [Test]
         public void Execute_SupportBelowThreshold_NoOwnershipChange()
         {
@@ -261,6 +189,37 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_SupportAlreadyAtMax_ReturnsSuccess()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, planet);
+
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            mission.Initiate(0);
+
+            planet.SetFullPopularSupport("empire");
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                completed.Outcome,
+                "Mission succeeds even when support is already at max; ShouldRepeatAfterCompletion tears it down after"
+            );
+        }
+
+        [Test]
         public void GetAbortReason_WhenUprisingStarts_ReturnsFailure()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
@@ -321,6 +280,31 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(
                 mission.ShouldRepeatAfterCompletion(game),
                 "Diplomacy mission should repeat below 100 support after target joins the mission faction"
+            );
+        }
+
+        [Test]
+        public void ShouldRepeatAfterCompletion_SupportReachedMax_ReturnsFalse()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
+            Mission mission = CreateAndAttachMission(game, planet);
+            planet.SetFullPopularSupport("empire");
+
+            Assert.IsFalse(
+                mission.ShouldRepeatAfterCompletion(game),
+                "Mission should cancel when support is at 100"
+            );
+        }
+
+        [Test]
+        public void ShouldRepeatAfterCompletion_SupportBelowMax_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
+            Mission mission = CreateAndAttachMission(game, planet);
+
+            Assert.IsTrue(
+                mission.ShouldRepeatAfterCompletion(game),
+                "Mission should repeat when support is below 100"
             );
         }
 
@@ -387,62 +371,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SupportAlreadyAtMax_ReturnsSuccess()
-        {
-            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
-
-            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
-            game.AttachNode(officer, planet);
-
-            Mission mission = CreateDiplomacyMission(
-                "empire",
-                planet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, planet);
-            mission.Initiate(0);
-
-            planet.SetFullPopularSupport("empire");
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
-
-            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
-            Assert.AreEqual(
-                MissionOutcome.Success,
-                completed.Outcome,
-                "Mission succeeds even when support is already at max; ShouldRepeatAfterCompletion tears it down after"
-            );
-        }
-
-        [Test]
-        public void ShouldRepeatAfterCompletion_SupportReachedMax_ReturnsFalse()
-        {
-            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
-            Mission mission = CreateAndAttachMission(game, planet);
-            planet.SetFullPopularSupport("empire");
-
-            Assert.IsFalse(
-                mission.ShouldRepeatAfterCompletion(game),
-                "Mission should cancel when support is at 100"
-            );
-        }
-
-        [Test]
-        public void ShouldRepeatAfterCompletion_SupportBelowMax_ReturnsTrue()
-        {
-            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
-            Mission mission = CreateAndAttachMission(game, planet);
-
-            Assert.IsTrue(
-                mission.ShouldRepeatAfterCompletion(game),
-                "Mission should repeat when support is below 100"
-            );
-        }
-
-        [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
             Mission mission = new DiplomacyMission
@@ -469,6 +397,78 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(12, deserialized.MaxProgress);
             Assert.AreEqual(3, deserialized.CurrentProgress);
+        }
+
+        private static Mission CreateDiplomacyMission(
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
+        {
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Diplomacy,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants
+            );
+        }
+
+        private GameRoot BuildGame(
+            out Planet planet,
+            int empireSupport,
+            string planetOwner = "empire"
+        )
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.Galaxy);
+
+            planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = planetOwner,
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int> { { "empire", empireSupport } },
+                VisitingFactionIDs = new List<string> { "empire" },
+            };
+            game.AttachNode(planet, system);
+            return game;
+        }
+
+        private Mission CreateAndAttachMission(GameRoot game, Planet planet)
+        {
+            Officer officer = EntityFactory.CreateOfficer("diplomat", "empire");
+            officer.SetBaseRating(OfficerRating.Diplomacy, 100);
+
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            return mission;
+        }
+
+        private static List<GameResult> ExecuteDiplomacySuccess(
+            Mission mission,
+            GameRoot game,
+            IRandomNumberProvider rng
+        )
+        {
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -10000, 100 },
+            };
+            mission.Initiate(0);
+            return mission.Execute(game, rng);
         }
     }
 }

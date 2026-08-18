@@ -17,48 +17,19 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class ReconnaissanceMissionTests
     {
-        private static Mission CreateMission(
-            GameRoot game,
-            string owner,
-            Planet target,
-            List<IMissionParticipant> main,
-            List<IMissionParticipant> decoy
-        )
-        {
-            return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Reconnaissance,
-                game,
-                owner,
-                target,
-                main,
-                decoy
-            );
-        }
-
-        private static SpecialForces CreateReconTeam(string owner)
-        {
-            return new SpecialForces
-            {
-                InstanceID = "sf1",
-                OwnerInstanceID = owner,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
-            };
-        }
-
         [Test]
         public void Execute_UnvisitedPlanet_CapturesSnapshotWithoutSuccessRoll()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
             SpecialForces reconTeam = CreateReconTeam("empire");
-            game.AttachNode(reconTeam, empPlanet);
+            game.AttachNode(reconTeam, empirePlanet);
 
             Mission mission = CreateMission(
                 game,
@@ -94,7 +65,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -109,7 +80,7 @@ namespace Rebellion.Tests.Game.Missions
                 { -1000, 100 },
             };
             SpecialForces reconTeam = CreateReconTeam("empire");
-            game.AttachNode(reconTeam, empPlanet);
+            game.AttachNode(reconTeam, empirePlanet);
 
             Mission mission = CreateMission(
                 game,
@@ -146,7 +117,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -174,7 +145,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -182,7 +153,7 @@ namespace Rebellion.Tests.Game.Missions
 
             enemyPlanet.AddVisitor("empire");
             SpecialForces reconTeam = CreateReconTeam("empire");
-            game.AttachNode(reconTeam, empPlanet);
+            game.AttachNode(reconTeam, empirePlanet);
 
             Mission mission = CreateMission(
                 game,
@@ -200,7 +171,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -222,14 +193,14 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
             SpecialForces reconTeam = CreateReconTeam("empire");
-            game.AttachNode(reconTeam, empPlanet);
+            game.AttachNode(reconTeam, empirePlanet);
 
             Mission mission = CreateMission(
                 game,
@@ -268,6 +239,35 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(10, deserialized.MaxProgress);
             Assert.AreEqual(5, deserialized.CurrentProgress);
+        }
+
+        private static Mission CreateMission(
+            GameRoot game,
+            string owner,
+            Planet target,
+            List<IMissionParticipant> main,
+            List<IMissionParticipant> decoy
+        )
+        {
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Reconnaissance,
+                game,
+                owner,
+                target,
+                main,
+                decoy
+            );
+        }
+
+        private static SpecialForces CreateReconTeam(string owner)
+        {
+            return new SpecialForces
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = owner,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+            };
         }
 
         private class ThrowingRNG : IRandomNumberProvider

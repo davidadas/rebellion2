@@ -88,6 +88,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         }
 
         [Test]
+        public void BuildGalaxyOverview_NullFaction_ReturnsEmpty()
+        {
+            IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(null);
+
+            Assert.IsEmpty(rows);
+        }
+
+        [Test]
+        public void BuildGalaxyOverview_UnitCarriedByMovingFleet_ExcludesUnit()
+        {
+            Faction faction = new Faction { InstanceID = "faction" };
+            Regiment regiment = new Regiment
+            {
+                TypeID = "regiment",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CapitalShip ship = new CapitalShip();
+            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            ship.SetParent(fleet);
+            regiment.SetParent(ship);
+            faction.AddOwnedUnit(regiment);
+
+            IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(
+                faction
+            );
+
+            Assert.IsEmpty(rows);
+        }
+
+        [Test]
         public void BuildObjectives_ConfiguredConditionsAndVictoryMode_ReturnsVisibleResultsInOrder()
         {
             GameRoot game = new GameRoot
@@ -137,36 +167,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
                 new[] { "Held", "Not Held" },
                 rows.Select(row => row.PrimaryText)
             );
-        }
-
-        [Test]
-        public void BuildGalaxyOverview_NullFaction_ReturnsEmpty()
-        {
-            IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(null);
-
-            Assert.IsEmpty(rows);
-        }
-
-        [Test]
-        public void BuildGalaxyOverview_UnitCarriedByMovingFleet_ExcludesUnit()
-        {
-            Faction faction = new Faction { InstanceID = "faction" };
-            Regiment regiment = new Regiment
-            {
-                TypeID = "regiment",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            CapitalShip ship = new CapitalShip();
-            GameFleet fleet = new GameFleet { Movement = new MovementState() };
-            ship.SetParent(fleet);
-            regiment.SetParent(ship);
-            faction.AddOwnedUnit(regiment);
-
-            IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(
-                faction
-            );
-
-            Assert.IsEmpty(rows);
         }
 
         [Test]

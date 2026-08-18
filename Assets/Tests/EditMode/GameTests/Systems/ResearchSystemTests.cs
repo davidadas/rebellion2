@@ -28,8 +28,8 @@ namespace Rebellion.Tests.Systems
             _faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _game.Factions.Add(_faction);
 
-            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
-            _game.AttachNode(sys, _game.Galaxy);
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            _game.AttachNode(system, _game.Galaxy);
 
             _planet = new Planet
             {
@@ -38,42 +38,9 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 20,
             };
-            _game.AttachNode(_planet, sys);
+            _game.AttachNode(_planet, system);
 
             _system = new ResearchSystem(_game, new StubRNG());
-        }
-
-        private Building CreateShipyard(string id)
-        {
-            return new Building
-            {
-                InstanceID = id,
-                OwnerInstanceID = "FNALL1",
-                BuildingType = BuildingType.Shipyard,
-
-                ProductionType = ManufacturingType.Ship,
-                ProcessRate = 10,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-        }
-
-        private void SetupShipResearchCatalog(
-            params (string name, int order, int difficulty)[] techs
-        )
-        {
-            IManufacturable[] templates = techs
-                .Select(t =>
-                    (IManufacturable)
-                        new CapitalShip
-                        {
-                            DisplayName = t.name,
-                            ResearchOrder = t.order,
-                            ResearchDifficulty = t.difficulty,
-                            ManufacturingFactionInstanceIDs = new List<string> { "FNALL1" },
-                        }
-                )
-                .ToArray();
-            _faction.RebuildResearchCatalog(templates);
         }
 
         [Test]
@@ -205,7 +172,7 @@ namespace Rebellion.Tests.Systems
         {
             PlanetSystem outerRimSystem = new PlanetSystem
             {
-                InstanceID = "sys-outer",
+                InstanceID = "system-outer",
                 SystemType = PlanetSystemType.OuterRim,
             };
             _game.AttachNode(outerRimSystem, _game.Galaxy);
@@ -268,15 +235,15 @@ namespace Rebellion.Tests.Systems
             // Alliance gets 1 shipyard, Empire gets 3
             _game.AttachNode(CreateShipyard("SY1"), _planet);
 
-            Building empSy1 = CreateShipyard("ESY1");
-            empSy1.OwnerInstanceID = "FNEMP1";
-            Building empSy2 = CreateShipyard("ESY2");
-            empSy2.OwnerInstanceID = "FNEMP1";
-            Building empSy3 = CreateShipyard("ESY3");
-            empSy3.OwnerInstanceID = "FNEMP1";
-            _game.AttachNode(empSy1, empirePlanet);
-            _game.AttachNode(empSy2, empirePlanet);
-            _game.AttachNode(empSy3, empirePlanet);
+            Building firstEmpireSystem = CreateShipyard("ESY1");
+            firstEmpireSystem.OwnerInstanceID = "FNEMP1";
+            Building secondEmpireSystem = CreateShipyard("ESY2");
+            secondEmpireSystem.OwnerInstanceID = "FNEMP1";
+            Building thirdEmpireSystem = CreateShipyard("ESY3");
+            thirdEmpireSystem.OwnerInstanceID = "FNEMP1";
+            _game.AttachNode(firstEmpireSystem, empirePlanet);
+            _game.AttachNode(secondEmpireSystem, empirePlanet);
+            _game.AttachNode(thirdEmpireSystem, empirePlanet);
             _game.CurrentTick = 30;
 
             _system.ProcessTick();
@@ -286,6 +253,39 @@ namespace Rebellion.Tests.Systems
                 _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
             );
             Assert.AreEqual(3, empire.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+        }
+
+        private Building CreateShipyard(string id)
+        {
+            return new Building
+            {
+                InstanceID = id,
+                OwnerInstanceID = "FNALL1",
+                BuildingType = BuildingType.Shipyard,
+
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 10,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        private void SetupShipResearchCatalog(
+            params (string name, int order, int difficulty)[] techs
+        )
+        {
+            IManufacturable[] templates = techs
+                .Select(t =>
+                    (IManufacturable)
+                        new CapitalShip
+                        {
+                            DisplayName = t.name,
+                            ResearchOrder = t.order,
+                            ResearchDifficulty = t.difficulty,
+                            ManufacturingFactionInstanceIDs = new List<string> { "FNALL1" },
+                        }
+                )
+                .ToArray();
+            _faction.RebuildResearchCatalog(templates);
         }
     }
 }

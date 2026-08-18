@@ -77,20 +77,6 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Execute_StoresSelectedProposalsOnContext()
-        {
-            AITurnContext context = CreateEmptyContext();
-            TestAIProposal proposal = new TestAIProposal("proposal", new[] { "claim" });
-            proposal.SetScore(10);
-            context.AddProposal(proposal);
-
-            new AISelectionPhase().Execute(context);
-
-            Assert.AreEqual(1, context.SelectedProposals.Count);
-            Assert.AreSame(proposal, context.SelectedProposals[0]);
-        }
-
-        [Test]
         public void Select_WithManufactureProposalBeyondMaintenanceHeadroom_DoesNotSelectProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -130,6 +116,20 @@ namespace Rebellion.Tests.AI.Phases
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
             Assert.AreEqual(0, selected.Count);
+        }
+
+        [Test]
+        public void Execute_StoresSelectedProposalsOnContext()
+        {
+            AITurnContext context = CreateEmptyContext();
+            TestAIProposal proposal = new TestAIProposal("proposal", new[] { "claim" });
+            proposal.SetScore(10);
+            context.AddProposal(proposal);
+
+            new AISelectionPhase().Execute(context);
+
+            Assert.AreEqual(1, context.SelectedProposals.Count);
+            Assert.AreSame(proposal, context.SelectedProposals[0]);
         }
 
         private static AITurnContext CreateEmptyContext()

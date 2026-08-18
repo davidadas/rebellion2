@@ -14,66 +14,6 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class UnitSeederTests
     {
-        private static GenerationContext BuildContext(
-            PlanetSystem[] systems,
-            Faction[] factions,
-            GameGenerationConfig config,
-            GalaxyClassificationResult classification,
-            Regiment[] regimentTemplates = null,
-            CapitalShip[] shipTemplates = null,
-            Starfighter[] fighterTemplates = null,
-            SpecialForces[] specialForcesTemplates = null,
-            IRandomNumberProvider rng = null
-        )
-        {
-            GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Systems = systems;
-            ctx.Factions = factions;
-            ctx.Config = config;
-            ctx.Classification = classification;
-            ctx.Summary.PlayerFactionID = "FNALL1";
-            if (regimentTemplates != null)
-                ctx.Regiments = regimentTemplates;
-            if (shipTemplates != null)
-                ctx.CapitalShips = shipTemplates;
-            if (fighterTemplates != null)
-                ctx.Starfighters = fighterTemplates;
-            if (specialForcesTemplates != null)
-                ctx.SpecialForces = specialForcesTemplates;
-            if (rng != null)
-                ctx.Rng = rng;
-            return ctx;
-        }
-
-        private static Planet OwnedPlanet(
-            string id,
-            string owner,
-            int ownerSupport,
-            string typeId = null
-        )
-        {
-            Planet planet = new Planet
-            {
-                InstanceID = id,
-                TypeID = typeId ?? id,
-                OwnerInstanceID = owner,
-                IsColonized = true,
-            };
-            planet.SetPopularSupport(owner, ownerSupport);
-            return planet;
-        }
-
-        private static PlanetSystem WrapSystem(Planet planet)
-        {
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = $"sys_{planet.InstanceID}",
-                SystemType = PlanetSystemType.CoreSystem,
-            };
-            system.Planets.Add(planet);
-            return system;
-        }
-
         [Test]
         public void Seed_UprisingThresholdNotMet_AddsGarrisonTroops()
         {
@@ -729,6 +669,66 @@ namespace Rebellion.Tests.Generation
                     && unit.Movement == null
                 )
             );
+        }
+
+        private static GenerationContext BuildContext(
+            PlanetSystem[] systems,
+            Faction[] factions,
+            GameGenerationConfig config,
+            GalaxyClassificationResult classification,
+            Regiment[] regimentTemplates = null,
+            CapitalShip[] shipTemplates = null,
+            Starfighter[] fighterTemplates = null,
+            SpecialForces[] specialForcesTemplates = null,
+            IRandomNumberProvider rng = null
+        )
+        {
+            GenerationContext ctx = GenerationContextFactory.CreateDefault();
+            ctx.Systems = systems;
+            ctx.Factions = factions;
+            ctx.Config = config;
+            ctx.Classification = classification;
+            ctx.Summary.PlayerFactionID = "FNALL1";
+            if (regimentTemplates != null)
+                ctx.Regiments = regimentTemplates;
+            if (shipTemplates != null)
+                ctx.CapitalShips = shipTemplates;
+            if (fighterTemplates != null)
+                ctx.Starfighters = fighterTemplates;
+            if (specialForcesTemplates != null)
+                ctx.SpecialForces = specialForcesTemplates;
+            if (rng != null)
+                ctx.Rng = rng;
+            return ctx;
+        }
+
+        private static Planet OwnedPlanet(
+            string id,
+            string owner,
+            int ownerSupport,
+            string typeId = null
+        )
+        {
+            Planet planet = new Planet
+            {
+                InstanceID = id,
+                TypeID = typeId ?? id,
+                OwnerInstanceID = owner,
+                IsColonized = true,
+            };
+            planet.SetPopularSupport(owner, ownerSupport);
+            return planet;
+        }
+
+        private static PlanetSystem WrapSystem(Planet planet)
+        {
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = $"sys_{planet.InstanceID}",
+                SystemType = PlanetSystemType.CoreSystem,
+            };
+            system.Planets.Add(planet);
+            return system;
         }
 
         private static GameGenerationConfig CreateFixedFleetTargetConfig()

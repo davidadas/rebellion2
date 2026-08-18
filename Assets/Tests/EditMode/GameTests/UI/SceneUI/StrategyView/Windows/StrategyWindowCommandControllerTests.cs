@@ -239,24 +239,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
-        public void OpenMoveConfirmWindow_ConfirmedMove_MovesUnitAndRefreshesSource()
-        {
-            _controller.OpenMoveConfirmWindow(
-                _sourceWindow,
-                new StrategyMissionTarget(_destination, null),
-                new ISceneNode[] { _officer }
-            );
-
-            ConfirmOpenDialog();
-
-            Assert.AreEqual("target", _officer.GetParentOfType<Planet>().InstanceID);
-            Assert.IsNotNull(_officer.Movement);
-            Assert.AreSame(_sourceWindow, _clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
-            Assert.AreEqual(1, _dirtyCount);
-        }
-
-        [Test]
         public void ExecuteTargetedCommand_CreateMission_OpensMissionCreateWindow()
         {
             _controller.ExecuteTargetedCommand(
@@ -273,6 +255,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             UIWindow window = _windowManager.Windows.Single();
             Assert.IsTrue(window.Modal);
             Assert.IsTrue(_windowManager.TryGetWindowView(window, out MissionCreateWindowView _));
+        }
+
+        [Test]
+        public void OpenMoveConfirmWindow_ConfirmedMove_MovesUnitAndRefreshesSource()
+        {
+            _controller.OpenMoveConfirmWindow(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { _officer }
+            );
+
+            ConfirmOpenDialog();
+
+            Assert.AreEqual("target", _officer.GetParentOfType<Planet>().InstanceID);
+            Assert.IsNotNull(_officer.Movement);
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+            Assert.AreEqual(1, _rebuildCount);
+            Assert.AreEqual(1, _dirtyCount);
         }
 
         [Test]

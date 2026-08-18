@@ -125,18 +125,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
-        {
-            BattleAlertWindowController controller = CreateController();
-            BattleAlertWindowView view = UnityEngine.Object.Instantiate(
-                _windowLayer.BattleAlertWindowPrefab,
-                _rootObject.transform
-            );
-
-            Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
-        }
-
-        [Test]
         public void SyncPendingCombatWindow_NoPendingCombat_DoesNotCreateWindow()
         {
             _pending = null;
@@ -193,19 +181,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void RetreatButton_ResolvedCombat_PreservesResultAndRoutesRefresh()
-        {
-            BattleAlertWindowView view = OpenWindow(out UIWindow _);
-
-            FindButton(view, "RetreatButtonImage").onClick.Invoke();
-
-            Assert.IsTrue(_controller.HasCombatResult(view));
-            Assert.AreEqual(1, _stopMusicCount);
-            Assert.AreEqual(1, _actions.RebuildCount);
-            Assert.AreEqual(2, _dirtyCount);
-        }
-
-        [Test]
         public void SyncPendingCombatWindow_ResultWithPendingCleared_PreservesResultWindow()
         {
             BattleAlertWindowView view = OpenWindow(out UIWindow _);
@@ -217,6 +192,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(changed);
             Assert.AreSame(view, _controller.FindWindow());
             Assert.IsTrue(_controller.HasCombatResult(view));
+        }
+
+        [Test]
+        public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
+        {
+            BattleAlertWindowController controller = CreateController();
+            BattleAlertWindowView view = UnityEngine.Object.Instantiate(
+                _windowLayer.BattleAlertWindowPrefab,
+                _rootObject.transform
+            );
+
+            Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
+        }
+
+        [Test]
+        public void RetreatButton_ResolvedCombat_PreservesResultAndRoutesRefresh()
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+
+            FindButton(view, "RetreatButtonImage").onClick.Invoke();
+
+            Assert.IsTrue(_controller.HasCombatResult(view));
+            Assert.AreEqual(1, _stopMusicCount);
+            Assert.AreEqual(1, _actions.RebuildCount);
+            Assert.AreEqual(2, _dirtyCount);
         }
 
         [Test]

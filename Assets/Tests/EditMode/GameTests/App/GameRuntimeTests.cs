@@ -8,31 +8,31 @@ namespace Rebellion.Tests.App
     [TestFixture]
     public sealed class GameRuntimeTests
     {
-        private ContentPack contentPack;
-        private UserGameplaySettings gameplaySettings;
-        private GameRuntime runtime;
-        private SaveGameManager saveGameManager;
-        private string saveDirectoryPath;
+        private ContentPack _contentPack;
+        private UserGameplaySettings _gameplaySettings;
+        private GameRuntime _runtime;
+        private SaveGameManager _saveGameManager;
+        private string _saveDirectoryPath;
 
         [SetUp]
         public void SetUp()
         {
-            contentPack = TestContent.Pack;
-            saveDirectoryPath = Path.Combine(
+            _contentPack = TestContent.Pack;
+            _saveDirectoryPath = Path.Combine(
                 Path.GetTempPath(),
                 nameof(GameRuntimeTests),
                 Guid.NewGuid().ToString("N")
             );
-            gameplaySettings = new UserGameplaySettings();
-            saveGameManager = new SaveGameManager(saveDirectoryPath);
-            runtime = new GameRuntime(contentPack, saveGameManager, () => gameplaySettings);
+            _gameplaySettings = new UserGameplaySettings();
+            _saveGameManager = new SaveGameManager(_saveDirectoryPath);
+            _runtime = new GameRuntime(_contentPack, _saveGameManager, () => _gameplaySettings);
         }
 
         [TearDown]
         public void TearDown()
         {
-            if (Directory.Exists(saveDirectoryPath))
-                Directory.Delete(saveDirectoryPath, true);
+            if (Directory.Exists(_saveDirectoryPath))
+                Directory.Delete(_saveDirectoryPath, true);
         }
 
         [Test]
@@ -40,17 +40,17 @@ namespace Rebellion.Tests.App
         {
             GameRoot game = CreateGame();
             game.CurrentTick = 123;
-            GameManager manager = runtime.StartGame(game);
+            GameManager manager = _runtime.StartGame(game);
             GameRoot replacement = null;
             manager.GameReplaced += loadedGame => replacement = loadedGame;
 
-            runtime.QuickSave();
+            _runtime.QuickSave();
             game.CurrentTick = 999;
-            runtime.QuickLoad();
+            _runtime.QuickLoad();
 
             Assert.IsNotNull(replacement);
             Assert.AreNotSame(game, replacement);
-            Assert.AreSame(replacement, runtime.GetActiveGame());
+            Assert.AreSame(replacement, _runtime.GetActiveGame());
             Assert.AreEqual(123, replacement.CurrentTick);
         }
 
@@ -59,7 +59,7 @@ namespace Rebellion.Tests.App
         {
             GameRoot game = CreateGame();
 
-            Assert.DoesNotThrow(() => runtime.ValidateGameContent(game));
+            Assert.DoesNotThrow(() => _runtime.ValidateGameContent(game));
         }
 
         [Test]
@@ -67,7 +67,7 @@ namespace Rebellion.Tests.App
         {
             GameRoot game = new GameRoot { Summary = new GameSummary() };
 
-            Assert.Throws<InvalidOperationException>(() => runtime.ValidateGameContent(game));
+            Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
         [Test]
@@ -76,7 +76,7 @@ namespace Rebellion.Tests.App
             GameRoot game = CreateGame();
             game.Summary.PackID = "different-pack";
 
-            Assert.Throws<InvalidOperationException>(() => runtime.ValidateGameContent(game));
+            Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
         [Test]
@@ -85,7 +85,7 @@ namespace Rebellion.Tests.App
             GameRoot game = CreateGame();
             game.Summary.PackVersion = "different-version";
 
-            Assert.Throws<InvalidOperationException>(() => runtime.ValidateGameContent(game));
+            Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
         [Test]
@@ -94,7 +94,7 @@ namespace Rebellion.Tests.App
             GameRoot game = CreateGame();
             game.Summary.ScenarioID = "different-scenario";
 
-            Assert.Throws<InvalidOperationException>(() => runtime.ValidateGameContent(game));
+            Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
         private GameRoot CreateGame()
@@ -103,9 +103,9 @@ namespace Rebellion.Tests.App
             {
                 Summary = new GameSummary
                 {
-                    PackID = contentPack.Definition.ID,
-                    PackVersion = contentPack.Definition.Version,
-                    ScenarioID = contentPack.Scenario.ID,
+                    PackID = _contentPack.Definition.ID,
+                    PackVersion = _contentPack.Definition.Version,
+                    ScenarioID = _contentPack.Scenario.ID,
                 },
             };
         }

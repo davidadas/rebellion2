@@ -57,6 +57,36 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void SetManufacturingStatus_BuildingToComplete_UpdatesSuccessfully()
+        {
+            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
+
+            building.SetManufacturingStatus(ManufacturingStatus.Complete);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+        }
+
+        [Test]
+        public void SetManufacturingStatus_CompleteToComplete_UpdatesSuccessfully()
+        {
+            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
+
+            building.SetManufacturingStatus(ManufacturingStatus.Complete);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+        }
+
+        [Test]
+        public void SetManufacturingStatus_BuildingToBuilding_UpdatesSuccessfully()
+        {
+            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
+
+            building.SetManufacturingStatus(ManufacturingStatus.Building);
+
+            Assert.AreEqual(ManufacturingStatus.Building, building.ManufacturingStatus);
+        }
+
+        [Test]
         public void IsMovable_IdleStatus_ReturnsTrue()
         {
             Building building = new Building { Movement = null };
@@ -102,36 +132,6 @@ namespace Rebellion.Tests.Game.Units
             Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
 
             Assert.AreEqual(ManufacturingStatus.Complete, building.GetManufacturingStatus());
-        }
-
-        [Test]
-        public void SetManufacturingStatus_BuildingToComplete_UpdatesSuccessfully()
-        {
-            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
-
-            building.SetManufacturingStatus(ManufacturingStatus.Complete);
-
-            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
-        }
-
-        [Test]
-        public void SetManufacturingStatus_CompleteToComplete_UpdatesSuccessfully()
-        {
-            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
-
-            building.SetManufacturingStatus(ManufacturingStatus.Complete);
-
-            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
-        }
-
-        [Test]
-        public void SetManufacturingStatus_BuildingToBuilding_UpdatesSuccessfully()
-        {
-            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
-
-            building.SetManufacturingStatus(ManufacturingStatus.Building);
-
-            Assert.AreEqual(ManufacturingStatus.Building, building.ManufacturingStatus);
         }
 
         [Test]

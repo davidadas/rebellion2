@@ -40,22 +40,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
-        public void GetAllThemes_MutatedResult_DoesNotChangeLibraryContents()
-        {
-            List<FactionTheme> themes = _library.GetAllThemes();
-            string[] configuredIds = themes.Select(theme => theme.FactionInstanceID).ToArray();
-
-            themes.Clear();
-
-            Assert.IsNotEmpty(configuredIds);
-            CollectionAssert.AreEqual(
-                configuredIds,
-                _library.GetAllThemes().Select(theme => theme.FactionInstanceID).ToArray()
-            );
-            Assert.IsFalse(configuredIds.Contains("DEFAULT"));
-        }
-
-        [Test]
         public void GetTheme_StrategyMusicContainsFactionTrackMappingsAndCadence()
         {
             StrategyMusicTheme allianceMusic = _library.GetTheme("FNALL1").StrategyMusic;
@@ -104,6 +88,22 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual(300, allianceMusic.StrongAdvantageMinimumRatio);
             Assert.AreEqual(200, allianceMusic.AdvantageMinimumRatio);
             Assert.AreEqual(50, allianceMusic.DisadvantageMaximumRatio);
+        }
+
+        [Test]
+        public void GetAllThemes_MutatedResult_DoesNotChangeLibraryContents()
+        {
+            List<FactionTheme> themes = _library.GetAllThemes();
+            string[] configuredIds = themes.Select(theme => theme.FactionInstanceID).ToArray();
+
+            themes.Clear();
+
+            Assert.IsNotEmpty(configuredIds);
+            CollectionAssert.AreEqual(
+                configuredIds,
+                _library.GetAllThemes().Select(theme => theme.FactionInstanceID).ToArray()
+            );
+            Assert.IsFalse(configuredIds.Contains("DEFAULT"));
         }
     }
 }

@@ -30,6 +30,23 @@ namespace Rebellion.Tests.Managers
         }
 
         /// <summary>
+        /// Verifies discovery falls back to a fitting common 16:9 mode when none are reported.
+        /// </summary>
+        [Test]
+        public void GetSupportedResolutions_NoReportedModes_ReturnsNativeFittingFallback()
+        {
+            DisplayManager manager = CreateManager(
+                System.Array.Empty<Vector2Int>(),
+                new Vector2Int(3440, 1440)
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { new Vector2Int(2560, 1440) },
+                manager.GetSupportedResolutions()
+            );
+        }
+
+        /// <summary>
         /// Verifies that an unavailable ultrawide request selects the largest fitting 16:9 mode.
         /// </summary>
         [Test]
@@ -66,23 +83,6 @@ namespace Rebellion.Tests.Managers
             );
 
             Assert.AreEqual(new Vector2Int(1920, 1080), manager.ResolveResolution(1920, 1080));
-        }
-
-        /// <summary>
-        /// Verifies discovery falls back to a fitting common 16:9 mode when none are reported.
-        /// </summary>
-        [Test]
-        public void GetSupportedResolutions_NoReportedModes_ReturnsNativeFittingFallback()
-        {
-            DisplayManager manager = CreateManager(
-                System.Array.Empty<Vector2Int>(),
-                new Vector2Int(3440, 1440)
-            );
-
-            CollectionAssert.AreEqual(
-                new[] { new Vector2Int(2560, 1440) },
-                manager.GetSupportedResolutions()
-            );
         }
 
         /// <summary>

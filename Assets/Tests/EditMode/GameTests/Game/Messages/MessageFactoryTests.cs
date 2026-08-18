@@ -18,9 +18,9 @@ namespace Rebellion.Tests.Game.Messages
     [TestFixture]
     public class MessageFactoryTests
     {
-        private static readonly Dictionary<Message, MessageDeliveryRequest> DeliveriesByMessage =
+        private static readonly Dictionary<Message, MessageDeliveryRequest> _deliveriesByMessage =
             new Dictionary<Message, MessageDeliveryRequest>();
-        private static readonly Dictionary<MessageDeliveryRequest, Message> MessagesByDelivery =
+        private static readonly Dictionary<MessageDeliveryRequest, Message> _messagesByDelivery =
             new Dictionary<MessageDeliveryRequest, Message>();
 
         [Test]
@@ -1359,7 +1359,7 @@ namespace Rebellion.Tests.Game.Messages
                 "title",
                 "Successful.  {details}",
                 outcome: MessageResultOutcome.Success,
-                missionTypeID: MissionTypeIDs.Espionage
+                missionTypeId: MissionTypeIDs.Espionage
             );
             definition.DetailListHeaderTemplate = "Additional systems:";
             definition.DetailListItemTemplate = "\n     {system}";
@@ -1415,7 +1415,7 @@ namespace Rebellion.Tests.Game.Messages
                             "title",
                             "Successful.  {details}",
                             outcome: MessageResultOutcome.Success,
-                            missionTypeID: MissionTypeIDs.Espionage
+                            missionTypeId: MissionTypeIDs.Espionage
                         ),
                     },
                     new MissionCompletedResult
@@ -1472,7 +1472,7 @@ namespace Rebellion.Tests.Game.Messages
                             "{participant} recruits {officer}",
                             "body",
                             outcome: MessageResultOutcome.Success,
-                            missionTypeID: MissionTypeIDs.Recruitment
+                            missionTypeId: MissionTypeIDs.Recruitment
                         ),
                     },
                     new MissionCompletedResult
@@ -1657,7 +1657,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{mission}:{system}",
                             imagePaths: FactionImages(),
                             outcome: MessageResultOutcome.Failed,
-                            missionTypeID: MissionTypeIDs.Sabotage
+                            missionTypeId: MissionTypeIDs.Sabotage
                         ),
                         Definition(
                             MessageResultType.MissionReport,
@@ -1666,7 +1666,7 @@ namespace Rebellion.Tests.Game.Messages
                             "missing-body:{mission}:{system}",
                             imagePaths: FactionImages(),
                             outcome: MessageResultOutcome.Failed,
-                            missionTypeID: MissionTypeIDs.Sabotage,
+                            missionTypeId: MissionTypeIDs.Sabotage,
                             missionCompletionReason: MissionCompletionReason.TargetUnavailable
                         ),
                     },
@@ -1708,7 +1708,7 @@ namespace Rebellion.Tests.Game.Messages
                         "body:{mission}:{system}",
                         imagePaths: FactionImages(),
                         outcome: MessageResultOutcome.Failed,
-                        missionTypeID: MissionTypeIDs.Sabotage
+                        missionTypeId: MissionTypeIDs.Sabotage
                     ),
                 },
                 new MissionCompletedResult
@@ -1755,7 +1755,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{mission}:{system}",
                             DefaultImage("diplomacy-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeID: MissionTypeIDs.Diplomacy
+                            missionTypeId: MissionTypeIDs.Diplomacy
                         ),
                     },
                     new MissionCompletedResult
@@ -1805,7 +1805,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{officer}:{assassination_result}",
                             DefaultImage("mission-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeID: MissionTypeIDs.Assassination
+                            missionTypeId: MissionTypeIDs.Assassination
                         ),
                     },
                     new MissionCompletedResult
@@ -1856,7 +1856,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{officer}:{assassination_result}",
                             DefaultImage("mission-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeID: MissionTypeIDs.Assassination
+                            missionTypeId: MissionTypeIDs.Assassination
                         ),
                     },
                     new MissionCompletedResult
@@ -1903,7 +1903,7 @@ namespace Rebellion.Tests.Game.Messages
                             "success:{mission}:{system}",
                             "body:{mission}:{system}",
                             outcome: MessageResultOutcome.Success,
-                            missionTypeID: MissionTypeIDs.Reconnaissance,
+                            missionTypeId: MissionTypeIDs.Reconnaissance,
                             imageKey: "mission_report"
                         ),
                     },
@@ -1970,7 +1970,7 @@ namespace Rebellion.Tests.Game.Messages
                             "report:{participant}",
                             "body:{participant}",
                             outcome: MessageResultOutcome.Success,
-                            missionTypeID: MissionTypeIDs.JediTraining,
+                            missionTypeId: MissionTypeIDs.JediTraining,
                             imageKey: "mission_report"
                         ),
                     },
@@ -2032,7 +2032,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{participant}:{officer}:{system}",
                             DefaultImage("recruitment-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeID: MissionTypeIDs.Recruitment
+                            missionTypeId: MissionTypeIDs.Recruitment
                         ),
                     },
                     new MissionCompletedResult
@@ -2066,7 +2066,7 @@ namespace Rebellion.Tests.Game.Messages
                             "mission-body",
                             DefaultImage("recruitment-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeID: MissionTypeIDs.Recruitment
+                            missionTypeId: MissionTypeIDs.Recruitment
                         ),
                         Definition(
                             MessageResultType.RecruitmentExhausted,
@@ -2117,7 +2117,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{mission}:{system}",
                             DefaultImage("diplomacy-image"),
                             outcome: MessageResultOutcome.Failed,
-                            missionTypeID: MissionTypeIDs.Diplomacy
+                            missionTypeId: MissionTypeIDs.Diplomacy
                         ),
                     },
                     new MissionCompletedResult
@@ -3899,7 +3899,7 @@ namespace Rebellion.Tests.Game.Messages
             MessageFactory factory = new MessageFactory(definitions);
             List<MessageDeliveryRequest> deliveries = factory.CreateMessages(results, game);
             foreach (MessageDeliveryRequest delivery in deliveries)
-                DeliveriesByMessage[AsMessage(delivery)] = delivery;
+                _deliveriesByMessage[AsMessage(delivery)] = delivery;
             return deliveries;
         }
 
@@ -3917,11 +3917,11 @@ namespace Rebellion.Tests.Game.Messages
         ) => deliveries.First(delivery => delivery.Recipient == faction);
 
         private static MessageDeliveryRequest DeliveryFor(Message message) =>
-            DeliveriesByMessage[message];
+            _deliveriesByMessage[message];
 
         private static Message AsMessage(MessageDeliveryRequest request)
         {
-            if (MessagesByDelivery.TryGetValue(request, out Message existing))
+            if (_messagesByDelivery.TryGetValue(request, out Message existing))
                 return existing;
 
             Message message = new Message(request.MessageType, request.Subject, request.Body)
@@ -3938,7 +3938,7 @@ namespace Rebellion.Tests.Game.Messages
                 NavigationSecondaryTargetInstanceID = request.NavigationSecondaryTargetInstanceID,
                 MissionInstanceID = request.MissionInstanceID,
             };
-            MessagesByDelivery.Add(request, message);
+            _messagesByDelivery.Add(request, message);
             return message;
         }
 
@@ -3953,7 +3953,7 @@ namespace Rebellion.Tests.Game.Messages
             BuildingType buildingType = BuildingType.None,
             ManufacturingType manufacturingType = ManufacturingType.None,
             ResearchDiscipline? researchDiscipline = null,
-            string missionTypeID = null,
+            string missionTypeId = null,
             MissionCompletionReason missionCompletionReason = MissionCompletionReason.None,
             string imageKey = null,
             string voicePath = null,
@@ -3969,7 +3969,7 @@ namespace Rebellion.Tests.Game.Messages
                 MessageType = messageType,
                 Outcome = outcome,
                 PlanetOwnership = planetOwnership,
-                MissionTypeID = missionTypeID,
+                MissionTypeID = missionTypeId,
                 MissionCompletionReason = missionCompletionReason,
                 BuildingType = buildingType,
                 ManufacturingType = manufacturingType,

@@ -12,7 +12,6 @@
 /[Uu]ser[Ss]ettings/
 
 # Unity Files
-*.meta
 Unity_lic.alf
 /temp
 /[Ll]ibrary/
@@ -51,7 +50,9 @@ Assets/TextMesh Pro/
 
 # UI builders are the source of truth for every prefab and scene.
 /Assets/Prefabs/
+/Assets/Prefabs.meta
 /Assets/Scenes/
+/Assets/Scenes.meta
 
 # C# Files
 **/*.sln

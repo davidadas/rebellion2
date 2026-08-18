@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Events;
 
@@ -43,6 +44,31 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.AreEqual(10, minimum);
             Assert.AreEqual(30, maximum);
+        }
+
+        [Test]
+        public void Serialization_ExplicitAfterAllDependencies_PreservesOrder()
+        {
+            GameEventScheduler scheduler = new GameEventScheduler
+            {
+                AfterAll = new AfterEvents
+                {
+                    DelayTicks = 25,
+                    Events = new List<EventDependency>
+                    {
+                        new EventDependency { EventInstanceID = "FIRST" },
+                        new EventDependency { EventInstanceID = "SECOND" },
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize(scheduler);
+            GameEventScheduler restored = SerializationHelper.Deserialize<GameEventScheduler>(xml);
+
+            CollectionAssert.AreEqual(
+                new[] { "FIRST", "SECOND" },
+                restored.AfterAll.Events.ConvertAll(dependency => dependency.EventInstanceID)
+            );
         }
     }
 }

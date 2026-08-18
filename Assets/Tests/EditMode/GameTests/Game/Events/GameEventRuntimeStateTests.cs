@@ -26,5 +26,15 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.AreSame(first, second);
         }
+
+        [Test]
+        public void GetVariable_MissingKey_ReturnsZero()
+        {
+            GameEventRuntimeState state = new GameEventRuntimeState();
+
+            int value = state.GetVariable("unset");
+
+            Assert.AreEqual(0, value);
+        }
     }
 }

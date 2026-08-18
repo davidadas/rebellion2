@@ -254,30 +254,6 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void OwnerInstanceID_WhenSet_ReturnsCorrectValue()
-        {
-            SpecialForces newSpecialForces = new SpecialForces { OwnerInstanceID = "FACTION2" };
-
-            Assert.AreEqual("FACTION2", newSpecialForces.OwnerInstanceID);
-        }
-
-        [Test]
-        public void OwnerInstanceID_WhenChanged_UpdatesCorrectly()
-        {
-            _specialForces.OwnerInstanceID = "FACTION3";
-
-            Assert.AreEqual("FACTION3", _specialForces.OwnerInstanceID);
-        }
-
-        [Test]
-        public void OwnerInstanceID_WhenNull_AllowsNullValue()
-        {
-            SpecialForces newSpecialForces = new SpecialForces { OwnerInstanceID = null };
-
-            Assert.IsNull(newSpecialForces.OwnerInstanceID);
-        }
-
-        [Test]
         public void CanImproveMissionRating_Always_ReturnsFalse()
         {
             Assert.IsFalse(

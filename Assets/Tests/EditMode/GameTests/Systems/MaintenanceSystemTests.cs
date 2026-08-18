@@ -16,57 +16,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class MaintenanceSystemTests
     {
-        private GameRoot CreateGame()
-        {
-            return new GameRoot(TestConfig.Create());
-        }
-
-        private Faction CreateFaction(string id, string name)
-        {
-            return new Faction { InstanceID = id, DisplayName = name };
-        }
-
-        private Planet CreatePlanet(string id, string name, string ownerID)
-        {
-            return new Planet
-            {
-                InstanceID = id,
-                DisplayName = name,
-                OwnerInstanceID = ownerID,
-                IsColonized = true,
-                EnergyCapacity = 10,
-                NumRawResourceNodes = 5,
-            };
-        }
-
-        private Building CreateMine(string id, string ownerID)
-        {
-            return new Building
-            {
-                InstanceID = id,
-                DisplayName = "Mine",
-                OwnerInstanceID = ownerID,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-                MaintenanceCost = 0,
-                ConstructionCost = 1,
-                BuildingType = BuildingType.Mine,
-            };
-        }
-
-        private Building CreateRefinery(string id, string ownerID)
-        {
-            return new Building
-            {
-                InstanceID = id,
-                DisplayName = "Refinery",
-                OwnerInstanceID = ownerID,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-                MaintenanceCost = 0,
-                ConstructionCost = 1,
-                BuildingType = BuildingType.Refinery,
-            };
-        }
-
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
@@ -416,64 +365,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void GetMaintenanceCapacity_FactionWithPlanets_CalculatesCorrectly()
-        {
-            GameRoot game = CreateGame();
-            Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
-
-            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
-            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
-            game.AttachNode(system, game.GetGalaxyMap());
-            game.AttachNode(planet, system);
-            game.AttachNode(CreateMine("mine1", "empire"), planet);
-            game.AttachNode(CreateMine("mine2", "empire"), planet);
-            game.AttachNode(CreateRefinery("ref1", "empire"), planet);
-
-            int capacity = empire.MaintenanceCapacity;
-
-            Assert.AreEqual(50, capacity);
-        }
-
-        [Test]
-        public void GetMaintenanceCapacity_RefinementMultiplierDoesNotChangeCapacity()
-        {
-            GameRoot game = CreateGame();
-            Faction empire = CreateFaction("empire", "Empire");
-            empire.Settings.RefinementMultiplier = 1;
-            game.Factions.Add(empire);
-
-            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
-            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
-            game.AttachNode(system, game.GetGalaxyMap());
-            game.AttachNode(planet, system);
-            game.AttachNode(CreateMine("mine1", "empire"), planet);
-            game.AttachNode(CreateRefinery("ref1", "empire"), planet);
-
-            Assert.AreEqual(50, empire.MaintenanceCapacity);
-        }
-
-        [Test]
-        public void GetMaintenanceCapacity_MineAndRefineryOnDifferentPlanets_CalculatesGlobalPair()
-        {
-            GameRoot game = CreateGame();
-            Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
-            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
-            Planet minePlanet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
-            Planet refineryPlanet = CreatePlanet("p2", "Kessel", empire.InstanceID);
-            game.AttachNode(system, game.GetGalaxyMap());
-            game.AttachNode(minePlanet, system);
-            game.AttachNode(refineryPlanet, system);
-            game.AttachNode(CreateMine("mine1", empire.InstanceID), minePlanet);
-            game.AttachNode(CreateRefinery("ref1", empire.InstanceID), refineryPlanet);
-
-            int capacity = empire.MaintenanceCapacity;
-
-            Assert.AreEqual(50, capacity);
-        }
-
-        [Test]
         public void ProcessTick_ExcessBuildingsOverCapacity_ScrapsBuildings()
         {
             GameRoot game = CreateGame();
@@ -551,6 +442,64 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("mine1"));
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+        }
+
+        [Test]
+        public void GetMaintenanceCapacity_FactionWithPlanets_CalculatesCorrectly()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(CreateMine("mine1", "empire"), planet);
+            game.AttachNode(CreateMine("mine2", "empire"), planet);
+            game.AttachNode(CreateRefinery("ref1", "empire"), planet);
+
+            int capacity = empire.MaintenanceCapacity;
+
+            Assert.AreEqual(50, capacity);
+        }
+
+        [Test]
+        public void GetMaintenanceCapacity_RefinementMultiplierDoesNotChangeCapacity()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            empire.Settings.RefinementMultiplier = 1;
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(CreateMine("mine1", "empire"), planet);
+            game.AttachNode(CreateRefinery("ref1", "empire"), planet);
+
+            Assert.AreEqual(50, empire.MaintenanceCapacity);
+        }
+
+        [Test]
+        public void GetMaintenanceCapacity_MineAndRefineryOnDifferentPlanets_CalculatesGlobalPair()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
+            Planet minePlanet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
+            Planet refineryPlanet = CreatePlanet("p2", "Kessel", empire.InstanceID);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(minePlanet, system);
+            game.AttachNode(refineryPlanet, system);
+            game.AttachNode(CreateMine("mine1", empire.InstanceID), minePlanet);
+            game.AttachNode(CreateRefinery("ref1", empire.InstanceID), refineryPlanet);
+
+            int capacity = empire.MaintenanceCapacity;
+
+            Assert.AreEqual(50, capacity);
         }
 
         [Test]
@@ -664,6 +613,57 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.AreSame(planet, regiment.GetParent());
             Assert.IsNull(results);
+        }
+
+        private GameRoot CreateGame()
+        {
+            return new GameRoot(TestConfig.Create());
+        }
+
+        private Faction CreateFaction(string id, string name)
+        {
+            return new Faction { InstanceID = id, DisplayName = name };
+        }
+
+        private Planet CreatePlanet(string id, string name, string ownerId)
+        {
+            return new Planet
+            {
+                InstanceID = id,
+                DisplayName = name,
+                OwnerInstanceID = ownerId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+                NumRawResourceNodes = 5,
+            };
+        }
+
+        private Building CreateMine(string id, string ownerId)
+        {
+            return new Building
+            {
+                InstanceID = id,
+                DisplayName = "Mine",
+                OwnerInstanceID = ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 0,
+                ConstructionCost = 1,
+                BuildingType = BuildingType.Mine,
+            };
+        }
+
+        private Building CreateRefinery(string id, string ownerId)
+        {
+            return new Building
+            {
+                InstanceID = id,
+                DisplayName = "Refinery",
+                OwnerInstanceID = ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 0,
+                ConstructionCost = 1,
+                BuildingType = BuildingType.Refinery,
+            };
         }
     }
 }

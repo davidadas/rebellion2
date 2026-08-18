@@ -211,6 +211,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void TryHandleItemPointerMove_DifferentPress_ClearsCandidateWithoutDragging()
+        {
+            _contextItems = new ISceneNode[] { new Officer() };
+            _hasPreview = true;
+            StrategyDragController controller = CreateController();
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
+            GameObject otherTarget = new GameObject("OtherPress", typeof(RectTransform));
+            otherTarget.transform.SetParent(_window.transform, false);
+            PointerEventData otherPress = CreatePointerEvent(otherTarget);
+
+            StrategyDragEventResult result = controller.TryHandleItemPointerMove(
+                otherPress,
+                50,
+                60
+            );
+            StrategyDragEventResult stalePressRetry = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                50,
+                60
+            );
+
+            Assert.IsFalse(result.Handled);
+            Assert.IsFalse(stalePressRetry.Handled);
+            Assert.IsFalse(controller.TryGetOverlay(out _, out _));
+            Assert.IsFalse(_targetingController.IsTargeting);
+        }
+
+        [Test]
         public void TryHandleItemPointerUp_UnresolvedWithoutState_ReturnsNone()
         {
             StrategyDragController controller = CreateController();
@@ -288,34 +316,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             controller.ClearWindow(_window);
 
             Assert.IsFalse(controller.TryGetOverlay(out _, out _));
-        }
-
-        [Test]
-        public void TryHandleItemPointerMove_DifferentPress_ClearsCandidateWithoutDragging()
-        {
-            _contextItems = new ISceneNode[] { new Officer() };
-            _hasPreview = true;
-            StrategyDragController controller = CreateController();
-            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
-            GameObject otherTarget = new GameObject("OtherPress", typeof(RectTransform));
-            otherTarget.transform.SetParent(_window.transform, false);
-            PointerEventData otherPress = CreatePointerEvent(otherTarget);
-
-            StrategyDragEventResult result = controller.TryHandleItemPointerMove(
-                otherPress,
-                50,
-                60
-            );
-            StrategyDragEventResult stalePressRetry = controller.TryHandleItemPointerMove(
-                _pointerEvent,
-                50,
-                60
-            );
-
-            Assert.IsFalse(result.Handled);
-            Assert.IsFalse(stalePressRetry.Handled);
-            Assert.IsFalse(controller.TryGetOverlay(out _, out _));
-            Assert.IsFalse(_targetingController.IsTargeting);
         }
 
         private StrategyDragController CreateController()

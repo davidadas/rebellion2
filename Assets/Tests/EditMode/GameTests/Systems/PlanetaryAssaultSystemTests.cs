@@ -55,74 +55,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void CanExecute_TwoReadyAndSixMovingRegiments_UsesReadyRegiments()
-        {
-            GameRoot game = CreateGame();
-            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
-            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 8);
-            foreach (Regiment regiment in fleet.CapitalShips[0].Regiments.Skip(2))
-                regiment.Movement = new MovementState();
-            PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
-
-            Assert.IsTrue(system.CanExecute(new List<Fleet> { fleet }, planet));
-            PlanetaryAssaultResult result = system.Execute(new List<Fleet> { fleet }, planet);
-
-            Assert.AreEqual(2, result.InitialAttackerRegimentCount);
-            Assert.IsTrue(result.Success);
-        }
-
-        [Test]
-        public void CanExecute_ShieldedTargetOrNoReadyRegiments_ReturnsFalse()
-        {
-            GameRoot game = CreateGame();
-            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
-            AddDefenseBuilding(game, planet, "shield1", DefenseFacilityClass.Shield);
-            AddDefenseBuilding(game, planet, "shield2", DefenseFacilityClass.Shield);
-            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
-            PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
-
-            bool shielded = system.CanExecute(new List<Fleet> { fleet }, planet);
-            foreach (Building building in planet.GetAllBuildings())
-                building.ManufacturingStatus = ManufacturingStatus.Building;
-            fleet.CapitalShips[0].Regiments[0].Movement = new MovementState();
-            bool noReadyRegiments = system.CanExecute(new List<Fleet> { fleet }, planet);
-
-            Assert.IsFalse(shielded);
-            Assert.IsFalse(noReadyRegiments);
-        }
-
-        [Test]
-        public void CanExecute_NeutralPlanetWithReadyRegiment_ReturnsTrue()
-        {
-            GameRoot game = CreateGame();
-            (Planet planet, _) = CreatePlanet(game, "p1", owner: null, energy: 10);
-            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
-
-            bool canExecute = MakePlanetaryAssault(game, new SequenceRNG())
-                .CanExecute(new List<Fleet> { fleet }, planet);
-
-            Assert.IsTrue(canExecute);
-        }
-
-        [Test]
-        public void TryExecute_ValidCommand_PublishesCompletedResultBatch()
-        {
-            GameRoot game = CreateGame();
-            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
-            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
-            PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
-            IReadOnlyList<GameResult> publishedResults = null;
-            system.ResultsProduced += results => publishedResults = results;
-
-            PlanetaryAssaultResult result = system.TryExecute(new List<Fleet> { fleet }, planet);
-
-            Assert.IsNotNull(publishedResults);
-            Assert.AreSame(result, publishedResults[0]);
-            Assert.IsTrue(publishedResults.OfType<PlanetGarrisonChangedResult>().Any());
-            Assert.Contains(result.OwnershipChange, publishedResults.ToList());
-        }
-
-        [Test]
         public void Execute_DefenseFire_UsesInitialAttackerIndexRange()
         {
             GameRoot game = CreateGame();
@@ -347,6 +279,74 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsFalse(fleet.IsInCombat);
             Assert.IsFalse(defenderFleet.IsInCombat);
+        }
+
+        [Test]
+        public void CanExecute_TwoReadyAndSixMovingRegiments_UsesReadyRegiments()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 8);
+            foreach (Regiment regiment in fleet.CapitalShips[0].Regiments.Skip(2))
+                regiment.Movement = new MovementState();
+            PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
+
+            Assert.IsTrue(system.CanExecute(new List<Fleet> { fleet }, planet));
+            PlanetaryAssaultResult result = system.Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.AreEqual(2, result.InitialAttackerRegimentCount);
+            Assert.IsTrue(result.Success);
+        }
+
+        [Test]
+        public void CanExecute_ShieldedTargetOrNoReadyRegiments_ReturnsFalse()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            AddDefenseBuilding(game, planet, "shield1", DefenseFacilityClass.Shield);
+            AddDefenseBuilding(game, planet, "shield2", DefenseFacilityClass.Shield);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
+
+            bool shielded = system.CanExecute(new List<Fleet> { fleet }, planet);
+            foreach (Building building in planet.GetAllBuildings())
+                building.ManufacturingStatus = ManufacturingStatus.Building;
+            fleet.CapitalShips[0].Regiments[0].Movement = new MovementState();
+            bool noReadyRegiments = system.CanExecute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsFalse(shielded);
+            Assert.IsFalse(noReadyRegiments);
+        }
+
+        [Test]
+        public void CanExecute_NeutralPlanetWithReadyRegiment_ReturnsTrue()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: null, energy: 10);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            bool canExecute = MakePlanetaryAssault(game, new SequenceRNG())
+                .CanExecute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsTrue(canExecute);
+        }
+
+        [Test]
+        public void TryExecute_ValidCommand_PublishesCompletedResultBatch()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
+            IReadOnlyList<GameResult> publishedResults = null;
+            system.ResultsProduced += results => publishedResults = results;
+
+            PlanetaryAssaultResult result = system.TryExecute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsNotNull(publishedResults);
+            Assert.AreSame(result, publishedResults[0]);
+            Assert.IsTrue(publishedResults.OfType<PlanetGarrisonChangedResult>().Any());
+            Assert.Contains(result.OwnershipChange, publishedResults.ToList());
         }
 
         private static Fleet AddAssaultFleet(
