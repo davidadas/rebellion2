@@ -201,7 +201,7 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 | `SelectRandom` | Samples its combined candidates by chance and count. |
 | `SelectFirst` | Returns the first valid destination candidate. |
 | `SelectBinding` | Returns the object or collection in a binding. |
-| `SelectAncestors` | Maps candidates to their nearest ancestor of `Type`. |
+| `SelectNearestParent` | Maps candidates to their nearest parent of `Type`. |
 | `SelectPreviousLocation` | Returns a unit's recorded previous location. |
 | `SpawnUnits` | Creates `Count` detached units from a catalog `TypeID` for immediate use by `PlaceUnits`. |
 

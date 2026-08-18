@@ -71,6 +71,28 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void SelectNearestParent_OfficerInFleet_ReturnsContainingPlanet()
+        {
+            GameRoot game = BuildGame(out Planet planet);
+            game.GetFactions().Add(new Faction { InstanceID = "faction" });
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "faction" };
+            CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "faction" };
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(officer, ship);
+            SelectNearestParent selector = new SelectNearestParent
+            {
+                Type = SceneAncestorType.Planet,
+                Selectors = { new SelectOfficers { InstanceID = officer.InstanceID } },
+            };
+
+            Planet selected = selector.Select(game, new StubRNG(), null).Cast<Planet>().Single();
+
+            Assert.AreSame(planet, selected);
+        }
+
+        [Test]
         public void SelectManufacturingOrders_MatchingPlanet_ReturnsQueuedProduct()
         {
             GameRoot game = BuildGame(out Planet planet);
