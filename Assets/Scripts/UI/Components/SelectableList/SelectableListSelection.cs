@@ -6,6 +6,21 @@ using System.Collections.Generic;
 public readonly struct SelectionModifierState
 {
     /// <summary>
+    /// Gets whether individual selection toggling is active.
+    /// </summary>
+    public bool MultiSelect { get; }
+
+    /// <summary>
+    /// Gets whether contiguous range selection is active.
+    /// </summary>
+    public bool RangeSelect { get; }
+
+    /// <summary>
+    /// Gets whether either supported selection modifier is active.
+    /// </summary>
+    public bool HasAnyModifier => MultiSelect || RangeSelect;
+
+    /// <summary>
     /// Creates an immutable selection-modifier snapshot.
     /// </summary>
     /// <param name="multiSelect">Whether individual selection toggling is active.</param>
@@ -15,12 +30,6 @@ public readonly struct SelectionModifierState
         MultiSelect = multiSelect;
         RangeSelect = rangeSelect;
     }
-
-    public bool MultiSelect { get; }
-
-    public bool RangeSelect { get; }
-
-    public bool HasAnyModifier => MultiSelect || RangeSelect;
 }
 
 /// <summary>
