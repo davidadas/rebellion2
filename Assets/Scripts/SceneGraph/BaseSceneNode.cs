@@ -183,45 +183,37 @@ namespace Rebellion.SceneGraph
         protected abstract IEnumerable<ISceneNode> EnumerateChildren();
 
         /// <summary>
-        /// Returns a read-only snapshot of this node's direct children.
+        /// Returns a read-only snapshot of this node's children at the requested depth.
         /// </summary>
+        /// <param name="recursive">Whether to include children at every depth.</param>
         /// <param name="includeDisabled">Whether disabled children may be returned.</param>
-        /// <returns>The direct children.</returns>
-        public IReadOnlyList<ISceneNode> GetChildren(bool includeDisabled = false)
+        /// <returns>The matching children.</returns>
+        public IReadOnlyList<ISceneNode> GetChildren(
+            bool recursive = false,
+            bool includeDisabled = false
+        )
         {
             IEnumerable<ISceneNode> children = EnumerateChildren();
-            return (
+            IReadOnlyList<ISceneNode> directChildren = (
                 includeDisabled ? children : children.Where(child => child.IsEnabledInHierarchy())
             )
                 .ToList()
                 .AsReadOnly();
-        }
 
-        /// <summary>
-        /// Returns a read-only snapshot of direct children assignable to <typeparamref name="T"/>.
-        /// </summary>
-        /// <typeparam name="T">The direct child type to return.</typeparam>
-        /// <param name="includeDisabled">Whether disabled children may be returned.</param>
-        /// <returns>The matching direct children.</returns>
-        public IReadOnlyList<T> GetChildren<T>(bool includeDisabled = false)
-            where T : class, ISceneNode
-        {
-            return GetChildren(includeDisabled).OfType<T>().ToList().AsReadOnly();
-        }
+            if (!recursive)
+                return directChildren;
 
-        /// <summary>
-        /// Returns a read-only snapshot of all descendants of this node.
-        /// </summary>
-        /// <param name="includeDisabled">Whether disabled branches may be traversed.</param>
-        /// <returns>All descendants.</returns>
-        public IReadOnlyList<ISceneNode> GetDescendants(bool includeDisabled = false)
-        {
             List<ISceneNode> descendants = new List<ISceneNode>();
             HashSet<ISceneNode> currentPath = new HashSet<ISceneNode> { this };
 
             void Collect(ISceneNode node)
             {
-                foreach (ISceneNode child in node.GetChildren(includeDisabled))
+                foreach (
+                    ISceneNode child in node.GetChildren(
+                        recursive: false,
+                        includeDisabled: includeDisabled
+                    )
+                )
                 {
                     if (!currentPath.Add(child))
                         throw new InvalidOperationException("Cycle detected in scene graph.");
@@ -236,15 +228,16 @@ namespace Rebellion.SceneGraph
         }
 
         /// <summary>
-        /// Returns a read-only snapshot of descendants assignable to <typeparamref name="T"/>.
+        /// Returns a read-only snapshot of children assignable to <typeparamref name="T"/> at the requested depth.
         /// </summary>
-        /// <typeparam name="T">The descendant type to return.</typeparam>
-        /// <param name="includeDisabled">Whether disabled branches may be traversed.</param>
-        /// <returns>The matching descendants.</returns>
-        public IReadOnlyList<T> GetDescendants<T>(bool includeDisabled = false)
+        /// <typeparam name="T">The child type to return.</typeparam>
+        /// <param name="recursive">Whether to include children at every depth.</param>
+        /// <param name="includeDisabled">Whether disabled children may be returned.</param>
+        /// <returns>The matching children.</returns>
+        public IReadOnlyList<T> GetChildren<T>(bool recursive = false, bool includeDisabled = false)
             where T : class, ISceneNode
         {
-            return GetDescendants(includeDisabled).OfType<T>().ToList().AsReadOnly();
+            return GetChildren(recursive, includeDisabled).OfType<T>().ToList().AsReadOnly();
         }
 
         /// <summary>

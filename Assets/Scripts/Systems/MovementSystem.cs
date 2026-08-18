@@ -1586,7 +1586,7 @@ namespace Rebellion.Systems
                 return;
 
             List<IMovable> inboundUnits = result
-                .Planet.GetDescendants<IMovable>()
+                .Planet.GetChildren<IMovable>(recursive: true)
                 .Where(unit => unit.Movement != null)
                 .Where(unit => unit.GetOwnerInstanceID() != blockadingOwner)
                 .ToList();
@@ -1998,7 +1998,7 @@ namespace Rebellion.Systems
         {
             foreach (
                 IMovable joiner in fleet
-                    .GetDescendants<IMovable>()
+                    .GetChildren<IMovable>(recursive: true)
                     .Where(movable => movable.Movement != null)
             )
                 RetargetMovement(joiner, destinationPlanet);

@@ -109,34 +109,21 @@ namespace Rebellion.SceneGraph
         void RemoveChild(ISceneNode child);
 
         /// <summary>
-        /// Returns all direct children of this node.
+        /// Returns this node's direct children, or all descendants when recursion is enabled.
         /// </summary>
-        /// <returns>The children of this node.</returns>
-        IReadOnlyList<ISceneNode> GetChildren(bool includeDisabled = false);
-
-        /// <summary>
-        /// Returns direct children assignable to <typeparamref name="T"/>.
-        /// </summary>
-        /// <typeparam name="T">The direct child type to return.</typeparam>
+        /// <param name="recursive">Whether to include children at every depth.</param>
         /// <param name="includeDisabled">Whether disabled children may be returned.</param>
-        /// <returns>The matching direct children.</returns>
-        IReadOnlyList<T> GetChildren<T>(bool includeDisabled = false)
-            where T : class, ISceneNode;
+        /// <returns>The matching children.</returns>
+        IReadOnlyList<ISceneNode> GetChildren(bool recursive = false, bool includeDisabled = false);
 
         /// <summary>
-        /// Returns all descendants of this node.
+        /// Returns children assignable to <typeparamref name="T"/> at the requested depth.
         /// </summary>
-        /// <param name="includeDisabled">Whether disabled branches may be traversed.</param>
-        /// <returns>The descendants of this node.</returns>
-        IReadOnlyList<ISceneNode> GetDescendants(bool includeDisabled = false);
-
-        /// <summary>
-        /// Returns descendants assignable to <typeparamref name="T"/>.
-        /// </summary>
-        /// <typeparam name="T">The descendant type to return.</typeparam>
-        /// <param name="includeDisabled">Whether disabled branches may be traversed.</param>
-        /// <returns>The matching descendants.</returns>
-        IReadOnlyList<T> GetDescendants<T>(bool includeDisabled = false)
+        /// <typeparam name="T">The child type to return.</typeparam>
+        /// <param name="recursive">Whether to include children at every depth.</param>
+        /// <param name="includeDisabled">Whether disabled children may be returned.</param>
+        /// <returns>The matching children.</returns>
+        IReadOnlyList<T> GetChildren<T>(bool recursive = false, bool includeDisabled = false)
             where T : class, ISceneNode;
 
         /// <summary>

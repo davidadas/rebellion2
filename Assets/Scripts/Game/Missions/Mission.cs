@@ -544,7 +544,11 @@ namespace Rebellion.Game.Missions
             int sameContainerRating = 0;
             int otherContainerRating = 0;
 
-            foreach (IMissionParticipant candidate in planet.GetDescendants<IMissionParticipant>())
+            foreach (
+                IMissionParticipant candidate in planet.GetChildren<IMissionParticipant>(
+                    recursive: true
+                )
+            )
             {
                 if (candidate.GetOwnerInstanceID() != locationOwnerId || !CanSupportFoil(candidate))
                     continue;

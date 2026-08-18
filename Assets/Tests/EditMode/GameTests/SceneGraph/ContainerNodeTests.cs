@@ -188,7 +188,9 @@ namespace Rebellion.Tests.SceneGraph
             _childNode1.AddChild(_nodeA1);
             _childNode2.AddChild(_nodeB1);
 
-            IEnumerable<MockContainerNode> result = _rootNode.GetDescendants<MockContainerNode>();
+            IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
+                recursive: true
+            );
 
             Assert.AreEqual(4, result.Count(), "Should return all descendants");
             CollectionAssert.Contains(result, _childNode1);
@@ -211,7 +213,7 @@ namespace Rebellion.Tests.SceneGraph
             _childNode2.AddChild(_nodeB1);
 
             IEnumerable<MockContainerNode> result = _rootNode
-                .GetDescendants<MockContainerNode>()
+                .GetChildren<MockContainerNode>(recursive: true)
                 .Where(node => node.OwnerInstanceID == "Owner1");
 
             Assert.AreEqual(2, result.Count(), "Should return only matching descendants");
@@ -227,7 +229,9 @@ namespace Rebellion.Tests.SceneGraph
             _childNode1.AddChild(_nodeB1);
             _nodeB1.AddChild(_nodeA2);
 
-            IEnumerable<MockContainerNodeA> result = _rootNode.GetDescendants<MockContainerNodeA>();
+            IEnumerable<MockContainerNodeA> result = _rootNode.GetChildren<MockContainerNodeA>(
+                recursive: true
+            );
 
             Assert.AreEqual(2, result.Count(), "Should return only type A descendants");
             CollectionAssert.Contains(result, _nodeA1);
@@ -243,7 +247,9 @@ namespace Rebellion.Tests.SceneGraph
             _childNode2.AddChild(_nodeA1);
             _nodeA1.AddChild(_nodeB1);
 
-            IEnumerable<MockContainerNode> result = _rootNode.GetDescendants<MockContainerNode>();
+            IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
+                recursive: true
+            );
 
             Assert.AreEqual(4, result.Count(), "Should return all levels");
             CollectionAssert.Contains(result, _childNode1);
@@ -285,7 +291,9 @@ namespace Rebellion.Tests.SceneGraph
                 allNodes.Add(node);
             }
 
-            IEnumerable<MockContainerNode> result = _rootNode.GetDescendants<MockContainerNode>();
+            IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
+                recursive: true
+            );
 
             Assert.AreEqual(10, result.Count(), "Should return all 10 descendants");
             foreach (MockContainerNode node in allNodes)
@@ -305,7 +313,9 @@ namespace Rebellion.Tests.SceneGraph
             _rootNode.AddChild(_childNode2);
             _childNode1.AddChild(_nodeA1);
 
-            IEnumerable<MockContainerNode> result = _rootNode.GetDescendants<MockContainerNode>();
+            IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
+                recursive: true
+            );
 
             Assert.AreEqual(
                 3,
@@ -345,7 +355,9 @@ namespace Rebellion.Tests.SceneGraph
         {
             _rootNode.AddChild(_childNode1);
 
-            IEnumerable<MockContainerNode> result = _rootNode.GetDescendants<MockContainerNode>();
+            IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
+                recursive: true
+            );
 
             CollectionAssert.DoesNotContain(
                 result,
@@ -366,7 +378,9 @@ namespace Rebellion.Tests.SceneGraph
             rootA.AddChild(_nodeA1);
             rootA.AddChild(_nodeA2);
 
-            IEnumerable<MockContainerNodeA> result = rootA.GetDescendants<MockContainerNodeA>();
+            IEnumerable<MockContainerNodeA> result = rootA.GetChildren<MockContainerNodeA>(
+                recursive: true
+            );
 
             Assert.AreEqual(2, result.Count(), "Should not include self even if type matches");
             CollectionAssert.Contains(result, _nodeA1);
@@ -383,7 +397,7 @@ namespace Rebellion.Tests.SceneGraph
             _rootNode.AddChild(_childNode1);
 
             IEnumerable<MockContainerNode> result = _rootNode
-                .GetDescendants<MockContainerNode>()
+                .GetChildren<MockContainerNode>(recursive: true)
                 .Where(node => node.OwnerInstanceID == "Owner1");
 
             Assert.AreEqual(1, result.Count(), "Should not include self even if predicate matches");
@@ -572,7 +586,9 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildren_RecursiveEmptyHierarchy_ReturnsEmptyCollection()
         {
-            IEnumerable<MockContainerNode> result = _rootNode.GetDescendants<MockContainerNode>();
+            IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
+                recursive: true
+            );
 
             Assert.AreEqual(
                 0,
@@ -588,7 +604,7 @@ namespace Rebellion.Tests.SceneGraph
             _rootNode.AddChild(_childNode2);
 
             IEnumerable<MockContainerNode> result = _rootNode
-                .GetDescendants<MockContainerNode>()
+                .GetChildren<MockContainerNode>(recursive: true)
                 .Where(_ => false);
 
             Assert.AreEqual(0, result.Count(), "Should return empty when predicate rejects all");
@@ -600,7 +616,9 @@ namespace Rebellion.Tests.SceneGraph
             _rootNode.AddChild(_nodeA1);
             _rootNode.AddChild(_nodeA2);
 
-            IEnumerable<MockContainerNodeB> result = _rootNode.GetDescendants<MockContainerNodeB>();
+            IEnumerable<MockContainerNodeB> result = _rootNode.GetChildren<MockContainerNodeB>(
+                recursive: true
+            );
 
             Assert.AreEqual(0, result.Count(), "Should return empty when no children match type");
         }
@@ -677,7 +695,9 @@ namespace Rebellion.Tests.SceneGraph
                 current = child;
             }
 
-            IEnumerable<MockContainerNode> result = _rootNode.GetDescendants<MockContainerNode>();
+            IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
+                recursive: true
+            );
 
             Assert.AreEqual(10, result.Count(), "Should return all 10 levels");
             foreach (MockContainerNode node in allNodes)
@@ -694,14 +714,17 @@ namespace Rebellion.Tests.SceneGraph
             _nodeA1.AddChild(_nodeC1);
             _nodeB1.AddChild(_nodeA2);
 
-            IEnumerable<MockContainerNodeA> resultA =
-                _rootNode.GetDescendants<MockContainerNodeA>();
+            IEnumerable<MockContainerNodeA> resultA = _rootNode.GetChildren<MockContainerNodeA>(
+                recursive: true
+            );
 
-            IEnumerable<MockContainerNodeB> resultB =
-                _rootNode.GetDescendants<MockContainerNodeB>();
+            IEnumerable<MockContainerNodeB> resultB = _rootNode.GetChildren<MockContainerNodeB>(
+                recursive: true
+            );
 
-            IEnumerable<MockContainerNodeC> resultC =
-                _rootNode.GetDescendants<MockContainerNodeC>();
+            IEnumerable<MockContainerNodeC> resultC = _rootNode.GetChildren<MockContainerNodeC>(
+                recursive: true
+            );
 
             Assert.AreEqual(2, resultA.Count(), "Should find 2 type A nodes");
             Assert.AreEqual(1, resultB.Count(), "Should find 1 type B node");

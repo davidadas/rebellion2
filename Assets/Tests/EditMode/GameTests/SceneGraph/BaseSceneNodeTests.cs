@@ -195,7 +195,9 @@ namespace Rebellion.Tests.SceneGraph
             _childNode1.AddChild(grandchild1);
             _childNode2.AddChild(grandchild2);
 
-            IEnumerable<MockSceneNode> allDescendants = _rootNode.GetDescendants<MockSceneNode>();
+            IEnumerable<MockSceneNode> allDescendants = _rootNode.GetChildren<MockSceneNode>(
+                recursive: true
+            );
 
             Assert.AreEqual(4, allDescendants.Count());
             Assert.IsTrue(allDescendants.Contains(_childNode1));
@@ -230,7 +232,7 @@ namespace Rebellion.Tests.SceneGraph
             _childNode2.AddChild(grandchild2);
 
             IEnumerable<MockSceneNode> matchingDescendants = _rootNode
-                .GetDescendants<MockSceneNode>()
+                .GetChildren<MockSceneNode>(recursive: true)
                 .Where(child => child.OwnerInstanceID == "Owner1");
 
             Assert.AreEqual(2, matchingDescendants.Count());
@@ -287,16 +289,16 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
-        public void GetDescendants_DisabledBranch_RequiresExplicitInclusion()
+        public void GetChildren_RecursiveDisabledBranch_RequiresExplicitInclusion()
         {
             _childNode1.IsEnabled = false;
             _rootNode.AddChild(_childNode1);
             _childNode1.AddChild(_nodeA);
 
-            CollectionAssert.IsEmpty(_rootNode.GetDescendants());
+            CollectionAssert.IsEmpty(_rootNode.GetChildren(recursive: true));
             CollectionAssert.AreEquivalent(
                 new ISceneNode[] { _childNode1, _nodeA },
-                _rootNode.GetDescendants(includeDisabled: true)
+                _rootNode.GetChildren(recursive: true, includeDisabled: true)
             );
         }
 

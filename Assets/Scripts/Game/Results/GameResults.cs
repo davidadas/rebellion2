@@ -611,7 +611,7 @@ namespace Rebellion.Game.Results
         {
             return (fleets ?? Enumerable.Empty<Fleet>())
                 .Where(fleet => fleet != null)
-                .SelectMany(fleet => fleet.GetDescendants<ISceneNode>())
+                .SelectMany(fleet => fleet.GetChildren<ISceneNode>(recursive: true))
                 .Distinct()
                 .Select(unit => new CombatUnitSnapshot(unit))
                 .ToList();
@@ -629,7 +629,7 @@ namespace Rebellion.Game.Results
         )
         {
             return planet
-                    ?.GetDescendants<ISceneNode>()
+                    ?.GetChildren<ISceneNode>(recursive: true)
                     .Where(unit => unit.GetOwnerInstanceID() == ownerInstanceId)
                     .Distinct()
                     .Select(unit => new CombatUnitSnapshot(unit))

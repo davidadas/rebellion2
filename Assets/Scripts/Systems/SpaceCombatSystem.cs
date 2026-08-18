@@ -1845,7 +1845,7 @@ namespace Rebellion.Systems
                 .SelectMany(ship =>
                     new[] { ship.Ship }
                         .Cast<ISceneNode>()
-                        .Concat(ship.Ship.GetDescendants<ISceneNode>())
+                        .Concat(ship.Ship.GetChildren<ISceneNode>(recursive: true))
                 )
                 .Concat(fighters.Select(fighter => fighter.Fighter))
                 .Where(unit => unit != null)
