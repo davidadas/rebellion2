@@ -55,34 +55,6 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void AutosaveIfDue_EligibleTick_SavesTickAddressedGame()
-        {
-            GameRoot game = CreateGame();
-            game.CurrentTick = gameplaySettings.AutosaveIntervalTicks - 1;
-            runtime.StartGame(game);
-
-            runtime.AutosaveIfDue();
-            Assert.IsFalse(
-                File.Exists(
-                    saveGameManager.GetSaveFilePath(
-                        SaveGameManager.AutosaveFilePrefix + game.CurrentTick.ToString("D10")
-                    )
-                )
-            );
-
-            game.CurrentTick++;
-            runtime.AutosaveIfDue();
-
-            Assert.IsTrue(
-                File.Exists(
-                    saveGameManager.GetSaveFilePath(
-                        SaveGameManager.AutosaveFilePrefix + game.CurrentTick.ToString("D10")
-                    )
-                )
-            );
-        }
-
-        [Test]
         public void ValidateGameContent_MatchingIdentity_DoesNotThrow()
         {
             GameRoot game = CreateGame();

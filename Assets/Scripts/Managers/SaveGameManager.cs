@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -319,21 +320,36 @@ public class SaveGameManager
     }
 
     /// <summary>
-    /// Saves the current game to a tick-addressed autosave and removes older autosaves beyond
-    /// the configured retention count.
+    /// Processes one completed simulation tick, creating an autosave when the configured
+    /// cadence is reached.
     /// </summary>
-    /// <param name="game">The game data to save.</param>
-    /// <param name="autosavesToKeep">The maximum number of autosaves to retain.</param>
-    public void SaveAutosaveGameData(GameRoot game, int autosavesToKeep)
+    /// <param name="game">The game whose completed tick is being processed.</param>
+    /// <param name="settings">The current gameplay settings.</param>
+    /// <returns>True when an autosave was written; otherwise false.</returns>
+    public bool ProcessAutosaveTick(GameRoot game, UserGameplaySettings settings)
     {
-        if (game == null)
-            throw new ArgumentNullException(nameof(game));
-        if (autosavesToKeep < 1)
-            throw new ArgumentOutOfRangeException(nameof(autosavesToKeep));
+        if (
+            settings?.AutosaveEnabled != true
+            || game == null
+            || game.CurrentTick <= 0
+            || settings.AutosaveIntervalTicks <= 0
+            || game.CurrentTick % settings.AutosaveIntervalTicks != 0
+        )
+            return false;
 
-        string fileName = AutosaveFilePrefix + game.CurrentTick.ToString("D10");
-        SaveGameData(game, fileName, $"Autosave - Tick {game.CurrentTick}");
-        DeleteAutosavesBeyond(autosavesToKeep);
+        try
+        {
+            string fileName = AutosaveFilePrefix + game.CurrentTick.ToString("D10");
+            SaveGameData(game, fileName, $"Autosave - Tick {game.CurrentTick}");
+            PruneAutosaveHistory(settings.AutosavesToKeep);
+            GameLogger.Log($"Autosave completed at tick {game.CurrentTick}.");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            GameLogger.Warning($"Autosave failed at tick {game.CurrentTick}: {exception.Message}");
+            return false;
+        }
     }
 
     /// <summary>
@@ -370,10 +386,10 @@ public class SaveGameManager
     }
 
     /// <summary>
-    /// Deletes the oldest tick-addressed autosaves beyond the retained count.
+    /// Prunes the oldest tick-addressed restore points after a new autosave is written.
     /// </summary>
     /// <param name="autosavesToKeep">The maximum number of autosaves to retain.</param>
-    private void DeleteAutosavesBeyond(int autosavesToKeep)
+    private void PruneAutosaveHistory(int autosavesToKeep)
     {
         string saveDirectory = GetSaveDirectoryPath();
         if (!Directory.Exists(saveDirectory))

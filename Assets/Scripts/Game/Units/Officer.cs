@@ -195,11 +195,6 @@ namespace Rebellion.Game.Units
         // Officer Info.
         public bool IsMain { get; set; }
 
-        /// <summary>
-        /// Whether this officer is guaranteed to begin a generated campaign in play.
-        /// This is independent of main-character victory and AI semantics.
-        /// </summary>
-        public bool StartsInPlay { get; set; }
         public bool IsRecruitable { get; set; }
         public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }

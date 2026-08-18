@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using Rebellion.Game;
-using Rebellion.Util.Common;
 using UnityEngine;
 
 /// <summary>
@@ -119,38 +118,11 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    /// Saves and rotates autosaves after an eligible completed game tick.
+    /// Forwards completed simulation ticks to the save manager's autosave scheduler.
     /// </summary>
     private void HandleTickCompleted()
     {
-        AutosaveIfDue();
-    }
-
-    /// <summary>
-    /// Saves the active game when its current tick matches the configured autosave cadence.
-    /// </summary>
-    internal void AutosaveIfDue()
-    {
-        UserGameplaySettings settings = _getGameplaySettings?.Invoke();
-        GameRoot game = GetActiveGame();
-        if (
-            settings?.AutosaveEnabled != true
-            || game == null
-            || game.CurrentTick <= 0
-            || settings.AutosaveIntervalTicks <= 0
-            || game.CurrentTick % settings.AutosaveIntervalTicks != 0
-        )
-            return;
-
-        try
-        {
-            _saveGameManager.SaveAutosaveGameData(game, settings.AutosavesToKeep);
-            GameLogger.Log($"Autosave completed at tick {game.CurrentTick}.");
-        }
-        catch (Exception exception)
-        {
-            GameLogger.Warning($"Autosave failed at tick {game.CurrentTick}: {exception.Message}");
-        }
+        _saveGameManager.ProcessAutosaveTick(GetActiveGame(), _getGameplaySettings?.Invoke());
     }
 
     /// <summary>

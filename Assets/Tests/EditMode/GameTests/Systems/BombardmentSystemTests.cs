@@ -572,6 +572,34 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void Execute_DestroySystemMinorPersonnelSurvivesDeathRoll_RemainsInjured()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            Officer minor = AddOfficer(game, planet, "minor", "empire", isMain: false);
+            Fleet fleet = AddBombardmentFleet(
+                game,
+                planet,
+                "alliance",
+                bombardment: 0,
+                typeId: "planet-destroyer"
+            );
+            fleet.CapitalShips[0].CanDestroyPlanets = true;
+
+            BombardmentResult result = MakeBombardment(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, 99 })
+                )
+                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroySystem);
+
+            Assert.AreEqual(1, minor.InjuryPoints);
+            Assert.IsFalse(minor.IsKilled);
+            Assert.AreSame(planet, minor.GetParent());
+            Assert.AreEqual(1, result.Events.OfType<OfficerInjuredResult>().Count());
+            Assert.IsEmpty(result.Events.OfType<OfficerKilledResult>());
+        }
+
+        [Test]
         public void Execute_DestroySystem_DefenseFireCannotPreventDestruction()
         {
             GameRoot game = CreateGame();

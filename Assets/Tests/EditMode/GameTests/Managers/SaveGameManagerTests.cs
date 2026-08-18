@@ -92,7 +92,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void SaveAutosaveGameData_ExceedsRetention_DeletesOldestAutosaves()
+        public void ProcessAutosaveTick_ExceedsRetention_PrunesOldestRestorePoints()
         {
             GameRoot game = new GameRoot
             {
@@ -100,10 +100,12 @@ namespace Rebellion.Tests.Managers
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(2);
             for (int tick = 100; tick <= 400; tick += 100)
             {
                 game.CurrentTick = tick;
-                _saveGameManager.SaveAutosaveGameData(game, 2);
+                Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
             }
 
             string[] autosaves = Directory.GetFiles(
@@ -125,6 +127,32 @@ namespace Rebellion.Tests.Managers
                         SaveGameManager.AutosaveFilePrefix + "0000000400"
                     )
                 )
+            );
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_OnlyWritesAtConfiguredTickCadence()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+                CurrentTick = 99,
+            };
+            UserGameplaySettings settings = new UserGameplaySettings();
+
+            Assert.IsFalse(_saveGameManager.ProcessAutosaveTick(game, settings));
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+
+            game.CurrentTick = 100;
+
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            Assert.AreEqual(
+                1,
+                Directory
+                    .GetFiles(_saveDirectoryPath, $"{SaveGameManager.AutosaveFilePrefix}*.sav")
+                    .Length
             );
         }
 

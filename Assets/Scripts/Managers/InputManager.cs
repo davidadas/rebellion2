@@ -74,7 +74,7 @@ public sealed class InputManager : MonoBehaviour
     /// <returns>The serialized binding override data.</returns>
     public string SaveBindingOverrides()
     {
-        RestoreReservedEscapeBinding(Actions.asset);
+        RemoveReservedShortcutOverrides(Actions.asset);
         return Actions.asset.SaveBindingOverridesAsJson();
     }
 
@@ -88,36 +88,38 @@ public sealed class InputManager : MonoBehaviour
         asset.RemoveAllBindingOverrides();
         if (!string.IsNullOrWhiteSpace(bindingOverrides))
             asset.LoadBindingOverridesFromJson(bindingOverrides);
-        RestoreReservedEscapeBinding(asset);
+        RemoveReservedShortcutOverrides(asset);
     }
 
     /// <summary>
-    /// Removes persisted overrides from the fixed cancel and game-menu shortcuts.
+    /// Prevents persisted rebinding data from replacing the fixed Escape and Shift+Escape
+    /// navigation shortcuts.
     /// </summary>
-    private static void RestoreReservedEscapeBinding(InputActionAsset asset)
+    private static void RemoveReservedShortcutOverrides(InputActionAsset asset)
     {
-        RestoreReservedPrimary(asset.FindAction("Global/CancelOrSettings", true));
-        RestoreReservedPrimary(asset.FindAction("Global/OpenGameMenu", true));
+        RemovePrimaryShortcutOverride(asset.FindAction("Global/CancelOrSettings", true));
+        RemovePrimaryShortcutOverride(asset.FindAction("Global/OpenGameMenu", true));
     }
 
     /// <summary>
-    /// Removes overrides from one action's authored primary slot.
+    /// Removes overrides from one action's authored primary binding, including every part of
+    /// its optional composite chord.
     /// </summary>
-    private static void RestoreReservedPrimary(InputAction action)
+    private static void RemovePrimaryShortcutOverride(InputAction action)
     {
-        bool clearingPrimaryChord = false;
+        bool insidePrimaryChord = false;
         for (int index = 0; index < action.bindings.Count; index++)
         {
             InputBinding binding = action.bindings[index];
             if (!binding.isPartOfComposite)
             {
-                clearingPrimaryChord = binding.name == "PrimaryChord";
-                if (binding.name == "Primary" || clearingPrimaryChord)
+                insidePrimaryChord = binding.name == "PrimaryChord";
+                if (binding.name == "Primary" || insidePrimaryChord)
                     action.RemoveBindingOverride(index);
                 continue;
             }
 
-            if (clearingPrimaryChord)
+            if (insidePrimaryChord)
                 action.RemoveBindingOverride(index);
         }
     }

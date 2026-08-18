@@ -80,7 +80,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             game.AttachNode(officer, planet);
-            new PersonnelSystem(game).Kill(officer);
+            new PersonnelSystem(game).KillOfficer(officer);
             IsKilledConditional condition = new IsKilledConditional
             {
                 OfficerInstanceID = officer.InstanceID,

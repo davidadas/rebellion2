@@ -814,7 +814,7 @@ namespace Rebellion.Systems
                 )
                     continue;
 
-                _personnelSystem.Kill(officer);
+                _personnelSystem.KillOfficer(officer);
                 result.Events.Add(
                     new OfficerKilledResult
                     {

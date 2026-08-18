@@ -36,6 +36,24 @@ namespace Rebellion.Generation
     public class OfficerSection
     {
         public PlanetSizeProfile NumInitialOfficers;
+
+        public List<InitialOfficerRule> InitialOfficers = new List<InitialOfficerRule>();
+    }
+
+    /// <summary>
+    /// Defines a guaranteed starting officer, the galaxy sizes where the rule applies, and an
+    /// optional fixed deployment destination.
+    /// </summary>
+    [PersistableObject]
+    public class InitialOfficerRule
+    {
+        public string OfficerInstanceID;
+
+        public List<GameSize> GalaxySizes = new List<GameSize>();
+
+        public string DestinationTypeID;
+
+        public string DestinationInstanceID;
     }
 
     #endregion

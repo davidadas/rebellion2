@@ -27,7 +27,7 @@ namespace Rebellion.Systems
         /// graph so historical references remain resolvable.
         /// </summary>
         /// <param name="officer">The officer to kill and retain.</param>
-        public void Kill(Officer officer)
+        public void KillOfficer(Officer officer)
         {
             if (officer == null)
                 throw new ArgumentNullException(nameof(officer));

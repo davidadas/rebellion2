@@ -526,7 +526,7 @@ namespace Rebellion.Systems
                     .Where(officer => officer?.IsKilled == false)
                     .Distinct()
             )
-                _personnelSystem.Kill(officer);
+                _personnelSystem.KillOfficer(officer);
         }
 
         /// <summary>
@@ -919,7 +919,7 @@ namespace Rebellion.Systems
             }
             else
             {
-                _personnelSystem.Kill(officer);
+                _personnelSystem.KillOfficer(officer);
                 results.Add(
                     new OfficerKilledResult
                     {

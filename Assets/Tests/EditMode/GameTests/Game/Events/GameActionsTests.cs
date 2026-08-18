@@ -610,7 +610,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
             game.AttachNode(officer, origin);
-            new PersonnelSystem(game).Kill(officer);
+            new PersonnelSystem(game).KillOfficer(officer);
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
                 new RemoveFromVoidAction { UnitInstanceID = officer.InstanceID }.Execute(game)

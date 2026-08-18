@@ -95,7 +95,7 @@ namespace Rebellion.Tests.Managers
         /// Verifies persisted overrides cannot replace the reserved game-menu chord.
         /// </summary>
         [Test]
-        public void LoadBindingOverrides_OpenGameMenuPrimary_RestoresShiftEscape()
+        public void LoadBindingOverrides_OpenGameMenuPrimary_PreservesShiftEscapeShortcut()
         {
             GameObject root = new GameObject("InputManager");
             try

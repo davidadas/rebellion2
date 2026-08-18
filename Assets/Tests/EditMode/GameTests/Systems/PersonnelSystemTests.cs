@@ -47,13 +47,13 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Kill_ActiveOfficer_MarksKilledAndRetainsIdentity()
+        public void KillOfficer_ActiveOfficer_MarksKilledAndRetainsIdentity()
         {
             Officer officer = CreateOfficer("killed-officer");
             officer.Movement = new MovementState();
             _game.AttachNode(officer, _planet);
 
-            _personnelSystem.Kill(officer);
+            _personnelSystem.KillOfficer(officer);
 
             Assert.IsTrue(officer.IsKilled);
             Assert.IsNull(officer.Movement);
