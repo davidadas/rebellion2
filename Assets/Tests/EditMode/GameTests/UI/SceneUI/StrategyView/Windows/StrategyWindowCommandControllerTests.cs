@@ -34,6 +34,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private MissionCreateWindowController _missionCreateController;
         private Officer _officer;
         private int _rebuildCount;
+        private int _playedSfxCount;
+        private int _transitRejectionCount;
         private GameObject _rootObject;
         private SpecialForces _specialForces;
         private UIWindow _sourceWindow;
@@ -47,6 +49,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _clearedWindow = null;
             _dirtyCount = 0;
             _rebuildCount = 0;
+            _playedSfxCount = 0;
+            _transitRejectionCount = 0;
             _game = CreateGame(
                 out Planet origin,
                 out GalaxyMapPlanet destination,
@@ -103,10 +107,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 () => _gameManager.MaintenanceSystem,
                 () => _gameManager.ManufacturingSystem,
                 () => _gameManager.PersonnelSystem,
-                _ => { },
+                _ => _playedSfxCount++,
                 window => _clearedWindow = window,
                 () => _rebuildCount++,
-                () => _dirtyCount++
+                () => _dirtyCount++,
+                null,
+                () => _transitRejectionCount++
             );
         }
 
@@ -174,6 +180,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(_sourceWindow, _clearedWindow);
             Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void TryExecuteMove_AlreadyAtDestination_DoesNotPlayOrderAudio()
+        {
+            _officer.VoiceSet.OrderPaths.Add("officer-order");
+            StrategyMissionTarget target = new StrategyMissionTarget(_destination, null);
+            Assert.IsTrue(
+                _controller.TryExecuteMove(_sourceWindow, target, new ISceneNode[] { _officer })
+            );
+            _officer.Movement = null;
+            _playedSfxCount = 0;
+
+            bool moved = _controller.TryExecuteMove(
+                _sourceWindow,
+                target,
+                new ISceneNode[] { _officer }
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreEqual(0, _playedSfxCount);
+        }
+
+        [Test]
+        public void TryExecuteMove_UnitInTransit_PlaysAdvisorRejection()
+        {
+            _officer.Movement = new Rebellion.Game.Movement.MovementState { TransitTicks = 10 };
+
+            bool moved = _controller.TryExecuteMove(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { _officer }
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreEqual(1, _transitRejectionCount);
+            Assert.AreEqual(0, _playedSfxCount);
         }
 
         [Test]

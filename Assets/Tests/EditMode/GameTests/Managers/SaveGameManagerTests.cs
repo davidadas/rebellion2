@@ -92,6 +92,71 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessAutosaveTick_ExceedsRetention_PrunesOldestRestorePoints()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(2);
+            for (int tick = 100; tick <= 400; tick += 100)
+            {
+                game.CurrentTick = tick;
+                Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            }
+
+            string[] autosaves = Directory.GetFiles(
+                _saveDirectoryPath,
+                $"{SaveGameManager.AutosaveFilePrefix}*.sav"
+            );
+
+            Assert.AreEqual(2, autosaves.Length);
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.AutosaveFilePrefix + "0000000300"
+                    )
+                )
+            );
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.AutosaveFilePrefix + "0000000400"
+                    )
+                )
+            );
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_OnlyWritesAtConfiguredTickCadence()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+                CurrentTick = 99,
+            };
+            UserGameplaySettings settings = new UserGameplaySettings();
+
+            Assert.IsFalse(_saveGameManager.ProcessAutosaveTick(game, settings));
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+
+            game.CurrentTick = 100;
+
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            Assert.AreEqual(
+                1,
+                Directory
+                    .GetFiles(_saveDirectoryPath, $"{SaveGameManager.AutosaveFilePrefix}*.sav")
+                    .Length
+            );
+        }
+
+        [Test]
         public void SaveSlotCount_DefaultConfiguration_ReturnsSix()
         {
             int count = _saveGameManager.SaveSlotCount;
@@ -1200,7 +1265,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void LoadGameData_SaveVersionMismatch_ThrowsInvalidOperationException()
+        public void LoadGameData_SaveVersionMismatch_LoadsWithoutVersionGate()
         {
             GameSummary summary = new GameSummary
             {
@@ -1228,16 +1293,13 @@ namespace Rebellion.Tests.Managers
             );
             File.WriteAllText(saveFilePath, bumped);
 
-            InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(() =>
-                _saveGameManager.LoadGameData(_saveFileName)
-            );
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.That(thrown.Message, Does.Contain(futureVersion.ToString()));
-            Assert.That(thrown.Message, Does.Contain(GameMetadata.CurrentSaveVersion.ToString()));
+            Assert.AreEqual(futureVersion, loadedGame.Metadata.SaveVersion);
         }
 
         [Test]
-        public void LoadGameData_SaveVersionMissing_ThrowsInvalidOperationException()
+        public void LoadGameData_SaveVersionMissing_DefaultsVersionToZero()
         {
             GameSummary summary = new GameSummary
             {
@@ -1265,12 +1327,9 @@ namespace Rebellion.Tests.Managers
             );
             File.WriteAllText(saveFilePath, stripped);
 
-            InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(() =>
-                _saveGameManager.LoadGameData(_saveFileName)
-            );
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.That(thrown.Message, Does.Contain("0"));
-            Assert.That(thrown.Message, Does.Contain(GameMetadata.CurrentSaveVersion.ToString()));
+            Assert.AreEqual(0, loadedGame.Metadata.SaveVersion);
         }
     }
 } // namespace Rebellion.Tests.Managers

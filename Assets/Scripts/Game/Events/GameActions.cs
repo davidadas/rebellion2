@@ -1863,6 +1863,10 @@ namespace Rebellion.Game.Events
             foreach (IMovable movable in units)
             {
                 ISceneNode unit = (ISceneNode)movable;
+                if (unit is Officer { IsKilled: true })
+                    throw new InvalidOperationException(
+                        $"RemoveFromVoid cannot restore killed officer '{unit.GetDisplayName()}'."
+                    );
                 if (!game.IsInVoid(unit))
                     throw new InvalidOperationException(
                         $"RemoveFromVoid requires a retained unit; '{unit.GetDisplayName()}' is not retained."

@@ -7,7 +7,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Owns personnel retirement validation and mutation for the active game graph.
+    /// Owns personnel lifecycle validation and mutation for the active game graph.
     /// </summary>
     public sealed class PersonnelSystem
     {
@@ -20,6 +20,21 @@ namespace Rebellion.Systems
         public PersonnelSystem(GameRoot game)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
+        }
+
+        /// <summary>
+        /// Marks an active officer as killed and retains the officer outside the active scene
+        /// graph so historical references remain resolvable.
+        /// </summary>
+        /// <param name="officer">The officer to kill and retain.</param>
+        public void KillOfficer(Officer officer)
+        {
+            if (officer == null)
+                throw new ArgumentNullException(nameof(officer));
+
+            _game.AddToVoid(officer);
+            officer.IsKilled = true;
+            officer.Movement = null;
         }
 
         /// <summary>

@@ -10,6 +10,7 @@ public sealed class GameRuntime
 {
     private readonly ContentPack _contentPack;
     private readonly SaveGameManager _saveGameManager;
+    private readonly Func<UserGameplaySettings> _getGameplaySettings;
     private GameManager _activeGameSession;
 
     /// <summary>
@@ -22,10 +23,16 @@ public sealed class GameRuntime
     /// </summary>
     /// <param name="contentPack">The active content pack.</param>
     /// <param name="saveGameManager">The save manager, or null to use the application singleton.</param>
-    internal GameRuntime(ContentPack contentPack, SaveGameManager saveGameManager = null)
+    /// <param name="getGameplaySettings">Returns the current gameplay settings.</param>
+    internal GameRuntime(
+        ContentPack contentPack,
+        SaveGameManager saveGameManager = null,
+        Func<UserGameplaySettings> getGameplaySettings = null
+    )
     {
         _contentPack = contentPack ?? throw new ArgumentNullException(nameof(contentPack));
         _saveGameManager = saveGameManager ?? SaveGameManager.Instance;
+        _getGameplaySettings = getGameplaySettings;
     }
 
     /// <summary>
@@ -61,6 +68,7 @@ public sealed class GameRuntime
 
         ValidateGameContent(game);
         _activeGameSession = new GameManager(game, _contentPack.GameData);
+        _activeGameSession.TickCompleted += HandleTickCompleted;
         return _activeGameSession;
     }
 
@@ -73,6 +81,7 @@ public sealed class GameRuntime
         if (_activeGameSession == null)
             return;
 
+        _activeGameSession.TickCompleted -= HandleTickCompleted;
         _activeGameSession.SetGameSpeed(TickSpeed.Paused);
         _activeGameSession = null;
     }
@@ -106,6 +115,14 @@ public sealed class GameRuntime
             Debug.Log("Quick load completed.");
         else
             Debug.LogWarning("Quick load skipped because no quick save exists.");
+    }
+
+    /// <summary>
+    /// Forwards completed simulation ticks to the save manager's autosave scheduler.
+    /// </summary>
+    private void HandleTickCompleted()
+    {
+        _saveGameManager.ProcessAutosaveTick(GetActiveGame(), _getGameplaySettings?.Invoke());
     }
 
     /// <summary>

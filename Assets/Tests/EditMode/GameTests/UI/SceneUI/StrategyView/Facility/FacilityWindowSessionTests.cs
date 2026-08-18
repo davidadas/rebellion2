@@ -183,7 +183,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Shipyards);
 
-            _session.SelectBuilding(0, 3);
+            _session.SelectBuilding(0);
 
             CollectionAssert.AreEqual(new[] { "alpha" }, _session.SelectedBuildingIds);
             CollectionAssert.AreEqual(new[] { alpha }, _session.GetSelectedBuildings());
@@ -198,9 +198,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _planet.Buildings.Add(building);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Shipyards);
-            _session.SelectBuilding(0, 3);
+            _session.SelectBuilding(0);
 
-            _session.SelectBuilding(2, 3);
+            _session.SelectBuilding(2);
 
             CollectionAssert.AreEqual(new[] { "shipyard" }, _session.SelectedBuildingIds);
             CollectionAssert.AreEqual(new[] { building }, _session.GetSelectedBuildings());
@@ -244,7 +244,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _planet.Buildings.Add(beta);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Shipyards);
-            _session.SelectBuilding(0, 3);
+            _session.SelectBuilding(0);
 
             _session.SelectBuildingForContext(1);
 

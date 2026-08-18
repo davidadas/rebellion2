@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -22,9 +23,19 @@ namespace Rebellion.Generation
         /// <param name="ctx">The generation context.</param>
         public void Seed(GenerationContext ctx)
         {
-            Officer[] selected = SelectOfficers(ctx.Officers, ctx.Config, ctx.Summary, ctx.Rng);
+            List<StartingOfficerRule> startingOfficerRules = GetApplicableStartingOfficerRules(
+                ctx.Config.Officers,
+                ctx.Summary.GalaxySize
+            );
+            Officer[] selected = SelectOfficers(
+                ctx.Officers,
+                ctx.Config,
+                ctx.Summary,
+                startingOfficerRules,
+                ctx.Rng
+            );
             DecorateOfficers(selected, ctx.Rng);
-            DeployOfficers(selected, ctx.Systems, ctx.Rng);
+            DeployOfficers(selected, ctx.Systems, startingOfficerRules, ctx.Rng);
 
             ctx.DeployedOfficers = selected;
             ctx.UnrecruitedOfficers = ctx.Officers.Except(selected).ToArray();
@@ -37,12 +48,14 @@ namespace Rebellion.Generation
         /// <param name="allOfficers">The full officer roster available for this game.</param>
         /// <param name="rules">Generation rules controlling officer selection.</param>
         /// <param name="summary">Game summary; galaxy size determines per-faction officer count.</param>
+        /// <param name="startingOfficerRules">Guaranteed starting-officer rules for this galaxy size.</param>
         /// <param name="rng">Random number provider used for shuffling.</param>
         /// <returns>The officers selected for deployment.</returns>
         private Officer[] SelectOfficers(
             Officer[] allOfficers,
             GameGenerationConfig rules,
             GameSummary summary,
+            IReadOnlyList<StartingOfficerRule> startingOfficerRules,
             IRandomNumberProvider rng
         )
         {
@@ -51,16 +64,48 @@ namespace Rebellion.Generation
                 rng
             );
             int recruitableLimit = ResolveOfficerCount(
-                rules.Officers.NumInitialOfficers,
+                rules.Officers.NumStartingOfficers,
                 summary.GalaxySize
+            );
+            HashSet<string> guaranteedOfficerIDs = new HashSet<string>(
+                startingOfficerRules.Select(rule => rule.OfficerInstanceID),
+                StringComparer.Ordinal
             );
 
             List<Officer> selected = new List<Officer>();
             foreach ((string factionId, List<Officer> officers) in officersByFaction)
             {
-                selected.AddRange(PickFactionRoster(officers, factionId, recruitableLimit));
+                selected.AddRange(
+                    PickFactionRoster(officers, factionId, recruitableLimit, guaranteedOfficerIDs)
+                );
             }
+
+            string missingOfficerID = guaranteedOfficerIDs.FirstOrDefault(id =>
+                selected.All(officer => officer.InstanceID != id)
+            );
+            if (missingOfficerID != null)
+                throw new InvalidOperationException(
+                    $"Starting officer rule references unknown officer '{missingOfficerID}'."
+                );
             return selected.ToArray();
+        }
+
+        /// <summary>
+        /// Selects the scenario-authored starting-officer rules that apply to one galaxy size.
+        /// </summary>
+        /// <param name="section">Officer generation configuration.</param>
+        /// <param name="galaxySize">The generated galaxy size.</param>
+        /// <returns>The applicable starting-officer rules.</returns>
+        private static List<StartingOfficerRule> GetApplicableStartingOfficerRules(
+            OfficerSection section,
+            GameSize galaxySize
+        )
+        {
+            return section
+                .StartingOfficers.Where(rule =>
+                    rule.GalaxySizes.Count == 0 || rule.GalaxySizes.Contains(galaxySize)
+                )
+                .ToList();
         }
 
         /// <summary>
@@ -128,41 +173,36 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Picks one faction's roster: all main officers, plus recruitable officers up
-        /// to the per-faction limit. Each picked officer is assigned the faction as owner.
+        /// Picks one faction's roster up to the configured total, while always retaining
+        /// officers whose authored data requires them to start in play.
         /// </summary>
         /// <param name="officers">The faction's grouped officers (owned officers first).</param>
         /// <param name="factionId">The owning faction ID.</param>
-        /// <param name="recruitableLimit">Maximum recruitable (non-main) officers to pick.</param>
+        /// <param name="initialOfficerCount">Configured total starting officers.</param>
+        /// <param name="guaranteedOfficerIDs">Officers guaranteed by scenario generation rules.</param>
         /// <returns>The officers picked for this faction.</returns>
         private List<Officer> PickFactionRoster(
             List<Officer> officers,
             string factionId,
-            int recruitableLimit
+            int initialOfficerCount,
+            ISet<string> guaranteedOfficerIDs
         )
         {
-            List<Officer> fixedStartOfficers = officers.Where(HasFixedStart).ToList();
-            List<Officer> picked = fixedStartOfficers
+            List<Officer> guaranteedOfficers = officers
+                .Where(officer => guaranteedOfficerIDs.Contains(officer.InstanceID))
+                .ToList();
+            int remainingCount = Math.Max(0, initialOfficerCount - guaranteedOfficers.Count);
+            List<Officer> picked = guaranteedOfficers
                 .Concat(
                     officers
-                        .Except(fixedStartOfficers)
-                        .Where(o => o.IsMain || o.IsRecruitable)
-                        .TakeWhile((o, index) => o.IsMain || index < recruitableLimit)
+                        .Except(guaranteedOfficers)
+                        .Where(officer => officer.IsRecruitable)
+                        .Take(remainingCount)
                 )
                 .ToList();
             foreach (Officer officer in picked)
                 officer.OwnerInstanceID = factionId;
             return picked;
-        }
-
-        /// <summary>
-        /// Returns whether an officer has a configured starting destination.
-        /// </summary>
-        /// <param name="officer">The officer to inspect.</param>
-        /// <returns>True if the officer has a fixed starting destination.</returns>
-        private bool HasFixedStart(Officer officer)
-        {
-            return officer.InitialParentTypeID != null || officer.InitialParentInstanceID != null;
         }
 
         /// <summary>
@@ -250,10 +290,12 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="officers">The officers selected for deployment.</param>
         /// <param name="systems">All planet systems, used to enumerate per-faction destinations.</param>
+        /// <param name="startingOfficerRules">Starting-officer placement rules for this galaxy.</param>
         /// <param name="rng">Random number provider for destination selection.</param>
         private void DeployOfficers(
             Officer[] officers,
             PlanetSystem[] systems,
+            IReadOnlyList<StartingOfficerRule> startingOfficerRules,
             IRandomNumberProvider rng
         )
         {
@@ -275,7 +317,10 @@ namespace Rebellion.Generation
             {
                 List<ISceneNode> factionDests = destinations[officer.OwnerInstanceID];
 
-                ISceneNode destination = ResolveOfficerDestination(officer, factionDests, rng);
+                StartingOfficerRule rule = startingOfficerRules.FirstOrDefault(candidate =>
+                    candidate.OfficerInstanceID == officer.InstanceID
+                );
+                ISceneNode destination = ResolveOfficerDestination(rule, factionDests, rng);
 
                 if (destination is Planet planet)
                     planet.AddChild(officer);
@@ -287,25 +332,25 @@ namespace Rebellion.Generation
         /// <summary>
         /// Resolves the starting destination for an officer.
         /// </summary>
-        /// <param name="officer">The officer being deployed.</param>
+        /// <param name="rule">The applicable scenario placement rule, when one exists.</param>
         /// <param name="factionDests">Available destinations owned by the officer's faction.</param>
         /// <param name="rng">Random number provider for fallback destination selection.</param>
         /// <returns>The destination that should receive the officer.</returns>
         private ISceneNode ResolveOfficerDestination(
-            Officer officer,
+            StartingOfficerRule rule,
             List<ISceneNode> factionDests,
             IRandomNumberProvider rng
         )
         {
-            if (officer.InitialParentTypeID != null)
+            if (rule?.DestinationTypeID != null)
             {
                 return factionDests.First(n =>
-                    n is Planet planet && planet.TypeID == officer.InitialParentTypeID
+                    n is Planet planet && planet.TypeID == rule.DestinationTypeID
                 );
             }
 
-            if (officer.InitialParentInstanceID != null)
-                return factionDests.First(n => n.InstanceID == officer.InitialParentInstanceID);
+            if (rule?.DestinationInstanceID != null)
+                return factionDests.First(n => n.InstanceID == rule.DestinationInstanceID);
 
             return factionDests[rng.NextInt(0, factionDests.Count)];
         }

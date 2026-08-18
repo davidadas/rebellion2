@@ -13,6 +13,7 @@ using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Events
@@ -1003,6 +1004,22 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsEmpty(results);
             Assert.IsNull(luke.GetParent());
             Assert.AreEqual(origin.InstanceID, luke.LastParentInstanceID);
+        }
+
+        [Test]
+        public void RemoveFromVoid_KilledOfficer_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out Planet origin);
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            game.AttachNode(officer, origin);
+            new PersonnelSystem(game).KillOfficer(officer);
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                new RemoveFromVoidAction { UnitInstanceID = officer.InstanceID }.Execute(game)
+            );
+
+            StringAssert.Contains("cannot restore killed officer", exception.Message);
+            Assert.IsTrue(game.IsInVoid(officer));
         }
 
         [Test]

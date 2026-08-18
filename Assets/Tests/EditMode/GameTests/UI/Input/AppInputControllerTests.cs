@@ -10,7 +10,7 @@ namespace Rebellion.Tests.UI.Input
     public class AppInputControllerTests
     {
         [Test]
-        public void CancelOrSettings_Unhandled_RaisesOptionsMenuRequest()
+        public void CancelOrSettings_Unhandled_DoesNotRaiseOptionsMenuRequest()
         {
             InputTestFixture inputFixture = new();
             inputFixture.Setup();
@@ -19,15 +19,50 @@ namespace Rebellion.Tests.UI.Input
             AppInputController controller = root.AddComponent<AppInputController>();
             Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
             int requestCount = 0;
+            TestCancelable cancelable = new();
+            CancelStack cancelStack = new();
+            cancelStack.Register(cancelable);
             controller.OptionsMenuRequested += () => requestCount++;
 
             try
             {
-                controller.Initialize(inputManager, new CancelStack(), null);
+                controller.Initialize(inputManager, cancelStack, null);
                 InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
                 InputSystem.Update();
 
+                Assert.AreEqual(0, requestCount);
+                Assert.AreEqual(1, cancelable.CancelCount);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                inputFixture.TearDown();
+            }
+        }
+
+        [Test]
+        public void OpenGameMenu_ShiftEscape_RaisesOptionsMenuRequest()
+        {
+            InputTestFixture inputFixture = new();
+            inputFixture.Setup();
+            GameObject root = new("AppInputControllerUnderTest");
+            InputManager inputManager = root.AddComponent<InputManager>();
+            AppInputController controller = root.AddComponent<AppInputController>();
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            int requestCount = 0;
+            TestCancelable cancelable = new();
+            CancelStack cancelStack = new();
+            cancelStack.Register(cancelable);
+            controller.OptionsMenuRequested += () => requestCount++;
+
+            try
+            {
+                controller.Initialize(inputManager, cancelStack, null);
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.LeftShift, Key.Escape));
+                InputSystem.Update();
+
                 Assert.AreEqual(1, requestCount);
+                Assert.AreEqual(0, cancelable.CancelCount);
             }
             finally
             {
@@ -81,6 +116,17 @@ namespace Rebellion.Tests.UI.Input
                 AppInputController.GetFasterGameSpeed(TickSpeed.Medium)
             );
             Assert.AreEqual(TickSpeed.Fast, AppInputController.GetFasterGameSpeed(TickSpeed.Fast));
+        }
+
+        private sealed class TestCancelable : ICancelable
+        {
+            public int CancelCount { get; private set; }
+
+            public bool TryCancel()
+            {
+                CancelCount++;
+                return true;
+            }
         }
     }
 }

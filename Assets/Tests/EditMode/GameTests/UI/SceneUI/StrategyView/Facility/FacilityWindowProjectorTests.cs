@@ -208,7 +208,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _planet.Buildings.Add(mine);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Mines);
-            _session.SelectBuilding(0, 3);
+            _session.SelectBuilding(0);
 
             FacilityWindowRenderData data = _projector.CreateRenderData(_window, _session, null);
 

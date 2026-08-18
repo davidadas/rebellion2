@@ -9,7 +9,9 @@ namespace Rebellion.Tests.App
     public sealed class GameRuntimeTests
     {
         private ContentPack contentPack;
+        private UserGameplaySettings gameplaySettings;
         private GameRuntime runtime;
+        private SaveGameManager saveGameManager;
         private string saveDirectoryPath;
 
         [SetUp]
@@ -21,7 +23,9 @@ namespace Rebellion.Tests.App
                 nameof(GameRuntimeTests),
                 Guid.NewGuid().ToString("N")
             );
-            runtime = new GameRuntime(contentPack, new SaveGameManager(saveDirectoryPath));
+            gameplaySettings = new UserGameplaySettings();
+            saveGameManager = new SaveGameManager(saveDirectoryPath);
+            runtime = new GameRuntime(contentPack, saveGameManager, () => gameplaySettings);
         }
 
         [TearDown]

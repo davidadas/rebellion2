@@ -261,6 +261,8 @@ public class StrategyAdvisorTheme
 
     public int DefaultReleasedCode { get; set; }
 
+    public StrategyAdvisorAnimationTheme InTransitOrderRejected { get; set; }
+
     public List<StrategyAdvisorNotificationCodeTheme> NotificationCodes { get; set; } =
         new List<StrategyAdvisorNotificationCodeTheme>();
 

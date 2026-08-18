@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Advisor;
@@ -119,6 +120,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void ManageProduction_Enabled_ProcessesAutomationImmediately()
+        {
+            Faction faction = new Faction();
+            TestActions actions = new TestActions();
+            StrategyAdvisorController controller = new StrategyAdvisorController(
+                () => faction,
+                _ => null,
+                _ => { }
+            );
+            controller.Initialize(actions);
+            StrategyMenuCommand command = StrategyAdvisorController
+                .BuildCommandMenu(faction)
+                .Single(item => item.Action == StrategyMenuAction.AdvisorManageProduction);
+            ContextMenuRequest request = (ContextMenuRequest)
+                typeof(StrategyAdvisorController)
+                    .GetMethod(
+                        "CreateContextMenuRequest",
+                        BindingFlags.Instance | BindingFlags.NonPublic
+                    )
+                    ?.Invoke(
+                        controller,
+                        new object[]
+                        {
+                            new List<StrategyMenuCommand> { command },
+                            0,
+                            0,
+                        }
+                    );
+
+            controller.OnContextMenuCommandSelected(request, command);
+
+            Assert.IsTrue(faction.ManageProduction);
+            Assert.AreSame(faction, actions.ProcessedFaction);
+        }
+
+        [Test]
         public void Render_SameThemeAfterIdleFramesLoad_RefreshesAdvisorImages()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
@@ -202,18 +239,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                         Message = new Message(MessageType.Fleet, "Fleet arrived"),
                         NotificationType = AdvisorNotificationType.PositivePopularSupport,
                     },
-                    1,
+                    0,
                     true
                 );
 
-                controller.ProcessPending(1, true);
+                controller.ProcessPending(0, true);
 
                 Assert.AreEqual(0, playbackCount);
                 Assert.AreSame(droidIdleTexture, GetImage(rootObject, "DroidImage").texture);
 
                 textures[theme.GetFramePath("Alert", 0, true)] = firstFrame;
                 textures[theme.GetFramePath("Alert", 1, true)] = secondFrame;
-                controller.ProcessPending(1, true);
+                controller.ProcessPending(0, true);
 
                 Assert.AreEqual(1, playbackCount);
                 Assert.AreSame(firstFrame, GetImage(rootObject, "DroidImage").texture);
@@ -441,6 +478,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
 
         private sealed class TestActions : IStrategyHudActions
         {
+            public Faction ProcessedFaction { get; private set; }
+
             public void BeginAdvisorConstruction(
                 ManufacturingType manufacturingType,
                 int sourceX,
@@ -462,6 +501,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             public void OpenAdvisorReport(AdvisorReportMode mode) { }
 
             public void OpenMessagesTab(MessagesTab tab) { }
+
+            public void ProcessAdvisorAutomation(Faction faction)
+            {
+                ProcessedFaction = faction;
+            }
 
             public void OpenSpeedContextMenu(
                 ContextMenuRequest request,

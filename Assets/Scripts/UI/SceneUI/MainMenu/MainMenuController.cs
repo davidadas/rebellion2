@@ -161,7 +161,7 @@ public sealed class MainMenuController : MonoBehaviour
         if (optionsMenuController.IsOpen)
             optionsMenuController.TryCancel();
         else
-            OpenOptions(OptionsMenuTab.Graphics);
+            OpenOptions(OptionsMenuTab.Gameplay);
     }
 
     /// <summary>

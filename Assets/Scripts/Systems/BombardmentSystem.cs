@@ -38,6 +38,7 @@ namespace Rebellion.Systems
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movement;
         private readonly PlanetaryControlSystem _ownership;
+        private readonly PersonnelSystem _personnelSystem;
 
         /// <summary>
         /// Raised after an immediate bombardment command produces results.
@@ -51,17 +52,20 @@ namespace Rebellion.Systems
         /// <param name="provider">Random-number provider used by bombardment resolution.</param>
         /// <param name="movement">Movement system used for surviving passenger evacuation.</param>
         /// <param name="ownership">Planetary control system used for support and ownership changes.</param>
+        /// <param name="personnelSystem">Personnel lifecycle service.</param>
         public BombardmentSystem(
             GameRoot game,
             IRandomNumberProvider provider,
             MovementSystem movement,
-            PlanetaryControlSystem ownership
+            PlanetaryControlSystem ownership,
+            PersonnelSystem personnelSystem = null
         )
         {
             _game = game;
             _provider = provider;
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
+            _personnelSystem = personnelSystem ?? new PersonnelSystem(game);
         }
 
         /// <summary>
@@ -810,7 +814,7 @@ namespace Rebellion.Systems
                 )
                     continue;
 
-                officer.IsKilled = true;
+                _personnelSystem.KillOfficer(officer);
                 result.Events.Add(
                     new OfficerKilledResult
                     {
@@ -819,7 +823,6 @@ namespace Rebellion.Systems
                         Tick = _game.CurrentTick,
                     }
                 );
-                _game.DeleteNode(officer);
             }
         }
 

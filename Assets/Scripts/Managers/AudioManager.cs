@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
 using UnityEngine;
 
@@ -804,7 +805,16 @@ public sealed class AudioManager : MonoBehaviour
         {
             _loadedSfx[path] = load.Result;
             PlaySfx(load.Result);
+            yield break;
         }
+
+        if (load.IsCanceled)
+            yield break;
+
+        string failureReason = load.IsFaulted
+            ? $": {load.Exception?.GetBaseException().Message}"
+            : ": the loader returned no audio clip";
+        GameLogger.Warning($"Failed to load sound effect '{path}'{failureReason}.");
     }
 
     /// <summary>

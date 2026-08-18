@@ -42,16 +42,40 @@ namespace Rebellion.Systems
         public void ProcessTick()
         {
             foreach (Faction faction in _game.GetFactions())
-            {
-                if (faction.ManageGarrisons)
-                {
-                    while (QueueGarrisonRegiment(faction)) { }
-                }
+                ProcessFaction(faction);
+        }
 
-                if (faction.ManageProduction)
-                {
-                    while (QueueProductionFacility(faction)) { }
-                }
+        /// <summary>
+        /// Immediately fills idle capacity for one faction's delegated work.
+        /// </summary>
+        /// <param name="faction">The faction whose current automation choices should run.</param>
+        public void ProcessFaction(Faction faction)
+        {
+            if (faction == null)
+                throw new ArgumentNullException(nameof(faction));
+
+            if (faction.ManageGarrisons)
+                FillGarrisonManufacturingCapacity(faction);
+
+            if (faction.ManageProduction)
+                FillProductionManufacturingCapacity(faction);
+        }
+
+        /// <summary>
+        /// Fills the faction's currently available troop-manufacturing capacity.
+        /// </summary>
+        /// <param name="faction">The faction delegating garrison management.</param>
+        private void FillGarrisonManufacturingCapacity(Faction faction)
+        {
+            List<Planet> ownedPlanets = GetOwnedPlanets(faction);
+            int availableCapacity = ownedPlanets.Sum(planet =>
+                planet.GetAvailableManufacturingCapacity(ManufacturingType.Troop)
+            );
+
+            for (int orderIndex = 0; orderIndex < availableCapacity; orderIndex++)
+            {
+                if (!TryQueueGarrisonRegiment(faction, ownedPlanets))
+                    break;
             }
         }
 
@@ -59,10 +83,10 @@ namespace Rebellion.Systems
         /// Queues one regiment for the faction's highest-priority garrison shortage.
         /// </summary>
         /// <param name="faction">The faction delegating garrison management.</param>
+        /// <param name="ownedPlanets">The faction's colonized planets.</param>
         /// <returns>True when an order was queued.</returns>
-        private bool QueueGarrisonRegiment(Faction faction)
+        private bool TryQueueGarrisonRegiment(Faction faction, List<Planet> ownedPlanets)
         {
-            List<Planet> ownedPlanets = GetOwnedPlanets(faction);
             Planet destination = ownedPlanets
                 .Select(planet => new
                 {
@@ -94,13 +118,31 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Fills the faction's currently available building-manufacturing capacity.
+        /// </summary>
+        /// <param name="faction">The faction delegating production management.</param>
+        private void FillProductionManufacturingCapacity(Faction faction)
+        {
+            List<Planet> ownedPlanets = GetOwnedPlanets(faction);
+            int availableCapacity = ownedPlanets.Sum(planet =>
+                planet.GetAvailableManufacturingCapacity(ManufacturingType.Building)
+            );
+
+            for (int orderIndex = 0; orderIndex < availableCapacity; orderIndex++)
+            {
+                if (!TryQueueProductionFacility(faction, ownedPlanets))
+                    break;
+            }
+        }
+
+        /// <summary>
         /// Queues the next mine or refinery needed to expand paired production.
         /// </summary>
         /// <param name="faction">The faction delegating production management.</param>
+        /// <param name="ownedPlanets">The faction's colonized planets.</param>
         /// <returns>True when an order was queued.</returns>
-        private bool QueueProductionFacility(Faction faction)
+        private bool TryQueueProductionFacility(Faction faction, List<Planet> ownedPlanets)
         {
-            List<Planet> ownedPlanets = GetOwnedPlanets(faction);
             int mineCount = CountBuildings(ownedPlanets, BuildingType.Mine);
             int refineryCount = CountBuildings(ownedPlanets, BuildingType.Refinery);
             BuildingType nextType =

@@ -23,6 +23,19 @@ public sealed class InputManager : MonoBehaviour
     public InputActionAsset Asset => Actions.asset;
 
     /// <summary>
+    /// Captures the currently held, user-configured strategy selection modifiers.
+    /// </summary>
+    /// <returns>The active selection modifier state.</returns>
+    public SelectionModifierState GetSelectionModifierState()
+    {
+        PlayerInputActions.StrategyActions strategy = Actions.Strategy;
+        return new SelectionModifierState(
+            strategy.MultiSelectModifier.IsPressed(),
+            strategy.RangeSelectModifier.IsPressed()
+        );
+    }
+
+    /// <summary>
     /// Attempts to return the generated input action wrapper without creating it.
     /// </summary>
     /// <param name="actions">The generated input action wrapper when one has been created.</param>
@@ -61,7 +74,7 @@ public sealed class InputManager : MonoBehaviour
     /// <returns>The serialized binding override data.</returns>
     public string SaveBindingOverrides()
     {
-        RestoreReservedEscapeBinding(Actions.asset);
+        RemoveReservedShortcutOverrides(Actions.asset);
         return Actions.asset.SaveBindingOverridesAsJson();
     }
 
@@ -75,28 +88,38 @@ public sealed class InputManager : MonoBehaviour
         asset.RemoveAllBindingOverrides();
         if (!string.IsNullOrWhiteSpace(bindingOverrides))
             asset.LoadBindingOverridesFromJson(bindingOverrides);
-        RestoreReservedEscapeBinding(asset);
+        RemoveReservedShortcutOverrides(asset);
     }
 
     /// <summary>
-    /// Removes persisted overrides from the fixed Escape binding and its chord alternative.
+    /// Prevents persisted rebinding data from replacing the fixed Escape and Shift+Escape
+    /// navigation shortcuts.
     /// </summary>
-    private static void RestoreReservedEscapeBinding(InputActionAsset asset)
+    private static void RemoveReservedShortcutOverrides(InputActionAsset asset)
     {
-        InputAction action = asset.FindAction("Global/CancelOrSettings", true);
-        bool clearingPrimaryChord = false;
+        RemovePrimaryShortcutOverride(asset.FindAction("Global/CancelOrSettings", true));
+        RemovePrimaryShortcutOverride(asset.FindAction("Global/OpenGameMenu", true));
+    }
+
+    /// <summary>
+    /// Removes overrides from one action's authored primary binding, including every part of
+    /// its optional composite chord.
+    /// </summary>
+    private static void RemovePrimaryShortcutOverride(InputAction action)
+    {
+        bool insidePrimaryChord = false;
         for (int index = 0; index < action.bindings.Count; index++)
         {
             InputBinding binding = action.bindings[index];
             if (!binding.isPartOfComposite)
             {
-                clearingPrimaryChord = binding.name == "PrimaryChord";
-                if (binding.name == "Primary" || clearingPrimaryChord)
+                insidePrimaryChord = binding.name == "PrimaryChord";
+                if (binding.name == "Primary" || insidePrimaryChord)
                     action.RemoveBindingOverride(index);
                 continue;
             }
 
-            if (clearingPrimaryChord)
+            if (insidePrimaryChord)
                 action.RemoveBindingOverride(index);
         }
     }

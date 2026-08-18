@@ -69,7 +69,7 @@ public sealed class MissionCreateWindowRenderData
     /// <param name="selectedMissionTexture">The selected mission icon.</param>
     /// <param name="targetName">The mission target name.</param>
     /// <param name="targetTexture">The mission target image.</param>
-    /// <param name="usePlanetTargetPreview">Whether the view should use its authored planet preview.</param>
+    /// <param name="usePlanetTargetPreview">Whether the target is a planet and may use the authored planet-preview fallback.</param>
     /// <param name="agentsHeaderTexture">The faction-specific agents header.</param>
     /// <param name="decoysHeaderTexture">The faction-specific decoys header.</param>
     /// <param name="tabs">The ordered workflow tabs.</param>

@@ -1288,6 +1288,8 @@ namespace Rebellion.Game.FogOfWar
                 return CopyBuildingForSnapshot(building) as T;
             if (entity is CapitalShip capitalShip)
                 return CopyCapitalShipForSnapshot(capitalShip) as T;
+            if (entity is Mission mission)
+                return CopyMissionForSnapshot(mission) as T;
             if (entity is Officer officer)
                 return CopyOfficerForSnapshot(officer) as T;
             if (entity is Regiment regiment)
@@ -1336,6 +1338,37 @@ namespace Rebellion.Game.FogOfWar
                 capitalShip.SetParent(copy);
 
             return copy;
+        }
+
+        /// <summary>
+        /// Copies a mission and its observed participant identities for storage in fog state.
+        /// </summary>
+        /// <param name="mission">The observed mission to copy.</param>
+        /// <returns>The detached mission snapshot.</returns>
+        internal static Mission CopyMissionForSnapshot(Mission mission)
+        {
+            if (mission == null)
+                return null;
+
+            Mission copy = mission.GetShallowCopy(CloneMode.Full);
+            copy.MainParticipants = CopyMissionParticipantsForSnapshot(mission.MainParticipants);
+            copy.DecoyParticipants = CopyMissionParticipantsForSnapshot(mission.DecoyParticipants);
+            ClearParentReferences(copy);
+            return copy;
+        }
+
+        /// <summary>
+        /// Creates independent copies of participants observed in one mission role.
+        /// </summary>
+        /// <param name="participants">The participants assigned to the observed role.</param>
+        /// <returns>The detached participant snapshots in their original order.</returns>
+        private static List<IMissionParticipant> CopyMissionParticipantsForSnapshot(
+            IEnumerable<IMissionParticipant> participants
+        )
+        {
+            return (participants ?? Enumerable.Empty<IMissionParticipant>())
+                .Select(participant => CopyEntityForSnapshot(participant))
+                .ToList();
         }
 
         /// <summary>

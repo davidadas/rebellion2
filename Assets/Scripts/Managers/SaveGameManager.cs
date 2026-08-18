@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -31,6 +32,7 @@ public sealed class SaveGameEntry
 public class SaveGameManager
 {
     public const int MaxDisplayNameLength = 64;
+    public const string AutosaveFilePrefix = "autosave_";
     public const string QuickSaveFileName = "quicksave";
     private const int _saveSlotCount = 6;
     private const string _quickSaveDisplayName = "Quicksave";
@@ -318,6 +320,39 @@ public class SaveGameManager
     }
 
     /// <summary>
+    /// Processes one completed simulation tick, creating an autosave when the configured
+    /// cadence is reached.
+    /// </summary>
+    /// <param name="game">The game whose completed tick is being processed.</param>
+    /// <param name="settings">The current gameplay settings.</param>
+    /// <returns>True when an autosave was written; otherwise false.</returns>
+    public bool ProcessAutosaveTick(GameRoot game, UserGameplaySettings settings)
+    {
+        if (
+            settings?.AutosaveEnabled != true
+            || game == null
+            || game.CurrentTick <= 0
+            || settings.AutosaveIntervalTicks <= 0
+            || game.CurrentTick % settings.AutosaveIntervalTicks != 0
+        )
+            return false;
+
+        try
+        {
+            string fileName = AutosaveFilePrefix + game.CurrentTick.ToString("D10");
+            SaveGameData(game, fileName, $"Autosave - Tick {game.CurrentTick}");
+            PruneAutosaveHistory(settings.AutosavesToKeep);
+            GameLogger.Log($"Autosave completed at tick {game.CurrentTick}.");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            GameLogger.Warning($"Autosave failed at tick {game.CurrentTick}: {exception.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Saves game data to one numbered save slot with a display name.
     /// </summary>
     /// <param name="game">The game data to save.</param>
@@ -351,8 +386,26 @@ public class SaveGameManager
     }
 
     /// <summary>
+    /// Prunes the oldest tick-addressed restore points after a new autosave is written.
+    /// </summary>
+    /// <param name="autosavesToKeep">The maximum number of autosaves to retain.</param>
+    private void PruneAutosaveHistory(int autosavesToKeep)
+    {
+        string saveDirectory = GetSaveDirectoryPath();
+        if (!Directory.Exists(saveDirectory))
+            return;
+
+        FileInfo[] autosaves = new DirectoryInfo(saveDirectory)
+            .GetFiles($"{AutosaveFilePrefix}*.sav", SearchOption.TopDirectoryOnly)
+            .OrderByDescending(file => file.LastWriteTimeUtc)
+            .ThenByDescending(file => file.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        for (int index = autosavesToKeep; index < autosaves.Length; index++)
+            DeleteSave(Path.GetFileNameWithoutExtension(autosaves[index].Name));
+    }
+
+    /// <summary>
     /// Load game data from file using XML deserialization.
-    /// Peeks the save version first and refuses saves written by newer clients.
     /// </summary>
     /// <param name="fileName">The name of the save file.</param>
     /// <returns>The loaded game data.</returns>
@@ -362,36 +415,8 @@ public class SaveGameManager
 
         GameSerializer serializer = new GameSerializer(typeof(GameRoot));
 
-        int saveVersion = PeekSaveVersion(saveFilePath, serializer);
-        ValidateSaveVersion(saveVersion);
-
         using FileStream fileStream = new FileStream(saveFilePath, FileMode.Open);
         return (GameRoot)serializer.Deserialize(fileStream);
-    }
-
-    /// <summary>
-    /// Reads the save version from a save file's metadata.
-    /// </summary>
-    /// <param name="saveFilePath">The save file path.</param>
-    /// <param name="serializer">The serializer used to read the save metadata.</param>
-    /// <returns>The save version.</returns>
-    private int PeekSaveVersion(string saveFilePath, GameSerializer serializer)
-    {
-        using FileStream stream = new FileStream(
-            saveFilePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read
-        );
-
-        GameMetadata metadata = serializer.DeserializeNode<GameMetadata>(
-            stream,
-            _metadataElementName
-        );
-        if (metadata == null)
-            throw new InvalidOperationException("Save metadata is missing.");
-
-        return metadata.SaveVersion;
     }
 
     /// <summary>
@@ -404,7 +429,6 @@ public class SaveGameManager
         try
         {
             GameMetadata metadata = ReadSaveMetadata(fileName);
-            ValidateSaveVersion(metadata.SaveVersion);
             return new SaveGameEntry(fileName, metadata);
         }
         catch (Exception ex)
@@ -517,19 +541,5 @@ public class SaveGameManager
             typeof(GameMetadata),
             new GameSerializerSettings { RootName = _metadataElementName }
         );
-    }
-
-    /// <summary>
-    /// Validates that a save version can be loaded by this client.
-    /// </summary>
-    /// <param name="saveVersion">The save version to validate.</param>
-    private void ValidateSaveVersion(int saveVersion)
-    {
-        if (saveVersion != GameMetadata.CurrentSaveVersion)
-        {
-            throw new InvalidOperationException(
-                $"Save version {saveVersion} is not supported by version {GameMetadata.CurrentSaveVersion}."
-            );
-        }
     }
 }

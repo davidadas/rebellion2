@@ -164,8 +164,6 @@ namespace Rebellion.Game.Missions
 
             if (RollKillCheck(game.Config.Assassination, provider))
             {
-                target.IsKilled = true;
-                game.DetachNode(target);
                 results.Add(
                     new OfficerKilledResult
                     {

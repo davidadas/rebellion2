@@ -560,6 +560,8 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(planet.IsDestroyed);
             Assert.IsTrue(minor.IsKilled);
             Assert.IsNull(minor.GetParent());
+            Assert.IsTrue(game.IsInVoid(minor));
+            Assert.AreSame(minor, game.GetSceneNodeByInstanceID<Officer>(minor.InstanceID));
             Assert.IsFalse(main.IsKilled);
             Assert.AreEqual(2, killedMinor.InjuryPoints);
             Assert.AreEqual(planet, killedMinor.GetParent());
@@ -567,6 +569,34 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(20, secondPlanet.GetPopularSupport("alliance"));
             Assert.AreEqual(1, result.Events.OfType<OfficerInjuredResult>().Count());
             Assert.AreEqual(1, result.Events.OfType<OfficerKilledResult>().Count());
+        }
+
+        [Test]
+        public void Execute_DestroySystemMinorPersonnelSurvivesDeathRoll_RemainsInjured()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            Officer minor = AddOfficer(game, planet, "minor", "empire", isMain: false);
+            Fleet fleet = AddBombardmentFleet(
+                game,
+                planet,
+                "alliance",
+                bombardment: 0,
+                typeId: "planet-destroyer"
+            );
+            fleet.CapitalShips[0].CanDestroyPlanets = true;
+
+            BombardmentResult result = MakeBombardment(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, 99 })
+                )
+                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroySystem);
+
+            Assert.AreEqual(1, minor.InjuryPoints);
+            Assert.IsFalse(minor.IsKilled);
+            Assert.AreSame(planet, minor.GetParent());
+            Assert.AreEqual(1, result.Events.OfType<OfficerInjuredResult>().Count());
+            Assert.IsEmpty(result.Events.OfType<OfficerKilledResult>());
         }
 
         [Test]

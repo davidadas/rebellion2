@@ -1,4 +1,5 @@
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Units;
 
 /// <summary>
@@ -41,6 +42,12 @@ public interface IStrategyHudActions
     /// </summary>
     /// <param name="tab">The semantic messages tab.</param>
     void OpenMessagesTab(MessagesTab tab);
+
+    /// <summary>
+    /// Immediately applies the current advisor automation choices for one faction.
+    /// </summary>
+    /// <param name="faction">The faction whose delegated work should run.</param>
+    void ProcessAdvisorAutomation(Faction faction);
 
     /// <summary>
     /// Opens the speed context menu at a source-space pointer position.

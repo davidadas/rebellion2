@@ -43,6 +43,7 @@ public sealed class FacilityWindowController
     private readonly HashSet<FacilityWindowView> boundViews = new HashSet<FacilityWindowView>();
     private readonly ConstructionWindowController constructionWindowController;
     private readonly Func<GameRoot> getGame;
+    private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
     private readonly FacilityWindowProjector projector;
@@ -66,6 +67,7 @@ public sealed class FacilityWindowController
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
     /// <param name="getWindowPosition">Clamps a requested facility-window placement.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public FacilityWindowController(
         Func<GameRoot> getGame,
         ConstructionWindowController constructionWindowController,
@@ -74,7 +76,8 @@ public sealed class FacilityWindowController
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,
         Func<int, int, Vector2Int> getWindowPosition,
-        Action markDirty
+        Action markDirty,
+        Func<SelectionModifierState> getSelectionModifiers = null
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
@@ -89,6 +92,7 @@ public sealed class FacilityWindowController
         this.getWindowPosition =
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
         projector = new FacilityWindowProjector(getUIContext);
     }
 
@@ -148,7 +152,7 @@ public sealed class FacilityWindowController
             return false;
 
         BindWindow(view);
-        sessions[view] = new FacilityWindowSession(window, planet);
+        sessions[view] = new FacilityWindowSession(window, planet, getSelectionModifiers);
         return true;
     }
 
@@ -803,7 +807,7 @@ public sealed class FacilityWindowController
         else if (eventData.button == PointerEventData.InputButton.Left)
         {
             session.Window.RequestFocus();
-            session.SelectBuilding(itemIndex, view.InventoryColumnCount);
+            session.SelectBuilding(itemIndex);
         }
 
         markDirty();
