@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
@@ -35,7 +36,7 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             _planetSystem.AddChild(_planet1);
 
-            Assert.Contains(_planet1, _planetSystem.Planets);
+            Assert.Contains(_planet1, _planetSystem.GetPlanets().ToList());
         }
 
         [Test]
@@ -45,7 +46,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planetSystem.RemoveChild(_planet1);
 
-            Assert.IsFalse(_planetSystem.Planets.Contains(_planet1));
+            Assert.IsFalse(_planetSystem.GetPlanets().Contains(_planet1));
         }
 
         [Test]
@@ -103,8 +104,8 @@ namespace Rebellion.Tests.Game.Galaxy
                 "Importance should be correctly deserialized."
             );
             Assert.AreEqual(
-                _planetSystem.Planets.Count,
-                deserialized.Planets.Count,
+                _planetSystem.GetPlanets().Count,
+                deserialized.GetPlanets().Count,
                 "Planets count should be correctly deserialized."
             );
         }
@@ -184,11 +185,11 @@ namespace Rebellion.Tests.Game.Galaxy
             _planetSystem.AddChild(planet3);
             _planetSystem.AddChild(planet4);
 
-            Assert.AreEqual(4, _planetSystem.Planets.Count);
-            Assert.Contains(_planet1, _planetSystem.Planets);
-            Assert.Contains(_planet2, _planetSystem.Planets);
-            Assert.Contains(planet3, _planetSystem.Planets);
-            Assert.Contains(planet4, _planetSystem.Planets);
+            Assert.AreEqual(4, _planetSystem.GetPlanets().Count);
+            Assert.Contains(_planet1, _planetSystem.GetPlanets().ToList());
+            Assert.Contains(_planet2, _planetSystem.GetPlanets().ToList());
+            Assert.Contains(planet3, _planetSystem.GetPlanets().ToList());
+            Assert.Contains(planet4, _planetSystem.GetPlanets().ToList());
         }
 
         [Test]
@@ -197,7 +198,7 @@ namespace Rebellion.Tests.Game.Galaxy
             _planetSystem.AddChild(_planet1);
             _planetSystem.AddChild(_planet1);
 
-            Assert.AreEqual(2, _planetSystem.Planets.Count);
+            Assert.AreEqual(2, _planetSystem.GetPlanets().Count);
         }
 
         [Test]
@@ -208,9 +209,9 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planetSystem.RemoveChild(_planet1);
 
-            Assert.AreEqual(1, _planetSystem.Planets.Count);
-            Assert.IsFalse(_planetSystem.Planets.Contains(_planet1));
-            Assert.IsTrue(_planetSystem.Planets.Contains(_planet2));
+            Assert.AreEqual(1, _planetSystem.GetPlanets().Count);
+            Assert.IsFalse(_planetSystem.GetPlanets().Contains(_planet1));
+            Assert.IsTrue(_planetSystem.GetPlanets().Contains(_planet2));
         }
 
         [Test]

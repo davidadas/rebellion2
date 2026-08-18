@@ -42,7 +42,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
             _planet = CreatePlanet(game);
             _officer = new Officer { InstanceID = "officer", OwnerInstanceID = _playerFactionId };
-            _planet.Planet.Officers.Add(_officer);
+            _planet.Planet.AddTestChild(_officer);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
@@ -193,14 +193,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 InstanceID = _officer.InstanceID,
                 OwnerInstanceID = _playerFactionId,
             };
+            Planet freshPlanetNode = new Planet
+            {
+                InstanceID = _planet.Planet.InstanceID,
+                DisplayName = "Fresh Planet",
+            };
+            freshPlanetNode.AddTestChild(freshOfficer);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
                 new GamePlanetSystem { InstanceID = "fresh-system" },
-                new Planet
-                {
-                    InstanceID = _planet.Planet.InstanceID,
-                    DisplayName = "Fresh Planet",
-                    Officers = { freshOfficer },
-                },
+                freshPlanetNode,
                 _playerFactionId
             );
 
@@ -272,7 +273,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             return game;
         }

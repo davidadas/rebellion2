@@ -52,7 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 OwnerInstanceID = _playerFactionId,
                 BuildingType = BuildingType.Shipyard,
             };
-            _planet.Planet.Buildings.Add(_building);
+            _planet.Planet.AddTestChild(_building);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
@@ -199,14 +199,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 OwnerInstanceID = _playerFactionId,
                 BuildingType = BuildingType.Shipyard,
             };
+            Planet freshPlanetNode = new Planet
+            {
+                InstanceID = _planet.Planet.InstanceID,
+                DisplayName = "Fresh Planet",
+            };
+            freshPlanetNode.AddTestChild(freshBuilding);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
                 new GamePlanetSystem { InstanceID = "fresh-system" },
-                new Planet
-                {
-                    InstanceID = _planet.Planet.InstanceID,
-                    DisplayName = "Fresh Planet",
-                    Buildings = { freshBuilding },
-                },
+                freshPlanetNode,
                 _playerFactionId
             );
 
@@ -274,7 +275,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             return game;
         }

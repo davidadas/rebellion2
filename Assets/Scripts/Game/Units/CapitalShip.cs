@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Movement;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
 {
@@ -61,10 +62,17 @@ namespace Rebellion.Game.Units
         public List<CapitalShipRole> Roles = new List<CapitalShipRole>();
 
         // Unit Info.
-        public List<Officer> Officers = new List<Officer>();
-        public List<Regiment> Regiments = new List<Regiment>();
-        public List<SpecialForces> SpecialForces = new List<SpecialForces>();
-        public List<Starfighter> Starfighters = new List<Starfighter>();
+        [PersistableMember(Name = "Officers")]
+        private List<Officer> _officers = new List<Officer>();
+
+        [PersistableMember(Name = "Regiments")]
+        private List<Regiment> _regiments = new List<Regiment>();
+
+        [PersistableMember(Name = "SpecialForces")]
+        private List<SpecialForces> _specialForces = new List<SpecialForces>();
+
+        [PersistableMember(Name = "Starfighters")]
+        private List<Starfighter> _starfighters = new List<Starfighter>();
 
         // Weapon Info.
         public Dictionary<PrimaryWeaponType, int[]> PrimaryWeapons = new Dictionary<
@@ -108,6 +116,65 @@ namespace Rebellion.Game.Units
         public CapitalShip() { }
 
         /// <summary>
+        /// Gets the officers carried by this ship.
+        /// </summary>
+        /// <returns>The ship's officers.</returns>
+        public IReadOnlyList<Officer> GetOfficers(bool includeDisabled = false) =>
+            Select(_officers, includeDisabled);
+
+        /// <summary>
+        /// Gets the regiments carried by this ship.
+        /// </summary>
+        /// <returns>The ship's regiments.</returns>
+        public IReadOnlyList<Regiment> GetRegiments(bool includeDisabled = false) =>
+            Select(_regiments, includeDisabled);
+
+        /// <summary>
+        /// Gets the special-forces units carried by this ship.
+        /// </summary>
+        /// <returns>The ship's special-forces units.</returns>
+        public IReadOnlyList<SpecialForces> GetSpecialForces(bool includeDisabled = false) =>
+            Select(_specialForces, includeDisabled);
+
+        /// <summary>
+        /// Gets the starfighters carried by this ship.
+        /// </summary>
+        /// <returns>The ship's starfighters.</returns>
+        public IReadOnlyList<Starfighter> GetStarfighters(bool includeDisabled = false) =>
+            Select(_starfighters, includeDisabled);
+
+        /// <summary>
+        /// Returns enabled nodes from a direct child collection.
+        /// </summary>
+        private static IReadOnlyList<T> Select<T>(IEnumerable<T> nodes, bool includeDisabled)
+            where T : ISceneNode
+        {
+            return includeDisabled
+                ? nodes.ToList()
+                : nodes.Where(node => node.IsEnabledInHierarchy()).ToList();
+        }
+
+        /// <summary>
+        /// Replaces the ship's child collections while constructing a detached projection.
+        /// </summary>
+        /// <param name="officers">The officers to retain in the projection.</param>
+        /// <param name="regiments">The regiments to retain in the projection.</param>
+        /// <param name="specialForces">The special-forces units to retain in the projection.</param>
+        /// <param name="starfighters">The starfighters to retain in the projection.</param>
+        internal void SetChildren(
+            IEnumerable<Officer> officers,
+            IEnumerable<Regiment> regiments,
+            IEnumerable<SpecialForces> specialForces,
+            IEnumerable<Starfighter> starfighters
+        )
+        {
+            _officers = officers?.ToList() ?? new List<Officer>();
+            _regiments = regiments?.ToList() ?? new List<Regiment>();
+            _specialForces = specialForces?.ToList() ?? new List<SpecialForces>();
+            _starfighters = starfighters?.ToList() ?? new List<Starfighter>();
+        }
+
+        /// <summary>
         /// Returns the maximum number of starfighters this ship can carry.
         /// </summary>
         /// <returns>The starfighter capacity of this ship.</returns>
@@ -122,7 +189,7 @@ namespace Rebellion.Game.Units
         /// <returns>The count of starfighters currently on board.</returns>
         public int GetCurrentStarfighterCount()
         {
-            return Starfighters.Count;
+            return _starfighters.Count;
         }
 
         /// <summary>
@@ -213,7 +280,7 @@ namespace Rebellion.Game.Units
         /// <returns>The count of regiments currently on board.</returns>
         public int GetCurrentRegimentCount()
         {
-            return Regiments.Count;
+            return _regiments.Count;
         }
 
         /// <summary>
@@ -222,7 +289,7 @@ namespace Rebellion.Game.Units
         /// <returns>Remaining starfighter berths (capacity minus current count). Zero if full.</returns>
         public int GetExcessStarfighterCapacity()
         {
-            return StarfighterCapacity - Starfighters.Count;
+            return StarfighterCapacity - _starfighters.Count;
         }
 
         /// <summary>
@@ -231,7 +298,7 @@ namespace Rebellion.Game.Units
         /// <returns>Remaining regiment berths (capacity minus current count). Zero if full.</returns>
         public int GetExcessRegimentCapacity()
         {
-            return RegimentCapacity - Regiments.Count;
+            return RegimentCapacity - _regiments.Count;
         }
 
         /// <summary>
@@ -241,13 +308,13 @@ namespace Rebellion.Game.Units
         /// <exception cref="InvalidOperationException">Thrown when adding the starfighter would exceed the capacity.</exception>
         public void AddStarfighter(Starfighter starfighter)
         {
-            if (Starfighters.Count >= StarfighterCapacity)
+            if (_starfighters.Count >= StarfighterCapacity)
             {
                 throw new InvalidOperationException(
                     $"Adding starfighters to \"{this.GetDisplayName()}\" would exceed its capacity."
                 );
             }
-            Starfighters.Add(starfighter);
+            _starfighters.Add(starfighter);
         }
 
         /// <summary>
@@ -257,13 +324,13 @@ namespace Rebellion.Game.Units
         /// <exception cref="InvalidOperationException">Thrown when adding the regiment would exceed the capacity limit.</exception>
         public void AddRegiment(Regiment regiment)
         {
-            if (Regiments.Count >= RegimentCapacity)
+            if (_regiments.Count >= RegimentCapacity)
             {
                 throw new InvalidOperationException(
                     $"Adding regiments to \"{this.GetDisplayName()}\" would exceed its capacity."
                 );
             }
-            Regiments.Add(regiment);
+            _regiments.Add(regiment);
         }
 
         /// <summary>
@@ -278,7 +345,7 @@ namespace Rebellion.Game.Units
                 throw new SceneAccessException(officer, this);
             }
 
-            Officers.Add(officer);
+            _officers.Add(officer);
         }
 
         /// <summary>
@@ -292,7 +359,7 @@ namespace Rebellion.Game.Units
                 throw new SceneAccessException(specialForces, this);
             }
 
-            SpecialForces.Add(specialForces);
+            _specialForces.Add(specialForces);
         }
 
         /// <summary>
@@ -373,19 +440,19 @@ namespace Rebellion.Game.Units
         {
             if (child is Starfighter starfighter)
             {
-                Starfighters.Remove(starfighter);
+                _starfighters.Remove(starfighter);
             }
             else if (child is Regiment regiment)
             {
-                Regiments.Remove(regiment);
+                _regiments.Remove(regiment);
             }
             else if (child is Officer officer)
             {
-                Officers.Remove(officer);
+                _officers.Remove(officer);
             }
             else if (child is SpecialForces specialForces)
             {
-                SpecialForces.Remove(specialForces);
+                _specialForces.Remove(specialForces);
             }
         }
 
@@ -426,13 +493,13 @@ namespace Rebellion.Game.Units
         /// Returns the ship's carried units and officers.
         /// </summary>
         /// <returns>The children carried by this ship.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
         {
-            return Officers
+            return GetOfficers(includeDisabled)
                 .Cast<ISceneNode>()
-                .Concat(Starfighters.Cast<ISceneNode>())
-                .Concat(Regiments.Cast<ISceneNode>())
-                .Concat(SpecialForces.Cast<ISceneNode>());
+                .Concat(GetStarfighters(includeDisabled).Cast<ISceneNode>())
+                .Concat(GetRegiments(includeDisabled).Cast<ISceneNode>())
+                .Concat(GetSpecialForces(includeDisabled).Cast<ISceneNode>());
         }
     }
 }

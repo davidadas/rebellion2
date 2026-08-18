@@ -157,7 +157,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -188,7 +188,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.OuterRim,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.StartingPlanetLoyalty[planet] = 100;
@@ -213,7 +213,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.OuterRim,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
@@ -232,7 +232,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.OuterRim,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
@@ -252,7 +252,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -278,7 +278,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -303,7 +303,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -327,7 +327,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -363,7 +363,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -387,7 +387,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -411,7 +411,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.OuterRim,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
@@ -440,7 +440,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.OuterRim,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
@@ -460,7 +460,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.OuterRim,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
@@ -482,7 +482,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.OuterRim,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
@@ -500,7 +500,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GameGenerationConfig config = new GameGenerationConfig
             {
@@ -566,7 +566,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             GameGenerationConfig config = new GameGenerationConfig
             {

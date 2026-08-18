@@ -262,12 +262,12 @@ namespace Rebellion.Generation
 
             foreach (
                 Planet planet in systems
-                    .SelectMany(s => s.Planets)
+                    .SelectMany(s => s.GetPlanets())
                     .Where(p => p.OwnerInstanceID != null)
             )
             {
                 AddDestination(destinations, planet);
-                foreach (Fleet fleet in planet.Fleets)
+                foreach (Fleet fleet in planet.GetFleets())
                     AddDestination(destinations, fleet);
             }
 
@@ -279,8 +279,8 @@ namespace Rebellion.Generation
 
                 if (destination is Planet planet)
                     planet.AddChild(officer);
-                else if (destination is Fleet fleet && fleet.CapitalShips.Count > 0)
-                    fleet.CapitalShips[0].AddChild(officer);
+                else if (destination is Fleet fleet && fleet.GetCapitalShips().Count > 0)
+                    fleet.GetCapitalShips()[0].AddChild(officer);
             }
         }
 

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -39,12 +40,31 @@ namespace Rebellion.Game.Galaxy
         public int PositionY { get; set; }
 
         // Child Nodes.
-        public List<Planet> Planets { get; set; } = new List<Planet>();
+        [PersistableMember(Name = "Planets")]
+        private List<Planet> _planets = new List<Planet>();
 
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public PlanetSystem() { }
+
+        /// <summary>
+        /// Gets the planets contained by this planet system.
+        /// </summary>
+        /// <returns>The planet system's planets.</returns>
+        public IReadOnlyList<Planet> GetPlanets(bool includeDisabled = false) =>
+            includeDisabled
+                ? _planets
+                : _planets.Where(planet => planet.IsEnabledInHierarchy()).ToList();
+
+        /// <summary>
+        /// Replaces the system's planet collection while constructing a detached projection.
+        /// </summary>
+        /// <param name="planets">The planets to retain in the projection.</param>
+        internal void SetPlanets(IEnumerable<Planet> planets)
+        {
+            _planets = planets == null ? new List<Planet>() : new List<Planet>(planets);
+        }
 
         /// <summary>
         /// Returns the type of the planet system.
@@ -79,7 +99,7 @@ namespace Rebellion.Game.Galaxy
         {
             if (child is Planet planet)
             {
-                Planets.Add(planet);
+                _planets.Add(planet);
             }
         }
 
@@ -91,7 +111,7 @@ namespace Rebellion.Game.Galaxy
         {
             if (child is Planet planet)
             {
-                Planets.Remove(planet);
+                _planets.Remove(planet);
             }
         }
 
@@ -99,9 +119,9 @@ namespace Rebellion.Game.Galaxy
         /// Returns the planets in the planet system.
         /// </summary>
         /// <returns>The planets in the planet system.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
         {
-            return Planets.ToArray();
+            return GetPlanets(includeDisabled).Cast<ISceneNode>();
         }
     }
 }

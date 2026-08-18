@@ -931,9 +931,11 @@ public sealed class PlanetSystemWindowController
     private Fleet GetPlayerFleetTarget(Planet planet)
     {
         string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
-        return planet?.Fleets.FirstOrDefault(fleet =>
-            StrategyContextMenuAvailability.PlayerControlsItem(fleet, playerFactionId)
-        );
+        return planet
+            ?.GetFleets()
+            .FirstOrDefault(fleet =>
+                StrategyContextMenuAvailability.PlayerControlsItem(fleet, playerFactionId)
+            );
     }
 
     /// <summary>
@@ -945,7 +947,8 @@ public sealed class PlanetSystemWindowController
     {
         string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
         return planet
-                ?.Fleets.Cast<ISceneNode>()
+                ?.GetFleets()
+                .Cast<ISceneNode>()
                 .Where(fleet =>
                     StrategyContextMenuAvailability.PlayerControlsItem(fleet, playerFactionId)
                 )

@@ -489,7 +489,7 @@ internal sealed class StrategyStatusInfoBuilder
         info.Images.Clear();
         if (fleet.Movement != null)
             info.Images.Add(StatusWindowImage.FleetBannerEnroute);
-        if (fleet.CapitalShips.Any(ship => ship.IsDamaged()))
+        if (fleet.GetCapitalShips().Any(ship => ship.IsDamaged()))
             info.Images.Add(StatusWindowImage.FleetBannerDamaged);
         info.Images.Add(StatusWindowImage.FleetBanner);
         info.Rows.Add(
@@ -509,7 +509,7 @@ internal sealed class StrategyStatusInfoBuilder
             )
         );
         info.Rows.Add(
-            new StrategyStatusRow("Number of Ships:", fleet.CapitalShips.Count.ToString())
+            new StrategyStatusRow("Number of Ships:", fleet.GetCapitalShips().Count.ToString())
         );
         info.Rows.Add(new StrategyStatusRow("Capacity:", " "));
         info.Rows.Add(
@@ -537,13 +537,13 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow(
                 "Damaged Ships:",
-                fleet.CapitalShips.Count(ship => ship.IsDamaged()).ToString()
+                fleet.GetCapitalShips().Count(ship => ship.IsDamaged()).ToString()
             )
         );
         info.Rows.Add(
             new StrategyStatusRow(
                 "Hyperdrive Rating:",
-                fleet.CapitalShips.Any(ship => ship.Hyperdrive > 0) ? "Yes" : "No"
+                fleet.GetCapitalShips().Any(ship => ship.Hyperdrive > 0) ? "Yes" : "No"
             )
         );
         return info;
@@ -583,12 +583,17 @@ internal sealed class StrategyStatusInfoBuilder
         );
         info.Rows.Add(new StrategyStatusRow("Embarked:", " "));
         info.Rows.Add(
-            new StrategyStatusRow("Fighter Squadrons:", capitalShip.Starfighters.Count.ToString())
+            new StrategyStatusRow(
+                "Fighter Squadrons:",
+                capitalShip.GetStarfighters().Count.ToString()
+            )
         );
         info.Rows.Add(
-            new StrategyStatusRow("Trooper Regiments:", capitalShip.Regiments.Count.ToString())
+            new StrategyStatusRow("Trooper Regiments:", capitalShip.GetRegiments().Count.ToString())
         );
-        info.Rows.Add(new StrategyStatusRow("Personnel:", capitalShip.Officers.Count.ToString()));
+        info.Rows.Add(
+            new StrategyStatusRow("Personnel:", capitalShip.GetOfficers().Count.ToString())
+        );
         info.Rows.Add(
             new StrategyStatusRow("Ship Damaged:", capitalShip.IsDamaged() ? "Yes" : "No")
         );
@@ -650,14 +655,18 @@ internal sealed class StrategyStatusInfoBuilder
         );
         ISceneNode missionTarget = ResolveMissionTarget(mission);
         int teamSize =
-            (mission.MainParticipants?.Count ?? 0) + (mission.DecoyParticipants?.Count ?? 0);
+            (mission.GetMainParticipants()?.Count ?? 0)
+            + (mission.GetDecoyParticipants()?.Count ?? 0);
         info.Rows.Add(
             new StrategyStatusRow("Target:", missionTarget?.GetDisplayName() ?? "Unknown")
         );
         AddMissionEtaDestinationRow(info, mission);
         info.Rows.Add(new StrategyStatusRow("Team Size:", teamSize.ToString()));
         info.Rows.Add(
-            new StrategyStatusRow("Decoys:", (mission.DecoyParticipants?.Count ?? 0).ToString())
+            new StrategyStatusRow(
+                "Decoys:",
+                (mission.GetDecoyParticipants()?.Count ?? 0).ToString()
+            )
         );
         return info;
     }
@@ -706,10 +715,12 @@ internal sealed class StrategyStatusInfoBuilder
     /// <returns>The number of matching completed facilities.</returns>
     private static int GetFacilityCountForManufacturingType(Planet planet, ManufacturingType type)
     {
-        return planet.Buildings.Count(building =>
-            building.GetManufacturingStatus() == ManufacturingStatus.Complete
-            && building.GetProductionType() == type
-        );
+        return planet
+            .GetBuildings()
+            .Count(building =>
+                building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                && building.GetProductionType() == type
+            );
     }
 
     /// <summary>
@@ -768,7 +779,7 @@ internal sealed class StrategyStatusInfoBuilder
         ISceneNode item
     )
     {
-        if (item?.GetParent() == null)
+        if (item?.GetParent() == null || !item.IsEnabledInHierarchy())
             return;
         string location = GetStatusLocationName(target, item);
         if (!string.IsNullOrWhiteSpace(location))

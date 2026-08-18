@@ -76,7 +76,7 @@ namespace Rebellion.Tests.Generation
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             foreach ((string planetId, string ownerId) in planets)
             {
-                sys.Planets.Add(
+                sys.AddChild(
                     new Planet
                     {
                         InstanceID = planetId,
@@ -199,7 +199,7 @@ namespace Rebellion.Tests.Generation
             Officer empireOfficer1 = MakeOfficer("E1", "FNEMP1");
             Officer empireOfficer2 = MakeOfficer("E2", "FNEMP1");
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
-            sys.Planets.Add(
+            sys.AddChild(
                 new Planet
                 {
                     InstanceID = "p1",
@@ -207,7 +207,7 @@ namespace Rebellion.Tests.Generation
                     IsColonized = true,
                 }
             );
-            sys.Planets.Add(
+            sys.AddChild(
                 new Planet
                 {
                     InstanceID = "p2",
@@ -264,11 +264,11 @@ namespace Rebellion.Tests.Generation
                 IsColonized = true,
             };
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
-            sys.Planets.Add(planet);
+            sys.AddChild(planet);
 
             Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
-            Assert.Contains(officer, planet.Officers);
+            Assert.Contains(officer, planet.GetOfficers().ToList());
         }
 
         [Test]
@@ -287,16 +287,16 @@ namespace Rebellion.Tests.Generation
                 IsColonized = true,
             };
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
-            sys.Planets.Add(other);
-            sys.Planets.Add(target);
+            sys.AddChild(other);
+            sys.AddChild(target);
 
             Officer officer = MakeOfficer("O1", "FNALL1");
             officer.InitialParentInstanceID = "target";
 
             Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
-            Assert.Contains(officer, target.Officers);
-            Assert.IsEmpty(other.Officers);
+            Assert.Contains(officer, target.GetOfficers().ToList());
+            Assert.IsEmpty(other.GetOfficers());
         }
 
         [Test]
@@ -318,8 +318,8 @@ namespace Rebellion.Tests.Generation
                 IsColonized = true,
             };
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
-            sys.Planets.Add(other);
-            sys.Planets.Add(yavin);
+            sys.AddChild(other);
+            sys.AddChild(yavin);
 
             Officer pinned = MakeOfficer("CHEWBACCA", null);
             pinned.RecruitingFactionInstanceIDs = new List<string> { "FNALL1" };
@@ -336,8 +336,8 @@ namespace Rebellion.Tests.Generation
 
             Assert.Contains(pinned, results.Deployed);
             Assert.Contains(recruitable, results.Unrecruited);
-            Assert.Contains(pinned, yavin.Officers);
-            Assert.IsEmpty(other.Officers);
+            Assert.Contains(pinned, yavin.GetOfficers().ToList());
+            Assert.IsEmpty(other.GetOfficers());
         }
     }
 }

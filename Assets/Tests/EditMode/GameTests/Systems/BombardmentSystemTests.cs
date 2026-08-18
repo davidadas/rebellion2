@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 0);
-            CapitalShip ship = fleet.CapitalShips[0];
+            CapitalShip ship = fleet.GetCapitalShips()[0];
             ship.StarfighterCapacity = 1;
             game.AttachNode(
                 new Starfighter
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("empire", result.DefenderOwnerInstanceID);
             CollectionAssert.Contains(
                 result.AttackingUnits.Select(unit => unit.Unit.GetInstanceID()),
-                fleet.CapitalShips[0].GetInstanceID()
+                fleet.GetCapitalShips()[0].GetInstanceID()
             );
             CollectionAssert.Contains(
                 result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
@@ -129,10 +129,10 @@ namespace Rebellion.Tests.Systems
                 mine.GetInstanceID()
             );
             Assert.AreNotSame(
-                fleet.CapitalShips[0],
+                fleet.GetCapitalShips()[0],
                 result
                     .AttackingUnits.Single(unit =>
-                        unit.Unit.GetInstanceID() == fleet.CapitalShips[0].GetInstanceID()
+                        unit.Unit.GetInstanceID() == fleet.GetCapitalShips()[0].GetInstanceID()
                     )
                     .Unit
             );
@@ -326,7 +326,7 @@ namespace Rebellion.Tests.Systems
                 bombardment: 10,
                 currentHull: 50
             );
-            CapitalShip ship = fleet.CapitalShips[0];
+            CapitalShip ship = fleet.GetCapitalShips()[0];
             ship.StarfighterCapacity = 1;
             Starfighter fighter = new Starfighter
             {
@@ -390,7 +390,7 @@ namespace Rebellion.Tests.Systems
             general.CurrentRank = OfficerRank.General;
             general.SetBaseRating(OfficerRating.Leadership, 40);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
-            CapitalShip ship = fleet.CapitalShips[0];
+            CapitalShip ship = fleet.GetCapitalShips()[0];
             ship.MaxShieldStrength = 100;
 
             BombardmentResult result = MakeBombardment(
@@ -422,7 +422,7 @@ namespace Rebellion.Tests.Systems
             );
             lnr.WeaponPower = 100;
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
-            CapitalShip destroyedShip = fleet.CapitalShips[0];
+            CapitalShip destroyedShip = fleet.GetCapitalShips()[0];
             CapitalShip survivingShip = new CapitalShip
             {
                 InstanceID = "survivor",
@@ -548,7 +548,7 @@ namespace Rebellion.Tests.Systems
                 bombardment: 0,
                 typeId: "CSEM015"
             );
-            fleet.CapitalShips[0].CanDestroyPlanets = true;
+            fleet.GetCapitalShips()[0].CanDestroyPlanets = true;
 
             BombardmentResult result = MakeBombardment(
                     game,
@@ -590,7 +590,7 @@ namespace Rebellion.Tests.Systems
                 bombardment: 0,
                 typeId: "CSEM015"
             );
-            CapitalShip deathStar = fleet.CapitalShips[0];
+            CapitalShip deathStar = fleet.GetCapitalShips()[0];
             deathStar.CanDestroyPlanets = true;
 
             BombardmentResult result = MakeBombardment(
@@ -631,7 +631,7 @@ namespace Rebellion.Tests.Systems
                 bombardment: 0,
                 typeId: "CSEM015"
             );
-            fleet.CapitalShips[0].CanDestroyPlanets = true;
+            fleet.GetCapitalShips()[0].CanDestroyPlanets = true;
 
             MakeBombardment(game, new SequenceRNG())
                 .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroySystem);

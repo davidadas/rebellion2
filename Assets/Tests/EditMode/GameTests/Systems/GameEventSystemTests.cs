@@ -69,11 +69,11 @@ namespace Rebellion.Tests.Systems
         {
             GameEvent gameEvent = CreateTickEvent("PENDING", targetTick: 10, repeatable: false);
             _game.CurrentTick = 9;
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.Contains(gameEvent, _game.EventPool);
+            Assert.Contains(gameEvent, _game.GetEventPool());
             Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
         }
 
@@ -82,11 +82,11 @@ namespace Rebellion.Tests.Systems
         {
             GameEvent gameEvent = CreateTickEvent("ONE_SHOT", targetTick: 10, repeatable: false);
             _game.CurrentTick = 11;
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
+            Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
             Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
         }
 
@@ -95,11 +95,11 @@ namespace Rebellion.Tests.Systems
         {
             GameEvent gameEvent = CreateTickEvent("REPEATABLE", targetTick: 10, repeatable: true);
             _game.CurrentTick = 11;
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.Contains(gameEvent, _game.EventPool);
+            Assert.Contains(gameEvent, _game.GetEventPool());
             Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
         }
 
@@ -109,10 +109,10 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = CreateTickEvent("FIVE_RUNS", targetTick: 0, repeatable: false);
             gameEvent.TriggerCount = 5;
             _game.CurrentTick = 1;
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
             for (int iteration = 0; iteration < 6; iteration++)
-                _system.ProcessEvents(_game.EventPool);
+                _system.ProcessEvents(_game.GetEventPool());
 
             Assert.AreEqual(5, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }
@@ -123,10 +123,10 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = CreateTickEvent("THREE_RUNS", targetTick: 0, repeatable: false);
             gameEvent.TriggerCount = 3;
             _game.CurrentTick = 1;
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
             for (int iteration = 0; iteration < 4; iteration++)
-                _system.ProcessEvents(_game.EventPool);
+                _system.ProcessEvents(_game.GetEventPool());
 
             Assert.AreEqual(3, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }
@@ -139,15 +139,15 @@ namespace Rebellion.Tests.Systems
             {
                 Random = new RandomTickRange { MinimumTicks = 10, MaximumTicks = 14 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 11;
-            _system.ProcessEvents(_game.EventPool);
-            Assert.Contains(gameEvent, _game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
+            Assert.Contains(gameEvent, _game.GetEventPool());
 
             _game.CurrentTick = 12;
-            _system.ProcessEvents(_game.EventPool);
-            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
+            _system.ProcessEvents(_game.GetEventPool());
+            Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
             Assert.AreEqual(
                 12,
                 _game.EventRuntime.GetState(gameEvent.InstanceID).LastExecutionTick
@@ -159,16 +159,16 @@ namespace Rebellion.Tests.Systems
         {
             GameEvent gameEvent = CreateTickEvent("COOLDOWN", targetTick: 0, repeatable: true);
             gameEvent.Schedule = new GameEventScheduler { Every = new EveryTicks { Ticks = 5 } };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 1;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
             _game.CurrentTick = 5;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
 
             _game.CurrentTick = 6;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
             Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }
 
@@ -181,66 +181,66 @@ namespace Rebellion.Tests.Systems
             {
                 After = new AfterEvent { EventInstanceID = predecessor.InstanceID, DelayTicks = 5 },
             };
-            _game.EventPool.Add(predecessor);
-            _game.EventPool.Add(pending);
+            _game.GetEventPool().Add(predecessor);
+            _game.GetEventPool().Add(pending);
             _game.CurrentTick = 20;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
             _game.CurrentTick = 24;
-            _system.ProcessEvents(_game.EventPool);
-            Assert.Contains(pending, _game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
+            Assert.Contains(pending, _game.GetEventPool());
 
             _game.CurrentTick = 25;
-            _system.ProcessEvents(_game.EventPool);
-            Assert.IsFalse(_game.EventPool.Contains(pending));
+            _system.ProcessEvents(_game.GetEventPool());
+            Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
         [Test]
         public void ProcessEvents_AfterAllScheduleBeforeFinalDelay_KeepsEventPending()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ALL", afterAll: true);
-            _game.EventPool.Add(pending);
+            _game.GetEventPool().Add(pending);
 
             _game.CurrentTick = 24;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.Contains(pending, _game.EventPool);
+            Assert.Contains(pending, _game.GetEventPool());
         }
 
         [Test]
         public void ProcessEvents_AfterAllScheduleAtFinalDelay_ExecutesEvent()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ALL", afterAll: true);
-            _game.EventPool.Add(pending);
+            _game.GetEventPool().Add(pending);
 
             _game.CurrentTick = 25;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.IsFalse(_game.EventPool.Contains(pending));
+            Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
         [Test]
         public void ProcessEvents_AfterAnyScheduleBeforeFirstDelay_KeepsEventPending()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ANY", afterAll: false);
-            _game.EventPool.Add(pending);
+            _game.GetEventPool().Add(pending);
 
             _game.CurrentTick = 14;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.Contains(pending, _game.EventPool);
+            Assert.Contains(pending, _game.GetEventPool());
         }
 
         [Test]
         public void ProcessEvents_AfterAnyScheduleAtFirstDelay_ExecutesEvent()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ANY", afterAll: false);
-            _game.EventPool.Add(pending);
+            _game.GetEventPool().Add(pending);
 
             _game.CurrentTick = 15;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.IsFalse(_game.EventPool.Contains(pending));
+            Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
         [Test]
@@ -263,7 +263,7 @@ namespace Rebellion.Tests.Systems
                     new SetEventVariableAction { Key = "luke.heritage.revealed", Operand = 1 },
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
             _system.HandleResults(
                 new[]
@@ -273,7 +273,7 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("luke.heritage.revealed"));
-            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
+            Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }
 
@@ -297,7 +297,7 @@ namespace Rebellion.Tests.Systems
                     new SetEventVariableAction { Key = "arrival.triggered", Operand = 1 },
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
             Planet destination = new Planet { InstanceID = "destination" };
             Officer officer = new Officer { InstanceID = "officer" };
 
@@ -357,7 +357,7 @@ namespace Rebellion.Tests.Systems
                     new GameEventTrigger("core:mission.completed"),
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
             OfficerCaptureStateResult release = new OfficerCaptureStateResult
             {
                 SourceEventInstanceID = "PALACE_RESCUE",
@@ -399,7 +399,7 @@ namespace Rebellion.Tests.Systems
                     },
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
             DuelResult encounter = new DuelResult
             {
                 EncounteredOfficer = luke,
@@ -409,7 +409,7 @@ namespace Rebellion.Tests.Systems
             _system.HandleResults(new[] { encounter });
             _system.HandleResults(new[] { encounter });
 
-            Assert.Contains(gameEvent, _game.EventPool);
+            Assert.Contains(gameEvent, _game.GetEventPool());
             Assert.AreEqual(2, _game.EventRuntime.GetVariable("encounter.count"));
             Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }
@@ -429,19 +429,19 @@ namespace Rebellion.Tests.Systems
                     new SetEventVariableAction { Key = "unexpected", Operand = 1 },
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
             Assert.Zero(_game.EventRuntime.GetVariable("unexpected"));
-            Assert.Contains(gameEvent, _game.EventPool);
+            Assert.Contains(gameEvent, _game.GetEventPool());
         }
 
         [Test]
         public void ProcessEvents_TargetedPlanet_UsesOnePersistedSchedule()
         {
-            _game.Factions.Add(new Faction { InstanceID = "alliance" });
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             Planet first = new Planet { InstanceID = "first" };
@@ -471,15 +471,15 @@ namespace Rebellion.Tests.Systems
                 },
                 Actions = new List<GameAction> { new RecordScopedPlanetAction() },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 0;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
             Assert.AreEqual(10, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
             Assert.AreEqual(10, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
 
             _game.CurrentTick = 10;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("scope.first"));
             Assert.Zero(_game.EventRuntime.GetVariable("scope.second"));
@@ -490,7 +490,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
-            _game.Factions.Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
@@ -513,15 +513,15 @@ namespace Rebellion.Tests.Systems
                 },
                 Actions = new List<GameAction> { new RecordScopedPlanetAction() },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 100;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
             Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsInitialized);
 
             planet.OwnerInstanceID = "alliance";
             _game.CurrentTick = 120;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.AreEqual(150, state.NextEligibleTick);
@@ -531,8 +531,8 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessEvents_EachOwnedPlanetTarget_RearmsAfterNeutralInterval()
         {
-            _game.Factions.Add(new Faction { InstanceID = "alliance" });
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
@@ -556,16 +556,16 @@ namespace Rebellion.Tests.Systems
                 },
                 Actions = new List<GameAction> { new RecordScopedPlanetAction() },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 100;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
             planet.OwnerInstanceID = null;
             _game.CurrentTick = 110;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
             planet.OwnerInstanceID = "empire";
             _game.CurrentTick = 120;
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.AreEqual(130, state.NextEligibleTick);
@@ -589,10 +589,10 @@ namespace Rebellion.Tests.Systems
                 },
                 Actions = new List<GameAction> { new RecordScopedPlanetAction() },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.EventPool);
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessEvents(_game.GetEventPool());
 
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("scope.planet"));
         }
@@ -627,10 +627,10 @@ namespace Rebellion.Tests.Systems
                     },
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
             _game.CurrentTick = 9;
 
-            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.GetEventPool());
 
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.IsTrue(state.IsInitialized);

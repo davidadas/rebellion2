@@ -59,7 +59,7 @@ namespace Rebellion.Generation
         private Dictionary<string, Planet> BuildPlanetMapByTypeID(PlanetSystem[] systems)
         {
             return systems
-                .SelectMany(s => s.Planets)
+                .SelectMany(s => s.GetPlanets())
                 .Where(p => p.TypeID != null)
                 .ToDictionary(p => p.TypeID);
         }
@@ -83,7 +83,7 @@ namespace Rebellion.Generation
 
             foreach (PlanetSystem system in systems)
             {
-                foreach (Planet planet in system.Planets)
+                foreach (Planet planet in system.GetPlanets())
                 {
                     if (string.IsNullOrEmpty(planet.OwnerInstanceID) || !planet.IsColonized)
                         continue;
@@ -503,7 +503,7 @@ namespace Rebellion.Generation
         {
             return systems
                 .Where(s => s.SystemType == PlanetSystemType.CoreSystem)
-                .SelectMany(s => s.Planets)
+                .SelectMany(s => s.GetPlanets())
                 .Where(p => p.OwnerInstanceID == faction.InstanceID && p.IsColonized)
                 .ToList();
         }
@@ -594,7 +594,7 @@ namespace Rebellion.Generation
                 .Settings
                 .ResourceProcessingPointsPerFacility;
             List<Planet> ownedPlanets = systems
-                .SelectMany(system => system.Planets)
+                .SelectMany(system => system.GetPlanets())
                 .Where(planet => planet.OwnerInstanceID == faction.InstanceID && planet.IsColonized)
                 .ToList();
             int mines = ownedPlanets.Sum(planet => planet.GetRawMinedResources());
@@ -756,7 +756,7 @@ namespace Rebellion.Generation
             int total = 0;
             foreach (PlanetSystem system in systems)
             {
-                foreach (Planet planet in system.Planets)
+                foreach (Planet planet in system.GetPlanets())
                 {
                     if (planet.OwnerInstanceID != factionId)
                         continue;

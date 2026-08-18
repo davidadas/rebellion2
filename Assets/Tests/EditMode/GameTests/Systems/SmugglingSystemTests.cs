@@ -24,8 +24,8 @@ namespace Rebellion.Tests.Systems
         {
             _game = new GameRoot(TestContent.Data.GameConfig) { Random = new StubRNG() };
             _controller = new Faction { InstanceID = "FACTION1" };
-            _game.Factions.Add(_controller);
-            _game.Factions.Add(new Faction { InstanceID = "FACTION2" });
+            _game.GetFactions().Add(_controller);
+            _game.GetFactions().Add(new Faction { InstanceID = "FACTION2" });
             PlanetSystem system = new PlanetSystem { InstanceID = "SYSTEM1" };
             _game.AttachNode(system, _game.Galaxy);
             _planet = new Planet

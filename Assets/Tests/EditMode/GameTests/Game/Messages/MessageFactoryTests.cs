@@ -1955,8 +1955,8 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Jedi Training",
                 OwnerInstanceID = alliance.InstanceID,
                 TrainerInstanceID = trainer.InstanceID,
-                MainParticipants = new List<IMissionParticipant> { student, trainer },
             };
+            mission.AddChildren(new IMissionParticipant[] { student, trainer });
             game.AttachNode(mission, target);
 
             Message message = FirstMessageFor(
@@ -4205,7 +4205,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             GameRoot game = new GameRoot(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(alliance);
             PlanetSystem system = new PlanetSystem { InstanceID = "CORE", DisplayName = "Core" };
             game.AttachNode(system, game.Galaxy);
             Planet origin = new Planet
@@ -4241,8 +4241,8 @@ namespace Rebellion.Tests.Game.Messages
             GameRoot game = new GameRoot(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
-            game.Factions.Add(alliance);
-            game.Factions.Add(empire);
+            game.GetFactions().Add(alliance);
+            game.GetFactions().Add(empire);
             PlanetSystem system = new PlanetSystem { InstanceID = "CORE", DisplayName = "Core" };
             game.AttachNode(system, game.Galaxy);
             Planet origin = new Planet

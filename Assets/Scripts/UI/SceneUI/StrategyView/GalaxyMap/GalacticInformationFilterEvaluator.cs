@@ -143,26 +143,32 @@ public static class GalacticInformationFilterEvaluator
             GalacticInformationFilterMode.IdleConstructionYards => Convert.ToInt32(
                 IsOwnedIdleManufacturingPlanet(planet, viewerFactionId, ManufacturingType.Building)
             ),
-            GalacticInformationFilterMode.Troopers => planet.Regiments.Count(IsActive),
-            GalacticInformationFilterMode.FighterSquadrons => planet.Starfighters.Count(IsActive),
+            GalacticInformationFilterMode.Troopers => planet.GetRegiments().Count(IsActive),
+            GalacticInformationFilterMode.FighterSquadrons => planet
+                .GetStarfighters()
+                .Count(IsActive),
             GalacticInformationFilterMode.DeathStarShields => Convert.ToInt32(
-                planet.Buildings.Any(building =>
-                    building.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
-                    && IsActive(building)
-                )
+                planet
+                    .GetBuildings()
+                    .Any(building =>
+                        building.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
+                        && IsActive(building)
+                    )
             ),
-            GalacticInformationFilterMode.PlanetaryShieldGenerators => planet.Buildings.Count(
-                building =>
+            GalacticInformationFilterMode.PlanetaryShieldGenerators => planet
+                .GetBuildings()
+                .Count(building =>
                     building.DefenseFacilityClass == DefenseFacilityClass.Shield
                     && IsActive(building)
-            ),
-            GalacticInformationFilterMode.PlanetaryDefenseBatteries => planet.Buildings.Count(
-                building =>
+                ),
+            GalacticInformationFilterMode.PlanetaryDefenseBatteries => planet
+                .GetBuildings()
+                .Count(building =>
                     (
                         building.DefenseFacilityClass == DefenseFacilityClass.KDY
                         || building.DefenseFacilityClass == DefenseFacilityClass.LNR
                     ) && IsActive(building)
-            ),
+                ),
             _ => 0,
         };
     }
@@ -193,7 +199,7 @@ public static class GalacticInformationFilterEvaluator
     private static Dictionary<string, int> CountFleets(Planet planet, bool enroute)
     {
         Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (Fleet fleet in planet.Fleets)
+        foreach (Fleet fleet in planet.GetFleets())
         {
             if ((fleet.Movement != null) != enroute)
                 continue;

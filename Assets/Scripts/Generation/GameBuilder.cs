@@ -168,15 +168,14 @@ namespace Rebellion.Generation
         /// <param name="ctx">The generation context.</param>
         private static void AssembleGame(GenerationContext ctx)
         {
-            GameRoot game = new GameRoot
-            {
-                EventPool = ctx.Events.ToList(),
-                Summary = ctx.Summary,
-                Factions = ctx.Factions.ToList(),
-                Galaxy = new GalaxyMap { PlanetSystems = ctx.Systems.ToList() },
-                UnrecruitedOfficers = ctx.UnrecruitedOfficers.ToList(),
-                Random = ctx.Rng,
-            };
+            GalaxyMap galaxy = new GalaxyMap();
+            foreach (PlanetSystem system in ctx.Systems)
+                galaxy.AddChild(system);
+            GameRoot game = new GameRoot { Summary = ctx.Summary, Random = ctx.Rng };
+            game.GetEventPool().AddRange(ctx.Events);
+            game.GetFactions().AddRange(ctx.Factions);
+            game.GetUnrecruitedOfficers().AddRange(ctx.UnrecruitedOfficers);
+            game.Galaxy = galaxy;
             game.SetConfig(ctx.GameConfig);
             ctx.Game = game;
         }

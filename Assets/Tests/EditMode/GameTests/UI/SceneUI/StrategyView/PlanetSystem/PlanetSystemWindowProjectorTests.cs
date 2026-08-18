@@ -26,12 +26,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" }
-            );
-            game.Factions.Add(
-                new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" }
-            );
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
             game.Summary.PlayerFactionID = _playerFactionId;
             _uiContext = TestContent.CreateUIContext(
                 game,
@@ -88,12 +86,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             planet.NumRawResourceNodes = 4;
             planet.PopularSupport[_playerFactionId] = 75;
             planet.PopularSupport[_opposingFactionId] = 25;
-            planet.Buildings.Add(CreateBuilding(BuildingType.Mine));
-            planet.Buildings.Add(CreateBuilding(BuildingType.Defense));
-            planet.Fleets.Add(new GameFleet(_playerFactionId, "Player Fleet"));
-            planet.Fleets.Add(new GameFleet(_opposingFactionId, "Opposing Fleet"));
-            planet.Missions.Add(new TestMission(_playerFactionId));
-            planet.Missions.Add(new TestMission(_opposingFactionId));
+            planet.AddTestChild(CreateBuilding(BuildingType.Mine));
+            planet.AddTestChild(CreateBuilding(BuildingType.Defense));
+            planet.AddTestChild(new GameFleet(_playerFactionId, "Player Fleet"));
+            planet.AddTestChild(new GameFleet(_opposingFactionId, "Opposing Fleet"));
+            planet.AddTestChild(new TestMission(_playerFactionId));
+            planet.AddTestChild(new TestMission(_opposingFactionId));
             string planetTexturePath = _uiContext
                 .GetPlayerFactionTheme()
                 .GalaxyBackground.ImagePath;
@@ -225,7 +223,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         {
             Planet planet = CreatePlanet("planet", _opposingFactionId, 10, 20);
             planet.IsInUprising = true;
-            planet.Missions.Add(new TestMission(_opposingFactionId));
+            planet.AddTestChild(new TestMission(_opposingFactionId));
             GalaxyMapSector sector = CreateSector(
                 new GalaxyMapPlanet(_planetSystem, planet, string.Empty)
             );
@@ -262,8 +260,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void CreateRenderData_NeutralPlanet_ReturnsNeutralFacilityAndDefenseTextures()
         {
             Planet planet = CreatePlanet("planet", null, 10, 20);
-            planet.Buildings.Add(CreateBuilding(BuildingType.Mine));
-            planet.Buildings.Add(CreateBuilding(BuildingType.Defense));
+            planet.AddTestChild(CreateBuilding(BuildingType.Mine));
+            planet.AddTestChild(CreateBuilding(BuildingType.Defense));
             GalaxyMapSector sector = CreateSector(
                 new GalaxyMapPlanet(_planetSystem, planet, string.Empty)
             );
@@ -318,8 +316,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             planet.EnergyCapacity = 3;
             planet.NumRawResourceNodes = 4;
             planet.PopularSupport[_playerFactionId] = 100;
-            planet.Buildings.Add(CreateBuilding(BuildingType.Mine));
-            planet.Regiments.Add(new Regiment());
+            planet.AddTestChild(CreateBuilding(BuildingType.Mine));
+            planet.AddTestChild(new Regiment());
             GalaxyMapSector sector = CreateSector(
                 new GalaxyMapPlanet(_planetSystem, planet, string.Empty)
             );

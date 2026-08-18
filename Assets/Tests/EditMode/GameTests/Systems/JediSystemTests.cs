@@ -34,8 +34,8 @@ namespace Rebellion.Tests.Systems
 
             _alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
-            _game.Factions.Add(_alliance);
-            _game.Factions.Add(_empire);
+            _game.GetFactions().Add(_alliance);
+            _game.GetFactions().Add(_empire);
 
             PlanetSystem system = new PlanetSystem
             {
@@ -538,7 +538,7 @@ namespace Rebellion.Tests.Systems
                 ForceValue = 10,
             };
             Mission mission = new DiplomacyMission();
-            mission.MainParticipants.Add(luke);
+            mission.AddChild(luke);
 
             List<GameResult> results = _system.HandleResults(
                 new MissionCompletedResult[]

@@ -45,7 +45,11 @@ namespace Rebellion.Tests.Game.Galaxy
             Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
             _planet.AddChild(fleet);
 
-            Assert.Contains(fleet, _planet.Fleets, "Fleet should be added to the _planet.");
+            Assert.Contains(
+                fleet,
+                _planet.GetFleets().ToList(),
+                "Fleet should be added to the _planet."
+            );
         }
 
         [Test]
@@ -65,7 +69,11 @@ namespace Rebellion.Tests.Game.Galaxy
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
             _planet.AddChild(officer);
 
-            Assert.Contains(officer, _planet.Officers, "Officer should be added to the _planet.");
+            Assert.Contains(
+                officer,
+                _planet.GetOfficers().ToList(),
+                "Officer should be added to the _planet."
+            );
         }
 
         [Test]
@@ -88,7 +96,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             Assert.Contains(
                 officer,
-                _planet.Officers,
+                _planet.GetOfficers().ToList(),
                 "Captured enemy officer should be accepted."
             );
         }
@@ -142,7 +150,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planet.AddChild(building);
 
-            Assert.Contains(building, _planet.Buildings);
+            Assert.Contains(building, _planet.GetBuildings().ToList());
         }
 
         [Test]
@@ -154,7 +162,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planet.AddChild(regiment);
 
-            Assert.Contains(regiment, _planet.Regiments);
+            Assert.Contains(regiment, _planet.GetRegiments().ToList());
         }
 
         [Test]
@@ -165,7 +173,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planet.AddChild(regiment);
 
-            Assert.Contains(regiment, _planet.Regiments);
+            Assert.Contains(regiment, _planet.GetRegiments().ToList());
         }
 
         [Test]
@@ -201,7 +209,7 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet.RemoveChild(fleet);
 
             Assert.IsFalse(
-                _planet.Fleets.Contains(fleet),
+                _planet.GetFleets().Contains(fleet),
                 "Fleet should be removed from the _planet."
             );
         }
@@ -214,7 +222,7 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet.RemoveChild(officer);
 
             Assert.IsFalse(
-                _planet.Officers.Contains(officer),
+                _planet.GetOfficers().Contains(officer),
                 "Officer should be removed from the _planet."
             );
         }
@@ -353,8 +361,8 @@ namespace Rebellion.Tests.Game.Galaxy
                 "Deserialized planet should retain popular support."
             );
             Assert.AreEqual(
-                _planet.Fleets.Count,
-                deserialized.Fleets.Count,
+                _planet.GetFleets().Count,
+                deserialized.GetFleets().Count,
                 "Deserialized planet should retain fleets."
             );
         }
@@ -738,7 +746,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             Assert.Contains(
                 starfighter,
-                _planet.Starfighters,
+                _planet.GetStarfighters().ToList(),
                 "Starfighter should be added to the _planet."
             );
         }
@@ -780,7 +788,7 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet.RemoveChild(starfighter);
 
             Assert.IsFalse(
-                _planet.Starfighters.Contains(starfighter),
+                _planet.GetStarfighters().Contains(starfighter),
                 "Starfighter should be removed from the _planet."
             );
         }
@@ -851,7 +859,10 @@ namespace Rebellion.Tests.Game.Galaxy
         public void IsBlockaded_EnemyCapitalShipInTransit_ReturnsFalse()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
-            enemyFleet.CapitalShips.Single().Movement = new MovementState { TransitTicks = 10 };
+            enemyFleet.GetCapitalShips().Single().Movement = new MovementState
+            {
+                TransitTicks = 10,
+            };
             _planet.AddChild(enemyFleet);
 
             Assert.IsFalse(_planet.IsBlockaded());
@@ -913,22 +924,22 @@ namespace Rebellion.Tests.Game.Galaxy
         public void GetBlockadeModifier_ActiveShipsAndFighters_ReducesProduction()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
-            CapitalShip activeShip = enemyFleet.CapitalShips.Single();
-            activeShip.Starfighters.Add(
+            CapitalShip activeShip = enemyFleet.GetCapitalShips().Single();
+            activeShip.AddTestChild(
                 new Starfighter
                 {
                     OwnerInstanceID = "ENEMY",
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 }
             );
-            activeShip.Starfighters.Add(
+            activeShip.AddTestChild(
                 new Starfighter
                 {
                     OwnerInstanceID = "ENEMY",
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 }
             );
-            activeShip.Starfighters.Add(
+            activeShip.AddTestChild(
                 new Starfighter
                 {
                     OwnerInstanceID = "ENEMY",

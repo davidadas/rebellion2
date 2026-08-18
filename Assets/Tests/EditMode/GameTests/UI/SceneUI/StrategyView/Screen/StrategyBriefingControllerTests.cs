@@ -547,8 +547,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private static GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionID });
-            game.Factions.Add(new Faction { InstanceID = _opponentFactionID });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionID });
+            game.GetFactions().Add(new Faction { InstanceID = _opponentFactionID });
             game.Summary.PlayerFactionID = _playerFactionID;
             return game;
         }

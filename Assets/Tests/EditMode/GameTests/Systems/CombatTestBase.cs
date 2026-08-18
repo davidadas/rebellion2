@@ -55,32 +55,34 @@ namespace Rebellion.Tests.Systems
         protected GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(
-                new Faction
-                {
-                    InstanceID = "empire",
-                    PlayerID = null,
-                    Settings = new FactionSettings
+            game.GetFactions()
+                .Add(
+                    new Faction
                     {
-                        InvertSupportShift = true,
-                        WeakSupportPenaltyTrigger = SupportShiftCondition.Negative,
-                        Headquarters = new HeadquartersSettings { IsBombardable = false },
-                    },
-                }
-            );
-            game.Factions.Add(
-                new Faction
-                {
-                    InstanceID = "alliance",
-                    PlayerID = null,
-                    Settings = new FactionSettings
+                        InstanceID = "empire",
+                        PlayerID = null,
+                        Settings = new FactionSettings
+                        {
+                            InvertSupportShift = true,
+                            WeakSupportPenaltyTrigger = SupportShiftCondition.Negative,
+                            Headquarters = new HeadquartersSettings { IsBombardable = false },
+                        },
+                    }
+                );
+            game.GetFactions()
+                .Add(
+                    new Faction
                     {
-                        InvertSupportShift = false,
-                        WeakSupportPenaltyTrigger = SupportShiftCondition.Positive,
-                        Headquarters = new HeadquartersSettings { IsBombardable = true },
-                    },
-                }
-            );
+                        InstanceID = "alliance",
+                        PlayerID = null,
+                        Settings = new FactionSettings
+                        {
+                            InvertSupportShift = false,
+                            WeakSupportPenaltyTrigger = SupportShiftCondition.Positive,
+                            Headquarters = new HeadquartersSettings { IsBombardable = true },
+                        },
+                    }
+                );
             return game;
         }
 

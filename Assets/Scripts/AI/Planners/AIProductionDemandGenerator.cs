@@ -1202,7 +1202,8 @@ namespace Rebellion.AI.Planners
                 return 0;
 
             int committedCapitalCombat = fleet
-                .CapitalShips.Where(IsPresentOrUnderConstruction)
+                .GetCapitalShips()
+                .Where(IsPresentOrUnderConstruction)
                 .Sum(ship => ship.GetPrimaryWeaponStrength());
             return System.Math.Max(fleet.GetCombatValue(), committedCapitalCombat);
         }
@@ -1214,7 +1215,7 @@ namespace Rebellion.AI.Planners
         /// <returns>True if the fleet has present or under-construction capital ships.</returns>
         private static bool HasPresentOrUnderConstructionCapitalShips(Fleet fleet)
         {
-            return fleet?.CapitalShips.Any(IsPresentOrUnderConstruction) == true;
+            return fleet?.GetCapitalShips().Any(IsPresentOrUnderConstruction) == true;
         }
 
         /// <summary>

@@ -23,7 +23,7 @@ namespace Rebellion.Tests.Systems
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create());
-            _game.Factions.Add(new Faction { InstanceID = _ownerId });
+            _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             _planet = new Planet
@@ -76,8 +76,8 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(retired);
-            Assert.IsNull(officer.GetParent());
-            Assert.IsNull(specialForces.GetParent());
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.AreSame(_planet, specialForces.GetParent());
             Assert.IsTrue(_game.IsInVoid(officer));
             Assert.IsTrue(_game.IsInVoid(specialForces));
             Assert.IsTrue(officer.IsRetired);

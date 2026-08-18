@@ -965,9 +965,8 @@ namespace Rebellion.Systems
                 if (unit.GetParent() == null)
                 {
                     if (_game.NodesByInstanceID.ContainsKey(unit.InstanceID))
-                        _game.AttachRetainedNode(unit, resolvedDestination);
-                    else
-                        _game.AttachNode(unit, resolvedDestination);
+                        return false;
+                    _game.AttachNode(unit, resolvedDestination);
                 }
                 else
                     _game.MoveNode(unit, resolvedDestination);
@@ -1080,11 +1079,14 @@ namespace Rebellion.Systems
             {
                 if (item is Fleet fleet && destinationFleet != null)
                 {
-                    if (ReferenceEquals(fleet, destinationFleet) || fleet.CapitalShips.Count == 0)
+                    if (
+                        ReferenceEquals(fleet, destinationFleet)
+                        || fleet.GetCapitalShips().Count == 0
+                    )
                         return false;
 
                     sourceFleets.Add(fleet);
-                    foreach (CapitalShip capitalShip in fleet.CapitalShips)
+                    foreach (CapitalShip capitalShip in fleet.GetCapitalShips())
                     {
                         if (
                             !string.Equals(
@@ -1503,9 +1505,9 @@ namespace Rebellion.Systems
         /// <param name="destinationPlanet">The destination planet.</param>
         private void CaptureFleetArrivalSnapshot(Fleet fleet, Planet destinationPlanet)
         {
-            Faction faction = _game.Factions.FirstOrDefault(f =>
-                f.InstanceID == fleet.OwnerInstanceID
-            );
+            Faction faction = _game
+                .GetFactions()
+                .FirstOrDefault(f => f.InstanceID == fleet.OwnerInstanceID);
             if (faction == null || !_fogOfWar.IsPlanetVisible(destinationPlanet, faction))
                 return;
 
@@ -1755,13 +1757,15 @@ namespace Rebellion.Systems
                 ISceneNode node = unit as ISceneNode;
                 CapitalShip currentShip = node?.GetParentOfType<CapitalShip>();
                 Fleet fleet = node?.GetParentOfType<Fleet>();
-                CapitalShip destination = fleet?.CapitalShips.FirstOrDefault(ship =>
-                    ship != currentShip
-                    && ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ship.Movement == null
-                    && ship.CurrentHullStrength > 0
-                    && ship.CanAcceptChild(node)
-                );
+                CapitalShip destination = fleet
+                    ?.GetCapitalShips()
+                    .FirstOrDefault(ship =>
+                        ship != currentShip
+                        && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                        && ship.Movement == null
+                        && ship.CurrentHullStrength > 0
+                        && ship.CanAcceptChild(node)
+                    );
                 if (destination != null)
                     _game.MoveNode(node, destination);
                 else
@@ -2253,11 +2257,13 @@ namespace Rebellion.Systems
                 if (fleet.Movement != null)
                     return null;
 
-                return fleet.CapitalShips.FirstOrDefault(ship =>
-                    ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ship.Movement == null
-                    && CanAcceptPlannedChild(ship, unit, plannedChildren)
-                );
+                return fleet
+                    .GetCapitalShips()
+                    .FirstOrDefault(ship =>
+                        ship.ManufacturingStatus == ManufacturingStatus.Complete
+                        && ship.Movement == null
+                        && CanAcceptPlannedChild(ship, unit, plannedChildren)
+                    );
             }
 
             if (unit is Regiment)
@@ -2265,15 +2271,17 @@ namespace Rebellion.Systems
                 if (fleet.Movement != null)
                     return null;
 
-                return fleet.CapitalShips.FirstOrDefault(ship =>
-                    ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ship.Movement == null
-                    && CanAcceptPlannedChild(ship, unit, plannedChildren)
-                );
+                return fleet
+                    .GetCapitalShips()
+                    .FirstOrDefault(ship =>
+                        ship.ManufacturingStatus == ManufacturingStatus.Complete
+                        && ship.Movement == null
+                        && CanAcceptPlannedChild(ship, unit, plannedChildren)
+                    );
             }
 
-            if ((unit is Officer || unit is SpecialForces) && fleet.CapitalShips.Count > 0)
-                return fleet.CapitalShips[0];
+            if ((unit is Officer || unit is SpecialForces) && fleet.GetCapitalShips().Count > 0)
+                return fleet.GetCapitalShips()[0];
             return null;
         }
 
@@ -2361,10 +2369,11 @@ namespace Rebellion.Systems
             int slowestHyperdrive = _game.GetConfig().Movement.DefaultFighterHyperdrive;
             if (unit is Fleet fleet)
             {
-                if (fleet.CapitalShips.Count > 0)
+                if (fleet.GetCapitalShips().Count > 0)
                 {
                     slowestHyperdrive = fleet
-                        .CapitalShips.Select(ship => ship.Hyperdrive)
+                        .GetCapitalShips()
+                        .Select(ship => ship.Hyperdrive)
                         .Where(h => h > 0)
                         .DefaultIfEmpty(1)
                         .Min();

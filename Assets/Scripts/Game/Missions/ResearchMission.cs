@@ -248,7 +248,7 @@ namespace Rebellion.Game.Missions
         )
         {
             int earnedPoints = 0;
-            foreach (IMissionParticipant participant in MainParticipants)
+            foreach (IMissionParticipant participant in GetMainParticipants())
             {
                 if (!(participant is Officer officer) || !RollSuccess(officer, provider))
                     continue;

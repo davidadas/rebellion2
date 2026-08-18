@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Game.Events
         public void SelectManufacturingOrders_MatchingPlanet_ReturnsQueuedProduct()
         {
             GameRoot game = BuildGame(out Planet planet);
-            game.Factions.Add(new Faction { InstanceID = "faction" });
+            game.GetFactions().Add(new Faction { InstanceID = "faction" });
             planet.OwnerInstanceID = "faction";
             planet.EnergyCapacity = 1;
             Building building = new Building

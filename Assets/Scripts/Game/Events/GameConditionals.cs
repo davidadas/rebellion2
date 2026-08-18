@@ -516,7 +516,8 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context) =>
             context
                 .Activation?.GetTarget<Planet>()
-                ?.Buildings.Any(building =>
+                ?.GetBuildings()
+                .Any(building =>
                     building.BuildingType == Type
                     && building.ManufacturingStatus == ManufacturingStatus.Complete
                 ) == true;

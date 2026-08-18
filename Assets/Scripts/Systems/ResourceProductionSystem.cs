@@ -214,12 +214,14 @@ namespace Rebellion.Systems
                 if (planet.IsResourceProductionSuspended())
                     continue;
 
-                IEnumerable<Building> planetFacilities = planet.Buildings.Where(building =>
-                    building.BuildingType == buildingType
-                    && building.ManufacturingStatus == ManufacturingStatus.Complete
-                    && building.Movement == null
-                    && building.ProcessRate > 0
-                );
+                IEnumerable<Building> planetFacilities = planet
+                    .GetBuildings()
+                    .Where(building =>
+                        building.BuildingType == buildingType
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                        && building.ProcessRate > 0
+                    );
                 if (buildingType == BuildingType.Mine)
                     planetFacilities = planetFacilities.Take(planet.NumRawResourceNodes);
 

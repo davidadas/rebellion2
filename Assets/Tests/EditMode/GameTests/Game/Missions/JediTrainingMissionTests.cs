@@ -23,7 +23,7 @@ namespace Rebellion.Tests.Game.Missions
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create());
-            _game.Factions.Add(new Faction { InstanceID = "rebels" });
+            _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(system, _game.Galaxy);
@@ -175,7 +175,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(_trainer, mission.Trainer);
             CollectionAssert.AreEqual(
                 new IMissionParticipant[] { _trainer, _student },
-                mission.MainParticipants
+                mission.GetMainParticipants().ToList()
             );
         }
 

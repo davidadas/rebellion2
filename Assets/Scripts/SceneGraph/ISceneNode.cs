@@ -41,6 +41,17 @@ namespace Rebellion.SceneGraph
         public string OwnerInstanceID { get; set; }
 
         /// <summary>
+        /// Gets or sets whether this node participates in active gameplay.
+        /// </summary>
+        public bool IsEnabled { get; set; }
+
+        /// <summary>
+        /// Returns whether this node and every ancestor are enabled.
+        /// </summary>
+        /// <returns>True when the node is active in the scene hierarchy.</returns>
+        bool IsEnabledInHierarchy();
+
+        /// <summary>
         /// Sets the parent node of this scene node.
         /// </summary>
         /// <param name="newParent"></param>
@@ -101,7 +112,7 @@ namespace Rebellion.SceneGraph
         /// Returns all direct children of this node.
         /// </summary>
         /// <returns>The children of this node.</returns>
-        IEnumerable<ISceneNode> GetChildren();
+        IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false);
 
         /// <summary>
         /// Returns children of type <typeparamref name="T"/> matching the given predicate, optionally recursing into descendants.

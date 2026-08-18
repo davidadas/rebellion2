@@ -177,7 +177,7 @@ namespace Rebellion.Game.Events
         )
         {
             IEnumerable<Officer> officers = IncludeRetained
-                ? game.GetRegisteredSceneNodesByType<Officer>()
+                ? game.GetRegisteredSceneNodesByType<Officer>(includeDisabled: true)
                 : Active<Officer>(game);
             return SelectOwned(officers)
                 .Where(node =>

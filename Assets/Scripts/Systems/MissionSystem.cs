@@ -783,7 +783,7 @@ namespace Rebellion.Systems
             int defenderCombat = GetFoilDefenderCombatSkill(mission);
             Planet planet = mission.GetParent() as Planet;
 
-            foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
+            foreach (IMissionParticipant participant in mission.GetMainParticipants().ToList())
                 ResolveFoiledParticipant(participant, defenderCombat, planet, results);
 
             return true;

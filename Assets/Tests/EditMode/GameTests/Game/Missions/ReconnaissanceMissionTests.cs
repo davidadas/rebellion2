@@ -83,9 +83,10 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(snapshot.Planets.ContainsKey("enemy_planet"));
 
             GalaxyMap view = fog.BuildFactionView(empire);
-            Planet viewPlanet = view
-                .PlanetSystems.First(system => system.InstanceID == "sys1")
-                .Planets.First(planet => planet.InstanceID == "enemy_planet");
+            Planet viewPlanet = view.GetPlanetSystems()
+                .First(system => system.InstanceID == "sys1")
+                .GetPlanets()
+                .First(planet => planet.InstanceID == "enemy_planet");
             Assert.IsFalse(viewPlanet.IsUnexploredView);
         }
 

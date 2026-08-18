@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Systems
                 ManageGarrisons = true,
                 ManageProduction = true,
             };
-            _game.Factions.Add(_faction);
+            _game.GetFactions().Add(_faction);
 
             PlanetSystem system = new PlanetSystem { InstanceID = "SYSTEM" };
             _game.AttachNode(system, _game.Galaxy);

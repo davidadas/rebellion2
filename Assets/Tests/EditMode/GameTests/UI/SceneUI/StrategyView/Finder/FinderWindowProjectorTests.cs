@@ -25,12 +25,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" }
-            );
-            game.Factions.Add(
-                new Faction { InstanceID = _opponentFactionId, DisplayName = "Empire" }
-            );
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _opponentFactionId, DisplayName = "Empire" });
             game.Summary.PlayerFactionID = _playerFactionId;
             _uiContext = TestContent.CreateUIContext(
                 game,
@@ -437,7 +435,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 
         private List<FinderWindowTab> CreateTabs(FinderMode mode)
         {
-            return FinderWindowTabCatalog.Create(mode, _uiContext.Game.Factions, _playerFactionId);
+            return FinderWindowTabCatalog.Create(
+                mode,
+                _uiContext.Game.GetFactions(),
+                _playerFactionId
+            );
         }
 
         private static FinderWindowRow CreateRow(

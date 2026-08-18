@@ -111,7 +111,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(
+            system.AddChild(
                 new Planet
                 {
                     InstanceID = "p1",
@@ -132,7 +132,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "rim1",
                 SystemType = PlanetSystemType.OuterRim,
             };
-            system.Planets.Add(
+            system.AddChild(
                 new Planet
                 {
                     InstanceID = "rp1",
@@ -221,11 +221,11 @@ namespace Rebellion.Tests.Generation
             );
 
             Assert.IsTrue(
-                coreSystem.Planets[0].Buildings.All(b => b.TypeID == "BDFA01"),
+                coreSystem.GetPlanets()[0].GetBuildings().All(b => b.TypeID == "BDFA01"),
                 "Core planet should draw from the core facility table."
             );
             Assert.IsTrue(
-                rimSystem.Planets[0].Buildings.All(b => b.TypeID == "BDFA02"),
+                rimSystem.GetPlanets()[0].GetBuildings().All(b => b.TypeID == "BDFA02"),
                 "Rim planet should draw from the rim facility table."
             );
         }
@@ -316,7 +316,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_FactionHQLoadout_ResolvesToAssignedHQ()
         {
             PlanetSystem system = CreateCoreSystem(energy: 5, rawNodes: 0);
-            Planet hqPlanet = system.Planets[0];
+            Planet hqPlanet = system.GetPlanets()[0];
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.FactionHQs["FNALL1"] = hqPlanet;
@@ -368,9 +368,9 @@ namespace Rebellion.Tests.Generation
                 new StubRNG()
             );
 
-            Planet planet = system.Planets[0];
+            Planet planet = system.GetPlanets()[0];
             Assert.GreaterOrEqual(
-                planet.Buildings.Count,
+                planet.GetBuildings().Count,
                 4,
                 "All loadout facilities should be placed, even if initial energy was lower."
             );
@@ -404,7 +404,7 @@ namespace Rebellion.Tests.Generation
             );
 
             Assert.GreaterOrEqual(
-                system.Planets[0].NumRawResourceNodes,
+                system.GetPlanets()[0].NumRawResourceNodes,
                 2,
                 "NumRawResourceNodes should be raised to cover every loadout mine."
             );

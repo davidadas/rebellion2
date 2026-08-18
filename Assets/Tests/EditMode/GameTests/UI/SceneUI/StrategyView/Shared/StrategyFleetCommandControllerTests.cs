@@ -27,8 +27,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create());
-            _game.Factions.Add(new Faction { InstanceID = _playerFactionId });
-            _game.Factions.Add(new Faction { InstanceID = _opposingFactionId });
+            _game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
+            _game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             _game.Summary.PlayerFactionID = _playerFactionId;
             GamePlanetSystem system = new GamePlanetSystem { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
@@ -69,9 +69,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             bool created = controller.TryCreateFleetFromCapitalShips(new ISceneNode[] { ship });
 
             Assert.IsTrue(created);
-            Assert.AreEqual(1, _planet.Fleets.Count);
-            Assert.AreNotSame(sourceFleet, _planet.Fleets[0]);
-            Assert.AreSame(_planet.Fleets[0], ship.GetParent());
+            Assert.AreEqual(1, _planet.GetFleets().Count);
+            Assert.AreNotSame(sourceFleet, _planet.GetFleets()[0]);
+            Assert.AreSame(_planet.GetFleets()[0], ship.GetParent());
         }
 
         [Test]
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(BombardmentType.Civilian, bombardment.Type);
             Assert.AreEqual(1, bombardment.AttackingUnits.Count);
             Assert.AreEqual(
-                fleet.CapitalShips[0].InstanceID,
+                fleet.GetCapitalShips()[0].InstanceID,
                 bombardment.AttackingUnits[0].Unit.InstanceID
             );
         }

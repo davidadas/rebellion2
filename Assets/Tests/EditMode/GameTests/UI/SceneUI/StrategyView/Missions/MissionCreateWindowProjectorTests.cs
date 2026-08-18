@@ -31,9 +31,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" }
-            );
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
             game.Summary.PlayerFactionID = _playerFactionId;
             _uiContext = TestContent.CreateUIContext(
                 game,

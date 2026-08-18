@@ -455,7 +455,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             var scene = CreateScene();
             Officer officer = CreateOfficer("officer", _playerFactionId, "Field Officer");
-            scene.PlayerFleet.CapitalShips[0].Officers.Add(officer);
+            scene.PlayerFleet.GetCapitalShips()[0].AddChild(officer);
             SpaceCombatResult result = CreateResult(
                 scene.Planet,
                 scene.PlayerFleet,
@@ -574,12 +574,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         ) CreateScene(bool includeFleets = true)
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" }
-            );
-            game.Factions.Add(
-                new Faction { InstanceID = _opponentFactionId, DisplayName = "Imperial" }
-            );
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _opponentFactionId, DisplayName = "Imperial" });
             game.Summary.PlayerFactionID = _playerFactionId;
             GamePlanetSystem system = new GamePlanetSystem { InstanceID = "system" };
             game.AttachNode(system, game.GetGalaxyMap());

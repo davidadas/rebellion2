@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Systems
             _game = new GameRoot(config);
 
             _faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
-            _game.Factions.Add(_faction);
+            _game.GetFactions().Add(_faction);
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
@@ -252,7 +252,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_MultipleFactions_IndependentCapacity()
         {
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
 
             PlanetSystem sys2 = new PlanetSystem { InstanceID = "sys2" };
             _game.AttachNode(sys2, _game.Galaxy);

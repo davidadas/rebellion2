@@ -280,14 +280,16 @@ public sealed class BookmarkController
     /// <returns>True when at least one supported facility exists.</returns>
     private static bool HasFacilities(Planet planet)
     {
-        return planet?.Buildings?.Any(building =>
-                building.GetBuildingType()
-                    is BuildingType.Mine
-                        or BuildingType.Refinery
-                        or BuildingType.Shipyard
-                        or BuildingType.TrainingFacility
-                        or BuildingType.ConstructionFacility
-            ) == true;
+        return planet
+                ?.GetBuildings()
+                ?.Any(building =>
+                    building.GetBuildingType()
+                        is BuildingType.Mine
+                            or BuildingType.Refinery
+                            or BuildingType.Shipyard
+                            or BuildingType.TrainingFacility
+                            or BuildingType.ConstructionFacility
+                ) == true;
     }
 
     /// <summary>
@@ -299,11 +301,13 @@ public sealed class BookmarkController
     {
         return planet != null
             && (
-                planet.Buildings.Count(building =>
-                    building.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon
-                ) > 0
-                || planet.Regiments.Count > 0
-                || planet.Starfighters.Count > 0
+                planet
+                    .GetBuildings()
+                    .Count(building =>
+                        building.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon
+                    ) > 0
+                || planet.GetRegiments().Count > 0
+                || planet.GetStarfighters().Count > 0
             );
     }
 
@@ -315,7 +319,8 @@ public sealed class BookmarkController
     private static List<string> GetFleetOwnerFactionIDs(Planet planet)
     {
         return planet
-                ?.Fleets?.Select(fleet => fleet.OwnerInstanceID)
+                ?.GetFleets()
+                ?.Select(fleet => fleet.OwnerInstanceID)
                 .Where(factionId => !string.IsNullOrEmpty(factionId))
                 .Distinct(StringComparer.Ordinal)
                 .ToList()
@@ -330,7 +335,8 @@ public sealed class BookmarkController
     private static List<string> GetMissionOwnerFactionIDs(Planet planet)
     {
         return planet
-                ?.Missions?.Select(mission => mission.OwnerInstanceID)
+                ?.GetMissions()
+                ?.Select(mission => mission.OwnerInstanceID)
                 .Where(factionId => !string.IsNullOrEmpty(factionId))
                 .Distinct(StringComparer.Ordinal)
                 .ToList()

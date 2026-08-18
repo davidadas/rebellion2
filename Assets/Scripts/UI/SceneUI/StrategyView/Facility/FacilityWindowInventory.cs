@@ -29,7 +29,8 @@ internal static class FacilityWindowInventory
             _ => BuildingType.None,
         };
         return planet
-            .Buildings.Where(building => building.GetBuildingType() == type)
+            .GetBuildings()
+            .Where(building => building.GetBuildingType() == type)
             .OrderBy(building => building.GetDisplayName())
             .ToList();
     }

@@ -26,7 +26,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         [PersistableIgnore]
         public Officer Trainer =>
-            MainParticipants
+            GetMainParticipants()
                 .OfType<Officer>()
                 .FirstOrDefault(officer => officer.InstanceID == TrainerInstanceID);
 
@@ -177,11 +177,11 @@ namespace Rebellion.Game.Missions
             if (!CanLeadTraining(trainer, game))
                 return MissionCompletionReason.Failure;
 
-            int officerCount = MainParticipants.OfType<Officer>().Count();
+            int officerCount = GetMainParticipants().OfType<Officer>().Count();
             return
-                officerCount == MainParticipants.Count
+                officerCount == GetMainParticipants().Count
                 && officerCount >= 2
-                && MainParticipants.OfType<Officer>().All(CanParticipate)
+                && GetMainParticipants().OfType<Officer>().All(CanParticipate)
                 ? null
                 : MissionCompletionReason.Failure;
         }
@@ -207,7 +207,7 @@ namespace Rebellion.Game.Missions
 
             if (trainer != null)
             {
-                foreach (Officer officer in MainParticipants.OfType<Officer>())
+                foreach (Officer officer in GetMainParticipants().OfType<Officer>())
                 {
                     ForceTrainingResult trainingResult = TrainOfficer(
                         officer,

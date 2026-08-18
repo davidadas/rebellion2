@@ -191,7 +191,7 @@ namespace Rebellion.Game.Missions
                 && regiment.Movement == null;
             Fleet targetFleet = target is CapitalShip ? target.GetParentOfType<Fleet>() : null;
             game.DetachNode(target);
-            if (targetFleet?.CapitalShips.Count == 0)
+            if (targetFleet?.GetCapitalShips().Count == 0)
                 game.DetachNode(targetFleet);
 
             List<GameResult> results = new List<GameResult>
@@ -199,7 +199,7 @@ namespace Rebellion.Game.Missions
                 new GameObjectSabotagedResult
                 {
                     SabotagedObject = target,
-                    Saboteur = MainParticipants.Count > 0 ? MainParticipants[0] : null,
+                    Saboteur = GetMainParticipants().Count > 0 ? GetMainParticipants()[0] : null,
                     Context = planet,
                     Tick = game.CurrentTick,
                 },

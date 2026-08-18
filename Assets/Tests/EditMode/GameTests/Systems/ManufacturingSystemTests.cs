@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Systems
             // Create faction
             _empire = new Faction { InstanceID = "EMPIRE" };
             _empire.RefinedMaterialStockpile = 1000;
-            _game.Factions.Add(_empire);
+            _game.GetFactions().Add(_empire);
 
             // Create planet system
             PlanetSystem system = new PlanetSystem
@@ -1203,7 +1203,7 @@ namespace Rebellion.Tests.Systems
             _manager.ProcessTick();
 
             // Planet captured mid-construction
-            _game.Factions.Add(new Faction { InstanceID = "REBELLION" });
+            _game.GetFactions().Add(new Faction { InstanceID = "REBELLION" });
             _coruscant.OwnerInstanceID = "REBELLION";
 
             _manager.ProcessTick();
@@ -1327,7 +1327,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
             {
@@ -1353,7 +1353,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
             {
@@ -1424,7 +1424,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet1 = new Planet
             {
@@ -1501,7 +1501,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
             {
@@ -1542,7 +1542,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
             {
@@ -1691,7 +1691,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
@@ -1719,8 +1719,8 @@ namespace Rebellion.Tests.Systems
             );
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
 
-            Assert.AreEqual(2, fleet.CapitalShips.Count, "Ship should be in fleet.");
-            Assert.AreEqual("cs1", fleet.CapitalShips[1].InstanceID);
+            Assert.AreEqual(2, fleet.GetCapitalShips().Count, "Ship should be in fleet.");
+            Assert.AreEqual("cs1", fleet.GetCapitalShips()[1].InstanceID);
             Assert.AreEqual(ManufacturingStatus.Building, ship.ManufacturingStatus);
 
             CapitalShip found = _game.GetSceneNodeByInstanceID<CapitalShip>("cs1");
@@ -1733,7 +1733,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             CapitalShip ship = new CapitalShip
@@ -1763,7 +1763,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Fleet existingFleet = EntityFactory.CreateFleet("f1", "empire");
@@ -1791,9 +1791,9 @@ namespace Rebellion.Tests.Systems
             );
             mfg.Enqueue(planet, newShip, existingFleet, ignoreCost: true);
 
-            List<Fleet> fleets = planet.GetFleets();
+            List<Fleet> fleets = planet.GetFleets().ToList();
             Assert.AreEqual(1, fleets.Count, "Ship should join the explicitly specified fleet.");
-            Assert.AreEqual(2, fleets[0].CapitalShips.Count);
+            Assert.AreEqual(2, fleets[0].GetCapitalShips().Count);
             Assert.AreEqual(ManufacturingStatus.Building, newShip.ManufacturingStatus);
         }
 
@@ -1802,8 +1802,8 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "rebels");
@@ -1840,7 +1840,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
@@ -1870,7 +1870,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsTrue(mfg.Enqueue(planet, fighter, carrier, ignoreCost: true));
             Assert.AreEqual(carrier, fighter.GetParent());
-            Assert.Contains(fighter, carrier.Starfighters);
+            Assert.Contains(fighter, carrier.GetStarfighters().ToList());
         }
 
         [Test]
@@ -1878,7 +1878,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
@@ -1916,7 +1916,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
@@ -1953,7 +1953,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
@@ -1991,7 +1991,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Fleet existingFleet = EntityFactory.CreateFleet("f1", "empire");
@@ -2032,7 +2032,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
@@ -2069,7 +2069,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
@@ -2114,7 +2114,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction faction = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 2 };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
             Planet planet = BuildShipyardPlanet(game, "p1", faction.InstanceID);
             faction.RefinedMaterialStockpile = 2;
             Building secondShipyard = new Building
@@ -2167,7 +2167,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
@@ -2209,7 +2209,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
@@ -2248,7 +2248,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -2297,8 +2297,8 @@ namespace Rebellion.Tests.Systems
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
-            _game.Factions.Add(empire);
-            _game.Factions.Add(rebels);
+            _game.GetFactions().Add(empire);
+            _game.GetFactions().Add(rebels);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -2357,7 +2357,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
@@ -2393,7 +2393,7 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(planet, ship1, fleet, ignoreCost: true);
             mfg.Enqueue(planet, ship2, fleet, ignoreCost: true);
 
-            Assert.AreEqual(3, fleet.CapitalShips.Count, "Both ships should join the fleet.");
+            Assert.AreEqual(3, fleet.GetCapitalShips().Count, "Both ships should join the fleet.");
         }
 
         [Test]
@@ -2402,7 +2402,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Fleet targetFleet = EntityFactory.CreateFleet("f1", "empire");
@@ -2431,9 +2431,9 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(planet, ship1, targetFleet, ignoreCost: true);
             mfg.Enqueue(planet, ship2, targetFleet, ignoreCost: true);
 
-            List<Fleet> fleets = planet.GetFleets();
+            List<Fleet> fleets = planet.GetFleets().ToList();
             Assert.AreEqual(1, fleets.Count, "Both ships explicitly target the same fleet.");
-            Assert.AreEqual(2, fleets[0].CapitalShips.Count);
+            Assert.AreEqual(2, fleets[0].GetCapitalShips().Count);
         }
 
         [Test]
@@ -2442,7 +2442,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -2488,7 +2488,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -2534,7 +2534,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -2568,7 +2568,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Regiment regiment = new Regiment
@@ -2595,7 +2595,7 @@ namespace Rebellion.Tests.Systems
             );
             Assert.IsNull(regiment.Movement, "No _movement needed for same-planet destination.");
             Assert.IsTrue(
-                planet.Regiments.Contains(regiment),
+                planet.GetRegiments().Contains(regiment),
                 "Regiment should be in planet's regiment list."
             );
         }
@@ -2606,7 +2606,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -2654,7 +2654,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Building constructionYard = new Building
@@ -2700,7 +2700,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -2744,7 +2744,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -2778,7 +2778,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Building constructionYard = new Building
@@ -2869,8 +2869,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
-            _game.Factions.Add(empire);
-            _game.Factions.Add(new Faction { InstanceID = "rebels" });
+            _game.GetFactions().Add(empire);
+            _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
@@ -2957,8 +2957,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
-            _game.Factions.Add(empire);
-            _game.Factions.Add(new Faction { InstanceID = "rebels" });
+            _game.GetFactions().Add(empire);
+            _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
@@ -3049,8 +3049,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
-            game.Factions.Add(empire);
-            game.Factions.Add(rebels);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(rebels);
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
             empire.RefinedMaterialStockpile = 1;
             Building mine = new Building
@@ -3142,8 +3142,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
-            game.Factions.Add(empire);
-            game.Factions.Add(rebels);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(rebels);
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
             empire.RefinedMaterialStockpile = 1;
             Building mine = new Building
@@ -3197,7 +3197,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(game, "p1", empire.InstanceID);
             empire.RefinedMaterialStockpile = 1;
             planet.IsInUprising = true;
@@ -3243,7 +3243,7 @@ namespace Rebellion.Tests.Systems
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             empire.Settings.RefinementMultiplier = 4;
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 
             // BuildShipyardPlanet already adds a _shipyard (Ship) and training facility (Troop).
@@ -3335,7 +3335,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
 
             PlanetSystem sys = new PlanetSystem
             {
@@ -3390,7 +3390,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
 
             PlanetSystem sys = new PlanetSystem
             {
@@ -3454,7 +3454,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
 
             PlanetSystem sys = new PlanetSystem
             {
@@ -3507,7 +3507,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
             {
@@ -3547,7 +3547,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
             {
@@ -3588,7 +3588,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
             Planet productionPlanet = BuildShipyardPlanet(_game, "p1", "empire");
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
 
@@ -3647,8 +3647,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
-            _game.Factions.Add(new Faction { InstanceID = "rebels" });
+            _game.GetFactions().Add(empire);
+            _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             Planet productionPlanet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -3705,8 +3705,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
-            _game.Factions.Add(empire);
-            _game.Factions.Add(new Faction { InstanceID = "rebels" });
+            _game.GetFactions().Add(empire);
+            _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             Planet productionPlanet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -3766,8 +3766,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 3 };
-            _game.Factions.Add(empire);
-            _game.Factions.Add(new Faction { InstanceID = "rebels" });
+            _game.GetFactions().Add(empire);
+            _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
@@ -3892,8 +3892,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 3 };
-            _game.Factions.Add(empire);
-            _game.Factions.Add(new Faction { InstanceID = "rebels" });
+            _game.GetFactions().Add(empire);
+            _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
@@ -4249,16 +4249,16 @@ namespace Rebellion.Tests.Systems
             bool started = manager.StartManufacturing(planet, template, planet, 2, "empire");
 
             Assert.IsTrue(started);
-            List<Fleet> fleets = planet.GetFleets();
+            List<Fleet> fleets = planet.GetFleets().ToList();
             Assert.AreEqual(1, fleets.Count);
-            Assert.AreEqual(2, fleets[0].CapitalShips.Count);
+            Assert.AreEqual(2, fleets[0].GetCapitalShips().Count);
             Assert.AreEqual(2, planet.GetManufacturingQueue()[ManufacturingType.Ship].Count);
             Assert.AreSame(
-                fleets[0].CapitalShips[0],
+                fleets[0].GetCapitalShips()[0],
                 planet.GetManufacturingQueue()[ManufacturingType.Ship][0]
             );
             Assert.AreSame(
-                fleets[0].CapitalShips[1],
+                fleets[0].GetCapitalShips()[1],
                 planet.GetManufacturingQueue()[ManufacturingType.Ship][1]
             );
         }
@@ -4295,7 +4295,7 @@ namespace Rebellion.Tests.Systems
             bool started = manager.StartManufacturing(producer, template, destination, 2, "empire");
 
             Assert.IsFalse(started);
-            Assert.AreEqual(0, destination.Buildings.Count);
+            Assert.AreEqual(0, destination.GetBuildings().Count);
             Assert.IsFalse(
                 producer.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
             );
@@ -4322,7 +4322,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(
                 producer.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
             );
-            Assert.AreEqual(0, destination.Buildings.Count);
+            Assert.AreEqual(0, destination.GetBuildings().Count);
             foreach (IManufacturable item in queued)
                 Assert.IsNull(((ISceneNode)item).GetParent());
         }
@@ -4444,7 +4444,7 @@ namespace Rebellion.Tests.Systems
         private static GameRoot CreateOrderTestGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
             return game;
         }
 

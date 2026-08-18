@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Game.Events
         public void IsEventExhausted_LoadedCountAtLimit_ReturnsTrueBeforeEventProcessing()
         {
             GameRoot game = BuildGame(out _, out _);
-            game.EventPool.Add(new GameEvent { InstanceID = "limited", TriggerCount = 2 });
+            game.GetEventPool().Add(new GameEvent { InstanceID = "limited", TriggerCount = 2 });
             game.EventRuntime.GetState("limited").ExecutionCount = 2;
             IsEventExhaustedConditional conditional = new IsEventExhaustedConditional
             {
@@ -85,7 +85,7 @@ namespace Rebellion.Tests.Game.Events
         public void IsEventExhausted_LoadedUnlimitedEvent_ReturnsFalse()
         {
             GameRoot game = BuildGame(out _, out _);
-            game.EventPool.Add(new GameEvent { InstanceID = "unlimited" });
+            game.GetEventPool().Add(new GameEvent { InstanceID = "unlimited" });
             game.EventRuntime.GetState("unlimited").ExecutionCount = 10;
             IsEventExhaustedConditional conditional = new IsEventExhaustedConditional
             {
@@ -100,8 +100,8 @@ namespace Rebellion.Tests.Game.Events
         private static GameRoot BuildGame(out Planet empirePlanet, out Planet rebelPlanet)
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             game.AttachNode(system, game.Galaxy);
             empirePlanet = new Planet

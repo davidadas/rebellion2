@@ -70,7 +70,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = $"sys_{planet.InstanceID}",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
             return system;
         }
 
@@ -372,9 +372,9 @@ namespace Rebellion.Tests.Generation
                 )
             );
 
-            List<Fleet> fleets = planet.GetFleets();
+            List<Fleet> fleets = planet.GetFleets().ToList();
             Assert.AreEqual(1, fleets.Count, "Expected one fleet on the configured planet type.");
-            Assert.AreEqual(2, fleets[0].CapitalShips.Count);
+            Assert.AreEqual(2, fleets[0].GetCapitalShips().Count);
         }
 
         [Test]
@@ -417,7 +417,7 @@ namespace Rebellion.Tests.Generation
 
             Assert.AreEqual(0, yavin.GetFleets().Count);
             Assert.AreEqual(1, hq.GetFleets().Count);
-            Assert.AreEqual(2, hq.GetFleets()[0].CapitalShips.Count);
+            Assert.AreEqual(2, hq.GetFleets()[0].GetCapitalShips().Count);
         }
 
         [Test]
@@ -459,11 +459,11 @@ namespace Rebellion.Tests.Generation
             );
 
             Fleet fleet = yavin.GetFleets()[0];
-            CapitalShip corvette = fleet.CapitalShips.First(s => s.TypeID == "ALCS006");
-            CapitalShip transport = fleet.CapitalShips.First(s => s.TypeID == "ALCS003");
-            Assert.AreEqual(0, corvette.Regiments.Count);
-            Assert.AreEqual(2, transport.Regiments.Count);
-            Assert.IsTrue(transport.Regiments.All(r => r.TypeID == "REAL001"));
+            CapitalShip corvette = fleet.GetCapitalShips().First(s => s.TypeID == "ALCS006");
+            CapitalShip transport = fleet.GetCapitalShips().First(s => s.TypeID == "ALCS003");
+            Assert.AreEqual(0, corvette.GetRegiments().Count);
+            Assert.AreEqual(2, transport.GetRegiments().Count);
+            Assert.IsTrue(transport.GetRegiments().All(r => r.TypeID == "REAL001"));
         }
 
         [Test]
@@ -549,8 +549,8 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(context);
 
-            Assert.AreEqual(1, planet.Regiments.Count(r => r.TypeID == "FIRST"));
-            Assert.AreEqual(0, planet.Regiments.Count(r => r.TypeID == "SECOND"));
+            Assert.AreEqual(1, planet.GetRegiments().Count(r => r.TypeID == "FIRST"));
+            Assert.AreEqual(0, planet.GetRegiments().Count(r => r.TypeID == "SECOND"));
         }
 
         [Test]
@@ -719,7 +719,7 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(context);
 
-            List<SpecialForces> specialForces = planet.SpecialForces;
+            List<SpecialForces> specialForces = planet.GetSpecialForces().ToList();
             Assert.AreEqual(4, specialForces.Count);
             Assert.IsTrue(
                 specialForces.All(unit =>

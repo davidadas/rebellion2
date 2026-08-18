@@ -54,14 +54,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 DisplayName = "Special Forces",
                 OwnerInstanceID = "owner",
             };
-            _capitalShip.Starfighters.Add(_starfighter);
-            _capitalShip.Regiments.Add(_regiment);
-            _capitalShip.Officers.Add(_officer);
-            _capitalShip.SpecialForces.Add(_specialForces);
+            _capitalShip.AddTestChild(_starfighter);
+            _capitalShip.AddTestChild(_regiment);
+            _capitalShip.AddTestChild(_officer);
+            _capitalShip.AddTestChild(_specialForces);
             _fleet = CreateFleet("fleet", "Fleet", _capitalShip);
             _secondCapitalShip = CreateCapitalShip("second-ship", "Second Ship");
             _secondFleet = CreateFleet("second-fleet", "Second Fleet", _secondCapitalShip);
-            _planet = new Planet { InstanceID = "planet", Fleets = { _fleet, _secondFleet } };
+            _planet = new Planet { InstanceID = "planet" };
+            _planet.AddChildren(new[] { _fleet, _secondFleet });
             AttachFleetGraph(_planet, _fleet);
             AttachFleetGraph(_planet, _secondFleet);
             _windowObject = new GameObject("FleetWindow", typeof(RectTransform), typeof(UIWindow));
@@ -156,11 +157,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 "Replacement Fleet",
                 replacementShip
             );
-            Planet replacementPlanet = new Planet
-            {
-                InstanceID = "planet",
-                Fleets = { replacementFleet },
-            };
+            Planet replacementPlanet = new Planet { InstanceID = "planet" };
+            replacementPlanet.AddTestChild(replacementFleet);
             AttachFleetGraph(replacementPlanet, replacementFleet);
             GalaxyMapPlanet replacementProjection = new GalaxyMapPlanet(
                 new GamePlanetSystem(),
@@ -182,7 +180,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void Reconcile_SelectedFleetRemoved_SelectsNearestRemainingFleet()
         {
             _session.SelectItem(_secondFleet);
-            _planet.Fleets.Remove(_secondFleet);
+            _planet.RemoveChild(_secondFleet);
 
             _session.Reconcile();
 
@@ -196,7 +194,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             _session.CaptureContext(_capitalShip);
             _session.BeginRename(_capitalShip);
-            _planet.Fleets.Clear();
+            _planet.RemoveChildren<Rebellion.Game.Units.Fleet>(_ => true);
 
             _session.Reconcile();
 
@@ -323,7 +321,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void PrepareDragSelection_UnselectedDetail_SelectsItemAndAllowsDrag()
         {
             CapitalShip additionalShip = CreateCapitalShip("additional-ship", "Additional Ship");
-            _fleet.CapitalShips.Add(additionalShip);
+            _fleet.AddTestChild(additionalShip);
             additionalShip.SetParent(_fleet);
             _session.Reconcile();
 
@@ -492,7 +490,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);
-            foreach (CapitalShip ship in fleet.CapitalShips)
+            foreach (CapitalShip ship in fleet.GetCapitalShips())
             {
                 ship.SetParent(fleet);
                 foreach (ISceneNode child in ship.GetChildren())

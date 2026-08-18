@@ -29,7 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             _uiContext = TestContent.CreateUIContext(
                 game,

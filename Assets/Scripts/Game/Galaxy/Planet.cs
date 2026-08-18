@@ -90,13 +90,26 @@ namespace Rebellion.Game.Galaxy
         public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
 
         // Child Nodes.
-        public List<Fleet> Fleets = new List<Fleet>();
-        public List<Officer> Officers = new List<Officer>();
-        public List<Regiment> Regiments = new List<Regiment>();
-        public List<SpecialForces> SpecialForces = new List<SpecialForces>();
-        public List<Starfighter> Starfighters = new List<Starfighter>();
-        public List<Mission> Missions = new List<Mission>();
-        public List<Building> Buildings = new List<Building>();
+        [PersistableMember(Name = "Fleets")]
+        private List<Fleet> _fleets = new List<Fleet>();
+
+        [PersistableMember(Name = "Officers")]
+        private List<Officer> _officers = new List<Officer>();
+
+        [PersistableMember(Name = "Regiments")]
+        private List<Regiment> _regiments = new List<Regiment>();
+
+        [PersistableMember(Name = "SpecialForces")]
+        private List<SpecialForces> _specialForces = new List<SpecialForces>();
+
+        [PersistableMember(Name = "Starfighters")]
+        private List<Starfighter> _starfighters = new List<Starfighter>();
+
+        [PersistableMember(Name = "Missions")]
+        private List<Mission> _missions = new List<Mission>();
+
+        [PersistableMember(Name = "Buildings")]
+        private List<Building> _buildings = new List<Building>();
 
         // Manufacturing Status.
         [PersistableIgnore]
@@ -126,12 +139,12 @@ namespace Rebellion.Game.Galaxy
             if (string.IsNullOrEmpty(OwnerInstanceID))
                 return false;
 
-            bool hasHostile = Fleets.Any(f =>
+            bool hasHostile = _fleets.Any(f =>
                 f.Movement == null
                 && f.OwnerInstanceID != OwnerInstanceID
                 && f.HasOperationalCapitalShips()
             );
-            bool hasDefender = Fleets.Any(f =>
+            bool hasDefender = _fleets.Any(f =>
                 f.Movement == null
                 && f.OwnerInstanceID == OwnerInstanceID
                 && f.HasOperationalCapitalShips()
@@ -149,7 +162,7 @@ namespace Rebellion.Game.Galaxy
         {
             return !string.IsNullOrEmpty(factionInstanceID)
                 && IsBlockaded()
-                && Fleets.Any(fleet =>
+                && _fleets.Any(fleet =>
                     fleet.Movement == null
                     && fleet.GetOwnerInstanceID() != factionInstanceID
                     && fleet.HasOperationalCapitalShips()
@@ -240,7 +253,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>Number of energy units in use.</returns>
         public int GetEnergyUsed()
         {
-            return Buildings.Count;
+            return _buildings.Count;
         }
 
         /// <summary>
@@ -471,7 +484,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The combined production rate.</returns>
         private double GetCombinedProductionRate(ManufacturingType manufacturingType)
         {
-            return Buildings
+            return _buildings
                 .Where(building =>
                     building.GetProductionType() == manufacturingType
                     && building.GetManufacturingStatus() == ManufacturingStatus.Complete
@@ -572,7 +585,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The active production facilities ordered by production cycle length.</returns>
         public List<Building> GetProductionFacilities(ManufacturingType type)
         {
-            return Buildings
+            return _buildings
                 .Where(building =>
                     building.GetProductionType() == type
                     && building.GetManufacturingStatus() == ManufacturingStatus.Complete
@@ -628,9 +641,91 @@ namespace Rebellion.Game.Galaxy
         /// Gets the fleets on the planet.
         /// </summary>
         /// <returns>A list of fleets.</returns>
-        public List<Fleet> GetFleets()
+        public IReadOnlyList<Fleet> GetFleets(bool includeDisabled = false)
         {
-            return Fleets;
+            return Select(_fleets, includeDisabled);
+        }
+
+        /// <summary>
+        /// Gets the officers stationed directly on the planet.
+        /// </summary>
+        /// <returns>The planet's officers.</returns>
+        public IReadOnlyList<Officer> GetOfficers(bool includeDisabled = false) =>
+            Select(_officers, includeDisabled);
+
+        /// <summary>
+        /// Gets the regiments stationed directly on the planet.
+        /// </summary>
+        /// <returns>The planet's regiments.</returns>
+        public IReadOnlyList<Regiment> GetRegiments(bool includeDisabled = false) =>
+            Select(_regiments, includeDisabled);
+
+        /// <summary>
+        /// Gets the special-forces units stationed directly on the planet.
+        /// </summary>
+        /// <returns>The planet's special-forces units.</returns>
+        public IReadOnlyList<SpecialForces> GetSpecialForces(bool includeDisabled = false) =>
+            Select(_specialForces, includeDisabled);
+
+        /// <summary>
+        /// Gets the starfighters stationed directly on the planet.
+        /// </summary>
+        /// <returns>The planet's starfighters.</returns>
+        public IReadOnlyList<Starfighter> GetStarfighters(bool includeDisabled = false) =>
+            Select(_starfighters, includeDisabled);
+
+        /// <summary>
+        /// Gets the missions attached directly to the planet.
+        /// </summary>
+        /// <returns>The planet's missions.</returns>
+        public IReadOnlyList<Mission> GetMissions(bool includeDisabled = false) =>
+            Select(_missions, includeDisabled);
+
+        /// <summary>
+        /// Gets the buildings attached directly to the planet.
+        /// </summary>
+        /// <returns>The planet's buildings.</returns>
+        public IReadOnlyList<Building> GetBuildings(bool includeDisabled = false) =>
+            Select(_buildings, includeDisabled);
+
+        /// <summary>
+        /// Returns enabled nodes from a direct child collection.
+        /// </summary>
+        private static IReadOnlyList<T> Select<T>(IEnumerable<T> nodes, bool includeDisabled)
+            where T : ISceneNode
+        {
+            return includeDisabled
+                ? nodes.ToList()
+                : nodes.Where(node => node.IsEnabledInHierarchy()).ToList();
+        }
+
+        /// <summary>
+        /// Replaces the planet's child collections while constructing a detached projection.
+        /// </summary>
+        /// <param name="fleets">The fleets to retain in the projection.</param>
+        /// <param name="officers">The officers to retain in the projection.</param>
+        /// <param name="regiments">The regiments to retain in the projection.</param>
+        /// <param name="specialForces">The special-forces units to retain in the projection.</param>
+        /// <param name="starfighters">The starfighters to retain in the projection.</param>
+        /// <param name="missions">The missions to retain in the projection.</param>
+        /// <param name="buildings">The buildings to retain in the projection.</param>
+        internal void SetChildren(
+            IEnumerable<Fleet> fleets,
+            IEnumerable<Officer> officers,
+            IEnumerable<Regiment> regiments,
+            IEnumerable<SpecialForces> specialForces,
+            IEnumerable<Starfighter> starfighters,
+            IEnumerable<Mission> missions,
+            IEnumerable<Building> buildings
+        )
+        {
+            _fleets = fleets?.ToList() ?? new List<Fleet>();
+            _officers = officers?.ToList() ?? new List<Officer>();
+            _regiments = regiments?.ToList() ?? new List<Regiment>();
+            _specialForces = specialForces?.ToList() ?? new List<SpecialForces>();
+            _starfighters = starfighters?.ToList() ?? new List<Starfighter>();
+            _missions = missions?.ToList() ?? new List<Mission>();
+            _buildings = buildings?.ToList() ?? new List<Building>();
         }
 
         /// <summary>
@@ -639,7 +734,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="fleet">The fleet to add.</param>
         public void AddFleet(Fleet fleet)
         {
-            Fleets.Add(fleet);
+            _fleets.Add(fleet);
         }
 
         /// <summary>
@@ -648,7 +743,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="fleet">The fleet to remove.</param>
         public void RemoveFleet(Fleet fleet)
         {
-            Fleets.Remove(fleet);
+            _fleets.Remove(fleet);
         }
 
         /// <summary>
@@ -657,7 +752,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>A list of buildings.</returns>
         public List<Building> GetAllBuildings()
         {
-            return Buildings.ToList();
+            return _buildings.ToList();
         }
 
         /// <summary>
@@ -667,7 +762,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>A list of buildings of the specified production type.</returns>
         public List<Building> GetBuildings(ManufacturingType productionType)
         {
-            return Buildings
+            return _buildings
                 .Where(building => building.GetProductionType() == productionType)
                 .ToList();
         }
@@ -684,13 +779,13 @@ namespace Rebellion.Game.Galaxy
             if (!IsBlockaded() || HasActiveKdyDefense())
                 return _maximumProductionModifier;
 
-            List<CapitalShip> activeCapitalShips = Fleets
+            List<CapitalShip> activeCapitalShips = _fleets
                 .Where(fleet => fleet.Movement == null)
-                .SelectMany(fleet => fleet.CapitalShips)
+                .SelectMany(fleet => fleet.GetCapitalShips())
                 .Where(IsEntityActive)
                 .ToList();
             int activeFighterCount = activeCapitalShips.Sum(capitalShip =>
-                capitalShip.Starfighters.Count(IsEntityActive)
+                capitalShip.GetStarfighters().Count(IsEntityActive)
             );
 
             int modifier =
@@ -706,7 +801,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>True when an active KDY defense is present.</returns>
         private bool HasActiveKdyDefense()
         {
-            return Buildings.Any(building =>
+            return _buildings.Any(building =>
                 building.DefenseFacilityClass == DefenseFacilityClass.KDY
                 && IsEntityActive(building)
             );
@@ -735,7 +830,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The count of active buildings of the specified type.</returns>
         public int GetBuildingTypeCount(BuildingType buildingType)
         {
-            return Buildings.Count(b => b.GetBuildingType() == buildingType && IsEntityActive(b));
+            return _buildings.Count(b => b.GetBuildingType() == buildingType && IsEntityActive(b));
         }
 
         /// <summary>
@@ -746,7 +841,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The total count of buildings of the specified type.</returns>
         public int GetTotalBuildingTypeCount(BuildingType buildingType)
         {
-            return Buildings.Count(b => b.GetBuildingType() == buildingType);
+            return _buildings.Count(b => b.GetBuildingType() == buildingType);
         }
 
         /// <summary>
@@ -772,7 +867,7 @@ namespace Rebellion.Game.Galaxy
                 throw new SceneAccessException(building, this);
 
             ValidateBuilding(building);
-            Buildings.Add(building);
+            _buildings.Add(building);
         }
 
         /// <summary>
@@ -802,7 +897,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="building">The building to remove.</param>
         private void RemoveBuilding(Building building)
         {
-            Buildings.Remove(building);
+            _buildings.Remove(building);
         }
 
         /// <summary>
@@ -815,7 +910,7 @@ namespace Rebellion.Game.Galaxy
             {
                 throw new SceneAccessException(officer, this);
             }
-            Officers.Add(officer);
+            _officers.Add(officer);
         }
 
         /// <summary>
@@ -824,7 +919,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="officer">The officer to remove.</param>
         private void RemoveOfficer(Officer officer)
         {
-            Officers.Remove(officer);
+            _officers.Remove(officer);
         }
 
         /// <summary>
@@ -833,7 +928,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="mission">The mission to add.</param>
         private void AddMission(Mission mission)
         {
-            Missions.Add(mission);
+            _missions.Add(mission);
         }
 
         /// <summary>
@@ -842,7 +937,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="mission">The mission to remove.</param>
         private void RemoveMission(Mission mission)
         {
-            Missions.Remove(mission);
+            _missions.Remove(mission);
         }
 
         /// <summary>
@@ -858,7 +953,7 @@ namespace Rebellion.Game.Galaxy
             )
                 throw new SceneAccessException(regiment, this);
 
-            Regiments.Add(regiment);
+            _regiments.Add(regiment);
         }
 
         /// <summary>
@@ -867,7 +962,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="regiment">The regiment to remove.</param>
         private void RemoveRegiment(Regiment regiment)
         {
-            Regiments.Remove(regiment);
+            _regiments.Remove(regiment);
         }
 
         /// <summary>
@@ -882,7 +977,7 @@ namespace Rebellion.Game.Galaxy
             if (IsColonized && specialForces.GetOwnerInstanceID() != this.GetOwnerInstanceID())
                 throw new SceneAccessException(specialForces, this);
 
-            SpecialForces.Add(specialForces);
+            _specialForces.Add(specialForces);
         }
 
         /// <summary>
@@ -891,7 +986,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="specialForces">The special forces to remove.</param>
         private void RemoveSpecialForces(SpecialForces specialForces)
         {
-            SpecialForces.Remove(specialForces);
+            _specialForces.Remove(specialForces);
         }
 
         /// <summary>
@@ -906,7 +1001,7 @@ namespace Rebellion.Game.Galaxy
             if (IsColonized && starfighter.GetOwnerInstanceID() != this.GetOwnerInstanceID())
                 throw new SceneAccessException(starfighter, this);
 
-            Starfighters.Add(starfighter);
+            _starfighters.Add(starfighter);
         }
 
         /// <summary>
@@ -915,7 +1010,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="starfighter">The starfighter to remove.</param>
         private void RemoveStarfighter(Starfighter starfighter)
         {
-            Starfighters.Remove(starfighter);
+            _starfighters.Remove(starfighter);
         }
 
         /// <summary>
@@ -924,7 +1019,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>A list of officers currently on this planet.</returns>
         public List<Officer> GetAllOfficers()
         {
-            return Officers.ToList();
+            return _officers.ToList();
         }
 
         /// <summary>
@@ -933,7 +1028,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>A list of starfighters currently on this planet.</returns>
         public List<Starfighter> GetAllStarfighters()
         {
-            return Starfighters.ToList();
+            return _starfighters.ToList();
         }
 
         /// <summary>
@@ -942,7 +1037,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>A list of regiments currently on this planet.</returns>
         public List<Regiment> GetAllRegiments()
         {
-            return Regiments.ToList();
+            return _regiments.ToList();
         }
 
         /// <summary>
@@ -955,7 +1050,7 @@ namespace Rebellion.Game.Galaxy
             if (string.IsNullOrEmpty(regimentTypeID))
                 return 0;
 
-            return Regiments.Count(regiment =>
+            return _regiments.Count(regiment =>
                 regiment.TypeID == regimentTypeID
                 && regiment.ManufacturingStatus == ManufacturingStatus.Complete
                 && regiment.Movement == null
@@ -968,7 +1063,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The count of starfighters currently on this planet.</returns>
         public int GetStarfighterCount()
         {
-            return Starfighters.Count;
+            return _starfighters.Count;
         }
 
         /// <summary>
@@ -977,7 +1072,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The count of regiments currently on this planet.</returns>
         public int GetRegimentCount()
         {
-            return Regiments.Count;
+            return _regiments.Count;
         }
 
         /// <summary>
@@ -1121,16 +1216,16 @@ namespace Rebellion.Game.Galaxy
         /// Gets the child nodes of the planet.
         /// </summary>
         /// <returns>An enumerable of child nodes.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
         {
-            return Fleets
+            return GetFleets(includeDisabled)
                 .Cast<ISceneNode>()
-                .Concat(Officers)
-                .Concat(Missions)
-                .Concat(Regiments)
-                .Concat(SpecialForces)
-                .Concat(Starfighters)
-                .Concat(Buildings);
+                .Concat(GetOfficers(includeDisabled))
+                .Concat(GetMissions(includeDisabled))
+                .Concat(GetRegiments(includeDisabled))
+                .Concat(GetSpecialForces(includeDisabled))
+                .Concat(GetStarfighters(includeDisabled))
+                .Concat(GetBuildings(includeDisabled));
         }
     }
 }

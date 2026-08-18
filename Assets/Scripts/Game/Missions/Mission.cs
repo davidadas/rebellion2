@@ -42,9 +42,11 @@ namespace Rebellion.Game.Missions
         public string SourceEventInstanceID { get; set; }
 
         // Participants.
-        public List<IMissionParticipant> MainParticipants { get; set; }
+        [PersistableMember(Name = "MainParticipants")]
+        private protected List<IMissionParticipant> _mainParticipants;
 
-        public List<IMissionParticipant> DecoyParticipants { get; set; }
+        [PersistableMember(Name = "DecoyParticipants")]
+        private protected List<IMissionParticipant> _decoyParticipants;
 
         [PersistableIgnore]
         private HashSet<string> _participantInstanceIds = new HashSet<string>(
@@ -70,8 +72,8 @@ namespace Rebellion.Game.Missions
         /// </summary>
         protected Mission()
         {
-            MainParticipants = new List<IMissionParticipant>();
-            DecoyParticipants = new List<IMissionParticipant>();
+            _mainParticipants = new List<IMissionParticipant>();
+            _decoyParticipants = new List<IMissionParticipant>();
         }
 
         /// <summary>
@@ -99,8 +101,8 @@ namespace Rebellion.Game.Missions
             OwnerInstanceID = ownerInstanceId;
             LocationInstanceID = locationInstanceId;
 
-            MainParticipants = mainParticipants ?? new List<IMissionParticipant>();
-            DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>();
+            _mainParticipants = mainParticipants ?? new List<IMissionParticipant>();
+            _decoyParticipants = decoyParticipants ?? new List<IMissionParticipant>();
             ParticipantRating = participantRating;
         }
 
@@ -159,7 +161,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <returns>The abort reason, or null when the mission may advance.</returns>
         public virtual MissionCompletionReason? GetAbortReason(GameRoot game) =>
-            MainParticipants.Count == 0 || HaveParticipantsChanged()
+            _mainParticipants.Count == 0 || HaveParticipantsChanged()
                 ? MissionCompletionReason.Failure
                 : null;
 
@@ -219,7 +221,33 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <returns>Combined list of main and decoy participants.</returns>
         public List<IMissionParticipant> GetAllParticipants() =>
-            MainParticipants.Concat(DecoyParticipants).ToList();
+            GetMainParticipants().Concat(GetDecoyParticipants()).ToList();
+
+        /// <summary>
+        /// Gets the mission's primary participants.
+        /// </summary>
+        /// <returns>The primary participants.</returns>
+        public IReadOnlyList<IMissionParticipant> GetMainParticipants(
+            bool includeDisabled = false
+        ) =>
+            includeDisabled
+                ? _mainParticipants
+                : _mainParticipants
+                    .Where(participant => participant.IsEnabledInHierarchy())
+                    .ToList();
+
+        /// <summary>
+        /// Gets the mission's decoy participants.
+        /// </summary>
+        /// <returns>The decoy participants.</returns>
+        public IReadOnlyList<IMissionParticipant> GetDecoyParticipants(
+            bool includeDisabled = false
+        ) =>
+            includeDisabled
+                ? _decoyParticipants
+                : _decoyParticipants
+                    .Where(participant => participant.IsEnabledInHierarchy())
+                    .ToList();
 
         /// <summary>
         /// Returns whether any mission participant is still travelling to the mission.
@@ -308,7 +336,7 @@ namespace Rebellion.Game.Missions
             int bestDefenderEspionage = 0;
             if (GetParent() is Planet planet)
             {
-                foreach (Officer officer in planet.Officers)
+                foreach (Officer officer in planet.GetOfficers())
                 {
                     if (officer.OwnerInstanceID != OwnerInstanceID && !officer.IsCaptured)
                     {
@@ -451,11 +479,11 @@ namespace Rebellion.Game.Missions
         /// <returns>The averaged effective rating, or 0 when no main participants exist.</returns>
         private int GetAveragedRating(OfficerRating rating)
         {
-            if (MainParticipants.Count == 0)
+            if (GetMainParticipants().Count == 0)
                 return 0;
 
-            return MainParticipants.Sum(participant => participant.GetEffectiveRating(rating))
-                / MainParticipants.Count;
+            return GetMainParticipants().Sum(participant => participant.GetEffectiveRating(rating))
+                / GetMainParticipants().Count;
         }
 
         /// <summary>
@@ -584,7 +612,7 @@ namespace Rebellion.Game.Missions
         /// <returns>True if at least one participant succeeds.</returns>
         protected bool CheckMissionSuccess(IRandomNumberProvider provider, GameRoot game)
         {
-            foreach (IMissionParticipant participant in MainParticipants)
+            foreach (IMissionParticipant participant in GetMainParticipants())
             {
                 if (RollParticipantSuccess(participant, provider, game))
                     return true;
@@ -619,11 +647,11 @@ namespace Rebellion.Game.Missions
         /// <returns>True if the selected decoy succeeds.</returns>
         protected bool CheckDecoySuccessful(IRandomNumberProvider provider, GameRoot game)
         {
-            if (DecoyParticipants.Count == 0)
+            if (GetDecoyParticipants().Count == 0)
                 return false;
 
-            IMissionParticipant decoy = DecoyParticipants[
-                provider.NextInt(0, DecoyParticipants.Count)
+            IMissionParticipant decoy = GetDecoyParticipants()[
+                provider.NextInt(0, GetDecoyParticipants().Count)
             ];
             return IsSuccessfulProbabilityRoll(
                 provider.NextDouble() * 100,
@@ -793,7 +821,10 @@ namespace Rebellion.Game.Missions
         /// </summary>
         protected virtual void ImproveMissionParticipantRatings()
         {
-            foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
+            foreach (
+                IMissionParticipant participant in GetMainParticipants()
+                    .Concat(GetDecoyParticipants())
+            )
                 ImproveMissionParticipantRating(participant);
         }
 
@@ -848,12 +879,12 @@ namespace Rebellion.Game.Missions
         /// Returns all mission participants as children of the mission.
         /// </summary>
         /// <returns>All main and decoy participants as scene nodes.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
         {
             if (HasInitiated)
-                return MainParticipants
+                return GetMainParticipants(includeDisabled)
                     .Cast<ISceneNode>()
-                    .Concat(DecoyParticipants.Cast<ISceneNode>());
+                    .Concat(GetDecoyParticipants(includeDisabled).Cast<ISceneNode>());
 
             return new List<ISceneNode>();
         }
@@ -866,10 +897,34 @@ namespace Rebellion.Game.Missions
         public override bool CanAcceptChild(ISceneNode child) => child is IMissionParticipant;
 
         /// <summary>
-        /// Accepts mission participants already assigned to this mission.
+        /// Adds a mission participant to its authored primary or decoy collection.
         /// </summary>
-        /// <param name="child">The node to add (ignored).</param>
-        public override void AddChild(ISceneNode child) { }
+        /// <param name="child">The participant to add.</param>
+        public override void AddChild(ISceneNode child)
+        {
+            if (child is not IMissionParticipant participant)
+                return;
+
+            if (
+                !_mainParticipants.Contains(participant)
+                && !_decoyParticipants.Contains(participant)
+            )
+                _mainParticipants.Add(participant);
+        }
+
+        /// <summary>
+        /// Adds a participant to the mission's decoy team.
+        /// </summary>
+        /// <param name="participant">The decoy participant to add.</param>
+        internal void AddDecoyParticipant(IMissionParticipant participant)
+        {
+            if (
+                participant != null
+                && !_mainParticipants.Contains(participant)
+                && !_decoyParticipants.Contains(participant)
+            )
+                _decoyParticipants.Add(participant);
+        }
 
         /// <summary>
         /// Removes the child from participant lists (called by GameRoot.MoveNode/DetachNode).
@@ -879,8 +934,8 @@ namespace Rebellion.Game.Missions
         {
             if (child is IMissionParticipant participant)
             {
-                MainParticipants.Remove(participant);
-                DecoyParticipants.Remove(participant);
+                _mainParticipants.Remove(participant);
+                _decoyParticipants.Remove(participant);
             }
         }
     }

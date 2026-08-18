@@ -596,8 +596,9 @@ namespace Rebellion.AI.Director
                 return 0;
 
             return fleet
-                .CapitalShips.Where(IsReadyCapitalShip)
-                .SelectMany(ship => ship.Regiments)
+                .GetCapitalShips()
+                .Where(IsReadyCapitalShip)
+                .SelectMany(ship => ship.GetRegiments())
                 .Count(IsReadyRegiment);
         }
 
@@ -612,7 +613,8 @@ namespace Rebellion.AI.Director
                 return 0;
 
             return fleet
-                .CapitalShips.Where(IsReadyCapitalShip)
+                .GetCapitalShips()
+                .Where(IsReadyCapitalShip)
                 .Sum(ship => ship.GetRegimentCapacity());
         }
 
@@ -627,8 +629,9 @@ namespace Rebellion.AI.Director
                 return 0;
 
             return fleet
-                .CapitalShips.Where(IsReadyCapitalShip)
-                .SelectMany(ship => ship.Regiments)
+                .GetCapitalShips()
+                .Where(IsReadyCapitalShip)
+                .SelectMany(ship => ship.GetRegiments())
                 .Where(IsReadyRegiment)
                 .Sum(regiment => regiment.AttackRating);
         }
@@ -643,7 +646,7 @@ namespace Rebellion.AI.Director
             if (!IsReadyCapitalShip(capitalShip))
                 return 0;
 
-            return capitalShip.Regiments.Count(IsReadyRegiment);
+            return capitalShip.GetRegiments().Count(IsReadyRegiment);
         }
 
         /// <summary>
@@ -702,7 +705,8 @@ namespace Rebellion.AI.Director
                     int personnelMultiplier = personnel / divisor + 1;
 
                     return fleet
-                        .CapitalShips.Where(ship =>
+                        .GetCapitalShips()
+                        .Where(ship =>
                             ship.ManufacturingStatus == ManufacturingStatus.Complete
                             && ship.Movement == null
                         )

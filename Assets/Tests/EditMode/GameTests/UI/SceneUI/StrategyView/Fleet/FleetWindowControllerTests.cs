@@ -52,7 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
             _planet = CreatePlanet(_game);
             _fleet = CreateFleet("fleet", "First Fleet", out _officer);
-            _planet.Planet.Fleets.Add(_fleet);
+            _planet.Planet.AddChild(_fleet);
             AttachFleetGraph(_planet.Planet, _fleet);
             _gameManager = TestContent.CreateGameManager(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
@@ -202,7 +202,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void WindowDrop_WithoutSelectedFleet_SelectsRepresentedPlanet()
         {
-            _planet.Planet.Fleets.Clear();
+            _planet.Planet.RemoveChildren<Rebellion.Game.Units.Fleet>(_ => true);
             FleetWindowView view = OpenWindow(out UIWindow window);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             _controller.RenderWindow(view, window, true);
@@ -245,7 +245,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void FleetRowPress_UnselectedFleetLabel_StartsDragOnFirstGesture()
         {
             GameFleet secondFleet = CreateFleet("second-fleet", "Second Fleet", out _);
-            _planet.Planet.Fleets.Add(secondFleet);
+            _planet.Planet.AddChild(secondFleet);
             AttachFleetGraph(_planet.Planet, secondFleet);
             UIWindow draggedWindow = null;
             PointerEventData draggedEvent = null;
@@ -307,8 +307,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             {
                 InstanceID = _planet.Planet.InstanceID,
                 DisplayName = "Fresh Planet",
-                Fleets = { freshFleet },
             };
+            freshPlanetNode.AddChild(freshFleet);
             AttachFleetGraph(freshPlanetNode, freshFleet);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
                 new GamePlanetSystem { InstanceID = "fresh-system" },
@@ -353,10 +353,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void ContextMenu_BombardmentLeaf_ExecutesAndRoutesBattleResult()
         {
             _planet.Planet.OwnerInstanceID = _opposingFactionId;
-            _fleet.CapitalShips[0].Bombardment = 1;
-            _planet.Planet.Fleets.Remove(_fleet);
+            _fleet.GetCapitalShips()[0].Bombardment = 1;
+            _planet.Planet.RemoveChild(_fleet);
             _fleet.SetParent(null);
-            _planet.Planet.Fleets.Add(_fleet);
+            _planet.Planet.AddChild(_fleet);
             _fleet.SetParent(_planet.Planet);
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
@@ -427,8 +427,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionId });
-            game.Factions.Add(new Faction { InstanceID = _opposingFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             return game;
         }
@@ -469,7 +469,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 DisplayName = "Fleet Officer",
                 OwnerInstanceID = _playerFactionId,
             };
-            ship.Officers.Add(officer);
+            ship.AddChild(officer);
             return new GameFleet(_playerFactionId, displayName, new List<CapitalShip> { ship })
             {
                 InstanceID = instanceId,
@@ -479,7 +479,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);
-            foreach (CapitalShip ship in fleet.CapitalShips)
+            foreach (CapitalShip ship in fleet.GetCapitalShips())
             {
                 ship.SetParent(fleet);
                 foreach (ISceneNode child in ship.GetChildren())

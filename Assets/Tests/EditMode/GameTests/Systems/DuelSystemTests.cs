@@ -72,7 +72,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 IsColonized = true,
             };
-            game.AttachNode(other, game.Galaxy.PlanetSystems[0]);
+            game.AttachNode(other, game.Galaxy.GetPlanetSystems()[0]);
             game.MoveNode(opposing, other);
             DuelSystem system = new DuelSystem(game, new FixedRandomProvider(new[] { 0.0 }));
 
@@ -96,8 +96,8 @@ namespace Rebellion.Tests.Systems
                 CombatReward = 1,
             };
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
             PlanetSystem planetSystem = new PlanetSystem { InstanceID = "system" };
             game.AttachNode(planetSystem, game.Galaxy);
             Planet planet = new Planet

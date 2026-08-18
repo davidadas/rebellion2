@@ -60,7 +60,7 @@ namespace Rebellion.SceneGraph
         /// Retrieves the children of the node. For leaf nodes, this operation returns an empty collection.
         /// </summary>
         /// <returns>An empty collection of children.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
         {
             yield break;
         }

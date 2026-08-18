@@ -79,14 +79,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 InstanceID = "lnr",
                 DefenseFacilityClass = DefenseFacilityClass.LNR,
             };
-            _planet.Officers.Add(officer);
-            _planet.SpecialForces.Add(specialForces);
-            _planet.Regiments.Add(regiment);
-            _planet.Starfighters.Add(starfighter);
-            _planet.Buildings.Add(shield);
-            _planet.Buildings.Add(kdy);
-            _planet.Buildings.Add(deathStarShield);
-            _planet.Buildings.Add(lnr);
+            _planet.AddTestChild(officer);
+            _planet.AddTestChild(specialForces);
+            _planet.AddTestChild(regiment);
+            _planet.AddTestChild(starfighter);
+            _planet.AddTestChild(shield);
+            _planet.AddTestChild(kdy);
+            _planet.AddTestChild(deathStarShield);
+            _planet.AddTestChild(lnr);
 
             _session.Reconcile();
 
@@ -116,12 +116,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void Reconcile_RemovedItems_ClearsInteractionState()
         {
             Officer officer = new Officer { InstanceID = "officer" };
-            _planet.Officers.Add(officer);
+            _planet.AddTestChild(officer);
             _session.Reconcile();
             _session.SelectItem(0, 3);
             _session.CaptureContextItem(0);
 
-            _planet.Officers.Clear();
+            _planet.RemoveChildren<Officer>(_ => true);
             _session.Reconcile();
 
             Assert.IsEmpty(_session.SelectedItemIndexes);
@@ -132,7 +132,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         [Test]
         public void SelectTab_DifferentAuthoredTab_ChangesTabAndClearsSelection()
         {
-            _planet.Officers.Add(new Officer { InstanceID = "officer" });
+            _planet.AddTestChild(new Officer { InstanceID = "officer" });
             _session.Reconcile();
             _session.SelectItem(0, 3);
 
@@ -159,7 +159,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void SelectSingleItem_ValidItem_SelectsRequestedTabItem()
         {
             Regiment regiment = new Regiment { InstanceID = "regiment" };
-            _planet.Regiments.Add(regiment);
+            _planet.AddTestChild(regiment);
             _session.Reconcile();
 
             bool selected = _session.SelectSingleItem(DefenseWindowTab.Regiments, 0);
@@ -185,7 +185,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void TryGetItem_ValidAndInvalidIndexes_ReturnsExpectedResult()
         {
             Officer officer = new Officer { InstanceID = "officer" };
-            _planet.Officers.Add(officer);
+            _planet.AddTestChild(officer);
             _session.Reconcile();
 
             bool found = _session.TryGetItem(0, out ISceneNode foundItem);
@@ -202,8 +202,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         {
             Officer first = new Officer { InstanceID = "first" };
             Officer second = new Officer { InstanceID = "second" };
-            _planet.Officers.Add(first);
-            _planet.Officers.Add(second);
+            _planet.AddTestChild(first);
+            _planet.AddTestChild(second);
             _session.Reconcile();
             _session.SelectItem(0, 3);
 
@@ -219,7 +219,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void CaptureContextItem_InvalidItem_ClearsContextOnly()
         {
             Officer officer = new Officer { InstanceID = "officer" };
-            _planet.Officers.Add(officer);
+            _planet.AddTestChild(officer);
             _session.Reconcile();
             _session.SelectItem(0, 3);
             _session.CaptureContextItem(0);
@@ -236,7 +236,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void PrepareItemSelection_ValidItem_CapturesContext()
         {
             Officer officer = new Officer { InstanceID = "officer" };
-            _planet.Officers.Add(officer);
+            _planet.AddTestChild(officer);
             _session.Reconcile();
 
             bool prepared = _session.PrepareItemSelection(0);
@@ -253,7 +253,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 InstanceID = "regiment",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            _planet.Regiments.Add(regiment);
+            _planet.AddTestChild(regiment);
             _session.Reconcile();
             _session.SelectTab(DefenseWindowTab.Regiments);
 
@@ -272,7 +272,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 Movement = new MovementState(),
             };
-            _planet.Regiments.Add(regiment);
+            _planet.AddTestChild(regiment);
             _session.Reconcile();
             _session.SelectTab(DefenseWindowTab.Regiments);
 
@@ -301,16 +301,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void RebindPlanet_ReplacementItemsWithSameIDs_PreservesInteractionTargets()
         {
             Officer original = new Officer { InstanceID = "officer" };
-            _planet.Officers.Add(original);
+            _planet.AddTestChild(original);
             _session.Reconcile();
             _session.SelectItem(0, 3);
             _session.CaptureContextItem(0);
             Officer replacement = new Officer { InstanceID = original.InstanceID };
-            Planet refreshedPlanet = new Planet
-            {
-                InstanceID = _planet.InstanceID,
-                Officers = { replacement },
-            };
+            Planet refreshedPlanet = new Planet { InstanceID = _planet.InstanceID };
+            refreshedPlanet.AddTestChild(replacement);
             GalaxyMapPlanet refreshedProjection = new GalaxyMapPlanet(
                 new GamePlanetSystem(),
                 refreshedPlanet,
@@ -332,7 +329,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void ClearSelection_ActiveSelection_ClearsAllInteractionState()
         {
             Officer officer = new Officer { InstanceID = "officer" };
-            _planet.Officers.Add(officer);
+            _planet.AddTestChild(officer);
             _session.Reconcile();
             _session.SelectItem(0, 3);
             _session.CaptureContextItem(0);

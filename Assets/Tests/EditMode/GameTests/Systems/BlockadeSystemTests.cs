@@ -42,8 +42,8 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "alliance",
             };
 
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
             game.AttachNode(system, game.GetGalaxyMap());
             game.AttachNode(planet, system);
             game.AttachNode(hostileFleet, planet);
@@ -142,7 +142,7 @@ namespace Rebellion.Tests.Systems
             Faction empire = new Faction { InstanceID = "empire" };
             PlanetSystem system = new PlanetSystem { InstanceID = "s1" };
             Planet planet = new Planet { InstanceID = "p1", OwnerInstanceID = "empire" };
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
             game.AttachNode(system, game.GetGalaxyMap());
             game.AttachNode(planet, system);
 
@@ -180,8 +180,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSystem sys1 = new PlanetSystem { InstanceID = "s1" };
             PlanetSystem sys2 = new PlanetSystem { InstanceID = "s2" };

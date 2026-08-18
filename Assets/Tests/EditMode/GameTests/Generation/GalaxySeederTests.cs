@@ -111,7 +111,7 @@ namespace Rebellion.Tests.Generation
             };
             for (int i = 0; i < planetCount; i++)
             {
-                system.Planets.Add(new Planet { InstanceID = $"p{i}", TypeID = $"p{i}" });
+                system.AddChild(new Planet { InstanceID = $"p{i}", TypeID = $"p{i}" });
             }
             return new[] { system };
         }
@@ -249,10 +249,10 @@ namespace Rebellion.Tests.Generation
             );
 
             int allianceOwned = systems
-                .SelectMany(s => s.Planets)
+                .SelectMany(s => s.GetPlanets())
                 .Count(p => p.OwnerInstanceID == "FNALL1");
             int empireOwned = systems
-                .SelectMany(s => s.Planets)
+                .SelectMany(s => s.GetPlanets())
                 .Count(p => p.OwnerInstanceID == "FNEMP1");
 
             Assert.AreEqual(4, allianceOwned, "Alliance should own 4 planets (20% strong of 20).");
@@ -272,10 +272,10 @@ namespace Rebellion.Tests.Generation
                 SystemType = PlanetSystemType.CoreSystem,
             };
             Planet startingPlanet = new Planet { InstanceID = "CORUSCANT", TypeID = "PLSEW05" };
-            system.Planets.Add(startingPlanet);
+            system.AddChild(startingPlanet);
             for (int i = 0; i < 9; i++)
             {
-                system.Planets.Add(new Planet { InstanceID = $"p{i}" });
+                system.AddChild(new Planet { InstanceID = $"p{i}" });
             }
 
             GameGenerationConfig rules = CreateRules(

@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Galaxy
 {
@@ -9,12 +11,22 @@ namespace Rebellion.Game.Galaxy
     public class GalaxyMap : ContainerNode
     {
         // Child Nodes.
-        public List<PlanetSystem> PlanetSystems { get; set; } = new List<PlanetSystem>();
+        [PersistableMember(Name = "PlanetSystems")]
+        private List<PlanetSystem> _planetSystems = new List<PlanetSystem>();
 
         /// <summary>
         /// Default constructor.
         /// </summary>
         public GalaxyMap() { }
+
+        /// <summary>
+        /// Gets the planet systems contained by the galaxy map.
+        /// </summary>
+        /// <returns>The galaxy map's planet systems.</returns>
+        public IReadOnlyList<PlanetSystem> GetPlanetSystems(bool includeDisabled = false) =>
+            includeDisabled
+                ? _planetSystems
+                : _planetSystems.Where(system => system.IsEnabledInHierarchy()).ToList();
 
         /// <summary>
         /// Returns true if the child is a PlanetSystem.
@@ -31,7 +43,7 @@ namespace Rebellion.Game.Galaxy
         {
             if (child is PlanetSystem planetSystem)
             {
-                PlanetSystems.Add(planetSystem);
+                _planetSystems.Add(planetSystem);
             }
         }
 
@@ -43,7 +55,7 @@ namespace Rebellion.Game.Galaxy
         {
             if (child is PlanetSystem planetSystem)
             {
-                PlanetSystems.Remove(planetSystem);
+                _planetSystems.Remove(planetSystem);
             }
         }
 
@@ -51,9 +63,9 @@ namespace Rebellion.Game.Galaxy
         /// Retrieves the children of the node.
         /// </summary>
         /// <returns>An array of child nodes.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
         {
-            return PlanetSystems.ToArray();
+            return GetPlanetSystems(includeDisabled).Cast<ISceneNode>();
         }
     }
 }

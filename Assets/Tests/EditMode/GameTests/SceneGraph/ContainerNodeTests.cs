@@ -27,9 +27,11 @@ namespace Rebellion.Tests.SceneGraph
                 _children.Remove(child);
             }
 
-            public override IEnumerable<ISceneNode> GetChildren()
+            public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
             {
-                return _children;
+                return includeDisabled
+                    ? _children
+                    : _children.Where(child => child.IsEnabledInHierarchy());
             }
 
             public override IEnumerable<T> GetChildren<T>(

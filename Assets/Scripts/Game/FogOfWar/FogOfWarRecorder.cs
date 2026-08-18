@@ -71,7 +71,7 @@ namespace Rebellion.Game.FogOfWar
             {
                 if (observation is PlanetSystem selectedSystem)
                 {
-                    foreach (Planet systemPlanet in selectedSystem.Planets)
+                    foreach (Planet systemPlanet in selectedSystem.GetPlanets())
                         RecordObservation(game, faction, systemPlanet, currentTick);
                     continue;
                 }
@@ -243,7 +243,7 @@ namespace Rebellion.Game.FogOfWar
             Fleet fleet = GetOrCreatePartialFleetSnapshot(snapshot, sourceFleet);
             CapitalShip copy = CopyCapitalShipForSnapshot(capitalShip);
             RemoveUnobservedCargo(copy);
-            Upsert(fleet.CapitalShips, copy);
+            UpsertChild(fleet, copy);
             copy.SetParent(fleet);
         }
 
@@ -288,7 +288,7 @@ namespace Rebellion.Game.FogOfWar
                 return existing;
 
             Fleet partialSnapshot = CopyFleetForSnapshot(source);
-            partialSnapshot.CapitalShips.Clear();
+            partialSnapshot.RemoveAllChildren();
             snapshot.Fleets.Add(partialSnapshot);
             return partialSnapshot;
         }
@@ -301,15 +301,15 @@ namespace Rebellion.Game.FogOfWar
             CapitalShip source
         )
         {
-            CapitalShip existing = fleet.CapitalShips.FirstOrDefault(ship =>
-                ship.InstanceID == source.InstanceID
-            );
+            CapitalShip existing = fleet
+                .GetCapitalShips()
+                .FirstOrDefault(ship => ship.InstanceID == source.InstanceID);
             if (existing != null)
                 return existing;
 
             CapitalShip partialSnapshot = CopyCapitalShipForSnapshot(source);
             RemoveUnobservedCargo(partialSnapshot);
-            fleet.CapitalShips.Add(partialSnapshot);
+            fleet.AddChild(partialSnapshot);
             partialSnapshot.SetParent(fleet);
             return partialSnapshot;
         }
@@ -319,10 +319,7 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         private static void RemoveUnobservedCargo(CapitalShip ship)
         {
-            ship.Officers.Clear();
-            ship.Regiments.Clear();
-            ship.SpecialForces.Clear();
-            ship.Starfighters.Clear();
+            ship.RemoveAllChildren();
         }
 
         /// <summary>
@@ -330,21 +327,7 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         private static void AddCapitalShipChild(CapitalShip ship, ISceneNode child)
         {
-            switch (child)
-            {
-                case Officer officer:
-                    Upsert(ship.Officers, officer);
-                    break;
-                case Regiment regiment:
-                    Upsert(ship.Regiments, regiment);
-                    break;
-                case SpecialForces specialForces:
-                    Upsert(ship.SpecialForces, specialForces);
-                    break;
-                case Starfighter starfighter:
-                    Upsert(ship.Starfighters, starfighter);
-                    break;
-            }
+            UpsertChild(ship, child);
 
             child.SetParent(ship);
         }
@@ -357,6 +340,21 @@ namespace Rebellion.Game.FogOfWar
         {
             items.RemoveAll(existing => existing.InstanceID == item.InstanceID);
             items.Add(item);
+        }
+
+        /// <summary>
+        /// Replaces a matching detached child snapshot or adds a newly observed child.
+        /// </summary>
+        private static void UpsertChild<T>(ContainerNode container, T item)
+            where T : class, ISceneNode
+        {
+            T existing = container
+                .GetChildren(includeDisabled: true)
+                .OfType<T>()
+                .FirstOrDefault(child => child.InstanceID == item.InstanceID);
+            if (existing != null)
+                container.RemoveChild(existing);
+            container.AddChild(item);
         }
 
         /// <summary>
@@ -552,7 +550,7 @@ namespace Rebellion.Game.FogOfWar
                 return;
 
             snapshot.Buildings.Clear();
-            AddEntityCopiesToSnapshot(planet.Buildings, snapshot.Buildings, faction, true);
+            AddEntityCopiesToSnapshot(planet.GetBuildings(), snapshot.Buildings, faction, true);
         }
 
         /// <summary>
@@ -599,17 +597,17 @@ namespace Rebellion.Game.FogOfWar
             PlanetIntelligenceCategory categories
         )
         {
-            foreach (CapitalShip ship in fleets.SelectMany(fleet => fleet.CapitalShips))
+            foreach (CapitalShip ship in fleets.SelectMany(fleet => fleet.GetCapitalShips()))
             {
                 if (!categories.HasFlag(PlanetIntelligenceCategory.Officers))
-                    ship.Officers.Clear();
+                    ship.RemoveChildren<Officer>(_ => true);
                 if (!categories.HasFlag(PlanetIntelligenceCategory.GroundForces))
                 {
-                    ship.Regiments.Clear();
-                    ship.SpecialForces.Clear();
+                    ship.RemoveChildren<Regiment>(_ => true);
+                    ship.RemoveChildren<SpecialForces>(_ => true);
                 }
                 if (!categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
-                    ship.Starfighters.Clear();
+                    ship.RemoveChildren<Starfighter>(_ => true);
             }
         }
 
@@ -678,25 +676,25 @@ namespace Rebellion.Game.FogOfWar
             AddOfficersToSnapshot(faction, planet, planetSnapshot, includeEspionageIntelligence);
             AddFleetsToSnapshot(faction, planet, planetSnapshot, includeEspionageIntelligence);
             AddEntityCopiesToSnapshot(
-                planet.Regiments,
+                planet.GetRegiments(),
                 planetSnapshot.Regiments,
                 faction,
                 includeEspionageIntelligence
             );
             AddEntityCopiesToSnapshot(
-                planet.SpecialForces,
+                planet.GetSpecialForces(),
                 planetSnapshot.SpecialForces,
                 faction,
                 includeEspionageIntelligence
             );
             AddEntityCopiesToSnapshot(
-                planet.Buildings,
+                planet.GetBuildings(),
                 planetSnapshot.Buildings,
                 faction,
                 includeEspionageIntelligence
             );
             AddEntityCopiesToSnapshot(
-                planet.Starfighters,
+                planet.GetStarfighters(),
                 planetSnapshot.Starfighters,
                 faction,
                 includeEspionageIntelligence
@@ -735,7 +733,8 @@ namespace Rebellion.Game.FogOfWar
         {
             snapshot.Missions.AddRange(
                 planet
-                    .Missions.Where(mission => mission.GetOwnerInstanceID() != faction.InstanceID)
+                    .GetMissions()
+                    .Where(mission => mission.GetOwnerInstanceID() != faction.InstanceID)
                     .Select(mission => CopyEntityForSnapshot(mission))
             );
         }
@@ -936,7 +935,7 @@ namespace Rebellion.Game.FogOfWar
             bool includeInTransit
         )
         {
-            foreach (Officer officer in planet.Officers)
+            foreach (Officer officer in planet.GetOfficers())
             {
                 if (officer.OwnerInstanceID == faction.InstanceID)
                 {
@@ -965,9 +964,9 @@ namespace Rebellion.Game.FogOfWar
             bool includeEspionageIntelligence
         )
         {
-            foreach (Fleet fleet in planet.Fleets)
+            foreach (Fleet fleet in planet.GetFleets())
             {
-                if (fleet.CapitalShips.Count == 0)
+                if (fleet.GetCapitalShips().Count == 0)
                     continue;
                 if (fleet.OwnerInstanceID == faction.InstanceID)
                 {
@@ -1128,6 +1127,27 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Adds unfinished entities that are absent from a detached container snapshot.
+        /// </summary>
+        internal static void MergeManufacturingEntities<T>(
+            ContainerNode destination,
+            IEnumerable<T> source
+        )
+            where T : class, ISceneNode, IManufacturable
+        {
+            HashSet<string> existingIds = destination
+                .GetChildren(includeDisabled: true)
+                .OfType<T>()
+                .Select(item => item.InstanceID)
+                .ToHashSet();
+            foreach (T item in source.Where(IsManufacturingInProgress))
+            {
+                if (existingIds.Add(item.InstanceID))
+                    destination.AddChild(CopyEntityForSnapshot(item));
+            }
+        }
+
+        /// <summary>
         /// Preserves unfinished ships and their cargo within previously observed fleets.
         /// </summary>
         /// <param name="destination">The current snapshot fleets.</param>
@@ -1174,31 +1194,34 @@ namespace Rebellion.Game.FogOfWar
         )
         {
             HashSet<string> existingShipIds = destination
-                .CapitalShips.Select(ship => ship.InstanceID)
+                .GetCapitalShips()
+                .Select(ship => ship.InstanceID)
                 .ToHashSet();
 
-            foreach (CapitalShip sourceShip in source.CapitalShips)
+            foreach (CapitalShip sourceShip in source.GetCapitalShips())
             {
-                CapitalShip destinationShip = destination.CapitalShips.FirstOrDefault(ship =>
-                    ship.InstanceID == sourceShip.InstanceID
-                );
+                CapitalShip destinationShip = destination
+                    .GetCapitalShips()
+                    .FirstOrDefault(ship => ship.InstanceID == sourceShip.InstanceID);
                 if (destinationShip != null)
                 {
                     MergeManufacturingEntities(
-                        destinationShip.Regiments,
-                        sourceShip.Regiments.Where(item => liveEntityIds.Contains(item.InstanceID))
+                        destinationShip,
+                        sourceShip
+                            .GetRegiments()
+                            .Where(item => liveEntityIds.Contains(item.InstanceID))
                     );
                     MergeManufacturingEntities(
-                        destinationShip.SpecialForces,
-                        sourceShip.SpecialForces.Where(item =>
-                            liveEntityIds.Contains(item.InstanceID)
-                        )
+                        destinationShip,
+                        sourceShip
+                            .GetSpecialForces()
+                            .Where(item => liveEntityIds.Contains(item.InstanceID))
                     );
                     MergeManufacturingEntities(
-                        destinationShip.Starfighters,
-                        sourceShip.Starfighters.Where(item =>
-                            liveEntityIds.Contains(item.InstanceID)
-                        )
+                        destinationShip,
+                        sourceShip
+                            .GetStarfighters()
+                            .Where(item => liveEntityIds.Contains(item.InstanceID))
                     );
                     continue;
                 }
@@ -1213,7 +1236,7 @@ namespace Rebellion.Game.FogOfWar
                 CapitalShip shipCopy = CopyEntityForSnapshot(sourceShip);
                 RemoveAbsentShipChildren(shipCopy, liveEntityIds);
                 shipCopy.SetParent(destination);
-                destination.CapitalShips.Add(shipCopy);
+                destination.AddChild(shipCopy);
             }
         }
 
@@ -1227,12 +1250,12 @@ namespace Rebellion.Game.FogOfWar
             HashSet<string> liveEntityIds
         )
         {
-            ship.Officers.RemoveAll(officer => !liveEntityIds.Contains(officer.InstanceID));
-            ship.Regiments.RemoveAll(regiment => !liveEntityIds.Contains(regiment.InstanceID));
-            ship.SpecialForces.RemoveAll(specialForces =>
+            ship.RemoveChildren<Officer>(officer => !liveEntityIds.Contains(officer.InstanceID));
+            ship.RemoveChildren<Regiment>(regiment => !liveEntityIds.Contains(regiment.InstanceID));
+            ship.RemoveChildren<SpecialForces>(specialForces =>
                 !liveEntityIds.Contains(specialForces.InstanceID)
             );
-            ship.Starfighters.RemoveAll(starfighter =>
+            ship.RemoveChildren<Starfighter>(starfighter =>
                 !liveEntityIds.Contains(starfighter.InstanceID)
             );
         }
@@ -1249,7 +1272,7 @@ namespace Rebellion.Game.FogOfWar
                 .Concat(snapshot.SpecialForces)
                 .Concat(snapshot.Buildings)
                 .Concat(snapshot.Starfighters)
-                .Concat(snapshot.Fleets.SelectMany(fleet => fleet.CapitalShips))
+                .Concat(snapshot.Fleets.SelectMany(fleet => fleet.GetCapitalShips()))
                 .Select(item => item.InstanceID)
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
@@ -1329,10 +1352,10 @@ namespace Rebellion.Game.FogOfWar
             Fleet copy = fleet.GetShallowCopy(CloneMode.Full);
             copy.Movement = CopyMovementForSnapshot(fleet.Movement);
             copy.Order = fleet.Order?.GetShallowCopy(CloneMode.Full);
-            copy.CapitalShips = fleet.CapitalShips.ConvertAll(CopyCapitalShipForSnapshot);
+            copy.SetCapitalShips(fleet.GetCapitalShips().Select(CopyCapitalShipForSnapshot));
             ClearParentReferences(copy);
 
-            foreach (CapitalShip capitalShip in copy.CapitalShips)
+            foreach (CapitalShip capitalShip in copy.GetCapitalShips())
                 capitalShip.SetParent(copy);
 
             return copy;
@@ -1360,28 +1383,28 @@ namespace Rebellion.Game.FogOfWar
             if (copy == null)
                 return null;
 
-            copy.CapitalShips.RemoveAll(ship =>
+            copy.RemoveChildren<CapitalShip>(ship =>
                 (!includeInTransit && !IsObservableAtPlanet(ship, observerFactionInstanceID))
                 || (!includeManufacturing && IsManufacturingInProgress(ship))
             );
-            foreach (CapitalShip ship in copy.CapitalShips)
+            foreach (CapitalShip ship in copy.GetCapitalShips())
             {
-                ship.Officers.RemoveAll(officer =>
+                ship.RemoveChildren<Officer>(officer =>
                     !includeInTransit && !IsObservableAtPlanet(officer, observerFactionInstanceID)
                 );
-                ship.Regiments.RemoveAll(regiment =>
+                ship.RemoveChildren<Regiment>(regiment =>
                     (
                         !includeInTransit
                         && !IsObservableAtPlanet(regiment, observerFactionInstanceID)
                     ) || (!includeManufacturing && IsManufacturingInProgress(regiment))
                 );
-                ship.SpecialForces.RemoveAll(specialForces =>
+                ship.RemoveChildren<SpecialForces>(specialForces =>
                     (
                         !includeInTransit
                         && !IsObservableAtPlanet(specialForces, observerFactionInstanceID)
                     ) || (!includeManufacturing && IsManufacturingInProgress(specialForces))
                 );
-                ship.Starfighters.RemoveAll(starfighter =>
+                ship.RemoveChildren<Starfighter>(starfighter =>
                     (
                         !includeInTransit
                         && !IsObservableAtPlanet(starfighter, observerFactionInstanceID)
@@ -1389,7 +1412,7 @@ namespace Rebellion.Game.FogOfWar
                 );
             }
 
-            return copy.CapitalShips.Count > 0 ? copy : null;
+            return copy.GetCapitalShips().Count > 0 ? copy : null;
         }
 
         /// <summary>
@@ -1426,12 +1449,12 @@ namespace Rebellion.Game.FogOfWar
             if (copy == null)
                 return null;
 
-            copy.CapitalShips.RemoveAll(ship =>
+            copy.RemoveChildren<CapitalShip>(ship =>
                 !liveEntityIds.Contains(ship.InstanceID) || !IsManufacturingInProgress(ship)
             );
-            foreach (CapitalShip ship in copy.CapitalShips)
+            foreach (CapitalShip ship in copy.GetCapitalShips())
                 RemoveAbsentShipChildren(ship, liveEntityIds);
-            return copy.CapitalShips.Count > 0 ? copy : null;
+            return copy.GetCapitalShips().Count > 0 ? copy : null;
         }
 
         /// <summary>
@@ -1448,10 +1471,12 @@ namespace Rebellion.Game.FogOfWar
                 entry => entry.Value?.ToArray()
             );
             copy.Movement = CopyMovementForSnapshot(capitalShip.Movement);
-            copy.Officers = capitalShip.Officers.ConvertAll(CopyOfficerForSnapshot);
-            copy.Regiments = capitalShip.Regiments.ConvertAll(CopyRegimentForSnapshot);
-            copy.SpecialForces = capitalShip.SpecialForces.ConvertAll(CopySpecialForcesForSnapshot);
-            copy.Starfighters = capitalShip.Starfighters.ConvertAll(CopyStarfighterForSnapshot);
+            copy.SetChildren(
+                capitalShip.GetOfficers().Select(CopyOfficerForSnapshot),
+                capitalShip.GetRegiments().Select(CopyRegimentForSnapshot),
+                capitalShip.GetSpecialForces().Select(CopySpecialForcesForSnapshot),
+                capitalShip.GetStarfighters().Select(CopyStarfighterForSnapshot)
+            );
             ClearParentReferences(copy);
 
             foreach (ISceneNode child in copy.GetChildren())
@@ -1620,7 +1645,7 @@ namespace Rebellion.Game.FogOfWar
             foreach (Fleet fleet in snapshot.Fleets)
                 RemoveEntityFromFleet(fleet, entityId);
 
-            snapshot.Fleets.RemoveAll(f => f.CapitalShips.Count == 0);
+            snapshot.Fleets.RemoveAll(f => f.GetCapitalShips().Count == 0);
         }
 
         /// <summary>
@@ -1628,10 +1653,10 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         private static void RemoveEntityFromFleet(Fleet fleet, string entityId)
         {
-            foreach (CapitalShip ship in fleet.CapitalShips)
+            foreach (CapitalShip ship in fleet.GetCapitalShips())
                 RemoveEntityFromCapitalShip(ship, entityId);
 
-            fleet.CapitalShips.RemoveAll(s => s.InstanceID == entityId);
+            fleet.RemoveChildren<CapitalShip>(ship => ship.InstanceID == entityId);
         }
 
         /// <summary>
@@ -1639,10 +1664,12 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         private static void RemoveEntityFromCapitalShip(CapitalShip ship, string entityId)
         {
-            ship.Officers.RemoveAll(o => o.InstanceID == entityId);
-            ship.Regiments.RemoveAll(r => r.InstanceID == entityId);
-            ship.SpecialForces.RemoveAll(s => s.InstanceID == entityId);
-            ship.Starfighters.RemoveAll(s => s.InstanceID == entityId);
+            ship.RemoveChildren<Officer>(officer => officer.InstanceID == entityId);
+            ship.RemoveChildren<Regiment>(regiment => regiment.InstanceID == entityId);
+            ship.RemoveChildren<SpecialForces>(specialForces =>
+                specialForces.InstanceID == entityId
+            );
+            ship.RemoveChildren<Starfighter>(starfighter => starfighter.InstanceID == entityId);
         }
     }
 }

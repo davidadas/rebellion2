@@ -146,7 +146,7 @@ namespace Rebellion.Systems
             List<GameResult> results = new List<GameResult>();
             bool objectiveAchieved = false;
 
-            foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
+            foreach (IMissionParticipant participant in mission.GetMainParticipants().ToList())
             {
                 if (!mission.RollParticipantSuccess(participant, _provider, _game))
                     continue;
@@ -839,11 +839,13 @@ namespace Rebellion.Systems
             foreach (Mission mission in GetActiveUprisingMissions(planet))
             {
                 int averageLeadership =
-                    mission.MainParticipants.Count == 0
+                    mission.GetMainParticipants().Count == 0
                         ? 0
-                        : mission.MainParticipants.Sum(participant =>
-                            participant.GetEffectiveRating(OfficerRating.Leadership)
-                        ) / mission.MainParticipants.Count;
+                        : mission
+                            .GetMainParticipants()
+                            .Sum(participant =>
+                                participant.GetEffectiveRating(OfficerRating.Leadership)
+                            ) / mission.GetMainParticipants().Count;
                 int missionAdjustment = averageLeadership / config.MissionLeadershipDivisor;
 
                 if (mission is InciteUprisingMission)

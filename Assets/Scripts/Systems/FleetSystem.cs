@@ -125,7 +125,7 @@ namespace Rebellion.Systems
             Fleet liveFleet = ResolveLiveFleet(fleet);
             if (
                 liveFleet == null
-                || liveFleet.CapitalShips.Count != 0
+                || liveFleet.GetCapitalShips().Count != 0
                 || liveFleet.GetParent() == null
             )
                 return false;

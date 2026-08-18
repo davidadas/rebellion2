@@ -106,7 +106,7 @@ namespace Rebellion.Game.Missions
             List<GameResult> results = new List<GameResult>();
             List<IMissionParticipant> successfulParticipants = new List<IMissionParticipant>();
 
-            foreach (IMissionParticipant participant in MainParticipants)
+            foreach (IMissionParticipant participant in GetMainParticipants())
             {
                 double successThreshold = GetAgentProbability(participant, game);
                 double rolledValue = provider.NextDouble() * 100;
@@ -242,10 +242,11 @@ namespace Rebellion.Game.Missions
             }
 
             List<Planet> candidates = game
-                .Galaxy.PlanetSystems.Where(system =>
+                .Galaxy.GetPlanetSystems()
+                .Where(system =>
                     includeOuterRim || system.SystemType == PlanetSystemType.CoreSystem
                 )
-                .SelectMany(system => system.Planets)
+                .SelectMany(system => system.GetPlanets())
                 .Where(candidate => candidate != targetPlanet)
                 .Where(candidate => candidate.OwnerInstanceID == targetPlanet.OwnerInstanceID)
                 .ToList();

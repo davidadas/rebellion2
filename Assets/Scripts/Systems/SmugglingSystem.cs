@@ -82,7 +82,8 @@ namespace Rebellion.Systems
             foreach (
                 Planet planet in _game
                     .GetGalaxyMap()
-                    .PlanetSystems.SelectMany(system => system.Planets)
+                    .GetPlanetSystems()
+                    .SelectMany(system => system.GetPlanets())
             )
             {
                 Faction controller = FindFaction(planet.OwnerInstanceID);
@@ -110,7 +111,8 @@ namespace Rebellion.Systems
             foreach (
                 Planet planet in _game
                     .GetGalaxyMap()
-                    .PlanetSystems.SelectMany(system => system.Planets)
+                    .GetPlanetSystems()
+                    .SelectMany(system => system.GetPlanets())
                     .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
@@ -295,13 +297,14 @@ namespace Rebellion.Systems
             GameConfig.SmugglingConfig config = _game.Config.Smuggling;
             int support = planet.GetPopularSupport(controller.InstanceID);
             Fleet[] fleets = planet
-                .Fleets.Where(fleet =>
+                .GetFleets()
+                .Where(fleet =>
                     fleet.OwnerInstanceID == controller.InstanceID && fleet.Movement == null
                 )
                 .ToArray();
             if (
                 fleets
-                    .SelectMany(fleet => fleet.CapitalShips)
+                    .SelectMany(fleet => fleet.GetCapitalShips())
                     .Any(ship => IsOperational(ship) && ship.CanDestroyPlanets)
             )
                 return 0;
@@ -332,7 +335,8 @@ namespace Rebellion.Systems
             string controllerInstanceID
         ) =>
             planet
-                .Starfighters.Concat(fleets.SelectMany(fleet => fleet.GetStarfighters()))
+                .GetStarfighters()
+                .Concat(fleets.SelectMany(fleet => fleet.GetStarfighters()))
                 .Where(starfighter =>
                     starfighter.OwnerInstanceID == controllerInstanceID
                     && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
@@ -349,7 +353,8 @@ namespace Rebellion.Systems
             string controllerInstanceID
         ) =>
             planet
-                .Regiments.Concat(fleets.SelectMany(fleet => fleet.GetRegiments()))
+                .GetRegiments()
+                .Concat(fleets.SelectMany(fleet => fleet.GetRegiments()))
                 .Where(regiment =>
                     regiment.OwnerInstanceID == controllerInstanceID
                     && regiment.ManufacturingStatus == ManufacturingStatus.Complete

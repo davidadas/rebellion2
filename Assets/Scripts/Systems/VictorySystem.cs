@@ -36,7 +36,7 @@ namespace Rebellion.Systems
             if (_victoryDeclared)
                 return new List<GameResult>();
 
-            foreach (Faction faction in _game.Factions)
+            foreach (Faction faction in _game.GetFactions())
             {
                 VictoryResult outcome = CheckHQCapture(faction);
                 if (outcome != null)
@@ -94,7 +94,9 @@ namespace Rebellion.Systems
                 return null;
             }
 
-            Faction attacker = _game.Factions.FirstOrDefault(f => f.InstanceID == currentOwner);
+            Faction attacker = _game
+                .GetFactions()
+                .FirstOrDefault(f => f.InstanceID == currentOwner);
             if (attacker == null)
                 return null;
 
@@ -123,9 +125,9 @@ namespace Rebellion.Systems
             )
                 return null;
 
-            Faction attacker = _game.Factions.FirstOrDefault(faction =>
-                faction.InstanceID == headquarters.OwnerInstanceID
-            );
+            Faction attacker = _game
+                .GetFactions()
+                .FirstOrDefault(faction => faction.InstanceID == headquarters.OwnerInstanceID);
             return attacker == null ? null : BuildHQVictory(attacker, defender);
         }
 

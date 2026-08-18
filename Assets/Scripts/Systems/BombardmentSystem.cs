@@ -293,7 +293,7 @@ namespace Rebellion.Systems
             foreach (Fleet fleet in attackers)
                 fleet.IsInCombat = isInCombat;
 
-            foreach (Fleet fleet in planet.Fleets)
+            foreach (Fleet fleet in planet.GetFleets())
                 fleet.IsInCombat = isInCombat;
         }
 
@@ -317,15 +317,15 @@ namespace Rebellion.Systems
                 int multiplier = leadership / divisor + 1;
                 int fleetStrength = 0;
 
-                foreach (CapitalShip ship in fleet.CapitalShips.Where(IsActiveBombardmentUnit))
+                foreach (CapitalShip ship in fleet.GetCapitalShips().Where(IsActiveBombardmentUnit))
                 {
                     fleetStrength += ScaleByCondition(
                         ship.Bombardment,
                         ship.CurrentHullStrength,
                         ship.MaxHullStrength
                     );
-                    fleetStrength += ship
-                        .Starfighters.Where(IsActiveBombardmentUnit)
+                    fleetStrength += ship.GetStarfighters()
+                        .Where(IsActiveBombardmentUnit)
                         .Sum(fighter =>
                             ScaleByCondition(
                                 fighter.Bombardment,
@@ -424,12 +424,13 @@ namespace Rebellion.Systems
                     continue;
 
                 result.DestroyedCapitalShips.Add(ship);
-                List<IMovable> units = ship
-                    .Officers.Cast<IMovable>()
+                List<IMovable> units = ship.GetOfficers()
+                    .Cast<IMovable>()
                     .Concat(
-                        ship.Starfighters.Where(starfighter =>
-                            starfighter.ManufacturingStatus == ManufacturingStatus.Complete
-                        )
+                        ship.GetStarfighters()
+                            .Where(starfighter =>
+                                starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                            )
                     )
                     .ToList();
                 _movement.RelocateUnits(units);
@@ -1044,7 +1045,8 @@ namespace Rebellion.Systems
         private static List<Planet> GetAffectedPlanets(PlanetSystem system)
         {
             return system
-                .Planets.Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
+                .GetPlanets()
+                .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
                 .ToList();
         }
 
@@ -1056,7 +1058,7 @@ namespace Rebellion.Systems
         private static List<CapitalShip> GetActiveCapitalShips(IEnumerable<Fleet> fleets)
         {
             return fleets
-                .SelectMany(fleet => fleet.CapitalShips)
+                .SelectMany(fleet => fleet.GetCapitalShips())
                 .Where(IsActiveBombardmentUnit)
                 .ToList();
         }

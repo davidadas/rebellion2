@@ -207,12 +207,13 @@ namespace Rebellion.Game.Factions
             where T : ISceneNode
         {
             if (_ownedEntities.TryGetValue(typeof(T), out List<ISceneNode> exactMatches))
-                return exactMatches.Cast<T>().ToList();
+                return exactMatches.Where(node => node.IsEnabledInHierarchy()).Cast<T>().ToList();
 
             return _ownedEntities
                 .Where(entry => typeof(T).IsAssignableFrom(entry.Key))
                 .SelectMany(entry => entry.Value)
                 .Distinct()
+                .Where(node => node.IsEnabledInHierarchy())
                 .Cast<T>()
                 .ToList();
         }
@@ -505,6 +506,7 @@ namespace Rebellion.Game.Factions
             return _ownedEntities
                 .Where(kvp => typeof(IManufacturable).IsAssignableFrom(kvp.Key))
                 .SelectMany(kvp => kvp.Value)
+                .Where(node => node.IsEnabledInHierarchy())
                 .OfType<IManufacturable>()
                 .ToList();
         }

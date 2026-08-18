@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
@@ -16,6 +17,61 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
+
+/// <summary>
+/// Provides scene construction helpers for tests that exercise consumers rather than placement rules.
+/// </summary>
+public static class SceneTestExtensions
+{
+    /// <summary>
+    /// Adds a child directly to a detached test or projection node without invoking placement validation.
+    /// </summary>
+    public static void AddTestChild(this ISceneNode parent, ISceneNode child)
+    {
+        switch (parent)
+        {
+            case Planet planet:
+                planet.SetChildren(
+                    AppendWhen<Fleet>(planet.GetFleets(includeDisabled: true), child),
+                    AppendWhen<Officer>(planet.GetOfficers(includeDisabled: true), child),
+                    AppendWhen<Regiment>(planet.GetRegiments(includeDisabled: true), child),
+                    AppendWhen<SpecialForces>(
+                        planet.GetSpecialForces(includeDisabled: true),
+                        child
+                    ),
+                    AppendWhen<Starfighter>(planet.GetStarfighters(includeDisabled: true), child),
+                    AppendWhen<Mission>(planet.GetMissions(includeDisabled: true), child),
+                    AppendWhen<Building>(planet.GetBuildings(includeDisabled: true), child)
+                );
+                return;
+            case CapitalShip ship:
+                ship.SetChildren(
+                    AppendWhen<Officer>(ship.GetOfficers(includeDisabled: true), child),
+                    AppendWhen<Regiment>(ship.GetRegiments(includeDisabled: true), child),
+                    AppendWhen<SpecialForces>(ship.GetSpecialForces(includeDisabled: true), child),
+                    AppendWhen<Starfighter>(ship.GetStarfighters(includeDisabled: true), child)
+                );
+                return;
+            case Fleet fleet when child is CapitalShip capitalShip:
+                fleet.SetCapitalShips(
+                    fleet.GetCapitalShips(includeDisabled: true).Append(capitalShip)
+                );
+                return;
+            default:
+                parent.AddChild(child);
+                return;
+        }
+    }
+
+    /// <summary>
+    /// Appends a child when it matches the requested collection type.
+    /// </summary>
+    private static IEnumerable<T> AppendWhen<T>(IEnumerable<T> existing, ISceneNode child)
+        where T : class, ISceneNode
+    {
+        return child is T typedChild ? existing.Append(typedChild) : existing;
+    }
+}
 
 /// <summary>
 /// Always returns the minimum value — use when tests need every action to succeed.
@@ -76,11 +132,7 @@ public class StubMission : Mission
     /// Default constructor — sets empty participant lists.
     /// Use when the mission only needs to exist as a parent node, not in the scene graph.
     /// </summary>
-    public StubMission()
-    {
-        MainParticipants = new List<IMissionParticipant>();
-        DecoyParticipants = new List<IMissionParticipant>();
-    }
+    public StubMission() { }
 
     /// <summary>
     /// Full constructor — use when the mission is attached to a planet in the scene graph.
@@ -235,8 +287,8 @@ public static class MissionSceneBuilder
 
         Faction empire = new Faction { InstanceID = "empire" };
         Faction rebels = new Faction { InstanceID = "rebels" };
-        game.Factions.Add(empire);
-        game.Factions.Add(rebels);
+        game.GetFactions().Add(empire);
+        game.GetFactions().Add(rebels);
 
         PlanetSystem system = new PlanetSystem
         {

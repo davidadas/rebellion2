@@ -27,12 +27,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create());
-            _game.Factions.Add(
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" }
-            );
-            _game.Factions.Add(
-                new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" }
-            );
+            _game
+                .GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
+            _game
+                .GetFactions()
+                .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
             _game.Summary.PlayerFactionID = _playerFactionId;
             _uiContext = TestContent.CreateUIContext(
                 _game,
@@ -137,8 +137,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GamePlanetSystem system = TestContent.Data.PlanetSystems.Single(candidate =>
                 candidate.TypeID == "PSCOR"
             );
-            Planet selonia = system.Planets.Single(planet => planet.InstanceID == "SELONIA");
-            Planet duros = system.Planets.Single(planet => planet.InstanceID == "DUROS");
+            Planet selonia = system.GetPlanets().Single(planet => planet.InstanceID == "SELONIA");
+            Planet duros = system.GetPlanets().Single(planet => planet.InstanceID == "DUROS");
             GalaxyMapSector sector = new GalaxyMapSector(
                 system,
                 new[]
@@ -404,8 +404,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
             Planet planet = CreatePlanet("planet", _playerFactionId, 1, 2);
-            planet.Fleets.Add(new GameFleet(_playerFactionId, "Player Fleet"));
-            planet.Fleets.Add(new GameFleet(_opposingFactionId, "Opposing Fleet"));
+            planet.AddChild(new GameFleet(_playerFactionId, "Player Fleet"));
+            planet.AddChild(new GameFleet(_opposingFactionId, "Opposing Fleet"));
             GalaxyMapSector sector = CreateSector(system, planet);
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
 

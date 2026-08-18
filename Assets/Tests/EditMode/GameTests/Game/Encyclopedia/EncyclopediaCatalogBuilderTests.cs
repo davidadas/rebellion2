@@ -133,23 +133,20 @@ namespace Rebellion.Tests.Game.Encyclopedia
         [Test]
         public void Build_WithPlanetSystem_AddsPlanetEntries()
         {
-            PlanetSystem system = new PlanetSystem
-            {
-                Planets = new List<Planet>
+            PlanetSystem system = new PlanetSystem();
+            system.AddChild(
+                new Planet
                 {
-                    new Planet
-                    {
-                        TypeID = "PLANET1",
-                        DisplayName = "Balmorra",
-                        PlanetIconPath =
-                            "Art/HD/UI/StrategyView/ui_strategyview_planetsystem_planet_preview",
-                        EncyclopediaImagePath =
-                            "Art/HD/UI/Encyclopedia/ui_encyclopedia_system_ringed_planet",
-                        Description = "Planet description.",
-                        EncyclopediaDescription = "Planet encyclopedia description.",
-                    },
-                },
-            };
+                    TypeID = "PLANET1",
+                    DisplayName = "Balmorra",
+                    PlanetIconPath =
+                        "Art/HD/UI/StrategyView/ui_strategyview_planetsystem_planet_preview",
+                    EncyclopediaImagePath =
+                        "Art/HD/UI/Encyclopedia/ui_encyclopedia_system_ringed_planet",
+                    Description = "Planet description.",
+                    EncyclopediaDescription = "Planet encyclopedia description.",
+                }
+            );
 
             EncyclopediaCatalog catalog = BuildCatalog(
                 new EncyclopediaEntries(),
@@ -207,9 +204,9 @@ namespace Rebellion.Tests.Game.Encyclopedia
         [Test]
         public void Build_WithNullStaticEntries_IgnoresNullEntries()
         {
-            PlanetSystem system = new PlanetSystem
-            {
-                Planets = new List<Planet>
+            PlanetSystem system = new PlanetSystem();
+            system.AddChildren(
+                new Planet[]
                 {
                     null,
                     new Planet
@@ -218,8 +215,8 @@ namespace Rebellion.Tests.Game.Encyclopedia
                         DisplayName = "Balmorra",
                         EncyclopediaImagePath = "Pack/Systems/Balmorra/encyclopedia",
                     },
-                },
-            };
+                }
+            );
             Building building = new Building
             {
                 TypeID = "BUILDING1",

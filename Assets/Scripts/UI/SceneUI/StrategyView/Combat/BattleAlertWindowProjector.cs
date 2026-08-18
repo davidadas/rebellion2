@@ -494,9 +494,11 @@ internal sealed class BattleAlertWindowProjector
     )
     {
         foreach (
-            Starfighter fighter in planet.Starfighters.Where(fighter =>
-                fighter.GetOwnerInstanceID() == ownerInstanceId && IsActiveStarfighter(fighter)
-            )
+            Starfighter fighter in planet
+                .GetStarfighters()
+                .Where(fighter =>
+                    fighter.GetOwnerInstanceID() == ownerInstanceId && IsActiveStarfighter(fighter)
+                )
         )
         {
             rows.Add(
@@ -1037,9 +1039,9 @@ internal sealed class BattleAlertWindowProjector
         string fallback
     )
     {
-        Faction faction = uiContext?.Game?.Factions?.FirstOrDefault(item =>
-            item?.InstanceID == ownerInstanceId
-        );
+        Faction faction = uiContext
+            ?.Game?.GetFactions()
+            ?.FirstOrDefault(item => item?.InstanceID == ownerInstanceId);
         string factionName = faction?.GetDisplayName();
         return string.IsNullOrEmpty(factionName) ? fallback : factionName;
     }

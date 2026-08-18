@@ -232,7 +232,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         private UIContext CreateContext()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             return TestContent.CreateUIContext(
                 game,

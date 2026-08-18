@@ -369,12 +369,14 @@ public sealed class GalaxyMapProjector
         if (briefing.Mode == StrategyBriefingMapMode.AllDefenses)
         {
             int defenseCount =
-                planet.Regiments.Count(IsActive)
-                + planet.Starfighters.Count(IsActive)
-                + planet.Buildings.Count(building =>
-                    building.ManufacturingStatus == ManufacturingStatus.Complete
-                    && building.DefenseFacilityClass != DefenseFacilityClass.None
-                );
+                planet.GetRegiments().Count(IsActive)
+                + planet.GetStarfighters().Count(IsActive)
+                + planet
+                    .GetBuildings()
+                    .Count(building =>
+                        building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.DefenseFacilityClass != DefenseFacilityClass.None
+                    );
             return new GalacticInformationMarker(
                 Math.Min(3, defenseCount),
                 planet.OwnerInstanceID,

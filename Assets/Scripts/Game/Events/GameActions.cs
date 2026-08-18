@@ -1542,7 +1542,8 @@ namespace Rebellion.Game.Events
             IEnumerable<GameEventSelector> selectors,
             GameActionContext context,
             string actionName,
-            bool allowSpawn = false
+            bool allowSpawn = false,
+            bool includeDisabled = false
         )
         {
             GameRoot game = context.Game;
@@ -1564,7 +1565,12 @@ namespace Rebellion.Game.Events
                 .SelectMany(selector => selector.Select(game, context.Random, context.Activation));
             if (!string.IsNullOrWhiteSpace(unitInstanceID))
             {
-                ISceneNode direct = game.GetSceneNodeByInstanceID<ISceneNode>(unitInstanceID);
+                ISceneNode direct = includeDisabled
+                    ? game.GetSceneNodeByInstanceID<ISceneNode>(
+                        unitInstanceID,
+                        includeDisabled: true
+                    )
+                    : game.GetSceneNodeByInstanceID<ISceneNode>(unitInstanceID);
                 if (direct == null)
                     throw new InvalidOperationException(
                         $"{actionName} could not resolve unit '{unitInstanceID}'."
@@ -1574,7 +1580,14 @@ namespace Rebellion.Game.Events
 
             List<ISceneNode> resolved = selected
                 .Where(node => node != null)
-                .Select(node => game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID))
+                .Select(node =>
+                    includeDisabled
+                        ? game.GetSceneNodeByInstanceID<ISceneNode>(
+                            node.InstanceID,
+                            includeDisabled: true
+                        )
+                        : game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID)
+                )
                 .Where(node => node != null)
                 .GroupBy(node => node.InstanceID, StringComparer.Ordinal)
                 .Select(group => group.First())
@@ -1858,7 +1871,8 @@ namespace Rebellion.Game.Events
                 UnitInstanceID,
                 Selectors,
                 context,
-                "RemoveFromVoid"
+                "RemoveFromVoid",
+                includeDisabled: true
             );
             foreach (IMovable movable in units)
             {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
@@ -24,6 +25,11 @@ namespace Rebellion.SceneGraph
         [CloneIgnore]
         [PersistableIgnore]
         public ISceneNode LastParentNode { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether this node participates in active gameplay.
+        /// </summary>
+        public bool IsEnabled { get; set; } = true;
 
         // Owner Info.
         private string _ownerInstanceId;
@@ -79,6 +85,26 @@ namespace Rebellion.SceneGraph
         public ISceneNode GetLastParent()
         {
             return LastParentNode;
+        }
+
+        /// <summary>
+        /// Returns whether this node and every ancestor are enabled.
+        /// </summary>
+        /// <returns>True when the node is active in the scene hierarchy.</returns>
+        public bool IsEnabledInHierarchy()
+        {
+            ISceneNode node = this;
+            HashSet<ISceneNode> visitedNodes = new HashSet<ISceneNode>();
+            while (node != null)
+            {
+                if (!visitedNodes.Add(node))
+                    throw new InvalidOperationException("Cycle detected in scene graph.");
+                if (!node.IsEnabled)
+                    return false;
+                node = node.GetParent();
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -154,7 +180,18 @@ namespace Rebellion.SceneGraph
         /// Called to retrieve all children of the scene node.
         /// </summary>
         /// <returns>An enumerable collection of children.</returns>
-        public abstract IEnumerable<ISceneNode> GetChildren();
+        public abstract IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false);
+
+        /// <summary>
+        /// Visits this node and all descendants, including disabled branches.
+        /// </summary>
+        /// <param name="action">The action to perform on each node.</param>
+        internal void TraverseIncludingDisabled(Action<ISceneNode> action)
+        {
+            action(this);
+            foreach (ISceneNode child in GetChildren(includeDisabled: true).ToList())
+                ((BaseSceneNode)child).TraverseIncludingDisabled(action);
+        }
 
         /// <summary>
         /// Called to retrieve all children of the scene node that match the specified type.

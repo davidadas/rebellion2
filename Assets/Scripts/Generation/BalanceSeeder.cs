@@ -28,7 +28,7 @@ namespace Rebellion.Generation
         {
             foreach (PlanetSystem system in systems)
             {
-                foreach (Planet planet in system.Planets)
+                foreach (Planet planet in system.GetPlanets())
                     ApplyPlanetSupportAdjustments(planet, balance);
             }
         }

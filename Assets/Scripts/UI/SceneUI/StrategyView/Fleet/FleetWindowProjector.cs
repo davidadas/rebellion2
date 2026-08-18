@@ -121,7 +121,7 @@ internal sealed class FleetWindowProjector
                     IsFleetInTransit(fleet)
                         ? uiContext.GetTexture(icons?.FleetListEnrouteIconImagePath)
                         : null,
-                    fleet.CapitalShips.Any(ship => ship.IsDamaged())
+                    fleet.GetCapitalShips().Any(ship => ship.IsDamaged())
                         ? uiContext.GetTexture(icons?.FleetListDamagedIconImagePath)
                         : null,
                     GetBadgeTexture(
@@ -239,19 +239,19 @@ internal sealed class FleetWindowProjector
                     starfighterBadgeTexture: GetBadgeTexture(
                         uiContext,
                         icons,
-                        capitalShip?.Starfighters.Any() == true,
+                        capitalShip?.GetStarfighters().Any() == true,
                         badgeIcons => badgeIcons.FleetStarfightersBadgeImagePath
                     ),
                     troopBadgeTexture: GetBadgeTexture(
                         uiContext,
                         icons,
-                        capitalShip?.Regiments.Any() == true,
+                        capitalShip?.GetRegiments().Any() == true,
                         badgeIcons => badgeIcons.FleetTroopsBadgeImagePath
                     ),
                     personnelBadgeTexture: GetBadgeTexture(
                         uiContext,
                         icons,
-                        capitalShip?.Officers.Any() == true,
+                        capitalShip?.GetOfficers().Any() == true,
                         badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
                     ),
                     canDrag: true
@@ -460,7 +460,7 @@ internal sealed class FleetWindowProjector
     /// <returns>The resolved damaged overlay, or null.</returns>
     private static Texture2D GetFleetBannerDamagedOverlayTexture(UIContext uiContext, Fleet fleet)
     {
-        if (fleet?.CapitalShips.Any(ship => ship.IsDamaged()) != true)
+        if (fleet?.GetCapitalShips().Any(ship => ship.IsDamaged()) != true)
             return null;
 
         return uiContext.GetTexture(

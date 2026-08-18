@@ -134,7 +134,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 "Destroyed Squadron"
             );
             CapitalShip carrier = CreateCapitalShip("carrier", _playerFactionId, "Carrier");
-            carrier.Starfighters.Add(damaged);
+            carrier.AddTestChild(damaged);
             GameFleet fleet = CreateFleet(_playerFactionId, carrier);
             SpaceCombatResult result = new SpaceCombatResult
             {
@@ -193,7 +193,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             fighter.ManufacturingStatus = ManufacturingStatus.Complete;
             fighter.CurrentSquadronSize = 12;
             Planet planet = new Planet();
-            planet.Starfighters.Add(fighter);
+            planet.AddTestChild(fighter);
             fighter.SetParent(planet);
             SpaceCombatResult result = new SpaceCombatResult
             {
@@ -223,8 +223,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Regiment first = CreateRegiment("first", _playerFactionId, "First Regiment");
             Regiment second = CreateRegiment("second", _playerFactionId, "Second Regiment");
             CapitalShip carrier = CreateCapitalShip("carrier", _playerFactionId, "Carrier");
-            carrier.Regiments.Add(first);
-            carrier.Regiments.Add(second);
+            carrier.AddTestChild(first);
+            carrier.AddTestChild(second);
             GameFleet fleet = CreateFleet(_playerFactionId, carrier);
             SpaceCombatResult result = new SpaceCombatResult
             {
@@ -261,8 +261,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 "Special Forces"
             );
             CapitalShip carrier = CreateCapitalShip("carrier", _playerFactionId, "Carrier");
-            carrier.Officers.Add(officer);
-            carrier.SpecialForces.Add(specialForces);
+            carrier.AddTestChild(officer);
+            carrier.AddTestChild(specialForces);
             GameFleet fleet = CreateFleet(_playerFactionId, carrier);
             SpaceCombatResult result = new SpaceCombatResult
             {
@@ -294,7 +294,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Officer officer = CreateOfficer("captured", _playerFactionId, "Captured Officer");
             officer.IsCaptured = true;
             CapitalShip carrier = CreateCapitalShip("carrier", _playerFactionId, "Carrier");
-            carrier.Officers.Add(officer);
+            carrier.AddTestChild(officer);
             GameFleet fleet = CreateFleet(_playerFactionId, carrier);
             SpaceCombatResult result = new SpaceCombatResult
             {
@@ -451,12 +451,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private static UIContext CreateContext()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Player" }
-            );
-            game.Factions.Add(
-                new Faction { InstanceID = _opponentFactionId, DisplayName = "Opponent" }
-            );
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _opponentFactionId, DisplayName = "Opponent" });
             game.Summary.PlayerFactionID = _playerFactionId;
             return TestContent.CreateUIContext(
                 game,

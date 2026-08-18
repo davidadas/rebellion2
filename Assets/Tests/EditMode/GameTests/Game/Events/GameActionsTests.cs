@@ -128,8 +128,8 @@ namespace Rebellion.Tests.Game.Events
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             empPlanet = new Planet
@@ -975,7 +975,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AddToVoid_ActiveOfficer_RetainsDetachedOfficer()
+        public void AddToVoid_ActiveOfficer_DisablesOfficerWithoutDetachingIt()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -983,12 +983,12 @@ namespace Rebellion.Tests.Game.Events
 
             new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
 
-            Assert.IsNull(luke.GetParent());
+            Assert.AreSame(origin, luke.GetParent());
             Assert.IsTrue(game.IsInVoid(luke));
         }
 
         [Test]
-        public void RemoveFromVoid_OfficerInVoid_DetachesAndPreservesPreviousParent()
+        public void RemoveFromVoid_OfficerInVoid_EnablesOfficerAtExistingParent()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -1001,8 +1001,9 @@ namespace Rebellion.Tests.Game.Events
             }.Execute(game);
 
             Assert.IsEmpty(results);
-            Assert.IsNull(luke.GetParent());
+            Assert.AreSame(origin, luke.GetParent());
             Assert.AreEqual(origin.InstanceID, luke.LastParentInstanceID);
+            Assert.IsFalse(game.IsInVoid(luke));
         }
 
         [Test]
@@ -1070,7 +1071,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void RemoveFromVoid_RetainedOfficerSelector_DetachesMatchingOfficer()
+        public void RemoveFromVoid_RetainedOfficerSelector_EnablesMatchingOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer han = EntityFactory.CreateOfficer("han", "rebels");
@@ -1092,8 +1093,9 @@ namespace Rebellion.Tests.Game.Events
 
             action.Execute(game);
 
-            Assert.IsNull(han.GetParent());
+            Assert.AreSame(origin, han.GetParent());
             Assert.AreEqual(origin.InstanceID, han.LastParentInstanceID);
+            Assert.IsFalse(game.IsInVoid(han));
         }
 
         [Test]
@@ -1575,7 +1577,7 @@ namespace Rebellion.Tests.Game.Events
 
             List<GameResult> results = gameEvent.Execute(game, new FixedRNG(0.99), context).Results;
 
-            Assert.IsFalse(planet.Buildings.Contains(shipyard));
+            Assert.IsFalse(planet.GetBuildings().Contains(shipyard));
             Assert.AreSame(
                 shipyard,
                 results.OfType<GameObjectDestroyedResult>().Single().DestroyedObject

@@ -607,7 +607,7 @@ namespace Rebellion.Tests.Game.Factions
             _planet2.NumRawResourceNodes = 15;
             // Add an enemy fleet to planet2 to blockade it
             Fleet enemyFleet = CreateOperationalFleet("ENEMYFLEET1", "FACTION2");
-            _planet2.Fleets.Add(enemyFleet);
+            _planet2.AddChild(enemyFleet);
 
             _faction.AddOwnedUnit(_planet1);
             _faction.AddOwnedUnit(_planet2);
@@ -876,7 +876,7 @@ namespace Rebellion.Tests.Game.Factions
                 _planet2.AddChild(mine);
             }
             Fleet enemyFleet = CreateOperationalFleet("ENEMYFLEET1", "FACTION2");
-            _planet2.Fleets.Add(enemyFleet);
+            _planet2.AddChild(enemyFleet);
 
             _faction.AddOwnedUnit(_planet1);
             _faction.AddOwnedUnit(_planet2);
@@ -952,7 +952,7 @@ namespace Rebellion.Tests.Game.Factions
                 _planet2.AddChild(refinery);
             }
             Fleet enemyFleet = CreateOperationalFleet("ENEMYFLEET1", "FACTION2");
-            _planet2.Fleets.Add(enemyFleet);
+            _planet2.AddChild(enemyFleet);
 
             _faction.AddOwnedUnit(_planet1);
             _faction.AddOwnedUnit(_planet2);
@@ -1048,7 +1048,7 @@ namespace Rebellion.Tests.Game.Factions
                 _planet2.AddChild(refinery);
             }
             Fleet enemyFleet = CreateOperationalFleet("ENEMYFLEET1", "FACTION2");
-            _planet2.Fleets.Add(enemyFleet);
+            _planet2.AddChild(enemyFleet);
 
             _faction.AddOwnedUnit(_planet1);
             _faction.AddOwnedUnit(_planet2);

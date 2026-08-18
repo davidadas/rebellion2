@@ -15,8 +15,8 @@ namespace Rebellion.Tests.AI.Helpers
             GameRoot game = new GameRoot(TestConfig.Create());
             empire = new Faction { InstanceID = "empire" };
             rebels = new Faction { InstanceID = "rebels" };
-            game.Factions.Add(empire);
-            game.Factions.Add(rebels);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(rebels);
             return game;
         }
 

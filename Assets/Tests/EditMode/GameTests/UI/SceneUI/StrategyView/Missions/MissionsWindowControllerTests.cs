@@ -44,8 +44,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _planet = CreatePlanet(game);
             _firstMission = CreateMission("first-mission", "First Mission", out Officer _);
             _secondMission = CreateMission("second-mission", "Second Mission", out _decoy);
-            _planet.Planet.Missions.Add(_firstMission);
-            _planet.Planet.Missions.Add(_secondMission);
+            _planet.Planet.AddChild(_firstMission);
+            _planet.Planet.AddChild(_secondMission);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
@@ -170,14 +170,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 "Fresh First",
                 out Officer _
             );
+            Planet freshPlanetNode = new Planet
+            {
+                InstanceID = _planet.Planet.InstanceID,
+                DisplayName = "Fresh Planet",
+            };
+            freshPlanetNode.AddChildren(new[] { freshSecond, freshFirst });
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
                 new GamePlanetSystem { InstanceID = "fresh-system" },
-                new Planet
-                {
-                    InstanceID = _planet.Planet.InstanceID,
-                    DisplayName = "Fresh Planet",
-                    Missions = { freshSecond, freshFirst },
-                },
+                freshPlanetNode,
                 _playerFactionId
             );
 
@@ -240,7 +241,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             return game;
         }
@@ -276,9 +277,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 ConfigKey = MissionTypeIDs.Diplomacy,
                 DisplayName = displayName,
             };
-            mission.MainParticipants.Add(new Officer { InstanceID = $"{instanceId}-agent" });
+            mission.AddChild(new Officer { InstanceID = $"{instanceId}-agent" });
             decoy = new Officer { InstanceID = $"{instanceId}-decoy" };
-            mission.DecoyParticipants.Add(decoy);
+            mission.AddDecoyParticipant(decoy);
             return mission;
         }
 

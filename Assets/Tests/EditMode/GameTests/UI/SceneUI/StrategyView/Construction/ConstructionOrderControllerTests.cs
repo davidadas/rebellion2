@@ -38,7 +38,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 ManufacturingType.Building,
                 ((IManufacturable)template).GetResearchOrder()
             );
-            game.Factions.Add(owner);
+            game.GetFactions().Add(owner);
             GamePlanetSystem system = new GamePlanetSystem { InstanceID = "system" };
             game.AttachNode(system, game.GetGalaxyMap());
             Planet producer = CreatePlanet("producer", ownerId, 10);
@@ -68,7 +68,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
 
             Assert.IsTrue(started);
-            Assert.AreEqual(_destinationEnergyCapacity, destination.Buildings.Count);
+            Assert.AreEqual(_destinationEnergyCapacity, destination.GetBuildings().Count);
             Assert.AreEqual(
                 _destinationEnergyCapacity,
                 producer.GetManufacturingQueue()[ManufacturingType.Building].Count
@@ -101,7 +101,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Faction owner = new Faction { InstanceID = ownerId };
             owner.SetHighestUnlockedOrder(ManufacturingType.Ship, unlockedOrder);
             owner.RebuildResearchCatalog(templates.ToArray());
-            game.Factions.Add(owner);
+            game.GetFactions().Add(owner);
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
             ManufacturingSystem manufacturing = new ManufacturingSystem(

@@ -71,7 +71,8 @@ namespace Rebellion.Game
         public TickSpeed GameSpeed = TickSpeed.Slow;
 
         // Game events.
-        public List<GameEvent> EventPool = new List<GameEvent>();
+        [PersistableMember(Name = "EventPool")]
+        private List<GameEvent> _eventPool = new List<GameEvent>();
         public GameEventRuntimeState EventRuntime { get; set; } = new GameEventRuntimeState();
 
         // Scene nodes.
@@ -80,9 +81,11 @@ namespace Rebellion.Game
             new Dictionary<string, ISceneNode>();
 
         // Game objects.
-        public List<Faction> Factions = new List<Faction>();
-        public List<Officer> UnrecruitedOfficers = new List<Officer>();
-        public List<ISceneNode> RetainedNodes { get; set; } = new List<ISceneNode>();
+        [PersistableMember(Name = "Factions")]
+        private List<Faction> _factions = new List<Faction>();
+
+        [PersistableMember(Name = "UnrecruitedOfficers")]
+        private List<Officer> _unrecruitedOfficers = new List<Officer>();
 
         // Root scene node.
         public GalaxyMap Galaxy
@@ -189,7 +192,7 @@ namespace Rebellion.Game
         /// <returns>A list of factions in the game.</returns>
         public List<Faction> GetFactions()
         {
-            return Factions;
+            return _factions;
         }
 
         /// <summary>
@@ -214,7 +217,9 @@ namespace Rebellion.Game
                 throw new InvalidOperationException("PlayerFactionID was not set in GameSummary.");
             }
 
-            Faction faction = Factions.FirstOrDefault(f => f.InstanceID == Summary.PlayerFactionID);
+            Faction faction = _factions.FirstOrDefault(f =>
+                f.InstanceID == Summary.PlayerFactionID
+            );
 
             if (faction == null)
             {
@@ -253,8 +258,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Detaches an active node, remembers its direct parent, and retains the detached subtree
-        /// in the game registry without changing faction ownership.
+        /// Disables an active subtree without changing its location, registration, or ownership.
         /// </summary>
         /// <param name="node">The active root node to retain.</param>
         public void AddToVoid(ISceneNode node)
@@ -271,17 +275,13 @@ namespace Rebellion.Game
                     $"'{node.GetDisplayName()}' is already in void."
                 );
 
-            ISceneNode parent = node.GetParent();
-            parent.RemoveChild(node);
-            node.LastParentInstanceID = parent.InstanceID;
-            node.LastParentNode = parent;
-            node.SetParent(null);
-            RetainedNodes.Add(node);
+            node.LastParentNode = node.GetParent();
+            node.LastParentInstanceID = node.GetParent().InstanceID;
+            node.IsEnabled = false;
         }
 
         /// <summary>
-        /// Removes a detached subtree root from retained storage while leaving it registered,
-        /// detached, owned, and available for an explicit subsequent placement operation.
+        /// Re-enables a disabled subtree at its existing scene location.
         /// </summary>
         /// <param name="node">The retained subtree root to release.</param>
         public void RemoveFromVoid(ISceneNode node)
@@ -291,58 +291,17 @@ namespace Rebellion.Game
             if (!IsInVoid(node))
                 throw new InvalidOperationException($"'{node.GetDisplayName()}' is not in void.");
 
-            ISceneNode retainedRoot = GetRetainedRoot(node);
-            if (!ReferenceEquals(retainedRoot, node))
-                throw new InvalidOperationException(
-                    $"Cannot remove retained descendant '{node.GetDisplayName()}' independently."
-                );
-            RetainedNodes.Remove(node);
+            node.IsEnabled = true;
         }
 
         /// <summary>
-        /// Attaches a registered detached node without changing its registry or faction ownership.
-        /// </summary>
-        /// <param name="node">The registered detached node.</param>
-        /// <param name="parent">The receiving scene container.</param>
-        internal void AttachRetainedNode(ISceneNode node, ContainerNode parent)
-        {
-            if (node == null)
-                throw new ArgumentNullException(nameof(node));
-            if (parent == null)
-                throw new ArgumentNullException(nameof(parent));
-            if (node.GetParent() != null)
-                throw new InvalidOperationException(
-                    $"Cannot attach '{node.GetDisplayName()}' because it already has a parent."
-                );
-            if (
-                !NodesByInstanceID.TryGetValue(node.InstanceID, out ISceneNode registered)
-                || !ReferenceEquals(node, registered)
-            )
-                throw new InvalidOperationException(
-                    $"Cannot attach unregistered node '{node.GetDisplayName()}'."
-                );
-            if (!parent.CanAcceptChild(node))
-                throw new InvalidOperationException(
-                    $"Cannot attach '{node.GetDisplayName()}' to '{parent.GetDisplayName()}'."
-                );
-
-            string lastParentInstanceID = node.LastParentInstanceID;
-            ISceneNode lastParent = node.LastParentNode;
-            parent.AddChild(node);
-            node.SetParent(parent);
-            node.LastParentInstanceID = lastParentInstanceID;
-            node.LastParentNode = lastParent;
-        }
-
-        /// <summary>
-        /// Returns whether a node belongs to a retained detached subtree, including descendants
-        /// whose retained root is stored directly by the game.
+        /// Returns whether a node belongs to a disabled scene-graph branch.
         /// </summary>
         /// <param name="node">The node to inspect.</param>
         /// <returns>True when the node is retained outside the active scene graph.</returns>
         public bool IsInVoid(ISceneNode node)
         {
-            return node != null && RetainedNodes.Contains(GetRetainedRoot(node));
+            return node?.IsEnabledInHierarchy() == false;
         }
 
         /// <summary>
@@ -354,14 +313,13 @@ namespace Rebellion.Game
         {
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
-            if (node.GetParent() == null && !RetainedNodes.Remove(node))
+            if (node.GetParent() == null)
                 throw new InvalidOperationException(
                     $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
                 );
-            else
-                node.GetParent()?.RemoveChild(node);
+            node.GetParent().RemoveChild(node);
             node.SetParent(null);
-            node.Traverse(child =>
+            ((BaseSceneNode)node).TraverseIncludingDisabled(child =>
             {
                 DeregsiterOwnedUnit(child);
                 RemoveSceneNodeByInstanceID(child);
@@ -408,7 +366,7 @@ namespace Rebellion.Game
             RegisterOwnedUnit(node);
 
             // Register the node and its children.
-            node.Traverse(AddSceneNodeByInstanceID);
+            ((BaseSceneNode)node).TraverseIncludingDisabled(AddSceneNodeByInstanceID);
         }
 
         /// <summary>
@@ -434,7 +392,7 @@ namespace Rebellion.Game
             DeregsiterOwnedUnit(node);
 
             // Deregister the node and its children.
-            node.Traverse(RemoveSceneNodeByInstanceID);
+            ((BaseSceneNode)node).TraverseIncludingDisabled(RemoveSceneNodeByInstanceID);
         }
 
         /// <summary>
@@ -488,16 +446,17 @@ namespace Rebellion.Game
         /// Retrieves a list of scene nodes by their Instance IDs.
         /// </summary>
         /// <typeparam name="T">The type of nodes to retrieve.</typeparam>
-        /// <param name="instanceId">The Instance ID of the nodes to retrieve.</param>
+        /// <param name="instanceId">The Instance ID of the node to retrieve.</param>
+        /// <param name="includeDisabled">Whether disabled nodes may be returned.</param>
         /// <returns>A list of scene nodes with the specified Instance IDs.</returns>
-        public T GetSceneNodeByInstanceID<T>(string instanceId)
+        public T GetSceneNodeByInstanceID<T>(string instanceId, bool includeDisabled = false)
             where T : class
         {
             if (string.IsNullOrEmpty(instanceId))
                 return null;
             if (NodesByInstanceID.TryGetValue(instanceId, out ISceneNode node))
             {
-                return node as T;
+                return includeDisabled || node.IsEnabledInHierarchy() ? node as T : null;
             }
             else
             {
@@ -516,7 +475,10 @@ namespace Rebellion.Game
 
             foreach (string instanceId in instanceIDs)
             {
-                if (NodesByInstanceID.TryGetValue(instanceId, out ISceneNode node))
+                if (
+                    NodesByInstanceID.TryGetValue(instanceId, out ISceneNode node)
+                    && node.IsEnabledInHierarchy()
+                )
                 {
                     matchingNodes.Add(node);
                 }
@@ -548,6 +510,8 @@ namespace Rebellion.Game
 
             void Traverse(ISceneNode node)
             {
+                if (!node.IsEnabledInHierarchy())
+                    return;
                 if (node is T typedNode)
                 {
                     if (predicate == null || predicate(typedNode))
@@ -568,11 +532,15 @@ namespace Rebellion.Game
         /// containers whose public child projection intentionally omits runtime participants.
         /// </summary>
         /// <typeparam name="T">The scene-node type to retrieve.</typeparam>
+        /// <param name="includeDisabled">Whether disabled nodes may be returned.</param>
         /// <returns>All compatible registered nodes.</returns>
-        public List<T> GetRegisteredSceneNodesByType<T>()
+        public List<T> GetRegisteredSceneNodesByType<T>(bool includeDisabled = false)
             where T : class
         {
-            return NodesByInstanceID.Values.OfType<T>().ToList();
+            return NodesByInstanceID
+                .Values.Where(node => includeDisabled || node.IsEnabledInHierarchy())
+                .OfType<T>()
+                .ToList();
         }
 
         /// <summary>
@@ -602,10 +570,10 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns the full pool of active game events.
         /// </summary>
-        /// <returns>The list backing <see cref="EventPool"/>.</returns>
+        /// <returns>The active game events.</returns>
         public List<GameEvent> GetEventPool()
         {
-            return EventPool;
+            return _eventPool;
         }
 
         /// <summary>
@@ -614,7 +582,7 @@ namespace Rebellion.Game
         /// <param name="gameEvent">The event to remove.</param>
         public void RemoveEvent(GameEvent gameEvent)
         {
-            EventPool.Remove(gameEvent);
+            _eventPool.Remove(gameEvent);
         }
 
         /// <summary>
@@ -624,7 +592,7 @@ namespace Rebellion.Game
         /// <returns>The matching event, or null if none is present in the pool.</returns>
         public GameEvent GetEventByInstanceID(string instanceId)
         {
-            return EventPool.Find(gameEvent => gameEvent.InstanceID == instanceId);
+            return _eventPool.Find(gameEvent => gameEvent.InstanceID == instanceId);
         }
 
         /// <summary>
@@ -634,10 +602,16 @@ namespace Rebellion.Game
         /// <returns>A list of unrecruited officers that can be recruited by the specified owner Instance ID.</returns>
         public List<Officer> GetUnrecruitedOfficers(string ownerInstanceId)
         {
-            return UnrecruitedOfficers
+            return _unrecruitedOfficers
                 .Where(officer => officer.RecruitingFactionInstanceIDs.Contains(ownerInstanceId))
                 .ToList();
         }
+
+        /// <summary>
+        /// Returns the complete unrecruited-officer pool.
+        /// </summary>
+        /// <returns>The officers awaiting recruitment.</returns>
+        public List<Officer> GetUnrecruitedOfficers() => _unrecruitedOfficers;
 
         /// <summary>
         /// Removes an unrecruited officer from the game.
@@ -645,7 +619,7 @@ namespace Rebellion.Game
         /// <param name="officer">The officer to remove.</param>
         public void RemoveUnrecruitedOfficer(Officer officer)
         {
-            UnrecruitedOfficers.Remove(officer);
+            _unrecruitedOfficers.Remove(officer);
         }
 
         /// <summary>
@@ -681,13 +655,10 @@ namespace Rebellion.Game
         public void RebuildSceneState()
         {
             NodesByInstanceID.Clear();
-            foreach (Faction faction in Factions)
+            foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
 
             InitializeSceneRoot(Galaxy);
-            RetainedNodes ??= new List<ISceneNode>();
-            foreach (ISceneNode retainedNode in RetainedNodes)
-                InitializeSceneRoot(retainedNode);
         }
 
         /// <summary>
@@ -704,31 +675,19 @@ namespace Rebellion.Game
         /// </summary>
         private void InitializeSceneRoot(ISceneNode root)
         {
-            root.Traverse(
+            ((BaseSceneNode)root).TraverseIncludingDisabled(
                 (ISceneNode node) =>
                 {
                     if (!NodesByInstanceID.ContainsKey(node.InstanceID))
                         AddSceneNodeByInstanceID(node);
 
-                    foreach (ISceneNode child in node.GetChildren())
+                    foreach (ISceneNode child in node.GetChildren(includeDisabled: true))
                         child.SetParent(node);
 
                     if (node.OwnerInstanceID != null)
                         RegisterOwnedUnit(node);
                 }
             );
-        }
-
-        /// <summary>
-        /// Returns the detached root that contains a retained scene node.
-        /// </summary>
-        private static ISceneNode GetRetainedRoot(ISceneNode node)
-        {
-            if (node == null)
-                return null;
-            while (node.GetParent() != null)
-                node = node.GetParent();
-            return node;
         }
     }
 }

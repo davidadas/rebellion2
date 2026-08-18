@@ -40,8 +40,8 @@ namespace Rebellion.Tests.Systems
 
             _rebels = new Faction { InstanceID = "rebels", DisplayName = "Rebels" };
             _empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            _game.Factions.Add(_rebels);
-            _game.Factions.Add(_empire);
+            _game.GetFactions().Add(_rebels);
+            _game.GetFactions().Add(_empire);
 
             PlanetSystem system = new PlanetSystem
             {
@@ -253,7 +253,7 @@ namespace Rebellion.Tests.Systems
                 _targetPlanet.InstanceID
             );
             _game.AttachNode(empireMission, _targetPlanet);
-            empireMission.MainParticipants.Add(officer);
+            empireMission.AddChild(officer);
 
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
 
@@ -941,7 +941,7 @@ namespace Rebellion.Tests.Systems
         private Faction AddFaction(string instanceId)
         {
             Faction faction = new Faction { InstanceID = instanceId, DisplayName = instanceId };
-            _game.Factions.Add(faction);
+            _game.GetFactions().Add(faction);
             return faction;
         }
 

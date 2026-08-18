@@ -98,12 +98,14 @@ public sealed class FinderWindowRowBuilder
         return sectors
             .SelectMany(sector => sector.Planets)
             .SelectMany(planet =>
-                planet.Planet.Fleets.Select(fleet => new FinderWindowRow(
-                    fleet.GetDisplayName(),
-                    planet,
-                    PlanetIcon.Fleet,
-                    fleet
-                ))
+                planet
+                    .Planet.GetFleets()
+                    .Select(fleet => new FinderWindowRow(
+                        fleet.GetDisplayName(),
+                        planet,
+                        PlanetIcon.Fleet,
+                        fleet
+                    ))
             )
             .Where(row => MatchesFactionTab(row.OwnerFactionId, tab))
             .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
@@ -120,15 +122,19 @@ public sealed class FinderWindowRowBuilder
         return sectors
             .SelectMany(sector => sector.Planets)
             .SelectMany(planet =>
-                planet.Planet.Fleets.SelectMany(fleet =>
-                    fleet.CapitalShips.Select(ship => new FinderWindowRow(
-                        ship.GetDisplayName(),
-                        planet,
-                        PlanetIcon.Fleet,
-                        ship,
+                planet
+                    .Planet.GetFleets()
+                    .SelectMany(fleet =>
                         fleet
-                    ))
-                )
+                            .GetCapitalShips()
+                            .Select(ship => new FinderWindowRow(
+                                ship.GetDisplayName(),
+                                planet,
+                                PlanetIcon.Fleet,
+                                ship,
+                                fleet
+                            ))
+                    )
             )
             .Where(row => MatchesFactionTab(row.OwnerFactionId, tab))
             .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
@@ -156,7 +162,8 @@ public sealed class FinderWindowRowBuilder
         foreach (GalaxyMapPlanet planet in sectors.SelectMany(sector => sector.Planets))
         {
             List<Regiment> planetRegiments = planet
-                .Planet.Regiments.Where(regiment =>
+                .Planet.GetRegiments()
+                .Where(regiment =>
                     string.Equals(regiment.OwnerInstanceID, ownerId, StringComparison.Ordinal)
                 )
                 .ToList();
@@ -173,7 +180,7 @@ public sealed class FinderWindowRowBuilder
                 );
             }
 
-            foreach (Fleet fleet in planet.Planet.Fleets)
+            foreach (Fleet fleet in planet.Planet.GetFleets())
             {
                 if (!string.Equals(fleet.OwnerInstanceID, ownerId, StringComparison.Ordinal))
                     continue;
@@ -212,14 +219,14 @@ public sealed class FinderWindowRowBuilder
         HashSet<string> seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (GalaxyMapPlanet planet in sectors.SelectMany(sector => sector.Planets))
         {
-            foreach (Mission mission in planet.Planet.Missions)
+            foreach (Mission mission in planet.Planet.GetMissions())
             {
                 AddPersonnelRows(
                     rows,
                     seen,
                     planet,
                     PlanetIcon.Mission,
-                    mission.MainParticipants.OfType<Officer>(),
+                    mission.GetMainParticipants().OfType<Officer>(),
                     mission: mission
                 );
                 AddPersonnelRows(
@@ -227,12 +234,12 @@ public sealed class FinderWindowRowBuilder
                     seen,
                     planet,
                     PlanetIcon.Mission,
-                    mission.DecoyParticipants.OfType<Officer>(),
+                    mission.GetDecoyParticipants().OfType<Officer>(),
                     mission: mission
                 );
             }
 
-            foreach (Fleet fleet in planet.Planet.Fleets)
+            foreach (Fleet fleet in planet.Planet.GetFleets())
             {
                 AddPersonnelRows(
                     rows,
@@ -244,7 +251,7 @@ public sealed class FinderWindowRowBuilder
                 );
             }
 
-            AddPersonnelRows(rows, seen, planet, PlanetIcon.Defense, planet.Planet.Officers);
+            AddPersonnelRows(rows, seen, planet, PlanetIcon.Defense, planet.Planet.GetOfficers());
         }
 
         Faction ownedFaction = factions.FirstOrDefault(faction =>
@@ -363,14 +370,14 @@ public sealed class FinderWindowRowBuilder
     private static List<SpecialForces> GetSpecialForcesOnPlanet(GalaxyMapPlanet planet)
     {
         List<SpecialForces> specialForces = new List<SpecialForces>();
-        specialForces.AddRange(planet.Planet.SpecialForces);
-        foreach (Mission mission in planet.Planet.Missions)
+        specialForces.AddRange(planet.Planet.GetSpecialForces());
+        foreach (Mission mission in planet.Planet.GetMissions())
         {
-            specialForces.AddRange(mission.MainParticipants.OfType<SpecialForces>());
-            specialForces.AddRange(mission.DecoyParticipants.OfType<SpecialForces>());
+            specialForces.AddRange(mission.GetMainParticipants().OfType<SpecialForces>());
+            specialForces.AddRange(mission.GetDecoyParticipants().OfType<SpecialForces>());
         }
 
-        foreach (Fleet fleet in planet.Planet.Fleets)
+        foreach (Fleet fleet in planet.Planet.GetFleets())
             specialForces.AddRange(fleet.GetSpecialForces());
 
         return specialForces;

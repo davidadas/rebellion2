@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -23,7 +24,7 @@ namespace Rebellion.Tests.Systems
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create());
-            _game.Factions.Add(new Faction { InstanceID = _ownerId });
+            _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             _planet = new Planet
@@ -85,7 +86,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(sourceFleet, remainingShip.GetParent());
             CollectionAssert.AreEquivalent(
                 new[] { sourceFleet, createdFleet },
-                _planet.GetFleets()
+                _planet.GetFleets().ToList()
             );
         }
 
@@ -102,7 +103,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(createdFleet);
             Assert.AreSame(createdFleet, ship.GetParent());
             Assert.IsNull(sourceFleet.GetParent());
-            CollectionAssert.AreEqual(new[] { createdFleet }, _planet.GetFleets());
+            CollectionAssert.AreEqual(new[] { createdFleet }, _planet.GetFleets().ToList());
         }
 
         [Test]
@@ -134,7 +135,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNull(createdFleet);
             Assert.AreSame(sourceFleet, ship.GetParent());
-            CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetFleets());
+            CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetFleets().ToList());
         }
 
         [Test]
@@ -150,7 +151,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNull(createdFleet);
             Assert.AreSame(sourceFleet, ship.GetParent());
-            CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetFleets());
+            CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetFleets().ToList());
         }
 
         [Test]

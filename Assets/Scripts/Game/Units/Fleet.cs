@@ -44,7 +44,8 @@ namespace Rebellion.Game.Units
         public bool IsInCombat { get; set; }
 
         // Child Nodes.
-        public List<CapitalShip> CapitalShips { get; set; } = new List<CapitalShip>();
+        [PersistableMember(Name = "CapitalShips")]
+        private List<CapitalShip> _capitalShips = new List<CapitalShip>();
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -59,7 +60,25 @@ namespace Rebellion.Game.Units
         {
             OwnerInstanceID = ownerInstanceId;
             DisplayName = displayName;
-            CapitalShips = capitalShips ?? new List<CapitalShip>();
+            _capitalShips = capitalShips ?? new List<CapitalShip>();
+        }
+
+        /// <summary>
+        /// Gets the capital ships contained by this fleet.
+        /// </summary>
+        /// <returns>The fleet's capital ships.</returns>
+        public IReadOnlyList<CapitalShip> GetCapitalShips(bool includeDisabled = false) =>
+            includeDisabled
+                ? _capitalShips
+                : _capitalShips.Where(ship => ship.IsEnabledInHierarchy()).ToList();
+
+        /// <summary>
+        /// Replaces the fleet's child collection while constructing a detached projection.
+        /// </summary>
+        /// <param name="capitalShips">The capital ships to retain in the projection.</param>
+        internal void SetCapitalShips(IEnumerable<CapitalShip> capitalShips)
+        {
+            _capitalShips = capitalShips?.ToList() ?? new List<CapitalShip>();
         }
 
         /// <summary>
@@ -68,7 +87,7 @@ namespace Rebellion.Game.Units
         /// <returns>Sum of starfighter capacity across all capital ships.</returns>
         public int GetStarfighterCapacity()
         {
-            return CapitalShips.Sum(ship => ship.GetStarfighterCapacity());
+            return _capitalShips.Sum(ship => ship.GetStarfighterCapacity());
         }
 
         /// <summary>
@@ -77,7 +96,7 @@ namespace Rebellion.Game.Units
         /// <returns>Total starfighter count across all capital ships.</returns>
         public int GetCurrentStarfighterCount()
         {
-            return CapitalShips.Sum(ship => ship.GetCurrentStarfighterCount());
+            return _capitalShips.Sum(ship => ship.GetCurrentStarfighterCount());
         }
 
         /// <summary>
@@ -95,7 +114,7 @@ namespace Rebellion.Game.Units
         /// <returns>Sum of regiment capacity across all capital ships.</returns>
         public int GetRegimentCapacity()
         {
-            return CapitalShips.Sum(ship => ship.GetRegimentCapacity());
+            return _capitalShips.Sum(ship => ship.GetRegimentCapacity());
         }
 
         /// <summary>
@@ -104,7 +123,7 @@ namespace Rebellion.Game.Units
         /// <returns>Total regiment count across all capital ships.</returns>
         public int GetCurrentRegimentCount()
         {
-            return CapitalShips.Sum(ship => ship.GetCurrentRegimentCount());
+            return _capitalShips.Sum(ship => ship.GetCurrentRegimentCount());
         }
 
         /// <summary>
@@ -122,7 +141,7 @@ namespace Rebellion.Game.Units
         /// <returns>All starfighters in the fleet.</returns>
         public IEnumerable<Starfighter> GetStarfighters()
         {
-            return CapitalShips.SelectMany(ship => ship.Starfighters);
+            return _capitalShips.SelectMany(ship => ship.GetStarfighters());
         }
 
         /// <summary>
@@ -134,7 +153,7 @@ namespace Rebellion.Game.Units
             if (Movement != null)
                 return null;
 
-            return CapitalShips.FirstOrDefault(ship =>
+            return _capitalShips.FirstOrDefault(ship =>
                 ship.ManufacturingStatus == ManufacturingStatus.Complete
                 && ship.Movement == null
                 && ship.GetExcessStarfighterCapacity() > 0
@@ -150,7 +169,7 @@ namespace Rebellion.Game.Units
             if (Movement != null)
                 return null;
 
-            return CapitalShips.FirstOrDefault(ship =>
+            return _capitalShips.FirstOrDefault(ship =>
                 ship.ManufacturingStatus == ManufacturingStatus.Complete
                 && ship.Movement == null
                 && ship.GetExcessRegimentCapacity() > 0
@@ -163,7 +182,7 @@ namespace Rebellion.Game.Units
         /// <returns>All regiments in the fleet.</returns>
         public IEnumerable<Regiment> GetRegiments()
         {
-            return CapitalShips.SelectMany(ship => ship.Regiments);
+            return _capitalShips.SelectMany(ship => ship.GetRegiments());
         }
 
         /// <summary>
@@ -172,7 +191,7 @@ namespace Rebellion.Game.Units
         /// <returns>Special forces currently assigned to ships in this fleet.</returns>
         public IEnumerable<SpecialForces> GetSpecialForces()
         {
-            return CapitalShips.SelectMany(ship => ship.SpecialForces);
+            return _capitalShips.SelectMany(ship => ship.GetSpecialForces());
         }
 
         /// <summary>
@@ -181,7 +200,7 @@ namespace Rebellion.Game.Units
         /// <returns>All officers in the fleet.</returns>
         public IEnumerable<Officer> GetOfficers()
         {
-            return CapitalShips.SelectMany(ship => ship.Officers);
+            return _capitalShips.SelectMany(ship => ship.GetOfficers());
         }
 
         /// <summary>
@@ -190,7 +209,7 @@ namespace Rebellion.Game.Units
         /// <returns>The operational capital ship count.</returns>
         public int GetOperationalCapitalShipCount()
         {
-            return CapitalShips.Count(ship =>
+            return _capitalShips.Count(ship =>
                 ship.ManufacturingStatus == ManufacturingStatus.Complete && ship.Movement == null
             );
         }
@@ -215,7 +234,7 @@ namespace Rebellion.Game.Units
                 throw new SceneAccessException(capitalShip, this);
             }
 
-            CapitalShips.Add(capitalShip);
+            _capitalShips.Add(capitalShip);
         }
 
         /// <summary>
@@ -251,7 +270,7 @@ namespace Rebellion.Game.Units
         {
             if (child is CapitalShip capitalShip)
             {
-                CapitalShips.Remove(capitalShip);
+                _capitalShips.Remove(capitalShip);
             }
         }
 
@@ -261,14 +280,14 @@ namespace Rebellion.Game.Units
         /// </summary>
         public int GetCombatValue()
         {
-            IEnumerable<CapitalShip> activeShips = CapitalShips.Where(ship =>
+            IEnumerable<CapitalShip> activeShips = _capitalShips.Where(ship =>
                 ship.ManufacturingStatus == ManufacturingStatus.Complete && ship.Movement == null
             );
 
             int capitalShipCombat = activeShips.Sum(ship => ship.GetCombatValue());
 
             int starfighterCombat = 0;
-            foreach (Starfighter f in activeShips.SelectMany(ship => ship.Starfighters))
+            foreach (Starfighter f in activeShips.SelectMany(ship => ship.GetStarfighters()))
             {
                 if (f.ManufacturingStatus != ManufacturingStatus.Complete || f.Movement != null)
                     continue;
@@ -319,9 +338,9 @@ namespace Rebellion.Game.Units
         /// Enumerates the fleet's direct children (its capital ships) as scene nodes.
         /// </summary>
         /// <returns>An enumerable over the fleet's capital ships.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
         {
-            return CapitalShips.Cast<ISceneNode>();
+            return GetCapitalShips(includeDisabled).Cast<ISceneNode>();
         }
     }
 }

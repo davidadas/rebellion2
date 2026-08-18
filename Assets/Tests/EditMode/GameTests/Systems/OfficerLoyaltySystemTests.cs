@@ -19,7 +19,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = BuildScene(out Planet planet, out Officer empireOfficer);
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(alliance);
             empireOfficer.Loyalty = 50;
             Planet alliancePlanet = new Planet
             {
@@ -56,9 +56,8 @@ namespace Rebellion.Tests.Systems
                     new PlanetOwnershipChangedResult
                     {
                         Planet = planet,
-                        PreviousOwner = game.Factions.Single(faction =>
-                            faction.InstanceID == "empire"
-                        ),
+                        PreviousOwner = game.GetFactions()
+                            .Single(faction => faction.InstanceID == "empire"),
                         NewOwner = alliance,
                     },
                 }
@@ -102,7 +101,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(discoverer, planet);
             StubMission mission = CreateMission(game, planet, traitor);
-            mission.MainParticipants.Add(discoverer);
+            mission.AddChild(discoverer);
 
             bool betrayed = new OfficerLoyaltySystem(game, new StubRNG()).TryResolveMissionBetrayal(
                 mission,
@@ -161,7 +160,7 @@ namespace Rebellion.Tests.Systems
             config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Minimum = 0;
             config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Maximum = 5;
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             game.AttachNode(system, game.Galaxy);
             planet = new Planet
@@ -180,7 +179,7 @@ namespace Rebellion.Tests.Systems
         {
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(officer);
+            mission.AddChild(officer);
             return mission;
         }
     }

@@ -30,7 +30,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _ownerId });
+            game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             game.Summary.PlayerFactionID = _ownerId;
             _uiContext = TestContent.CreateUIContext(
                 game,
@@ -116,9 +116,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 BuildingType.ConstructionFacility,
                 ManufacturingStatus.Complete
             );
-            _planet.Buildings.Add(completedShipyard);
-            _planet.Buildings.Add(incompleteShipyard);
-            _planet.Buildings.Add(constructionYard);
+            _planet.AddTestChild(completedShipyard);
+            _planet.AddTestChild(incompleteShipyard);
+            _planet.AddTestChild(constructionYard);
             CapitalShip currentShip = CreateCapitalShip("current-ship", "Nebulon-B Frigate");
             currentShip.ConstructionCost = 80;
             currentShip.ManufacturingProgress = 30;
@@ -205,7 +205,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 BuildingType.Mine,
                 ManufacturingStatus.Complete
             );
-            _planet.Buildings.Add(mine);
+            _planet.AddTestChild(mine);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Mines);
             _session.SelectBuilding(0, 3);
@@ -244,7 +244,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             refinery.SmallDisplayImagePath = definition.SmallDisplayImagePath;
             refinery.InTransitSmallImagePath = definition.InTransitSmallImagePath;
             refinery.Movement = new MovementState();
-            _planet.Buildings.Add(refinery);
+            _planet.AddTestChild(refinery);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Refineries);
 

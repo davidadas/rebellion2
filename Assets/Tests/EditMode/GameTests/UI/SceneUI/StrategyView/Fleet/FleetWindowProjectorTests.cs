@@ -37,7 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _ownerId, DisplayName = "Alliance" });
+            game.GetFactions().Add(new Faction { InstanceID = _ownerId, DisplayName = "Alliance" });
             game.Summary.PlayerFactionID = _ownerId;
             _uiContext = TestContent.CreateUIContext(
                 game,
@@ -61,8 +61,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 InstanceID = "second-fleet",
                 Movement = new MovementState(),
             };
-            _planet.Fleets.Add(_fleet);
-            _planet.Fleets.Add(_secondFleet);
+            _planet.AddChild(_fleet);
+            _planet.AddChild(_secondFleet);
             AttachFleetGraph(_planet, _fleet);
             AttachFleetGraph(_planet, _secondFleet);
             _windowObject = new GameObject("FleetWindow", typeof(RectTransform), typeof(UIWindow));
@@ -370,10 +370,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 InTransitSmallImagePath = specialForcesDefinition.InTransitSmallImagePath,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            _capitalShip.Starfighters.Add(_starfighter);
-            _capitalShip.Regiments.Add(_regiment);
-            _capitalShip.Officers.Add(_officer);
-            _capitalShip.SpecialForces.Add(_specialForces);
+            _capitalShip.AddChild(_starfighter);
+            _capitalShip.AddChild(_regiment);
+            _capitalShip.AddChild(_officer);
+            _capitalShip.AddChild(_specialForces);
             return new GameFleet(
                 _ownerId,
                 "First Fleet",
@@ -413,7 +413,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);
-            foreach (CapitalShip ship in fleet.CapitalShips)
+            foreach (CapitalShip ship in fleet.GetCapitalShips())
             {
                 ship.SetParent(fleet);
                 foreach (ISceneNode child in ship.GetChildren())

@@ -193,7 +193,7 @@ namespace Rebellion.Tests.Game.Missions
             int ratingBefore = officer.GetBaseRating(OfficerRating.Diplomacy);
 
             Mission mission = new StubMission("empire", enemyPlanet.InstanceID);
-            mission.MainParticipants.Add(officer);
+            mission.AddChild(officer);
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
@@ -391,8 +391,8 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(loadedMission, loadedOfficer.GetParent());
             Assert.AreEqual(loadedMission, loadedDecoy.GetParent());
-            Assert.AreEqual(loadedOfficer, loadedMission.MainParticipants.Single());
-            Assert.AreEqual(loadedDecoy, loadedMission.DecoyParticipants.Single());
+            Assert.AreEqual(loadedOfficer, loadedMission.GetMainParticipants().Single());
+            Assert.AreEqual(loadedDecoy, loadedMission.GetDecoyParticipants().Single());
         }
     }
 }

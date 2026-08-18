@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Missions
             _game = new GameRoot(config);
 
             _faction = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            _game.Factions.Add(_faction);
+            _game.GetFactions().Add(_faction);
 
             PlanetSystem sys = new PlanetSystem
             {

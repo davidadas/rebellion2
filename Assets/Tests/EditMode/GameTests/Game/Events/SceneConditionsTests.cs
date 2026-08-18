@@ -99,7 +99,7 @@ namespace Rebellion.Tests.Game.Events
         )
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = "faction" });
+            game.GetFactions().Add(new Faction { InstanceID = "faction" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             planet = new Planet
             {

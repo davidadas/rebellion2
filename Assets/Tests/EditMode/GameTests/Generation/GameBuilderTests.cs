@@ -119,10 +119,10 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_ValidConfig_SetsFactions()
         {
-            Assert.IsNotNull(_game.Factions, "Factions should not be null.");
+            Assert.IsNotNull(_game.GetFactions(), "Factions should not be null.");
 
             Assert.GreaterOrEqual(
-                _game.Factions.Count,
+                _game.GetFactions().Count,
                 2,
                 "Game should have at least two factions."
             );
@@ -131,7 +131,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_ValidConfig_SetsFactionResearchCatalog()
         {
-            foreach (Faction faction in _game.Factions)
+            foreach (Faction faction in _game.GetFactions())
             {
                 Assert.IsNotEmpty(faction.ResearchCatalog, "Faction should have research catalog.");
 
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.Generation
                 .Concat(TestContent.Data.SpecialForces)
                 .ToArray();
 
-            foreach (Faction faction in _game.Factions)
+            foreach (Faction faction in _game.GetFactions())
             {
                 int techCountBefore = faction.ResearchCatalog.Values.Sum(q => q.Count);
 
@@ -199,7 +199,7 @@ namespace Rebellion.Tests.Generation
                 .Concat(TestContent.Data.Regiments)
                 .ToArray();
 
-            foreach (Faction faction in _game.Factions)
+            foreach (Faction faction in _game.GetFactions())
             {
                 faction.RebuildResearchCatalog(templates);
 
@@ -223,13 +223,14 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_ValidConfig_SetsHQs()
         {
-            Assert.IsNotNull(_game.Factions, "Factions should not be null.");
+            Assert.IsNotNull(_game.GetFactions(), "Factions should not be null.");
             Assert.IsNotNull(_game.Galaxy, "GalaxyMap should not be null.");
 
-            foreach (Faction faction in _game.Factions)
+            foreach (Faction faction in _game.GetFactions())
             {
                 bool hasHQ = _game
-                    .Galaxy.PlanetSystems.SelectMany(ps => ps.Planets)
+                    .Galaxy.GetPlanetSystems()
+                    .SelectMany(ps => ps.GetPlanets())
                     .Any(planet =>
                         planet.OwnerInstanceID == faction.InstanceID && planet.IsHeadquarters
                     );
@@ -271,14 +272,14 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_ColonizedPlanets_DoNotExceedEnergyCapacity()
         {
-            foreach (PlanetSystem sector in _game.Galaxy.PlanetSystems)
+            foreach (PlanetSystem sector in _game.Galaxy.GetPlanetSystems())
             {
-                foreach (Planet planet in sector.Planets.Where(p => p.IsColonized))
+                foreach (Planet planet in sector.GetPlanets().Where(p => p.IsColonized))
                 {
                     Assert.LessOrEqual(
-                        planet.Buildings.Count,
+                        planet.GetBuildings().Count,
                         planet.EnergyCapacity,
-                        $"Planet {planet.GetDisplayName()} has {planet.Buildings.Count} buildings for {planet.EnergyCapacity} energy capacity."
+                        $"Planet {planet.GetDisplayName()} has {planet.GetBuildings().Count} buildings for {planet.EnergyCapacity} energy capacity."
                     );
                 }
             }
@@ -287,11 +288,12 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_EachFaction_OwnsAtLeastOneConstructionFacility()
         {
-            foreach (Faction faction in _game.Factions)
+            foreach (Faction faction in _game.GetFactions())
             {
                 bool ownsOne = _game
-                    .Galaxy.PlanetSystems.SelectMany(s => s.Planets)
-                    .SelectMany(p => p.Buildings)
+                    .Galaxy.GetPlanetSystems()
+                    .SelectMany(s => s.GetPlanets())
+                    .SelectMany(p => p.GetBuildings())
                     .Any(b =>
                         b.OwnerInstanceID == faction.InstanceID
                         && b.BuildingType == BuildingType.ConstructionFacility
@@ -357,7 +359,7 @@ namespace Rebellion.Tests.Generation
                 }
             });
 
-            foreach (Faction faction in _game.Factions)
+            foreach (Faction faction in _game.GetFactions())
             {
                 Assert.IsTrue(
                     fleetsPerFaction.ContainsKey(faction.GetInstanceID()),
@@ -413,14 +415,14 @@ namespace Rebellion.Tests.Generation
         public void Build_FogOfWar_CoreSystemsHaveInitialResourceSnapshotsForNonOwners()
         {
             foreach (
-                PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
-                    s.SystemType == PlanetSystemType.CoreSystem
-                )
+                PlanetSystem system in _game
+                    .Galaxy.GetPlanetSystems()
+                    .Where(s => s.SystemType == PlanetSystemType.CoreSystem)
             )
             {
-                foreach (Faction faction in _game.Factions)
+                foreach (Faction faction in _game.GetFactions())
                 {
-                    foreach (Planet planet in system.Planets)
+                    foreach (Planet planet in system.GetPlanets())
                     {
                         bool isOwner = planet.OwnerInstanceID == faction.InstanceID;
                         if (isOwner)
@@ -460,7 +462,8 @@ namespace Rebellion.Tests.Generation
         {
             GameGenerationConfig rules = TestContent.Data.GenerationConfig;
             Dictionary<string, string> planetInstanceIdsByTypeId = _game
-                .Galaxy.PlanetSystems.SelectMany(system => system.Planets)
+                .Galaxy.GetPlanetSystems()
+                .SelectMany(system => system.GetPlanets())
                 .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
                 .ToDictionary(planet => planet.TypeID, planet => planet.InstanceID);
             HashSet<(string planetId, string factionId)> visibilityOverrides = new HashSet<(
@@ -484,14 +487,14 @@ namespace Rebellion.Tests.Generation
             );
 
             foreach (
-                PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
-                    s.SystemType == PlanetSystemType.OuterRim
-                )
+                PlanetSystem system in _game
+                    .Galaxy.GetPlanetSystems()
+                    .Where(s => s.SystemType == PlanetSystemType.OuterRim)
             )
             {
-                foreach (Faction faction in _game.Factions)
+                foreach (Faction faction in _game.GetFactions())
                 {
-                    foreach (Planet planet in system.Planets)
+                    foreach (Planet planet in system.GetPlanets())
                     {
                         bool isOwner = planet.OwnerInstanceID == faction.InstanceID;
                         if (isOwner)
@@ -521,16 +524,16 @@ namespace Rebellion.Tests.Generation
             FogOfWarSystem fogSystem = new FogOfWarSystem(_game);
 
             foreach (
-                PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
-                    s.SystemType == PlanetSystemType.OuterRim
-                )
+                PlanetSystem system in _game
+                    .Galaxy.GetPlanetSystems()
+                    .Where(s => s.SystemType == PlanetSystemType.OuterRim)
             )
             {
-                foreach (Planet planet in system.Planets.Where(p => p.OwnerInstanceID != null))
+                foreach (Planet planet in system.GetPlanets().Where(p => p.OwnerInstanceID != null))
                 {
-                    Faction owner = _game.Factions.First(f =>
-                        f.InstanceID == planet.OwnerInstanceID
-                    );
+                    Faction owner = _game
+                        .GetFactions()
+                        .First(f => f.InstanceID == planet.OwnerInstanceID);
 
                     Assert.IsTrue(
                         fogSystem.IsPlanetVisible(planet, owner),
@@ -546,17 +549,17 @@ namespace Rebellion.Tests.Generation
             FogOfWarSystem fogSystem = new FogOfWarSystem(_game);
 
             foreach (
-                PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
-                    s.SystemType == PlanetSystemType.OuterRim
-                )
+                PlanetSystem system in _game
+                    .Galaxy.GetPlanetSystems()
+                    .Where(s => s.SystemType == PlanetSystemType.OuterRim)
             )
             {
-                foreach (Planet planet in system.Planets.Where(p => p.OwnerInstanceID != null))
+                foreach (Planet planet in system.GetPlanets().Where(p => p.OwnerInstanceID != null))
                 {
                     foreach (
-                        Faction other in _game.Factions.Where(f =>
-                            f.InstanceID != planet.OwnerInstanceID
-                        )
+                        Faction other in _game
+                            .GetFactions()
+                            .Where(f => f.InstanceID != planet.OwnerInstanceID)
                     )
                     {
                         Assert.IsFalse(

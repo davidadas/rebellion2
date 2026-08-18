@@ -22,7 +22,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _ownerId });
+            game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             game.Summary.PlayerFactionID = _ownerId;
             _uiContext = TestContent.CreateUIContext(
                 game,

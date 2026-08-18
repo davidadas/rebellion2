@@ -170,7 +170,8 @@ namespace Rebellion.Game.Missions
                     new OfficerKilledResult
                     {
                         TargetOfficer = target,
-                        Assassin = MainParticipants.Count > 0 ? MainParticipants[0] : null,
+                        Assassin =
+                            GetMainParticipants().Count > 0 ? GetMainParticipants()[0] : null,
                         Context = planet,
                         Tick = game.CurrentTick,
                     }
