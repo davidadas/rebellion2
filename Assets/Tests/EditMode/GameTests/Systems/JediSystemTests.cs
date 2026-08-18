@@ -55,47 +55,6 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(_tatooine, system);
         }
 
-        private Officer CreateJediTrainer(string id, int forceValue)
-        {
-            Officer officer = CreateKnownJedi(id, forceValue);
-            officer.IsJediTrainer = true;
-            return officer;
-        }
-
-        private Officer CreateKnownJedi(string id, int forceValue)
-        {
-            Officer officer = new Officer
-            {
-                InstanceID = id,
-                DisplayName = id,
-                OwnerInstanceID = _alliance.InstanceID,
-                IsForceSensitive = true,
-                IsForceEligible = true,
-                ForceValue = forceValue,
-                ForceTrainingAdjustment = 0,
-            };
-            _game.AttachNode(officer, _tatooine);
-            return officer;
-        }
-
-        private Officer CreateDormantJedi(string id)
-        {
-            Officer officer = new Officer
-            {
-                InstanceID = id,
-                DisplayName = id,
-                OwnerInstanceID = _alliance.InstanceID,
-                IsForceSensitive = true,
-                IsForceEligible = false,
-                ForceValue = 0,
-                ForceTrainingAdjustment = 0,
-                JediLevel = 10,
-                JediLevelVariance = 0,
-            };
-            _game.AttachNode(officer, _tatooine);
-            return officer;
-        }
-
         [Test]
         public void ProcessTick_ForceRankAboveThreshold_EntersDiscoveringState()
         {
@@ -527,6 +486,24 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ApplyForceGrowth_NotForceEligible_NoGrowth()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "O1",
+                OwnerInstanceID = _alliance.InstanceID,
+                GrowsForceOnMission = true,
+                IsForceEligible = false,
+                ForceValue = 10,
+            };
+            int before = officer.ForceValue;
+
+            _system.ApplyForceGrowth(new List<IMissionParticipant> { officer });
+
+            Assert.AreEqual(before, officer.ForceValue);
+        }
+
+        [Test]
         public void HandleResults_SuccessfulMission_AppliesForceGrowth()
         {
             Officer luke = new Officer
@@ -555,22 +532,45 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, results.OfType<ForceExperienceResult>().Count());
         }
 
-        [Test]
-        public void ApplyForceGrowth_NotForceEligible_NoGrowth()
+        private Officer CreateJediTrainer(string id, int forceValue)
+        {
+            Officer officer = CreateKnownJedi(id, forceValue);
+            officer.IsJediTrainer = true;
+            return officer;
+        }
+
+        private Officer CreateKnownJedi(string id, int forceValue)
         {
             Officer officer = new Officer
             {
-                InstanceID = "O1",
+                InstanceID = id,
+                DisplayName = id,
                 OwnerInstanceID = _alliance.InstanceID,
-                GrowsForceOnMission = true,
-                IsForceEligible = false,
-                ForceValue = 10,
+                IsForceSensitive = true,
+                IsForceEligible = true,
+                ForceValue = forceValue,
+                ForceTrainingAdjustment = 0,
             };
-            int before = officer.ForceValue;
+            _game.AttachNode(officer, _tatooine);
+            return officer;
+        }
 
-            _system.ApplyForceGrowth(new List<IMissionParticipant> { officer });
-
-            Assert.AreEqual(before, officer.ForceValue);
+        private Officer CreateDormantJedi(string id)
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = id,
+                DisplayName = id,
+                OwnerInstanceID = _alliance.InstanceID,
+                IsForceSensitive = true,
+                IsForceEligible = false,
+                ForceValue = 0,
+                ForceTrainingAdjustment = 0,
+                JediLevel = 10,
+                JediLevelVariance = 0,
+            };
+            _game.AttachNode(officer, _tatooine);
+            return officer;
         }
     }
 

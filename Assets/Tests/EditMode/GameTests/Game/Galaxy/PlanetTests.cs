@@ -26,19 +26,6 @@ namespace Rebellion.Tests.Game.Galaxy
             };
         }
 
-        private static Fleet CreateOperationalFleet(string ownerInstanceID)
-        {
-            Fleet fleet = new Fleet { OwnerInstanceID = ownerInstanceID };
-            fleet.AddChild(
-                new CapitalShip
-                {
-                    OwnerInstanceID = ownerInstanceID,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                }
-            );
-            return fleet;
-        }
-
         [Test]
         public void AddFleet_ValidFleet_AddsToPlanet()
         {
@@ -60,6 +47,65 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Throws<SceneAccessException>(
                 () => _planet.AddChild(building),
                 "Adding a fleet with a mismatched OwnerInstanceID should throw a SceneAccessException."
+            );
+        }
+
+        [Test]
+        public void AddBuilding_ValidBuilding_AddsToPlanet()
+        {
+            Building building = new Building
+            {
+                DisplayName = "Test Building",
+                OwnerInstanceID = "FNALL1",
+            };
+
+            _planet.AddChild(building);
+
+            List<Building> buildings = _planet.GetAllBuildings();
+            Assert.Contains(building, buildings, "Building should be added to the _planet.");
+        }
+
+        [Test]
+        public void AddBuilding_CompletedBuildingOnUncolonizedPlanet_ThrowsException()
+        {
+            _planet.IsColonized = false;
+            Building building = new Building
+            {
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            Assert.Throws<SceneAccessException>(() => _planet.AddChild(building));
+        }
+
+        [Test]
+        public void AddBuilding_UnderConstructionOnOwnedUncolonizedPlanet_AddsToPlanet()
+        {
+            _planet.IsColonized = false;
+            Building building = new Building
+            {
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+
+            _planet.AddChild(building);
+
+            Assert.Contains(building, _planet.Buildings);
+        }
+
+        [Test]
+        public void AddBuilding_ExceedsCapacity_ThrowsException()
+        {
+            for (int i = 0; i < _planet.EnergyCapacity; i++)
+            {
+                _planet.AddChild(new Building { OwnerInstanceID = "FNALL1" });
+            }
+
+            Building extraBuilding = new Building { OwnerInstanceID = "FNALL1" };
+
+            Assert.Throws<InvalidOperationException>(
+                () => _planet.AddChild(extraBuilding),
+                "Adding a building when slots are full should throw a InvalidOperationException."
             );
         }
 
@@ -111,49 +157,6 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void AddBuilding_ValidBuilding_AddsToPlanet()
-        {
-            Building building = new Building
-            {
-                DisplayName = "Test Building",
-                OwnerInstanceID = "FNALL1",
-            };
-
-            _planet.AddChild(building);
-
-            List<Building> buildings = _planet.GetAllBuildings();
-            Assert.Contains(building, buildings, "Building should be added to the _planet.");
-        }
-
-        [Test]
-        public void AddBuilding_CompletedBuildingOnUncolonizedPlanet_ThrowsException()
-        {
-            _planet.IsColonized = false;
-            Building building = new Building
-            {
-                OwnerInstanceID = "FNALL1",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-
-            Assert.Throws<SceneAccessException>(() => _planet.AddChild(building));
-        }
-
-        [Test]
-        public void AddBuilding_UnderConstructionOnOwnedUncolonizedPlanet_AddsToPlanet()
-        {
-            _planet.IsColonized = false;
-            Building building = new Building
-            {
-                OwnerInstanceID = "FNALL1",
-                ManufacturingStatus = ManufacturingStatus.Building,
-            };
-
-            _planet.AddChild(building);
-
-            Assert.Contains(building, _planet.GetChildren<Building>().ToList());
-        }
-
-        [Test]
         public void AddRegiment_UncolonizedNeutralPlanet_AddsToPlanet()
         {
             _planet.IsColonized = false;
@@ -183,22 +186,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Regiment regiment = new Regiment { OwnerInstanceID = "FNEMP1" };
 
             Assert.Throws<SceneAccessException>(() => _planet.AddChild(regiment));
-        }
-
-        [Test]
-        public void AddBuilding_ExceedsCapacity_ThrowsException()
-        {
-            for (int i = 0; i < _planet.EnergyCapacity; i++)
-            {
-                _planet.AddChild(new Building { OwnerInstanceID = "FNALL1" });
-            }
-
-            Building extraBuilding = new Building { OwnerInstanceID = "FNALL1" };
-
-            Assert.Throws<InvalidOperationException>(
-                () => _planet.AddChild(extraBuilding),
-                "Adding a building when slots are full should throw a InvalidOperationException."
-            );
         }
 
         [Test]
@@ -763,21 +750,21 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void AddSpecialForces_UncolonizedPlanet_ThrowsException()
-        {
-            _planet.IsColonized = false;
-            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
-
-            Assert.Throws<SceneAccessException>(() => _planet.AddChild(specialForces));
-        }
-
-        [Test]
         public void AddStarfighter_UncolonizedPlanet_ThrowsException()
         {
             _planet.IsColonized = false;
             Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
 
             Assert.Throws<SceneAccessException>(() => _planet.AddChild(starfighter));
+        }
+
+        [Test]
+        public void AddSpecialForces_UncolonizedPlanet_ThrowsException()
+        {
+            _planet.IsColonized = false;
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
+
+            Assert.Throws<SceneAccessException>(() => _planet.AddChild(specialForces));
         }
 
         [Test]
@@ -1146,6 +1133,19 @@ namespace Rebellion.Tests.Game.Galaxy
             double distance = _planet.GetRawDistanceTo(targetPlanet);
 
             Assert.AreEqual(5, distance);
+        }
+
+        private static Fleet CreateOperationalFleet(string ownerInstanceID)
+        {
+            Fleet fleet = new Fleet { OwnerInstanceID = ownerInstanceID };
+            fleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = ownerInstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            return fleet;
         }
     }
 } // namespace Rebellion.Tests.Game.Galaxy

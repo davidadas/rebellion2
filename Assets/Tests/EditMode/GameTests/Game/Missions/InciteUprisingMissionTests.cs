@@ -12,29 +12,12 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class InciteUprisingMissionTests
     {
-        private Mission CreateInciteUprisingMission(
-            string ownerInstanceId,
-            Planet target,
-            List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants
-        )
-        {
-            return MissionTestFactory.TryCreate(
-                MissionTypeIDs.InciteUprising,
-                null,
-                ownerInstanceId,
-                target,
-                mainParticipants,
-                decoyParticipants
-            );
-        }
-
         [Test]
         public void RollParticipantSuccess_ResistanceRegimentReducesScoreByOne()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -72,7 +55,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -102,128 +85,11 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_PlanetAlreadyInUprising_ReturnsNull()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-            enemyPlanet.BeginUprising();
-
-            Assert.IsNull(
-                CreateInciteUprisingMission(
-                    "empire",
-                    enemyPlanet,
-                    new List<IMissionParticipant> { officer },
-                    new List<IMissionParticipant>()
-                ),
-                "TryCreate should return null when target planet is already in uprising"
-            );
-        }
-
-        [Test]
-        public void TryCreate_OwnedPlanetTarget_ReturnsNull()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Assert.IsNull(
-                CreateInciteUprisingMission(
-                    "empire",
-                    empPlanet,
-                    new List<IMissionParticipant> { officer },
-                    new List<IMissionParticipant>()
-                ),
-                "TryCreate should return null when target planet is owned by the mission owner"
-            );
-        }
-
-        [Test]
-        public void TryCreate_NeutralPlanetTarget_ReturnsNull()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            enemyPlanet.OwnerInstanceID = null;
-
-            Assert.IsNull(
-                CreateInciteUprisingMission(
-                    "empire",
-                    enemyPlanet,
-                    new List<IMissionParticipant> { officer },
-                    new List<IMissionParticipant>()
-                ),
-                "TryCreate should return null when target planet is neutral (no owner to revolt against)"
-            );
-        }
-
-        [Test]
-        public void DisplayName_IsHumanReadable()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Mission mission = CreateInciteUprisingMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(0);
-
-            Assert.AreEqual("Incite Uprising", mission.DisplayName);
-        }
-
-        [Test]
-        public void GetAbortReason_UprisingAlreadyStarted_DoesNotAbort()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Mission mission = CreateInciteUprisingMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(0);
-
-            enemyPlanet.BeginUprising();
-
-            Assert.IsNull(mission.GetAbortReason(game));
-        }
-
-        [Test]
         public void RollParticipantSuccess_NonResistanceDefenseRatingDoesNotAffectScore()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -258,6 +124,123 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_PlanetAlreadyInUprising_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            enemyPlanet.BeginUprising();
+
+            Assert.IsNull(
+                CreateInciteUprisingMission(
+                    "empire",
+                    enemyPlanet,
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant>()
+                ),
+                "TryCreate should return null when target planet is already in uprising"
+            );
+        }
+
+        [Test]
+        public void TryCreate_OwnedPlanetTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Assert.IsNull(
+                CreateInciteUprisingMission(
+                    "empire",
+                    empirePlanet,
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant>()
+                ),
+                "TryCreate should return null when target planet is owned by the mission owner"
+            );
+        }
+
+        [Test]
+        public void TryCreate_NeutralPlanetTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            enemyPlanet.OwnerInstanceID = null;
+
+            Assert.IsNull(
+                CreateInciteUprisingMission(
+                    "empire",
+                    enemyPlanet,
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant>()
+                ),
+                "TryCreate should return null when target planet is neutral (no owner to revolt against)"
+            );
+        }
+
+        [Test]
+        public void DisplayName_IsHumanReadable()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Mission mission = CreateInciteUprisingMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            Assert.AreEqual("Incite Uprising", mission.DisplayName);
+        }
+
+        [Test]
+        public void GetAbortReason_UprisingAlreadyStarted_DoesNotAbort()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Mission mission = CreateInciteUprisingMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            enemyPlanet.BeginUprising();
+
+            Assert.IsNull(mission.GetAbortReason(game));
+        }
+
+        [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
             Mission mission = new InciteUprisingMission
@@ -282,6 +265,23 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
             Assert.IsFalse(deserialized.HasInitiated);
             Assert.AreEqual(20, deserialized.MaxProgress);
+        }
+
+        private Mission CreateInciteUprisingMission(
+            string ownerInstanceId,
+            Planet target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
+        {
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.InciteUprising,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants
+            );
         }
     }
 }

@@ -15,25 +15,6 @@ namespace Rebellion.Tests.Generation
         private SystemResourcesSection _res;
         private string[] _factionIds;
 
-        private static void Configure(
-            PlanetSystem[] systems,
-            GalaxyClassificationResult classification,
-            GameGenerationConfig config,
-            string[] factionIds,
-            IRandomNumberProvider rng
-        )
-        {
-            GenerationContext ctx = new GenerationContext
-            {
-                Systems = systems,
-                Classification = classification,
-                Config = config,
-                Summary = new GameSummary { StartingFactionIDs = factionIds },
-                Rng = rng,
-            };
-            new PlanetSeeder().Seed(ctx);
-        }
-
         [SetUp]
         public void SetUp()
         {
@@ -130,16 +111,6 @@ namespace Rebellion.Tests.Generation
             };
 
             _factionIds = new[] { "FNALL1", "FNEMP1" };
-        }
-
-        private GameGenerationConfig CreateRules()
-        {
-            return new GameGenerationConfig
-            {
-                GalaxyClassification = _gc,
-                SystemSupport = _sup,
-                SystemResources = _res,
-            };
         }
 
         [Test]
@@ -608,6 +579,35 @@ namespace Rebellion.Tests.Generation
             new PlanetSeeder().Seed(ctx);
 
             Assert.AreEqual(7, planet.EnergyCapacity);
+        }
+
+        private static void Configure(
+            PlanetSystem[] systems,
+            GalaxyClassificationResult classification,
+            GameGenerationConfig config,
+            string[] factionIds,
+            IRandomNumberProvider rng
+        )
+        {
+            GenerationContext ctx = new GenerationContext
+            {
+                Systems = systems,
+                Classification = classification,
+                Config = config,
+                Summary = new GameSummary { StartingFactionIDs = factionIds },
+                Rng = rng,
+            };
+            new PlanetSeeder().Seed(ctx);
+        }
+
+        private GameGenerationConfig CreateRules()
+        {
+            return new GameGenerationConfig
+            {
+                GalaxyClassification = _gc,
+                SystemSupport = _sup,
+                SystemResources = _res,
+            };
         }
     }
 } // namespace Rebellion.Tests.Generation

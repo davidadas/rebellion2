@@ -16,32 +16,12 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class AssassinationMissionTests
     {
-        private static Mission CreateAssassinationMission(
-            GameRoot game,
-            string ownerInstanceId,
-            ISceneNode target,
-            List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants,
-            Officer targetOfficer
-        )
-        {
-            return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Assassination,
-                game,
-                ownerInstanceId,
-                target,
-                mainParticipants,
-                decoyParticipants,
-                targetOfficer: targetOfficer
-            );
-        }
-
         [Test]
         public void TryCreate_ValidTarget_ReturnsNotNull()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -71,7 +51,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -97,7 +77,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -120,7 +100,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -143,7 +123,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -168,14 +148,14 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
             Officer friendly = EntityFactory.CreateOfficer("friendly", "empire");
-            game.AttachNode(friendly, empPlanet);
+            game.AttachNode(friendly, empirePlanet);
 
             Mission mission = CreateAssassinationMission(
                 game,
@@ -197,7 +177,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -224,7 +204,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -251,7 +231,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -279,7 +259,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -323,7 +303,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -369,7 +349,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -409,7 +389,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -461,7 +441,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -525,6 +505,26 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(2, deserialized.MaxProgress);
             Assert.AreEqual(1, deserialized.CurrentProgress);
+        }
+
+        private static Mission CreateAssassinationMission(
+            GameRoot game,
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            Officer targetOfficer
+        )
+        {
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Assassination,
+                game,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                targetOfficer: targetOfficer
+            );
         }
     }
 }

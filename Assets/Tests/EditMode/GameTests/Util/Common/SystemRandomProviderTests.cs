@@ -55,10 +55,16 @@ namespace Rebellion.Tests.Util.Common
         [Test]
         public void Constructor_WithAdvanceToZero_BehavesAsFreshSeed()
         {
-            SystemRandomProvider a = new SystemRandomProvider(seed: 42);
-            SystemRandomProvider b = new SystemRandomProvider(seed: 42, advanceTo: 0);
+            SystemRandomProvider freshProvider = new SystemRandomProvider(seed: 42);
+            SystemRandomProvider zeroAdvanceProvider = new SystemRandomProvider(
+                seed: 42,
+                advanceTo: 0
+            );
 
-            Assert.AreEqual(a.NextInt(0, int.MaxValue), b.NextInt(0, int.MaxValue));
+            Assert.AreEqual(
+                freshProvider.NextInt(0, int.MaxValue),
+                zeroAdvanceProvider.NextInt(0, int.MaxValue)
+            );
         }
     }
 }

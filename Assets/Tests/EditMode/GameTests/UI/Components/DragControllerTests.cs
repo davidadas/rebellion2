@@ -200,19 +200,6 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
-        public void MoveAndEnd_MissingActiveDrag_ReturnFalse()
-        {
-            DragController controller = new DragController(0);
-
-            bool moved = controller.Move(1, 2);
-            bool ended = controller.End(1, 2, out DragRequest request);
-
-            Assert.IsFalse(moved);
-            Assert.IsFalse(ended);
-            Assert.IsNull(request);
-        }
-
-        [Test]
         public void TryGetPreview_MissingActiveDrag_ReturnsClearedOutputs()
         {
             DragController controller = new DragController(0);
@@ -254,6 +241,19 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(36, y);
             Assert.AreEqual(10, width);
             Assert.AreEqual(20, height);
+        }
+
+        [Test]
+        public void MoveAndEnd_MissingActiveDrag_ReturnFalse()
+        {
+            DragController controller = new DragController(0);
+
+            bool moved = controller.Move(1, 2);
+            bool ended = controller.End(1, 2, out DragRequest request);
+
+            Assert.IsFalse(moved);
+            Assert.IsFalse(ended);
+            Assert.IsNull(request);
         }
 
         [Test]

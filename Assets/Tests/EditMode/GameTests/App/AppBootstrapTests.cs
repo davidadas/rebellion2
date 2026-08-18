@@ -6,8 +6,8 @@ namespace Rebellion.Tests.App
     [TestFixture]
     public sealed class AppBootstrapTests
     {
-        private AppBootstrap bootstrap;
-        private GameObject gameObject;
+        private AppBootstrap _bootstrap;
+        private GameObject _gameObject;
 
         [SetUp]
         public void SetUp()
@@ -19,15 +19,15 @@ namespace Rebellion.Tests.App
             GameLaunchContext.Summary.PackVersion = null;
             GameLaunchContext.Summary.ScenarioID = null;
 
-            gameObject = new GameObject("AppBootstrapUnderTest");
-            gameObject.SetActive(false);
-            bootstrap = gameObject.AddComponent<AppBootstrap>();
+            _gameObject = new GameObject("AppBootstrapUnderTest");
+            _gameObject.SetActive(false);
+            _bootstrap = _gameObject.AddComponent<AppBootstrap>();
         }
 
         [TearDown]
         public void TearDown()
         {
-            Object.DestroyImmediate(gameObject);
+            Object.DestroyImmediate(_gameObject);
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);
         }
@@ -35,7 +35,7 @@ namespace Rebellion.Tests.App
         [Test]
         public void InitializeRuntimeCore_BlankLaunchContext_SetsActiveContentDefaults()
         {
-            UIComponentTestHelper.InvokeLifecycle(bootstrap, "InitializeRuntimeCore");
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
 
             Assert.AreEqual(
                 TestContent.Pack.Scenario.DefaultPlayerFactionID,

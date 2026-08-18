@@ -8,14 +8,6 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class FactionSeederTests
     {
-        private static GenerationContext BuildContext(Faction[] factions, int startingResearchLevel)
-        {
-            GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Factions = factions;
-            ctx.Summary.StartingResearchLevel = startingResearchLevel;
-            return ctx;
-        }
-
         [Test]
         public void Seed_NonZeroStartingLevel_AppliesToEachResearchDiscipline()
         {
@@ -40,6 +32,14 @@ namespace Rebellion.Tests.Generation
 
             Assert.AreEqual(3, empire.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
             Assert.AreEqual(3, alliance.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
+        }
+
+        private static GenerationContext BuildContext(Faction[] factions, int startingResearchLevel)
+        {
+            GenerationContext ctx = GenerationContextFactory.CreateDefault();
+            ctx.Factions = factions;
+            ctx.Summary.StartingResearchLevel = startingResearchLevel;
+            return ctx;
         }
     }
 }

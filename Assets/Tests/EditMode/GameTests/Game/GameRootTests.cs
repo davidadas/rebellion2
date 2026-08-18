@@ -53,27 +53,28 @@ namespace Rebellion.Tests.Game
             _fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
 
             // Initialize the _game.
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = new GameConfig();
             _game = new GameRoot(_summary, config);
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
         }
 
-        private static Building CreateBuilding(
-            string instanceId,
-            BuildingType buildingType,
-            int maintenanceCost,
-            ManufacturingStatus manufacturingStatus = ManufacturingStatus.Complete
-        )
+        [Test]
+        public void GetConfig_ConfigNotSet_ThrowsException()
         {
-            return new Building
-            {
-                InstanceID = instanceId,
-                OwnerInstanceID = "FACTION1",
-                BuildingType = buildingType,
-                MaintenanceCost = maintenanceCost,
-                ManufacturingStatus = manufacturingStatus,
-            };
+            GameRoot game = new GameRoot();
+
+            Assert.Throws<InvalidOperationException>(() => game.GetConfig());
+        }
+
+        [Test]
+        public void Constructor_ConfigProvided_SetsConfig()
+        {
+            GameConfig config = new GameConfig();
+
+            GameRoot game = new GameRoot(config);
+
+            Assert.AreSame(config, game.Config);
         }
 
         [Test]
@@ -89,6 +90,17 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(0, _game.CurrentTick, "Current tick should be initialized to 0");
             Assert.IsEmpty(_game.GetEventPool(), "Event pool should be empty initially");
             Assert.IsEmpty(_game.EventRuntime.States, "Event states should be empty initially");
+        }
+
+        [Test]
+        public void SetConfig_ValidConfig_SetsConfig()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot();
+
+            game.SetConfig(config);
+
+            Assert.AreSame(config, game.GetConfig());
         }
 
         [Test]
@@ -132,7 +144,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void FactionMaterialSupplies_WithUnevenMinesAndRefineries_SplitsRawAndRefined()
+        public void AttachNode_ResourceBuildings_UpdatesFactionMaterialSupplies()
         {
             _planet.NumRawResourceNodes = 10;
             _planet.IsColonized = true;
@@ -150,7 +162,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void FactionMaintenanceHeadroom_WithInProgressUnit_UsesProjectedMaintenance()
+        public void AttachNode_InProgressUnit_UpdatesFactionMaintenanceHeadroom()
         {
             _planet.NumRawResourceNodes = 10;
             _planet.IsColonized = true;
@@ -366,6 +378,22 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void GetSceneNodesByType_RetainedOfficer_ExcludesOfficerFromActiveGalaxy()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "RETAINED_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+
+            List<Officer> activeOfficers = _game.GetSceneNodesByType<Officer>();
+
+            CollectionAssert.DoesNotContain(activeOfficers, officer);
+        }
+
+        [Test]
         public void RegisterOwnedUnit_ValidUnit_AddsUnitToFaction()
         {
             // Register unit.
@@ -532,11 +560,11 @@ namespace Rebellion.Tests.Game
             // Create game with summary but no player faction ID.
             GameSummary summaryWithoutPlayer = new GameSummary();
             GameConfig config = TestContent.Data.GameConfig;
-            GameRoot gameWithoutPlayerID = new GameRoot(summaryWithoutPlayer, config);
+            GameRoot gameWithoutPlayerId = new GameRoot(summaryWithoutPlayer, config);
 
             // Attempt to get player faction.
             Assert.Throws<InvalidOperationException>(
-                () => gameWithoutPlayerID.GetPlayerFaction(),
+                () => gameWithoutPlayerId.GetPlayerFaction(),
                 "Should throw exception when PlayerFactionID is null or empty"
             );
         }
@@ -771,23 +799,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void GetSceneNodesByType_InactiveOfficer_ExcludesOfficerFromActiveGalaxy()
-        {
-            Officer officer = new Officer
-            {
-                InstanceID = "INACTIVE_OFFICER",
-                OwnerInstanceID = _faction1.InstanceID,
-            };
-            _game.AttachNode(officer, _planet);
-            officer.IsEnabled = false;
-
-            List<Officer> activeOfficers = _game.GetSceneNodesByType<Officer>();
-
-            CollectionAssert.DoesNotContain(activeOfficers, officer);
-        }
-
-        [Test]
-        public void ChangeOwnership_InactiveOfficer_PreservesDisabledStateAndChangesOwner()
+        public void ChangeOwnership_OfficerInVoid_PreservesRetentionAndChangesOwner()
         {
             Officer officer = new Officer
             {
@@ -864,6 +876,23 @@ namespace Rebellion.Tests.Game
                     .GetOwnedUnitsByType<Fleet>(),
                 restoredFleet
             );
+        }
+
+        private static Building CreateBuilding(
+            string instanceId,
+            BuildingType buildingType,
+            int maintenanceCost,
+            ManufacturingStatus manufacturingStatus = ManufacturingStatus.Complete
+        )
+        {
+            return new Building
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = "FACTION1",
+                BuildingType = buildingType,
+                MaintenanceCost = maintenanceCost,
+                ManufacturingStatus = manufacturingStatus,
+            };
         }
     }
 } // namespace Rebellion.Tests.Game

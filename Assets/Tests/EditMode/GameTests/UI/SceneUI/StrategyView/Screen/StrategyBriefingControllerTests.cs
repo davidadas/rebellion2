@@ -205,6 +205,67 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        [Test]
+        public void Play_NoSegments_CompletesWithoutSkipping()
+        {
+            GameRoot game = CreateGame();
+            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
+            Texture2D idle = new Texture2D(1, 1);
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                StrategyBriefingController controller = CreateController(
+                    game,
+                    advisorTheme,
+                    CreateTextures(advisorTheme, idle),
+                    rootObject
+                );
+                bool? skipped = null;
+
+                controller.Play(CreateBriefing(), wasSkipped => skipped = wasSkipped);
+
+                Assert.IsFalse(skipped);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [TestCase(null, 0)]
+        [TestCase("Missing", 1)]
+        public void Play_InvalidSegment_ThrowsInvalidOperationException(
+            string animation,
+            int frameCount
+        )
+        {
+            GameRoot game = CreateGame();
+            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
+            StrategyBriefingTheme briefing = CreateBriefing();
+            briefing.Segments.Add(
+                new StrategyBriefingSegmentTheme { Animation = animation, FrameCount = frameCount }
+            );
+            Texture2D idle = new Texture2D(1, 1);
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                StrategyBriefingController controller = CreateController(
+                    game,
+                    advisorTheme,
+                    CreateTextures(advisorTheme, idle),
+                    rootObject
+                );
+
+                Assert.Throws<InvalidOperationException>(() => controller.Play(briefing, null));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
         /// <summary>
         /// Verifies skipping abandons a segment transition that is still loading.
         /// </summary>
@@ -312,34 +373,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Play_NoSegments_CompletesWithoutSkipping()
-        {
-            GameRoot game = CreateGame();
-            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
-            Texture2D idle = new Texture2D(1, 1);
-            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
-            try
-            {
-                StrategyBriefingController controller = CreateController(
-                    game,
-                    advisorTheme,
-                    CreateTextures(advisorTheme, idle),
-                    rootObject
-                );
-                bool? skipped = null;
-
-                controller.Play(CreateBriefing(), wasSkipped => skipped = wasSkipped);
-
-                Assert.IsFalse(skipped);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(idle);
-                UnityEngine.Object.DestroyImmediate(rootObject);
-            }
-        }
-
-        [Test]
         public void Skip_NoActiveBriefing_DoesNotThrow()
         {
             GameRoot game = CreateGame();
@@ -382,39 +415,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 
                 Assert.DoesNotThrow(controller.Pause);
                 Assert.DoesNotThrow(controller.Resume);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(idle);
-                UnityEngine.Object.DestroyImmediate(rootObject);
-            }
-        }
-
-        [TestCase(null, 0)]
-        [TestCase("Missing", 1)]
-        public void Play_InvalidSegment_ThrowsInvalidOperationException(
-            string animation,
-            int frameCount
-        )
-        {
-            GameRoot game = CreateGame();
-            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
-            StrategyBriefingTheme briefing = CreateBriefing();
-            briefing.Segments.Add(
-                new StrategyBriefingSegmentTheme { Animation = animation, FrameCount = frameCount }
-            );
-            Texture2D idle = new Texture2D(1, 1);
-            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
-            try
-            {
-                StrategyBriefingController controller = CreateController(
-                    game,
-                    advisorTheme,
-                    CreateTextures(advisorTheme, idle),
-                    rootObject
-                );
-
-                Assert.Throws<InvalidOperationException>(() => controller.Play(briefing, null));
             }
             finally
             {

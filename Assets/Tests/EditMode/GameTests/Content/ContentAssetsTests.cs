@@ -68,6 +68,22 @@ namespace Rebellion.Tests.Content
             Assert.IsNull(assets.GetTexture("Application/Textures/missing"));
         }
 
+        [Test]
+        public void GetTexture_UnscopedAddress_ThrowsArgumentException()
+        {
+            using ContentAssets assets = CreateAssets();
+
+            Assert.Throws<ArgumentException>(() => assets.GetTexture("Textures/outside"));
+        }
+
+        [Test]
+        public void GetTexture_AddressLeavesPackRoot_ThrowsArgumentException()
+        {
+            using ContentAssets assets = CreateAssets();
+
+            Assert.Throws<ArgumentException>(() => assets.GetTexture("Pack/../../outside"));
+        }
+
         /// <summary>
         /// Verifies sprite caching distinguishes explicit nine-slice borders.
         /// </summary>
@@ -102,22 +118,6 @@ namespace Rebellion.Tests.Content
             File.Delete(Path.Combine(_contentRoot, "Application", "Textures", "test.png"));
 
             Assert.IsNotNull(assets.GetTexture(_textureAddress));
-        }
-
-        [Test]
-        public void GetTexture_UnscopedAddress_ThrowsArgumentException()
-        {
-            using ContentAssets assets = CreateAssets();
-
-            Assert.Throws<ArgumentException>(() => assets.GetTexture("Textures/outside"));
-        }
-
-        [Test]
-        public void GetTexture_AddressLeavesPackRoot_ThrowsArgumentException()
-        {
-            using ContentAssets assets = CreateAssets();
-
-            Assert.Throws<ArgumentException>(() => assets.GetTexture("Pack/../../outside"));
         }
 
         [Test]

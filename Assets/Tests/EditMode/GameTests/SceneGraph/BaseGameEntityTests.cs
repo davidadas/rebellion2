@@ -49,6 +49,40 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void TypeID_WhenNotSet_ReturnsNull()
+        {
+            BaseGameEntity entity = new BaseGameEntity();
+
+            string typeId = entity.TypeID;
+
+            Assert.IsNull(typeId, "TypeID should be null when not explicitly set.");
+        }
+
+        [Test]
+        public void TypeID_SetToNull_ReturnsNull()
+        {
+            BaseGameEntity entity = new BaseGameEntity();
+
+            entity.TypeID = null;
+
+            Assert.IsNull(entity.TypeID, "TypeID should return null when set to null.");
+        }
+
+        [Test]
+        public void TypeID_SetToEmptyString_ReturnsEmptyString()
+        {
+            BaseGameEntity entity = new BaseGameEntity();
+
+            entity.TypeID = "";
+
+            Assert.AreEqual(
+                "",
+                entity.TypeID,
+                "TypeID should return empty string when set to empty string."
+            );
+        }
+
+        [Test]
         public void DisplayName_SetValue_ReturnsCorrectValue()
         {
             BaseGameEntity entity = new BaseGameEntity();
@@ -64,6 +98,40 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void DisplayName_WhenNotSet_ReturnsNull()
+        {
+            BaseGameEntity entity = new BaseGameEntity();
+
+            string displayName = entity.DisplayName;
+
+            Assert.IsNull(displayName, "DisplayName should be null when not explicitly set.");
+        }
+
+        [Test]
+        public void DisplayName_SetToNull_ReturnsNull()
+        {
+            BaseGameEntity entity = new BaseGameEntity();
+
+            entity.DisplayName = null;
+
+            Assert.IsNull(entity.DisplayName, "DisplayName should return null when set to null.");
+        }
+
+        [Test]
+        public void DisplayName_SetToEmptyString_ReturnsEmptyString()
+        {
+            BaseGameEntity entity = new BaseGameEntity();
+
+            entity.DisplayName = "";
+
+            Assert.AreEqual(
+                "",
+                entity.DisplayName,
+                "DisplayName should return empty string when set to empty string."
+            );
+        }
+
+        [Test]
         public void Description_SetValue_ReturnsCorrectValue()
         {
             BaseGameEntity entity = new BaseGameEntity();
@@ -75,6 +143,40 @@ namespace Rebellion.Tests.SceneGraph
                 expectedDescription,
                 entity.Description,
                 "Description should return the value that was set."
+            );
+        }
+
+        [Test]
+        public void Description_WhenNotSet_ReturnsNull()
+        {
+            BaseGameEntity entity = new BaseGameEntity();
+
+            string description = entity.Description;
+
+            Assert.IsNull(description, "Description should be null when not explicitly set.");
+        }
+
+        [Test]
+        public void Description_SetToNull_ReturnsNull()
+        {
+            BaseGameEntity entity = new BaseGameEntity();
+
+            entity.Description = null;
+
+            Assert.IsNull(entity.Description, "Description should return null when set to null.");
+        }
+
+        [Test]
+        public void Description_SetToEmptyString_ReturnsEmptyString()
+        {
+            BaseGameEntity entity = new BaseGameEntity();
+
+            entity.Description = "";
+
+            Assert.AreEqual(
+                "",
+                entity.Description,
+                "Description should return empty string when set to empty string."
             );
         }
 
@@ -240,108 +342,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(
                 imagePath,
                 "GetDisplayImagePath should return null when DisplayImagePath is not set."
-            );
-        }
-
-        [Test]
-        public void TypeID_WhenNotSet_ReturnsNull()
-        {
-            BaseGameEntity entity = new BaseGameEntity();
-
-            string typeId = entity.TypeID;
-
-            Assert.IsNull(typeId, "TypeID should be null when not explicitly set.");
-        }
-
-        [Test]
-        public void TypeID_SetToNull_ReturnsNull()
-        {
-            BaseGameEntity entity = new BaseGameEntity();
-
-            entity.TypeID = null;
-
-            Assert.IsNull(entity.TypeID, "TypeID should return null when set to null.");
-        }
-
-        [Test]
-        public void TypeID_SetToEmptyString_ReturnsEmptyString()
-        {
-            BaseGameEntity entity = new BaseGameEntity();
-
-            entity.TypeID = "";
-
-            Assert.AreEqual(
-                "",
-                entity.TypeID,
-                "TypeID should return empty string when set to empty string."
-            );
-        }
-
-        [Test]
-        public void DisplayName_WhenNotSet_ReturnsNull()
-        {
-            BaseGameEntity entity = new BaseGameEntity();
-
-            string displayName = entity.DisplayName;
-
-            Assert.IsNull(displayName, "DisplayName should be null when not explicitly set.");
-        }
-
-        [Test]
-        public void DisplayName_SetToNull_ReturnsNull()
-        {
-            BaseGameEntity entity = new BaseGameEntity();
-
-            entity.DisplayName = null;
-
-            Assert.IsNull(entity.DisplayName, "DisplayName should return null when set to null.");
-        }
-
-        [Test]
-        public void DisplayName_SetToEmptyString_ReturnsEmptyString()
-        {
-            BaseGameEntity entity = new BaseGameEntity();
-
-            entity.DisplayName = "";
-
-            Assert.AreEqual(
-                "",
-                entity.DisplayName,
-                "DisplayName should return empty string when set to empty string."
-            );
-        }
-
-        [Test]
-        public void Description_WhenNotSet_ReturnsNull()
-        {
-            BaseGameEntity entity = new BaseGameEntity();
-
-            string description = entity.Description;
-
-            Assert.IsNull(description, "Description should be null when not explicitly set.");
-        }
-
-        [Test]
-        public void Description_SetToNull_ReturnsNull()
-        {
-            BaseGameEntity entity = new BaseGameEntity();
-
-            entity.Description = null;
-
-            Assert.IsNull(entity.Description, "Description should return null when set to null.");
-        }
-
-        [Test]
-        public void Description_SetToEmptyString_ReturnsEmptyString()
-        {
-            BaseGameEntity entity = new BaseGameEntity();
-
-            entity.Description = "";
-
-            Assert.AreEqual(
-                "",
-                entity.Description,
-                "Description should return empty string when set to empty string."
             );
         }
 

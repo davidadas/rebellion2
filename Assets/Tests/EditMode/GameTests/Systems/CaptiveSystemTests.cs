@@ -14,77 +14,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class CaptiveSystemTests
     {
-        private (
-            GameRoot game,
-            Planet planet,
-            Officer captive,
-            MovementSystem movement
-        ) BuildScene()
-        {
-            GameConfig config = TestConfig.Create();
-            config.Captive = new GameConfig.CaptiveConfig
-            {
-                EscapeTable = new Dictionary<int, int>
-                {
-                    { -50, 1 },
-                    { -49, 2 },
-                    { -31, 3 },
-                    { -11, 5 },
-                    { 10, 10 },
-                    { 20, 15 },
-                    { 30, 20 },
-                    { 40, 25 },
-                    { 50, 30 },
-                },
-                EscapeLoyaltyShift = -10,
-            };
-            GameRoot game = new GameRoot(config);
-            game.GetFactions().Add(new Faction { InstanceID = "empire" });
-            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
-
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "sys1",
-                PositionX = 0,
-                PositionY = 0,
-            };
-            game.AttachNode(system, game.Galaxy);
-
-            Planet empirePlanet = new Planet
-            {
-                InstanceID = "emp_planet",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-                PositionX = 100,
-                PositionY = 0,
-            };
-            game.AttachNode(empirePlanet, system);
-
-            Planet rebelPlanet = new Planet
-            {
-                InstanceID = "reb_planet",
-                OwnerInstanceID = "rebels",
-                IsColonized = true,
-                PositionX = 0,
-                PositionY = 0,
-            };
-            game.AttachNode(rebelPlanet, system);
-
-            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
-            captive.IsCaptured = true;
-            captive.CaptorInstanceID = "rebels";
-            captive.CanEscape = true;
-            captive.Loyalty = 80;
-            game.AttachNode(captive, rebelPlanet);
-
-            MovementSystem movement = new MovementSystem(
-                game,
-                new FogOfWarSystem(game),
-                new FleetSystem(game)
-            );
-            return (game, rebelPlanet, captive, movement);
-        }
-
         [Test]
         public void ProcessTick_EscapeRollSucceeds_FreesOfficer()
         {
@@ -226,6 +155,77 @@ namespace Rebellion.Tests.Systems
             system.ProcessTick();
 
             Assert.AreEqual(0, captive.Loyalty, "Loyalty should clamp to 0, not go negative");
+        }
+
+        private (
+            GameRoot game,
+            Planet planet,
+            Officer captive,
+            MovementSystem movement
+        ) BuildScene()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Captive = new GameConfig.CaptiveConfig
+            {
+                EscapeTable = new Dictionary<int, int>
+                {
+                    { -50, 1 },
+                    { -49, 2 },
+                    { -31, 3 },
+                    { -11, 5 },
+                    { 10, 10 },
+                    { 20, 15 },
+                    { 30, 20 },
+                    { 40, 25 },
+                    { 50, 30 },
+                },
+                EscapeLoyaltyShift = -10,
+            };
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "emp_planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(empirePlanet, system);
+
+            Planet rebelPlanet = new Planet
+            {
+                InstanceID = "reb_planet",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(rebelPlanet, system);
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "rebels";
+            captive.CanEscape = true;
+            captive.Loyalty = 80;
+            game.AttachNode(captive, rebelPlanet);
+
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            return (game, rebelPlanet, captive, movement);
         }
     }
 }

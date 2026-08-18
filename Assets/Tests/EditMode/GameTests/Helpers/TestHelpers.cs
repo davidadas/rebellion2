@@ -5,9 +5,11 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
@@ -268,6 +270,35 @@ public static class TestConfig
     }
 }
 
+/// <summary>
+/// Creates synthetic game-data catalogs for engine tests.
+/// </summary>
+public static class TestGameData
+{
+    /// <summary>
+    /// Creates an empty catalog around the supplied runtime configuration.
+    /// </summary>
+    public static GameDataCatalog Create(GameConfig config = null)
+    {
+        return new GameDataCatalog(
+            config ?? new GameConfig(),
+            new GameGenerationConfig(),
+            Array.Empty<Faction>(),
+            Array.Empty<PlanetSystem>(),
+            Array.Empty<Building>(),
+            Array.Empty<CapitalShip>(),
+            Array.Empty<Starfighter>(),
+            Array.Empty<Regiment>(),
+            Array.Empty<SpecialForces>(),
+            Array.Empty<Officer>(),
+            Array.Empty<GameEvent>(),
+            Array.Empty<MessageDefinition>(),
+            new EncyclopediaEntries(),
+            new FactionThemes()
+        );
+    }
+}
+
 public static class MapPositionTestHelper
 {
     public static Planet WithMapPosition(this Planet planet, int x, int y)
@@ -289,7 +320,7 @@ public static class MissionSceneBuilder
 {
     public static (
         GameRoot game,
-        Planet empPlanet,
+        Planet empirePlanet,
         Planet enemyPlanet,
         Officer officer,
         FogOfWarSystem fog
@@ -310,7 +341,7 @@ public static class MissionSceneBuilder
         };
         game.AttachNode(system, game.Galaxy);
 
-        Planet empPlanet = new Planet
+        Planet empirePlanet = new Planet
         {
             InstanceID = "emp_planet",
             OwnerInstanceID = "empire",
@@ -319,7 +350,7 @@ public static class MissionSceneBuilder
             PositionY = 0,
             PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
         };
-        game.AttachNode(empPlanet, system);
+        game.AttachNode(empirePlanet, system);
 
         Planet enemyPlanet = new Planet
         {
@@ -334,12 +365,12 @@ public static class MissionSceneBuilder
         game.AttachNode(enemyPlanet, system);
 
         Officer officer = EntityFactory.CreateOfficer("o1", "empire");
-        game.AttachNode(officer, empPlanet);
-        officer.MissionReturnParentInstanceID = empPlanet.InstanceID;
-        officer.MissionReturnLocationInstanceID = empPlanet.InstanceID;
+        game.AttachNode(officer, empirePlanet);
+        officer.MissionReturnParentInstanceID = empirePlanet.InstanceID;
+        officer.MissionReturnLocationInstanceID = empirePlanet.InstanceID;
 
         FogOfWarSystem fog = new FogOfWarSystem(game);
-        return (game, empPlanet, enemyPlanet, officer, fog);
+        return (game, empirePlanet, enemyPlanet, officer, fog);
     }
 
     public static void RunToSuccess(Mission mission, GameRoot game)
@@ -385,9 +416,9 @@ public static class TestSystems
 public static class MissionTestFactory
 {
     public static Mission TryCreate(
-        string missionTypeID,
+        string missionTypeId,
         GameRoot game,
-        string ownerInstanceID,
+        string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants = null,
@@ -399,8 +430,8 @@ public static class MissionTestFactory
         MissionContext context = new MissionContext
         {
             Game = game,
-            MissionTypeID = missionTypeID,
-            OwnerInstanceId = ownerInstanceID,
+            MissionTypeID = missionTypeId,
+            OwnerInstanceId = ownerInstanceId,
             Location = target,
             SelectedTarget = selectedTarget,
             MainParticipants = mainParticipants ?? new List<IMissionParticipant>(),
@@ -409,7 +440,7 @@ public static class MissionTestFactory
             Discipline = discipline,
         };
 
-        return missionTypeID switch
+        return missionTypeId switch
         {
             AbductionMission.MissionTypeID => AbductionMission.TryCreate(context),
             AssassinationMission.MissionTypeID => AssassinationMission.TryCreate(context),

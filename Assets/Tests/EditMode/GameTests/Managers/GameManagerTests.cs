@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -18,6 +19,33 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public class GameManagerTests
     {
+        [Test]
+        public void SetGameSpeed_ConfiguredIntervals_UpdatesTickInterval()
+        {
+            GameConfig config = new GameConfig();
+            config.GameSpeed.FastTickIntervalSeconds = 2.5f;
+            config.GameSpeed.MediumTickIntervalSeconds = 12.5f;
+            config.GameSpeed.SlowTickIntervalSeconds = 90.5f;
+            config.GameSpeed.VerySlowTickIntervalSeconds = 120.5f;
+            config.Smuggling.LossPercentByMinimumSupport[0] = 0;
+            GameManager manager = new GameManager(
+                new GameRoot(config),
+                TestGameData.Create(config)
+            );
+
+            manager.SetGameSpeed(TickSpeed.Fast);
+            Assert.AreEqual(2.5f, GetTickInterval(manager));
+
+            manager.SetGameSpeed(TickSpeed.Medium);
+            Assert.AreEqual(12.5f, GetTickInterval(manager));
+
+            manager.SetGameSpeed(TickSpeed.Slow);
+            Assert.AreEqual(90.5f, GetTickInterval(manager));
+
+            manager.SetGameSpeed(TickSpeed.VerySlow);
+            Assert.AreEqual(120.5f, GetTickInterval(manager));
+        }
+
         [Test]
         public void Constructor_WithFactions_RebuildsResearchCatalogs()
         {
@@ -128,39 +156,6 @@ namespace Rebellion.Tests.Managers
             manager.ProcessTick();
 
             Assert.IsEmpty(faction.Messages[MessageType.Conflict]);
-        }
-
-        [Test]
-        public void AdvanceTime_CompletedInterval_ProcessesTickAndRaisesTickCompleted()
-        {
-            GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
-            game.GetFactions().Add(new Faction { InstanceID = "FACTION", DisplayName = "Faction" });
-            GameManager manager = TestContent.CreateGameManager(game);
-            manager.SetGameSpeed(TickSpeed.Fast);
-            int completedTicks = 0;
-            manager.TickCompleted += () => completedTicks++;
-
-            manager.AdvanceTime(config.GameSpeed.FastTickIntervalSeconds);
-
-            Assert.AreEqual(1, game.CurrentTick);
-            Assert.AreEqual(1, completedTicks);
-        }
-
-        [Test]
-        public void AdvanceTime_BelowCompletedInterval_DoesNotProcessTick()
-        {
-            GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
-            GameManager manager = TestContent.CreateGameManager(game);
-            manager.SetGameSpeed(TickSpeed.Fast);
-            int completedTicks = 0;
-            manager.TickCompleted += () => completedTicks++;
-
-            manager.AdvanceTime(config.GameSpeed.FastTickIntervalSeconds / 2f);
-
-            Assert.AreEqual(0, game.CurrentTick);
-            Assert.AreEqual(0, completedTicks);
         }
 
         [Test]
@@ -554,6 +549,39 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void AdvanceTime_CompletedInterval_ProcessesTickAndRaisesTickCompleted()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "FACTION", DisplayName = "Faction" });
+            GameManager manager = TestContent.CreateGameManager(game);
+            manager.SetGameSpeed(TickSpeed.Fast);
+            int completedTicks = 0;
+            manager.TickCompleted += () => completedTicks++;
+
+            manager.AdvanceTime(config.GameSpeed.FastTickIntervalSeconds);
+
+            Assert.AreEqual(1, game.CurrentTick);
+            Assert.AreEqual(1, completedTicks);
+        }
+
+        [Test]
+        public void AdvanceTime_BelowCompletedInterval_DoesNotProcessTick()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            GameManager manager = TestContent.CreateGameManager(game);
+            manager.SetGameSpeed(TickSpeed.Fast);
+            int completedTicks = 0;
+            manager.TickCompleted += () => completedTicks++;
+
+            manager.AdvanceTime(config.GameSpeed.FastTickIntervalSeconds / 2f);
+
+            Assert.AreEqual(0, game.CurrentTick);
+            Assert.AreEqual(0, completedTicks);
+        }
+
+        [Test]
         public void MovementCommand_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -803,6 +831,16 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             return fleet;
+        }
+
+        private static float? GetTickInterval(GameManager manager)
+        {
+            FieldInfo field = typeof(GameManager).GetField(
+                "_tickInterval",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+
+            return (float?)field?.GetValue(manager);
         }
 
         private sealed class EmitResultAction : GameAction

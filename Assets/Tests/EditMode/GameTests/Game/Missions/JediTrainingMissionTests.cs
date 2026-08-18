@@ -40,39 +40,6 @@ namespace Rebellion.Tests.Game.Missions
             _student = CreateJedi("student", 40);
         }
 
-        private Officer CreateJedi(string instanceID, int forceValue, bool isTrainer = false)
-        {
-            Officer officer = EntityFactory.CreateOfficer(instanceID, "rebels");
-            officer.IsForceSensitive = true;
-            officer.IsJediTrainer = isTrainer;
-            officer.IsForceEligible = true;
-            officer.ForceValue = forceValue;
-            _game.AttachNode(officer, _planet);
-            return officer;
-        }
-
-        private JediTrainingMission CreateMission(
-            List<IMissionParticipant> participants = null,
-            Planet planet = null
-        )
-        {
-            participants ??= new List<IMissionParticipant> { _trainer, _student };
-            planet ??= _planet;
-
-            Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.JediTraining,
-                _game,
-                "rebels",
-                planet,
-                participants,
-                new List<IMissionParticipant>()
-            );
-            if (mission != null)
-                _game.AttachNode(mission, planet);
-
-            return mission as JediTrainingMission;
-        }
-
         [Test]
         public void TryCreate_EnemyPlanet_ReturnsNull()
         {
@@ -287,6 +254,39 @@ namespace Rebellion.Tests.Game.Missions
             JediTrainingMission mission = CreateMission();
 
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
+        }
+
+        private Officer CreateJedi(string instanceID, int forceValue, bool isTrainer = false)
+        {
+            Officer officer = EntityFactory.CreateOfficer(instanceID, "rebels");
+            officer.IsForceSensitive = true;
+            officer.IsJediTrainer = isTrainer;
+            officer.IsForceEligible = true;
+            officer.ForceValue = forceValue;
+            _game.AttachNode(officer, _planet);
+            return officer;
+        }
+
+        private JediTrainingMission CreateMission(
+            List<IMissionParticipant> participants = null,
+            Planet planet = null
+        )
+        {
+            participants ??= new List<IMissionParticipant> { _trainer, _student };
+            planet ??= _planet;
+
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.JediTraining,
+                _game,
+                "rebels",
+                planet,
+                participants,
+                new List<IMissionParticipant>()
+            );
+            if (mission != null)
+                _game.AttachNode(mission, planet);
+
+            return mission as JediTrainingMission;
         }
     }
 }

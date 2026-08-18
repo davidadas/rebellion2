@@ -347,14 +347,14 @@ namespace Rebellion.Tests.Generation
             {
                 if (node is Fleet fleet)
                 {
-                    string ownerInstanceID = fleet.GetOwnerInstanceID();
-                    if (fleetsPerFaction.ContainsKey(ownerInstanceID))
+                    string ownerInstanceId = fleet.GetOwnerInstanceID();
+                    if (fleetsPerFaction.ContainsKey(ownerInstanceId))
                     {
-                        fleetsPerFaction[ownerInstanceID]++;
+                        fleetsPerFaction[ownerInstanceId]++;
                     }
                     else
                     {
-                        fleetsPerFaction[ownerInstanceID] = 1;
+                        fleetsPerFaction[ownerInstanceId] = 1;
                     }
                 }
             });

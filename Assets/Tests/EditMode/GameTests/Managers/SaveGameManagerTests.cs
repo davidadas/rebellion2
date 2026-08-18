@@ -83,6 +83,131 @@ namespace Rebellion.Tests.Managers
             CollectionAssert.IsEmpty(Directory.GetFiles(_saveDirectoryPath, "*.tmp"));
         }
 
+        /// <summary>
+        /// Verifies saving truncates an overlong display name at the domain boundary.
+        /// </summary>
+        [Test]
+        public void SaveGameData_OverlongDisplayName_TruncatesStoredName()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
+
+            _saveGameManager.SaveGameData(game, _saveFileName, overlongName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(
+                SaveGameManager.MaxDisplayNameLength,
+                loadedGame.Metadata.SaveDisplayName.Length
+            );
+        }
+
+        [Test]
+        public void SaveGameData_GameWithSummary_StoresPlayerFactionInMetadata()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNEMP1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("FNEMP1", loadedGame.Metadata.PlayerFactionID);
+        }
+
+        [Test]
+        public void SaveGameData_QuickSaveFileName_StoresQuicksaveDisplayName()
+        {
+            _saveFileName = SaveGameManager.QuickSaveFileName;
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("Quicksave", loadedGame.Metadata.SaveDisplayName);
+        }
+
+        [Test]
+        public void SaveGameData_NewSave_StampsCurrentSchemaVersion()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
+        }
+
+        [Test]
+        public void SaveGameData_MetadataWithExistingVersion_OverwritesWithCurrentSchemaVersion()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Metadata = new GameMetadata { SaveVersion = GameMetadata.CurrentSaveVersion + 99 },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
+        }
+
         [Test]
         public void ProcessAutosaveTick_ExceedsRetention_PrunesOldestRestorePoints()
         {
@@ -201,6 +326,26 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("Coruscant Campaign", loadedGame.Metadata.SaveDisplayName);
         }
 
+        [Test]
+        public void SaveSlotGameData_ValidGame_WritesMetadataSidecar()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveSlotGameData(game, 0, "Core Worlds");
+
+            string fileName = _saveGameManager.GetSaveSlotFileName(0);
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveMetadataFilePath(fileName)));
+            SaveGameEntry entry = _saveGameManager.GetSaveSlotEntries().Single();
+            Assert.AreEqual(fileName, entry.FileName);
+            Assert.AreEqual("Core Worlds", entry.Metadata.SaveDisplayName);
+            Assert.AreEqual("FNALL1", entry.Metadata.PlayerFactionID);
+        }
+
         /// <summary>
         /// Verifies save display names use the product's 64-character limit.
         /// </summary>
@@ -208,24 +353,6 @@ namespace Rebellion.Tests.Managers
         public void MaxDisplayNameLength_Is64Characters()
         {
             Assert.AreEqual(64, SaveGameManager.MaxDisplayNameLength);
-        }
-
-        /// <summary>
-        /// Verifies saving truncates an overlong display name at the domain boundary.
-        /// </summary>
-        [Test]
-        public void SaveGameData_OverlongDisplayName_TruncatesStoredName()
-        {
-            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
-            string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
-
-            _saveGameManager.SaveGameData(game, _saveFileName, overlongName);
-
-            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
-            Assert.AreEqual(
-                SaveGameManager.MaxDisplayNameLength,
-                loadedGame.Metadata.SaveDisplayName.Length
-            );
         }
 
         /// <summary>
@@ -245,25 +372,6 @@ namespace Rebellion.Tests.Managers
                 SaveGameManager.MaxDisplayNameLength,
                 entry.Metadata.SaveDisplayName.Length
             );
-        }
-
-        [Test]
-        public void SaveSlotGameData_ValidGame_WritesMetadataSidecar()
-        {
-            GameRoot game = new GameRoot
-            {
-                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
-                Galaxy = new GalaxyMap(),
-            };
-
-            _saveGameManager.SaveSlotGameData(game, 0, "Core Worlds");
-
-            string fileName = _saveGameManager.GetSaveSlotFileName(0);
-            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveMetadataFilePath(fileName)));
-            SaveGameEntry entry = _saveGameManager.GetSaveSlotEntries().Single();
-            Assert.AreEqual(fileName, entry.FileName);
-            Assert.AreEqual("Core Worlds", entry.Metadata.SaveDisplayName);
-            Assert.AreEqual("FNALL1", entry.Metadata.PlayerFactionID);
         }
 
         /// <summary>
@@ -334,7 +442,6 @@ namespace Rebellion.Tests.Managers
 
             // Save the game to disk.
             GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
-            string serializedShit = SerializationHelper.Serialize(game);
             _saveGameManager.SaveGameData(game, _saveFileName);
 
             // Load the game from file.
@@ -423,6 +530,74 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(planetSystem.InstanceID, loadedPlanet.GetParent().InstanceID);
             Assert.AreEqual(fleet.InstanceID, loadedCapitalShip.GetParent().InstanceID);
             Assert.AreEqual(capitalShip.InstanceID, loadedOfficer.GetParent().InstanceID);
+        }
+
+        [Test]
+        public void LoadGameData_SaveVersionMismatch_LoadsWithoutVersionGate()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(saveFilePath);
+            int futureVersion = GameMetadata.CurrentSaveVersion + 99;
+            string bumped = xml.Replace(
+                $"<SaveVersion>{GameMetadata.CurrentSaveVersion}</SaveVersion>",
+                $"<SaveVersion>{futureVersion}</SaveVersion>"
+            );
+            File.WriteAllText(saveFilePath, bumped);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(futureVersion, loadedGame.Metadata.SaveVersion);
+        }
+
+        [Test]
+        public void LoadGameData_SaveVersionMissing_DefaultsVersionToZero()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(saveFilePath);
+            string stripped = System.Text.RegularExpressions.Regex.Replace(
+                xml,
+                @"\s*<SaveVersion>\d+</SaveVersion>",
+                string.Empty
+            );
+            File.WriteAllText(saveFilePath, stripped);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(0, loadedGame.Metadata.SaveVersion);
         }
 
         [Test]
@@ -580,7 +755,6 @@ namespace Rebellion.Tests.Managers
 
             Assert.AreEqual(8, loadedGame.EventRuntime.GetVariable("luke.dagobah.stage"));
             Assert.AreEqual(1, loadedGame.EventRuntime.GetVariable("luke.heritage.revealed"));
-            Assert.AreEqual(0, loadedGame.EventRuntime.GetVariable("unset"));
         }
 
         // TODO: Officer serialization needs investigation - officers have complex initialization requirements
@@ -646,47 +820,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("Test Save", loadedGame.Metadata.SaveDisplayName);
             Assert.AreEqual("FNALL1", loadedGame.Metadata.PlayerFactionID);
             Assert.IsTrue(loadedGame.Metadata.OpeningBriefingCompleted);
-        }
-
-        [Test]
-        public void SaveGameData_GameWithSummary_StoresPlayerFactionInMetadata()
-        {
-            GameSummary summary = new GameSummary
-            {
-                GalaxySize = GameSize.Medium,
-                Difficulty = GameDifficulty.Medium,
-                VictoryCondition = GameVictoryCondition.Headquarters,
-                ResourceAvailability = GameResourceAvailability.Normal,
-                PlayerFactionID = "FNEMP1",
-            };
-
-            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
-
-            _saveGameManager.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
-
-            Assert.AreEqual("FNEMP1", loadedGame.Metadata.PlayerFactionID);
-        }
-
-        [Test]
-        public void SaveGameData_QuickSaveFileName_StoresQuicksaveDisplayName()
-        {
-            _saveFileName = SaveGameManager.QuickSaveFileName;
-            GameSummary summary = new GameSummary
-            {
-                GalaxySize = GameSize.Medium,
-                Difficulty = GameDifficulty.Medium,
-                VictoryCondition = GameVictoryCondition.Headquarters,
-                ResourceAvailability = GameResourceAvailability.Normal,
-                PlayerFactionID = "FNALL1",
-            };
-
-            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
-
-            _saveGameManager.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
-
-            Assert.AreEqual("Quicksave", loadedGame.Metadata.SaveDisplayName);
         }
 
         [Test]
@@ -1117,109 +1250,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("SYS1", loadedAlliance.Fog.PlanetToSystem["PLANET1"]);
             Assert.AreEqual("SYS2", loadedAlliance.Fog.PlanetToSystem["PLANET2"]);
             Assert.AreEqual("SYS2", loadedAlliance.Fog.PlanetToSystem["PLANET3"]);
-        }
-
-        [Test]
-        public void SaveGameData_NewSave_StampsCurrentSchemaVersion()
-        {
-            GameSummary summary = new GameSummary
-            {
-                GalaxySize = GameSize.Medium,
-                Difficulty = GameDifficulty.Medium,
-                VictoryCondition = GameVictoryCondition.Headquarters,
-                ResourceAvailability = GameResourceAvailability.Normal,
-                PlayerFactionID = "FNALL1",
-            };
-
-            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
-
-            _saveGameManager.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
-
-            Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
-        }
-
-        [Test]
-        public void SaveGameData_MetadataWithExistingVersion_OverwritesWithCurrentSchemaVersion()
-        {
-            GameSummary summary = new GameSummary
-            {
-                GalaxySize = GameSize.Medium,
-                Difficulty = GameDifficulty.Medium,
-                VictoryCondition = GameVictoryCondition.Headquarters,
-                ResourceAvailability = GameResourceAvailability.Normal,
-                PlayerFactionID = "FNALL1",
-            };
-
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Metadata = new GameMetadata { SaveVersion = GameMetadata.CurrentSaveVersion + 99 },
-                Galaxy = new GalaxyMap(),
-            };
-
-            _saveGameManager.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
-
-            Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
-        }
-
-        [Test]
-        public void LoadGameData_SaveVersionMismatch_LoadsWithoutVersionGate()
-        {
-            GameSummary summary = new GameSummary
-            {
-                GalaxySize = GameSize.Medium,
-                Difficulty = GameDifficulty.Medium,
-                VictoryCondition = GameVictoryCondition.Headquarters,
-                ResourceAvailability = GameResourceAvailability.Normal,
-                PlayerFactionID = "FNALL1",
-            };
-
-            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
-            _saveGameManager.SaveGameData(game, _saveFileName);
-
-            string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
-            string xml = File.ReadAllText(saveFilePath);
-            int futureVersion = GameMetadata.CurrentSaveVersion + 99;
-            string bumped = xml.Replace(
-                $"<SaveVersion>{GameMetadata.CurrentSaveVersion}</SaveVersion>",
-                $"<SaveVersion>{futureVersion}</SaveVersion>"
-            );
-            File.WriteAllText(saveFilePath, bumped);
-
-            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
-
-            Assert.AreEqual(futureVersion, loadedGame.Metadata.SaveVersion);
-        }
-
-        [Test]
-        public void LoadGameData_SaveVersionMissing_DefaultsVersionToZero()
-        {
-            GameSummary summary = new GameSummary
-            {
-                GalaxySize = GameSize.Medium,
-                Difficulty = GameDifficulty.Medium,
-                VictoryCondition = GameVictoryCondition.Headquarters,
-                ResourceAvailability = GameResourceAvailability.Normal,
-                PlayerFactionID = "FNALL1",
-            };
-
-            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
-            _saveGameManager.SaveGameData(game, _saveFileName);
-
-            string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
-            string xml = File.ReadAllText(saveFilePath);
-            string stripped = System.Text.RegularExpressions.Regex.Replace(
-                xml,
-                @"\s*<SaveVersion>\d+</SaveVersion>",
-                string.Empty
-            );
-            File.WriteAllText(saveFilePath, stripped);
-
-            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
-
-            Assert.AreEqual(0, loadedGame.Metadata.SaveVersion);
         }
     }
 } // namespace Rebellion.Tests.Managers

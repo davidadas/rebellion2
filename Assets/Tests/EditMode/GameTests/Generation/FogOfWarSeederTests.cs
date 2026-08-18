@@ -11,52 +11,6 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class FogOfWarSeederTests
     {
-        private static (
-            GameRoot game,
-            PlanetSystem coreSystem,
-            Planet empirePlanet,
-            Faction empire,
-            Faction alliance
-        ) BuildScene()
-        {
-            GameRoot game = new GameRoot { Summary = new GameSummary() };
-            game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
-
-            Faction empire = new Faction { InstanceID = "FNEMP1" };
-            Faction alliance = new Faction { InstanceID = "FNALL1" };
-            game.GetFactions().Add(empire);
-            game.GetFactions().Add(alliance);
-
-            PlanetSystem coreSystem = new PlanetSystem
-            {
-                InstanceID = "core_sys",
-                SystemType = PlanetSystemType.CoreSystem,
-            };
-            Planet empirePlanet = new Planet
-            {
-                InstanceID = "CORUSCANT",
-                TypeID = "PLSEW05",
-                OwnerInstanceID = "FNEMP1",
-                IsColonized = true,
-                EnergyCapacity = 9,
-                NumRawResourceNodes = 6,
-            };
-            coreSystem.AddChild(empirePlanet);
-            game.Galaxy = new GalaxyMap();
-            game.Galaxy.AddChild(coreSystem);
-
-            return (game, coreSystem, empirePlanet, empire, alliance);
-        }
-
-        private static GenerationContext Wrap(GameRoot game, GameGenerationConfig config = null)
-        {
-            GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Game = game;
-            if (config != null)
-                ctx.Config = config;
-            return ctx;
-        }
-
         [Test]
         public void Seed_ForeignCorePlanet_CapturesResourceSnapshotForNonOwner()
         {
@@ -181,6 +135,51 @@ namespace Rebellion.Tests.Generation
                 rim.GetChildren<Planet>()[0].WasVisitedBy("FNEMP1"),
                 "Visibility overrides should mark the planet as known for the listed faction."
             );
+        }
+
+        private static (
+            GameRoot game,
+            PlanetSystem coreSystem,
+            Planet empirePlanet,
+            Faction empire,
+            Faction alliance
+        ) BuildScene()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
+            game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
+
+            Faction empire = new Faction { InstanceID = "FNEMP1" };
+            Faction alliance = new Faction { InstanceID = "FNALL1" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem coreSystem = new PlanetSystem
+            {
+                InstanceID = "core_sys",
+                SystemType = PlanetSystemType.CoreSystem,
+            };
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "CORUSCANT",
+                TypeID = "PLSEW05",
+                OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
+                EnergyCapacity = 9,
+                NumRawResourceNodes = 6,
+            };
+            coreSystem.Planets.Add(empirePlanet);
+            game.Galaxy = new GalaxyMap { PlanetSystems = new List<PlanetSystem> { coreSystem } };
+
+            return (game, coreSystem, empirePlanet, empire, alliance);
+        }
+
+        private static GenerationContext Wrap(GameRoot game, GameGenerationConfig config = null)
+        {
+            GenerationContext ctx = GenerationContextFactory.CreateDefault();
+            ctx.Game = game;
+            if (config != null)
+                ctx.Config = config;
+            return ctx;
         }
     }
 }

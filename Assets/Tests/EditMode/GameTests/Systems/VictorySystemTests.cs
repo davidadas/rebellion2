@@ -14,50 +14,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class VictorySystemTests
     {
-        private (
-            GameRoot game,
-            Faction empire,
-            Faction rebels,
-            Planet empireHQ,
-            VictorySystem system
-        ) BuildScene(
-            GameVictoryCondition victoryCondition = GameVictoryCondition.Headquarters,
-            bool rebelsCaptureEmpireHQ = true
-        )
-        {
-            GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
-            game.Summary = new GameSummary { VictoryCondition = victoryCondition };
-            game.CurrentTick = 200;
-
-            Faction empire = new Faction { InstanceID = "empire" };
-            Faction rebels = new Faction { InstanceID = "rebels" };
-            game.GetFactions().Add(empire);
-            game.GetFactions().Add(rebels);
-
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "sys1",
-                PositionX = 0,
-                PositionY = 0,
-            };
-            game.AttachNode(system, game.Galaxy);
-
-            Planet empireHQ = new Planet
-            {
-                InstanceID = "hq_empire",
-                OwnerInstanceID = rebelsCaptureEmpireHQ ? "rebels" : "empire",
-                IsColonized = true,
-                PositionX = 0,
-                PositionY = 0,
-                PopularSupport = new Dictionary<string, int>(),
-            };
-            game.AttachNode(empireHQ, system);
-            empire.HQInstanceID = "hq_empire";
-
-            return (game, empire, rebels, empireHQ, new VictorySystem(game));
-        }
-
         [Test]
         public void ProcessTick_HQNotConfigured_ReturnsEmpty()
         {
@@ -360,6 +316,50 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(victory);
             Assert.AreSame(rebels, victory.Winner);
             Assert.AreSame(empire, victory.Loser);
+        }
+
+        private (
+            GameRoot game,
+            Faction empire,
+            Faction rebels,
+            Planet empireHQ,
+            VictorySystem system
+        ) BuildScene(
+            GameVictoryCondition victoryCondition = GameVictoryCondition.Headquarters,
+            bool rebelsCaptureEmpireHQ = true
+        )
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Summary = new GameSummary { VictoryCondition = victoryCondition };
+            game.CurrentTick = 200;
+
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet empireHQ = new Planet
+            {
+                InstanceID = "hq_empire",
+                OwnerInstanceID = rebelsCaptureEmpireHQ ? "rebels" : "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int>(),
+            };
+            game.AttachNode(empireHQ, system);
+            empire.HQInstanceID = "hq_empire";
+
+            return (game, empire, rebels, empireHQ, new VictorySystem(game));
         }
     }
 }

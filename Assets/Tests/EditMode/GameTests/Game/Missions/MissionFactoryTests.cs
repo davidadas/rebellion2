@@ -15,97 +15,6 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class MissionFactoryTests
     {
-        private (GameRoot game, Planet planet, Officer officer, MissionFactory factory) BuildScene()
-        {
-            GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
-
-            Faction empire = new Faction { InstanceID = "empire" };
-            game.GetFactions().Add(empire);
-
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "sys1",
-                PositionX = 0,
-                PositionY = 0,
-            };
-            game.AttachNode(system, game.Galaxy);
-
-            Planet planet = new Planet
-            {
-                InstanceID = "p1",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-                PositionX = 0,
-                PositionY = 0,
-                PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
-            };
-            game.AttachNode(planet, system);
-
-            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
-            game.AttachNode(officer, planet);
-
-            MissionFactory factory = new MissionFactory(game);
-            return (game, planet, officer, factory);
-        }
-
-        private static Officer CreateUnrecruitedOfficer(string factionId)
-        {
-            return new Officer
-            {
-                InstanceID = "ur1",
-                DisplayName = "ur1",
-                RecruitingFactionInstanceIDs = new List<string> { factionId },
-            };
-        }
-
-        private static Regiment CreateSabotageTarget(GameRoot game, Planet planet)
-        {
-            Regiment target = EntityFactory.CreateRegiment("sabotage-target", "empire");
-            target.ManufacturingStatus = ManufacturingStatus.Complete;
-            game.AttachNode(target, planet);
-            return target;
-        }
-
-        private static void AddShipResearchFacility(GameRoot game, Planet planet)
-        {
-            planet.EnergyCapacity = 10;
-            game.AttachNode(
-                new Building
-                {
-                    InstanceID = "shipyard",
-                    OwnerInstanceID = planet.OwnerInstanceID,
-                    ProductionType = ManufacturingType.Ship,
-                    ProcessRate = 1,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                },
-                planet
-            );
-        }
-
-        private static MissionContext CreateContext(
-            GameRoot game,
-            string missionTypeID,
-            string ownerInstanceID,
-            IMissionParticipant participant,
-            Planet target,
-            ResearchDiscipline? discipline = null,
-            ISceneNode selectedTarget = null
-        )
-        {
-            return new MissionContext
-            {
-                Game = game,
-                MissionTypeID = missionTypeID,
-                OwnerInstanceId = ownerInstanceID,
-                Location = target,
-                MainParticipants = new List<IMissionParticipant> { participant },
-                DecoyParticipants = new List<IMissionParticipant>(),
-                Discipline = discipline,
-                SelectedTarget = selectedTarget,
-            };
-        }
-
         [Test]
         public void TryCreateMission_ValidSabotageTarget_ReturnsMissionWithMatchingConfigKey()
         {
@@ -493,6 +402,97 @@ namespace Rebellion.Tests.Game.Missions
                 .ToList();
             Assert.IsNotEmpty(researchIndexes);
             Assert.IsTrue(researchIndexes.All(index => index < diplomacyIndex));
+        }
+
+        private (GameRoot game, Planet planet, Officer officer, MissionFactory factory) BuildScene()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
+            };
+            game.AttachNode(planet, system);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, planet);
+
+            MissionFactory factory = new MissionFactory(game);
+            return (game, planet, officer, factory);
+        }
+
+        private static Officer CreateUnrecruitedOfficer(string factionId)
+        {
+            return new Officer
+            {
+                InstanceID = "ur1",
+                DisplayName = "ur1",
+                RecruitingFactionInstanceIDs = new List<string> { factionId },
+            };
+        }
+
+        private static Regiment CreateSabotageTarget(GameRoot game, Planet planet)
+        {
+            Regiment target = EntityFactory.CreateRegiment("sabotage-target", "empire");
+            target.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(target, planet);
+            return target;
+        }
+
+        private static void AddShipResearchFacility(GameRoot game, Planet planet)
+        {
+            planet.EnergyCapacity = 10;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = planet.OwnerInstanceID,
+                    ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+        }
+
+        private static MissionContext CreateContext(
+            GameRoot game,
+            string missionTypeId,
+            string ownerInstanceId,
+            IMissionParticipant participant,
+            Planet target,
+            ResearchDiscipline? discipline = null,
+            ISceneNode selectedTarget = null
+        )
+        {
+            return new MissionContext
+            {
+                Game = game,
+                MissionTypeID = missionTypeId,
+                OwnerInstanceId = ownerInstanceId,
+                Location = target,
+                MainParticipants = new List<IMissionParticipant> { participant },
+                DecoyParticipants = new List<IMissionParticipant>(),
+                Discipline = discipline,
+                SelectedTarget = selectedTarget,
+            };
         }
     }
 }

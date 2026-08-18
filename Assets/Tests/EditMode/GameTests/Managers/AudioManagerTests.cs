@@ -39,6 +39,32 @@ public sealed class AudioManagerTests
     }
 
     [Test]
+    public void EnsureExists_WhenExistingSceneManagerIsParented_MovesItToPersistentRoot()
+    {
+        GameObject parent = new GameObject("SceneRoot");
+        GameObject audioObject = new GameObject("AudioManager");
+        audioObject.transform.SetParent(parent.transform);
+
+        AudioManager manager = audioObject.AddComponent<AudioManager>();
+        AudioManager ensuredManager = AudioManager.EnsureExists();
+
+        Assert.AreSame(manager, ensuredManager);
+        Assert.AreSame(manager, AudioManager.Instance);
+        Assert.IsNull(manager.transform.parent);
+    }
+
+    [Test]
+    public void EnsureExists_WhenInstanceExists_ReturnsExistingManager()
+    {
+        AudioManager globalManager = AudioManager.EnsureExists();
+
+        AudioManager ensuredManager = AudioManager.EnsureExists();
+
+        Assert.AreSame(globalManager, ensuredManager);
+        Assert.AreSame(globalManager, AudioManager.Instance);
+    }
+
+    [Test]
     public void ApplySettings_ValidAudioSettings_UpdatesVolumeState()
     {
         AudioManager manager = AudioManager.EnsureExists();
@@ -251,32 +277,6 @@ public sealed class AudioManagerTests
         AudioManager manager = AudioManager.EnsureExists();
 
         Assert.Throws<System.ArgumentNullException>(() => manager.PlayDynamicPlaylist(null));
-    }
-
-    [Test]
-    public void EnsureExists_WhenExistingSceneManagerIsParented_MovesItToPersistentRoot()
-    {
-        GameObject parent = new GameObject("SceneRoot");
-        GameObject audioObject = new GameObject("AudioManager");
-        audioObject.transform.SetParent(parent.transform);
-
-        AudioManager manager = audioObject.AddComponent<AudioManager>();
-        AudioManager ensuredManager = AudioManager.EnsureExists();
-
-        Assert.AreSame(manager, ensuredManager);
-        Assert.AreSame(manager, AudioManager.Instance);
-        Assert.IsNull(manager.transform.parent);
-    }
-
-    [Test]
-    public void EnsureExists_WhenInstanceExists_ReturnsExistingManager()
-    {
-        AudioManager globalManager = AudioManager.EnsureExists();
-
-        AudioManager ensuredManager = AudioManager.EnsureExists();
-
-        Assert.AreSame(globalManager, ensuredManager);
-        Assert.AreSame(globalManager, AudioManager.Instance);
     }
 
     private static void DestroyAudioManagers()

@@ -37,32 +37,6 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void CanExecute_WithFriendlyTarget_ReturnsFalse()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
-            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
-            Planet friendlyTarget = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "friendly",
-                empire.InstanceID
-            );
-            Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID);
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
-                fleet,
-                FleetOrderType.Attack,
-                FleetOrderStatus.Staging,
-                friendlyTarget
-            );
-
-            bool canExecute = proposal.CanExecute(context);
-
-            Assert.IsFalse(canExecute);
-        }
-
-        [Test]
         public void Execute_WithCompletedAttackOrder_ClearsOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -87,6 +61,32 @@ namespace Rebellion.Tests.AI.Proposals
             proposal.Execute(context);
 
             Assert.IsNull(fleet.Order);
+        }
+
+        [Test]
+        public void CanExecute_WithFriendlyTarget_ReturnsFalse()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet friendlyTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "friendly",
+                empire.InstanceID
+            );
+            Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                friendlyTarget
+            );
+
+            bool canExecute = proposal.CanExecute(context);
+
+            Assert.IsFalse(canExecute);
         }
 
         private static Fleet AddBattleFleet(GameRoot game, Planet planet, string ownerInstanceId)

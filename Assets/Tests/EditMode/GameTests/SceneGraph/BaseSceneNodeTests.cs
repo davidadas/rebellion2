@@ -9,30 +9,6 @@ namespace Rebellion.Tests.SceneGraph
     [TestFixture]
     public class BaseSceneNodeTests
     {
-        // Mock implementation of BaseSceneNode for testing purposes
-        private class MockSceneNode : BaseSceneNode
-        {
-            private readonly List<ISceneNode> _children = new List<ISceneNode>();
-
-            public override bool CanAcceptChild(ISceneNode child) => true;
-
-            public override void AddChild(ISceneNode child)
-            {
-                _children.Add(child);
-            }
-
-            public override void RemoveChild(ISceneNode child)
-            {
-                _children.Remove(child);
-            }
-
-            protected override IEnumerable<ISceneNode> EnumerateChildren() => _children;
-        }
-
-        private class MockSceneNodeA : MockSceneNode { }
-
-        private class MockSceneNodeB : MockSceneNode { }
-
         private MockSceneNode _rootNode;
         private MockSceneNode _childNode1;
         private MockSceneNode _childNode2;
@@ -84,6 +60,55 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void SetParent_ChangesParent_UpdatesLastParent()
+        {
+            _childNode1.SetParent(_rootNode);
+            _childNode1.SetParent(null);
+
+            Assert.AreEqual(_rootNode, _childNode1.GetLastParent());
+            Assert.IsNull(_childNode1.GetParent());
+        }
+
+        [Test]
+        public void SetParent_NullAfterParent_ClearsParentReferences()
+        {
+            _childNode1.SetParent(_rootNode);
+
+            _childNode1.SetParent(null);
+
+            Assert.IsNull(_childNode1.GetParent());
+            Assert.IsNull(_childNode1.ParentInstanceID);
+        }
+
+        [Test]
+        public void SetParent_NewParent_RemovesNodeFromOldParent()
+        {
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+
+            _childNode1.SetParent(_nodeB);
+
+            Assert.IsEmpty(_rootNode.GetChildren());
+            Assert.AreSame(_nodeB, _childNode1.GetParent());
+        }
+
+        [Test]
+        public void SetParent_SameParentTwice_DoesNotChangePrevious()
+        {
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+
+            ISceneNode lastParentBefore = _childNode1.GetLastParent();
+            string lastParentInstanceIDBefore = _childNode1.LastParentInstanceID;
+
+            _childNode1.SetParent(_rootNode);
+
+            Assert.AreEqual(_rootNode, _childNode1.GetParent());
+            Assert.AreEqual(lastParentBefore, _childNode1.GetLastParent());
+            Assert.AreEqual(lastParentInstanceIDBefore, _childNode1.LastParentInstanceID);
+        }
+
+        [Test]
         public void GetParentOfType_ValidType_ReturnsCorrectParent()
         {
             _childNode1.SetParent(_nodeB);
@@ -118,6 +143,20 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void SetOwnerInstanceID_AnyFaction_SetsSuccessfully()
+        {
+            Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID("AnyOwner"));
+            Assert.AreEqual("AnyOwner", _childNode1.OwnerInstanceID);
+        }
+
+        [Test]
+        public void SetOwnerInstanceID_NullValue_SetsSuccessfully()
+        {
+            Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID(null));
+            Assert.IsNull(_childNode1.OwnerInstanceID);
+        }
+
+        [Test]
         public void GetChildren_WithPredicateAndType_ReturnsMatchingChildren()
         {
             _childNode1.OwnerInstanceID = "Owner1";
@@ -132,47 +171,6 @@ namespace Rebellion.Tests.SceneGraph
 
             Assert.AreEqual(1, matchingChildren.Count());
             Assert.AreEqual(_childNode1, matchingChildren.First());
-        }
-
-        [Test]
-        public void Traverse_HierarchicalNodes_VisitsAllNodes()
-        {
-            _rootNode.AddChild(_childNode1);
-            _rootNode.AddChild(_childNode2);
-
-            List<ISceneNode> visitedNodes = new List<ISceneNode>();
-            _rootNode.Traverse(node => visitedNodes.Add(node));
-
-            Assert.AreEqual(3, visitedNodes.Count); // rootNode + childNode1 + childNode2
-        }
-
-        [Test]
-        public void SetParent_ChangesParent_UpdatesLastParent()
-        {
-            _childNode1.SetParent(_rootNode);
-            _childNode1.SetParent(null);
-
-            Assert.AreEqual(_rootNode, _childNode1.GetLastParent());
-            Assert.IsNull(_childNode1.GetParent());
-        }
-
-        [Test]
-        public void GetOwnerInstanceID_WhenSet_ReturnsCorrectValue()
-        {
-            string testOwnerId = "TestOwner123";
-            _childNode1.OwnerInstanceID = testOwnerId;
-
-            string result = _childNode1.GetOwnerInstanceID();
-
-            Assert.AreEqual(testOwnerId, result);
-        }
-
-        [Test]
-        public void GetOwnerInstanceID_WhenNotSet_ReturnsNull()
-        {
-            string result = _childNode1.GetOwnerInstanceID();
-
-            Assert.IsNull(result);
         }
 
         [Test]
@@ -264,72 +262,34 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
-        public void GetChildren_AfterHierarchyChanges_PreservesReturnedSnapshot()
+        public void Traverse_HierarchicalNodes_VisitsAllNodes()
         {
             _rootNode.AddChild(_childNode1);
-            IReadOnlyList<ISceneNode> snapshot = _rootNode.GetChildren();
-
             _rootNode.AddChild(_childNode2);
 
-            CollectionAssert.AreEqual(new[] { _childNode1 }, snapshot);
-            CollectionAssert.AreEquivalent(
-                new[] { _childNode1, _childNode2 },
-                _rootNode.GetChildren()
-            );
+            List<ISceneNode> visitedNodes = new List<ISceneNode>();
+            _rootNode.Traverse(node => visitedNodes.Add(node));
+
+            Assert.AreEqual(3, visitedNodes.Count); // rootNode + childNode1 + childNode2
         }
 
         [Test]
-        public void GetChildren_DisabledChild_RequiresExplicitInclusion()
+        public void GetOwnerInstanceID_WhenSet_ReturnsCorrectValue()
         {
-            _childNode1.IsEnabled = false;
-            _rootNode.AddChild(_childNode1);
+            string testOwnerId = "TestOwner123";
+            _childNode1.OwnerInstanceID = testOwnerId;
 
-            CollectionAssert.IsEmpty(_rootNode.GetChildren());
-            CollectionAssert.Contains(_rootNode.GetChildren(includeDisabled: true), _childNode1);
+            string result = _childNode1.GetOwnerInstanceID();
+
+            Assert.AreEqual(testOwnerId, result);
         }
 
         [Test]
-        public void GetChildren_RecursiveDisabledBranch_RequiresExplicitInclusion()
+        public void GetOwnerInstanceID_WhenNotSet_ReturnsNull()
         {
-            _childNode1.IsEnabled = false;
-            _rootNode.AddChild(_childNode1);
-            _childNode1.AddChild(_nodeA);
+            string result = _childNode1.GetOwnerInstanceID();
 
-            CollectionAssert.IsEmpty(_rootNode.GetChildren(recursive: true));
-            CollectionAssert.AreEquivalent(
-                new ISceneNode[] { _childNode1, _nodeA },
-                _rootNode.GetChildren(recursive: true, includeDisabled: true)
-            );
-        }
-
-        [Test]
-        public void SetOwnerInstanceID_AnyFaction_SetsSuccessfully()
-        {
-            Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID("AnyOwner"));
-            Assert.AreEqual("AnyOwner", _childNode1.OwnerInstanceID);
-        }
-
-        [Test]
-        public void SetOwnerInstanceID_NullValue_SetsSuccessfully()
-        {
-            Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID(null));
-            Assert.IsNull(_childNode1.OwnerInstanceID);
-        }
-
-        [Test]
-        public void SetParent_SameParentTwice_DoesNotChangePrevious()
-        {
-            _rootNode.AddChild(_childNode1);
-            _childNode1.SetParent(_rootNode);
-
-            ISceneNode lastParentBefore = _childNode1.GetLastParent();
-            string lastParentInstanceIDBefore = _childNode1.LastParentInstanceID;
-
-            _childNode1.SetParent(_rootNode);
-
-            Assert.AreEqual(_rootNode, _childNode1.GetParent());
-            Assert.AreEqual(lastParentBefore, _childNode1.GetLastParent());
-            Assert.AreEqual(lastParentInstanceIDBefore, _childNode1.LastParentInstanceID);
+            Assert.IsNull(result);
         }
 
         [Test]
@@ -351,25 +311,85 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void LastParentInstanceID_AfterParentChange_MatchesPreviousParentInstanceID()
         {
-            string originalRootID = _rootNode.InstanceID;
+            string originalRootId = _rootNode.InstanceID;
 
             _childNode1.SetParent(_rootNode);
             _childNode1.SetParent(_childNode2);
 
-            Assert.AreEqual(originalRootID, _childNode1.LastParentInstanceID);
+            Assert.AreEqual(originalRootId, _childNode1.LastParentInstanceID);
             Assert.AreEqual(_childNode2.InstanceID, _childNode1.ParentInstanceID);
         }
 
         [Test]
         public void LastParentInstanceID_WhenParentSetToNull_MatchesPreviousParentInstanceID()
         {
-            string originalRootID = _rootNode.InstanceID;
+            string originalRootId = _rootNode.InstanceID;
 
             _childNode1.SetParent(_rootNode);
             _childNode1.SetParent(null);
 
-            Assert.AreEqual(originalRootID, _childNode1.LastParentInstanceID);
+            Assert.AreEqual(originalRootId, _childNode1.LastParentInstanceID);
             Assert.IsNull(_childNode1.ParentInstanceID);
         }
+
+        // Mock implementation of BaseSceneNode for testing purposes
+        private class MockSceneNode : BaseSceneNode
+        {
+            private readonly List<ISceneNode> _children = new List<ISceneNode>();
+
+            public override bool CanAcceptChild(ISceneNode child) => true;
+
+            public override void AddChild(ISceneNode child)
+            {
+                _children.Add(child);
+            }
+
+            public override void RemoveChild(ISceneNode child)
+            {
+                _children.Remove(child);
+            }
+
+            public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recursive)
+            {
+                IEnumerable<T> direct = _children.OfType<T>();
+
+                if (predicate != null)
+                {
+                    direct = direct.Where(predicate);
+                }
+
+                if (!recursive)
+                {
+                    return direct;
+                }
+
+                List<T> result = new List<T>(direct);
+
+                foreach (ISceneNode child in _children)
+                {
+                    result.AddRange(child.GetChildren<T>(predicate, true));
+                }
+
+                return result;
+            }
+
+            public override IEnumerable<ISceneNode> GetChildren()
+            {
+                return _children;
+            }
+
+            public override void Traverse(Action<ISceneNode> action)
+            {
+                action(this);
+                foreach (ISceneNode child in _children)
+                {
+                    child.Traverse(action);
+                }
+            }
+        }
+
+        private class MockSceneNodeA : MockSceneNode { }
+
+        private class MockSceneNodeB : MockSceneNode { }
     }
 } // namespace Rebellion.Tests.SceneGraph

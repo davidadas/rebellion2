@@ -145,23 +145,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
-        public void GetTabs_NullFactions_ReturnsModeSpecificNonFactionTabs()
-        {
-            FinderWindowRowBuilder builder = new FinderWindowRowBuilder(
-                new GalaxyMapSector[0],
-                null,
-                _playerFactionId
-            );
-
-            List<FinderWindowTab> tabs = builder.GetTabs(FinderMode.Systems);
-
-            Assert.AreEqual(3, tabs.Count);
-            Assert.IsTrue(tabs[0].IsAll);
-            Assert.IsTrue(tabs[1].IsNeutral);
-            Assert.IsTrue(tabs[2].IsUnexplored);
-        }
-
-        [Test]
         public void GetRows_AllSystems_ReturnsEveryPlanetInAlphabeticalOrder()
         {
             List<FinderWindowRow> rows = _builder.GetRows(
@@ -510,6 +493,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             List<FinderWindowRow> rows = _builder.GetRows((FinderMode)99, false, null);
 
             Assert.IsEmpty(rows);
+        }
+
+        [Test]
+        public void GetTabs_NullFactions_ReturnsModeSpecificNonFactionTabs()
+        {
+            FinderWindowRowBuilder builder = new FinderWindowRowBuilder(
+                new GalaxyMapSector[0],
+                null,
+                _playerFactionId
+            );
+
+            List<FinderWindowTab> tabs = builder.GetTabs(FinderMode.Systems);
+
+            Assert.AreEqual(3, tabs.Count);
+            Assert.IsTrue(tabs[0].IsAll);
+            Assert.IsTrue(tabs[1].IsNeutral);
+            Assert.IsTrue(tabs[2].IsUnexplored);
         }
 
         private static Planet CreatePlanet(

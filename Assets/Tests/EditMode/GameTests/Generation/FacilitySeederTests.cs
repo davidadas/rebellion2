@@ -11,140 +11,6 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class FacilitySeederTests
     {
-        private static List<Building> SeedFacilities(
-            PlanetSystem[] systems,
-            Building[] templates,
-            GameGenerationConfig config,
-            GalaxyClassificationResult classification,
-            IRandomNumberProvider rng
-        )
-        {
-            GenerationContext ctx = new GenerationContext
-            {
-                Systems = systems,
-                Buildings = templates,
-                Config = config,
-                Classification = classification,
-                Rng = rng,
-            };
-            new FacilitySeeder().Seed(ctx);
-            return ctx.DeployedBuildings;
-        }
-
-        /// <summary>
-        /// Records the (min, max) of every NextInt call and returns min, so the test
-        /// can assert the facility seeder stays inside the facility table range.
-        /// </summary>
-        private class RecordingRNG : IRandomNumberProvider
-        {
-            public List<(int min, int max)> IntCalls { get; } = new List<(int min, int max)>();
-
-            public int NextInt(int min, int max)
-            {
-                IntCalls.Add((min, max));
-                return min;
-            }
-
-            public double NextDouble() => 0.0;
-        }
-
-        private Building[] CreateTemplates()
-        {
-            return new[]
-            {
-                new Building { TypeID = "BDFA04", BuildingType = BuildingType.Mine },
-                new Building { TypeID = "BDFA05", BuildingType = BuildingType.Refinery },
-                new Building { TypeID = "BDFA03", BuildingType = BuildingType.Shipyard },
-                new Building { TypeID = "BDFA02", BuildingType = BuildingType.TrainingFacility },
-                new Building
-                {
-                    TypeID = "BDFA01",
-                    BuildingType = BuildingType.ConstructionFacility,
-                },
-                new Building { TypeID = "BDDF02", BuildingType = BuildingType.Defense },
-                new Building { TypeID = "BDDF01", BuildingType = BuildingType.Defense },
-                new Building { TypeID = "BDDF03", BuildingType = BuildingType.Defense },
-            };
-        }
-
-        private GameGenerationConfig CreateRules()
-        {
-            return new GameGenerationConfig
-            {
-                FacilityGeneration = new FacilityGenerationSection
-                {
-                    CoreMineMultiplier = 4,
-                    RimMineMultiplier = 2,
-                    MineTypeID = "BDFA04",
-                    FacilityTableRollMin = 0,
-                    FacilityTableRollMaxExclusive = 101,
-                    CoreFacilityTable = new List<WeightedFacilityEntry>
-                    {
-                        new WeightedFacilityEntry { CumulativeWeight = 0 },
-                        new WeightedFacilityEntry { CumulativeWeight = 36, TypeID = "BDFA05" },
-                        new WeightedFacilityEntry { CumulativeWeight = 79, TypeID = "BDFA03" },
-                        new WeightedFacilityEntry { CumulativeWeight = 82, TypeID = "BDFA02" },
-                        new WeightedFacilityEntry { CumulativeWeight = 85, TypeID = "BDFA01" },
-                        new WeightedFacilityEntry { CumulativeWeight = 88, TypeID = "BDDF02" },
-                        new WeightedFacilityEntry { CumulativeWeight = 96, TypeID = "BDDF01" },
-                        new WeightedFacilityEntry { CumulativeWeight = 99, TypeID = "BDDF03" },
-                    },
-                    RimFacilityTable = new List<WeightedFacilityEntry>
-                    {
-                        new WeightedFacilityEntry { CumulativeWeight = 0 },
-                        new WeightedFacilityEntry { CumulativeWeight = 91, TypeID = "BDFA05" },
-                        new WeightedFacilityEntry { CumulativeWeight = 96, TypeID = "BDFA03" },
-                        new WeightedFacilityEntry { CumulativeWeight = 97, TypeID = "BDFA02" },
-                        new WeightedFacilityEntry { CumulativeWeight = 98, TypeID = "BDFA01" },
-                        new WeightedFacilityEntry { CumulativeWeight = 99, TypeID = "BDDF02" },
-                        new WeightedFacilityEntry { CumulativeWeight = 100, TypeID = "BDDF01" },
-                    },
-                    HQLoadouts = new List<HQFacilityLoadout>(),
-                },
-            };
-        }
-
-        private PlanetSystem CreateCoreSystem(int energy, int rawNodes)
-        {
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
-            };
-            system.AddChild(
-                new Planet
-                {
-                    InstanceID = "p1",
-                    TypeID = "p1",
-                    OwnerInstanceID = "FNALL1",
-                    IsColonized = true,
-                    EnergyCapacity = energy,
-                    NumRawResourceNodes = rawNodes,
-                }
-            );
-            return system;
-        }
-
-        private PlanetSystem CreateRimSystem(int energy, int rawNodes, bool colonized)
-        {
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "rim1",
-                SystemType = PlanetSystemType.OuterRim,
-            };
-            system.AddChild(
-                new Planet
-                {
-                    InstanceID = "rp1",
-                    OwnerInstanceID = colonized ? "FNALL1" : null,
-                    IsColonized = colonized,
-                    EnergyCapacity = energy,
-                    NumRawResourceNodes = rawNodes,
-                }
-            );
-            return system;
-        }
-
         [Test]
         public void Seed_CorePlanetWithEnergy_PlacesFacilities()
         {
@@ -414,6 +280,140 @@ namespace Rebellion.Tests.Generation
                 2,
                 "NumRawResourceNodes should be raised to cover every loadout mine."
             );
+        }
+
+        private static List<Building> SeedFacilities(
+            PlanetSystem[] systems,
+            Building[] templates,
+            GameGenerationConfig config,
+            GalaxyClassificationResult classification,
+            IRandomNumberProvider rng
+        )
+        {
+            GenerationContext ctx = new GenerationContext
+            {
+                Systems = systems,
+                Buildings = templates,
+                Config = config,
+                Classification = classification,
+                Rng = rng,
+            };
+            new FacilitySeeder().Seed(ctx);
+            return ctx.DeployedBuildings;
+        }
+
+        private Building[] CreateTemplates()
+        {
+            return new[]
+            {
+                new Building { TypeID = "BDFA04", BuildingType = BuildingType.Mine },
+                new Building { TypeID = "BDFA05", BuildingType = BuildingType.Refinery },
+                new Building { TypeID = "BDFA03", BuildingType = BuildingType.Shipyard },
+                new Building { TypeID = "BDFA02", BuildingType = BuildingType.TrainingFacility },
+                new Building
+                {
+                    TypeID = "BDFA01",
+                    BuildingType = BuildingType.ConstructionFacility,
+                },
+                new Building { TypeID = "BDDF02", BuildingType = BuildingType.Defense },
+                new Building { TypeID = "BDDF01", BuildingType = BuildingType.Defense },
+                new Building { TypeID = "BDDF03", BuildingType = BuildingType.Defense },
+            };
+        }
+
+        private GameGenerationConfig CreateRules()
+        {
+            return new GameGenerationConfig
+            {
+                FacilityGeneration = new FacilityGenerationSection
+                {
+                    CoreMineMultiplier = 4,
+                    RimMineMultiplier = 2,
+                    MineTypeID = "BDFA04",
+                    FacilityTableRollMin = 0,
+                    FacilityTableRollMaxExclusive = 101,
+                    CoreFacilityTable = new List<WeightedFacilityEntry>
+                    {
+                        new WeightedFacilityEntry { CumulativeWeight = 0 },
+                        new WeightedFacilityEntry { CumulativeWeight = 36, TypeID = "BDFA05" },
+                        new WeightedFacilityEntry { CumulativeWeight = 79, TypeID = "BDFA03" },
+                        new WeightedFacilityEntry { CumulativeWeight = 82, TypeID = "BDFA02" },
+                        new WeightedFacilityEntry { CumulativeWeight = 85, TypeID = "BDFA01" },
+                        new WeightedFacilityEntry { CumulativeWeight = 88, TypeID = "BDDF02" },
+                        new WeightedFacilityEntry { CumulativeWeight = 96, TypeID = "BDDF01" },
+                        new WeightedFacilityEntry { CumulativeWeight = 99, TypeID = "BDDF03" },
+                    },
+                    RimFacilityTable = new List<WeightedFacilityEntry>
+                    {
+                        new WeightedFacilityEntry { CumulativeWeight = 0 },
+                        new WeightedFacilityEntry { CumulativeWeight = 91, TypeID = "BDFA05" },
+                        new WeightedFacilityEntry { CumulativeWeight = 96, TypeID = "BDFA03" },
+                        new WeightedFacilityEntry { CumulativeWeight = 97, TypeID = "BDFA02" },
+                        new WeightedFacilityEntry { CumulativeWeight = 98, TypeID = "BDFA01" },
+                        new WeightedFacilityEntry { CumulativeWeight = 99, TypeID = "BDDF02" },
+                        new WeightedFacilityEntry { CumulativeWeight = 100, TypeID = "BDDF01" },
+                    },
+                    HQLoadouts = new List<HQFacilityLoadout>(),
+                },
+            };
+        }
+
+        private PlanetSystem CreateCoreSystem(int energy, int rawNodes)
+        {
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                SystemType = PlanetSystemType.CoreSystem,
+            };
+            system.Planets.Add(
+                new Planet
+                {
+                    InstanceID = "p1",
+                    TypeID = "p1",
+                    OwnerInstanceID = "FNALL1",
+                    IsColonized = true,
+                    EnergyCapacity = energy,
+                    NumRawResourceNodes = rawNodes,
+                }
+            );
+            return system;
+        }
+
+        private PlanetSystem CreateRimSystem(int energy, int rawNodes, bool colonized)
+        {
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "rim1",
+                SystemType = PlanetSystemType.OuterRim,
+            };
+            system.Planets.Add(
+                new Planet
+                {
+                    InstanceID = "rp1",
+                    OwnerInstanceID = colonized ? "FNALL1" : null,
+                    IsColonized = colonized,
+                    EnergyCapacity = energy,
+                    NumRawResourceNodes = rawNodes,
+                }
+            );
+            return system;
+        }
+
+        /// <summary>
+        /// Records the (min, max) of every NextInt call and returns min, so the test
+        /// can assert the facility seeder stays inside the facility table range.
+        /// </summary>
+        private class RecordingRNG : IRandomNumberProvider
+        {
+            public List<(int min, int max)> IntCalls { get; } = new List<(int min, int max)>();
+
+            public int NextInt(int min, int max)
+            {
+                IntCalls.Add((min, max));
+                return min;
+            }
+
+            public double NextDouble() => 0.0;
         }
     }
 }

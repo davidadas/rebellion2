@@ -241,29 +241,6 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Deserialize_SingleObject_ReturnsExpectedObject()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
-            string xmlInput =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<SimpleItem AttributeVariable=""AttributeValue"">
-  <Name>SingleObject</Name>
-  <Value>42</Value>
-  <EnumValue>Value1</EnumValue>
-  <PublicVariable>PublicValue</PublicVariable>
-</SimpleItem>";
-
-            SimpleItem deserialized = (SimpleItem)DeserializeFromString(serializer, xmlInput);
-
-            Assert.IsNotNull(deserialized);
-            Assert.AreEqual("SingleObject", deserialized.Name);
-            Assert.AreEqual(42, deserialized.Value);
-            Assert.AreEqual(TestEnum.Value1, deserialized.EnumValue);
-            Assert.AreEqual("AttributeValue", deserialized.AttributeVariable);
-            Assert.AreEqual("PublicValue", deserialized.PublicVariable);
-        }
-
-        [Test]
         public void Serialize_ItemWithAttributes_ReturnsExpectedXml()
         {
             GameSerializer serializer = new GameSerializer(typeof(ItemWithAttributes));
@@ -287,27 +264,6 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml.Trim(),
                 "Serialized XML should match expected XML."
             );
-        }
-
-        [Test]
-        public void Deserialize_ItemWithAttributes_RetainsObjectProperties()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(ItemWithAttributes));
-            string xmlInput =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<ItemWithAttributes AttributeValue=""42"" AttributeString=""StringAttribute"" AttributeEnum=""Value2"">
-  <Name>AttributeItem</Name>
-</ItemWithAttributes>";
-
-            ItemWithAttributes deserialized = (ItemWithAttributes)DeserializeFromString(
-                serializer,
-                xmlInput
-            );
-
-            Assert.AreEqual("AttributeItem", deserialized.Name);
-            Assert.AreEqual(42, deserialized.AttributeValue);
-            Assert.AreEqual("StringAttribute", deserialized.AttributeString);
-            Assert.AreEqual(TestEnum.Value2, deserialized.AttributeEnum);
         }
 
         [Test]
@@ -338,28 +294,6 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml.Trim(),
                 "Serialized XML should match expected XML."
             );
-        }
-
-        [Test]
-        public void Deserialize_MixedMemberAndAttribute_RetainsObjectProperties()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
-            string xmlInput =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<SimpleItem AttributeVariable=""AttributeValue"">
-  <Name>MixedItem</Name>
-  <Value>100</Value>
-  <EnumValue>Value3</EnumValue>
-  <PublicVariable>PublicValue</PublicVariable>
-</SimpleItem>";
-
-            SimpleItem deserialized = (SimpleItem)DeserializeFromString(serializer, xmlInput);
-
-            Assert.AreEqual("MixedItem", deserialized.Name);
-            Assert.AreEqual(100, deserialized.Value);
-            Assert.AreEqual(TestEnum.Value3, deserialized.EnumValue);
-            Assert.AreEqual("AttributeValue", deserialized.AttributeVariable);
-            Assert.AreEqual("PublicValue", deserialized.PublicVariable);
         }
 
         [Test]
@@ -397,29 +331,6 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Deserialize_SimpleItem_DoesNotIgnoreIgnoredPublicVariable()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
-            string xmlInput =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<SimpleItem>
-  <Name>Item1</Name>
-  <Value>42</Value>
-  <EnumValue>Value2</EnumValue>
-  <PublicVariable>PublicValue</PublicVariable>
-  <IgnoredPublicVariable>IgnoredValue</IgnoredPublicVariable>
-</SimpleItem>";
-
-            SimpleItem deserialized = (SimpleItem)DeserializeFromString(serializer, xmlInput);
-
-            Assert.AreEqual("Item1", deserialized.Name);
-            Assert.AreEqual(42, deserialized.Value);
-            Assert.AreEqual(TestEnum.Value2, deserialized.EnumValue);
-            Assert.AreEqual("PublicValue", deserialized.PublicVariable);
-            Assert.AreEqual("IgnoredValue", deserialized.IgnoredPublicVariable);
-        }
-
-        [Test]
         public void Serialize_NestedItem_IgnoresIgnoredPublicVariables()
         {
             GameSerializer serializer = new GameSerializer(typeof(NestedItem));
@@ -453,38 +364,6 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml.Contains("<PublicVariable>SimplePublicValue</PublicVariable>")
             );
             Assert.IsFalse(serializedXml.Contains("SimpleIgnoredValue"));
-        }
-
-        [Test]
-        public void Deserialize_NestedItem_DoesNotIgnoreIgnoredPublicVariables()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(NestedItem));
-            string xmlInput =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<NestedItem>
-  <Identifier>Nested1</Identifier>
-  <Items>
-    <SimpleItem>
-      <Name>Simple1</Name>
-      <Value>10</Value>
-      <EnumValue>Value1</EnumValue>
-      <PublicVariable>SimplePublicValue</PublicVariable>
-      <IgnoredPublicVariable>SimpleIgnoredValue</IgnoredPublicVariable>
-    </SimpleItem>
-  </Items>
-  <PublicVariable>NestedPublicValue</PublicVariable>
-  <IgnoredPublicVariable>NestedIgnoredValue</IgnoredPublicVariable>
-</NestedItem>";
-
-            NestedItem deserialized = (NestedItem)DeserializeFromString(serializer, xmlInput);
-
-            Assert.AreEqual("Nested1", deserialized.Identifier);
-            Assert.AreEqual("NestedPublicValue", deserialized.PublicVariable);
-            Assert.AreEqual("NestedIgnoredValue", deserialized.IgnoredPublicVariable);
-            Assert.AreEqual(1, deserialized.Items.Count);
-            Assert.AreEqual("Simple1", deserialized.Items[0].Name);
-            Assert.AreEqual("SimplePublicValue", deserialized.Items[0].PublicVariable);
-            Assert.AreEqual("SimpleIgnoredValue", deserialized.Items[0].IgnoredPublicVariable);
         }
 
         [Test]
@@ -691,6 +570,471 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
+        public void Serialize_PublicVariableWithoutAttribute_IsIncludedInXml()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            SimpleItem item = new SimpleItem
+            {
+                Name = "TestItem",
+                Value = 100,
+                EnumValue = TestEnum.Value3,
+                PublicVariable = "This should be serialized",
+            };
+
+            string serializedXml = SerializeToString(serializer, item);
+            Assert.IsTrue(
+                serializedXml.Contains(
+                    "<PublicVariable>This should be serialized</PublicVariable>"
+                ),
+                "Serialized XML should include the public variable without PersistableMember attribute."
+            );
+        }
+
+        [Test]
+        public void Serialize_SimpleItemWithDictionary_ReturnsExpectedXml()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItemWithDictionary));
+            SimpleItemWithDictionary item = new SimpleItemWithDictionary
+            {
+                Name = "DictItem",
+                StringIntDict = new Dictionary<string, int> { { "Key1", 10 }, { "Key2", 20 } },
+            };
+
+            string serializedXml = SerializeToString(serializer, item);
+            string expectedXml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<SimpleItemWithDictionary>
+  <Name>DictItem</Name>
+  <StringIntDict>
+    <Entry>
+      <Key>Key1</Key>
+      <Value>10</Value>
+    </Entry>
+    <Entry>
+      <Key>Key2</Key>
+      <Value>20</Value>
+    </Entry>
+  </StringIntDict>
+</SimpleItemWithDictionary>";
+
+            Assert.AreEqual(
+                expectedXml.Trim(),
+                serializedXml.Trim(),
+                "Serialized XML should match expected XML."
+            );
+        }
+
+        [Test]
+        public void Serialize_ComplexItemWithDictionary_ReturnsExpectedXml()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ComplexItemWithDictionary));
+            ComplexItemWithDictionary item = new ComplexItemWithDictionary
+            {
+                Name = "ComplexDictItem",
+                StringObjectDict = new Dictionary<string, SimpleItem>
+                {
+                    {
+                        "ObjectKey1",
+                        new SimpleItem
+                        {
+                            Name = "Item1",
+                            Value = 100,
+                            EnumValue = TestEnum.Value1,
+                            PublicVariable = "PublicValue1",
+                        }
+                    },
+                    {
+                        "ObjectKey2",
+                        new SimpleItem
+                        {
+                            Name = "Item2",
+                            Value = 200,
+                            EnumValue = TestEnum.Value2,
+                            PublicVariable = "PublicValue2",
+                        }
+                    },
+                },
+            };
+
+            string serializedXml = SerializeToString(serializer, item);
+            string expectedXml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<ComplexItemWithDictionary>
+  <Name>ComplexDictItem</Name>
+  <StringObjectDict>
+    <Entry>
+      <Key>ObjectKey1</Key>
+      <Value>
+        <SimpleItem>
+          <Name>Item1</Name>
+          <Value>100</Value>
+          <EnumValue>Value1</EnumValue>
+          <PublicVariable>PublicValue1</PublicVariable>
+        </SimpleItem>
+      </Value>
+    </Entry>
+    <Entry>
+      <Key>ObjectKey2</Key>
+      <Value>
+        <SimpleItem>
+          <Name>Item2</Name>
+          <Value>200</Value>
+          <EnumValue>Value2</EnumValue>
+          <PublicVariable>PublicValue2</PublicVariable>
+        </SimpleItem>
+      </Value>
+    </Entry>
+  </StringObjectDict>
+</ComplexItemWithDictionary>";
+
+            Assert.AreEqual(
+                expectedXml.Trim(),
+                serializedXml.Trim(),
+                "Serialized XML should match expected XML."
+            );
+        }
+
+        [Test]
+        public void Serialize_ArrayOfSimpleItems_ReturnsExpectedXml()
+        {
+            GameSerializerSettings settings = new GameSerializerSettings
+            {
+                RootName = "SimpleItems",
+            };
+            GameSerializer serializer = new GameSerializer(typeof(List<SimpleItem>), settings);
+            List<SimpleItem> items = new List<SimpleItem>
+            {
+                new SimpleItem
+                {
+                    Name = "Item1",
+                    Value = 10,
+                    EnumValue = TestEnum.Value1,
+                    PublicVariable = "Public1",
+                },
+                new SimpleItem
+                {
+                    Name = "Item2",
+                    Value = 20,
+                    EnumValue = TestEnum.Value2,
+                    PublicVariable = "Public2",
+                },
+                new SimpleItem
+                {
+                    Name = "Item3",
+                    Value = 30,
+                    EnumValue = TestEnum.Value3,
+                    PublicVariable = "Public3",
+                },
+            };
+
+            string serializedXml = SerializeToString(serializer, items);
+            string expectedXml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<SimpleItems>
+  <SimpleItem>
+    <Name>Item1</Name>
+    <Value>10</Value>
+    <EnumValue>Value1</EnumValue>
+    <PublicVariable>Public1</PublicVariable>
+  </SimpleItem>
+  <SimpleItem>
+    <Name>Item2</Name>
+    <Value>20</Value>
+    <EnumValue>Value2</EnumValue>
+    <PublicVariable>Public2</PublicVariable>
+  </SimpleItem>
+  <SimpleItem>
+    <Name>Item3</Name>
+    <Value>30</Value>
+    <EnumValue>Value3</EnumValue>
+    <PublicVariable>Public3</PublicVariable>
+  </SimpleItem>
+</SimpleItems>";
+
+            Assert.AreEqual(
+                expectedXml.Trim(),
+                serializedXml.Trim(),
+                "Serialized XML should match expected XML."
+            );
+        }
+
+        [Test]
+        public void Serialize_IntArray_ReturnsExpectedXml()
+        {
+            GameSerializerSettings settings = new GameSerializerSettings { RootName = "IntArray" };
+            GameSerializer serializer = new GameSerializer(typeof(int[]), settings);
+            int[] array = new int[] { 1, 2, 3, 4, 5 };
+
+            string serializedXml = SerializeToString(serializer, array);
+            string expectedXml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<IntArray>
+  <Int32>1</Int32>
+  <Int32>2</Int32>
+  <Int32>3</Int32>
+  <Int32>4</Int32>
+  <Int32>5</Int32>
+</IntArray>";
+
+            Assert.AreEqual(
+                expectedXml.Trim(),
+                serializedXml.Trim(),
+                "Serialized XML should match expected XML."
+            );
+        }
+
+        [Test]
+        public void Serialize_StringArray_ReturnsExpectedXml()
+        {
+            GameSerializerSettings settings = new GameSerializerSettings
+            {
+                RootName = "StringArray",
+            };
+            GameSerializer serializer = new GameSerializer(typeof(string[]), settings);
+            string[] array = new string[] { "One", "Two", "Three", "Four", "Five" };
+
+            string serializedXml = SerializeToString(serializer, array);
+            string expectedXml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<StringArray>
+  <String>One</String>
+  <String>Two</String>
+  <String>Three</String>
+  <String>Four</String>
+  <String>Five</String>
+</StringArray>";
+
+            Assert.AreEqual(
+                expectedXml.Trim(),
+                serializedXml.Trim(),
+                "Serialized XML should match expected XML."
+            );
+        }
+
+        [Test]
+        public void Serialize_FloatArray_ReturnsExpectedXml()
+        {
+            GameSerializerSettings settings = new GameSerializerSettings
+            {
+                RootName = "FloatArray",
+            };
+            GameSerializer serializer = new GameSerializer(typeof(float[]), settings);
+            float[] array = new float[] { 1.1f, 2.2f, 3.3f, 4.4f, 5.5f };
+
+            string serializedXml = SerializeToString(serializer, array);
+            string expectedXml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<FloatArray>
+  <Single>1.1</Single>
+  <Single>2.2</Single>
+  <Single>3.3</Single>
+  <Single>4.4</Single>
+  <Single>5.5</Single>
+</FloatArray>";
+
+            Assert.AreEqual(
+                expectedXml.Trim(),
+                serializedXml.Trim(),
+                "Serialized XML should match expected XML."
+            );
+        }
+
+        [Test]
+        public void Serialize_EnumArray_ReturnsExpectedXml()
+        {
+            GameSerializerSettings settings = new GameSerializerSettings { RootName = "EnumArray" };
+            GameSerializer serializer = new GameSerializer(typeof(TestEnum[]), settings);
+            TestEnum[] array = new TestEnum[] { TestEnum.Value1, TestEnum.Value2, TestEnum.Value3 };
+
+            string serializedXml = SerializeToString(serializer, array);
+            string expectedXml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<EnumArray>
+  <TestEnum>Value1</TestEnum>
+  <TestEnum>Value2</TestEnum>
+  <TestEnum>Value3</TestEnum>
+</EnumArray>";
+
+            Assert.AreEqual(
+                expectedXml.Trim(),
+                serializedXml.Trim(),
+                "Serialized XML should match expected XML."
+            );
+        }
+
+        [Test]
+        public void Serialize_ItemWithCustomName_UsesCustomName()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithCustomName));
+            ItemWithCustomName item = new ItemWithCustomName
+            {
+                Property = "TestValue",
+                Attribute = "TestAttr",
+            };
+
+            string serializedXml = SerializeToString(serializer, item);
+            string expectedXml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<ItemWithCustomName CustomNamedAttribute=""TestAttr"">
+  <CustomNamedProperty>TestValue</CustomNamedProperty>
+</ItemWithCustomName>";
+
+            Assert.AreEqual(
+                expectedXml.Trim(),
+                serializedXml.Trim(),
+                "Serialized XML should use the custom property name."
+            );
+        }
+
+        [Test]
+        public void Serialize_ItemWithInclude_UsesActualType()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithInclude));
+            ItemWithInclude item = new ItemWithInclude
+            {
+                Item = new SimpleItem { Name = "SimpleItemName", Value = 42 },
+            };
+
+            string serializedXml = SerializeToString(serializer, item);
+            string expectedXml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<ItemWithInclude>
+  <SimpleItem>
+    <Name>SimpleItemName</Name>
+    <Value>42</Value>
+    <EnumValue>Value1</EnumValue>
+  </SimpleItem>
+</ItemWithInclude>";
+
+            Assert.AreEqual(
+                expectedXml.Trim(),
+                serializedXml.Trim(),
+                "Serialized XML should use the actual type name for the included item."
+            );
+        }
+
+        [Test]
+        public void Deserialize_SingleObject_ReturnsExpectedObject()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            string xmlInput =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<SimpleItem AttributeVariable=""AttributeValue"">
+  <Name>SingleObject</Name>
+  <Value>42</Value>
+  <EnumValue>Value1</EnumValue>
+  <PublicVariable>PublicValue</PublicVariable>
+</SimpleItem>";
+
+            SimpleItem deserialized = (SimpleItem)DeserializeFromString(serializer, xmlInput);
+
+            Assert.IsNotNull(deserialized);
+            Assert.AreEqual("SingleObject", deserialized.Name);
+            Assert.AreEqual(42, deserialized.Value);
+            Assert.AreEqual(TestEnum.Value1, deserialized.EnumValue);
+            Assert.AreEqual("AttributeValue", deserialized.AttributeVariable);
+            Assert.AreEqual("PublicValue", deserialized.PublicVariable);
+        }
+
+        [Test]
+        public void Deserialize_ItemWithAttributes_RetainsObjectProperties()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithAttributes));
+            string xmlInput =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<ItemWithAttributes AttributeValue=""42"" AttributeString=""StringAttribute"" AttributeEnum=""Value2"">
+  <Name>AttributeItem</Name>
+</ItemWithAttributes>";
+
+            ItemWithAttributes deserialized = (ItemWithAttributes)DeserializeFromString(
+                serializer,
+                xmlInput
+            );
+
+            Assert.AreEqual("AttributeItem", deserialized.Name);
+            Assert.AreEqual(42, deserialized.AttributeValue);
+            Assert.AreEqual("StringAttribute", deserialized.AttributeString);
+            Assert.AreEqual(TestEnum.Value2, deserialized.AttributeEnum);
+        }
+
+        [Test]
+        public void Deserialize_MixedMemberAndAttribute_RetainsObjectProperties()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            string xmlInput =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<SimpleItem AttributeVariable=""AttributeValue"">
+  <Name>MixedItem</Name>
+  <Value>100</Value>
+  <EnumValue>Value3</EnumValue>
+  <PublicVariable>PublicValue</PublicVariable>
+</SimpleItem>";
+
+            SimpleItem deserialized = (SimpleItem)DeserializeFromString(serializer, xmlInput);
+
+            Assert.AreEqual("MixedItem", deserialized.Name);
+            Assert.AreEqual(100, deserialized.Value);
+            Assert.AreEqual(TestEnum.Value3, deserialized.EnumValue);
+            Assert.AreEqual("AttributeValue", deserialized.AttributeVariable);
+            Assert.AreEqual("PublicValue", deserialized.PublicVariable);
+        }
+
+        [Test]
+        public void Deserialize_SimpleItem_DoesNotIgnoreIgnoredPublicVariable()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            string xmlInput =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<SimpleItem>
+  <Name>Item1</Name>
+  <Value>42</Value>
+  <EnumValue>Value2</EnumValue>
+  <PublicVariable>PublicValue</PublicVariable>
+  <IgnoredPublicVariable>IgnoredValue</IgnoredPublicVariable>
+</SimpleItem>";
+
+            SimpleItem deserialized = (SimpleItem)DeserializeFromString(serializer, xmlInput);
+
+            Assert.AreEqual("Item1", deserialized.Name);
+            Assert.AreEqual(42, deserialized.Value);
+            Assert.AreEqual(TestEnum.Value2, deserialized.EnumValue);
+            Assert.AreEqual("PublicValue", deserialized.PublicVariable);
+            Assert.AreEqual("IgnoredValue", deserialized.IgnoredPublicVariable);
+        }
+
+        [Test]
+        public void Deserialize_NestedItem_DoesNotIgnoreIgnoredPublicVariables()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(NestedItem));
+            string xmlInput =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<NestedItem>
+  <Identifier>Nested1</Identifier>
+  <Items>
+    <SimpleItem>
+      <Name>Simple1</Name>
+      <Value>10</Value>
+      <EnumValue>Value1</EnumValue>
+      <PublicVariable>SimplePublicValue</PublicVariable>
+      <IgnoredPublicVariable>SimpleIgnoredValue</IgnoredPublicVariable>
+    </SimpleItem>
+  </Items>
+  <PublicVariable>NestedPublicValue</PublicVariable>
+  <IgnoredPublicVariable>NestedIgnoredValue</IgnoredPublicVariable>
+</NestedItem>";
+
+            NestedItem deserialized = (NestedItem)DeserializeFromString(serializer, xmlInput);
+
+            Assert.AreEqual("Nested1", deserialized.Identifier);
+            Assert.AreEqual("NestedPublicValue", deserialized.PublicVariable);
+            Assert.AreEqual("NestedIgnoredValue", deserialized.IgnoredPublicVariable);
+            Assert.AreEqual(1, deserialized.Items.Count);
+            Assert.AreEqual("Simple1", deserialized.Items[0].Name);
+            Assert.AreEqual("SimplePublicValue", deserialized.Items[0].PublicVariable);
+            Assert.AreEqual("SimpleIgnoredValue", deserialized.Items[0].IgnoredPublicVariable);
+        }
+
+        [Test]
         public void Deserialize_SimpleItem_RetainsObjectProperties()
         {
             GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
@@ -793,27 +1137,6 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_PublicVariableWithoutAttribute_IsIncludedInXml()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
-            SimpleItem item = new SimpleItem
-            {
-                Name = "TestItem",
-                Value = 100,
-                EnumValue = TestEnum.Value3,
-                PublicVariable = "This should be serialized",
-            };
-
-            string serializedXml = SerializeToString(serializer, item);
-            Assert.IsTrue(
-                serializedXml.Contains(
-                    "<PublicVariable>This should be serialized</PublicVariable>"
-                ),
-                "Serialized XML should include the public variable without PersistableMember attribute."
-            );
-        }
-
-        [Test]
         public void Deserialize_PublicVariableWithoutAttribute_IsDeserialized()
         {
             GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
@@ -835,40 +1158,6 @@ namespace Rebellion.Tests.Util.Serialization
                 "This should be deserialized",
                 deserialized.PublicVariable,
                 "Public variable without PersistableMember attribute should be deserialized."
-            );
-        }
-
-        [Test]
-        public void Serialize_SimpleItemWithDictionary_ReturnsExpectedXml()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(SimpleItemWithDictionary));
-            SimpleItemWithDictionary item = new SimpleItemWithDictionary
-            {
-                Name = "DictItem",
-                StringIntDict = new Dictionary<string, int> { { "Key1", 10 }, { "Key2", 20 } },
-            };
-
-            string serializedXml = SerializeToString(serializer, item);
-            string expectedXml =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<SimpleItemWithDictionary>
-  <Name>DictItem</Name>
-  <StringIntDict>
-    <Entry>
-      <Key>Key1</Key>
-      <Value>10</Value>
-    </Entry>
-    <Entry>
-      <Key>Key2</Key>
-      <Value>20</Value>
-    </Entry>
-  </StringIntDict>
-</SimpleItemWithDictionary>";
-
-            Assert.AreEqual(
-                expectedXml.Trim(),
-                serializedXml.Trim(),
-                "Serialized XML should match expected XML."
             );
         }
 
@@ -901,76 +1190,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(2, deserialized.StringIntDict.Count);
             Assert.AreEqual(10, deserialized.StringIntDict["Key1"]);
             Assert.AreEqual(20, deserialized.StringIntDict["Key2"]);
-        }
-
-        [Test]
-        public void Serialize_ComplexItemWithDictionary_ReturnsExpectedXml()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(ComplexItemWithDictionary));
-            ComplexItemWithDictionary item = new ComplexItemWithDictionary
-            {
-                Name = "ComplexDictItem",
-                StringObjectDict = new Dictionary<string, SimpleItem>
-                {
-                    {
-                        "ObjectKey1",
-                        new SimpleItem
-                        {
-                            Name = "Item1",
-                            Value = 100,
-                            EnumValue = TestEnum.Value1,
-                            PublicVariable = "PublicValue1",
-                        }
-                    },
-                    {
-                        "ObjectKey2",
-                        new SimpleItem
-                        {
-                            Name = "Item2",
-                            Value = 200,
-                            EnumValue = TestEnum.Value2,
-                            PublicVariable = "PublicValue2",
-                        }
-                    },
-                },
-            };
-
-            string serializedXml = SerializeToString(serializer, item);
-            string expectedXml =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<ComplexItemWithDictionary>
-  <Name>ComplexDictItem</Name>
-  <StringObjectDict>
-    <Entry>
-      <Key>ObjectKey1</Key>
-      <Value>
-        <SimpleItem>
-          <Name>Item1</Name>
-          <Value>100</Value>
-          <EnumValue>Value1</EnumValue>
-          <PublicVariable>PublicValue1</PublicVariable>
-        </SimpleItem>
-      </Value>
-    </Entry>
-    <Entry>
-      <Key>ObjectKey2</Key>
-      <Value>
-        <SimpleItem>
-          <Name>Item2</Name>
-          <Value>200</Value>
-          <EnumValue>Value2</EnumValue>
-          <PublicVariable>PublicValue2</PublicVariable>
-        </SimpleItem>
-      </Value>
-    </Entry>
-  </StringObjectDict>
-</ComplexItemWithDictionary>";
-
-            Assert.AreEqual(
-                expectedXml.Trim(),
-                serializedXml.Trim(),
-                "Serialized XML should match expected XML."
-            );
         }
 
         [Test]
@@ -1025,70 +1244,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(
                 "PublicValue2",
                 deserialized.StringObjectDict["ObjectKey2"].PublicVariable
-            );
-        }
-
-        [Test]
-        public void Serialize_ArrayOfSimpleItems_ReturnsExpectedXml()
-        {
-            GameSerializerSettings settings = new GameSerializerSettings
-            {
-                RootName = "SimpleItems",
-            };
-            GameSerializer serializer = new GameSerializer(typeof(List<SimpleItem>), settings);
-            List<SimpleItem> items = new List<SimpleItem>
-            {
-                new SimpleItem
-                {
-                    Name = "Item1",
-                    Value = 10,
-                    EnumValue = TestEnum.Value1,
-                    PublicVariable = "Public1",
-                },
-                new SimpleItem
-                {
-                    Name = "Item2",
-                    Value = 20,
-                    EnumValue = TestEnum.Value2,
-                    PublicVariable = "Public2",
-                },
-                new SimpleItem
-                {
-                    Name = "Item3",
-                    Value = 30,
-                    EnumValue = TestEnum.Value3,
-                    PublicVariable = "Public3",
-                },
-            };
-
-            string serializedXml = SerializeToString(serializer, items);
-            string expectedXml =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<SimpleItems>
-  <SimpleItem>
-    <Name>Item1</Name>
-    <Value>10</Value>
-    <EnumValue>Value1</EnumValue>
-    <PublicVariable>Public1</PublicVariable>
-  </SimpleItem>
-  <SimpleItem>
-    <Name>Item2</Name>
-    <Value>20</Value>
-    <EnumValue>Value2</EnumValue>
-    <PublicVariable>Public2</PublicVariable>
-  </SimpleItem>
-  <SimpleItem>
-    <Name>Item3</Name>
-    <Value>30</Value>
-    <EnumValue>Value3</EnumValue>
-    <PublicVariable>Public3</PublicVariable>
-  </SimpleItem>
-</SimpleItems>";
-
-            Assert.AreEqual(
-                expectedXml.Trim(),
-                serializedXml.Trim(),
-                "Serialized XML should match expected XML."
             );
         }
 
@@ -1179,31 +1334,6 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_IntArray_ReturnsExpectedXml()
-        {
-            GameSerializerSettings settings = new GameSerializerSettings { RootName = "IntArray" };
-            GameSerializer serializer = new GameSerializer(typeof(int[]), settings);
-            int[] array = new int[] { 1, 2, 3, 4, 5 };
-
-            string serializedXml = SerializeToString(serializer, array);
-            string expectedXml =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<IntArray>
-  <Int32>1</Int32>
-  <Int32>2</Int32>
-  <Int32>3</Int32>
-  <Int32>4</Int32>
-  <Int32>5</Int32>
-</IntArray>";
-
-            Assert.AreEqual(
-                expectedXml.Trim(),
-                serializedXml.Trim(),
-                "Serialized XML should match expected XML."
-            );
-        }
-
-        [Test]
         public void Deserialize_IntArray_RetainsValues()
         {
             GameSerializerSettings settings = new GameSerializerSettings { RootName = "IntArray" };
@@ -1226,34 +1356,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(3, deserialized[2]);
             Assert.AreEqual(4, deserialized[3]);
             Assert.AreEqual(5, deserialized[4]);
-        }
-
-        [Test]
-        public void Serialize_StringArray_ReturnsExpectedXml()
-        {
-            GameSerializerSettings settings = new GameSerializerSettings
-            {
-                RootName = "StringArray",
-            };
-            GameSerializer serializer = new GameSerializer(typeof(string[]), settings);
-            string[] array = new string[] { "One", "Two", "Three", "Four", "Five" };
-
-            string serializedXml = SerializeToString(serializer, array);
-            string expectedXml =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<StringArray>
-  <String>One</String>
-  <String>Two</String>
-  <String>Three</String>
-  <String>Four</String>
-  <String>Five</String>
-</StringArray>";
-
-            Assert.AreEqual(
-                expectedXml.Trim(),
-                serializedXml.Trim(),
-                "Serialized XML should match expected XML."
-            );
         }
 
         [Test]
@@ -1285,34 +1387,6 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_FloatArray_ReturnsExpectedXml()
-        {
-            GameSerializerSettings settings = new GameSerializerSettings
-            {
-                RootName = "FloatArray",
-            };
-            GameSerializer serializer = new GameSerializer(typeof(float[]), settings);
-            float[] array = new float[] { 1.1f, 2.2f, 3.3f, 4.4f, 5.5f };
-
-            string serializedXml = SerializeToString(serializer, array);
-            string expectedXml =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<FloatArray>
-  <Single>1.1</Single>
-  <Single>2.2</Single>
-  <Single>3.3</Single>
-  <Single>4.4</Single>
-  <Single>5.5</Single>
-</FloatArray>";
-
-            Assert.AreEqual(
-                expectedXml.Trim(),
-                serializedXml.Trim(),
-                "Serialized XML should match expected XML."
-            );
-        }
-
-        [Test]
         public void Deserialize_FloatArray_RetainsValues()
         {
             GameSerializerSettings settings = new GameSerializerSettings
@@ -1341,29 +1415,6 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_EnumArray_ReturnsExpectedXml()
-        {
-            GameSerializerSettings settings = new GameSerializerSettings { RootName = "EnumArray" };
-            GameSerializer serializer = new GameSerializer(typeof(TestEnum[]), settings);
-            TestEnum[] array = new TestEnum[] { TestEnum.Value1, TestEnum.Value2, TestEnum.Value3 };
-
-            string serializedXml = SerializeToString(serializer, array);
-            string expectedXml =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<EnumArray>
-  <TestEnum>Value1</TestEnum>
-  <TestEnum>Value2</TestEnum>
-  <TestEnum>Value3</TestEnum>
-</EnumArray>";
-
-            Assert.AreEqual(
-                expectedXml.Trim(),
-                serializedXml.Trim(),
-                "Serialized XML should match expected XML."
-            );
-        }
-
-        [Test]
         public void Deserialize_EnumArray_RetainsValues()
         {
             GameSerializerSettings settings = new GameSerializerSettings { RootName = "EnumArray" };
@@ -1382,30 +1433,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(TestEnum.Value1, deserialized[0]);
             Assert.AreEqual(TestEnum.Value2, deserialized[1]);
             Assert.AreEqual(TestEnum.Value3, deserialized[2]);
-        }
-
-        [Test]
-        public void Serialize_ItemWithCustomName_UsesCustomName()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(ItemWithCustomName));
-            ItemWithCustomName item = new ItemWithCustomName
-            {
-                Property = "TestValue",
-                Attribute = "TestAttr",
-            };
-
-            string serializedXml = SerializeToString(serializer, item);
-            string expectedXml =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<ItemWithCustomName CustomNamedAttribute=""TestAttr"">
-  <CustomNamedProperty>TestValue</CustomNamedProperty>
-</ItemWithCustomName>";
-
-            Assert.AreEqual(
-                expectedXml.Trim(),
-                serializedXml.Trim(),
-                "Serialized XML should use the custom property name."
-            );
         }
 
         [Test]
@@ -1436,33 +1463,6 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_ItemWithInclude_UsesActualType()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(ItemWithInclude));
-            ItemWithInclude item = new ItemWithInclude
-            {
-                Item = new SimpleItem { Name = "SimpleItemName", Value = 42 },
-            };
-
-            string serializedXml = SerializeToString(serializer, item);
-            string expectedXml =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<ItemWithInclude>
-  <SimpleItem>
-    <Name>SimpleItemName</Name>
-    <Value>42</Value>
-    <EnumValue>Value1</EnumValue>
-  </SimpleItem>
-</ItemWithInclude>";
-
-            Assert.AreEqual(
-                expectedXml.Trim(),
-                serializedXml.Trim(),
-                "Serialized XML should use the actual type name for the included item."
-            );
-        }
-
-        [Test]
         public void Deserialize_ItemWithInclude_UsesActualType()
         {
             GameSerializer serializer = new GameSerializer(typeof(ItemWithInclude));
@@ -1485,44 +1485,6 @@ namespace Rebellion.Tests.Util.Serialization
             SimpleItem simpleItem = (SimpleItem)deserialized.Item;
             Assert.AreEqual("SimpleItemName", simpleItem.Name);
             Assert.AreEqual(42, simpleItem.Value);
-        }
-
-        [Test]
-        public void DeserializeNode_StreamContainingMatchingElement_ReturnsDeserializedObject()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
-            SimpleItem original = new SimpleItem { Name = "NodeTest", Value = 7 };
-            string xml = SerializeToString(serializer, original);
-
-            SimpleItem result;
-            using (MemoryStream stream = new MemoryStream())
-            using (StreamWriter writer = new StreamWriter(stream))
-            {
-                writer.Write(xml);
-                writer.Flush();
-                stream.Seek(0, SeekOrigin.Begin);
-                result = serializer.DeserializeNode<SimpleItem>(stream);
-            }
-
-            Assert.AreEqual("NodeTest", result.Name);
-            Assert.AreEqual(7, result.Value);
-        }
-
-        [Test]
-        public void DeserializeNode_ElementNotFound_ThrowsInvalidDataException()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
-            string xml = "<?xml version=\"1.0\"?><UnrelatedRoot><Child/></UnrelatedRoot>";
-
-            Assert.Throws<System.IO.InvalidDataException>(() =>
-            {
-                using MemoryStream stream = new MemoryStream();
-                using StreamWriter writer = new StreamWriter(stream);
-                writer.Write(xml);
-                writer.Flush();
-                stream.Seek(0, SeekOrigin.Begin);
-                serializer.DeserializeNode<SimpleItem>(stream);
-            });
         }
 
         [Test]
@@ -1571,6 +1533,44 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.Throws<XmlSchemaValidationException>(() =>
                 DeserializeFromString(serializer, xml)
             );
+        }
+
+        [Test]
+        public void DeserializeNode_StreamContainingMatchingElement_ReturnsDeserializedObject()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            SimpleItem original = new SimpleItem { Name = "NodeTest", Value = 7 };
+            string xml = SerializeToString(serializer, original);
+
+            SimpleItem result;
+            using (MemoryStream stream = new MemoryStream())
+            using (StreamWriter writer = new StreamWriter(stream))
+            {
+                writer.Write(xml);
+                writer.Flush();
+                stream.Seek(0, SeekOrigin.Begin);
+                result = serializer.DeserializeNode<SimpleItem>(stream);
+            }
+
+            Assert.AreEqual("NodeTest", result.Name);
+            Assert.AreEqual(7, result.Value);
+        }
+
+        [Test]
+        public void DeserializeNode_ElementNotFound_ThrowsInvalidDataException()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            string xml = "<?xml version=\"1.0\"?><UnrelatedRoot><Child/></UnrelatedRoot>";
+
+            Assert.Throws<System.IO.InvalidDataException>(() =>
+            {
+                using MemoryStream stream = new MemoryStream();
+                using StreamWriter writer = new StreamWriter(stream);
+                writer.Write(xml);
+                writer.Flush();
+                stream.Seek(0, SeekOrigin.Begin);
+                serializer.DeserializeNode<SimpleItem>(stream);
+            });
         }
 
         private static XmlSchemaSet BuildSimpleItemSchema()

@@ -16,72 +16,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class UprisingSystemTests
     {
-        private (GameRoot game, Planet planet, UprisingSystem system) BuildScene(
-            int ownerSupport = 10,
-            int opposingSupport = 50,
-            int troopCount = 0,
-            bool isCoreSystem = false,
-            IRandomNumberProvider rng = null
-        )
-        {
-            GameConfig config = TestConfig.Create();
-            config.Uprising.ActiveSupportDriftMinTicks = 1;
-            config.Uprising.ActiveSupportDriftMaxTicks = 1;
-            config.Uprising.IncidentPulseMinTicks = 1;
-            config.Uprising.IncidentPulseMaxTicks = 1;
-            config.Uprising.ClearUprisingMinTicks = 1;
-            config.Uprising.ClearUprisingMaxTicks = 1;
-            GameRoot game = new GameRoot(config);
-            game.GetFactions().Add(new Faction { InstanceID = "empire" });
-            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
-
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "sys1",
-                SystemType = isCoreSystem ? PlanetSystemType.CoreSystem : PlanetSystemType.OuterRim,
-            };
-            game.AttachNode(system, game.Galaxy);
-
-            Planet planet = new Planet
-            {
-                InstanceID = "p1",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-                PopularSupport = new Dictionary<string, int>
-                {
-                    { "empire", ownerSupport },
-                    { "rebels", opposingSupport },
-                },
-            };
-            game.AttachNode(planet, system);
-
-            // Add garrison troops
-            for (int i = 0; i < troopCount; i++)
-            {
-                Regiment regiment = EntityFactory.CreateRegiment($"r{i}", "empire");
-                regiment.ManufacturingStatus = ManufacturingStatus.Complete;
-                game.AttachNode(regiment, planet);
-            }
-
-            MovementSystem movementSystem = new MovementSystem(
-                game,
-                new FogOfWarSystem(game),
-                new FleetSystem(game)
-            );
-            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
-                game,
-                movementSystem,
-                new ManufacturingSystem(game, new FleetSystem(game)),
-                new FogOfWarSystem(game)
-            );
-            UprisingSystem uprisingSystem = new UprisingSystem(
-                game,
-                rng ?? new StubRNG(),
-                planetaryControl
-            );
-            return (game, planet, uprisingSystem);
-        }
-
         [Test]
         public void ProcessTick_SufficientGarrison_NoUprising()
         {
@@ -117,27 +51,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_GarrisonDeficit_StartsUprising()
-        {
-            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
-                ownerSupport: 10,
-                troopCount: 5
-            );
-            Regiment departingRegiment = planet.GetChildren<Regiment>()[0];
-            game.DetachNode(departingRegiment);
-
-            List<GameResult> results = system.HandleResults(
-                new PlanetGarrisonChangedResult[]
-                {
-                    new PlanetGarrisonChangedResult { Planet = planet },
-                }
-            );
-
-            Assert.IsTrue(planet.IsInUprising);
-            Assert.AreEqual(1, results.OfType<PlanetUprisingStartedResult>().Count());
-        }
-
-        [Test]
         public void ProcessTick_ExactGarrison_NoUprising()
         {
             // Garrison requirement is 5 at support 10. Five troops exactly meets it, no uprising.
@@ -168,28 +81,6 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(1, firstResults.OfType<PlanetNearUprisingResult>().Count());
             Assert.IsEmpty(secondResults.OfType<PlanetNearUprisingResult>());
-            Assert.IsFalse(planet.IsInUprising);
-        }
-
-        [Test]
-        public void ReconcileGarrison_CapturedPlanetAtRequirement_ReportsNearUprising()
-        {
-            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
-                ownerSupport: 10,
-                opposingSupport: 50,
-                troopCount: 4
-            );
-            foreach (Regiment regiment in planet.GetChildren<Regiment>().ToList())
-                game.DetachNode(regiment);
-            game.ChangeOwnership(planet, "rebels");
-            Regiment occupyingRegiment = EntityFactory.CreateRegiment("occupier", "rebels");
-            occupyingRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
-            game.AttachNode(occupyingRegiment, planet);
-
-            List<GameResult> results = system.ReconcileGarrison(planet);
-
-            Assert.AreEqual(1, results.OfType<PlanetNearUprisingResult>().Count());
-            Assert.IsEmpty(results.OfType<PlanetUprisingStartedResult>());
             Assert.IsFalse(planet.IsInUprising);
         }
 
@@ -452,69 +343,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ReconcileGarrison_DeficitReturnsBeforeClearPulse_CancelsClearTimer()
-        {
-            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
-                ownerSupport: 50,
-                opposingSupport: 50,
-                troopCount: 2
-            );
-            game.Config.Uprising.ActiveSupportDriftMinTicks = 100;
-            game.Config.Uprising.ActiveSupportDriftMaxTicks = 100;
-            game.Config.Uprising.IncidentPulseMinTicks = 100;
-            game.Config.Uprising.IncidentPulseMaxTicks = 100;
-            planet.BeginUprising();
-            system.ProcessTick();
-
-            game.DetachNode(planet.GetChildren<Regiment>()[0]);
-            system.ReconcileGarrison(planet);
-            game.CurrentTick = 1;
-            List<GameResult> results = system.ProcessTick();
-
-            Assert.IsTrue(planet.IsInUprising);
-            Assert.AreEqual(0, planet.NextUprisingClearTick);
-            Assert.IsEmpty(results.OfType<PlanetUprisingEndedResult>());
-        }
-
-        private static void ScheduleIncident(Planet planet, int tick)
-        {
-            planet.BeginUprising();
-            planet.NextUprisingSupportDriftTick = tick + 1;
-            planet.UprisingSupportDriftTimerOrder = 1;
-            planet.NextUprisingIncidentTick = tick;
-            planet.UprisingIncidentTimerOrder = 2;
-            planet.NextUprisingTimerOrder = 2;
-        }
-
-        private static Mission AttachActiveMission(
-            GameRoot game,
-            Planet planet,
-            string missionTypeId,
-            string ownerInstanceId,
-            int leadership
-        )
-        {
-            Officer officer = EntityFactory.CreateOfficer(
-                $"{missionTypeId}-officer",
-                ownerInstanceId
-            );
-            officer.SetBaseRating(OfficerRating.Leadership, leadership);
-            Mission mission = MissionTestFactory.TryCreate(
-                missionTypeId,
-                game,
-                ownerInstanceId,
-                planet,
-                new List<IMissionParticipant> { officer }
-            );
-            Assert.IsNotNull(mission);
-            mission.InstanceID = $"{missionTypeId}-mission";
-            game.AttachNode(mission, planet);
-            mission.Initiate(100);
-            game.AttachNode(officer, mission);
-            return mission;
-        }
-
-        [Test]
         public void ProcessTick_IncidentIgnoresHostileFleetPresence()
         {
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
@@ -756,6 +584,178 @@ namespace Rebellion.Tests.Systems
                 "Outer rim should NOT apply GarrisonEfficiency — garrison deficit triggers uprising"
             );
         }
+
+        [Test]
+        public void HandleResults_GarrisonDeficit_StartsUprising()
+        {
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 5
+            );
+            Regiment departingRegiment = planet.Regiments[0];
+            game.DetachNode(departingRegiment);
+
+            List<GameResult> results = system.HandleResults(
+                new PlanetGarrisonChangedResult[]
+                {
+                    new PlanetGarrisonChangedResult { Planet = planet },
+                }
+            );
+
+            Assert.IsTrue(planet.IsInUprising);
+            Assert.AreEqual(1, results.OfType<PlanetUprisingStartedResult>().Count());
+        }
+
+        [Test]
+        public void ReconcileGarrison_CapturedPlanetAtRequirement_ReportsNearUprising()
+        {
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                opposingSupport: 50,
+                troopCount: 4
+            );
+            foreach (Regiment regiment in planet.Regiments.ToList())
+                game.DetachNode(regiment);
+            game.ChangeOwnership(planet, "rebels");
+            Regiment occupyingRegiment = EntityFactory.CreateRegiment("occupier", "rebels");
+            occupyingRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(occupyingRegiment, planet);
+
+            List<GameResult> results = system.ReconcileGarrison(planet);
+
+            Assert.AreEqual(1, results.OfType<PlanetNearUprisingResult>().Count());
+            Assert.IsEmpty(results.OfType<PlanetUprisingStartedResult>());
+            Assert.IsFalse(planet.IsInUprising);
+        }
+
+        [Test]
+        public void ReconcileGarrison_DeficitReturnsBeforeClearPulse_CancelsClearTimer()
+        {
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 50,
+                opposingSupport: 50,
+                troopCount: 2
+            );
+            game.Config.Uprising.ActiveSupportDriftMinTicks = 100;
+            game.Config.Uprising.ActiveSupportDriftMaxTicks = 100;
+            game.Config.Uprising.IncidentPulseMinTicks = 100;
+            game.Config.Uprising.IncidentPulseMaxTicks = 100;
+            planet.BeginUprising();
+            system.ProcessTick();
+
+            game.DetachNode(planet.Regiments[0]);
+            system.ReconcileGarrison(planet);
+            game.CurrentTick = 1;
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.IsTrue(planet.IsInUprising);
+            Assert.AreEqual(0, planet.NextUprisingClearTick);
+            Assert.IsEmpty(results.OfType<PlanetUprisingEndedResult>());
+        }
+
+        private (GameRoot game, Planet planet, UprisingSystem system) BuildScene(
+            int ownerSupport = 10,
+            int opposingSupport = 50,
+            int troopCount = 0,
+            bool isCoreSystem = false,
+            IRandomNumberProvider rng = null
+        )
+        {
+            GameConfig config = TestConfig.Create();
+            config.Uprising.ActiveSupportDriftMinTicks = 1;
+            config.Uprising.ActiveSupportDriftMaxTicks = 1;
+            config.Uprising.IncidentPulseMinTicks = 1;
+            config.Uprising.IncidentPulseMaxTicks = 1;
+            config.Uprising.ClearUprisingMinTicks = 1;
+            config.Uprising.ClearUprisingMaxTicks = 1;
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                SystemType = isCoreSystem ? PlanetSystemType.CoreSystem : PlanetSystemType.OuterRim,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int>
+                {
+                    { "empire", ownerSupport },
+                    { "rebels", opposingSupport },
+                },
+            };
+            game.AttachNode(planet, system);
+
+            // Add garrison troops
+            for (int i = 0; i < troopCount; i++)
+            {
+                Regiment regiment = EntityFactory.CreateRegiment($"r{i}", "empire");
+                regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+                game.AttachNode(regiment, planet);
+            }
+
+            MovementSystem movementSystem = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
+                game,
+                movementSystem,
+                new ManufacturingSystem(game, new FleetSystem(game)),
+                new FogOfWarSystem(game)
+            );
+            UprisingSystem uprisingSystem = new UprisingSystem(
+                game,
+                rng ?? new StubRNG(),
+                planetaryControl
+            );
+            return (game, planet, uprisingSystem);
+        }
+
+        private static void ScheduleIncident(Planet planet, int tick)
+        {
+            planet.BeginUprising();
+            planet.NextUprisingSupportDriftTick = tick + 1;
+            planet.UprisingSupportDriftTimerOrder = 1;
+            planet.NextUprisingIncidentTick = tick;
+            planet.UprisingIncidentTimerOrder = 2;
+            planet.NextUprisingTimerOrder = 2;
+        }
+
+        private static Mission AttachActiveMission(
+            GameRoot game,
+            Planet planet,
+            string missionTypeId,
+            string ownerInstanceId,
+            int leadership
+        )
+        {
+            Officer officer = EntityFactory.CreateOfficer(
+                $"{missionTypeId}-officer",
+                ownerInstanceId
+            );
+            officer.SetBaseRating(OfficerRating.Leadership, leadership);
+            Mission mission = MissionTestFactory.TryCreate(
+                missionTypeId,
+                game,
+                ownerInstanceId,
+                planet,
+                new List<IMissionParticipant> { officer }
+            );
+            Assert.IsNotNull(mission);
+            mission.InstanceID = $"{missionTypeId}-mission";
+            game.AttachNode(mission, planet);
+            mission.Initiate(100);
+            game.AttachNode(officer, mission);
+            return mission;
+        }
     }
 
     [TestFixture]
@@ -921,122 +921,6 @@ namespace Rebellion.Tests.Systems
                 garrison,
                 "Empire core world garrison can be 0 via integer division (no min-1 floor)"
             );
-        }
-    }
-
-    [TestFixture]
-    public class SupportShiftSystemTests
-    {
-        private (
-            GameRoot game,
-            Planet planet,
-            Faction faction,
-            PlanetaryControlSystem system
-        ) BuildScene(int support = 20, string ownerInstanceId = "empire", bool isColonized = true)
-        {
-            GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
-            Faction empire = new Faction { InstanceID = "empire" };
-            Faction rebels = new Faction { InstanceID = "rebels" };
-            game.GetFactions().Add(empire);
-            game.GetFactions().Add(rebels);
-
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            game.AttachNode(system, game.Galaxy);
-
-            Planet planet = new Planet
-            {
-                InstanceID = "p1",
-                OwnerInstanceID = ownerInstanceId,
-                IsColonized = isColonized,
-                PositionX = 0,
-                PositionY = 0,
-                PopularSupport = new Dictionary<string, int> { { "empire", support } },
-            };
-            game.AttachNode(planet, system);
-
-            MovementSystem movementSystem = new MovementSystem(
-                game,
-                new FogOfWarSystem(game),
-                new FleetSystem(game)
-            );
-            PlanetaryControlSystem controlSystem = new PlanetaryControlSystem(
-                game,
-                movementSystem,
-                new ManufacturingSystem(game, new FleetSystem(game)),
-                new FogOfWarSystem(game)
-            );
-            return (game, planet, empire, controlSystem);
-        }
-
-        [Test]
-        public void ProcessTick_OwnedPlanetWithSupport_DoesNotShiftPopularSupport()
-        {
-            (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 15
-            );
-
-            system.ProcessTick();
-
-            Assert.AreEqual(
-                15,
-                planet.GetPopularSupport("empire"),
-                "Owned planets should not gain implicit support from PlanetaryControlSystem ticks"
-            );
-        }
-
-        [Test]
-        public void ProcessTick_NeutralPlanetBelowThreshold_DoesNotTransferOwnership()
-        {
-            (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 59,
-                ownerInstanceId: null
-            );
-
-            system.ProcessTick();
-
-            Assert.IsNull(planet.GetOwnerInstanceID());
-        }
-
-        [Test]
-        public void ProcessTick_NeutralPlanetAboveThreshold_TransfersOwnership()
-        {
-            (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 61,
-                ownerInstanceId: null
-            );
-
-            system.ProcessTick();
-
-            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
-        }
-
-        [Test]
-        public void ProcessTick_NeutralPlanetWithRegiments_DoesNotTransferOwnership()
-        {
-            (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 61,
-                ownerInstanceId: null
-            );
-            planet.AddTestChild(EntityFactory.CreateRegiment("reg1", "empire"));
-
-            system.ProcessTick();
-
-            Assert.IsNull(planet.GetOwnerInstanceID());
-        }
-
-        [Test]
-        public void ProcessTick_UncolonizedPlanetAboveThreshold_DoesNotTransferOwnership()
-        {
-            (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 61,
-                ownerInstanceId: null,
-                isColonized: false
-            );
-
-            system.ProcessTick();
-
-            Assert.IsNull(planet.GetOwnerInstanceID());
         }
     }
 }

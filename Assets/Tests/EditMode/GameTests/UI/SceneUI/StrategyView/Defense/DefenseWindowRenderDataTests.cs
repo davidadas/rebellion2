@@ -96,37 +96,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
-        [Test]
-        public void StrategyUnitCardRenderData_NullName_NormalizesAndPreservesFlags()
-        {
-            StrategyUnitCardRenderData card = CreateCard();
-
-            Assert.AreEqual(string.Empty, card.Name);
-            Assert.AreEqual((Color32)Color.green, card.NameColor);
-            Assert.IsTrue(card.ShowName);
-            Assert.IsTrue(card.UseAlternateNameLayout);
-            Assert.AreEqual(4, card.EntityFrameYOffset);
-            Assert.IsTrue(card.CanDrag);
-        }
-
         private static StrategyUnitCardRenderData CreateCard()
         {
             return new StrategyUnitCardRenderData(
-                null,
-                Color.green,
-                true,
-                true,
-                null,
-                null,
+                string.Empty,
+                Color.white,
+                false,
+                false,
                 null,
                 null,
                 null,
                 null,
-                4,
+                null,
+                null,
+                0,
                 null,
                 null,
                 null,
-                true
+                false
             );
         }
     }

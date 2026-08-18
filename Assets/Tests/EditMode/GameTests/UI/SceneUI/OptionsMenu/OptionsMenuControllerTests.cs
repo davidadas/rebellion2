@@ -88,6 +88,16 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void Open_MissingPrefab_LeavesControllerClosed()
+        {
+            using OptionsMenuController controller = CreateController(null);
+
+            controller.Open();
+
+            Assert.IsFalse(controller.IsOpen);
+        }
+
+        [Test]
         public void TryCancel_OpenWindow_ClosesWindow()
         {
             Assert.IsFalse(_controller.TryCancel());
@@ -402,16 +412,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _controller.Dispose();
 
             Assert.Throws<ObjectDisposedException>(() => _controller.Open());
-        }
-
-        [Test]
-        public void Open_MissingPrefab_LeavesControllerClosed()
-        {
-            using OptionsMenuController controller = CreateController(null);
-
-            controller.Open();
-
-            Assert.IsFalse(controller.IsOpen);
         }
 
         private OptionsMenuController CreateController(OptionsMenuView prefab)

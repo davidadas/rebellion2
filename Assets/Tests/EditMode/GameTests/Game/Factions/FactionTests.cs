@@ -60,19 +60,6 @@ namespace Rebellion.Tests.Game.Factions
             _technology = new Technology(_building);
         }
 
-        private static Fleet CreateOperationalFleet(string instanceID, string ownerInstanceID)
-        {
-            Fleet fleet = new Fleet { InstanceID = instanceID, OwnerInstanceID = ownerInstanceID };
-            fleet.AddChild(
-                new CapitalShip
-                {
-                    OwnerInstanceID = ownerInstanceID,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                }
-            );
-            return fleet;
-        }
-
         [Test]
         public void IsAIControlled_WithPlayerID_ReturnsFalse()
         {
@@ -311,23 +298,6 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(0, entries[0].Order);
             Assert.AreEqual(1, entries[1].Order);
             Assert.AreEqual(3, entries[2].Order);
-        }
-
-        private void SetupShipCatalog(params (string name, int order, int difficulty)[] techs)
-        {
-            IManufacturable[] templates = techs
-                .Select(t =>
-                    (IManufacturable)
-                        new CapitalShip
-                        {
-                            DisplayName = t.name,
-                            ResearchOrder = t.order,
-                            ResearchDifficulty = t.difficulty,
-                            ManufacturingFactionInstanceIDs = new List<string> { "FACTION1" },
-                        }
-                )
-                .ToArray();
-            _faction.RebuildResearchCatalog(templates);
         }
 
         [Test]
@@ -681,36 +651,6 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void RequestRawMaterial_NoStockpile_QueuesFacilityOnce()
-        {
-            _building.InstanceID = "REFINERY1";
-
-            bool firstRequest = _faction.RequestRawMaterial(_building);
-            bool secondRequest = _faction.RequestRawMaterial(_building);
-
-            Assert.IsFalse(firstRequest);
-            Assert.IsFalse(secondRequest);
-            CollectionAssert.AreEqual(
-                new[] { _building.InstanceID },
-                _faction.PendingRawMaterialFacilityIDs
-            );
-        }
-
-        [Test]
-        public void RequestRefinedMaterial_AvailableStockpile_ReservesMaterialImmediately()
-        {
-            _building.InstanceID = "SHIPYARD1";
-            _faction.RefinedMaterialStockpile = 2;
-
-            bool reserved = _faction.RequestRefinedMaterial(_building);
-
-            Assert.IsTrue(reserved);
-            Assert.AreEqual(1, _faction.RefinedMaterialStockpile);
-            Assert.IsTrue(_building.ProductionInputReserved);
-            Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
-        }
-
-        [Test]
         public void SerializeAndDeserialize_ResearchState_RetainsAllDisciplinesAndIgnoresDerivedCatalogs()
         {
             _faction.ResearchState.CostScalePercent = 125;
@@ -787,13 +727,43 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        public void RequestRawMaterial_NoStockpile_QueuesFacilityOnce()
+        {
+            _building.InstanceID = "REFINERY1";
+
+            bool firstRequest = _faction.RequestRawMaterial(_building);
+            bool secondRequest = _faction.RequestRawMaterial(_building);
+
+            Assert.IsFalse(firstRequest);
+            Assert.IsFalse(secondRequest);
+            CollectionAssert.AreEqual(
+                new[] { _building.InstanceID },
+                _faction.PendingRawMaterialFacilityIDs
+            );
+        }
+
+        [Test]
+        public void RequestRefinedMaterial_AvailableStockpile_ReservesMaterialImmediately()
+        {
+            _building.InstanceID = "SHIPYARD1";
+            _faction.RefinedMaterialStockpile = 2;
+
+            bool reserved = _faction.RequestRefinedMaterial(_building);
+
+            Assert.IsTrue(reserved);
+            Assert.AreEqual(1, _faction.RefinedMaterialStockpile);
+            Assert.IsTrue(_building.ProductionInputReserved);
+            Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
+        }
+
+        [Test]
         public void GetHQInstanceID_FactionWithHQ_ReturnsHQInstanceID()
         {
             _faction.HQInstanceID = "HQ1";
 
-            string hqID = _faction.GetHQInstanceID();
+            string hqId = _faction.GetHQInstanceID();
 
-            Assert.AreEqual("HQ1", hqID, "Should return the HQ instance ID");
+            Assert.AreEqual("HQ1", hqId, "Should return the HQ instance ID");
         }
 
         [Test]
@@ -801,9 +771,9 @@ namespace Rebellion.Tests.Game.Factions
         {
             _faction.HQInstanceID = null;
 
-            string hqID = _faction.GetHQInstanceID();
+            string hqId = _faction.GetHQInstanceID();
 
-            Assert.IsNull(hqID, "Should return null when HQ is not set");
+            Assert.IsNull(hqId, "Should return null when HQ is not set");
         }
 
         [Test]
@@ -1095,6 +1065,19 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        public void GetNearestFriendlyPlanetTo_WithNodeNotOnPlanet_ThrowsException()
+        {
+            Fleet floatingFleet = new Fleet { InstanceID = "FLEET2", OwnerInstanceID = "FACTION1" };
+
+            _faction.AddOwnedUnit(_planet1);
+
+            Assert.Throws<ArgumentException>(
+                () => _faction.GetNearestFriendlyPlanetTo(floatingFleet),
+                "Should throw exception when node is not on a planet"
+            );
+        }
+
+        [Test]
         public void GetNearestOwnedPlanetTo_MultipleOwnedPlanets_ReturnsClosestPlanet()
         {
             _planet1.PositionX = 20;
@@ -1144,19 +1127,6 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void GetNearestFriendlyPlanetTo_WithNodeNotOnPlanet_ThrowsException()
-        {
-            Fleet floatingFleet = new Fleet { InstanceID = "FLEET2", OwnerInstanceID = "FACTION1" };
-
-            _faction.AddOwnedUnit(_planet1);
-
-            Assert.Throws<ArgumentException>(
-                () => _faction.GetNearestFriendlyPlanetTo(floatingFleet),
-                "Should throw exception when node is not on a planet"
-            );
-        }
-
-        [Test]
         public void GetTotalMaintenanceCost_MixedCompleteAndBuilding_SumsCompleteOnly()
         {
             Regiment completeUnit = new Regiment
@@ -1200,6 +1170,36 @@ namespace Rebellion.Tests.Game.Factions
             _faction.AddOwnedUnit(buildingUnit);
 
             Assert.AreEqual(70, _faction.GetTotalInProgressConstructionCost());
+        }
+
+        private static Fleet CreateOperationalFleet(string instanceID, string ownerInstanceID)
+        {
+            Fleet fleet = new Fleet { InstanceID = instanceID, OwnerInstanceID = ownerInstanceID };
+            fleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = ownerInstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            return fleet;
+        }
+
+        private void SetupShipCatalog(params (string name, int order, int difficulty)[] techs)
+        {
+            IManufacturable[] templates = techs
+                .Select(t =>
+                    (IManufacturable)
+                        new CapitalShip
+                        {
+                            DisplayName = t.name,
+                            ResearchOrder = t.order,
+                            ResearchDifficulty = t.difficulty,
+                            ManufacturingFactionInstanceIDs = new List<string> { "FACTION1" },
+                        }
+                )
+                .ToArray();
+            _faction.RebuildResearchCatalog(templates);
         }
     }
 }

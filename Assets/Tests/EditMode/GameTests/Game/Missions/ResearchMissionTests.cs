@@ -27,13 +27,13 @@ namespace Rebellion.Tests.Game.Missions
             _faction = new Faction { InstanceID = "empire", DisplayName = "Empire" };
             _game.GetFactions().Add(_faction);
 
-            PlanetSystem sys = new PlanetSystem
+            PlanetSystem system = new PlanetSystem
             {
                 InstanceID = "sys1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(sys, _game.Galaxy);
+            _game.AttachNode(system, _game.Galaxy);
 
             _planet = new Planet
             {
@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Game.Missions
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
             };
-            _game.AttachNode(_planet, sys);
+            _game.AttachNode(_planet, system);
             _game.AttachNode(
                 new Building
                 {
@@ -70,38 +70,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        private Mission CreateMission(
-            Officer officer,
-            ResearchDiscipline discipline = ResearchDiscipline.ShipDesign
-        )
-        {
-            Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Research,
-                _game,
-                "empire",
-                _planet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                discipline: discipline
-            );
-            _game.AttachNode(mission, _planet);
-            return mission;
-        }
-
-        private Officer CreateOfficer(int shipSkill = 50, int troopSkill = 0, int facilitySkill = 0)
-        {
-            Officer officer = new Officer
-            {
-                InstanceID = "off1",
-                OwnerInstanceID = "empire",
-                ShipResearch = shipSkill,
-                TroopResearch = troopSkill,
-                FacilityResearch = facilitySkill,
-            };
-            _game.AttachNode(officer, _planet);
-            return officer;
-        }
-
         [Test]
         public void TryCreate_EnemyPlanet_ReturnsNull()
         {
@@ -120,6 +88,24 @@ namespace Rebellion.Tests.Game.Missions
             );
 
             Assert.IsNull(mission, "TryCreate should return null for an enemy planet");
+        }
+
+        [Test]
+        public void TryCreate_ZeroResearchSkill_ReturnsNull()
+        {
+            Officer officer = CreateOfficer(shipSkill: 0);
+
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Research,
+                _game,
+                "empire",
+                _planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                discipline: ResearchDiscipline.ShipDesign
+            );
+
+            Assert.IsNull(mission);
         }
 
         [Test]
@@ -173,24 +159,6 @@ namespace Rebellion.Tests.Game.Missions
                 0,
                 _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
             );
-        }
-
-        [Test]
-        public void TryCreate_ZeroResearchSkill_ReturnsNull()
-        {
-            Officer officer = CreateOfficer(shipSkill: 0);
-
-            Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Research,
-                _game,
-                "empire",
-                _planet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                discipline: ResearchDiscipline.ShipDesign
-            );
-
-            Assert.IsNull(mission);
         }
 
         [Test]
@@ -300,6 +268,22 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_Success_DoesNotIncrementLeadership()
+        {
+            Officer officer = CreateOfficer(shipSkill: 100);
+            int leadershipBefore = officer.GetBaseRating(OfficerRating.Leadership);
+            Mission mission = CreateMission(officer);
+
+            mission.Execute(_game, new FixedRNG(0.0));
+
+            Assert.AreEqual(
+                leadershipBefore,
+                officer.GetBaseRating(OfficerRating.Leadership),
+                "Research missions should not increment Leadership"
+            );
+        }
+
+        [Test]
         public void ShouldRepeatAfterCompletion_OwnedPlanet_ReturnsTrue()
         {
             Officer officer = CreateOfficer();
@@ -317,22 +301,6 @@ namespace Rebellion.Tests.Game.Missions
             _planet.OwnerInstanceID = "rebels";
 
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
-        }
-
-        [Test]
-        public void Execute_Success_DoesNotIncrementLeadership()
-        {
-            Officer officer = CreateOfficer(shipSkill: 100);
-            int leadershipBefore = officer.GetBaseRating(OfficerRating.Leadership);
-            Mission mission = CreateMission(officer);
-
-            mission.Execute(_game, new FixedRNG(0.0));
-
-            Assert.AreEqual(
-                leadershipBefore,
-                officer.GetBaseRating(OfficerRating.Leadership),
-                "Research missions should not increment Leadership"
-            );
         }
 
         [Test]
@@ -444,6 +412,38 @@ namespace Rebellion.Tests.Game.Missions
                 ResearchDiscipline.FacilityDesign,
                 ((ResearchMission)deserialized).Discipline
             );
+        }
+
+        private Mission CreateMission(
+            Officer officer,
+            ResearchDiscipline discipline = ResearchDiscipline.ShipDesign
+        )
+        {
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Research,
+                _game,
+                "empire",
+                _planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                discipline: discipline
+            );
+            _game.AttachNode(mission, _planet);
+            return mission;
+        }
+
+        private Officer CreateOfficer(int shipSkill = 50, int troopSkill = 0, int facilitySkill = 0)
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "off1",
+                OwnerInstanceID = "empire",
+                ShipResearch = shipSkill,
+                TroopResearch = troopSkill,
+                FacilityResearch = facilitySkill,
+            };
+            _game.AttachNode(officer, _planet);
+            return officer;
         }
     }
 }

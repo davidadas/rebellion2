@@ -15,39 +15,12 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class MissionTests
     {
-        private static Mission CreateSabotageMission(
-            string ownerInstanceId,
-            ISceneNode target,
-            List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants,
-            ISceneNode selectedTarget = null
-        )
-        {
-            return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Sabotage,
-                null,
-                ownerInstanceId,
-                target,
-                mainParticipants,
-                decoyParticipants,
-                selectedTarget
-            );
-        }
-
-        private static Regiment CreateSabotageTarget(GameRoot game, Planet planet)
-        {
-            Regiment target = EntityFactory.CreateRegiment("sabotage-target", "rebels");
-            target.ManufacturingStatus = ManufacturingStatus.Complete;
-            game.AttachNode(target, planet);
-            return target;
-        }
-
         [Test]
         public void GetAbortReason_MainParticipantRemoved_ReturnsFailure()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -86,7 +59,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -118,11 +91,45 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void GetAbortReason_DecoyParticipantRemoved_ReturnsFailure()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            game.AttachNode(decoy, empirePlanet);
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant> { decoy },
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            mission.RemoveChild(decoy);
+
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
+                "Mission should be canceled when any participant is removed"
+            );
+        }
+
+        [Test]
         public void Execute_SuccessOutcome_IncludesMissionCompletedResultWithMissionInstanceID()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -152,7 +159,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -184,7 +191,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -209,102 +216,11 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanAcceptChild_WithMissionParticipant_ReturnsTrue()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-            Regiment target = CreateSabotageTarget(game, enemyPlanet);
-
-            Mission mission = CreateSabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-
-            Officer other = EntityFactory.CreateOfficer("o2", "empire");
-
-            Assert.IsTrue(mission.CanAcceptChild(other));
-        }
-
-        [Test]
-        public void CanAcceptChild_NonParticipant_ReturnsFalse()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-            Regiment target = CreateSabotageTarget(game, enemyPlanet);
-
-            Mission mission = CreateSabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-
-            Building building = new Building
-            {
-                InstanceID = "b1",
-                OwnerInstanceID = "empire",
-                BuildingType = BuildingType.Mine,
-            };
-
-            Assert.IsFalse(mission.CanAcceptChild(building));
-        }
-
-        [Test]
-        public void GetAbortReason_DecoyParticipantRemoved_ReturnsFailure()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
-            game.AttachNode(decoy, empPlanet);
-            Regiment target = CreateSabotageTarget(game, enemyPlanet);
-
-            Mission mission = CreateSabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant> { decoy },
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(0);
-
-            mission.RemoveChild(decoy);
-
-            Assert.AreEqual(
-                MissionCompletionReason.Failure,
-                mission.GetAbortReason(game),
-                "Mission should be canceled when any participant is removed"
-            );
-        }
-
-        [Test]
         public void Execute_FailedSuccessRoll_ReturnsFailed()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -336,6 +252,63 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void CanAcceptChild_WithMissionParticipant_ReturnsTrue()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            Officer other = EntityFactory.CreateOfficer("o2", "empire");
+
+            Assert.IsTrue(mission.CanAcceptChild(other));
+        }
+
+        [Test]
+        public void CanAcceptChild_NonParticipant_ReturnsFalse()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+            };
+
+            Assert.IsFalse(mission.CanAcceptChild(building));
+        }
+
+        [Test]
         public void Serialize_RoundTrip_RestoresDecoyParticipantRating()
         {
             Mission mission = new SabotageMission
@@ -359,13 +332,13 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
             Officer decoy = EntityFactory.CreateOfficer("o2", "empire");
-            game.AttachNode(decoy, empPlanet);
+            game.AttachNode(decoy, empirePlanet);
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
             Mission mission = CreateSabotageMission(
@@ -393,6 +366,33 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(loadedMission, loadedDecoy.GetParent());
             Assert.AreEqual(loadedOfficer, loadedMission.GetMainParticipants().Single());
             Assert.AreEqual(loadedDecoy, loadedMission.GetDecoyParticipants().Single());
+        }
+
+        private static Mission CreateSabotageMission(
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode selectedTarget = null
+        )
+        {
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Sabotage,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                selectedTarget
+            );
+        }
+
+        private static Regiment CreateSabotageTarget(GameRoot game, Planet planet)
+        {
+            Regiment target = EntityFactory.CreateRegiment("sabotage-target", "rebels");
+            target.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(target, planet);
+            return target;
         }
     }
 }
