@@ -2539,7 +2539,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void CanCreateMission_RetainedOfficer_ReturnsFalse()
+        public void CanCreateMission_InactiveOfficer_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -2549,7 +2549,7 @@ namespace Rebellion.Tests.Systems
                 Officer target,
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
-            game.AddToVoid(participant);
+            participant.IsEnabled = false;
 
             bool canCreate = missions.CanCreateMission(
                 CreateRequest(

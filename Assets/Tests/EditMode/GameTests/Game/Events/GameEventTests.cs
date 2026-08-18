@@ -101,7 +101,11 @@ namespace Rebellion.Tests.Game.Events
                             },
                         },
                     },
-                    new AddToVoidAction { UnitInstanceID = "LUKE_SKYWALKER" },
+                    new SetActiveAction
+                    {
+                        UnitInstanceID = "LUKE_SKYWALKER",
+                        IsActive = false,
+                    },
                     new IncreaseOfficerForceAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",
@@ -124,8 +128,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(3, message.AdvisorNotification.Protocol.FrameCount);
             Assert.AreEqual(
                 "LUKE_SKYWALKER",
-                ((AddToVoidAction)restored.Actions[1]).UnitInstanceID
+                ((SetActiveAction)restored.Actions[1]).UnitInstanceID
             );
+            Assert.IsFalse(((SetActiveAction)restored.Actions[1]).IsActive);
             Assert.AreEqual(5, ((IncreaseOfficerForceAction)restored.Actions[2]).Amount);
         }
 

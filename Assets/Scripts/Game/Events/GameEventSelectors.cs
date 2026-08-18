@@ -156,13 +156,13 @@ namespace Rebellion.Game.Events
     #region Unit selectors
 
     /// <summary>
-    /// Selects active or retained officers.
+    /// Selects officers, optionally including inactive nodes.
     /// </summary>
     [PersistableObject]
     public sealed class SelectOfficers : LocatedSceneNodeSelector<Officer>
     {
         [PersistableAttribute]
-        public bool IncludeRetained { get; set; }
+        public bool IncludeInactive { get; set; }
 
         [PersistableAttribute]
         public bool? IsCaptured { get; set; }
@@ -176,18 +176,12 @@ namespace Rebellion.Game.Events
             GameEventExecutionContext context
         )
         {
-            IEnumerable<Officer> officers = IncludeRetained
+            IEnumerable<Officer> officers = IncludeInactive
                 ? game.GetRegisteredSceneNodesByType<Officer>(includeDisabled: true)
                 : Active<Officer>(game);
             return SelectOwned(officers)
                 .Where(node =>
-                    MatchesActiveOrRecordedLocation(
-                        game,
-                        node,
-                        context,
-                        PlanetInstanceID,
-                        PlanetBinding
-                    )
+                    MatchesLocation(node, context, PlanetInstanceID, PlanetBinding)
                 )
                 .Where(officer => !IsCaptured.HasValue || officer.IsCaptured == IsCaptured.Value);
         }
@@ -563,7 +557,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Selects the remembered previous parent of one active or retained unit.
+    /// Selects the remembered previous parent of one unit.
     /// </summary>
     [PersistableObject]
     public sealed class SelectPreviousLocation : GameEventSelector

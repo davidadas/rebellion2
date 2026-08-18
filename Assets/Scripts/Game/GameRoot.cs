@@ -258,54 +258,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Disables an active subtree without changing its location, registration, or ownership.
-        /// </summary>
-        /// <param name="node">The active root node to retain.</param>
-        public void AddToVoid(ISceneNode node)
-        {
-            if (node == null)
-                throw new ArgumentNullException(nameof(node));
-            if (node.GetParent() == null)
-                throw new InvalidOperationException(
-                    $"Cannot move '{node.GetDisplayName()}' to void because it has no parent."
-                );
-
-            if (IsInVoid(node))
-                throw new InvalidOperationException(
-                    $"'{node.GetDisplayName()}' is already in void."
-                );
-
-            node.LastParentNode = node.GetParent();
-            node.LastParentInstanceID = node.GetParent().InstanceID;
-            node.IsEnabled = false;
-        }
-
-        /// <summary>
-        /// Re-enables a disabled subtree at its existing scene location.
-        /// </summary>
-        /// <param name="node">The retained subtree root to release.</param>
-        public void RemoveFromVoid(ISceneNode node)
-        {
-            if (node == null)
-                throw new ArgumentNullException(nameof(node));
-            if (!IsInVoid(node))
-                throw new InvalidOperationException($"'{node.GetDisplayName()}' is not in void.");
-
-            node.IsEnabled = true;
-        }
-
-        /// <summary>
-        /// Returns whether a node belongs to a disabled scene-graph branch.
-        /// </summary>
-        /// <param name="node">The node to inspect.</param>
-        /// <returns>True when the node is retained outside the active scene graph.</returns>
-        public bool IsInVoid(ISceneNode node)
-        {
-            return node?.IsActive() == false;
-        }
-
-        /// <summary>
-        /// Removes an active or retained subtree from containment, faction ownership indexes, and
+        /// Removes a subtree from containment, faction ownership indexes, and
         /// the global instance registry so it can no longer participate in gameplay.
         /// </summary>
         /// <param name="node">The subtree root to delete.</param>

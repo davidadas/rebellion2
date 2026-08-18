@@ -29,7 +29,7 @@ namespace Rebellion.Game.Events
             where T : class, ISceneNode
         {
             return game.GetRegisteredSceneNodesByType<T>()
-                .Where(node => node.GetParent() != null && !game.IsInVoid(node));
+                .Where(node => node.GetParent() != null);
         }
 
         /// <summary>
@@ -51,34 +51,5 @@ namespace Rebellion.Game.Events
                 || node.GetParentOfType<Planet>()?.InstanceID == expected;
         }
 
-        /// <summary>
-        /// Returns whether an active node or a retained node's remembered parent matches a planet.
-        /// </summary>
-        protected static bool MatchesActiveOrRecordedLocation(
-            GameRoot game,
-            ISceneNode node,
-            GameEventExecutionContext context,
-            string planetInstanceID,
-            string planetBinding
-        )
-        {
-            if (MatchesLocation(node, context, planetInstanceID, planetBinding))
-                return true;
-            if (!game.IsInVoid(node))
-                return false;
-
-            Planet planet = !string.IsNullOrWhiteSpace(planetBinding)
-                ? context?.GetBindingReference<Planet>(planetBinding)
-                : null;
-            string expected = planet?.InstanceID ?? planetInstanceID;
-            if (string.IsNullOrWhiteSpace(expected))
-                return true;
-
-            ISceneNode recordedParent = game.GetSceneNodeByInstanceID<ISceneNode>(
-                node.LastParentInstanceID
-            );
-            return recordedParent is Planet recordedPlanet && recordedPlanet.InstanceID == expected
-                || recordedParent?.GetParentOfType<Planet>()?.InstanceID == expected;
-        }
     }
 }

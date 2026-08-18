@@ -52,7 +52,7 @@ namespace Rebellion.Systems
 
             foreach (ISceneNode person in live)
             {
-                _game.AddToVoid(person);
+                person.IsEnabled = false;
                 if (person is Officer officer)
                     officer.IsRetired = true;
                 else if (person is SpecialForces specialForces)

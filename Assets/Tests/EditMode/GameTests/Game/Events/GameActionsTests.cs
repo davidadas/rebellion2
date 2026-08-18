@@ -432,40 +432,43 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AddToVoid_ElementUnitInstanceID_DeserializesUnitInstanceID()
+        public void SetActive_Attributes_DeserializeState()
         {
-            AddToVoidAction action = (AddToVoidAction)
+            SetActiveAction action = (SetActiveAction)
                 SerializationHelper.Deserialize<GameAction>(
-                    "<AddToVoid><UnitInstanceID>LUKE_SKYWALKER</UnitInstanceID></AddToVoid>"
+                    "<SetActive UnitInstanceID=\"LUKE_SKYWALKER\" IsActive=\"false\"/>"
                 );
 
             Assert.AreEqual("LUKE_SKYWALKER", action.UnitInstanceID);
+            Assert.IsFalse(action.IsActive);
         }
 
         [Test]
-        public void RemoveFromVoid_RetainedOfficerSelector_RoundTripsSelector()
+        public void SetActive_InactiveOfficerSelector_RoundTripsSelector()
         {
-            RemoveFromVoidAction action = new RemoveFromVoidAction
+            SetActiveAction action = new SetActiveAction
             {
+                IsActive = true,
                 Selectors = new List<GameEventSelector>
                 {
                     new SelectOfficers
                     {
                         PlanetBinding = "$destination",
                         IsCaptured = true,
-                        IncludeRetained = true,
+                        IncludeInactive = true,
                     },
                 },
             };
 
             string xml = SerializationHelper.Serialize<GameAction>(action);
-            RemoveFromVoidAction restored = (RemoveFromVoidAction)
+            SetActiveAction restored = (SetActiveAction)
                 SerializationHelper.Deserialize<GameAction>(xml);
 
             SelectOfficers selector = restored.Selectors.OfType<SelectOfficers>().Single();
+            Assert.IsTrue(restored.IsActive);
             Assert.AreEqual("$destination", selector.PlanetBinding);
             Assert.AreEqual(true, selector.IsCaptured);
-            Assert.IsTrue(selector.IncludeRetained);
+            Assert.IsTrue(selector.IncludeInactive);
         }
 
         [Test]
@@ -935,6 +938,7 @@ namespace Rebellion.Tests.Game.Events
             officer.CaptorInstanceID = "empire";
             officer.CanEscape = false;
             game.AttachNode(officer, planet);
+            officer.IsEnabled = false;
             SetCaptureStatusAction action = new SetCaptureStatusAction
             {
                 OfficerInstanceID = officer.InstanceID,
@@ -975,51 +979,66 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AddToVoid_ActiveOfficer_DisablesOfficerWithoutDetachingIt()
+        public void SetActive_False_DisablesOfficerWithoutDetachingOrHidingItFromActions()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, origin);
 
-            new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
+            new SetActiveAction { UnitInstanceID = luke.InstanceID, IsActive = false }.Execute(
+                game
+            );
+            new SetDisplayStatusAction
+            {
+                TargetInstanceID = luke.InstanceID,
+                Status = "On Mission",
+            }.Execute(game);
+            new ChangeOfficerRatingAction
+            {
+                OfficerInstanceID = luke.InstanceID,
+                Rating = OfficerRating.Combat,
+                Amount = 5,
+            }.Execute(game);
 
             Assert.AreSame(origin, luke.GetParent());
-            Assert.IsTrue(game.IsInVoid(luke));
+            Assert.IsFalse(luke.IsActive());
+            Assert.AreEqual("On Mission", luke.DisplayStatus);
+            Assert.AreEqual(55, luke.GetBaseRating(OfficerRating.Combat));
         }
 
         [Test]
-        public void RemoveFromVoid_OfficerInVoid_EnablesOfficerAtExistingParent()
+        public void SetActive_True_EnablesOfficerAtExistingParent()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, origin);
-            new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
+            luke.IsEnabled = false;
 
-            List<GameResult> results = new RemoveFromVoidAction
+            List<GameResult> results = new SetActiveAction
             {
                 UnitInstanceID = luke.InstanceID,
+                IsActive = true,
             }.Execute(game);
 
             Assert.IsEmpty(results);
             Assert.AreSame(origin, luke.GetParent());
-            Assert.AreEqual(origin.InstanceID, luke.LastParentInstanceID);
-            Assert.IsFalse(game.IsInVoid(luke));
+            Assert.IsTrue(luke.IsActive());
         }
 
         [Test]
-        public void SelectOfficers_IncludeRetainedAtRecordedPlanet_ReturnsVoidOfficer()
+        public void SelectOfficers_IncludeInactiveAtCurrentPlanet_ReturnsOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer han = EntityFactory.CreateOfficer("han", "rebels");
             han.IsCaptured = true;
             game.AttachNode(han, origin);
-            game.AddToVoid(han);
+            han.IsEnabled = false;
             SelectOfficers selector = new SelectOfficers
             {
                 PlanetInstanceID = origin.InstanceID,
                 OwnerFactionInstanceID = "rebels",
                 IsCaptured = true,
-                IncludeRetained = true,
+                IncludeInactive = true,
             };
 
             List<ISceneNode> selected = selector.Select(game, new FixedRNG(0), null).ToList();
@@ -1054,8 +1073,8 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer officer = EntityFactory.CreateOfficer("han", "rebels");
             game.AttachNode(officer, origin);
-            game.AddToVoid(officer);
-            game.RemoveFromVoid(officer);
+            officer.IsEnabled = false;
+            officer.IsEnabled = true;
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent(),
                 null,
@@ -1071,22 +1090,23 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void RemoveFromVoid_RetainedOfficerSelector_EnablesMatchingOfficer()
+        public void SetActive_InactiveOfficerSelector_EnablesMatchingOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer han = EntityFactory.CreateOfficer("han", "rebels");
             han.IsCaptured = true;
             game.AttachNode(han, origin);
-            game.AddToVoid(han);
-            RemoveFromVoidAction action = new RemoveFromVoidAction
+            han.IsEnabled = false;
+            SetActiveAction action = new SetActiveAction
             {
+                IsActive = true,
                 Selectors = new List<GameEventSelector>
                 {
                     new SelectOfficers
                     {
                         PlanetInstanceID = origin.InstanceID,
                         IsCaptured = true,
-                        IncludeRetained = true,
+                        IncludeInactive = true,
                     },
                 },
             };
@@ -1094,8 +1114,7 @@ namespace Rebellion.Tests.Game.Events
             action.Execute(game);
 
             Assert.AreSame(origin, han.GetParent());
-            Assert.AreEqual(origin.InstanceID, han.LastParentInstanceID);
-            Assert.IsFalse(game.IsInVoid(han));
+            Assert.IsTrue(han.IsActive());
         }
 
         [Test]
@@ -1222,6 +1241,7 @@ namespace Rebellion.Tests.Game.Events
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.SetBaseRating(OfficerRating.Combat, 50);
             game.AttachNode(luke, rebelPlanet);
+            luke.IsEnabled = false;
             game.Config.ProbabilityTables.Mission.Rescue = new Dictionary<int, int> { [50] = 60 };
             PerformSkillCheckAction action = new PerformSkillCheckAction
             {
@@ -1641,14 +1661,14 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SelectCapitalShips_ChildOfVoidUnit_ExcludesRetainedSubtree()
+        public void SelectCapitalShips_ChildOfInactiveUnit_ExcludesSubtree()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "empire" };
             CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "empire" };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
-            game.AddToVoid(fleet);
+            fleet.IsEnabled = false;
             SelectCapitalShips selector = new SelectCapitalShips { InstanceID = ship.InstanceID };
 
             List<ISceneNode> selected = selector.Select(game, new FixedRNG(0), null).ToList();

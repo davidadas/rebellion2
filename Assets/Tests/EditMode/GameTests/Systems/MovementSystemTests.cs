@@ -262,7 +262,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandlePlacementRequest_DetachedRetainedUnit_PlacesWithoutTransit()
+        public void HandlePlacementRequest_ReactivatedUnit_PlacesWithoutTransit()
         {
             (
                 GameRoot game,
@@ -271,8 +271,8 @@ namespace Rebellion.Tests.Systems
                 Officer officer,
                 MovementSystem movement
             ) = BuildScene();
-            game.AddToVoid(officer);
-            game.RemoveFromVoid(officer);
+            officer.IsEnabled = false;
+            officer.IsEnabled = true;
             IGameRequestHandler<UnitPlacementRequest> handler = movement;
 
             handler.HandleRequests(

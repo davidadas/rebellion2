@@ -505,7 +505,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 OwnerInstanceID = _ownerId,
             };
             _game.AttachNode(officer, _planet);
-            _game.AddToVoid(officer);
+            officer.IsEnabled = false;
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 
@@ -522,7 +522,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 OwnerInstanceID = _ownerId,
             };
             _game.AttachNode(officer, _planet);
-            _game.AddToVoid(officer);
+            officer.IsEnabled = false;
             officer.DisplayStatus = "Training";
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));

@@ -942,7 +942,7 @@ namespace Rebellion.Systems
                 ISceneNode registered = ResolveRegisteredNode(node);
                 if (registered is IMovable live)
                 {
-                    if (_game.IsInVoid(node))
+                    if (!node.IsActive())
                         return false;
                     liveUnits.Add(live);
                     continue;

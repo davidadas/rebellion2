@@ -193,7 +193,7 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 | --- | --- |
 | `SelectPlanets` | `InstanceID`, `OwnerFactionInstanceID`, `SystemType` |
 | `SelectPlanetSystems` | `InstanceID`, `SystemType` |
-| `SelectOfficers` | ID, planet, owner, capture state, and whether retained officers are included |
+| `SelectOfficers` | ID, planet, owner, capture state, and whether inactive officers are included |
 | `SelectSpecialForces`, `SelectFleets`, `SelectMissions` | ID, planet, and owner |
 | `SelectCapitalShips`, `SelectStarfighters`, `SelectRegiments` | ID, planet, owner, `TypeID`, and `ManufacturingStatus` |
 | `SelectBuildings` | The same filters plus `Category` |
@@ -202,7 +202,7 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 | `SelectFirst` | Returns the first valid destination candidate. |
 | `SelectBinding` | Returns the object or collection in a binding. |
 | `SelectAncestors` | Maps candidates to their nearest ancestor of `Type`. |
-| `SelectPreviousLocation` | Returns a retained unit's recorded previous location. |
+| `SelectPreviousLocation` | Returns a unit's recorded previous location. |
 | `SpawnUnits` | Creates `Count` detached units from a catalog `TypeID` for immediate use by `PlaceUnits`. |
 
 Planet location filters use `PlanetInstanceID` or `PlanetBinding`. System types are `CoreSystem` and
@@ -240,7 +240,7 @@ Actions run from top to bottom. Later actions see changes and results produced b
 | `ChangeOwner` | Transfers either selected planets or selected units to a faction. |
 | `PlaceUnits` | Immediately places selected units or newly spawned units at a valid destination. |
 | `SendUnits` | Sends units using normal movement and transit. |
-| `AddToVoid`, `RemoveFromVoid` | Retains units outside active play or releases that retention. |
+| `SetActive` | Activates or deactivates selected units without changing their location. |
 | `SetDisplayName`, `SetDisplayStatus`, `ClearDisplayStatus` | Changes display metadata for selected nodes. |
 | `SetCaptureStatus` | Captures or releases selected officers. |
 | `ChangeOfficerRating` | Changes an officer rating by a flat or percentage calculation. |
@@ -342,16 +342,11 @@ control rules; unit transfers preserve containment while updating faction owners
 ```
 
 `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `DestinationInstanceID` attributes or
-typed `Units` and `Destination` selectors. `RemoveFromVoid` only releases retention; it does not
-choose a destination. Return a retained unit explicitly:
+typed `Units` and `Destination` selectors. `SetActive` changes gameplay participation without
+changing scene location:
 
 ```xml
-<RemoveFromVoid UnitInstanceID="LUKE_SKYWALKER"/>
-<PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
-  <Destination>
-    <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
-  </Destination>
-</PlaceUnits>
+<SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="true"/>
 ```
 
 `SetOfficerImages` supports `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, and
@@ -478,7 +473,7 @@ A multi-stage chain uses stable event IDs and dependent schedules:
   <InstanceID>MOD_OFFICER_LEAVES</InstanceID>
   <Schedule><At Tick="300"/></Schedule>
   <Actions>
-    <AddToVoid UnitInstanceID="LUKE_SKYWALKER"/>
+    <SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="false"/>
     <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER" Status="Away on assignment"/>
   </Actions>
 </GameEvent>
@@ -487,12 +482,7 @@ A multi-stage chain uses stable event IDs and dependent schedules:
   <InstanceID>MOD_OFFICER_RETURNS</InstanceID>
   <Schedule><After EventInstanceID="MOD_OFFICER_LEAVES" DelayTicks="100"/></Schedule>
   <Actions>
-    <RemoveFromVoid UnitInstanceID="LUKE_SKYWALKER"/>
-    <PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
-      <Destination>
-        <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
-      </Destination>
-    </PlaceUnits>
+    <SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="true"/>
     <ClearDisplayStatus TargetInstanceID="LUKE_SKYWALKER"/>
   </Actions>
 </GameEvent>
@@ -524,5 +514,5 @@ If an event does not run:
 - Confirm the event has not reached `TriggerCount` or matched `Until`.
 
 Finally, save and reload after the event has run. Verify recurring schedules, activation counts,
-event variables, retained units, display changes, and multi-stage chains still behave correctly.
+event variables, inactive units, display changes, and multi-stage chains still behave correctly.
 Event IDs and variable keys are persisted, so changing them can invalidate existing event state.

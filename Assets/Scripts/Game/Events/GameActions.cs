@@ -390,7 +390,10 @@ namespace Rebellion.Game.Events
             );
             if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
-                Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+                Officer officer = game.GetSceneNodeByInstanceID<Officer>(
+                    OfficerInstanceID,
+                    includeDisabled: true
+                );
                 if (officer == null)
                     throw new InvalidOperationException(
                         $"SetCaptureStatus could not resolve officer '{OfficerInstanceID}'."
@@ -474,7 +477,8 @@ namespace Rebellion.Game.Events
             if (PercentOfPositiveGap.HasValue)
             {
                 referenceOfficer = game.GetSceneNodeByInstanceID<Officer>(
-                    ReferenceOfficerInstanceID
+                    ReferenceOfficerInstanceID,
+                    includeDisabled: true
                 );
                 if (referenceOfficer == null)
                     throw new InvalidOperationException(
@@ -527,7 +531,10 @@ namespace Rebellion.Game.Events
             );
             if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
-                Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+                Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(
+                    OfficerInstanceID,
+                    includeDisabled: true
+                );
                 if (explicitOfficer == null)
                     throw new InvalidOperationException(
                         $"ChangeOfficerRating could not resolve officer '{OfficerInstanceID}'."
@@ -606,7 +613,8 @@ namespace Rebellion.Game.Events
             if (PercentOfPositiveGap.HasValue)
             {
                 referenceOfficer = game.GetSceneNodeByInstanceID<Officer>(
-                    ReferenceOfficerInstanceID
+                    ReferenceOfficerInstanceID,
+                    includeDisabled: true
                 );
                 if (referenceOfficer == null)
                     throw new InvalidOperationException(
@@ -619,7 +627,10 @@ namespace Rebellion.Game.Events
             );
             if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
-                Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+                Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(
+                    OfficerInstanceID,
+                    includeDisabled: true
+                );
                 if (explicitOfficer == null)
                     throw new InvalidOperationException(
                         $"IncreaseOfficerForce could not resolve officer '{OfficerInstanceID}'."
@@ -692,7 +703,10 @@ namespace Rebellion.Game.Events
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
+                OfficerInstanceID,
+                includeDisabled: true
+            );
             if (officer == null)
                 throw new InvalidOperationException(
                     $"PerformSkillCheck could not resolve officer '{OfficerInstanceID}'."
@@ -739,7 +753,10 @@ namespace Rebellion.Game.Events
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
+                OfficerInstanceID,
+                includeDisabled: true
+            );
             if (officer == null)
                 throw new InvalidOperationException(
                     $"SetForceSensitive could not resolve officer '{OfficerInstanceID}'."
@@ -763,7 +780,10 @@ namespace Rebellion.Game.Events
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
+                OfficerInstanceID,
+                includeDisabled: true
+            );
             if (officer == null)
                 throw new InvalidOperationException(
                     $"SetForceEligible could not resolve officer '{OfficerInstanceID}'."
@@ -800,7 +820,10 @@ namespace Rebellion.Game.Events
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(
+                OfficerInstanceID,
+                includeDisabled: true
+            );
             if (officer == null)
                 throw new InvalidOperationException(
                     $"ApplyOfficerInjury could not resolve officer '{OfficerInstanceID}'."
@@ -838,7 +861,10 @@ namespace Rebellion.Game.Events
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(
+                OfficerInstanceID,
+                includeDisabled: true
+            );
             if (officer == null)
                 throw new InvalidOperationException(
                     $"SetOfficerImages could not resolve officer '{OfficerInstanceID}'."
@@ -908,7 +934,10 @@ namespace Rebellion.Game.Events
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(
+                OfficerInstanceID,
+                includeDisabled: true
+            );
             if (officer == null)
                 throw new InvalidOperationException(
                     $"SetOfficerVoiceSet could not resolve officer '{OfficerInstanceID}'."
@@ -1014,7 +1043,8 @@ namespace Rebellion.Game.Events
             if (!string.IsNullOrWhiteSpace(targetInstanceID))
             {
                 ISceneNode target = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
-                    targetInstanceID
+                    targetInstanceID,
+                    includeDisabled: true
                 );
                 if (target == null)
                     throw new InvalidOperationException(
@@ -1025,7 +1055,12 @@ namespace Rebellion.Game.Events
 
             List<ISceneNode> resolved = selected
                 .Where(node => node != null)
-                .Select(node => context.Game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID))
+                .Select(node =>
+                    context.Game.GetSceneNodeByInstanceID<ISceneNode>(
+                        node.InstanceID,
+                        includeDisabled: true
+                    )
+                )
                 .Where(node => node != null)
                 .Distinct()
                 .ToList();
@@ -1792,9 +1827,7 @@ namespace Rebellion.Game.Events
             );
             if (
                 units.Any(unit =>
-                    unit is not ISceneNode node
-                    || node.GetParent() == null
-                    || context.Game.IsInVoid(node)
+                    unit is not ISceneNode node || node.GetParent() == null || !node.IsActive()
                 )
             )
                 throw new InvalidOperationException(
@@ -1812,78 +1845,34 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Removes one active unit from the scene graph while retaining it in faction storage.
+    /// Sets whether one or more units participate in active gameplay.
     /// </summary>
-    [PersistableObject(Name = "AddToVoid")]
-    public sealed class AddToVoidAction : GameAction
-    {
-        [PersistableAttribute(Name = "UnitInstanceID")]
-        public string UnitInstanceID { get; set; }
-
-        [PersistableMember(Name = "Units")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
-
-        /// <summary>
-        /// Moves every selected unit from active play into retained storage.
-        /// </summary>
-        internal override void Execute(GameActionContext context)
-        {
-            GameRoot game = context.Game;
-            List<IMovable> units = UnitActionTargets.ResolveUnits(
-                UnitInstanceID,
-                Selectors,
-                context,
-                "AddToVoid"
-            );
-            foreach (IMovable movable in units)
-            {
-                ISceneNode unit = (ISceneNode)movable;
-                if (unit.GetParent() == null || game.IsInVoid(unit))
-                    throw new InvalidOperationException(
-                        $"AddToVoid requires an active unit; '{unit.GetDisplayName()}' is not active."
-                    );
-            }
-            foreach (IMovable unit in units)
-                game.AddToVoid((ISceneNode)unit);
-            return;
-        }
-    }
-
-    /// <summary>
-    /// Detaches one retained unit from faction void storage.
-    /// </summary>
-    [PersistableObject(Name = "RemoveFromVoid")]
-    public sealed class RemoveFromVoidAction : GameAction
+    [PersistableObject(Name = "SetActive")]
+    public sealed class SetActiveAction : GameAction
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
 
+        [PersistableAttribute]
+        public bool IsActive { get; set; }
+
         [PersistableMember(Name = "Units")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <summary>
-        /// Removes every selected unit from retained storage without placing it.
+        /// Applies the authored local active state to every selected unit.
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
-            GameRoot game = context.Game;
             List<IMovable> units = UnitActionTargets.ResolveUnits(
                 UnitInstanceID,
                 Selectors,
                 context,
-                "RemoveFromVoid",
+                "SetActive",
                 includeDisabled: true
             );
-            foreach (IMovable movable in units)
-            {
-                ISceneNode unit = (ISceneNode)movable;
-                if (!game.IsInVoid(unit))
-                    throw new InvalidOperationException(
-                        $"RemoveFromVoid requires a retained unit; '{unit.GetDisplayName()}' is not retained."
-                    );
-            }
             foreach (IMovable unit in units)
-                game.RemoveFromVoid((ISceneNode)unit);
+                ((ISceneNode)unit).IsEnabled = IsActive;
             return;
         }
     }

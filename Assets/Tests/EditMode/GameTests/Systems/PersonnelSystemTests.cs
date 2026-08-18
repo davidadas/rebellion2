@@ -78,8 +78,8 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(retired);
             Assert.AreSame(_planet, officer.GetParent());
             Assert.AreSame(_planet, specialForces.GetParent());
-            Assert.IsTrue(_game.IsInVoid(officer));
-            Assert.IsTrue(_game.IsInVoid(specialForces));
+            Assert.IsFalse(officer.IsActive());
+            Assert.IsFalse(specialForces.IsActive());
             Assert.IsTrue(officer.IsRetired);
             Assert.IsTrue(specialForces.IsRetired);
         }
