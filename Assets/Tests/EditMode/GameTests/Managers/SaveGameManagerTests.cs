@@ -360,11 +360,11 @@ namespace Rebellion.Tests.Managers
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             // // Verify the scene graph is reconstituted.
-            PlanetSystem loadedPlanetSystem = loadedGame.Galaxy.GetPlanetSystems()[0];
-            Planet loadedPlanet = loadedPlanetSystem.GetPlanets()[0];
-            Fleet loadedFleet = loadedPlanet.GetFleets()[0];
-            CapitalShip loadedCapitalShip = loadedFleet.GetCapitalShips()[0];
-            Officer loadedOfficer = loadedCapitalShip.GetOfficers()[0];
+            PlanetSystem loadedPlanetSystem = loadedGame.Galaxy.GetChildren<PlanetSystem>()[0];
+            Planet loadedPlanet = loadedPlanetSystem.GetChildren<Planet>()[0];
+            Fleet loadedFleet = loadedPlanet.GetChildren<Fleet>()[0];
+            CapitalShip loadedCapitalShip = loadedFleet.GetChildren<CapitalShip>()[0];
+            Officer loadedOfficer = loadedCapitalShip.GetChildren<Officer>()[0];
 
             Assert.AreEqual(planetSystem.InstanceID, loadedPlanet.GetParent().InstanceID);
             Assert.AreEqual(fleet.InstanceID, loadedCapitalShip.GetParent().InstanceID);

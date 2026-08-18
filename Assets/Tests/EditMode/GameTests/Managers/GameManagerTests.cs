@@ -309,11 +309,11 @@ namespace Rebellion.Tests.Managers
             manager.ProcessTick();
 
             GalaxyMap view = manager.GetFogOfWarSystem().BuildFactionView(alliance);
-            Planet viewedPlanet = view.GetPlanetSystems()
+            Planet viewedPlanet = view.GetChildren<PlanetSystem>()
                 .Single(s => s.InstanceID == "SYS1")
-                .GetPlanets()
+                .GetChildren<Planet>()
                 .Single(p => p.InstanceID == "PLANET1");
-            Assert.IsFalse(viewedPlanet.GetBuildings().Any(b => b.InstanceID == "MINE1"));
+            Assert.IsFalse(viewedPlanet.GetChildren<Building>().Any(b => b.InstanceID == "MINE1"));
         }
 
         [Test]
@@ -365,7 +365,7 @@ namespace Rebellion.Tests.Managers
                 hullStrength: 1000,
                 weaponPower: 100
             );
-            defendingFleet.GetCapitalShips()[0].HasGravityWell = true;
+            defendingFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
             GameManager manager = TestContent.CreateGameManager(game);
             manager.MovementSystem.RequestMove(new List<IMovable> { arrivingFleet }, destination);

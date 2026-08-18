@@ -1129,7 +1129,7 @@ namespace Rebellion.Systems
             if (fleet == null)
                 return Enumerable.Empty<CapitalShip>();
 
-            return fleet.GetCapitalShips().Where(IsActiveCapitalShip);
+            return fleet.GetChildren<CapitalShip>().Where(IsActiveCapitalShip);
         }
 
         /// <summary>
@@ -1143,7 +1143,7 @@ namespace Rebellion.Systems
                 return Enumerable.Empty<Starfighter>();
 
             return GetActiveCapitalShips(fleet)
-                .SelectMany(ship => ship.GetStarfighters())
+                .SelectMany(ship => ship.GetChildren<Starfighter>())
                 .Where(IsActiveStarfighter);
         }
 
@@ -1162,7 +1162,7 @@ namespace Rebellion.Systems
                 return Enumerable.Empty<Starfighter>();
 
             return planet
-                .GetStarfighters()
+                .GetChildren<Starfighter>()
                 .Where(fighter =>
                     (
                         string.IsNullOrEmpty(ownerInstanceId)
@@ -1433,7 +1433,7 @@ namespace Rebellion.Systems
             }
 
             List<FighterSnap> fighters = ships
-                .SelectMany(ship => ship.Ship.GetStarfighters())
+                .SelectMany(ship => ship.Ship.GetChildren<Starfighter>())
                 .Concat(GetActivePlanetStarfighters(planet, ownerInstanceId))
                 .Where(IsActiveStarfighter)
                 .Select(fighter => new FighterSnap
@@ -1965,9 +1965,9 @@ namespace Rebellion.Systems
             List<GameResult> events = ApplyShipDamage(result.ShipDamage);
             ApplyFighterSquadronLosses(result.FighterLosses);
 
-            if (result.AttackerFleet?.GetCapitalShips().Count == 0)
+            if (result.AttackerFleet?.GetChildren<CapitalShip>().Count == 0)
                 RemoveFleetFromScene(result.AttackerFleet);
-            if (result.DefenderFleet?.GetCapitalShips().Count == 0)
+            if (result.DefenderFleet?.GetChildren<CapitalShip>().Count == 0)
                 RemoveFleetFromScene(result.DefenderFleet);
 
             return events;
@@ -2002,10 +2002,10 @@ namespace Rebellion.Systems
 
                 if (damage.HullAfter <= 0)
                 {
-                    List<IMovable> units = ship.GetOfficers()
+                    List<IMovable> units = ship.GetChildren<Officer>()
                         .Cast<IMovable>()
                         .Concat(
-                            ship.GetStarfighters()
+                            ship.GetChildren<Starfighter>()
                                 .Where(starfighter =>
                                     starfighter.ManufacturingStatus == ManufacturingStatus.Complete
                                 )

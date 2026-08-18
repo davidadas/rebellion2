@@ -192,7 +192,7 @@ namespace Rebellion.Systems
         private static bool HasManufacturingFacilities(Planet planet)
         {
             return planet
-                .GetBuildings()
+                .GetChildren<Building>()
                 .Any(building =>
                     building.BuildingType
                         is BuildingType.ConstructionFacility

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
 
@@ -236,7 +237,7 @@ internal sealed class PlanetSystemWindowProjector
         return new PlanetSystemBarRenderData(
             true,
             planet.EnergyCapacity,
-            Mathf.Min(planet.GetBuildings().Count, planet.EnergyCapacity),
+            Mathf.Min(planet.GetChildren<Building>().Count, planet.EnergyCapacity),
             0f,
             _energyCapacityColor,
             _energyAvailableColor,
@@ -358,7 +359,7 @@ internal sealed class PlanetSystemWindowProjector
     private static bool HasFacilities(Planet planet)
     {
         return planet
-                ?.GetBuildings()
+                ?.GetChildren<Building>()
                 ?.Any(building =>
                     building.GetBuildingType()
                         is BuildingType.Mine
@@ -379,12 +380,12 @@ internal sealed class PlanetSystemWindowProjector
         return planet != null
             && (
                 planet
-                    .GetBuildings()
+                    .GetChildren<Building>()
                     .Any(building =>
                         building.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon
                     )
-                || planet.GetRegiments().Count > 0
-                || planet.GetStarfighters().Count > 0
+                || planet.GetChildren<Regiment>().Count > 0
+                || planet.GetChildren<Starfighter>().Count > 0
             );
     }
 
@@ -396,7 +397,7 @@ internal sealed class PlanetSystemWindowProjector
     private static List<string> GetFleetOwnerFactionIDs(Planet planet)
     {
         return planet
-                ?.GetFleets()
+                ?.GetChildren<Fleet>()
                 ?.Select(fleet => fleet.OwnerInstanceID)
                 .Where(factionId => !string.IsNullOrEmpty(factionId))
                 .Distinct(StringComparer.Ordinal)
@@ -412,7 +413,7 @@ internal sealed class PlanetSystemWindowProjector
     private static List<string> GetMissionOwnerFactionIDs(Planet planet)
     {
         return planet
-                ?.GetMissions()
+                ?.GetChildren<Mission>()
                 ?.Select(mission => mission.OwnerInstanceID)
                 .Where(factionId => !string.IsNullOrEmpty(factionId))
                 .Distinct(StringComparer.Ordinal)

@@ -143,26 +143,28 @@ public static class GalacticInformationFilterEvaluator
             GalacticInformationFilterMode.IdleConstructionYards => Convert.ToInt32(
                 IsOwnedIdleManufacturingPlanet(planet, viewerFactionId, ManufacturingType.Building)
             ),
-            GalacticInformationFilterMode.Troopers => planet.GetRegiments().Count(IsActive),
+            GalacticInformationFilterMode.Troopers => planet
+                .GetChildren<Regiment>()
+                .Count(IsActive),
             GalacticInformationFilterMode.FighterSquadrons => planet
-                .GetStarfighters()
+                .GetChildren<Starfighter>()
                 .Count(IsActive),
             GalacticInformationFilterMode.DeathStarShields => Convert.ToInt32(
                 planet
-                    .GetBuildings()
+                    .GetChildren<Building>()
                     .Any(building =>
                         building.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
                         && IsActive(building)
                     )
             ),
             GalacticInformationFilterMode.PlanetaryShieldGenerators => planet
-                .GetBuildings()
+                .GetChildren<Building>()
                 .Count(building =>
                     building.DefenseFacilityClass == DefenseFacilityClass.Shield
                     && IsActive(building)
                 ),
             GalacticInformationFilterMode.PlanetaryDefenseBatteries => planet
-                .GetBuildings()
+                .GetChildren<Building>()
                 .Count(building =>
                     (
                         building.DefenseFacilityClass == DefenseFacilityClass.KDY
@@ -199,7 +201,7 @@ public static class GalacticInformationFilterEvaluator
     private static Dictionary<string, int> CountFleets(Planet planet, bool enroute)
     {
         Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (Fleet fleet in planet.GetFleets())
+        foreach (Fleet fleet in planet.GetChildren<Fleet>())
         {
             if ((fleet.Movement != null) != enroute)
                 continue;

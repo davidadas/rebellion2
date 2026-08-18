@@ -221,11 +221,17 @@ namespace Rebellion.Tests.Generation
             );
 
             Assert.IsTrue(
-                coreSystem.GetPlanets()[0].GetBuildings().All(b => b.TypeID == "BDFA01"),
+                coreSystem
+                    .GetChildren<Planet>()[0]
+                    .GetChildren<Building>()
+                    .All(b => b.TypeID == "BDFA01"),
                 "Core planet should draw from the core facility table."
             );
             Assert.IsTrue(
-                rimSystem.GetPlanets()[0].GetBuildings().All(b => b.TypeID == "BDFA02"),
+                rimSystem
+                    .GetChildren<Planet>()[0]
+                    .GetChildren<Building>()
+                    .All(b => b.TypeID == "BDFA02"),
                 "Rim planet should draw from the rim facility table."
             );
         }
@@ -316,7 +322,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_FactionHQLoadout_ResolvesToAssignedHQ()
         {
             PlanetSystem system = CreateCoreSystem(energy: 5, rawNodes: 0);
-            Planet hqPlanet = system.GetPlanets()[0];
+            Planet hqPlanet = system.GetChildren<Planet>()[0];
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.FactionHQs["FNALL1"] = hqPlanet;
@@ -368,9 +374,9 @@ namespace Rebellion.Tests.Generation
                 new StubRNG()
             );
 
-            Planet planet = system.GetPlanets()[0];
+            Planet planet = system.GetChildren<Planet>()[0];
             Assert.GreaterOrEqual(
-                planet.GetBuildings().Count,
+                planet.GetChildren<Building>().Count,
                 4,
                 "All loadout facilities should be placed, even if initial energy was lower."
             );
@@ -404,7 +410,7 @@ namespace Rebellion.Tests.Generation
             );
 
             Assert.GreaterOrEqual(
-                system.GetPlanets()[0].NumRawResourceNodes,
+                system.GetChildren<Planet>()[0].NumRawResourceNodes,
                 2,
                 "NumRawResourceNodes should be raised to cover every loadout mine."
             );

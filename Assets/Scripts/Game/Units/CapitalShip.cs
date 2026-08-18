@@ -116,34 +116,6 @@ namespace Rebellion.Game.Units
         public CapitalShip() { }
 
         /// <summary>
-        /// Gets the officers carried by this ship.
-        /// </summary>
-        /// <returns>The ship's officers.</returns>
-        public IReadOnlyList<Officer> GetOfficers(bool includeDisabled = false) =>
-            GetChildren<Officer>(includeDisabled);
-
-        /// <summary>
-        /// Gets the regiments carried by this ship.
-        /// </summary>
-        /// <returns>The ship's regiments.</returns>
-        public IReadOnlyList<Regiment> GetRegiments(bool includeDisabled = false) =>
-            GetChildren<Regiment>(includeDisabled);
-
-        /// <summary>
-        /// Gets the special-forces units carried by this ship.
-        /// </summary>
-        /// <returns>The ship's special-forces units.</returns>
-        public IReadOnlyList<SpecialForces> GetSpecialForces(bool includeDisabled = false) =>
-            GetChildren<SpecialForces>(includeDisabled);
-
-        /// <summary>
-        /// Gets the starfighters carried by this ship.
-        /// </summary>
-        /// <returns>The ship's starfighters.</returns>
-        public IReadOnlyList<Starfighter> GetStarfighters(bool includeDisabled = false) =>
-            GetChildren<Starfighter>(includeDisabled);
-
-        /// <summary>
         /// Replaces the ship's child collections while constructing a detached projection.
         /// </summary>
         /// <param name="officers">The officers to retain in the projection.</param>

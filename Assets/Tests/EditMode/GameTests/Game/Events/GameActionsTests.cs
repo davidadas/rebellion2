@@ -1577,7 +1577,7 @@ namespace Rebellion.Tests.Game.Events
 
             List<GameResult> results = gameEvent.Execute(game, new FixedRNG(0.99), context).Results;
 
-            Assert.IsFalse(planet.GetBuildings().Contains(shipyard));
+            Assert.IsFalse(planet.GetChildren<Building>().Contains(shipyard));
             Assert.AreSame(
                 shipyard,
                 results.OfType<GameObjectDestroyedResult>().Single().DestroyedObject

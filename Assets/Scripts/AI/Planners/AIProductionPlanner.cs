@@ -282,7 +282,7 @@ namespace Rebellion.AI.Planners
                 return 0;
 
             int committedCapitalCombat = fleet
-                .GetCapitalShips()
+                .GetChildren<CapitalShip>()
                 .Where(IsPresentOrUnderConstruction)
                 .Sum(ship => ship.GetPrimaryWeaponStrength());
             return System.Math.Max(fleet.GetCombatValue(), committedCapitalCombat);
@@ -459,7 +459,7 @@ namespace Rebellion.AI.Planners
             if (capitalShip.HasGravityWell)
                 score += config.CapitalGravityWellWeight;
 
-            if (fleet?.GetCapitalShips().Count == 0)
+            if (fleet?.GetChildren<CapitalShip>().Count == 0)
                 score += config.CapitalEmptyFleetCombatBoost;
 
             if (fleet?.GetExcessStarfighterCapacity() <= 0)
@@ -468,7 +468,7 @@ namespace Rebellion.AI.Planners
             if (fleet?.GetExcessRegimentCapacity() <= 0)
                 score += config.CapitalMissingRegimentCapacityBoost;
 
-            if (fleet?.GetCapitalShips().Any(ship => ship.HasGravityWell) == false)
+            if (fleet?.GetChildren<CapitalShip>().Any(ship => ship.HasGravityWell) == false)
                 score += config.CapitalMissingGravityWellBoost;
 
             return score;
@@ -619,15 +619,17 @@ namespace Rebellion.AI.Planners
 
             if (typeof(T) == typeof(Starfighter))
                 return fleet
-                    .GetStarfighters()
+                    .GetChildren<Starfighter>()
                     .Count(starfighter => starfighter.GetTypeID() == typeId);
 
             if (typeof(T) == typeof(Regiment))
-                return fleet.GetRegiments().Count(regiment => regiment.GetTypeID() == typeId);
+                return fleet
+                    .GetChildren<Regiment>()
+                    .Count(regiment => regiment.GetTypeID() == typeId);
 
             if (typeof(T) == typeof(CapitalShip))
                 return fleet
-                    .GetCapitalShips()
+                    .GetChildren<CapitalShip>()
                     .Count(capitalShip => capitalShip.GetTypeID() == typeId);
 
             return 0;

@@ -32,29 +32,41 @@ public static class SceneTestExtensions
         {
             case Planet planet:
                 planet.SetChildren(
-                    AppendWhen<Fleet>(planet.GetFleets(includeDisabled: true), child),
-                    AppendWhen<Officer>(planet.GetOfficers(includeDisabled: true), child),
-                    AppendWhen<Regiment>(planet.GetRegiments(includeDisabled: true), child),
-                    AppendWhen<SpecialForces>(
-                        planet.GetSpecialForces(includeDisabled: true),
+                    AppendWhen<Fleet>(planet.GetChildren<Fleet>(includeDisabled: true), child),
+                    AppendWhen<Officer>(planet.GetChildren<Officer>(includeDisabled: true), child),
+                    AppendWhen<Regiment>(
+                        planet.GetChildren<Regiment>(includeDisabled: true),
                         child
                     ),
-                    AppendWhen<Starfighter>(planet.GetStarfighters(includeDisabled: true), child),
-                    AppendWhen<Mission>(planet.GetMissions(includeDisabled: true), child),
-                    AppendWhen<Building>(planet.GetBuildings(includeDisabled: true), child)
+                    AppendWhen<SpecialForces>(
+                        planet.GetChildren<SpecialForces>(includeDisabled: true),
+                        child
+                    ),
+                    AppendWhen<Starfighter>(
+                        planet.GetChildren<Starfighter>(includeDisabled: true),
+                        child
+                    ),
+                    AppendWhen<Mission>(planet.GetChildren<Mission>(includeDisabled: true), child),
+                    AppendWhen<Building>(planet.GetChildren<Building>(includeDisabled: true), child)
                 );
                 return;
             case CapitalShip ship:
                 ship.SetChildren(
-                    AppendWhen<Officer>(ship.GetOfficers(includeDisabled: true), child),
-                    AppendWhen<Regiment>(ship.GetRegiments(includeDisabled: true), child),
-                    AppendWhen<SpecialForces>(ship.GetSpecialForces(includeDisabled: true), child),
-                    AppendWhen<Starfighter>(ship.GetStarfighters(includeDisabled: true), child)
+                    AppendWhen<Officer>(ship.GetChildren<Officer>(includeDisabled: true), child),
+                    AppendWhen<Regiment>(ship.GetChildren<Regiment>(includeDisabled: true), child),
+                    AppendWhen<SpecialForces>(
+                        ship.GetChildren<SpecialForces>(includeDisabled: true),
+                        child
+                    ),
+                    AppendWhen<Starfighter>(
+                        ship.GetChildren<Starfighter>(includeDisabled: true),
+                        child
+                    )
                 );
                 return;
             case Fleet fleet when child is CapitalShip capitalShip:
                 fleet.SetCapitalShips(
-                    fleet.GetCapitalShips(includeDisabled: true).Append(capitalShip)
+                    fleet.GetChildren<CapitalShip>(includeDisabled: true).Append(capitalShip)
                 );
                 return;
             default:

@@ -137,8 +137,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GamePlanetSystem system = TestContent.Data.PlanetSystems.Single(candidate =>
                 candidate.TypeID == "PSCOR"
             );
-            Planet selonia = system.GetPlanets().Single(planet => planet.InstanceID == "SELONIA");
-            Planet duros = system.GetPlanets().Single(planet => planet.InstanceID == "DUROS");
+            Planet selonia = system
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == "SELONIA");
+            Planet duros = system
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == "DUROS");
             GalaxyMapSector sector = new GalaxyMapSector(
                 system,
                 new[]

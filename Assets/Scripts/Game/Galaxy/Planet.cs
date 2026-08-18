@@ -638,57 +638,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the fleets on the planet.
-        /// </summary>
-        /// <returns>A list of fleets.</returns>
-        public IReadOnlyList<Fleet> GetFleets(bool includeDisabled = false)
-        {
-            return GetChildren<Fleet>(includeDisabled);
-        }
-
-        /// <summary>
-        /// Gets the officers stationed directly on the planet.
-        /// </summary>
-        /// <returns>The planet's officers.</returns>
-        public IReadOnlyList<Officer> GetOfficers(bool includeDisabled = false) =>
-            GetChildren<Officer>(includeDisabled);
-
-        /// <summary>
-        /// Gets the regiments stationed directly on the planet.
-        /// </summary>
-        /// <returns>The planet's regiments.</returns>
-        public IReadOnlyList<Regiment> GetRegiments(bool includeDisabled = false) =>
-            GetChildren<Regiment>(includeDisabled);
-
-        /// <summary>
-        /// Gets the special-forces units stationed directly on the planet.
-        /// </summary>
-        /// <returns>The planet's special-forces units.</returns>
-        public IReadOnlyList<SpecialForces> GetSpecialForces(bool includeDisabled = false) =>
-            GetChildren<SpecialForces>(includeDisabled);
-
-        /// <summary>
-        /// Gets the starfighters stationed directly on the planet.
-        /// </summary>
-        /// <returns>The planet's starfighters.</returns>
-        public IReadOnlyList<Starfighter> GetStarfighters(bool includeDisabled = false) =>
-            GetChildren<Starfighter>(includeDisabled);
-
-        /// <summary>
-        /// Gets the missions attached directly to the planet.
-        /// </summary>
-        /// <returns>The planet's missions.</returns>
-        public IReadOnlyList<Mission> GetMissions(bool includeDisabled = false) =>
-            GetChildren<Mission>(includeDisabled);
-
-        /// <summary>
-        /// Gets the buildings attached directly to the planet.
-        /// </summary>
-        /// <returns>The planet's buildings.</returns>
-        public IReadOnlyList<Building> GetBuildings(bool includeDisabled = false) =>
-            GetChildren<Building>(includeDisabled);
-
-        /// <summary>
         /// Replaces the planet's child collections while constructing a detached projection.
         /// </summary>
         /// <param name="fleets">The fleets to retain in the projection.</param>
@@ -770,11 +719,11 @@ namespace Rebellion.Game.Galaxy
 
             List<CapitalShip> activeCapitalShips = _fleets
                 .Where(fleet => fleet.Movement == null)
-                .SelectMany(fleet => fleet.GetCapitalShips())
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                 .Where(IsEntityActive)
                 .ToList();
             int activeFighterCount = activeCapitalShips.Sum(capitalShip =>
-                capitalShip.GetStarfighters().Count(IsEntityActive)
+                capitalShip.GetChildren<Starfighter>().Count(IsEntityActive)
             );
 
             int modifier =

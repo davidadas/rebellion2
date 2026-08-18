@@ -123,7 +123,7 @@ namespace Rebellion.Tests.Systems
                 ownerSupport: 10,
                 troopCount: 5
             );
-            Regiment departingRegiment = planet.GetRegiments()[0];
+            Regiment departingRegiment = planet.GetChildren<Regiment>()[0];
             game.DetachNode(departingRegiment);
 
             List<GameResult> results = system.HandleResults(
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.Systems
                 ownerSupport: 10,
                 troopCount: 6
             );
-            game.DetachNode(planet.GetRegiments()[0]);
+            game.DetachNode(planet.GetChildren<Regiment>()[0]);
 
             List<GameResult> firstResults = system.ProcessTick();
             List<GameResult> secondResults = system.ProcessTick();
@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Systems
                 opposingSupport: 50,
                 troopCount: 4
             );
-            foreach (Regiment regiment in planet.GetRegiments().ToList())
+            foreach (Regiment regiment in planet.GetChildren<Regiment>().ToList())
                 game.DetachNode(regiment);
             game.ChangeOwnership(planet, "rebels");
             Regiment occupyingRegiment = EntityFactory.CreateRegiment("occupier", "rebels");
@@ -334,7 +334,10 @@ namespace Rebellion.Tests.Systems
             system.ProcessTick();
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("enroute"));
-            Assert.AreEqual(1, planet.GetRegiments().Count(regiment => regiment.Movement == null));
+            Assert.AreEqual(
+                1,
+                planet.GetChildren<Regiment>().Count(regiment => regiment.Movement == null)
+            );
         }
 
         [Test]
@@ -463,7 +466,7 @@ namespace Rebellion.Tests.Systems
             planet.BeginUprising();
             system.ProcessTick();
 
-            game.DetachNode(planet.GetRegiments()[0]);
+            game.DetachNode(planet.GetChildren<Regiment>()[0]);
             system.ReconcileGarrison(planet);
             game.CurrentTick = 1;
             List<GameResult> results = system.ProcessTick();
@@ -538,7 +541,9 @@ namespace Rebellion.Tests.Systems
                 ownerSupport: 10,
                 troopCount: 1
             );
-            planet.GetRegiments()[0].TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
+            planet.GetChildren<Regiment>()[0].TypeID = game.Config
+                .Uprising
+                .ResistanceRegimentTypeID;
             ScheduleIncident(planet, 1);
             game.CurrentTick = 1;
             planet.EnergyCapacity = 1;

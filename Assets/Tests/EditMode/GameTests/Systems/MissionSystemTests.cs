@@ -1386,7 +1386,7 @@ namespace Rebellion.Tests.Systems
 
             spy.SetBaseRating(OfficerRating.Diplomacy, 200);
             defender.SetBaseRating(OfficerRating.Espionage, 10);
-            planet.GetRegiments().Single().DefenseRating = 10;
+            planet.GetChildren<Regiment>().Single().DefenseRating = 10;
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 35;
@@ -1421,7 +1421,7 @@ namespace Rebellion.Tests.Systems
 
             spy.SetBaseRating(OfficerRating.Diplomacy, 100);
             defender.SetBaseRating(OfficerRating.Espionage, 0);
-            planet.GetRegiments().Single().DefenseRating = 0;
+            planet.GetChildren<Regiment>().Single().DefenseRating = 0;
 
             SpecialForces support = new SpecialForces
             {

@@ -229,8 +229,8 @@ namespace Rebellion.Tests.Generation
             foreach (Faction faction in _game.GetFactions())
             {
                 bool hasHQ = _game
-                    .Galaxy.GetPlanetSystems()
-                    .SelectMany(ps => ps.GetPlanets())
+                    .Galaxy.GetChildren<PlanetSystem>()
+                    .SelectMany(ps => ps.GetChildren<Planet>())
                     .Any(planet =>
                         planet.OwnerInstanceID == faction.InstanceID && planet.IsHeadquarters
                     );
@@ -272,14 +272,14 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_ColonizedPlanets_DoNotExceedEnergyCapacity()
         {
-            foreach (PlanetSystem sector in _game.Galaxy.GetPlanetSystems())
+            foreach (PlanetSystem sector in _game.Galaxy.GetChildren<PlanetSystem>())
             {
-                foreach (Planet planet in sector.GetPlanets().Where(p => p.IsColonized))
+                foreach (Planet planet in sector.GetChildren<Planet>().Where(p => p.IsColonized))
                 {
                     Assert.LessOrEqual(
-                        planet.GetBuildings().Count,
+                        planet.GetChildren<Building>().Count,
                         planet.EnergyCapacity,
-                        $"Planet {planet.GetDisplayName()} has {planet.GetBuildings().Count} buildings for {planet.EnergyCapacity} energy capacity."
+                        $"Planet {planet.GetDisplayName()} has {planet.GetChildren<Building>().Count} buildings for {planet.EnergyCapacity} energy capacity."
                     );
                 }
             }
@@ -291,9 +291,9 @@ namespace Rebellion.Tests.Generation
             foreach (Faction faction in _game.GetFactions())
             {
                 bool ownsOne = _game
-                    .Galaxy.GetPlanetSystems()
-                    .SelectMany(s => s.GetPlanets())
-                    .SelectMany(p => p.GetBuildings())
+                    .Galaxy.GetChildren<PlanetSystem>()
+                    .SelectMany(s => s.GetChildren<Planet>())
+                    .SelectMany(p => p.GetChildren<Building>())
                     .Any(b =>
                         b.OwnerInstanceID == faction.InstanceID
                         && b.BuildingType == BuildingType.ConstructionFacility
@@ -376,7 +376,7 @@ namespace Rebellion.Tests.Generation
                 if (node is Planet planet)
                 {
                     Assert.LessOrEqual(
-                        planet.GetFleets().Count,
+                        planet.GetChildren<Fleet>().Count,
                         1,
                         $"Planet {planet.GetDisplayName()} should have at most one fleet."
                     );
@@ -416,13 +416,13 @@ namespace Rebellion.Tests.Generation
         {
             foreach (
                 PlanetSystem system in _game
-                    .Galaxy.GetPlanetSystems()
+                    .Galaxy.GetChildren<PlanetSystem>()
                     .Where(s => s.SystemType == PlanetSystemType.CoreSystem)
             )
             {
                 foreach (Faction faction in _game.GetFactions())
                 {
-                    foreach (Planet planet in system.GetPlanets())
+                    foreach (Planet planet in system.GetChildren<Planet>())
                     {
                         bool isOwner = planet.OwnerInstanceID == faction.InstanceID;
                         if (isOwner)
@@ -462,8 +462,8 @@ namespace Rebellion.Tests.Generation
         {
             GameGenerationConfig rules = TestContent.Data.GenerationConfig;
             Dictionary<string, string> planetInstanceIdsByTypeId = _game
-                .Galaxy.GetPlanetSystems()
-                .SelectMany(system => system.GetPlanets())
+                .Galaxy.GetChildren<PlanetSystem>()
+                .SelectMany(system => system.GetChildren<Planet>())
                 .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
                 .ToDictionary(planet => planet.TypeID, planet => planet.InstanceID);
             HashSet<(string planetId, string factionId)> visibilityOverrides = new HashSet<(
@@ -488,13 +488,13 @@ namespace Rebellion.Tests.Generation
 
             foreach (
                 PlanetSystem system in _game
-                    .Galaxy.GetPlanetSystems()
+                    .Galaxy.GetChildren<PlanetSystem>()
                     .Where(s => s.SystemType == PlanetSystemType.OuterRim)
             )
             {
                 foreach (Faction faction in _game.GetFactions())
                 {
-                    foreach (Planet planet in system.GetPlanets())
+                    foreach (Planet planet in system.GetChildren<Planet>())
                     {
                         bool isOwner = planet.OwnerInstanceID == faction.InstanceID;
                         if (isOwner)
@@ -525,11 +525,15 @@ namespace Rebellion.Tests.Generation
 
             foreach (
                 PlanetSystem system in _game
-                    .Galaxy.GetPlanetSystems()
+                    .Galaxy.GetChildren<PlanetSystem>()
                     .Where(s => s.SystemType == PlanetSystemType.OuterRim)
             )
             {
-                foreach (Planet planet in system.GetPlanets().Where(p => p.OwnerInstanceID != null))
+                foreach (
+                    Planet planet in system
+                        .GetChildren<Planet>()
+                        .Where(p => p.OwnerInstanceID != null)
+                )
                 {
                     Faction owner = _game
                         .GetFactions()
@@ -550,11 +554,15 @@ namespace Rebellion.Tests.Generation
 
             foreach (
                 PlanetSystem system in _game
-                    .Galaxy.GetPlanetSystems()
+                    .Galaxy.GetChildren<PlanetSystem>()
                     .Where(s => s.SystemType == PlanetSystemType.OuterRim)
             )
             {
-                foreach (Planet planet in system.GetPlanets().Where(p => p.OwnerInstanceID != null))
+                foreach (
+                    Planet planet in system
+                        .GetChildren<Planet>()
+                        .Where(p => p.OwnerInstanceID != null)
+                )
                 {
                     foreach (
                         Faction other in _game

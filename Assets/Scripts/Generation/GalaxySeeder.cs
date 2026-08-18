@@ -157,7 +157,7 @@ namespace Rebellion.Generation
 
             foreach (PlanetSystem system in systems)
             {
-                foreach (Planet planet in system.GetPlanets())
+                foreach (Planet planet in system.GetChildren<Planet>())
                 {
                     if (
                         !string.IsNullOrEmpty(planet.TypeID)

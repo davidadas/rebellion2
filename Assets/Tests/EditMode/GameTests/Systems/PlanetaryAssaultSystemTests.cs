@@ -60,7 +60,12 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 8);
-            foreach (Regiment regiment in fleet.GetCapitalShips()[0].GetRegiments().Skip(2))
+            foreach (
+                Regiment regiment in fleet
+                    .GetChildren<CapitalShip>()[0]
+                    .GetChildren<Regiment>()
+                    .Skip(2)
+            )
                 regiment.Movement = new MovementState();
             PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
 
@@ -84,7 +89,8 @@ namespace Rebellion.Tests.Systems
             bool shielded = system.CanExecute(new List<Fleet> { fleet }, planet);
             foreach (Building building in planet.GetAllBuildings())
                 building.ManufacturingStatus = ManufacturingStatus.Building;
-            fleet.GetCapitalShips()[0].GetRegiments()[0].Movement = new MovementState();
+            fleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>()[0].Movement =
+                new MovementState();
             bool noReadyRegiments = system.CanExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsFalse(shielded);
@@ -132,7 +138,7 @@ namespace Rebellion.Tests.Systems
             Building second = AddDefenseBuilding(game, planet, "lnr", DefenseFacilityClass.LNR);
             second.WeaponPower = 500;
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 2);
-            Regiment attacker = fleet.GetCapitalShips()[0].GetRegiments()[0];
+            Regiment attacker = fleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>()[0];
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(
                     game,
@@ -179,7 +185,7 @@ namespace Rebellion.Tests.Systems
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
             Regiment defender = AddDefender(game, planet, "defender");
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
-            Regiment attacker = fleet.GetCapitalShips()[0].GetRegiments()[0];
+            Regiment attacker = fleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>()[0];
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(
                     game,
@@ -208,7 +214,7 @@ namespace Rebellion.Tests.Systems
                 CurrentRank = OfficerRank.General,
             };
             general.SetBaseRating(OfficerRating.Leadership, 60);
-            game.AttachNode(general, commandedFleet.GetCapitalShips()[0]);
+            game.AttachNode(general, commandedFleet.GetChildren<CapitalShip>()[0]);
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(
                     game,
@@ -290,7 +296,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("empire", planet.GetOwnerInstanceID());
             Assert.AreEqual(6, result.LandedRegiments.Count);
             Assert.AreEqual(6, planet.GetAllRegiments().Count);
-            Assert.AreEqual(1, fleet.GetCapitalShips()[0].GetRegiments().Count);
+            Assert.AreEqual(1, fleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>().Count);
             Assert.AreSame(
                 planet,
                 result.Events.OfType<PlanetGarrisonChangedResult>().Single().Planet

@@ -178,7 +178,7 @@ namespace Rebellion.Tests.Generation
                 "Empire should see Yavin because the override grants visibility."
             );
             Assert.IsTrue(
-                rim.GetPlanets()[0].WasVisitedBy("FNEMP1"),
+                rim.GetChildren<Planet>()[0].WasVisitedBy("FNEMP1"),
                 "Visibility overrides should mark the planet as known for the listed faction."
             );
         }

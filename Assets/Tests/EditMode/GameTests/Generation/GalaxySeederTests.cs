@@ -249,10 +249,10 @@ namespace Rebellion.Tests.Generation
             );
 
             int allianceOwned = systems
-                .SelectMany(s => s.GetPlanets())
+                .SelectMany(s => s.GetChildren<Planet>())
                 .Count(p => p.OwnerInstanceID == "FNALL1");
             int empireOwned = systems
-                .SelectMany(s => s.GetPlanets())
+                .SelectMany(s => s.GetChildren<Planet>())
                 .Count(p => p.OwnerInstanceID == "FNEMP1");
 
             Assert.AreEqual(4, allianceOwned, "Alliance should own 4 planets (20% strong of 20).");

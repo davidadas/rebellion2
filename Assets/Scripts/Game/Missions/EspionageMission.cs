@@ -242,11 +242,11 @@ namespace Rebellion.Game.Missions
             }
 
             List<Planet> candidates = game
-                .Galaxy.GetPlanetSystems()
+                .Galaxy.GetChildren<PlanetSystem>()
                 .Where(system =>
                     includeOuterRim || system.SystemType == PlanetSystemType.CoreSystem
                 )
-                .SelectMany(system => system.GetPlanets())
+                .SelectMany(system => system.GetChildren<Planet>())
                 .Where(candidate => candidate != targetPlanet)
                 .Where(candidate => candidate.OwnerInstanceID == targetPlanet.OwnerInstanceID)
                 .ToList();

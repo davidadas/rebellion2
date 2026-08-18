@@ -182,7 +182,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             MissionsWindowSession session = CreateSession();
             session.SelectMission(1);
-            Mission[] missions = _planet.GetMissions().ToArray();
+            Mission[] missions = _planet.GetChildren<Mission>().ToArray();
             _planet.RemoveChildren<Mission>(_ => true);
             Array.Reverse(missions);
             _planet.AddChildren(missions);

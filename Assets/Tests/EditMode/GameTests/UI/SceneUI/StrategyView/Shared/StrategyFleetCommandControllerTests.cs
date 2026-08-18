@@ -69,9 +69,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             bool created = controller.TryCreateFleetFromCapitalShips(new ISceneNode[] { ship });
 
             Assert.IsTrue(created);
-            Assert.AreEqual(1, _planet.GetFleets().Count);
-            Assert.AreNotSame(sourceFleet, _planet.GetFleets()[0]);
-            Assert.AreSame(_planet.GetFleets()[0], ship.GetParent());
+            Assert.AreEqual(1, _planet.GetChildren<GameFleet>().Count);
+            Assert.AreNotSame(sourceFleet, _planet.GetChildren<GameFleet>()[0]);
+            Assert.AreSame(_planet.GetChildren<GameFleet>()[0], ship.GetParent());
         }
 
         [Test]
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(BombardmentType.Civilian, bombardment.Type);
             Assert.AreEqual(1, bombardment.AttackingUnits.Count);
             Assert.AreEqual(
-                fleet.GetCapitalShips()[0].InstanceID,
+                fleet.GetChildren<CapitalShip>()[0].InstanceID,
                 bombardment.AttackingUnits[0].Unit.InstanceID
             );
         }

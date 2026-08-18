@@ -524,7 +524,9 @@ namespace Rebellion.Systems
         /// <returns>The planets eligible for the support shift.</returns>
         private static IEnumerable<Planet> GetAffectedPlanets(PlanetSystem system)
         {
-            return system?.GetPlanets().Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
+            return system
+                    ?.GetChildren<Planet>()
+                    .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
                 ?? Enumerable.Empty<Planet>();
         }
 

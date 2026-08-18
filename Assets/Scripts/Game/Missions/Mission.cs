@@ -336,7 +336,7 @@ namespace Rebellion.Game.Missions
             int bestDefenderEspionage = 0;
             if (GetParent() is Planet planet)
             {
-                foreach (Officer officer in planet.GetOfficers())
+                foreach (Officer officer in planet.GetChildren<Officer>())
                 {
                     if (officer.OwnerInstanceID != OwnerInstanceID && !officer.IsCaptured)
                     {

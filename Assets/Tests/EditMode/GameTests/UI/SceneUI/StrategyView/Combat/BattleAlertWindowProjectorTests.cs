@@ -455,7 +455,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             var scene = CreateScene();
             Officer officer = CreateOfficer("officer", _playerFactionId, "Field Officer");
-            scene.PlayerFleet.GetCapitalShips()[0].AddChild(officer);
+            scene.PlayerFleet.GetChildren<CapitalShip>()[0].AddChild(officer);
             SpaceCombatResult result = CreateResult(
                 scene.Planet,
                 scene.PlayerFleet,

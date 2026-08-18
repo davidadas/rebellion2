@@ -413,7 +413,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);
-            foreach (CapitalShip ship in fleet.GetCapitalShips())
+            foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
             {
                 ship.SetParent(fleet);
                 foreach (ISceneNode child in ship.GetChildren())

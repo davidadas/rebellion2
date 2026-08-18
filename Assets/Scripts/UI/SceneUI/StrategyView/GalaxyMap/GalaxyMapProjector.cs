@@ -369,10 +369,10 @@ public sealed class GalaxyMapProjector
         if (briefing.Mode == StrategyBriefingMapMode.AllDefenses)
         {
             int defenseCount =
-                planet.GetRegiments().Count(IsActive)
-                + planet.GetStarfighters().Count(IsActive)
+                planet.GetChildren<Regiment>().Count(IsActive)
+                + planet.GetChildren<Starfighter>().Count(IsActive)
                 + planet
-                    .GetBuildings()
+                    .GetChildren<Building>()
                     .Count(building =>
                         building.ManufacturingStatus == ManufacturingStatus.Complete
                         && building.DefenseFacilityClass != DefenseFacilityClass.None

@@ -1294,7 +1294,7 @@ public static class HeadlessSimulationRunner
                 Destroyed = destroyed,
                 TransitTicksRemaining = fleet.Movement?.TicksRemaining() ?? 0,
                 CombatValue = fleet.GetCombatValue(),
-                CapitalShipCount = fleet.GetCapitalShips().Count,
+                CapitalShipCount = fleet.GetChildren<CapitalShip>().Count,
                 StarfighterCount = fleet.GetStarfighters().Count(),
                 RegimentCount = fleet.GetRegiments().Count(),
                 OfficerCount = fleet.GetOfficers().Count(),
@@ -1302,7 +1302,7 @@ public static class HeadlessSimulationRunner
                 OrderStatus = fleet.Order?.Status.ToString(),
                 OrderTargetPlanetId = fleet.Order?.TargetPlanetId,
                 OrderTargetPlanetName = targetPlanet?.GetDisplayName(),
-                CapitalShips = SummarizeUnits(fleet.GetCapitalShips()),
+                CapitalShips = SummarizeUnits(fleet.GetChildren<CapitalShip>()),
                 Starfighters = SummarizeUnits(fleet.GetStarfighters()),
                 Regiments = SummarizeUnits(fleet.GetRegiments()),
                 Officers = SummarizeUnits(fleet.GetOfficers()),
@@ -1487,7 +1487,7 @@ public static class HeadlessSimulationRunner
             InTransit = fleet.Movement != null,
             TransitTicksRemaining = fleet.Movement?.TicksRemaining() ?? 0,
             CombatValue = fleet.GetCombatValue(),
-            CapitalShipCount = fleet.GetCapitalShips().Count,
+            CapitalShipCount = fleet.GetChildren<CapitalShip>().Count,
             StarfighterCount = fleet.GetStarfighters().Count(),
             RegimentCount = fleet.GetRegiments().Count(),
             OfficerCount = fleet.GetOfficers().Count(),
@@ -1503,7 +1503,7 @@ public static class HeadlessSimulationRunner
             TargetDefenseStrength = targetDefenseStrength,
             TargetRegimentCount = targetRegimentCount,
             TargetStrongestHostileFleetStrength = targetStrongestHostileFleetStrength,
-            CapitalShips = SummarizeUnits(fleet.GetCapitalShips()),
+            CapitalShips = SummarizeUnits(fleet.GetChildren<CapitalShip>()),
             Starfighters = SummarizeUnits(fleet.GetStarfighters()),
             Regiments = SummarizeUnits(fleet.GetRegiments()),
             Officers = SummarizeUnits(fleet.GetOfficers()),
@@ -1522,7 +1522,7 @@ public static class HeadlessSimulationRunner
             return 0;
 
         return targetPlanet
-            .GetFleets()
+            .GetChildren<Fleet>()
             .Where(fleet =>
                 fleet.GetOwnerInstanceID() != null
                 && fleet.GetOwnerInstanceID() != faction.InstanceID

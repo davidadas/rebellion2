@@ -280,12 +280,18 @@ internal sealed class DefenseWindowSession
         return tab switch
         {
             DefenseWindowTab.Personnel => planet
-                .GetOfficers()
+                .GetChildren<Officer>()
                 .Cast<ISceneNode>()
-                .Concat(planet.GetSpecialForces().Cast<ISceneNode>())
+                .Concat(planet.GetChildren<SpecialForces>().Cast<ISceneNode>())
                 .ToList(),
-            DefenseWindowTab.Regiments => planet.GetRegiments().Cast<ISceneNode>().ToList(),
-            DefenseWindowTab.Starfighters => planet.GetStarfighters().Cast<ISceneNode>().ToList(),
+            DefenseWindowTab.Regiments => planet
+                .GetChildren<Regiment>()
+                .Cast<ISceneNode>()
+                .ToList(),
+            DefenseWindowTab.Starfighters => planet
+                .GetChildren<Starfighter>()
+                .Cast<ISceneNode>()
+                .ToList(),
             DefenseWindowTab.Shields => GetBuildings(planet, true),
             DefenseWindowTab.Batteries => GetBuildings(planet, false),
             _ => new List<ISceneNode>(),
@@ -345,7 +351,7 @@ internal sealed class DefenseWindowSession
     private static List<ISceneNode> GetBuildings(Planet planet, bool shields)
     {
         return planet
-            .GetBuildings()
+            .GetChildren<Building>()
             .Where(building =>
                 shields
                     ? building.DefenseFacilityClass

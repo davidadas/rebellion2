@@ -48,7 +48,7 @@ namespace Rebellion.Tests.Game.Units
         {
             _fleet.AddChild(_capitalShip1);
 
-            Assert.Contains(_capitalShip1, _fleet.GetCapitalShips().ToList());
+            Assert.Contains(_capitalShip1, _fleet.GetChildren<CapitalShip>().ToList());
         }
 
         [Test]
@@ -66,7 +66,7 @@ namespace Rebellion.Tests.Game.Units
 
             _fleet.RemoveChild(_capitalShip1);
 
-            Assert.IsFalse(_fleet.GetCapitalShips().Contains(_capitalShip1));
+            Assert.IsFalse(_fleet.GetChildren<CapitalShip>().Contains(_capitalShip1));
         }
 
         [Test]
@@ -262,8 +262,8 @@ namespace Rebellion.Tests.Game.Units
                 "PositionY should be correctly deserialized."
             );
             Assert.AreEqual(
-                _fleet.GetCapitalShips().Count,
-                deserialized.GetCapitalShips().Count,
+                _fleet.GetChildren<CapitalShip>().Count,
+                deserialized.GetChildren<CapitalShip>().Count,
                 "CapitalShips count should be correctly deserialized."
             );
         }

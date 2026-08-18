@@ -1081,12 +1081,12 @@ namespace Rebellion.Systems
                 {
                     if (
                         ReferenceEquals(fleet, destinationFleet)
-                        || fleet.GetCapitalShips().Count == 0
+                        || fleet.GetChildren<CapitalShip>().Count == 0
                     )
                         return false;
 
                     sourceFleets.Add(fleet);
-                    foreach (CapitalShip capitalShip in fleet.GetCapitalShips())
+                    foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
                     {
                         if (
                             !string.Equals(
@@ -1759,7 +1759,7 @@ namespace Rebellion.Systems
                 CapitalShip currentShip = node?.GetParentOfType<CapitalShip>();
                 Fleet fleet = node?.GetParentOfType<Fleet>();
                 CapitalShip destination = fleet
-                    ?.GetCapitalShips()
+                    ?.GetChildren<CapitalShip>()
                     .FirstOrDefault(ship =>
                         ship != currentShip
                         && ship.ManufacturingStatus == ManufacturingStatus.Complete
@@ -2261,7 +2261,7 @@ namespace Rebellion.Systems
                     return null;
 
                 return fleet
-                    .GetCapitalShips()
+                    .GetChildren<CapitalShip>()
                     .FirstOrDefault(ship =>
                         ship.ManufacturingStatus == ManufacturingStatus.Complete
                         && ship.Movement == null
@@ -2275,7 +2275,7 @@ namespace Rebellion.Systems
                     return null;
 
                 return fleet
-                    .GetCapitalShips()
+                    .GetChildren<CapitalShip>()
                     .FirstOrDefault(ship =>
                         ship.ManufacturingStatus == ManufacturingStatus.Complete
                         && ship.Movement == null
@@ -2283,8 +2283,11 @@ namespace Rebellion.Systems
                     );
             }
 
-            if ((unit is Officer || unit is SpecialForces) && fleet.GetCapitalShips().Count > 0)
-                return fleet.GetCapitalShips()[0];
+            if (
+                (unit is Officer || unit is SpecialForces)
+                && fleet.GetChildren<CapitalShip>().Count > 0
+            )
+                return fleet.GetChildren<CapitalShip>()[0];
             return null;
         }
 
@@ -2372,10 +2375,10 @@ namespace Rebellion.Systems
             int slowestHyperdrive = _game.GetConfig().Movement.DefaultFighterHyperdrive;
             if (unit is Fleet fleet)
             {
-                if (fleet.GetCapitalShips().Count > 0)
+                if (fleet.GetChildren<CapitalShip>().Count > 0)
                 {
                     slowestHyperdrive = fleet
-                        .GetCapitalShips()
+                        .GetChildren<CapitalShip>()
                         .Select(ship => ship.Hyperdrive)
                         .Where(h => h > 0)
                         .DefaultIfEmpty(1)

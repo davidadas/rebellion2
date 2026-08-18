@@ -746,8 +746,8 @@ namespace Rebellion.Tests.Game
             Assert.IsTrue(_game.IsInVoid(officer));
             Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
-            CollectionAssert.DoesNotContain(_planet.GetOfficers(), officer);
-            CollectionAssert.Contains(_planet.GetOfficers(includeDisabled: true), officer);
+            CollectionAssert.DoesNotContain(_planet.GetChildren<Officer>(), officer);
+            CollectionAssert.Contains(_planet.GetChildren<Officer>(includeDisabled: true), officer);
             CollectionAssert.DoesNotContain(_faction1.GetOwnedUnitsByType<Officer>(), officer);
         }
 
@@ -767,7 +767,7 @@ namespace Rebellion.Tests.Game
             Assert.AreSame(_planet, officer.GetParent());
             Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
             Assert.IsFalse(_game.IsInVoid(officer));
-            CollectionAssert.Contains(_planet.GetOfficers(), officer);
+            CollectionAssert.Contains(_planet.GetChildren<Officer>(), officer);
         }
 
         [Test]

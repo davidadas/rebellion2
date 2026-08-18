@@ -1550,7 +1550,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(moved);
             Assert.AreSame(origin, firstStarfighter.GetParent());
             Assert.AreSame(origin, secondStarfighter.GetParent());
-            Assert.IsEmpty(carrier.GetStarfighters());
+            Assert.IsEmpty(carrier.GetChildren<Starfighter>());
             Assert.IsNull(results);
         }
 
@@ -4399,7 +4399,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(sourceFleet, ship.GetParent());
             CollectionAssert.AreEquivalent(
                 new[] { sourceFleet, destinationFleet },
-                origin.GetFleets().ToList()
+                origin.GetChildren<Fleet>().ToList()
             );
         }
 
@@ -4416,8 +4416,8 @@ namespace Rebellion.Tests.Systems
             bool moved = movement.TryRequestMove(new ISceneNode[] { ship }, destination, "empire");
 
             Assert.IsTrue(moved);
-            Assert.AreEqual(1, destination.GetFleets().Count);
-            Assert.AreSame(destination.GetFleets()[0], ship.GetParent());
+            Assert.AreEqual(1, destination.GetChildren<Fleet>().Count);
+            Assert.AreSame(destination.GetChildren<Fleet>()[0], ship.GetParent());
             Assert.IsNotNull(ship.Movement);
             Assert.IsNull(sourceFleet.GetParent());
         }
@@ -4437,7 +4437,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsTrue(moved);
             Assert.AreSame(destination, ship.GetParentOfType<Planet>());
-            Assert.AreEqual(0, snapshot.GetFleets().Count);
+            Assert.AreEqual(0, snapshot.GetChildren<Fleet>().Count);
         }
 
         [Test]
@@ -4459,10 +4459,13 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(moved);
-            Assert.AreEqual(1, destination.GetFleets().Count);
-            Assert.AreSame(destination.GetFleets()[0], firstShip.GetParent());
-            Assert.AreSame(destination.GetFleets()[0], secondShip.GetParent());
-            Assert.AreEqual(2, destination.GetFleets()[0].GetCapitalShips().Count);
+            Assert.AreEqual(1, destination.GetChildren<Fleet>().Count);
+            Assert.AreSame(destination.GetChildren<Fleet>()[0], firstShip.GetParent());
+            Assert.AreSame(destination.GetChildren<Fleet>()[0], secondShip.GetParent());
+            Assert.AreEqual(
+                2,
+                destination.GetChildren<Fleet>()[0].GetChildren<CapitalShip>().Count
+            );
         }
 
         [Test]
@@ -4486,8 +4489,11 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsFalse(moved);
-            CollectionAssert.AreEqual(new[] { originFleet }, origin.GetFleets().ToList());
-            CollectionAssert.AreEqual(new[] { destinationFleet }, destination.GetFleets().ToList());
+            CollectionAssert.AreEqual(new[] { originFleet }, origin.GetChildren<Fleet>().ToList());
+            CollectionAssert.AreEqual(
+                new[] { destinationFleet },
+                destination.GetChildren<Fleet>().ToList()
+            );
             Assert.AreSame(originFleet, originShip.GetParent());
             Assert.AreSame(destinationFleet, destinationShip.GetParent());
         }

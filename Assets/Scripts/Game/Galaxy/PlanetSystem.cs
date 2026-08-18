@@ -48,13 +48,6 @@ namespace Rebellion.Game.Galaxy
         public PlanetSystem() { }
 
         /// <summary>
-        /// Gets the planets contained by this planet system.
-        /// </summary>
-        /// <returns>The planet system's planets.</returns>
-        public IReadOnlyList<Planet> GetPlanets(bool includeDisabled = false) =>
-            GetChildren<Planet>(includeDisabled);
-
-        /// <summary>
         /// Replaces the system's planet collection while constructing a detached projection.
         /// </summary>
         /// <param name="planets">The planets to retain in the projection.</param>

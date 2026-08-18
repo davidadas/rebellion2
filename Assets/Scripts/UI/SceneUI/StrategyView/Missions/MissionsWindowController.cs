@@ -731,7 +731,7 @@ internal sealed class MissionsWindowSession
     /// </summary>
     public int ContextParticipantIndex => FindParticipantIndex(contextParticipantInstanceId);
 
-    public IReadOnlyList<Mission> Missions => Planet.Planet.GetMissions();
+    public IReadOnlyList<Mission> Missions => Planet.Planet.GetChildren<Mission>();
 
     /// <summary>
     /// Gets the currently selected mission, or null.

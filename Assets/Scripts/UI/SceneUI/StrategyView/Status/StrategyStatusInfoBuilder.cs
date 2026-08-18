@@ -489,7 +489,7 @@ internal sealed class StrategyStatusInfoBuilder
         info.Images.Clear();
         if (fleet.Movement != null)
             info.Images.Add(StatusWindowImage.FleetBannerEnroute);
-        if (fleet.GetCapitalShips().Any(ship => ship.IsDamaged()))
+        if (fleet.GetChildren<CapitalShip>().Any(ship => ship.IsDamaged()))
             info.Images.Add(StatusWindowImage.FleetBannerDamaged);
         info.Images.Add(StatusWindowImage.FleetBanner);
         info.Rows.Add(
@@ -509,7 +509,10 @@ internal sealed class StrategyStatusInfoBuilder
             )
         );
         info.Rows.Add(
-            new StrategyStatusRow("Number of Ships:", fleet.GetCapitalShips().Count.ToString())
+            new StrategyStatusRow(
+                "Number of Ships:",
+                fleet.GetChildren<CapitalShip>().Count.ToString()
+            )
         );
         info.Rows.Add(new StrategyStatusRow("Capacity:", " "));
         info.Rows.Add(
@@ -537,13 +540,13 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow(
                 "Damaged Ships:",
-                fleet.GetCapitalShips().Count(ship => ship.IsDamaged()).ToString()
+                fleet.GetChildren<CapitalShip>().Count(ship => ship.IsDamaged()).ToString()
             )
         );
         info.Rows.Add(
             new StrategyStatusRow(
                 "Hyperdrive Rating:",
-                fleet.GetCapitalShips().Any(ship => ship.Hyperdrive > 0) ? "Yes" : "No"
+                fleet.GetChildren<CapitalShip>().Any(ship => ship.Hyperdrive > 0) ? "Yes" : "No"
             )
         );
         return info;
@@ -585,14 +588,17 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow(
                 "Fighter Squadrons:",
-                capitalShip.GetStarfighters().Count.ToString()
+                capitalShip.GetChildren<Starfighter>().Count.ToString()
             )
         );
         info.Rows.Add(
-            new StrategyStatusRow("Trooper Regiments:", capitalShip.GetRegiments().Count.ToString())
+            new StrategyStatusRow(
+                "Trooper Regiments:",
+                capitalShip.GetChildren<Regiment>().Count.ToString()
+            )
         );
         info.Rows.Add(
-            new StrategyStatusRow("Personnel:", capitalShip.GetOfficers().Count.ToString())
+            new StrategyStatusRow("Personnel:", capitalShip.GetChildren<Officer>().Count.ToString())
         );
         info.Rows.Add(
             new StrategyStatusRow("Ship Damaged:", capitalShip.IsDamaged() ? "Yes" : "No")
@@ -716,7 +722,7 @@ internal sealed class StrategyStatusInfoBuilder
     private static int GetFacilityCountForManufacturingType(Planet planet, ManufacturingType type)
     {
         return planet
-            .GetBuildings()
+            .GetChildren<Building>()
             .Count(building =>
                 building.GetManufacturingStatus() == ManufacturingStatus.Complete
                 && building.GetProductionType() == type

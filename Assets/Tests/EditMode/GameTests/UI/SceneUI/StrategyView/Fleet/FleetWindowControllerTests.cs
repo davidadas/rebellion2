@@ -353,7 +353,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void ContextMenu_BombardmentLeaf_ExecutesAndRoutesBattleResult()
         {
             _planet.Planet.OwnerInstanceID = _opposingFactionId;
-            _fleet.GetCapitalShips()[0].Bombardment = 1;
+            _fleet.GetChildren<CapitalShip>()[0].Bombardment = 1;
             _planet.Planet.RemoveChild(_fleet);
             _fleet.SetParent(null);
             _planet.Planet.AddChild(_fleet);
@@ -479,7 +479,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);
-            foreach (CapitalShip ship in fleet.GetCapitalShips())
+            foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
             {
                 ship.SetParent(fleet);
                 foreach (ISceneNode child in ship.GetChildren())

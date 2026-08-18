@@ -191,7 +191,7 @@ namespace Rebellion.Game.Missions
                 && regiment.Movement == null;
             Fleet targetFleet = target is CapitalShip ? target.GetParentOfType<Fleet>() : null;
             game.DetachNode(target);
-            if (targetFleet?.GetCapitalShips().Count == 0)
+            if (targetFleet?.GetChildren<CapitalShip>().Count == 0)
                 game.DetachNode(targetFleet);
 
             List<GameResult> results = new List<GameResult>

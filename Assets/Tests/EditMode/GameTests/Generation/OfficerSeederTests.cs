@@ -268,7 +268,7 @@ namespace Rebellion.Tests.Generation
 
             Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
-            Assert.Contains(officer, planet.GetOfficers().ToList());
+            Assert.Contains(officer, planet.GetChildren<Officer>().ToList());
         }
 
         [Test]
@@ -295,8 +295,8 @@ namespace Rebellion.Tests.Generation
 
             Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
-            Assert.Contains(officer, target.GetOfficers().ToList());
-            Assert.IsEmpty(other.GetOfficers());
+            Assert.Contains(officer, target.GetChildren<Officer>().ToList());
+            Assert.IsEmpty(other.GetChildren<Officer>());
         }
 
         [Test]
@@ -336,8 +336,8 @@ namespace Rebellion.Tests.Generation
 
             Assert.Contains(pinned, results.Deployed);
             Assert.Contains(recruitable, results.Unrecruited);
-            Assert.Contains(pinned, yavin.GetOfficers().ToList());
-            Assert.IsEmpty(other.GetOfficers());
+            Assert.Contains(pinned, yavin.GetChildren<Officer>().ToList());
+            Assert.IsEmpty(other.GetChildren<Officer>());
         }
     }
 }

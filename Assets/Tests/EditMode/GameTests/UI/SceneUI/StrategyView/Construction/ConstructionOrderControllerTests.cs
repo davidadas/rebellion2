@@ -68,7 +68,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
 
             Assert.IsTrue(started);
-            Assert.AreEqual(_destinationEnergyCapacity, destination.GetBuildings().Count);
+            Assert.AreEqual(_destinationEnergyCapacity, destination.GetChildren<Building>().Count);
             Assert.AreEqual(
                 _destinationEnergyCapacity,
                 producer.GetManufacturingQueue()[ManufacturingType.Building].Count

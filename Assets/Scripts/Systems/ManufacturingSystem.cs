@@ -238,7 +238,7 @@ namespace Rebellion.Systems
 
             ISceneNode candidate = CreateManufacturingCandidate(ownerInstanceId, template);
             IEnumerable<CapitalShip> carriers = fleet
-                .GetCapitalShips()
+                .GetChildren<CapitalShip>()
                 .Where(IsManufacturingCarrierAvailable);
             if (candidate is Starfighter)
                 return carriers.Sum(ship => ship.GetExcessStarfighterCapacity()) >= count;
@@ -729,7 +729,7 @@ namespace Rebellion.Systems
         )
         {
             List<ManufacturingType> types = planet
-                .GetBuildings()
+                .GetChildren<Building>()
                 .Where(facility =>
                     facility.ManufacturingStatus == ManufacturingStatus.Complete
                     && facility.Movement == null
@@ -775,7 +775,7 @@ namespace Rebellion.Systems
         )
         {
             List<Building> productionFacilities = planet
-                .GetBuildings()
+                .GetChildren<Building>()
                 .Where(facility =>
                     facility.ProductionType == type
                     && facility.ManufacturingStatus == ManufacturingStatus.Complete

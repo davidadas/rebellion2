@@ -215,7 +215,7 @@ namespace Rebellion.Systems
                     continue;
 
                 IEnumerable<Building> planetFacilities = planet
-                    .GetBuildings()
+                    .GetChildren<Building>()
                     .Where(building =>
                         building.BuildingType == buildingType
                         && building.ManufacturingStatus == ManufacturingStatus.Complete

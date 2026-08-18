@@ -473,7 +473,7 @@ internal sealed class BattleAlertWindowProjector
         if (pending?.Planet == null)
             return;
 
-        foreach (Fleet fleet in pending.Planet.GetFleets())
+        foreach (Fleet fleet in pending.Planet.GetChildren<Fleet>())
             AddFleet(rows, fleet, ownerInstanceId, addedFleetIds, uiContext);
 
         AddPlanetStarfighterRows(rows, pending.Planet, ownerInstanceId, uiContext);
@@ -495,7 +495,7 @@ internal sealed class BattleAlertWindowProjector
     {
         foreach (
             Starfighter fighter in planet
-                .GetStarfighters()
+                .GetChildren<Starfighter>()
                 .Where(fighter =>
                     fighter.GetOwnerInstanceID() == ownerInstanceId && IsActiveStarfighter(fighter)
                 )

@@ -19,13 +19,6 @@ namespace Rebellion.Game.Galaxy
         public GalaxyMap() { }
 
         /// <summary>
-        /// Gets the planet systems contained by the galaxy map.
-        /// </summary>
-        /// <returns>The galaxy map's planet systems.</returns>
-        public IReadOnlyList<PlanetSystem> GetPlanetSystems(bool includeDisabled = false) =>
-            GetChildren<PlanetSystem>(includeDisabled);
-
-        /// <summary>
         /// Returns true if the child is a PlanetSystem.
         /// </summary>
         /// <param name="child">The candidate child node.</param>

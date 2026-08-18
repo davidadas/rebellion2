@@ -72,7 +72,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 IsColonized = true,
             };
-            game.AttachNode(other, game.Galaxy.GetPlanetSystems()[0]);
+            game.AttachNode(other, game.Galaxy.GetChildren<PlanetSystem>()[0]);
             game.MoveNode(opposing, other);
             DuelSystem system = new DuelSystem(game, new FixedRandomProvider(new[] { 0.0 }));
 
