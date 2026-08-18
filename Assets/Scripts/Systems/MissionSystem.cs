@@ -373,7 +373,7 @@ namespace Rebellion.Systems
 
             foreach (IMissionParticipant participant in participants)
             {
-                ISceneNode node = participant as ISceneNode;
+                ISceneNode node = participant;
                 IMissionParticipant resolvedParticipant =
                     ResolveSceneNode(node) as IMissionParticipant;
                 if (resolvedParticipant == null)

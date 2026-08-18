@@ -667,7 +667,7 @@ namespace Rebellion.Systems
             int maxTransitTicks = 0;
             foreach (IMovable unit in units)
             {
-                IMovable liveUnit = ResolveLiveNode(unit as ISceneNode) as IMovable;
+                IMovable liveUnit = ResolveLiveNode(unit) as IMovable;
                 if (liveUnit == null)
                     return false;
 
@@ -960,7 +960,7 @@ namespace Rebellion.Systems
 
             for (int index = 0; index < liveUnits.Count; index++)
             {
-                ISceneNode unit = (ISceneNode)liveUnits[index];
+                ISceneNode unit = liveUnits[index];
                 ContainerNode resolvedDestination = destinations[index];
                 if (unit.GetParent() == null)
                 {
@@ -1008,7 +1008,7 @@ namespace Rebellion.Systems
                     children = new List<ISceneNode>();
                     plannedChildren.Add(resolvedDestination, children);
                 }
-                children.Add((ISceneNode)unit);
+                children.Add(unit);
                 resolvedDestinations.Add(resolvedDestination);
             }
             return true;
@@ -1755,7 +1755,7 @@ namespace Rebellion.Systems
 
             foreach (IMovable unit in units.Where(unit => unit != null).ToList())
             {
-                ISceneNode node = unit as ISceneNode;
+                ISceneNode node = unit;
                 CapitalShip currentShip = node?.GetParentOfType<CapitalShip>();
                 Fleet fleet = node?.GetParentOfType<Fleet>();
                 CapitalShip destination = fleet

@@ -1873,7 +1873,7 @@ namespace Rebellion.Game.Events
             );
 
             foreach (IMovable unit in units)
-                ((ISceneNode)unit).IsEnabled = IsActive;
+                unit.IsEnabled = IsActive;
             return;
         }
     }

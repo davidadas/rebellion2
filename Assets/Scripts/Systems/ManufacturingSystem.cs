@@ -527,13 +527,13 @@ namespace Rebellion.Systems
             if (item is Starfighter or Regiment && !IsManufacturingCarrierAvailable(destination))
                 return false;
 
-            if (!destination.CanAcceptChild((ISceneNode)item))
+            if (!destination.CanAcceptChild(item))
                 return false;
 
             if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
                 return false;
 
-            _game.AttachNode((ISceneNode)item, destination);
+            _game.AttachNode(item, destination);
 
             _pendingResults.Add(
                 new ManufacturingDeployedResult

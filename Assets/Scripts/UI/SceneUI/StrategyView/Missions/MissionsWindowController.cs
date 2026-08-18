@@ -763,7 +763,7 @@ internal sealed class MissionsWindowSession
         {
             IReadOnlyList<IMissionParticipant> participants = ActiveParticipants;
             return ContextParticipantIndex >= 0 && ContextParticipantIndex < participants.Count
-                ? participants[ContextParticipantIndex] as ISceneNode
+                ? participants[ContextParticipantIndex]
                 : null;
         }
     }
