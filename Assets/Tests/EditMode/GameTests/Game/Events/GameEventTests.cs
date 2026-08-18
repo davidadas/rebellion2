@@ -101,11 +101,7 @@ namespace Rebellion.Tests.Game.Events
                             },
                         },
                     },
-                    new SetActiveAction
-                    {
-                        UnitInstanceID = "LUKE_SKYWALKER",
-                        IsActive = false,
-                    },
+                    new SetActiveAction { UnitInstanceID = "LUKE_SKYWALKER", IsActive = false },
                     new IncreaseOfficerForceAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",

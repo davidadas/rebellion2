@@ -28,8 +28,7 @@ namespace Rebellion.Game.Events
         protected static IEnumerable<T> Active<T>(GameRoot game)
             where T : class, ISceneNode
         {
-            return game.GetRegisteredSceneNodesByType<T>()
-                .Where(node => node.GetParent() != null);
+            return game.GetRegisteredSceneNodesByType<T>().Where(node => node.GetParent() != null);
         }
 
         /// <summary>
@@ -50,6 +49,5 @@ namespace Rebellion.Game.Events
                 || node is Planet selectedPlanet && selectedPlanet.InstanceID == expected
                 || node.GetParentOfType<Planet>()?.InstanceID == expected;
         }
-
     }
 }
