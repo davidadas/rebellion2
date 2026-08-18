@@ -49,7 +49,7 @@ namespace Rebellion.SceneGraph
         /// Returns whether this node and every ancestor are enabled.
         /// </summary>
         /// <returns>True when the node is active in the scene hierarchy.</returns>
-        bool IsEnabledInHierarchy();
+        bool IsActive();
 
         /// <summary>
         /// Sets the parent node of this scene node.

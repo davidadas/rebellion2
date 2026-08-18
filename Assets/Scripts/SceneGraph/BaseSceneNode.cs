@@ -91,7 +91,7 @@ namespace Rebellion.SceneGraph
         /// Returns whether this node and every ancestor are enabled.
         /// </summary>
         /// <returns>True when the node is active in the scene hierarchy.</returns>
-        public bool IsEnabledInHierarchy()
+        public bool IsActive()
         {
             ISceneNode node = this;
             HashSet<ISceneNode> visitedNodes = new HashSet<ISceneNode>();
@@ -195,7 +195,7 @@ namespace Rebellion.SceneGraph
         {
             IEnumerable<ISceneNode> children = EnumerateChildren();
             IReadOnlyList<ISceneNode> directChildren = (
-                includeDisabled ? children : children.Where(child => child.IsEnabledInHierarchy())
+                includeDisabled ? children : children.Where(child => child.IsActive())
             )
                 .ToList()
                 .AsReadOnly();

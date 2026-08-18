@@ -785,7 +785,7 @@ internal sealed class StrategyStatusInfoBuilder
         ISceneNode item
     )
     {
-        if (item?.GetParent() == null || !item.IsEnabledInHierarchy())
+        if (item?.GetParent() == null || !item.IsActive())
             return;
         string location = GetStatusLocationName(target, item);
         if (!string.IsNullOrWhiteSpace(location))

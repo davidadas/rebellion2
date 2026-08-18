@@ -232,9 +232,7 @@ namespace Rebellion.Game.Missions
         ) =>
             includeDisabled
                 ? _mainParticipants
-                : _mainParticipants
-                    .Where(participant => participant.IsEnabledInHierarchy())
-                    .ToList();
+                : _mainParticipants.Where(participant => participant.IsActive()).ToList();
 
         /// <summary>
         /// Gets the mission's decoy participants.
@@ -245,9 +243,7 @@ namespace Rebellion.Game.Missions
         ) =>
             includeDisabled
                 ? _decoyParticipants
-                : _decoyParticipants
-                    .Where(participant => participant.IsEnabledInHierarchy())
-                    .ToList();
+                : _decoyParticipants.Where(participant => participant.IsActive()).ToList();
 
         /// <summary>
         /// Returns whether any mission participant is still travelling to the mission.

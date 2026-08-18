@@ -301,7 +301,7 @@ namespace Rebellion.Game
         /// <returns>True when the node is retained outside the active scene graph.</returns>
         public bool IsInVoid(ISceneNode node)
         {
-            return node?.IsEnabledInHierarchy() == false;
+            return node?.IsActive() == false;
         }
 
         /// <summary>
@@ -456,7 +456,7 @@ namespace Rebellion.Game
                 return null;
             if (NodesByInstanceID.TryGetValue(instanceId, out ISceneNode node))
             {
-                return includeDisabled || node.IsEnabledInHierarchy() ? node as T : null;
+                return includeDisabled || node.IsActive() ? node as T : null;
             }
             else
             {
@@ -477,7 +477,7 @@ namespace Rebellion.Game
             {
                 if (
                     NodesByInstanceID.TryGetValue(instanceId, out ISceneNode node)
-                    && node.IsEnabledInHierarchy()
+                    && node.IsActive()
                 )
                 {
                     matchingNodes.Add(node);
@@ -510,7 +510,7 @@ namespace Rebellion.Game
 
             void Traverse(ISceneNode node)
             {
-                if (!node.IsEnabledInHierarchy())
+                if (!node.IsActive())
                     return;
                 if (node is T typedNode)
                 {
@@ -538,7 +538,7 @@ namespace Rebellion.Game
             where T : class
         {
             return NodesByInstanceID
-                .Values.Where(node => includeDisabled || node.IsEnabledInHierarchy())
+                .Values.Where(node => includeDisabled || node.IsActive())
                 .OfType<T>()
                 .ToList();
         }
