@@ -36,6 +36,7 @@ public sealed class MissionCreateWindowController
     private readonly Action<UIWindow> closeWindow;
     private readonly Func<GameRoot> getGame;
     private readonly Func<MissionSystem> getMissionSystem;
+    private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Action markDirty;
     private readonly Action<string> playSfx;
@@ -58,6 +59,7 @@ public sealed class MissionCreateWindowController
     /// <param name="getWindowPosition">Returns the authored Mission Create placement.</param>
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public MissionCreateWindowController(
         Func<GameRoot> getGame,
         Func<MissionSystem> getMissionSystem,
@@ -67,7 +69,8 @@ public sealed class MissionCreateWindowController
         UIWindowManager windowManager,
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
-        Action markDirty
+        Action markDirty,
+        Func<SelectionModifierState> getSelectionModifiers = null
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
@@ -81,6 +84,7 @@ public sealed class MissionCreateWindowController
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
         projector = new MissionCreateWindowProjector(getUIContext);
     }
 
@@ -124,7 +128,13 @@ public sealed class MissionCreateWindowController
             return false;
 
         BindWindow(view);
-        sessions[view] = new MissionCreateWindowSession(window, target, choices, participants);
+        sessions[view] = new MissionCreateWindowSession(
+            window,
+            target,
+            choices,
+            participants,
+            getSelectionModifiers
+        );
         return true;
     }
 
@@ -627,6 +637,7 @@ internal sealed class MissionCreateWindowSession
     private readonly IReadOnlyList<IMissionParticipant> readOnlyAgents;
     private readonly IReadOnlyList<StrategyMissionChoice> readOnlyChoices;
     private readonly IReadOnlyList<IMissionParticipant> readOnlyDecoys;
+    private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly HashSet<int> selectedAgents = new HashSet<int>();
     private readonly HashSet<int> selectedDecoys = new HashSet<int>();
 
@@ -637,11 +648,13 @@ internal sealed class MissionCreateWindowSession
     /// <param name="target">The selected mission target.</param>
     /// <param name="choices">The available mission choices.</param>
     /// <param name="participants">The initial primary participants.</param>
+    /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public MissionCreateWindowSession(
         UIWindow window,
         StrategyMissionTarget target,
         IEnumerable<StrategyMissionChoice> choices,
-        IEnumerable<IMissionParticipant> participants
+        IEnumerable<IMissionParticipant> participants,
+        Func<SelectionModifierState> getSelectionModifiers = null
     )
     {
         Window = window ?? throw new ArgumentNullException(nameof(window));
@@ -649,6 +662,7 @@ internal sealed class MissionCreateWindowSession
         readOnlyAgents = agents.AsReadOnly();
         readOnlyChoices = this.choices.AsReadOnly();
         readOnlyDecoys = decoys.AsReadOnly();
+        this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
         this.choices.AddRange(choices ?? throw new ArgumentNullException(nameof(choices)));
         agents.AddRange(participants ?? throw new ArgumentNullException(nameof(participants)));
         SelectedMissionIndex = this.choices.Count > 0 ? 0 : -1;
@@ -844,7 +858,7 @@ internal sealed class MissionCreateWindowSession
     /// <param name="index">The requested source index.</param>
     /// <param name="clickCount">The pointer click count.</param>
     /// <returns>True when the requested participant exists and was processed.</returns>
-    private static bool SelectParticipant(
+    private bool SelectParticipant(
         List<IMissionParticipant> source,
         List<IMissionParticipant> destination,
         HashSet<int> selection,
@@ -863,7 +877,12 @@ internal sealed class MissionCreateWindowSession
             return true;
         }
 
-        SelectableListSelection.SelectRangeItem(selection, index, source.Count);
+        SelectableListSelection.SelectRangeItem(
+            selection,
+            index,
+            source.Count,
+            getSelectionModifiers()
+        );
         return true;
     }
 }

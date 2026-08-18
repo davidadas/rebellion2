@@ -46,7 +46,11 @@ public static class CommonUIPrefabBuilder
         BuildTextInputPrefab();
         BuildConfirmationDialogPrefab();
         AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
+        AssetDatabase.ImportAsset(
+            _textInputPrefabPath,
+            ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate
+        );
+        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
     }
 
     /// <summary>
@@ -180,7 +184,6 @@ public static class CommonUIPrefabBuilder
     {
         GameObject root = CreateRectObject("TextInput");
         root.AddComponent<CanvasRenderer>();
-        root.AddComponent<RectMask2D>();
         Image image = root.AddComponent<Image>();
         TMP_InputField input = root.AddComponent<TMP_InputField>();
         input.enabled = true;
@@ -194,15 +197,20 @@ public static class CommonUIPrefabBuilder
         image.color = Color.clear;
         image.raycastTarget = true;
 
-        TextMeshProUGUI text = CreateInputText("Text", root.transform, string.Empty);
-        TextMeshProUGUI placeholder = CreateInputText("Placeholder", root.transform, string.Empty);
-        SetSourceRect(text.rectTransform, 2, 0, 1, _defaultControlHeight);
-        SetSourceRect(placeholder.rectTransform, 2, 0, 1, _defaultControlHeight);
+        GameObject viewportObject = CreateRectObject("TextViewport", root.transform);
+        RectTransform viewport = viewportObject.GetComponent<RectTransform>();
+        FillParent(viewport);
+        viewportObject.AddComponent<RectMask2D>();
+
+        TextMeshProUGUI text = CreateInputText("Text", viewport, string.Empty);
+        TextMeshProUGUI placeholder = CreateInputText("Placeholder", viewport, string.Empty);
+        SetSourceRect(text.rectTransform, 2, 1, 1, _defaultControlHeight - 2);
+        SetSourceRect(placeholder.rectTransform, 2, 1, 1, _defaultControlHeight - 2);
 
         input.targetGraphic = image;
         input.transition = Selectable.Transition.None;
         input.lineType = TMP_InputField.LineType.SingleLine;
-        input.textViewport = root.GetComponent<RectTransform>();
+        input.textViewport = viewport;
         input.textComponent = text;
         input.placeholder = placeholder;
 

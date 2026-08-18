@@ -12,6 +12,7 @@ internal sealed class DefenseWindowSession
 {
     private readonly Dictionary<DefenseWindowTab, List<ISceneNode>> itemsByTab =
         new Dictionary<DefenseWindowTab, List<ISceneNode>>();
+    private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly HashSet<ISceneNode> selectedNodes = new HashSet<ISceneNode>();
     private readonly HashSet<int> selectedIndexes = new HashSet<int>();
     private ISceneNode contextItem;
@@ -21,10 +22,16 @@ internal sealed class DefenseWindowSession
     /// </summary>
     /// <param name="planet">The represented strategy planet.</param>
     /// <param name="window">The owning window shell.</param>
-    public DefenseWindowSession(GalaxyMapPlanet planet, UIWindow window)
+    /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
+    public DefenseWindowSession(
+        GalaxyMapPlanet planet,
+        UIWindow window,
+        Func<SelectionModifierState> getSelectionModifiers = null
+    )
     {
         Planet = planet ?? throw new ArgumentNullException(nameof(planet));
         Window = window ?? throw new ArgumentNullException(nameof(window));
+        this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
         Reconcile();
     }
 
@@ -211,15 +218,14 @@ internal sealed class DefenseWindowSession
     /// Applies the drag-selection gesture for one current item.
     /// </summary>
     /// <param name="itemIndex">The pressed visual index.</param>
-    /// <param name="columnCount">The number of authored item columns.</param>
-    public void SelectItemForDrag(int itemIndex, int columnCount)
+    public void SelectItemForDrag(int itemIndex)
     {
         IReadOnlyList<ISceneNode> items = GetItems(ActiveTab);
         SelectableListSelection.SelectIndexedItemForDrag(
             selectedIndexes,
             itemIndex,
             items.Count,
-            columnCount
+            getSelectionModifiers()
         );
         CaptureSelection(items);
     }
@@ -228,15 +234,14 @@ internal sealed class DefenseWindowSession
     /// Applies the release-selection gesture for one current item.
     /// </summary>
     /// <param name="itemIndex">The released visual index.</param>
-    /// <param name="columnCount">The number of authored item columns.</param>
-    public void SelectItem(int itemIndex, int columnCount)
+    public void SelectItem(int itemIndex)
     {
         IReadOnlyList<ISceneNode> items = GetItems(ActiveTab);
         SelectableListSelection.SelectIndexedItem(
             selectedIndexes,
             itemIndex,
             items.Count,
-            columnCount
+            getSelectionModifiers()
         );
         CaptureSelection(items);
     }

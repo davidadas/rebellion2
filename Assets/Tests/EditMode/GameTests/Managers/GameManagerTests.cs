@@ -447,6 +447,29 @@ namespace Rebellion.Tests.Managers
                 LaserCannon = 5,
             };
             game.AttachNode(defender, destination);
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "UNRELATED_SOURCE_FILTERED_ARRIVAL",
+                        Triggers = new List<GameEventTrigger>
+                        {
+                            new GameEventTrigger(
+                                "core:unit.arrived",
+                                ("SourceEventInstanceID", "sourceEventInstanceID")
+                            ),
+                        },
+                        Conditionals = new List<GameConditional>
+                        {
+                            new EvaluateBindingConditional
+                            {
+                                Binding = "$sourceEventInstanceID",
+                                Comparison = ComparisonOperator.Equal,
+                                CompareTo = "SOME_OTHER_EVENT",
+                            },
+                        },
+                    }
+                );
 
             GameManager manager = TestContent.CreateGameManager(game);
             manager.MovementSystem.RequestMove(new List<IMovable> { arrivingFleet }, destination);

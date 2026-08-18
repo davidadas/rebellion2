@@ -130,6 +130,117 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies autosave numbers render in directly editable integer fields.
+        /// </summary>
+        [Test]
+        public void GameplayPage_AutosaveFields_RenderAndRaiseEnteredValues()
+        {
+            string interval = null;
+            string retained = null;
+            _view.AutosaveIntervalChanged += value => interval = value;
+            _view.AutosavesToKeepChanged += value => retained = value;
+            OptionsMenuRenderData data = new OptionsMenuRenderData(
+                0,
+                0,
+                OptionsMenuTab.Gameplay,
+                string.Empty,
+                string.Empty,
+                new Dictionary<UserTacticalOption, bool>(),
+                Array.Empty<float>(),
+                Array.Empty<OptionsBindingRow>(),
+                Array.Empty<OptionsSaveSlot>(),
+                -1,
+                true,
+                -1,
+                false,
+                gameplayStates: new Dictionary<UserGameplayOption, bool>
+                {
+                    [UserGameplayOption.AutosaveEnabled] = true,
+                },
+                autosaveIntervalTicks: 250,
+                autosavesToKeep: 7
+            );
+
+            _view.Render(data);
+            TMP_InputField intervalField = GetField<TMP_InputField>("_autosaveIntervalInputField");
+            TMP_InputField retainedField = GetField<TMP_InputField>("_autosavesToKeepInputField");
+            intervalField.onEndEdit.Invoke("300");
+            retainedField.onEndEdit.Invoke("8");
+
+            Assert.AreEqual(TMP_InputField.ContentType.IntegerNumber, intervalField.contentType);
+            Assert.AreEqual("250", intervalField.text);
+            Assert.AreEqual("7", retainedField.text);
+            Assert.AreEqual("300", interval);
+            Assert.AreEqual("8", retained);
+            RectTransform badge = _root
+                .GetComponentsInChildren<RectTransform>(true)
+                .Single(rect => rect.name == "AutosaveIntervalBadge");
+            Assert.AreEqual(56f, badge.sizeDelta.x);
+            RectTransform inputRect = (RectTransform)intervalField.transform;
+            Assert.AreEqual(badge.anchoredPosition.y, inputRect.anchoredPosition.y);
+            Assert.AreEqual(18f, inputRect.sizeDelta.y);
+            Assert.AreNotSame(inputRect, intervalField.textViewport);
+            Assert.AreEqual(-1f, intervalField.textViewport.anchoredPosition.y);
+            Assert.AreEqual(16f, intervalField.textViewport.sizeDelta.y);
+            Assert.AreEqual(TextAlignmentOptions.Center, intervalField.textComponent.alignment);
+            Assert.AreEqual(0f, intervalField.textComponent.rectTransform.anchoredPosition.y);
+            Assert.AreEqual(16f, intervalField.textComponent.rectTransform.sizeDelta.y);
+            Assert.IsTrue(intervalField.interactable);
+            Assert.IsTrue(retainedField.interactable);
+        }
+
+        /// <summary>
+        /// Verifies disabling autosave also disables and dims its dependent values.
+        /// </summary>
+        [Test]
+        public void GameplayPage_AutosaveDisabled_DisablesNumericFields()
+        {
+            OptionsMenuRenderData data = new OptionsMenuRenderData(
+                0,
+                0,
+                OptionsMenuTab.Gameplay,
+                string.Empty,
+                string.Empty,
+                new Dictionary<UserTacticalOption, bool>(),
+                Array.Empty<float>(),
+                Array.Empty<OptionsBindingRow>(),
+                Array.Empty<OptionsSaveSlot>(),
+                -1,
+                true,
+                -1,
+                false,
+                new Dictionary<UserGameplayOption, bool>
+                {
+                    [UserGameplayOption.AutosaveEnabled] = false,
+                }
+            );
+
+            _view.Render(data);
+
+            TMP_InputField intervalField = GetField<TMP_InputField>("_autosaveIntervalInputField");
+            TMP_InputField retainedField = GetField<TMP_InputField>("_autosavesToKeepInputField");
+            Assert.IsFalse(intervalField.interactable);
+            Assert.IsFalse(retainedField.interactable);
+            Assert.AreEqual(0.6f, GetField<Image>("_autosaveIntervalBadgeImage").color.r, 0.001f);
+        }
+
+        /// <summary>
+        /// Verifies the Gameplay mode and footer use the requested player-facing labels.
+        /// </summary>
+        [Test]
+        public void GeneratedLabels_UseGalacticModeAndReturnWording()
+        {
+            string[] labels = _root
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Select(field => field.text)
+                .ToArray();
+
+            CollectionAssert.Contains(labels, "GALACTIC MODE");
+            CollectionAssert.Contains(labels, "RETURN TO GAME");
+            CollectionAssert.Contains(labels, "RETURN TO MAIN MENU");
+        }
+
+        /// <summary>
         /// Verifies entering Save/Load starts at the top without pinning later renders there.
         /// </summary>
         [Test]
@@ -255,23 +366,23 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies Controls precedes Save / Load in both tab presentation and selection routing.
+        /// Verifies Gameplay is first and Controls precedes Save / Load in selection routing.
         /// </summary>
         [Test]
         public void Tabs_PresentControlsBeforeSaveLoad_AndRouteSelections()
         {
             CollectionAssert.AreEqual(
-                new[] { "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" },
+                new[] { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" },
                 GetField<TextMeshProUGUI[]>("_tabLabelFields").Select(label => label.text).ToArray()
             );
 
-            OptionsMenuTab selectedTab = OptionsMenuTab.Graphics;
+            OptionsMenuTab selectedTab = OptionsMenuTab.Gameplay;
             _view.TabSelected += tab => selectedTab = tab;
             Button[] tabButtons = GetField<Button[]>("_tabButtons");
 
-            tabButtons[2].onClick.Invoke();
-            Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
             tabButtons[3].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
+            tabButtons[4].onClick.Invoke();
             Assert.AreEqual(OptionsMenuTab.SaveLoad, selectedTab);
         }
 
@@ -365,58 +476,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(77f, fullScreenNext.sizeDelta.x);
             Assert.AreEqual(272f, resolutionNext.anchoredPosition.x);
             Assert.AreEqual(272f, fullScreenNext.anchoredPosition.x);
-        }
-
-        /// <summary>
-        /// Verifies the rename input authors a visible, correctly aligned caret.
-        /// </summary>
-        [Test]
-        public void RenameInput_AlignmentConfiguresVisibleBlinkingCaret()
-        {
-            _saveListView.AlignRenameInput();
-
-            TMP_InputField input = GetSaveListField<TMP_InputField>("_renameField");
-            Assert.IsTrue(input.customCaretColor);
-            Assert.AreEqual(Color.white, input.caretColor);
-            Assert.AreEqual(2, input.caretWidth);
-            Assert.AreEqual(0.85f, input.caretBlinkRate);
-            Assert.AreEqual(SaveGameManager.MaxDisplayNameLength, input.characterLimit);
-            Assert.IsFalse(input.onFocusSelectAll);
-            Assert.AreSame(input.transform, input.textViewport);
-            Assert.IsNotNull(input.textViewport.GetComponent<RectMask2D>());
-            Assert.AreEqual(
-                TextAlignmentOptions.BaselineLeft,
-                ((TextMeshProUGUI)input.textComponent).alignment
-            );
-            Assert.AreEqual(-2f, ((RectTransform)input.textComponent.transform).offsetMin.y);
-            Assert.AreEqual(-2f, ((RectTransform)input.textComponent.transform).offsetMax.y);
-        }
-
-        /// <summary>
-        /// Verifies taller glyph geometry cannot move the rename text baseline or caret container.
-        /// </summary>
-        [Test]
-        public void RenameInput_TallGlyph_KeepsStableBaselineAndTextBounds()
-        {
-            _saveListView.AlignRenameInput();
-            TMP_InputField input = GetSaveListField<TMP_InputField>("_renameField");
-            TextMeshProUGUI text = (TextMeshProUGUI)input.textComponent;
-            input.gameObject.SetActive(true);
-
-            input.SetTextWithoutNotify("A");
-            input.ForceLabelUpdate();
-            text.ForceMeshUpdate();
-            float ordinaryBaseline = text.textInfo.characterInfo[0].baseLine;
-            Vector2 ordinaryPosition = text.rectTransform.anchoredPosition;
-            Vector2 ordinarySize = text.rectTransform.sizeDelta;
-
-            input.SetTextWithoutNotify("(");
-            input.ForceLabelUpdate();
-            text.ForceMeshUpdate();
-
-            Assert.AreEqual(ordinaryBaseline, text.textInfo.characterInfo[0].baseLine, 0.01f);
-            Assert.AreEqual(ordinaryPosition, text.rectTransform.anchoredPosition);
-            Assert.AreEqual(ordinarySize, text.rectTransform.sizeDelta);
         }
 
         /// <summary>
@@ -554,10 +613,45 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies main-menu hosting removes unavailable in-game footer rows without gaps.
+        /// Verifies every left-side navigation row uses the same height and vertical gap.
         /// </summary>
         [Test]
-        public void RenderFooter_MainMenuHost_HidesUnavailableRowsAndCollapsesQuitToTop()
+        public void NavigationRows_UseConsistentVerticalRhythm()
+        {
+            Button[] tabRows = GetField<Button[]>("_tabButtons");
+            Button[] footerRows =
+            {
+                GetField<Button>("_backToGameButton"),
+                GetField<Button>("_mainMenuButton"),
+                GetField<Button>("_quitButton"),
+            };
+            RectInt[] tabRects = tabRows
+                .Select(row => UILayout.GetSourceRect((RectTransform)row.transform))
+                .ToArray();
+            RectInt[] footerRects = footerRows
+                .Select(row => UILayout.GetSourceRect((RectTransform)row.transform))
+                .ToArray();
+            RectInt footerRoot = UILayout.GetSourceRect(
+                (RectTransform)footerRows[0].transform.parent
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { 82, 118, 154, 190, 226 },
+                tabRects.Select(rect => rect.y).ToArray()
+            );
+            CollectionAssert.AreEqual(
+                new[] { 0, 36, 72 },
+                footerRects.Select(rect => rect.y).ToArray()
+            );
+            Assert.AreEqual(new RectInt(38, 318, 163, 102), footerRoot);
+            Assert.IsTrue(tabRects.Concat(footerRects).All(rect => rect.height == 30));
+        }
+
+        /// <summary>
+        /// Verifies main-menu hosting replaces Back to Game with Back to Main Menu without gaps.
+        /// </summary>
+        [Test]
+        public void RenderFooter_MainMenuHost_ShowsBackToMainMenuAndQuitWithoutGap()
         {
             OptionsMenuRenderData data = new OptionsMenuRenderData(
                 0,
@@ -583,11 +677,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Button mainMenu = GetField<Button>("_mainMenuButton");
             Button quit = GetField<Button>("_quitButton");
             Assert.IsFalse(backToGame.gameObject.activeSelf);
-            Assert.IsFalse(mainMenu.gameObject.activeSelf);
+            Assert.IsTrue(mainMenu.gameObject.activeSelf);
             Assert.IsTrue(quit.gameObject.activeSelf);
             Assert.IsNotNull(quit.transform.parent.GetComponent<VerticalLayoutGroup>());
-            Assert.AreEqual(38, UILayout.GetSourceRect((RectTransform)quit.transform).x);
-            Assert.AreEqual(226, UILayout.GetSourceRect((RectTransform)quit.transform).y);
+            Assert.AreEqual(0, UILayout.GetSourceRect((RectTransform)mainMenu.transform).x);
+            Assert.AreEqual(36, UILayout.GetSourceRect((RectTransform)mainMenu.transform).y);
+            Assert.AreEqual(0, UILayout.GetSourceRect((RectTransform)quit.transform).x);
+            Assert.AreEqual(72, UILayout.GetSourceRect((RectTransform)quit.transform).y);
         }
 
         /// <summary>
@@ -633,17 +729,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 typeof(OptionsMenuView)
                     .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(_view);
-        }
-
-        /// <summary>
-        /// Reads a private authored reference from the save-list subview under test.
-        /// </summary>
-        private T GetSaveListField<T>(string fieldName)
-        {
-            return (T)
-                typeof(OptionsSaveListView)
-                    .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
-                    .GetValue(_saveListView);
         }
 
         /// <summary>

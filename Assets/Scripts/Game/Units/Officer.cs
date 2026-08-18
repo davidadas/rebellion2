@@ -194,6 +194,7 @@ namespace Rebellion.Game.Units
 
         // Officer Info.
         public bool IsMain { get; set; }
+
         public bool IsRecruitable { get; set; }
         public List<string> RecruitingFactionInstanceIDs { get; set; } = new List<string>();
 

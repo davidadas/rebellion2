@@ -246,6 +246,27 @@ namespace Rebellion.Game.Missions
                 : _decoyParticipants.Where(participant => participant.IsActive()).ToList();
 
         /// <summary>
+        /// Replaces both participant groups while preserving their authored roles.
+        /// </summary>
+        /// <param name="mainParticipants">The replacement primary participants.</param>
+        /// <param name="decoyParticipants">The replacement decoy participants.</param>
+        internal void ReplaceParticipants(
+            IEnumerable<IMissionParticipant> mainParticipants,
+            IEnumerable<IMissionParticipant> decoyParticipants
+        )
+        {
+            _mainParticipants = mainParticipants?.ToList() ?? new List<IMissionParticipant>();
+            _decoyParticipants = decoyParticipants?.ToList() ?? new List<IMissionParticipant>();
+            _participantInstanceIds = new HashSet<string>(
+                _mainParticipants
+                    .Concat(_decoyParticipants)
+                    .Select(participant => participant.InstanceID),
+                StringComparer.Ordinal
+            );
+            _hasCapturedParticipantIds = true;
+        }
+
+        /// <summary>
         /// Returns whether any mission participant is still travelling to the mission.
         /// </summary>
         /// <returns>True if any participant has active movement.</returns>

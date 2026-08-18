@@ -118,7 +118,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Officer officer = new Officer { InstanceID = "officer" };
             _planet.AddTestChild(officer);
             _session.Reconcile();
-            _session.SelectItem(0, 3);
+            _session.SelectItem(0);
             _session.CaptureContextItem(0);
 
             _planet.RemoveChildren<Officer>(_ => true);
@@ -134,7 +134,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         {
             _planet.AddTestChild(new Officer { InstanceID = "officer" });
             _session.Reconcile();
-            _session.SelectItem(0, 3);
+            _session.SelectItem(0);
 
             bool changed = _session.SelectTab(DefenseWindowTab.Regiments);
 
@@ -205,7 +205,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _planet.AddTestChild(first);
             _planet.AddTestChild(second);
             _session.Reconcile();
-            _session.SelectItem(0, 3);
+            _session.SelectItem(0);
 
             bool captured = _session.CaptureContextItem(1);
 
@@ -221,7 +221,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Officer officer = new Officer { InstanceID = "officer" };
             _planet.AddTestChild(officer);
             _session.Reconcile();
-            _session.SelectItem(0, 3);
+            _session.SelectItem(0);
             _session.CaptureContextItem(0);
 
             bool captured = _session.CaptureContextItem(2);
@@ -257,7 +257,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _session.Reconcile();
             _session.SelectTab(DefenseWindowTab.Regiments);
 
-            _session.SelectItem(0, 3);
+            _session.SelectItem(0);
 
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedItemIndexes);
             Assert.IsTrue(_session.CanDragSelectedItems());
@@ -276,7 +276,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _session.Reconcile();
             _session.SelectTab(DefenseWindowTab.Regiments);
 
-            _session.SelectItemForDrag(0, 3);
+            _session.SelectItemForDrag(0);
 
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedItemIndexes);
             Assert.IsFalse(_session.CanDragSelectedItems());
@@ -303,7 +303,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Officer original = new Officer { InstanceID = "officer" };
             _planet.AddTestChild(original);
             _session.Reconcile();
-            _session.SelectItem(0, 3);
+            _session.SelectItem(0);
             _session.CaptureContextItem(0);
             Officer replacement = new Officer { InstanceID = original.InstanceID };
             Planet refreshedPlanet = new Planet { InstanceID = _planet.InstanceID };
@@ -331,7 +331,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Officer officer = new Officer { InstanceID = "officer" };
             _planet.AddTestChild(officer);
             _session.Reconcile();
-            _session.SelectItem(0, 3);
+            _session.SelectItem(0);
             _session.CaptureContextItem(0);
 
             _session.ClearSelection();

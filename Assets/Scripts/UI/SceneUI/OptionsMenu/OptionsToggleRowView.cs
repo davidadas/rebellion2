@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Displays a tactical option in the Options menu.
+/// Displays a keyed Boolean option in the Options menu.
 /// </summary>
 public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
 {
@@ -12,7 +12,7 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
     private static readonly Color _offTextColor = new Color(0.55f, 0.63f, 0.73f);
 
     [SerializeField]
-    private UserTacticalOption _option;
+    private int _optionIndex;
 
     [SerializeField]
     private Image _toggleImage;
@@ -40,8 +40,8 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
 
     private bool _bound;
 
-    public UserTacticalOption Option => _option;
-    public event Action<UserTacticalOption> ToggleRequested;
+    public int OptionIndex => _optionIndex;
+    public event Action<int> ToggleRequested;
 
     /// <summary>
     /// Restores the state-swapped toggle sprites from installation content.
@@ -56,7 +56,7 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Renders the current option state.
     /// </summary>
-    /// <param name="enabled">Whether the tactical option is enabled.</param>
+    /// <param name="enabled">Whether the option is enabled.</param>
     public void Render(bool enabled)
     {
         VerifyReferences();
@@ -123,10 +123,10 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Requests a change to the tactical option.
+    /// Requests a change to the option.
     /// </summary>
     private void RequestToggle()
     {
-        ToggleRequested?.Invoke(_option);
+        ToggleRequested?.Invoke(_optionIndex);
     }
 }

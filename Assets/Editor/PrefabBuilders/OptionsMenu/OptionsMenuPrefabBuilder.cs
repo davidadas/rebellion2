@@ -11,6 +11,11 @@ using UnityEngine.UI;
 /// </summary>
 public static class OptionsMenuPrefabBuilder
 {
+    private const int _navigationRowHeight = 30;
+    private const int _navigationRowSpacing = 6;
+    private const int _navigationRowStride = _navigationRowHeight + _navigationRowSpacing;
+    private const int _tabNavigationStartY = 82;
+    private const int _footerNavigationStartY = 318;
     private const string _optionsMenuWindowPrefabPath =
         "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
     private const string _optionsPanelAddress =
@@ -42,6 +47,7 @@ public static class OptionsMenuPrefabBuilder
 
     private static readonly Vector4 _panelBorder = new Vector4(7f, 7f, 7f, 7f);
     private static readonly Vector4 _badgeBorder = new Vector4(6f, 6f, 6f, 6f);
+    private static readonly Color32 _buttonSurfaceColor = new Color32(35, 56, 80, 255);
 
     /// <summary>
     /// Rebuilds the generated Options menu prefab.
@@ -138,7 +144,7 @@ public static class OptionsMenuPrefabBuilder
         SetSourceRect(header.rectTransform, 41, 32, 155, 26);
 
         TextMeshProUGUI pageTitle = CreateTextLabel("PageTitleTextField", contentRoot);
-        pageTitle.text = "GRAPHICS";
+        pageTitle.text = "GAMEPLAY";
         pageTitle.color = accent;
         pageTitle.fontSize = 14;
         pageTitle.alignment = TextAlignmentOptions.Midline;
@@ -147,6 +153,8 @@ public static class OptionsMenuPrefabBuilder
 
         BuildTabNavigation(view, contentRoot, textColor);
 
+        RectTransform gameplayPage = CreateChildLayer("GameplayPage", contentRoot);
+        SetSourceRect(gameplayPage, 228, 69, 382, 365);
         RectTransform graphicsPage = CreateChildLayer("GraphicsPage", contentRoot);
         SetSourceRect(graphicsPage, 228, 69, 382, 365);
         RectTransform audioPage = CreateChildLayer("AudioPage", contentRoot);
@@ -157,9 +165,12 @@ public static class OptionsMenuPrefabBuilder
         SetSourceRect(controlsPage, 228, 69, 382, 365);
 
         // Hidden Pages.
+        graphicsPage.gameObject.SetActive(false);
         audioPage.gameObject.SetActive(false);
         saveLoadPage.gameObject.SetActive(false);
         controlsPage.gameObject.SetActive(false);
+
+        BuildGameplayPage(view, gameplayPage, accent);
 
         BuildGraphicsPage(view, graphicsPage, accent);
 
@@ -181,6 +192,7 @@ public static class OptionsMenuPrefabBuilder
         );
         AssignString(view, "_rowIdleSpriteAddress", _optionsRowAddress);
         AssignString(view, "_rowActiveSpriteAddress", _optionsRowActiveAddress);
+        AssignReference(view, "_gameplayPage", gameplayPage.gameObject);
         AssignReference(view, "_graphicsPage", graphicsPage.gameObject);
         AssignReference(view, "_audioPage", audioPage.gameObject);
         AssignReference(view, "_saveLoadPage", saveLoadPage.gameObject);
@@ -205,10 +217,18 @@ public static class OptionsMenuPrefabBuilder
         Color textColor
     )
     {
-        string[] tabNames = { "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" };
-        string[] tabObjectNames = { "GraphicsTab", "AudioTab", "ControlsTab", "SaveLoadTab" };
+        string[] tabNames = { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" };
+        string[] tabObjectNames =
+        {
+            "GameplayTab",
+            "GraphicsTab",
+            "AudioTab",
+            "ControlsTab",
+            "SaveLoadTab",
+        };
         Button[] tabButtons = new Button[tabNames.Length];
         TextMeshProUGUI[] tabLabels = new TextMeshProUGUI[tabNames.Length];
+        Image[] tabSurfaces = new Image[tabNames.Length];
         for (int i = 0; i < tabNames.Length; i++)
         {
             Button tabButton = CreateSlicedButton(
@@ -217,14 +237,15 @@ public static class OptionsMenuPrefabBuilder
                 _optionsRowAddress,
                 _panelBorder,
                 38,
-                82 + i * 36,
+                _tabNavigationStartY + i * _navigationRowStride,
                 163,
-                30,
+                _navigationRowHeight,
                 Color.white
             );
             tabButtons[i] = tabButton;
-            ApplyOptionsButtonFeedback(tabButton);
             AddOptionsButtonBorder(tabButton.targetGraphic);
+            tabSurfaces[i] = CreateOptionsButtonSurface(tabButton);
+            ApplyOptionsSurfaceButtonFeedback(tabButton, tabSurfaces[i]);
             TextMeshProUGUI tabLabel = CreateTextLabel(
                 $"{tabObjectNames[i]}Label",
                 tabButton.transform
@@ -240,6 +261,74 @@ public static class OptionsMenuPrefabBuilder
 
         AssignReferenceArray(view, "_tabButtons", tabButtons);
         AssignReferenceArray(view, "_tabLabelFields", tabLabels);
+        AssignReferenceArray(view, "_tabSurfaceImages", tabSurfaces);
+    }
+
+    /// <summary>
+    /// Builds and wires the Gameplay page controls.
+    /// </summary>
+    private static void BuildGameplayPage(
+        OptionsMenuView view,
+        RectTransform gameplayPage,
+        Color accent
+    )
+    {
+        CreateOptionsSectionHeader(gameplayPage, "SavingHeader", "SAVING", 16, accent);
+        OptionsToggleRowView autosaveRow = CreateOptionsToggleRow(
+            gameplayPage,
+            "GameplayAutosaveEnabled",
+            (int)UserGameplayOption.AutosaveEnabled,
+            "Enable Autosave",
+            20,
+            44
+        );
+        TMP_InputField autosaveIntervalInput = CreateOptionsNumericFieldRow(
+            gameplayPage,
+            "AutosaveInterval",
+            "Autosave Interval (Ticks)",
+            70,
+            out Image autosaveIntervalBadge
+        );
+        TMP_InputField autosavesToKeepInput = CreateOptionsNumericFieldRow(
+            gameplayPage,
+            "AutosavesToKeep",
+            "Autosaves to Keep",
+            97,
+            out Image autosavesToKeepBadge
+        );
+
+        CreateOptionsSectionHeader(
+            gameplayPage,
+            "GalacticModeHeader",
+            "GALACTIC MODE",
+            134,
+            accent
+        );
+        UserGameplayOption[] options =
+        {
+            UserGameplayOption.PauseAfterEnemyBombardment,
+            UserGameplayOption.PauseWhenSpaceBattleBegins,
+        };
+        string[] labels = { "Pause After Enemy Bombardment", "Pause on Space Battles" };
+        OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length + 1];
+        rows[0] = autosaveRow;
+        for (int i = 0; i < options.Length; i++)
+        {
+            rows[i + 1] = CreateOptionsToggleRow(
+                gameplayPage,
+                $"Gameplay{options[i]}",
+                (int)options[i],
+                labels[i],
+                20,
+                162 + i * 26
+            );
+        }
+
+        AssignReferenceArray(view, "_gameplayRows", rows);
+        AssignReference(view, "_autosaveIntervalInputField", autosaveIntervalInput);
+        AssignReference(view, "_autosaveIntervalBadgeImage", autosaveIntervalBadge);
+        AssignReference(view, "_autosavesToKeepInputField", autosavesToKeepInput);
+        AssignReference(view, "_autosavesToKeepBadgeImage", autosavesToKeepBadge);
     }
 
     /// <summary>
@@ -292,10 +381,10 @@ public static class OptionsMenuPrefabBuilder
         OptionsToggleRowView[] tacticalRows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
         {
-            tacticalRows[i] = CreateOptionsTacticalRow(
+            tacticalRows[i] = CreateOptionsToggleRow(
                 graphicsPage,
                 $"Tactical{options[i]}",
-                options[i],
+                (int)options[i],
                 optionLabels[i],
                 20,
                 126 + i * 26
@@ -730,21 +819,29 @@ public static class OptionsMenuPrefabBuilder
         Color textDim
     )
     {
+        RectTransform footerNavigation = CreateChildLayer("FooterNavigation", contentRoot);
+        SetSourceRect(footerNavigation, 38, _footerNavigationStartY, 163, 102);
         Button backToGameButton = CreateOptionsNavRow(
-            contentRoot,
+            footerNavigation,
             "BackToGame",
-            "BACK TO GAME",
-            226,
+            "RETURN TO GAME",
+            0,
             textDim
         );
         Button mainMenuButton = CreateOptionsNavRow(
-            contentRoot,
+            footerNavigation,
             "MainMenu",
-            "MAIN MENU",
-            265,
+            "RETURN TO MAIN MENU",
+            _navigationRowStride,
             textDim
         );
-        Button quitButton = CreateOptionsNavRow(contentRoot, "Quit", "QUIT", 304, textDim);
+        Button quitButton = CreateOptionsNavRow(
+            footerNavigation,
+            "Quit",
+            "QUIT",
+            2 * _navigationRowStride,
+            textDim
+        );
         RectTransform settingsActions = CreateChildLayer("SettingsActions", contentRoot);
         Button defaultsButton = CreateOptionsActionButton(
             settingsActions,
@@ -767,7 +864,12 @@ public static class OptionsMenuPrefabBuilder
         confirmDialog.gameObject.name = "ConfirmDialog";
         confirmDialog.transform.SetAsLastSibling();
         confirmDialog.gameObject.SetActive(false);
-        ConfigureOptionsNavigationLayout(contentRoot, backToGameButton, mainMenuButton, quitButton);
+        ConfigureOptionsNavigationLayout(
+            footerNavigation,
+            backToGameButton,
+            mainMenuButton,
+            quitButton
+        );
 
         AssignReference(view, "_backToGameButton", backToGameButton);
         AssignReference(view, "_mainMenuButton", mainMenuButton);
@@ -821,6 +923,29 @@ public static class OptionsMenuPrefabBuilder
         colors.disabledColor = new Color(0.22f, 0.24f, 0.28f, 0.55f);
         colors.colorMultiplier = 1f;
         colors.fadeDuration = 0.08f;
+        button.colors = colors;
+    }
+
+    /// <summary>
+    /// Adds pronounced hover feedback to a button's visible cut-corner surface.
+    /// </summary>
+    /// <param name="button">The button to restyle.</param>
+    /// <param name="surface">The visible surface receiving the tint.</param>
+    private static void ApplyOptionsSurfaceButtonFeedback(Button button, Graphic surface)
+    {
+        if (button == null || surface == null)
+            return;
+
+        button.targetGraphic = surface;
+        button.transition = Selectable.Transition.ColorTint;
+        ColorBlock colors = button.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(1.55f, 1.55f, 1.55f, 1f);
+        colors.pressedColor = new Color(1.85f, 1.85f, 1.85f, 1f);
+        colors.selectedColor = colors.normalColor;
+        colors.disabledColor = new Color(0.55f, 0.55f, 0.55f, 0.55f);
+        colors.colorMultiplier = 1f;
+        colors.fadeDuration = 0.06f;
         button.colors = colors;
     }
 
@@ -913,12 +1038,14 @@ public static class OptionsMenuPrefabBuilder
             parent,
             _optionsBadgeAddress,
             _badgeBorder,
-            38,
+            0,
             y,
             163,
-            30,
+            _navigationRowHeight,
             Color.white
         );
+        Graphic buttonFrame = button.targetGraphic;
+        Image surface = CreateOptionsButtonSurface(button);
         TextMeshProUGUI text = CreateTextLabel("Label", button.transform);
         text.text = label;
         text.color = color;
@@ -926,8 +1053,8 @@ public static class OptionsMenuPrefabBuilder
         text.alignment = TextAlignmentOptions.MidlineLeft;
         ApplyOptionsDisplayFont(text);
         SetSourceRect(text.rectTransform, 14, 5, 140, 20);
-        ApplyOptionsFillButtonFeedback(button);
-        AddOptionsButtonBorder(button.targetGraphic);
+        ApplyOptionsSurfaceButtonFeedback(button, surface);
+        AddOptionsButtonBorder(buttonFrame);
         return button;
     }
 
@@ -935,24 +1062,24 @@ public static class OptionsMenuPrefabBuilder
     /// Creates the navigation layout.
     /// </summary>
     private static void ConfigureOptionsNavigationLayout(
-        RectTransform contentRoot,
+        RectTransform navigationRoot,
         Button backToGameButton,
         Button mainMenuButton,
         Button quitButton
     )
     {
-        VerticalLayoutGroup layout = contentRoot.gameObject.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(38, 0, 226, 0);
-        layout.spacing = 9f;
-        layout.childAlignment = TextAnchor.UpperLeft;
+        VerticalLayoutGroup layout = navigationRoot.gameObject.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(0, 0, 0, 0);
+        layout.spacing = _navigationRowSpacing;
+        layout.childAlignment = TextAnchor.LowerLeft;
         layout.childControlWidth = false;
         layout.childControlHeight = false;
         layout.childForceExpandWidth = false;
         layout.childForceExpandHeight = false;
 
-        for (int index = 0; index < contentRoot.childCount; index++)
+        for (int index = 0; index < navigationRoot.childCount; index++)
         {
-            Transform child = contentRoot.GetChild(index);
+            Transform child = navigationRoot.GetChild(index);
             bool navigationChild =
                 child == backToGameButton.transform
                 || child == mainMenuButton.transform
@@ -962,7 +1089,7 @@ public static class OptionsMenuPrefabBuilder
             if (navigationChild)
             {
                 element.preferredWidth = 163f;
-                element.preferredHeight = 30f;
+                element.preferredHeight = _navigationRowHeight;
             }
         }
     }
@@ -997,6 +1124,8 @@ public static class OptionsMenuPrefabBuilder
             22,
             Color.white
         );
+        Graphic buttonFrame = button.targetGraphic;
+        Image surface = CreateOptionsButtonSurface(button);
         TextMeshProUGUI text = CreateTextLabel("Label", button.transform);
         text.text = label;
         text.color = color;
@@ -1004,9 +1133,52 @@ public static class OptionsMenuPrefabBuilder
         text.alignment = TextAlignmentOptions.Midline;
         ApplyOptionsDisplayFont(text);
         SetSourceRect(text.rectTransform, 0, 4, width, 14);
-        ApplyOptionsFillButtonFeedback(button);
-        AddOptionsButtonBorder(button.targetGraphic);
+        ApplyOptionsSurfaceButtonFeedback(button, surface);
+        AddOptionsButtonBorder(buttonFrame);
         return button;
+    }
+
+    /// <summary>
+    /// Adds a high-contrast surface clipped to the button's authored cut-corner shape.
+    /// </summary>
+    /// <param name="button">The button receiving the surface.</param>
+    /// <returns>The clipped surface image.</returns>
+    private static Image CreateOptionsButtonSurface(Button button)
+    {
+        Image buttonImage = button.targetGraphic as Image;
+        GameObject maskObject = new GameObject(
+            "SurfaceMask",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Mask)
+        );
+        maskObject.transform.SetParent(button.transform, false);
+        maskObject.transform.SetAsFirstSibling();
+        RectTransform maskRect = maskObject.GetComponent<RectTransform>();
+        FillParent(maskRect);
+
+        Image maskImage = maskObject.GetComponent<Image>();
+        maskImage.sprite = buttonImage.sprite;
+        maskImage.type = buttonImage.type;
+        maskImage.pixelsPerUnitMultiplier = buttonImage.pixelsPerUnitMultiplier;
+        maskImage.raycastTarget = false;
+        Mask mask = maskObject.GetComponent<Mask>();
+        mask.showMaskGraphic = false;
+
+        GameObject surface = new GameObject(
+            "Surface",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        surface.transform.SetParent(maskObject.transform, false);
+        RectTransform surfaceRect = surface.GetComponent<RectTransform>();
+        FillParent(surfaceRect);
+        Image surfaceImage = surface.GetComponent<Image>();
+        surfaceImage.color = _buttonSurfaceColor;
+        surfaceImage.raycastTarget = false;
+        return surfaceImage;
     }
 
     /// <summary>
@@ -1055,6 +1227,75 @@ public static class OptionsMenuPrefabBuilder
         SetSourceRect(valueField.rectTransform, 218, y, 107, 18);
         nextButton = CreateOptionsStepperButton(parent, $"{name}Next", ">", 272, y, 77, 51);
         return valueField;
+    }
+
+    /// <summary>
+    /// Creates a directly editable integer setting row.
+    /// </summary>
+    /// <param name="parent">The Options-page container.</param>
+    /// <param name="name">The row object-name prefix.</param>
+    /// <param name="caption">The row caption.</param>
+    /// <param name="y">The source-space row top.</param>
+    /// <param name="badgeImage">Receives the numeric-field background.</param>
+    /// <returns>The configured integer input field.</returns>
+    private static TMP_InputField CreateOptionsNumericFieldRow(
+        RectTransform parent,
+        string name,
+        string caption,
+        int y,
+        out Image badgeImage
+    )
+    {
+        const int fieldX = 293;
+        const int fieldWidth = 56;
+        const int inputInset = 4;
+        TextMeshProUGUI labelField = CreateTextLabel($"{name}Label", parent);
+        labelField.text = caption;
+        labelField.color = new Color(0.875f, 0.910f, 0.941f);
+        labelField.fontSize = 11;
+        labelField.alignment = TextAlignmentOptions.MidlineLeft;
+        SetSourceRect(labelField.rectTransform, 20, y + 2, 150, 14);
+
+        badgeImage = CreateSlicedImage(
+            $"{name}Badge",
+            parent,
+            _optionsBadgeAddress,
+            _badgeBorder,
+            fieldX,
+            y,
+            fieldWidth,
+            18,
+            Color.white
+        );
+        TMP_InputField input = CreateTextInputField(
+            $"{name}Input",
+            parent,
+            string.Empty,
+            fieldX + inputInset,
+            y,
+            fieldWidth - inputInset * 2,
+            18
+        );
+        SetSourceRect(input.textViewport, 0, 1, fieldWidth - inputInset * 2, 16);
+        input.contentType = TMP_InputField.ContentType.IntegerNumber;
+        input.characterValidation = TMP_InputField.CharacterValidation.Integer;
+        input.characterLimit = 10;
+        if (input.textComponent is TextMeshProUGUI text)
+        {
+            // TMP's geometry-based Midline alignment cannot place an empty-field caret
+            // reliably because there is no glyph geometry to center against. Middle uses
+            // stable font metrics, keeping the caret and entered text vertically aligned.
+            text.alignment = TextAlignmentOptions.Center;
+            text.fontSize = 10;
+            SetSourceRect(text.rectTransform, 0, 0, fieldWidth - inputInset * 2, 16);
+        }
+        if (input.placeholder is TextMeshProUGUI placeholder)
+        {
+            placeholder.alignment = TextAlignmentOptions.Center;
+            placeholder.fontSize = 10;
+            SetSourceRect(placeholder.rectTransform, 0, 0, fieldWidth - inputInset * 2, 16);
+        }
+        return input;
     }
 
     /// <summary>
@@ -1192,19 +1433,19 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Creates a tactical option row.
+    /// Creates a Boolean option row.
     /// </summary>
-    /// <param name="parent">The Graphics-page container.</param>
+    /// <param name="parent">The page container.</param>
     /// <param name="name">The row object name.</param>
-    /// <param name="option">The tactical option the row toggles.</param>
+    /// <param name="optionIndex">The page-owned option index the row toggles.</param>
     /// <param name="label">The row caption.</param>
     /// <param name="x">The source-space row left.</param>
     /// <param name="y">The source-space row top.</param>
     /// <returns>The configured toggle-row view.</returns>
-    private static OptionsToggleRowView CreateOptionsTacticalRow(
+    private static OptionsToggleRowView CreateOptionsToggleRow(
         Transform parent,
         string name,
-        UserTacticalOption option,
+        int optionIndex,
         string label,
         int x,
         int y
@@ -1221,7 +1462,7 @@ public static class OptionsMenuPrefabBuilder
         labelField.color = new Color(0.875f, 0.910f, 0.941f);
         labelField.fontSize = 11;
         labelField.alignment = TextAlignmentOptions.MidlineLeft;
-        SetSourceRect(labelField.rectTransform, 0, 0, 170, 14);
+        SetSourceRect(labelField.rectTransform, 0, 0, 220, 14);
 
         GameObject toggle = new GameObject(
             "ToggleImage",
@@ -1248,7 +1489,7 @@ public static class OptionsMenuPrefabBuilder
         stateField.alignment = TextAlignmentOptions.MidlineRight;
         SetSourceRect(stateField.rectTransform, 239, 0, 50, 14);
 
-        AssignInt(view, "_option", (int)option);
+        AssignInt(view, "_optionIndex", optionIndex);
         AssignReference(view, "_toggleImage", toggleImage);
         AssignReference(view, "_offSprite", LoadSprite(_optionsToggleOffAddress, Vector4.zero));
         AssignReference(view, "_onSprite", LoadSprite(_optionsToggleOnAddress, Vector4.zero));
@@ -1574,7 +1815,7 @@ public static class OptionsMenuPrefabBuilder
         text.color = Color.white;
         text.fontSize = 12;
         text.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(text.rectTransform, 2, 0, width - 2, height);
+        SetSourceRect(text.rectTransform, 2, 1, width - 2, height - 2);
 
         TextMeshProUGUI placeholder = input.placeholder as TextMeshProUGUI;
         if (placeholder == null)
@@ -1583,13 +1824,14 @@ public static class OptionsMenuPrefabBuilder
         placeholder.color = Color.white;
         placeholder.fontSize = 12;
         placeholder.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(placeholder.rectTransform, 2, 0, width - 2, height);
+        SetSourceRect(placeholder.rectTransform, 2, 1, width - 2, height - 2);
 
         input.enabled = true;
         input.targetGraphic = image;
         input.transition = Selectable.Transition.None;
         input.lineType = TMP_InputField.LineType.SingleLine;
-        input.textViewport = rect;
+        if (input.textViewport == null || input.textViewport == rect)
+            throw new MissingReferenceException($"{name}/TextViewport is missing or invalid.");
         input.textComponent = text;
         input.placeholder = placeholder;
         return input;

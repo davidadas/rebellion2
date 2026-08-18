@@ -488,7 +488,9 @@ internal sealed class FleetWindowProjector
     /// <returns>True when the fleet has movement state.</returns>
     private static bool IsFleetInTransit(Fleet fleet)
     {
-        return fleet?.Movement != null;
+        return fleet?.Movement != null
+            || fleet?.GetChildren<CapitalShip>().Any(ship => ship.GetTransitMovement() != null)
+                == true;
     }
 
     /// <summary>

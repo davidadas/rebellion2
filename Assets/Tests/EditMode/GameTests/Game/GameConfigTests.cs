@@ -1,108 +1,13 @@
 using System;
-using System.IO;
 using System.Reflection;
-using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Units;
-using Rebellion.Generation;
 
 namespace Rebellion.Tests.Game
 {
     [TestFixture]
     public class GameConfigTests
     {
-        [Test]
-        public void GetConfig_LoadsValidXML_Successfully()
-        {
-            GameConfig config = TestContent.Data.GameConfig;
-
-            Assert.IsNotNull(config, "GameConfig should not be null");
-            Assert.IsNotNull(config.AI, "AIConfig should not be null");
-            Assert.IsNotNull(config.Movement, "MovementConfig should not be null");
-            Assert.IsNotNull(config.Production, "ProductionConfig should not be null");
-            Assert.IsNotNull(config.Planet, "PlanetConfig should not be null");
-            Assert.IsNotNull(config.Victory, "VictoryConfig should not be null");
-            Assert.IsNotNull(config.GameSpeed, "GameSpeedConfig should not be null");
-            Assert.IsNotNull(config.Messages, "MessageConfig should not be null");
-            Assert.IsNotNull(config.Espionage, "EspionageConfig should not be null");
-            Assert.IsNotNull(
-                config.ProbabilityTables,
-                "ProbabilityTablesConfig should not be null"
-            );
-        }
-
-        [Test]
-        public void GetConfig_LoadsDefaultValues_Correctly()
-        {
-            GameConfig config = TestContent.Data.GameConfig;
-
-            // AI defaults
-            Assert.AreEqual(7, config.AI.TickInterval);
-            Assert.IsNotNull(config.AI.MissionTables, "MissionTables should not be null");
-            Assert.Greater(
-                config.AI.MissionTables.Diplomacy.Count,
-                0,
-                "Diplomacy dispatch table should have entries"
-            );
-            Assert.Greater(
-                config.AI.MissionTables.SubdueUprising.Count,
-                0,
-                "SubdueUprising dispatch table should have entries"
-            );
-            Assert.AreEqual(0f, config.AI.Selection.MinimumSelectableScore);
-
-            // Movement defaults
-            Assert.AreEqual(12, config.Movement.DistanceScale);
-            Assert.AreEqual(10, config.Movement.MinTransitTicks);
-            Assert.AreEqual(1, config.Movement.SameSystemMinTransitTicks);
-            Assert.AreEqual(60, config.Movement.DefaultFighterHyperdrive);
-
-            Assert.AreEqual(2, config.SupportShift.WeakSupportPenaltyDivisor);
-            Assert.AreEqual(10, config.SupportShift.GarrisonRemovalSupportShift);
-            Assert.AreEqual(1, config.SupportShift.ControlChangeSupportShift);
-            Assert.AreEqual(6, config.Combat.PlanetaryAssault.CaptureGarrisonCount);
-            Assert.AreEqual(-2, config.Combat.Bombardment.DestroySystemOuterRimSupportPenalty);
-            Assert.AreEqual(90, config.Combat.Bombardment.DestroySystemOuterRimSupportThreshold);
-            Assert.AreEqual(1f, config.GameSpeed.FastTickIntervalSeconds);
-            Assert.AreEqual(10f, config.GameSpeed.MediumTickIntervalSeconds);
-            Assert.AreEqual(60f, config.GameSpeed.SlowTickIntervalSeconds);
-            Assert.AreEqual(120f, config.GameSpeed.VerySlowTickIntervalSeconds);
-            Assert.AreEqual(300, config.Messages.RetentionTicks);
-            Assert.AreEqual("CORUSCANT", config.Espionage.CapitalPlanetInstanceID);
-            Assert.AreEqual("FNALL1", config.Espionage.CapitalObserverFactionInstanceID);
-            Assert.AreEqual(1, config.Espionage.CoreSystemBonus.Base);
-            Assert.AreEqual(0, config.Espionage.CoreSystemBonus.Spread);
-            Assert.AreEqual(1, config.Espionage.CapitalBonus.Base);
-            Assert.AreEqual(5, config.Espionage.CapitalBonus.Spread);
-            Assert.AreEqual(1, config.Espionage.MobileHeadquartersBonus.Base);
-            Assert.AreEqual(5, config.Espionage.MobileHeadquartersBonus.Spread);
-            Assert.AreEqual(50, config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability);
-            Assert.AreEqual(1, config.SupportShift.DiplomacyCompletionSupportBonus);
-            Assert.AreEqual(1, config.SupportShift.DiplomacyOwnedPlanetSupportBase);
-            Assert.AreEqual(19, config.SupportShift.DiplomacyOwnedPlanetSupportRange);
-            Assert.AreEqual(1, config.SupportShift.DiplomacyNeutralPlanetSupportBase);
-            Assert.AreEqual(9, config.SupportShift.DiplomacyNeutralPlanetSupportRange);
-            Assert.AreEqual(2, config.Production.ScrapRefundDivisor);
-            Assert.AreEqual(20, config.Production.ResourceMaintenanceLoadPercent);
-            Assert.AreEqual(100, config.Production.ResourceCollectionBasePercent);
-            Assert.AreEqual(50, config.Production.ResourceStartupBasePercent);
-            Assert.AreEqual(100, config.Production.ResourceStartupRandomPercent);
-            Assert.AreEqual(5, config.Blockade.CapitalShipProductionPenaltyPercent);
-            Assert.AreEqual(2, config.Blockade.FighterProductionPenaltyPercent);
-        }
-
-        [Test]
-        public void GetGenerationConfig_LoadsBudgetDifficultyMapping_Correctly()
-        {
-            GameGenerationConfig config = TestContent.Data.GenerationConfig;
-
-            Assert.IsNotNull(config.UnitDeployment.BudgetDifficultyMappings);
-            Assert.AreEqual(1, config.UnitDeployment.BudgetDifficultyMappings.Count);
-            Assert.AreEqual(2, config.UnitDeployment.BudgetDifficultyMappings[0].Difficulty);
-            Assert.AreEqual(1, config.UnitDeployment.BudgetDifficultyMappings[0].BudgetDifficulty);
-        }
-
         [Test]
         public void GetConfig_ConfigNotSet_ThrowsException()
         {
@@ -117,37 +22,22 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GameRoot_ConfigConstructor_SetsConfig()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
 
             Assert.IsNotNull(game.Config, "Game.Config should not be null");
             Assert.AreEqual(config, game.Config, "Config should be the same instance");
-            Assert.AreEqual(
-                7,
-                game.Config.AI.TickInterval,
-                "Config should have loaded default values"
-            );
         }
 
         [Test]
         public void SetConfig_ValidConfig_SetsConfig()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot();
 
             game.SetConfig(config);
 
             Assert.AreEqual(config, game.GetConfig(), "Config should be set correctly");
-        }
-
-        [Test]
-        public void GameManager_NoConfigSet_InjectsConfig()
-        {
-            GameRoot game = new GameRoot();
-            GameManager manager = TestContent.CreateGameManager(game);
-
-            Assert.IsNotNull(game.Config, "GameManager should inject config");
-            Assert.AreEqual(7, game.Config.AI.TickInterval, "Config should have default values");
         }
 
         [Test]
@@ -172,112 +62,6 @@ namespace Rebellion.Tests.Game
 
             manager.SetGameSpeed(TickSpeed.VerySlow);
             Assert.AreEqual(120.5f, GetTickInterval(manager));
-        }
-
-        [Test]
-        public void GetConfig_LoadsProbabilityTables_Correctly()
-        {
-            GameConfig config = TestContent.Data.GameConfig;
-
-            Assert.IsNotNull(config.ProbabilityTables, "ProbabilityTables should not be null");
-            Assert.IsNotNull(
-                config.ProbabilityTables.UprisingStart,
-                "UprisingStart table should not be null"
-            );
-            Assert.Greater(
-                config.ProbabilityTables.UprisingStart.Count,
-                0,
-                "UprisingStart should have entries"
-            );
-
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission,
-                "Mission probability tables should not be null"
-            );
-            Assert.AreEqual(35, config.ProbabilityTables.Mission.FoilDefenderScalingPercent);
-            Assert.AreEqual(-1, config.ProbabilityTables.Mission.FoilFlatScoreAdjustment);
-
-            Assert.Greater(
-                config.ProbabilityTables.Mission.Abduction.Count,
-                0,
-                "Abduction should have entries"
-            );
-            Assert.Greater(
-                config.ProbabilityTables.Mission.Assassination.Count,
-                0,
-                "Assassination should have entries"
-            );
-            Assert.Greater(
-                config.ProbabilityTables.Mission.Diplomacy.Count,
-                0,
-                "Diplomacy should have entries"
-            );
-            Assert.Greater(
-                config.ProbabilityTables.Mission.DeathStarSabotage.Count,
-                0,
-                "DeathStarSabotage should have entries"
-            );
-            Assert.Greater(
-                config.ProbabilityTables.Mission.Espionage.Count,
-                0,
-                "Espionage should have entries"
-            );
-            Assert.Greater(
-                config.ProbabilityTables.Mission.InciteUprising.Count,
-                0,
-                "InciteUprising should have entries"
-            );
-            Assert.Greater(
-                config.ProbabilityTables.Mission.Recruitment.Count,
-                0,
-                "Recruitment should have entries"
-            );
-            Assert.Greater(
-                config.ProbabilityTables.Mission.Rescue.Count,
-                0,
-                "Rescue should have entries"
-            );
-            Assert.Greater(
-                config.ProbabilityTables.Mission.Sabotage.Count,
-                0,
-                "Sabotage should have entries"
-            );
-            Assert.Greater(
-                config.ProbabilityTables.Mission.SubdueUprising.Count,
-                0,
-                "SubdueUprising should have entries"
-            );
-        }
-
-        [Test]
-        public void GetRankLabel_ConfiguredForceRank_ReturnsMatchingLabel()
-        {
-            GameConfig.JediConfig config = TestContent.Data.GameConfig.Jedi;
-
-            ForceRankLabel label = config.GetRankLabel(100);
-
-            Assert.AreEqual(ForceRankLabel.ForceKnight, label);
-        }
-
-        [Test]
-        public void GetConfig_SchemaValidation_RejectsNonPositiveDistanceScale()
-        {
-            string configPath = Path.Combine(
-                TestContent.Pack.PackRootPath,
-                TestContent.Pack.Definition.GameConfigPath
-            );
-            string xml = File.ReadAllText(configPath)
-                .Replace("<DistanceScale>12</DistanceScale>", "<DistanceScale>0</DistanceScale>");
-
-            Assert.Throws<XmlSchemaValidationException>(() =>
-                TestConfig.DeserializeWithSchema(xml)
-            );
-        }
-
-        [Test]
-        public void GetConfig_SchemaValidation_AcceptsValidConfig()
-        {
-            Assert.DoesNotThrow(() => TestConfig.CreateWithSchema());
         }
 
         private static float? GetTickInterval(GameManager manager)

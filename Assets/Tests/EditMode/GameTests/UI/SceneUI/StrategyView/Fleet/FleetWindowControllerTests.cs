@@ -220,6 +220,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void RenderWindow_AfterAllFleetsRemoved_ClearsSelectedFleetDetails()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+
+            foreach (GameFleet fleet in _planet.Planet.GetChildren<GameFleet>().ToList())
+                _game.DeleteNode(fleet);
+            _controller.RenderWindow(view, window, true);
+
+            Assert.AreEqual(-1, _controller.GetSelectedFleetIndex(view));
+        }
+
+        [Test]
         public void FleetListDrop_ActiveTargeting_SelectsCurrentFleet()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);

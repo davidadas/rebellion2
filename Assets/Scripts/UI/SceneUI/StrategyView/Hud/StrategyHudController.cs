@@ -118,6 +118,14 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Plays the protocol advisor's authored rejection for a unit already in transit.
+    /// </summary>
+    public void PlayInTransitOrderRejected()
+    {
+        advisorController.PlayInTransitOrderRejected();
+    }
+
+    /// <summary>
     /// Cancels current protocol-advisor playback and replaces it with one resolved animation.
     /// </summary>
     /// <param name="animation">The resolved animation presentation.</param>

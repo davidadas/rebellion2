@@ -144,7 +144,7 @@ internal sealed class ConstructionWindowProjector
     /// <returns>The resolved display texture, or null.</returns>
     private static Texture2D GetItemTexture(UIContext uiContext, IManufacturable item)
     {
-        return item is ISceneNode node ? uiContext.GetEntityTexture(node, false) : null;
+        return item is ISceneNode node ? uiContext.GetEntityTexture(node, true) : null;
     }
 
     /// <summary>

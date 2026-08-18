@@ -83,6 +83,22 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_ManageGarrisons_FillsAvailableCapacityAcrossShortages()
+        {
+            _faction.ManageProduction = false;
+            AddProductionFacility(_producer, "TRAINING_2", ManufacturingType.Troop);
+            AddCompletedRegiment(_producer, "GARRISON_1");
+            AddCompletedRegiment(_producer, "GARRISON_2");
+            Planet secondDestination = CreatePlanet("SECOND_DESTINATION", 10, 0);
+            _game.AttachNode(secondDestination, _destination.GetParent());
+
+            _automation.ProcessTick();
+
+            Assert.AreEqual(1, _destination.GetAllRegiments().Count);
+            Assert.AreEqual(1, secondDestination.GetAllRegiments().Count);
+        }
+
+        [Test]
         public void ProcessTick_ManageProduction_FillsCapacityWithMatchedPair()
         {
             _faction.ManageGarrisons = false;

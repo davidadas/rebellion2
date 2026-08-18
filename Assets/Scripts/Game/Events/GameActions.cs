@@ -1871,6 +1871,7 @@ namespace Rebellion.Game.Events
                 "SetActive",
                 includeDisabled: true
             );
+
             foreach (IMovable unit in units)
                 ((ISceneNode)unit).IsEnabled = IsActive;
             return;

@@ -33,6 +33,7 @@ public sealed class DefenseWindowController
 {
     private readonly HashSet<DefenseWindowView> boundViews = new HashSet<DefenseWindowView>();
     private readonly Func<UIContext> getUIContext;
+    private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
     private readonly DefenseWindowProjector projector;
@@ -57,13 +58,15 @@ public sealed class DefenseWindowController
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
     /// <param name="getWindowPosition">Clamps a requested Defense-window placement.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public DefenseWindowController(
         Func<UIContext> getUIContext,
         TargetingController targetingController,
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,
         Func<int, int, Vector2Int> getWindowPosition,
-        Action markDirty
+        Action markDirty,
+        Func<SelectionModifierState> getSelectionModifiers = null
     )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
@@ -76,6 +79,7 @@ public sealed class DefenseWindowController
         this.getWindowPosition =
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
     }
 
     /// <summary>
@@ -120,7 +124,7 @@ public sealed class DefenseWindowController
             return false;
 
         BindWindow(view);
-        sessions[view] = new DefenseWindowSession(planet, view.WindowShell);
+        sessions[view] = new DefenseWindowSession(planet, view.WindowShell, getSelectionModifiers);
         return true;
     }
 
@@ -629,7 +633,7 @@ public sealed class DefenseWindowController
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        session.SelectItemForDrag(itemIndex, view.ItemColumnCount);
+        session.SelectItemForDrag(itemIndex);
         if (
             session.CanDragSelectedItems()
             && session.SelectedItemIndexes.Contains(itemIndex)
@@ -665,11 +669,11 @@ public sealed class DefenseWindowController
             return;
         if (TrySelectTarget(session, item))
             return;
-        if (SelectableListSelection.HasSelectionModifier())
+        if (SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
             return;
 
         session.PrepareItemSelection(itemIndex);
-        session.SelectItem(itemIndex, view.ItemColumnCount);
+        session.SelectItem(itemIndex);
         markDirty();
     }
 

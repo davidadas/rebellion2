@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 
 namespace Rebellion.Tests.Game.Events
 {
@@ -71,6 +72,23 @@ namespace Rebellion.Tests.Game.Events
             bool isMet = condition.IsMet(game);
 
             Assert.IsFalse(isMet);
+        }
+
+        [Test]
+        public void IsKilled_InactiveKilledOfficer_MatchesByRegisteredIdentity()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, planet);
+            new PersonnelSystem(game).KillOfficer(officer);
+            IsKilledConditional condition = new IsKilledConditional
+            {
+                OfficerInstanceID = officer.InstanceID,
+            };
+
+            bool isMet = condition.IsMet(game);
+
+            Assert.IsTrue(isMet);
         }
 
         [Test]

@@ -48,6 +48,7 @@ public sealed class FleetWindowController
 {
     private readonly HashSet<FleetWindowView> boundViews = new HashSet<FleetWindowView>();
     private readonly StrategyFleetCommandController fleetCommandController;
+    private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
@@ -74,6 +75,7 @@ public sealed class FleetWindowController
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
     /// <param name="getWindowPosition">Clamps a requested fleet-window placement.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public FleetWindowController(
         StrategyFleetCommandController fleetCommandController,
         Func<UIContext> getUIContext,
@@ -81,7 +83,8 @@ public sealed class FleetWindowController
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,
         Func<int, int, Vector2Int> getWindowPosition,
-        Action markDirty
+        Action markDirty,
+        Func<SelectionModifierState> getSelectionModifiers = null
     )
     {
         this.fleetCommandController =
@@ -97,6 +100,7 @@ public sealed class FleetWindowController
         this.getWindowPosition =
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
     }
 
     /// <summary>
@@ -142,7 +146,7 @@ public sealed class FleetWindowController
             return false;
 
         BindWindow(view);
-        sessions[view] = new FleetWindowSession(planet, window);
+        sessions[view] = new FleetWindowSession(planet, window, getSelectionModifiers);
         return true;
     }
 
@@ -219,6 +223,7 @@ public sealed class FleetWindowController
             throw new ArgumentNullException(nameof(window));
 
         FleetWindowSession session = GetSession(view);
+        session.Reconcile();
         view.Render(projector.Build(session, window, active));
     }
 
@@ -897,7 +902,7 @@ public sealed class FleetWindowController
         if (
             eventData?.button != PointerEventData.InputButton.Left
             || TrySelectTarget(session, item)
-            || SelectableListSelection.HasSelectionModifier()
+            || SelectableListSelection.HasSelectionModifier(getSelectionModifiers())
         )
             return;
 

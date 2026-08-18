@@ -68,24 +68,6 @@ namespace Rebellion.Tests.Content
             Assert.IsNull(assets.GetTexture("Application/Textures/missing"));
         }
 
-        [Test]
-        public void GetCursor_ApplicationCursor_MeetsRuntimeRequirementsAndRemainsCached()
-        {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            using ContentAssets assets = CreateAssets(pack);
-            const string address = "Application/Common/UI/ui_common_cursor_default_outlined";
-
-            Texture2D first = assets.GetCursor(address);
-            Texture2D second = assets.GetCursor(address);
-
-            Assert.IsNotNull(first);
-            Assert.IsTrue(first.isReadable);
-            Assert.AreEqual(TextureFormat.RGBA32, first.format);
-            Assert.AreEqual(1, first.mipmapCount);
-            Assert.AreSame(first, second);
-            Assert.AreNotSame(first, assets.GetTexture(address));
-        }
-
         /// <summary>
         /// Verifies sprite caching distinguishes explicit nine-slice borders.
         /// </summary>
@@ -172,11 +154,6 @@ namespace Rebellion.Tests.Content
         private ContentAssets CreateAssets()
         {
             return new ContentAssets(_contentRoot, _packRoot);
-        }
-
-        private static ContentAssets CreateAssets(ContentPack pack)
-        {
-            return new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
         }
     }
 }

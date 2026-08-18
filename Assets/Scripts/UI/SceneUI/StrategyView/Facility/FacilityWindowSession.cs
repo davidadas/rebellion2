@@ -15,6 +15,7 @@ internal sealed class FacilityWindowSession
         new Dictionary<FacilityWindowTab, int>();
     private readonly Dictionary<FacilityWindowTab, List<Building>> itemsByTab =
         new Dictionary<FacilityWindowTab, List<Building>>();
+    private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly HashSet<string> selectedBuildingIds = new HashSet<string>(
         StringComparer.Ordinal
     );
@@ -26,9 +27,15 @@ internal sealed class FacilityWindowSession
     /// </summary>
     /// <param name="window">The owning facility window.</param>
     /// <param name="planet">The represented strategy planet.</param>
-    public FacilityWindowSession(UIWindow window, GalaxyMapPlanet planet)
+    /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
+    public FacilityWindowSession(
+        UIWindow window,
+        GalaxyMapPlanet planet,
+        Func<SelectionModifierState> getSelectionModifiers = null
+    )
     {
         Window = window ?? throw new ArgumentNullException(nameof(window));
+        this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
         RebindPlanet(planet);
     }
 
@@ -167,7 +174,12 @@ internal sealed class FacilityWindowSession
     /// <param name="cardCount">The number of selectable manufacturing lanes.</param>
     public void SelectManufacturingCard(int cardIndex, int cardCount)
     {
-        SelectableListSelection.SelectIndexedItem(selectedCards, cardIndex, cardCount);
+        SelectableListSelection.SelectIndexedItem(
+            selectedCards,
+            cardIndex,
+            cardCount,
+            getSelectionModifiers()
+        );
     }
 
     /// <summary>
@@ -212,8 +224,7 @@ internal sealed class FacilityWindowSession
     /// Applies normal selection rules to one inventory building.
     /// </summary>
     /// <param name="itemIndex">The selected display index.</param>
-    /// <param name="itemsPerRow">The number of inventory items in one visual row.</param>
-    public void SelectBuilding(int itemIndex, int itemsPerRow)
+    public void SelectBuilding(int itemIndex)
     {
         IReadOnlyList<Building> items = GetItems(ActiveTab);
         if (
@@ -228,7 +239,7 @@ internal sealed class FacilityWindowSession
             selectedIndexes,
             itemIndex,
             items.Count,
-            itemsPerRow
+            getSelectionModifiers()
         );
         StoreSelectedBuildings(items, selectedIndexes);
     }

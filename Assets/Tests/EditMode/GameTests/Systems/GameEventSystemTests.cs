@@ -312,6 +312,37 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_MatchingOptionalSourceBinding_ExecutesEvent()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SOURCE_FILTERED_ARRIVAL",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger(
+                        "core:unit.arrived",
+                        ("SourceEventInstanceID", "sourceEventInstanceID")
+                    ),
+                },
+                Conditionals = new List<GameConditional>
+                {
+                    BindingEquals("sourceEventInstanceID", "EXPECTED_SOURCE"),
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "source.arrival.triggered", Operand = 1 },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _system.HandleResults(
+                new[] { new UnitArrivedResult { SourceEventInstanceID = "EXPECTED_SOURCE" } }
+            );
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("source.arrival.triggered"));
+        }
+
+        [Test]
         public void ValidateEvents_MultipleTriggersWithDifferentAliases_ThrowsInvalidOperationException()
         {
             GameEvent gameEvent = new GameEvent

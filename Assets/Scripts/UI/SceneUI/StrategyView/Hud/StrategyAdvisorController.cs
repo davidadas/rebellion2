@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
@@ -240,13 +241,9 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 
             int nextAllowedTick = nextAllowedTicks.TryGetValue(priority.TableID, out int tick)
                 ? tick
-                : 0;
-            if (nextAllowedTick >= currentTick)
-            {
-                pendingNotifications.Remove(priority.TableID);
-                pendingExpirationTicks.Remove(priority.TableID);
+                : int.MinValue;
+            if (nextAllowedTick > currentTick)
                 continue;
-            }
 
             if (
                 !TryCreatePlaybackBatch(
@@ -263,6 +260,21 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             targetView.EnqueuePlaybacks(playbackBatch);
             break;
         }
+    }
+
+    /// <summary>
+    /// Immediately plays the authored response for an order rejected during transit.
+    /// </summary>
+    public void PlayInTransitOrderRejected()
+    {
+        List<StrategyAdvisorAnimationViewData> playbacks =
+            new List<StrategyAdvisorAnimationViewData>();
+        if (!TryAddPlayback(playbacks, theme?.InTransitOrderRejected, false))
+            return;
+
+        StrategyAdvisorAnimationViewData playback = playbacks.FirstOrDefault();
+        if (playback != null)
+            ReplaceAnimation(playback, null, null);
     }
 
     /// <summary>
@@ -561,9 +573,13 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         {
             case StrategyMenuAction.AdvisorManageGarrisons:
                 faction.ManageGarrisons = !faction.ManageGarrisons;
+                if (faction.ManageGarrisons)
+                    actions.ProcessAdvisorAutomation(faction);
                 break;
             case StrategyMenuAction.AdvisorManageProduction:
                 faction.ManageProduction = !faction.ManageProduction;
+                if (faction.ManageProduction)
+                    actions.ProcessAdvisorAutomation(faction);
                 break;
             case StrategyMenuAction.AdvisorTranslateCounterpart:
                 faction.TranslateCounterpart = !faction.TranslateCounterpart;

@@ -31,7 +31,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool _pendingConfirmKeepsVisible;
     private OptionsMenuView _view;
     private UIWindow _window;
-    private OptionsMenuTab _activeTab = OptionsMenuTab.Graphics;
+    private OptionsMenuTab _activeTab = OptionsMenuTab.Gameplay;
     private TickSpeed _speedBeforeOptions;
     private bool _gamePaused;
     private bool _disposed;
@@ -97,7 +97,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <summary>
     /// Opens or focuses the Options menu.
     /// </summary>
-    public void Open(OptionsMenuTab initialTab = OptionsMenuTab.Graphics)
+    public void Open(OptionsMenuTab initialTab = OptionsMenuTab.Gameplay)
     {
         EnsureUsable();
         if (_window != null)
@@ -208,7 +208,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _selectedSlot,
                 HasActiveGame(),
                 _bindingSession.ListeningRow,
-                _bindingSession.ListeningSecondary
+                _bindingSession.ListeningSecondary,
+                _settingsSession.GetGameplayStates(),
+                _settingsSession.Gameplay.AutosaveIntervalTicks,
+                _settingsSession.Gameplay.AutosavesToKeep
             )
         );
     }
@@ -251,7 +254,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.SlotSelected += HandleSlotSelected;
         target.SlotRenamed += HandleSlotRenamed;
         target.SlotDeleteRequested += HandleSlotDeleteRequested;
-        target.RenameEditingChanged += HandleRenameEditingChanged;
+        target.TextEditingChanged += HandleTextEditingChanged;
         target.ApplyRequested += HandleApply;
         target.DefaultsRequested += HandleDefaults;
         target.ConfirmAccepted += HandleConfirmAccepted;
@@ -261,6 +264,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.MainMenuRequested += HandleMainMenuRequested;
         target.QuitRequested += HandleQuitRequested;
         target.TacticalToggleRequested += HandleTacticalToggle;
+        target.GameplayToggleRequested += HandleGameplayToggle;
+        target.AutosaveIntervalChanged += HandleAutosaveIntervalChanged;
+        target.AutosavesToKeepChanged += HandleAutosavesToKeepChanged;
         target.ResolutionStepRequested += HandleResolutionStep;
         target.FullScreenStepRequested += HandleFullScreenStep;
         target.VolumeChanged += HandleVolumeChanged;
@@ -415,10 +421,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Disables game shortcuts while a save name is being edited.
+    /// Disables game shortcuts while an Options text field is being edited.
     /// </summary>
     /// <param name="editing">True while a text field is focused for editing.</param>
-    private void HandleRenameEditingChanged(bool editing)
+    private void HandleTextEditingChanged(bool editing)
     {
         _bindingSession.SetTextEntryActive(editing);
     }
@@ -530,6 +536,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         switch (_activeTab)
         {
+            case OptionsMenuTab.Gameplay:
+                RequestConfirm("Reset gameplay settings to their defaults?", ApplyActiveDefaults);
+                break;
             case OptionsMenuTab.Graphics:
                 RequestConfirm("Reset display settings to their defaults?", ApplyActiveDefaults);
                 break;
@@ -568,8 +577,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return;
         }
 
+        string destination = HasActiveGame() ? "the game" : "the Main Menu";
         RequestConfirm(
-            "Discard unsaved settings and return to the game?",
+            $"Discard unsaved settings and return to {destination}?",
             () =>
             {
                 _settingsSession.Revert();
@@ -580,31 +590,34 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Confirms returning to the main menu, warning when settings are unsaved.
+    /// Returns to the Main Menu, or closes its Options overlay when already there.
     /// </summary>
     private void HandleMainMenuRequested()
     {
+        if (!HasActiveGame())
+        {
+            HandleBackToGame();
+            return;
+        }
+
         RequestConfirm(
-            _settingsSession.IsDirty
-                ? "Return to the Main Menu? Unsaved settings will be lost."
-                : "Return to the Main Menu?",
+            "Return to the Main Menu? Any unsaved progress will be lost.",
             () => ExitWithoutSaving(ReturnToMainMenu),
             true
         );
     }
 
     /// <summary>
-    /// Confirms quitting to desktop, warning when settings are unsaved.
+    /// Confirms quitting to desktop, warning about progress when a game is active.
     /// </summary>
     private void HandleQuitRequested()
     {
-        RequestConfirm(
-            _settingsSession.IsDirty
-                ? "Quit to desktop? Unsaved settings will be lost."
-                : "Quit to desktop?",
-            () => ExitWithoutSaving(QuitApplication),
-            true
-        );
+        string message =
+            HasActiveGame() ? "Quit to desktop? Any unsaved progress will be lost."
+            : _settingsSession.IsDirty ? "Quit to desktop? Unsaved settings will be lost."
+            : "Quit to desktop?";
+
+        RequestConfirm(message, () => ExitWithoutSaving(QuitApplication), true);
     }
 
     /// <summary>
@@ -711,6 +724,37 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Toggles a gameplay option and marks settings dirty.
+    /// </summary>
+    private void HandleGameplayToggle(UserGameplayOption option)
+    {
+        _settingsSession.ToggleGameplay(option);
+        _markDirty();
+    }
+
+    /// <summary>
+    /// Applies a directly entered autosave interval.
+    /// </summary>
+    /// <param name="value">The entered interval text.</param>
+    private void HandleAutosaveIntervalChanged(string value)
+    {
+        if (int.TryParse(value, out int ticks))
+            _settingsSession.SetAutosaveInterval(ticks);
+        _markDirty();
+    }
+
+    /// <summary>
+    /// Applies a directly entered autosave retention count.
+    /// </summary>
+    /// <param name="value">The entered retention-count text.</param>
+    private void HandleAutosavesToKeepChanged(string value)
+    {
+        if (int.TryParse(value, out int count))
+            _settingsSession.SetAutosavesToKeep(count);
+        _markDirty();
+    }
+
+    /// <summary>
     /// Steps the selected resolution and applies it immediately.
     /// </summary>
     /// <param name="delta">The step direction.</param>
@@ -757,7 +801,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.SlotSelected -= HandleSlotSelected;
         destroyed.SlotRenamed -= HandleSlotRenamed;
         destroyed.SlotDeleteRequested -= HandleSlotDeleteRequested;
-        destroyed.RenameEditingChanged -= HandleRenameEditingChanged;
+        destroyed.TextEditingChanged -= HandleTextEditingChanged;
         destroyed.ApplyRequested -= HandleApply;
         destroyed.DefaultsRequested -= HandleDefaults;
         destroyed.ConfirmAccepted -= HandleConfirmAccepted;
@@ -767,6 +811,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.MainMenuRequested -= HandleMainMenuRequested;
         destroyed.QuitRequested -= HandleQuitRequested;
         destroyed.TacticalToggleRequested -= HandleTacticalToggle;
+        destroyed.GameplayToggleRequested -= HandleGameplayToggle;
+        destroyed.AutosaveIntervalChanged -= HandleAutosaveIntervalChanged;
+        destroyed.AutosavesToKeepChanged -= HandleAutosavesToKeepChanged;
         destroyed.ResolutionStepRequested -= HandleResolutionStep;
         destroyed.FullScreenStepRequested -= HandleFullScreenStep;
         destroyed.VolumeChanged -= HandleVolumeChanged;

@@ -182,6 +182,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void Build_FleetWithCapitalShipInTransit_ReturnsFleetTransitPresentation()
+        {
+            _capitalShip.Movement = new MovementState { TransitTicks = 10 };
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.IsNotNull(data.FleetRows[0].EnrouteOverlayTexture);
+            Assert.IsNotNull(data.BannerEnrouteOverlayTexture);
+            Assert.IsNotNull(data.DetailItems[0].EnrouteOverlayTexture);
+        }
+
+        [Test]
         public void Build_StarfighterTab_ReturnsCapacityLossesAndSelectionPresentation()
         {
             _session.SelectTab(FleetWindowTab.Starfighters);

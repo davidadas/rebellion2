@@ -245,6 +245,13 @@ namespace Rebellion.Game.Events
             )
                 return false;
 
+            // Trigger contracts may expose optional reference values. A present binding whose
+            // value is null is valid runtime data, not an unsupported authored type. Since the
+            // XML scalar has no null literal, null cannot equal an authored value and it cannot
+            // participate in an ordered comparison.
+            if (actual == null)
+                return Comparison == ComparisonOperator.NotEqual;
+
             if (
                 Comparison
                     is ComparisonOperator.GreaterThan
@@ -339,7 +346,10 @@ namespace Rebellion.Game.Events
 
         public override bool IsMet(GameConditionContext context)
         {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
+                OfficerInstanceID,
+                includeDisabled: true
+            );
             return officer != null && Evaluate(officer);
         }
 

@@ -24,6 +24,8 @@ public static class ContentPackLoader
     private const string _contentDirectoryName = "Content";
     private const string _contentPathArgument = "-contentPath";
     private const string _gameConfigSchemaRelativePath = "Application/Schemas/game-config.xsd";
+    private const string _generationConfigSchemaRelativePath =
+        "Application/Schemas/generation-config.xsd";
     private const string _gameEventsSchemaRelativePath = "Application/Schemas/game-events.xsd";
     private const string _messageDefinitionsSchemaRelativePath =
         "Application/Schemas/message-definitions.xsd";
@@ -226,7 +228,8 @@ public static class ContentPackLoader
         GameGenerationConfig generationConfig = DeserializeGameData<GameGenerationConfig>(
             packRoot,
             scenario.GenerationConfigPath,
-            nameof(GameGenerationConfig)
+            nameof(GameGenerationConfig),
+            ResolveSafePath(contentRootPath, _generationConfigSchemaRelativePath)
         );
         PlanetSystem[] planetSystems = DeserializeGameData<PlanetSystem[]>(
             packRoot,

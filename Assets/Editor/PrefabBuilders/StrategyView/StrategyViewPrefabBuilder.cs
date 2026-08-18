@@ -1341,11 +1341,18 @@ public static class StrategyViewPrefabBuilder
             45,
             17
         );
+        SetSourceRect(buildCount.textViewport, 0, 1, 45, 15);
         buildCount.contentType = TMP_InputField.ContentType.IntegerNumber;
         buildCount.characterValidation = TMP_InputField.CharacterValidation.Integer;
         buildCount.characterLimit = byte.MaxValue.ToString().Length;
         buildCount.textComponent.fontSize = 13;
-        buildCount.textComponent.alignment = TextAlignmentOptions.MidlineLeft;
+        // TMP's geometry-based Midline alignment misplaces the caret before glyph
+        // geometry exists. MiddleLeft centers from stable font metrics instead.
+        buildCount.textComponent.alignment = TextAlignmentOptions.Left;
+        if (buildCount.placeholder is TMP_Text buildCountPlaceholder)
+            buildCountPlaceholder.alignment = TextAlignmentOptions.Left;
+        SetSourceRect(buildCount.textComponent.rectTransform, 2, 0, 43, 15);
+        SetSourceRect(buildCount.placeholder.rectTransform, 2, 0, 43, 15);
         buildCount.SetTextWithoutNotify("1");
 
         RawImage increment = CreateRawImage(
@@ -2878,10 +2885,10 @@ public static class StrategyViewPrefabBuilder
             "TargetPreviewImage",
             missionSelection,
             _planetPreviewPath,
-            50,
+            51,
             211
         );
-        SetSourceRect(targetPreview.rectTransform, 50, 211, 166, 78);
+        SetSourceRect(targetPreview.rectTransform, 51, 211, 165, 79);
         TextMeshProUGUI targetPreviewName = CreateTextLabel(
             "TargetPreviewNameTextField",
             missionSelection
@@ -7880,7 +7887,7 @@ public static class StrategyViewPrefabBuilder
         text.color = Color.white;
         text.fontSize = 12;
         text.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(text.rectTransform, 2, 0, width - 2, height);
+        SetSourceRect(text.rectTransform, 2, 1, width - 2, height - 2);
 
         TextMeshProUGUI placeholder = input.placeholder as TextMeshProUGUI;
         if (placeholder == null)
@@ -7889,13 +7896,14 @@ public static class StrategyViewPrefabBuilder
         placeholder.color = Color.white;
         placeholder.fontSize = 12;
         placeholder.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(placeholder.rectTransform, 2, 0, width - 2, height);
+        SetSourceRect(placeholder.rectTransform, 2, 1, width - 2, height - 2);
 
         input.enabled = true;
         input.targetGraphic = image;
         input.transition = Selectable.Transition.None;
         input.lineType = TMP_InputField.LineType.SingleLine;
-        input.textViewport = rect;
+        if (input.textViewport == null || input.textViewport == rect)
+            throw new MissingReferenceException($"{name}/TextViewport is missing or invalid.");
         input.textComponent = text;
         input.placeholder = placeholder;
         return input;

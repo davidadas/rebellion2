@@ -128,6 +128,68 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void Render_PlanetTarget_UsesOriginalCenteredSize()
+        {
+            Texture2D planetTexture = new Texture2D(833, 833);
+            try
+            {
+                MissionCreateWindowRenderData data = CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    false,
+                    Array.Empty<StrategyDropdownItemRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    planetTexture,
+                    true
+                );
+
+                _view.Render(data);
+
+                Assert.AreEqual(
+                    new RectInt(115, 232, 37, 37),
+                    UILayout.GetSourceRect(
+                        FindComponent<RawImage>("TargetPreviewImage").rectTransform
+                    )
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(planetTexture);
+            }
+        }
+
+        [Test]
+        public void Render_NonPlanetTarget_CanUseFullOriginalTargetArea()
+        {
+            Texture2D targetTexture = new Texture2D(833, 833);
+            try
+            {
+                MissionCreateWindowRenderData data = CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    false,
+                    Array.Empty<StrategyDropdownItemRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    targetTexture,
+                    false
+                );
+
+                _view.Render(data);
+
+                Assert.AreEqual(
+                    new RectInt(94, 211, 79, 79),
+                    UILayout.GetSourceRect(
+                        FindComponent<RawImage>("TargetPreviewImage").rectTransform
+                    )
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(targetTexture);
+            }
+        }
+
+        [Test]
         public void Render_ClosedDropdown_HidesPreviouslyRenderedItems()
         {
             _view.Render(

@@ -163,6 +163,7 @@ public sealed class StrategyController
         gameManager.GameReplaced += HandleGameReplaced;
         gameManager.TickCompleted += RefreshStrategyState;
         gameManager.MessageDelivered += HandleMessageDelivered;
+        gameManager.BombardmentCompleted += HandleBombardmentCompleted;
 
         InitializeScreenControllers();
         IContentAssetSource contentAssets = AppBootstrap.Instance.GetContentAssets();
@@ -305,6 +306,8 @@ public sealed class StrategyController
         StrategyFleetCommandController fleetCommandController
     )
     {
+        Func<SelectionModifierState> getSelectionModifiers = () =>
+            AppBootstrap.Instance?.GetInputManager()?.GetSelectionModifierState() ?? default;
         fleetWindowController = new FleetWindowController(
             fleetCommandController,
             () => uiContext,
@@ -312,7 +315,8 @@ public sealed class StrategyController
             strategyWindowLayerView,
             strategyWindowManager,
             (x, y) => windowPlacementController.ClampPlanetWindowPosition(PlanetIcon.Fleet, x, y),
-            MarkDirty
+            MarkDirty,
+            getSelectionModifiers
         );
         constructionWindowController = new ConstructionWindowController(
             () => gameManager.GetGame(),
@@ -335,7 +339,8 @@ public sealed class StrategyController
             strategyWindowManager,
             (x, y) =>
                 windowPlacementController.ClampPlanetWindowPosition(PlanetIcon.Facility, x, y),
-            MarkDirty
+            MarkDirty,
+            getSelectionModifiers
         );
         defenseWindowController = new DefenseWindowController(
             () => uiContext,
@@ -343,7 +348,8 @@ public sealed class StrategyController
             strategyWindowLayerView,
             strategyWindowManager,
             (x, y) => windowPlacementController.ClampPlanetWindowPosition(PlanetIcon.Defense, x, y),
-            MarkDirty
+            MarkDirty,
+            getSelectionModifiers
         );
         planetSystemWindowController = new PlanetSystemWindowController(
             fleetCommandController,
@@ -455,7 +461,8 @@ public sealed class StrategyController
             strategyWindowManager,
             windowPlacementController.GetMissionCreateWindowPosition,
             CloseWindow,
-            MarkDirty
+            MarkDirty,
+            () => bootstrap.GetInputManager().GetSelectionModifierState()
         );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,
@@ -491,7 +498,8 @@ public sealed class StrategyController
             ClearWindowSelection,
             RebuildSnapshot,
             MarkDirty,
-            () => gameManager.HeadquartersSystem
+            () => gameManager.HeadquartersSystem,
+            strategyHudController.PlayInTransitOrderRejected
         );
     }
 
@@ -732,6 +740,7 @@ public sealed class StrategyController
             gameManager.GameReplaced -= HandleGameReplaced;
             gameManager.TickCompleted -= RefreshStrategyState;
             gameManager.MessageDelivered -= HandleMessageDelivered;
+            gameManager.BombardmentCompleted -= HandleBombardmentCompleted;
         }
     }
 
@@ -764,7 +773,16 @@ public sealed class StrategyController
         }
 
         if (battleAlertWindowController.SyncPendingCombatWindow())
+        {
             dirty = true;
+            if (
+                gameManager.SpaceCombatSystem.TryGetPendingCombat(
+                    out PendingCombatResult pendingCombat
+                )
+                && pendingCombat != null
+            )
+                PauseForGameplayOption(UserGameplayOption.PauseWhenSpaceBattleBegins);
+        }
 
         int currentTick = gameManager.GetCurrentTick();
         Faction playerFaction = gameManager.GetPlayerFaction();
@@ -1473,6 +1491,35 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Pauses after an enemy bombardment against the player's faction when configured.
+    /// </summary>
+    private void HandleBombardmentCompleted(BombardmentResult result)
+    {
+        string playerFactionId = gameManager?.GetPlayerFaction()?.InstanceID;
+        if (
+            result == null
+            || string.IsNullOrEmpty(playerFactionId)
+            || result.AttackerOwnerInstanceID == playerFactionId
+            || result.DefenderOwnerInstanceID != playerFactionId
+        )
+            return;
+
+        PauseForGameplayOption(UserGameplayOption.PauseAfterEnemyBombardment);
+    }
+
+    /// <summary>
+    /// Pauses the strategy clock when the selected gameplay option is enabled.
+    /// </summary>
+    private void PauseForGameplayOption(UserGameplayOption option)
+    {
+        UserGameplaySettings settings = AppBootstrap
+            .Instance?.GetUserSettingsManager()
+            ?.Settings?.Gameplay;
+        if (settings?.IsEnabled(option) == true)
+            gameManager?.SetGameSpeed(TickSpeed.Paused);
+    }
+
+    /// <summary>
     /// Rebinds strategy presentation and message delivery after a hot-loaded game replacement.
     /// </summary>
     /// <param name="game">The replacement active game.</param>
@@ -1659,6 +1706,13 @@ public sealed class StrategyController
     /// </summary>
     void IStrategyHudActions.RequestHudRender()
     {
+        dirty = true;
+    }
+
+    /// <inheritdoc />
+    void IStrategyHudActions.ProcessAdvisorAutomation(Faction faction)
+    {
+        gameManager?.ProcessFactionAutomation(faction);
         dirty = true;
     }
 
