@@ -788,7 +788,7 @@ namespace Rebellion.Tests.Managers
                 _result = result;
             }
 
-            internal override List<GameResult> Execute(GameActionContext context)
+            internal override GameActionExecution Execute(GameActionContext context)
             {
                 return new List<GameResult> { _result };
             }

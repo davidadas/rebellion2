@@ -9,6 +9,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -193,12 +194,12 @@ namespace Rebellion.Tests.Systems
         {
             (GameRoot game, _, Planet destination, Officer officer, MovementSystem movement) =
                 BuildScene();
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitMovementRequest> handler = movement;
 
-            handler.HandleResults(
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitMovementRequestedResult
+                    new UnitMovementRequest
                     {
                         Units = new List<IMovable> { officer },
                         Destinations = new List<ContainerNode> { destination },
@@ -214,11 +215,11 @@ namespace Rebellion.Tests.Systems
         public void HandleMovementRequest_EventOriginatedRequest_PropagatesSourceToArrival()
         {
             (_, _, Planet destination, Officer officer, MovementSystem movement) = BuildScene();
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
-            handler.HandleResults(
+            IGameRequestHandler<UnitMovementRequest> handler = movement;
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitMovementRequestedResult
+                    new UnitMovementRequest
                     {
                         Units = new List<IMovable> { officer },
                         Destinations = new List<ContainerNode> { destination },
@@ -240,12 +241,12 @@ namespace Rebellion.Tests.Systems
         public void HandleMovementRequest_EventOriginatedRequestAlreadyAtDestination_EmitsArrival()
         {
             (_, Planet origin, _, Officer officer, MovementSystem movement) = BuildScene();
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitMovementRequest> handler = movement;
 
-            List<GameResult> results = handler.HandleResults(
+            List<GameResult> results = handler.HandleRequests(
                 new[]
                 {
-                    new UnitMovementRequestedResult
+                    new UnitMovementRequest
                     {
                         Units = new List<IMovable> { officer },
                         Destinations = new List<ContainerNode> { origin },
@@ -272,12 +273,12 @@ namespace Rebellion.Tests.Systems
             ) = BuildScene();
             game.AddToVoid(officer);
             game.RemoveFromVoid(officer);
-            IGameResultHandler<UnitPlacementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitPlacementRequest> handler = movement;
 
-            handler.HandleResults(
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitPlacementRequestedResult
+                    new UnitPlacementRequest
                     {
                         Units = new List<IMovable> { officer },
                         Destinations = new List<ContainerNode> { destination },
@@ -300,12 +301,12 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            IGameResultHandler<UnitPlacementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitPlacementRequest> handler = movement;
 
-            handler.HandleResults(
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitPlacementRequestedResult
+                    new UnitPlacementRequest
                     {
                         Units = new List<IMovable> { regiment },
                         Destinations = new List<ContainerNode> { destination },
@@ -338,12 +339,12 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
             };
             game.AttachNode(rejected, origin.GetParent());
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitMovementRequest> handler = movement;
 
-            handler.HandleResults(
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitMovementRequestedResult
+                    new UnitMovementRequest
                     {
                         Units = new List<IMovable> { officer },
                         Destinations = new List<ContainerNode> { rejected, destination },
@@ -394,12 +395,12 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(second, sourceShip);
             game.AttachNode(destinationFleet, destination);
             game.AttachNode(destinationShip, destinationFleet);
-            IGameResultHandler<UnitPlacementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitPlacementRequest> handler = movement;
 
-            handler.HandleResults(
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitPlacementRequestedResult
+                    new UnitPlacementRequest
                     {
                         Units = new List<IMovable> { first, second },
                         Destinations = new List<ContainerNode> { destinationFleet },

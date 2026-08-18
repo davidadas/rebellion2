@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -22,8 +23,8 @@ namespace Rebellion.Systems
     /// </summary>
     public class MovementSystem
         : IGameResultHandler<BlockadeChangedResult>,
-            IGameResultHandler<UnitMovementRequestedResult>,
-            IGameResultHandler<UnitPlacementRequestedResult>
+            IGameRequestHandler<UnitMovementRequest>,
+            IGameRequestHandler<UnitPlacementRequest>
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
@@ -121,15 +122,15 @@ namespace Rebellion.Systems
         /// Accepts event-authored movement requests, tries their destinations in authored order,
         /// and submits the complete unit group through normal movement validation and transit.
         /// </summary>
-        List<GameResult> IGameResultHandler<UnitMovementRequestedResult>.HandleResults(
-            IReadOnlyList<UnitMovementRequestedResult> results
+        List<GameResult> IGameRequestHandler<UnitMovementRequest>.HandleRequests(
+            IReadOnlyList<UnitMovementRequest> requests
         )
         {
-            if (results == null)
+            if (requests == null)
                 return new List<GameResult>();
 
             List<GameResult> reactions = new List<GameResult>();
-            foreach (UnitMovementRequestedResult result in results)
+            foreach (UnitMovementRequest result in requests)
             {
                 if (result?.Units == null || result.Destinations == null)
                     continue;
@@ -180,14 +181,14 @@ namespace Rebellion.Systems
             return false;
         }
 
-        List<GameResult> IGameResultHandler<UnitPlacementRequestedResult>.HandleResults(
-            IReadOnlyList<UnitPlacementRequestedResult> results
+        List<GameResult> IGameRequestHandler<UnitPlacementRequest>.HandleRequests(
+            IReadOnlyList<UnitPlacementRequest> requests
         )
         {
-            if (results == null)
+            if (requests == null)
                 return new List<GameResult>();
 
-            foreach (UnitPlacementRequestedResult result in results)
+            foreach (UnitPlacementRequest result in requests)
             {
                 if (result?.Units == null || result.Destinations == null)
                     continue;

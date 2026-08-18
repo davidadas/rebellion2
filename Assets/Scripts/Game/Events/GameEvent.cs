@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
@@ -85,7 +84,7 @@ namespace Rebellion.Game.Events
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
         /// <returns>Combined results from all executed actions.</returns>
-        internal List<GameResult> Execute(
+        internal GameActionExecution Execute(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventExecutionContext context,

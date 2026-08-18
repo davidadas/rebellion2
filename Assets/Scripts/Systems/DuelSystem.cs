@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Common;
@@ -12,7 +13,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Resolves asymmetric encounters between linked opposing officers.
     /// </summary>
-    public sealed class DuelSystem : IGameResultHandler<DuelRequestedResult>
+    public sealed class DuelSystem : IGameRequestHandler<DuelRequest>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _random;
@@ -36,13 +37,13 @@ namespace Rebellion.Systems
         /// Validates queued duel requests and emits capture, injury, and duel outcomes for each
         /// eligible opposing officer pair.
         /// </summary>
-        public List<GameResult> HandleResults(IReadOnlyList<DuelRequestedResult> results)
+        public List<GameResult> HandleRequests(IReadOnlyList<DuelRequest> results)
         {
             List<GameResult> reactions = new List<GameResult>();
             if (results == null)
                 return reactions;
 
-            foreach (DuelRequestedResult request in results)
+            foreach (DuelRequest request in results)
             {
                 if (CanResolveDuel(request))
                     ResolveDuel(request, reactions);
@@ -56,7 +57,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="request">The encounter request to validate.</param>
         /// <returns>True when authoritative duel resolution may proceed.</returns>
-        private static bool CanResolveDuel(DuelRequestedResult request)
+        private static bool CanResolveDuel(DuelRequest request)
         {
             Officer encountered = request?.EncounteredOfficer;
             Officer opposing = request?.OpposingOfficer;
@@ -79,7 +80,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="request">The validated encounter request.</param>
         /// <param name="reactions">The result collection receiving authoritative outcomes.</param>
-        private void ResolveDuel(DuelRequestedResult request, List<GameResult> reactions)
+        private void ResolveDuel(DuelRequest request, List<GameResult> reactions)
         {
             Officer encountered = request.EncounteredOfficer;
             Officer opposing = request.OpposingOfficer;
@@ -124,7 +125,7 @@ namespace Rebellion.Systems
             Planet location,
             int encounteredCombat,
             int opposingCombat,
-            DuelRequestedResult request,
+            DuelRequest request,
             ICollection<GameResult> reactions
         )
         {
@@ -192,7 +193,7 @@ namespace Rebellion.Systems
         /// Records the complete duel outcome after capture and injury consequences are applied.
         /// </summary>
         private void RecordDuelOutcome(
-            DuelRequestedResult request,
+            DuelRequest request,
             Planet location,
             bool captured,
             int encounteredInjury,
@@ -257,7 +258,7 @@ namespace Rebellion.Systems
             Officer injured,
             int injury,
             Officer beneficiary,
-            DuelRequestedResult request,
+            DuelRequest request,
             List<GameResult> reactions
         )
         {
@@ -289,7 +290,7 @@ namespace Rebellion.Systems
         /// <param name="reaction">The reaction to stamp.</param>
         /// <param name="request">The source encounter request.</param>
         /// <returns>The stamped reaction.</returns>
-        private static T Stamp<T>(T reaction, DuelRequestedResult request)
+        private static T Stamp<T>(T reaction, DuelRequest request)
             where T : GameResult
         {
             reaction.SourceEventInstanceID = request?.SourceEventInstanceID;

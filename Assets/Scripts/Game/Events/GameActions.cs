@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -34,7 +35,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Executes one eligible outcome selected by its authored weight.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             List<RandomOutcome> eligible = Outcomes
                 .Where(outcome =>
@@ -73,7 +74,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Executes the authored success or fallback actions for the current conditions.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             IEnumerable<GameAction> selected = Conditions.TrueForAll(condition =>
                 condition.IsMet(context.Game, context.Activation)
@@ -104,7 +105,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Applies the authored operation to one event-runtime variable.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             int previousValue = context.Game.EventRuntime.GetVariable(Key);
             int currentValue = Operation switch
@@ -139,7 +140,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Produces current observations of the selected subjects for the recipient faction.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             Faction recipient = context.Game.GetFactionByOwnerInstanceID(FactionInstanceID);
             List<ISceneNode> observations = Selectors
@@ -230,7 +231,7 @@ namespace Rebellion.Game.Events
         /// </summary>
         /// <param name="context">The dependencies and activation data for this action.</param>
         /// <returns>A single narrative message result.</returns>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             IRandomNumberProvider provider = context.Random;
@@ -269,9 +270,8 @@ namespace Rebellion.Game.Events
             string backgroundAudioPath = MessageMediaResolver.Resolve(BackgroundAudio, context);
             string imagePath = MessageMediaResolver.Resolve(BackgroundImage, context);
 
-            return new List<GameResult>
-            {
-                new MessageRequestedResult
+            return GameActionExecution.FromRequest(
+                new MessageDeliveryRequest
                 {
                     Recipient = recipient,
                     SubjectNode = subject,
@@ -287,8 +287,8 @@ namespace Rebellion.Game.Events
                     OfficerVoicePath = OfficerVoice?.ResolvePath(subject as Officer, provider),
                     AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
-                },
-            };
+                }
+            );
         }
     }
 
@@ -373,7 +373,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Applies the authored captivity state to every selected officer.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             if (IsCaptured && string.IsNullOrWhiteSpace(CaptorFactionInstanceID))
@@ -455,7 +455,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Applies the authored rating change to every selected officer.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             int modeCount = new int?[]
@@ -573,7 +573,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Applies one positive Force increase mode to every explicitly named or selected officer.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             int modeCount = new int?[]
             {
@@ -689,7 +689,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Performs the authored officer skill check and executes its matching branch.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
@@ -735,7 +735,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Marks the configured officer as Force-sensitive without revealing that potential.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
@@ -759,7 +759,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Reveals and initializes an officer's existing latent Force potential once.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
@@ -795,7 +795,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Rolls and applies an injury within the authored severity range.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
@@ -834,7 +834,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Merges authored image paths into the officer's active image set.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
@@ -904,7 +904,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Merges authored voice categories into the officer's active voice set.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
@@ -952,7 +952,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Requests a duel between the two authored officers.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Officer first = game.GetSceneNodeByInstanceID<Officer>(FirstOfficerInstanceID);
@@ -974,17 +974,16 @@ namespace Rebellion.Game.Events
                     (first, second) = (second, first);
             }
 
-            return new List<GameResult>
-            {
-                new DuelRequestedResult
+            return GameActionExecution.FromRequest(
+                new DuelRequest
                 {
                     EncounteredOfficer = first,
                     OpposingOfficer = second,
                     ImagePath = ImagePath,
                     AudioPath = AudioPath,
                     Tick = game.CurrentTick,
-                },
-            };
+                }
+            );
         }
     }
     #endregion
@@ -1059,7 +1058,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves all authored targets and applies the configured display name.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             foreach (
                 BaseGameEntity target in DisplayActionTargets.ResolveTargets(
@@ -1092,7 +1091,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves all authored targets and applies the configured status text.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             foreach (
                 BaseGameEntity target in DisplayActionTargets.ResolveTargets(
@@ -1122,7 +1121,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves all authored targets and removes their current status text.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             foreach (
                 BaseGameEntity target in DisplayActionTargets.ResolveTargets(
@@ -1163,7 +1162,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Applies one signed adjustment to the selected planet statistic.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             if ((Amount.HasValue ? 1 : 0) + (PercentOfCurrent.HasValue ? 1 : 0) != 1)
@@ -1247,7 +1246,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Randomly reduces selected planet statistics while enforcing the minimum total loss.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Planet planet = context.Activation?.GetTarget<Planet>();
@@ -1370,7 +1369,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Records the authored incident against the event's target planet.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             Planet planet = context.Activation?.GetTarget<Planet>();
             if (planet == null)
@@ -1419,7 +1418,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Deletes every unit selected by the authored unit selectors.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             if (Selectors.Count == 0)
@@ -1478,7 +1477,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves exactly one ownership domain and delegates the change to gameplay.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             bool hasPlanets = Planets.Count > 0;
             bool hasUnits = Units.Count > 0;
@@ -1505,16 +1504,15 @@ namespace Rebellion.Game.Events
                     "ChangeOwner Units selectors may only return officers, ships, regiments, special forces, or buildings."
                 );
 
-            return new List<GameResult>
-            {
-                new OwnershipChangeRequestedResult
+            return GameActionExecution.FromRequest(
+                new OwnershipChangeRequest
                 {
                     NewOwner = faction,
                     Planets = selected.OfType<Planet>().ToList(),
                     Units = hasUnits ? selected : new List<ISceneNode>(),
                     Tick = context.Game.CurrentTick,
-                },
-            };
+                }
+            );
         }
 
         /// <summary>
@@ -1683,7 +1681,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Requests immediate placement of the resolved units at the resolved destination.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             List<ContainerNode> destinations = UnitActionTargets.ResolveDestinations(
                 DestinationInstanceID,
@@ -1698,15 +1696,14 @@ namespace Rebellion.Game.Events
                 "PlaceUnits",
                 allowSpawn: true
             );
-            return new List<GameResult>
-            {
-                new UnitPlacementRequestedResult
+            return GameActionExecution.FromRequest(
+                new UnitPlacementRequest
                 {
                     Units = units,
                     Destinations = destinations,
                     Tick = context.Game.CurrentTick,
-                },
-            };
+                }
+            );
         }
     }
 
@@ -1772,7 +1769,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Requests normal transit for the resolved units to the resolved destination.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             (List<IMovable> units, List<ContainerNode> destinations) = Resolve(
                 context,
@@ -1788,15 +1785,14 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     "SendUnits requires active units at a valid scene location."
                 );
-            return new List<GameResult>
-            {
-                new UnitMovementRequestedResult
+            return GameActionExecution.FromRequest(
+                new UnitMovementRequest
                 {
                     Units = units,
                     Destinations = destinations,
                     Tick = context.Game.CurrentTick,
-                },
-            };
+                }
+            );
         }
     }
 
@@ -1815,7 +1811,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Moves every selected unit from active play into retained storage.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             List<IMovable> units = UnitActionTargets.ResolveUnits(
@@ -1853,7 +1849,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Removes every selected unit from retained storage without placing it.
         /// </summary>
-        internal override List<GameResult> Execute(GameActionContext context)
+        internal override GameActionExecution Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             List<IMovable> units = UnitActionTargets.ResolveUnits(

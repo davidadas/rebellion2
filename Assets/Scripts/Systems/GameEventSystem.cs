@@ -18,6 +18,7 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly UnitFactory _unitFactory;
+        private readonly GameRequestDispatcher _requestDispatcher;
 
         /// <summary>
         /// Creates a new GameEventSystem.
@@ -25,15 +26,18 @@ namespace Rebellion.Systems
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for stochastic event actions.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
+        /// <param name="requestDispatcher">Routes action requests to authoritative systems.</param>
         public GameEventSystem(
             GameRoot game,
             IRandomNumberProvider provider,
-            UnitFactory unitFactory = null
+            UnitFactory unitFactory = null,
+            GameRequestDispatcher requestDispatcher = null
         )
         {
             _game = game;
             _provider = provider;
             _unitFactory = unitFactory;
+            _requestDispatcher = requestDispatcher;
         }
 
         /// <summary>
@@ -367,7 +371,21 @@ namespace Rebellion.Systems
             }
 
             GameLogger.Log($"Executing game event: {gameEvent.InstanceID}");
-            results = gameEvent.Execute(_game, _provider, context, _unitFactory);
+            GameActionExecution execution = gameEvent.Execute(
+                _game,
+                _provider,
+                context,
+                _unitFactory
+            );
+            results = new List<GameResult>(execution.Results);
+            if (execution.Requests.Count > 0)
+            {
+                if (_requestDispatcher == null)
+                    throw new InvalidOperationException(
+                        $"Event '{gameEvent.InstanceID}' produced requests without a configured dispatcher."
+                    );
+                results.AddRange(_requestDispatcher.Process(execution.Requests));
+            }
 
             state.ExecutionCount++;
             state.LastExecutionTick = _game.CurrentTick;

@@ -151,16 +151,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A data-defined event requested a validated ownership transition for planets or units.
-    /// </summary>
-    public sealed class OwnershipChangeRequestedResult : GameResult
-    {
-        public Faction NewOwner { get; set; }
-        public List<Planet> Planets { get; set; } = new List<Planet>();
-        public List<ISceneNode> Units { get; set; } = new List<ISceneNode>();
-    }
-
-    /// <summary>
     /// Ownership of one unit changed hands.
     /// </summary>
     public sealed class UnitOwnershipChangedResult : GameResult
@@ -377,17 +367,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Requests authoritative resolution of a linked-officer encounter.
-    /// </summary>
-    public class DuelRequestedResult : GameResult
-    {
-        public Officer EncounteredOfficer { get; set; }
-        public Officer OpposingOfficer { get; set; }
-        public string ImagePath { get; set; }
-        public string AudioPath { get; set; }
-    }
-
-    /// <summary>
     /// Records the complete outcome of a linked-officer encounter.
     /// </summary>
     public class DuelResult : GameResult
@@ -435,33 +414,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A data-defined event requested a faction message.
-    /// </summary>
-    public class MessageRequestedResult : GameResult
-    {
-        public Faction Recipient { get; set; }
-        public MessageResultType ResultType { get; set; }
-        public ISceneNode SubjectNode { get; set; }
-        public ISceneNode RelatedSubjectNode { get; set; }
-        public Planet Location { get; set; }
-        public MessageType MessageType { get; set; }
-        public string Subject { get; set; }
-        public string Body { get; set; }
-        public string BackgroundImageKey { get; set; }
-        public string BackgroundImagePath { get; set; }
-        public string OverlayImagePath { get; set; }
-        public string BackgroundAudioPath { get; set; }
-        public string OfficerVoicePath { get; set; }
-        public AdvisorNotification AdvisorNotification { get; set; }
-        public AdvisorNotificationType NotificationType { get; set; }
-        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
-        public string AdvisorSubjectTypeID { get; set; }
-        public string EventLocationInstanceID { get; set; }
-        public string NavigationTargetInstanceID { get; set; }
-        public string NavigationSecondaryTargetInstanceID { get; set; }
-    }
-
-    /// <summary>
     /// A message was created and delivered to a faction.
     /// </summary>
     public sealed class MessageDeliveredResult : GameResult
@@ -472,24 +424,6 @@ namespace Rebellion.Game.Results
         public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
         public string AdvisorSubjectTypeID { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
-    }
-
-    /// <summary>
-    /// A data-defined event requested movement through the authoritative movement system.
-    /// </summary>
-    public class UnitMovementRequestedResult : GameResult
-    {
-        public List<IMovable> Units { get; set; } = new List<IMovable>();
-        public List<ContainerNode> Destinations { get; set; } = new List<ContainerNode>();
-    }
-
-    /// <summary>
-    /// A data-defined event requested immediate placement without transit.
-    /// </summary>
-    public sealed class UnitPlacementRequestedResult : GameResult
-    {
-        public List<IMovable> Units { get; set; } = new List<IMovable>();
-        public List<ContainerNode> Destinations { get; set; } = new List<ContainerNode>();
     }
 
     #endregion

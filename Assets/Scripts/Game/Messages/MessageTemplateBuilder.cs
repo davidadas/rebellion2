@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Rebellion.Game.Factions;
-using Rebellion.Game.Results;
+using Rebellion.Game.Requests;
 
 namespace Rebellion.Game.Messages
 {
@@ -27,7 +27,7 @@ namespace Rebellion.Game.Messages
         /// <param name="overlayImagePath">The overlay image path to assign to the message.</param>
         /// <param name="officerVoicePath">The officer voice path to assign to the message.</param>
         /// <returns>The resolved request, or null when no definition was provided.</returns>
-        public MessageRequestedResult Build(
+        public MessageDeliveryRequest Build(
             MessageDefinition definition,
             Faction faction,
             Dictionary<string, string> values,
@@ -56,7 +56,7 @@ namespace Rebellion.Game.Messages
             string title = Interpolate(definition.Subject, values);
             string body = Interpolate(definition.Body, values);
 
-            return new MessageRequestedResult
+            return new MessageDeliveryRequest
             {
                 Recipient = faction,
                 MessageType = definition.MessageType,

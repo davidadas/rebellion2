@@ -3,6 +3,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Systems
@@ -10,7 +11,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Converts game results into faction messages and delivers them to each faction.
     /// </summary>
-    public class MessageSystem
+    public class MessageSystem : IGameRequestHandler<MessageDeliveryRequest>
     {
         private readonly GameRoot _game;
         private readonly MessageFactory _messageFactory;
@@ -35,16 +36,31 @@ namespace Rebellion.Systems
             GameResult[] resultBatch =
                 results?.Where(result => result != null).ToArray()
                 ?? System.Array.Empty<GameResult>();
-            IEnumerable<GameResult> automaticResults = resultBatch.Where(
-                IsEligibleForAutomaticMessage
+            IEnumerable<GameResult> automaticResults = resultBatch.Where(result =>
+                string.IsNullOrWhiteSpace(result.SourceEventInstanceID)
             );
-            IEnumerable<MessageRequestedResult> authoredRequests =
-                resultBatch.OfType<MessageRequestedResult>();
-            IEnumerable<MessageRequestedResult> requests = _messageFactory
-                .CreateMessages(automaticResults, _game)
-                .Concat(_messageFactory.CreateAuthoredMessages(authoredRequests));
+            return Deliver(_messageFactory.CreateMessages(automaticResults, _game));
+        }
+
+        /// <summary>
+        /// Delivers event-authored messages through the same durable message path as automatic messages.
+        /// </summary>
+        /// <param name="requests">The authored delivery requests.</param>
+        /// <returns>The factual delivery results.</returns>
+        public List<GameResult> HandleRequests(IReadOnlyList<MessageDeliveryRequest> requests)
+        {
+            return Deliver(_messageFactory.CreateAuthoredMessages(requests));
+        }
+
+        /// <summary>
+        /// Persists resolved messages on their recipients and reports each successful delivery.
+        /// </summary>
+        /// <param name="requests">The resolved messages to deliver.</param>
+        /// <returns>The factual delivery results.</returns>
+        private List<GameResult> Deliver(IEnumerable<MessageDeliveryRequest> requests)
+        {
             List<GameResult> deliveredResults = new List<GameResult>();
-            foreach (MessageRequestedResult request in requests)
+            foreach (MessageDeliveryRequest request in requests)
             {
                 if (request?.Recipient == null)
                     continue;
@@ -72,7 +88,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="request">The semantic and presentation data to persist.</param>
         /// <returns>The message ready to attach to the recipient faction.</returns>
-        private Message CreateMessage(MessageRequestedResult request) =>
+        private Message CreateMessage(MessageDeliveryRequest request) =>
             new Message(request.MessageType, request.Subject, request.Body)
             {
                 ResultType = request.ResultType,
@@ -88,14 +104,6 @@ namespace Rebellion.Systems
                 MissionInstanceID = request.MissionInstanceID,
                 CreatedTick = _game.CurrentTick,
             };
-
-        /// <summary>
-        /// Returns whether an ordinary simulation result may produce an automatic message.
-        /// Authored event effects must request their messages explicitly.
-        /// </summary>
-        private static bool IsEligibleForAutomaticMessage(GameResult result) =>
-            result is not MessageRequestedResult
-            && string.IsNullOrWhiteSpace(result.SourceEventInstanceID);
 
         /// <summary>
         /// Advances time-based message lifecycle state for the current game tick.

@@ -729,7 +729,7 @@ namespace Rebellion.Tests.Systems
 
         private sealed class RecordScopedPlanetAction : GameAction
         {
-            internal override List<GameResult> Execute(GameActionContext context)
+            internal override GameActionExecution Execute(GameActionContext context)
             {
                 GameRoot game = context.Game;
                 Planet planet = context.Activation.GetTarget<Planet>();
@@ -750,13 +750,13 @@ namespace Rebellion.Tests.Systems
 
         private sealed class EmitTestResultAction : GameAction
         {
-            internal override List<GameResult> Execute(GameActionContext context) =>
+            internal override GameActionExecution Execute(GameActionContext context) =>
                 new List<GameResult> { new PlanetStatChangedResult() };
         }
 
         private sealed class ObserveTestResultAction : GameAction
         {
-            internal override List<GameResult> Execute(GameActionContext context)
+            internal override GameActionExecution Execute(GameActionContext context)
             {
                 if (context.Activation.Results.Any())
                     context.Game.EventRuntime.SetVariable("result.observed", 1);
