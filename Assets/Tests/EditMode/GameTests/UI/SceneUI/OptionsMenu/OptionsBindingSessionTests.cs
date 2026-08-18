@@ -175,58 +175,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies restoring one row leaves overrides on other actions intact.
-        /// </summary>
-        [Test]
-        public void RestoreDefault_OneBinding_RestoresOnlySelectedAction()
-        {
-            InputAction troopers = _inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
-            InputAction fighters = _inputManager.Asset.FindAction(
-                "Strategy/ShowFighterSquadrons",
-                true
-            );
-            troopers.ApplyBindingOverride(FindBinding(troopers, "Primary"), "<Keyboard>/n");
-            fighters.ApplyBindingOverride(FindBinding(fighters, "Primary"), "<Keyboard>/m");
-            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
-            session.Rebuild();
-            int row = session
-                .Rows.Select((binding, index) => (binding, index))
-                .Single(item => item.binding.Action == "Show Troopers")
-                .index;
-
-            session.RestoreDefault(row);
-
-            Assert.IsNull(troopers.bindings[FindBinding(troopers, "Primary")].overridePath);
-            Assert.AreEqual(
-                "<Keyboard>/m",
-                fighters.bindings[FindBinding(fighters, "Primary")].overridePath
-            );
-        }
-
-        /// <summary>
-        /// Verifies restoring all bindings removes overrides throughout the bindable maps.
-        /// </summary>
-        [Test]
-        public void RestoreAllDefaults_MultipleBindings_RemovesEveryOverride()
-        {
-            InputAction troopers = _inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
-            InputAction quickSave = _inputManager.Asset.FindAction("Global/QuickSave", true);
-            troopers.ApplyBindingOverride(FindBinding(troopers, "Primary"), "<Keyboard>/n");
-            quickSave.ApplyBindingOverride(FindBinding(quickSave, "Primary"), "<Keyboard>/m");
-            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
-            session.Rebuild();
-
-            session.RestoreAllDefaults();
-
-            Assert.IsFalse(
-                _inputManager
-                    .Asset.actionMaps.SelectMany(map => map.actions)
-                    .SelectMany(action => action.bindings)
-                    .Any(binding => binding.hasOverrides)
-            );
-        }
-
-        /// <summary>
         /// Verifies an unbound secondary slot can begin capture through the temporary listening action.
         /// </summary>
         [Test]
@@ -293,6 +241,58 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Object.DestroyImmediate(inputRoot);
                 inputFixture.TearDown();
             }
+        }
+
+        /// <summary>
+        /// Verifies restoring one row leaves overrides on other actions intact.
+        /// </summary>
+        [Test]
+        public void RestoreDefault_OneBinding_RestoresOnlySelectedAction()
+        {
+            InputAction troopers = _inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
+            InputAction fighters = _inputManager.Asset.FindAction(
+                "Strategy/ShowFighterSquadrons",
+                true
+            );
+            troopers.ApplyBindingOverride(FindBinding(troopers, "Primary"), "<Keyboard>/n");
+            fighters.ApplyBindingOverride(FindBinding(fighters, "Primary"), "<Keyboard>/m");
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+            session.Rebuild();
+            int row = session
+                .Rows.Select((binding, index) => (binding, index))
+                .Single(item => item.binding.Action == "Show Troopers")
+                .index;
+
+            session.RestoreDefault(row);
+
+            Assert.IsNull(troopers.bindings[FindBinding(troopers, "Primary")].overridePath);
+            Assert.AreEqual(
+                "<Keyboard>/m",
+                fighters.bindings[FindBinding(fighters, "Primary")].overridePath
+            );
+        }
+
+        /// <summary>
+        /// Verifies restoring all bindings removes overrides throughout the bindable maps.
+        /// </summary>
+        [Test]
+        public void RestoreAllDefaults_MultipleBindings_RemovesEveryOverride()
+        {
+            InputAction troopers = _inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
+            InputAction quickSave = _inputManager.Asset.FindAction("Global/QuickSave", true);
+            troopers.ApplyBindingOverride(FindBinding(troopers, "Primary"), "<Keyboard>/n");
+            quickSave.ApplyBindingOverride(FindBinding(quickSave, "Primary"), "<Keyboard>/m");
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+            session.Rebuild();
+
+            session.RestoreAllDefaults();
+
+            Assert.IsFalse(
+                _inputManager
+                    .Asset.actionMaps.SelectMany(map => map.actions)
+                    .SelectMany(action => action.bindings)
+                    .Any(binding => binding.hasOverrides)
+            );
         }
 
         /// <summary>

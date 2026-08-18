@@ -84,6 +84,44 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void CanRetire_BlockedPersonnel_ReturnsFalse()
+        {
+            Officer capturedOfficer = CreateOfficer("captured");
+            capturedOfficer.IsCaptured = true;
+            Officer movingOfficer = CreateOfficer("moving");
+            movingOfficer.Movement = new MovementState();
+            SpecialForces buildingForces = CreateSpecialForces("building");
+            buildingForces.ManufacturingStatus = ManufacturingStatus.Building;
+            _game.AttachNode(capturedOfficer, _planet);
+            _game.AttachNode(movingOfficer, _planet);
+            _game.AttachNode(buildingForces, _planet);
+
+            Assert.IsFalse(
+                _personnelSystem.CanRetire(new ISceneNode[] { capturedOfficer }, _ownerId)
+            );
+            Assert.IsFalse(
+                _personnelSystem.CanRetire(new ISceneNode[] { movingOfficer }, _ownerId)
+            );
+            Assert.IsFalse(
+                _personnelSystem.CanRetire(new ISceneNode[] { buildingForces }, _ownerId)
+            );
+        }
+
+        [Test]
+        public void CanRetire_SnapshotSelection_ResolvesLivePersonnel()
+        {
+            Officer officer = CreateOfficer("officer");
+            _game.AttachNode(officer, _planet);
+
+            bool canRetire = _personnelSystem.CanRetire(
+                new ISceneNode[] { new Officer { InstanceID = officer.InstanceID } },
+                _ownerId
+            );
+
+            Assert.IsTrue(canRetire);
+        }
+
+        [Test]
         public void Retire_OwnedPersonnel_RemovesCompleteSelection()
         {
             Officer officer = CreateOfficer("officer");
@@ -135,44 +173,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(retired);
             Assert.AreSame(_planet, officer.GetParent());
             Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
-        }
-
-        [Test]
-        public void CanRetire_BlockedPersonnel_ReturnsFalse()
-        {
-            Officer capturedOfficer = CreateOfficer("captured");
-            capturedOfficer.IsCaptured = true;
-            Officer movingOfficer = CreateOfficer("moving");
-            movingOfficer.Movement = new MovementState();
-            SpecialForces buildingForces = CreateSpecialForces("building");
-            buildingForces.ManufacturingStatus = ManufacturingStatus.Building;
-            _game.AttachNode(capturedOfficer, _planet);
-            _game.AttachNode(movingOfficer, _planet);
-            _game.AttachNode(buildingForces, _planet);
-
-            Assert.IsFalse(
-                _personnelSystem.CanRetire(new ISceneNode[] { capturedOfficer }, _ownerId)
-            );
-            Assert.IsFalse(
-                _personnelSystem.CanRetire(new ISceneNode[] { movingOfficer }, _ownerId)
-            );
-            Assert.IsFalse(
-                _personnelSystem.CanRetire(new ISceneNode[] { buildingForces }, _ownerId)
-            );
-        }
-
-        [Test]
-        public void CanRetire_SnapshotSelection_ResolvesLivePersonnel()
-        {
-            Officer officer = CreateOfficer("officer");
-            _game.AttachNode(officer, _planet);
-
-            bool canRetire = _personnelSystem.CanRetire(
-                new ISceneNode[] { new Officer { InstanceID = officer.InstanceID } },
-                _ownerId
-            );
-
-            Assert.IsTrue(canRetire);
         }
 
         private static Officer CreateOfficer(string instanceId)

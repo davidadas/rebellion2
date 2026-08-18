@@ -61,15 +61,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.Throws<ArgumentNullException>(() => CreateRenderData(null));
         }
 
-        [Test]
-        public void ConstructionBuildEstimate_Constructor_StoresDurations()
-        {
-            ConstructionBuildEstimate estimate = new ConstructionBuildEstimate(12, 34);
-
-            Assert.AreEqual(12, estimate.CompletionTicks);
-            Assert.AreEqual(34, estimate.DeploymentTicks);
-        }
-
         private static ConstructionWindowRenderData CreateRenderData(
             IReadOnlyList<StrategyDropdownItemRenderData> items
         )

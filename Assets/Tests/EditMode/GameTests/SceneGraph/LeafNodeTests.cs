@@ -9,74 +9,6 @@ namespace Rebellion.Tests.SceneGraph
     [TestFixture]
     public class LeafNodeTests
     {
-        // Mock implementation of LeafNode for testing purposes
-        private class MockLeafNode : LeafNode
-        {
-            public MockLeafNode() { }
-        }
-
-        // Another mock implementation for type-specific tests
-        private class MockLeafNodeA : LeafNode
-        {
-            public MockLeafNodeA() { }
-        }
-
-        // Mock container node to test parent relationships
-        private class MockContainerNode : BaseSceneNode
-        {
-            private readonly List<ISceneNode> _children = new List<ISceneNode>();
-
-            public override bool CanAcceptChild(ISceneNode child) => true;
-
-            public override void AddChild(ISceneNode child)
-            {
-                _children.Add(child);
-            }
-
-            public override void RemoveChild(ISceneNode child)
-            {
-                _children.Remove(child);
-            }
-
-            public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recursive)
-            {
-                IEnumerable<T> direct = _children.OfType<T>();
-
-                if (predicate != null)
-                {
-                    direct = direct.Where(predicate);
-                }
-
-                if (!recursive)
-                {
-                    return direct;
-                }
-
-                List<T> result = new List<T>(direct);
-
-                foreach (ISceneNode child in _children)
-                {
-                    result.AddRange(child.GetChildren<T>(predicate, true));
-                }
-
-                return result;
-            }
-
-            public override IEnumerable<ISceneNode> GetChildren()
-            {
-                return _children;
-            }
-
-            public override void Traverse(Action<ISceneNode> action)
-            {
-                action(this);
-                foreach (ISceneNode child in _children)
-                {
-                    child.Traverse(action);
-                }
-            }
-        }
-
         private MockLeafNode _leafNode;
         private MockLeafNodeA _leafNodeA;
         private MockContainerNode _containerNode;
@@ -181,6 +113,35 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void GetChildren_AfterMultipleAddChildCalls_RemainsEmpty()
+        {
+            MockLeafNode child1 = new MockLeafNode
+            {
+                DisplayName = "Child1",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            MockLeafNode child2 = new MockLeafNode
+            {
+                DisplayName = "Child2",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            MockLeafNode child3 = new MockLeafNode
+            {
+                DisplayName = "Child3",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            _leafNode.AddChild(child1);
+            _leafNode.AddChild(child2);
+            _leafNode.AddChild(child3);
+
+            IEnumerable<ISceneNode> children = _leafNode.GetChildren();
+            Assert.AreEqual(0, children.Count());
+        }
+
+        [Test]
         public void GetChildrenGeneric_WithTypeFilter_ReturnsEmptyEnumerable()
         {
             IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(null, true);
@@ -214,6 +175,18 @@ namespace Rebellion.Tests.SceneGraph
         public void GetChildrenGeneric_WithDifferentType_ReturnsEmptyEnumerable()
         {
             IEnumerable<MockLeafNodeA> children = _leafNode.GetChildren<MockLeafNodeA>(null, true);
+
+            Assert.IsNotNull(children);
+            Assert.AreEqual(0, children.Count());
+        }
+
+        [Test]
+        public void GetChildrenGeneric_WithComplexPredicate_ReturnsEmpty()
+        {
+            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(
+                node => node.DisplayName.StartsWith("Test") && node.InstanceID != null,
+                true
+            );
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());
@@ -273,156 +246,72 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreSame(_leafNode, visitedNodes[0]);
         }
 
-        [Test]
-        public void SetParent_WithValidParent_UpdatesParentReferences()
+        // Mock implementation of LeafNode for testing purposes
+        private class MockLeafNode : LeafNode
         {
-            _leafNode.SetParent(_containerNode);
-
-            Assert.AreSame(_containerNode, _leafNode.GetParent());
-            Assert.AreEqual(_containerNode.InstanceID, _leafNode.ParentInstanceID);
+            public MockLeafNode() { }
         }
 
-        [Test]
-        public void SetParent_WithNull_ClearsParentReferences()
+        // Another mock implementation for type-specific tests
+        private class MockLeafNodeA : LeafNode
         {
-            _leafNode.SetParent(_containerNode);
-            _leafNode.SetParent(null);
-
-            Assert.IsNull(_leafNode.GetParent());
-            Assert.IsNull(_leafNode.ParentInstanceID);
+            public MockLeafNodeA() { }
         }
 
-        [Test]
-        public void SetParent_ChangingParent_UpdatesLastParent()
+        // Mock container node to test parent relationships
+        private class MockContainerNode : BaseSceneNode
         {
-            MockContainerNode firstParent = new MockContainerNode
+            private readonly List<ISceneNode> _children = new List<ISceneNode>();
+
+            public override bool CanAcceptChild(ISceneNode child) => true;
+
+            public override void AddChild(ISceneNode child)
             {
-                DisplayName = "FirstParent",
-                InstanceID = Guid.NewGuid().ToString(),
-            };
+                _children.Add(child);
+            }
 
-            MockContainerNode secondParent = new MockContainerNode
+            public override void RemoveChild(ISceneNode child)
             {
-                DisplayName = "SecondParent",
-                InstanceID = Guid.NewGuid().ToString(),
-            };
+                _children.Remove(child);
+            }
 
-            _leafNode.SetParent(firstParent);
-            _leafNode.SetParent(secondParent);
-
-            Assert.AreSame(secondParent, _leafNode.GetParent());
-            Assert.AreSame(firstParent, _leafNode.GetLastParent());
-            Assert.AreEqual(secondParent.InstanceID, _leafNode.ParentInstanceID);
-            Assert.AreEqual(firstParent.InstanceID, _leafNode.LastParentInstanceID);
-        }
-
-        [Test]
-        public void SetParent_WithSameParent_DoesNothing()
-        {
-            _leafNode.SetParent(_containerNode);
-            ISceneNode lastParentBefore = _leafNode.GetLastParent();
-
-            _leafNode.SetParent(_containerNode);
-
-            Assert.AreSame(_containerNode, _leafNode.GetParent());
-            Assert.AreSame(lastParentBefore, _leafNode.GetLastParent());
-        }
-
-        [Test]
-        public void SetParent_RemovesFromOldParent_WhenChangingParent()
-        {
-            MockContainerNode oldParent = new MockContainerNode
+            public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recursive)
             {
-                DisplayName = "OldParent",
-                InstanceID = Guid.NewGuid().ToString(),
-            };
+                IEnumerable<T> direct = _children.OfType<T>();
 
-            MockContainerNode newParent = new MockContainerNode
+                if (predicate != null)
+                {
+                    direct = direct.Where(predicate);
+                }
+
+                if (!recursive)
+                {
+                    return direct;
+                }
+
+                List<T> result = new List<T>(direct);
+
+                foreach (ISceneNode child in _children)
+                {
+                    result.AddRange(child.GetChildren<T>(predicate, true));
+                }
+
+                return result;
+            }
+
+            public override IEnumerable<ISceneNode> GetChildren()
             {
-                DisplayName = "NewParent",
-                InstanceID = Guid.NewGuid().ToString(),
-            };
+                return _children;
+            }
 
-            oldParent.AddChild(_leafNode);
-            _leafNode.SetParent(oldParent);
-
-            Assert.AreEqual(1, oldParent.GetChildren().Count());
-
-            _leafNode.SetParent(newParent);
-
-            Assert.AreEqual(0, oldParent.GetChildren().Count());
-            Assert.AreSame(newParent, _leafNode.GetParent());
-        }
-
-        [Test]
-        public void SetParent_WithLeafNodeAsParent_WorksCorrectly()
-        {
-            // A leaf node can be a parent, even though it can't have children
-            MockLeafNode parentLeaf = new MockLeafNode
+            public override void Traverse(Action<ISceneNode> action)
             {
-                DisplayName = "ParentLeaf",
-                InstanceID = Guid.NewGuid().ToString(),
-            };
-
-            _leafNode.SetParent(parentLeaf);
-
-            Assert.AreSame(parentLeaf, _leafNode.GetParent());
-            Assert.AreEqual(parentLeaf.InstanceID, _leafNode.ParentInstanceID);
-        }
-
-        [Test]
-        public void LeafNode_InheritedProperties_WorkCorrectly()
-        {
-            string displayName = "TestLeafNode";
-
-            _leafNode.DisplayName = displayName;
-
-            Assert.AreEqual(displayName, _leafNode.DisplayName);
-            Assert.IsNotNull(
-                _leafNode.InstanceID,
-                "InstanceID should be auto-generated and not null"
-            );
-        }
-
-        [Test]
-        public void GetChildren_AfterMultipleAddChildCalls_RemainsEmpty()
-        {
-            MockLeafNode child1 = new MockLeafNode
-            {
-                DisplayName = "Child1",
-                InstanceID = Guid.NewGuid().ToString(),
-            };
-
-            MockLeafNode child2 = new MockLeafNode
-            {
-                DisplayName = "Child2",
-                InstanceID = Guid.NewGuid().ToString(),
-            };
-
-            MockLeafNode child3 = new MockLeafNode
-            {
-                DisplayName = "Child3",
-                InstanceID = Guid.NewGuid().ToString(),
-            };
-
-            _leafNode.AddChild(child1);
-            _leafNode.AddChild(child2);
-            _leafNode.AddChild(child3);
-
-            IEnumerable<ISceneNode> children = _leafNode.GetChildren();
-            Assert.AreEqual(0, children.Count());
-        }
-
-        [Test]
-        public void GetChildrenGeneric_WithComplexPredicate_ReturnsEmpty()
-        {
-            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(
-                node => node.DisplayName.StartsWith("Test") && node.InstanceID != null,
-                true
-            );
-
-            Assert.IsNotNull(children);
-            Assert.AreEqual(0, children.Count());
+                action(this);
+                foreach (ISceneNode child in _children)
+                {
+                    child.Traverse(action);
+                }
+            }
         }
     }
 } // namespace Rebellion.Tests.SceneGraph

@@ -59,6 +59,36 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void AddChild_WithOfficer_ThrowsSceneAccessException()
+        {
+            Officer officer = new Officer { OwnerInstanceID = "FACTION1" };
+
+            _fleet.AddChild(_capitalShip1);
+
+            Assert.Throws<SceneAccessException>(() => _fleet.AddChild(officer));
+        }
+
+        [Test]
+        public void AddChild_WithStarfighter_ThrowsSceneAccessException()
+        {
+            Starfighter sf = new Starfighter { OwnerInstanceID = "FACTION1" };
+
+            _fleet.AddChild(_capitalShip1);
+
+            Assert.Throws<SceneAccessException>(() => _fleet.AddChild(sf));
+        }
+
+        [Test]
+        public void AddChild_WithRegiment_ThrowsSceneAccessException()
+        {
+            Regiment reg = new Regiment { OwnerInstanceID = "FACTION1" };
+
+            _fleet.AddChild(_capitalShip1);
+
+            Assert.Throws<SceneAccessException>(() => _fleet.AddChild(reg));
+        }
+
+        [Test]
         public void RemoveChild_ExistingCapitalShip_RemovesIt()
         {
             _fleet.AddChild(_capitalShip1);
@@ -183,6 +213,18 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void FindShipForStarfighter_FleetInTransit_ReturnsNull()
+        {
+            _capitalShip1.ManufacturingStatus = ManufacturingStatus.Complete;
+            _fleet.AddChild(_capitalShip1);
+            _fleet.Movement = new MovementState();
+
+            CapitalShip result = _fleet.FindShipForStarfighter();
+
+            Assert.IsNull(result);
+        }
+
+        [Test]
         public void FindShipForRegiment_SkipsUnavailableShips()
         {
             _capitalShip1.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -194,18 +236,6 @@ namespace Rebellion.Tests.Game.Units
             CapitalShip result = _fleet.FindShipForRegiment();
 
             Assert.AreSame(_capitalShip2, result);
-        }
-
-        [Test]
-        public void FindShipForStarfighter_FleetInTransit_ReturnsNull()
-        {
-            _capitalShip1.ManufacturingStatus = ManufacturingStatus.Complete;
-            _fleet.AddChild(_capitalShip1);
-            _fleet.Movement = new MovementState();
-
-            CapitalShip result = _fleet.FindShipForStarfighter();
-
-            Assert.IsNull(result);
         }
 
         [Test]
@@ -393,36 +423,6 @@ namespace Rebellion.Tests.Game.Units
             IEnumerable<Officer> officers = _fleet.GetOfficers();
 
             Assert.IsEmpty(officers, "Should return empty collection when no officers");
-        }
-
-        [Test]
-        public void AddChild_WithOfficer_ThrowsSceneAccessException()
-        {
-            Officer officer = new Officer { OwnerInstanceID = "FACTION1" };
-
-            _fleet.AddChild(_capitalShip1);
-
-            Assert.Throws<SceneAccessException>(() => _fleet.AddChild(officer));
-        }
-
-        [Test]
-        public void AddChild_WithStarfighter_ThrowsSceneAccessException()
-        {
-            Starfighter sf = new Starfighter { OwnerInstanceID = "FACTION1" };
-
-            _fleet.AddChild(_capitalShip1);
-
-            Assert.Throws<SceneAccessException>(() => _fleet.AddChild(sf));
-        }
-
-        [Test]
-        public void AddChild_WithRegiment_ThrowsSceneAccessException()
-        {
-            Regiment reg = new Regiment { OwnerInstanceID = "FACTION1" };
-
-            _fleet.AddChild(_capitalShip1);
-
-            Assert.Throws<SceneAccessException>(() => _fleet.AddChild(reg));
         }
 
         [Test]

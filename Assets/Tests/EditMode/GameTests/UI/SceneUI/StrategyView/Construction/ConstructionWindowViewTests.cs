@@ -40,21 +40,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
-        public void BuildCountInput_TextRectIsInsetWithinField()
-        {
-            TMP_InputField input = FindComponent<TMP_InputField>("BuildCountInputField");
-
-            Assert.AreEqual(-196f, ((RectTransform)input.transform).anchoredPosition.y);
-            Assert.AreEqual(17f, ((RectTransform)input.transform).sizeDelta.y);
-            Assert.AreNotSame(input.transform, input.textViewport);
-            Assert.AreEqual(-1f, input.textViewport.anchoredPosition.y);
-            Assert.AreEqual(15f, input.textViewport.sizeDelta.y);
-            Assert.AreEqual(TextAlignmentOptions.Left, input.textComponent.alignment);
-            Assert.AreEqual(0f, input.textComponent.rectTransform.anchoredPosition.y);
-            Assert.AreEqual(15f, input.textComponent.rectTransform.sizeDelta.y);
-        }
-
-        [Test]
         public void Render_SelectedItemAndOpenDropdown_AppliesCompletePresentation()
         {
             ConstructionWindowRenderData data = CreateRenderData(
@@ -160,6 +145,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void Render_UnchangedOpenDropdown_PreservesScrollPosition()
+        {
+            StrategyDropdownItemRenderData[] items = CreateDropdownItems(20, "Item");
+            ScrollAreaView scrollArea = _viewObject
+                .GetComponentsInChildren<ScrollAreaView>(true)
+                .Single();
+            _view.Render(CreateRenderData(items, true, true));
+            scrollArea.RelayScroll(
+                new PointerEventData(null) { scrollDelta = new Vector2(0f, -1f) }
+            );
+            float scrolledOffset = scrollArea.ContentRoot.anchoredPosition.y;
+
+            _view.Render(CreateRenderData(items, true, true));
+
+            Assert.Greater(scrolledOffset, 0f);
+            Assert.AreEqual(scrolledOffset, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+        }
+
+        [Test]
+        public void Render_ChangedOpenDropdown_ResetsScrollPosition()
+        {
+            ScrollAreaView scrollArea = _viewObject
+                .GetComponentsInChildren<ScrollAreaView>(true)
+                .Single();
+            _view.Render(CreateRenderData(CreateDropdownItems(20, "Item"), true, true));
+            scrollArea.RelayScroll(
+                new PointerEventData(null) { scrollDelta = new Vector2(0f, -1f) }
+            );
+
+            _view.Render(CreateRenderData(CreateDropdownItems(20, "Changed"), true, true));
+
+            Assert.AreEqual(0f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+        }
+
+        [Test]
+        public void BuildCountInput_TextRectIsInsetWithinField()
+        {
+            TMP_InputField input = FindComponent<TMP_InputField>("BuildCountInputField");
+
+            Assert.AreEqual(-196f, ((RectTransform)input.transform).anchoredPosition.y);
+            Assert.AreEqual(17f, ((RectTransform)input.transform).sizeDelta.y);
+            Assert.AreNotSame(input.transform, input.textViewport);
+            Assert.AreEqual(-1f, input.textViewport.anchoredPosition.y);
+            Assert.AreEqual(15f, input.textViewport.sizeDelta.y);
+            Assert.AreEqual(TextAlignmentOptions.Left, input.textComponent.alignment);
+            Assert.AreEqual(0f, input.textComponent.rectTransform.anchoredPosition.y);
+            Assert.AreEqual(15f, input.textComponent.rectTransform.sizeDelta.y);
+        }
+
+        [Test]
         public void RequestMethods_SubscribedHandlers_EmitSemanticRequests()
         {
             int cancelCount = 0;
@@ -254,41 +289,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
             Assert.Greater(oneRowHeight, 0);
             Assert.AreEqual(oneRowHeight * 3, threeRowHeight);
-        }
-
-        [Test]
-        public void Render_UnchangedOpenDropdown_PreservesScrollPosition()
-        {
-            StrategyDropdownItemRenderData[] items = CreateDropdownItems(20, "Item");
-            ScrollAreaView scrollArea = _viewObject
-                .GetComponentsInChildren<ScrollAreaView>(true)
-                .Single();
-            _view.Render(CreateRenderData(items, true, true));
-            scrollArea.RelayScroll(
-                new PointerEventData(null) { scrollDelta = new Vector2(0f, -1f) }
-            );
-            float scrolledOffset = scrollArea.ContentRoot.anchoredPosition.y;
-
-            _view.Render(CreateRenderData(items, true, true));
-
-            Assert.Greater(scrolledOffset, 0f);
-            Assert.AreEqual(scrolledOffset, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
-        }
-
-        [Test]
-        public void Render_ChangedOpenDropdown_ResetsScrollPosition()
-        {
-            ScrollAreaView scrollArea = _viewObject
-                .GetComponentsInChildren<ScrollAreaView>(true)
-                .Single();
-            _view.Render(CreateRenderData(CreateDropdownItems(20, "Item"), true, true));
-            scrollArea.RelayScroll(
-                new PointerEventData(null) { scrollDelta = new Vector2(0f, -1f) }
-            );
-
-            _view.Render(CreateRenderData(CreateDropdownItems(20, "Changed"), true, true));
-
-            Assert.AreEqual(0f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
         }
 
         [Test]

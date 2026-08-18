@@ -15,31 +15,12 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class SabotageMissionTests
     {
-        private static Mission CreateSabotageMission(
-            string ownerInstanceId,
-            ISceneNode target,
-            List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants,
-            ISceneNode selectedTarget = null
-        )
-        {
-            return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Sabotage,
-                null,
-                ownerInstanceId,
-                target,
-                mainParticipants,
-                decoyParticipants,
-                selectedTarget
-            );
-        }
-
         [Test]
         public void TryCreate_TargetCarriedByMovingFleet_ReturnsNull()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -75,11 +56,35 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_OfficerTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer targetOfficer = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(targetOfficer, enemyPlanet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                targetOfficer
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
         public void Execute_BuildingOnEnemyPlanet_RemovesBuilding()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -118,7 +123,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -158,7 +163,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -202,7 +207,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -242,7 +247,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -286,7 +291,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -341,7 +346,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -386,30 +391,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_OfficerTarget_ReturnsNull()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-            Officer targetOfficer = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(targetOfficer, enemyPlanet);
-
-            Mission mission = CreateSabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                targetOfficer
-            );
-
-            Assert.IsNull(mission);
-        }
-
-        [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
             Mission mission = new SabotageMission
@@ -437,6 +418,25 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(6, deserialized.MaxProgress);
             Assert.AreEqual(4, deserialized.CurrentProgress);
+        }
+
+        private static Mission CreateSabotageMission(
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode selectedTarget = null
+        )
+        {
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Sabotage,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                selectedTarget
+            );
         }
     }
 }

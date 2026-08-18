@@ -13,19 +13,19 @@ public sealed class ContentBindingsTests
     private const string _upAddress = "Application/Test/UI/ui_test_button";
     private const string _downAddress = "Application/Test/UI/ui_test_button_pressed";
 
-    private readonly List<UnityEngine.Object> createdObjects = new List<UnityEngine.Object>();
+    private readonly List<UnityEngine.Object> _createdObjects = new List<UnityEngine.Object>();
 
     [TearDown]
     public void TearDown()
     {
-        for (int index = createdObjects.Count - 1; index >= 0; index--)
+        for (int index = _createdObjects.Count - 1; index >= 0; index--)
         {
-            UnityEngine.Object createdObject = createdObjects[index];
+            UnityEngine.Object createdObject = _createdObjects[index];
             if (createdObject != null)
                 UnityEngine.Object.DestroyImmediate(createdObject);
         }
 
-        createdObjects.Clear();
+        _createdObjects.Clear();
     }
 
     [Test]
@@ -181,7 +181,7 @@ public sealed class ContentBindingsTests
     private GameObject CreateGameObject(string name)
     {
         GameObject created = new GameObject(name);
-        createdObjects.Add(created);
+        _createdObjects.Add(created);
         return created;
     }
 
@@ -194,7 +194,7 @@ public sealed class ContentBindingsTests
     private Texture2D CreateTexture()
     {
         Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-        createdObjects.Add(texture);
+        _createdObjects.Add(texture);
         return texture;
     }
 
@@ -206,16 +206,17 @@ public sealed class ContentBindingsTests
             new Rect(0f, 0f, texture.width, texture.height),
             new Vector2(0.5f, 0.5f)
         );
-        createdObjects.Add(sprite);
+        _createdObjects.Add(sprite);
         return sprite;
     }
 
     private sealed class FakeContentAssetSource : IContentAssetSource
     {
-        private readonly Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>(
-            StringComparer.Ordinal
-        );
-        private readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>(
+        private readonly Dictionary<string, Texture2D> _textures = new Dictionary<
+            string,
+            Texture2D
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, Sprite> _sprites = new Dictionary<string, Sprite>(
             StringComparer.Ordinal
         );
 
@@ -223,17 +224,17 @@ public sealed class ContentBindingsTests
 
         public void AddTexture(string address, Texture2D texture)
         {
-            textures[address] = texture;
+            _textures[address] = texture;
         }
 
         public void AddSprite(string address, Sprite sprite)
         {
-            sprites[address] = sprite;
+            _sprites[address] = sprite;
         }
 
         public Texture2D GetTexture(string address)
         {
-            return textures.TryGetValue(address, out Texture2D texture) ? texture : null;
+            return _textures.TryGetValue(address, out Texture2D texture) ? texture : null;
         }
 
         /// <summary>
@@ -243,7 +244,7 @@ public sealed class ContentBindingsTests
         /// <returns>The configured test sprite, or null when none exists.</returns>
         public Sprite GetSprite(string address)
         {
-            return sprites.TryGetValue(address, out Sprite sprite) ? sprite : null;
+            return _sprites.TryGetValue(address, out Sprite sprite) ? sprite : null;
         }
 
         /// <summary>

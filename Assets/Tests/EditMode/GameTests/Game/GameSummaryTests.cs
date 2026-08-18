@@ -41,12 +41,12 @@ namespace Rebellion.Tests.Game
         [Test]
         public void Constructor_DefaultConstruction_SeedDiffersAcrossInstances()
         {
-            GameSummary a = new GameSummary();
-            GameSummary b = new GameSummary();
+            GameSummary firstSummary = new GameSummary();
+            GameSummary secondSummary = new GameSummary();
 
             Assert.AreNotEqual(
-                a.Seed,
-                b.Seed,
+                firstSummary.Seed,
+                secondSummary.Seed,
                 "Each new GameSummary should roll a fresh default seed."
             );
         }

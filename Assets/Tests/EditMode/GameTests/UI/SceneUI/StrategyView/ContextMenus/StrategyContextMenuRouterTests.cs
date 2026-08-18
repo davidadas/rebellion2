@@ -144,6 +144,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual("Status", FindCommandText(rows[1]).text);
         }
 
+        [Test]
+        public void OpenContextMenu_NullWindow_CancelsRequestAndResetsPresenter()
+        {
+            RecordingReceiver receiver = new RecordingReceiver();
+            ContextMenuRequest request = new ContextMenuRequest(
+                _window,
+                new IContextMenuCommand[] { CreateCommand("Status") },
+                receiver
+            );
+            _router.OpenRuntimeContextMenu(request, 10, 20, 100);
+
+            _router.OpenContextMenu(null, null, 0, 0);
+
+            Assert.AreEqual(1, receiver.CancelledCount);
+            Assert.IsFalse(_menuController.IsOpen);
+            Assert.IsFalse(_presenter.Open);
+            Assert.IsFalse(_router.IsOpen);
+        }
+
         /// <summary>
         /// Verifies an enabled shortcut executes its matching command without opening a menu.
         /// </summary>
@@ -179,25 +198,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreSame(command, receiver.LastCommand);
             Assert.IsFalse(_menuController.IsOpen);
             Assert.IsFalse(_presenter.Open);
-        }
-
-        [Test]
-        public void OpenContextMenu_NullWindow_CancelsRequestAndResetsPresenter()
-        {
-            RecordingReceiver receiver = new RecordingReceiver();
-            ContextMenuRequest request = new ContextMenuRequest(
-                _window,
-                new IContextMenuCommand[] { CreateCommand("Status") },
-                receiver
-            );
-            _router.OpenRuntimeContextMenu(request, 10, 20, 100);
-
-            _router.OpenContextMenu(null, null, 0, 0);
-
-            Assert.AreEqual(1, receiver.CancelledCount);
-            Assert.IsFalse(_menuController.IsOpen);
-            Assert.IsFalse(_presenter.Open);
-            Assert.IsFalse(_router.IsOpen);
         }
 
         [Test]

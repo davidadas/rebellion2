@@ -48,7 +48,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_PendingSummary_ReturnsBattleSummaryAndAvailablePlayerCommands()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             PendingCombatResult pending = new PendingCombatResult
             {
                 Planet = scene.Planet,
@@ -90,7 +96,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_PendingSecondForces_ReturnsFleetHierarchyWithoutPlanetDuplicates()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             PendingCombatResult pending = new PendingCombatResult
             {
                 Planet = scene.Planet,
@@ -124,7 +136,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_PendingSecondForces_IncludesActivePlanetStarfighters()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             scene.Planet.OwnerInstanceID = _opponentFactionId;
             Starfighter fighter = CreateStarfighter(
                 "planet-fighter",
@@ -175,7 +193,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_PendingSystemAssets_ExcludesFleetsAndIncludesPlanetUnits()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             Building building = CreateBuilding("building", _playerFactionId, "Shipyard");
             scene.Game.AttachNode(building, scene.Planet);
             PendingCombatResult pending = new PendingCombatResult
@@ -210,7 +234,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_PendingEmptyPanel_ReturnsContextualEmptyState()
         {
-            var scene = CreateScene(includeFleets: false);
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene(includeFleets: false);
             PendingCombatResult pending = new PendingCombatResult { Planet = scene.Planet };
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -246,7 +276,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_ResultSummary_PlayerFleetDestroyed_ReportsDestruction()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             SpaceCombatResult result = CreateResult(
                 scene.Planet,
                 scene.PlayerFleet,
@@ -291,7 +327,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_ResultSummary_PlayerFleetWithdrawn_ReportsWithdrawal()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             SpaceCombatResult result = CreateResult(
                 scene.Planet,
                 scene.PlayerFleet,
@@ -322,7 +364,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_ResultSummary_DrawReportsNoVictor()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             SpaceCombatResult result = CreateResult(
                 scene.Planet,
                 scene.PlayerFleet,
@@ -353,7 +401,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_BombardmentResult_ReturnsSourceSummaryAndSixCategoryLayouts()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             scene.Planet.OwnerInstanceID = _opponentFactionId;
             BombardmentResult result = new BombardmentResult
             {
@@ -417,7 +471,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_FailedPlanetaryAssault_ReturnsSourceSummaryAndAssaultArtwork()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             scene.Planet.OwnerInstanceID = _opponentFactionId;
             PlanetaryAssaultResult result = new PlanetaryAssaultResult
             {
@@ -453,7 +513,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_ResultPersonnel_ReturnsPersonnelColumnsCategoriesAndTable()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             Officer officer = CreateOfficer("officer", _playerFactionId, "Field Officer");
             scene.PlayerFleet.CapitalShips[0].Officers.Add(officer);
             SpaceCombatResult result = CreateResult(
@@ -495,7 +561,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Project_ResultDirect_ReturnsNavigationPromptAndButtonsWithoutTable()
         {
-            var scene = CreateScene();
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
             SpaceCombatResult result = CreateResult(
                 scene.Planet,
                 scene.PlayerFleet,

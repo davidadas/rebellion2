@@ -39,6 +39,33 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void AddChild_MultiplePlanets_AddsAllPlanets()
+        {
+            Planet planet3 = new Planet { InstanceID = "PLANET3", OwnerInstanceID = "FACTION2" };
+            Planet planet4 = new Planet { InstanceID = "PLANET4", OwnerInstanceID = "FACTION2" };
+
+            _planetSystem.AddChild(_planet1);
+            _planetSystem.AddChild(_planet2);
+            _planetSystem.AddChild(planet3);
+            _planetSystem.AddChild(planet4);
+
+            Assert.AreEqual(4, _planetSystem.Planets.Count);
+            Assert.Contains(_planet1, _planetSystem.Planets);
+            Assert.Contains(_planet2, _planetSystem.Planets);
+            Assert.Contains(planet3, _planetSystem.Planets);
+            Assert.Contains(planet4, _planetSystem.Planets);
+        }
+
+        [Test]
+        public void AddChild_SamePlanetTwice_AddsPlanetTwice()
+        {
+            _planetSystem.AddChild(_planet1);
+            _planetSystem.AddChild(_planet1);
+
+            Assert.AreEqual(2, _planetSystem.Planets.Count);
+        }
+
+        [Test]
         public void RemoveChild_WithAddedPlanet_RemovesPlanet()
         {
             _planetSystem.AddChild(_planet1);
@@ -46,6 +73,19 @@ namespace Rebellion.Tests.Game.Galaxy
             _planetSystem.RemoveChild(_planet1);
 
             Assert.IsFalse(_planetSystem.Planets.Contains(_planet1));
+        }
+
+        [Test]
+        public void RemoveChild_FromMultiplePlanets_RemovesOnlySpecifiedPlanet()
+        {
+            _planetSystem.AddChild(_planet1);
+            _planetSystem.AddChild(_planet2);
+
+            _planetSystem.RemoveChild(_planet1);
+
+            Assert.AreEqual(1, _planetSystem.Planets.Count);
+            Assert.IsFalse(_planetSystem.Planets.Contains(_planet1));
+            Assert.IsTrue(_planetSystem.Planets.Contains(_planet2));
         }
 
         [Test]
@@ -171,46 +211,6 @@ namespace Rebellion.Tests.Game.Galaxy
             _planetSystem.Importance = PlanetSystemImportance.High;
 
             Assert.AreEqual(PlanetSystemImportance.High, _planetSystem.Importance);
-        }
-
-        [Test]
-        public void AddChild_MultiplePlanets_AddsAllPlanets()
-        {
-            Planet planet3 = new Planet { InstanceID = "PLANET3", OwnerInstanceID = "FACTION2" };
-            Planet planet4 = new Planet { InstanceID = "PLANET4", OwnerInstanceID = "FACTION2" };
-
-            _planetSystem.AddChild(_planet1);
-            _planetSystem.AddChild(_planet2);
-            _planetSystem.AddChild(planet3);
-            _planetSystem.AddChild(planet4);
-
-            Assert.AreEqual(4, _planetSystem.Planets.Count);
-            Assert.Contains(_planet1, _planetSystem.Planets);
-            Assert.Contains(_planet2, _planetSystem.Planets);
-            Assert.Contains(planet3, _planetSystem.Planets);
-            Assert.Contains(planet4, _planetSystem.Planets);
-        }
-
-        [Test]
-        public void AddChild_SamePlanetTwice_AddsPlanetTwice()
-        {
-            _planetSystem.AddChild(_planet1);
-            _planetSystem.AddChild(_planet1);
-
-            Assert.AreEqual(2, _planetSystem.Planets.Count);
-        }
-
-        [Test]
-        public void RemoveChild_FromMultiplePlanets_RemovesOnlySpecifiedPlanet()
-        {
-            _planetSystem.AddChild(_planet1);
-            _planetSystem.AddChild(_planet2);
-
-            _planetSystem.RemoveChild(_planet1);
-
-            Assert.AreEqual(1, _planetSystem.Planets.Count);
-            Assert.IsFalse(_planetSystem.Planets.Contains(_planet1));
-            Assert.IsTrue(_planetSystem.Planets.Contains(_planet2));
         }
 
         [Test]

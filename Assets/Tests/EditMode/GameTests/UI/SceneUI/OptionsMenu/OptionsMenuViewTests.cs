@@ -130,6 +130,40 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies entering Save/Load starts at the top without pinning later renders there.
+        /// </summary>
+        [Test]
+        public void SaveLoadPage_Entered_ScrollsToTopOnce()
+        {
+            OptionsSaveSlot[] slots = Enumerable
+                .Range(0, 12)
+                .Select(index => new OptionsSaveSlot(
+                    $"Save {index}",
+                    "Today",
+                    null,
+                    false,
+                    $"save_{index}"
+                ))
+                .ToArray();
+            ScrollRect scrollRect = _saveListView.GetComponentInChildren<ScrollRect>(true);
+
+            _view.Render(CreateRenderData(slots));
+
+            Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
+
+            scrollRect.verticalNormalizedPosition = 0.5f;
+            _view.Render(CreateRenderData(slots));
+
+            Assert.AreEqual(0.5f, scrollRect.verticalNormalizedPosition, 0.01f);
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Graphics, slots));
+            scrollRect.verticalNormalizedPosition = 0.5f;
+            _view.Render(CreateRenderData(slots));
+
+            Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
+        }
+
+        /// <summary>
         /// Verifies autosave numbers render in directly editable integer fields.
         /// </summary>
         [Test]
@@ -241,40 +275,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies entering Save/Load starts at the top without pinning later renders there.
-        /// </summary>
-        [Test]
-        public void SaveLoadPage_Entered_ScrollsToTopOnce()
-        {
-            OptionsSaveSlot[] slots = Enumerable
-                .Range(0, 12)
-                .Select(index => new OptionsSaveSlot(
-                    $"Save {index}",
-                    "Today",
-                    null,
-                    false,
-                    $"save_{index}"
-                ))
-                .ToArray();
-            ScrollRect scrollRect = _saveListView.GetComponentInChildren<ScrollRect>(true);
-
-            _view.Render(CreateRenderData(slots));
-
-            Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
-
-            scrollRect.verticalNormalizedPosition = 0.5f;
-            _view.Render(CreateRenderData(slots));
-
-            Assert.AreEqual(0.5f, scrollRect.verticalNormalizedPosition, 0.01f);
-
-            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Graphics, slots));
-            scrollRect.verticalNormalizedPosition = 0.5f;
-            _view.Render(CreateRenderData(slots));
-
-            Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
-        }
-
-        /// <summary>
         /// Verifies entering Controls starts at the top without pinning later renders there.
         /// </summary>
         [Test]
@@ -366,27 +366,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies Gameplay is first and Controls precedes Save / Load in selection routing.
-        /// </summary>
-        [Test]
-        public void Tabs_PresentControlsBeforeSaveLoad_AndRouteSelections()
-        {
-            CollectionAssert.AreEqual(
-                new[] { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" },
-                GetField<TextMeshProUGUI[]>("_tabLabelFields").Select(label => label.text).ToArray()
-            );
-
-            OptionsMenuTab selectedTab = OptionsMenuTab.Gameplay;
-            _view.TabSelected += tab => selectedTab = tab;
-            Button[] tabButtons = GetField<Button[]>("_tabButtons");
-
-            tabButtons[3].onClick.Invoke();
-            Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
-            tabButtons[4].onClick.Invoke();
-            Assert.AreEqual(OptionsMenuTab.SaveLoad, selectedTab);
-        }
-
-        /// <summary>
         /// Verifies each controls row exposes its own restore-default request.
         /// </summary>
         [Test]
@@ -421,6 +400,27 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             Assert.AreEqual(new RectInt(9, 2, 12, 12), UILayout.GetSourceRect(icon.rectTransform));
             Assert.IsEmpty(template.GetComponentsInChildren<TextMeshProUGUI>(true));
+        }
+
+        /// <summary>
+        /// Verifies Gameplay is first and Controls precedes Save / Load in selection routing.
+        /// </summary>
+        [Test]
+        public void Tabs_PresentControlsBeforeSaveLoad_AndRouteSelections()
+        {
+            CollectionAssert.AreEqual(
+                new[] { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" },
+                GetField<TextMeshProUGUI[]>("_tabLabelFields").Select(label => label.text).ToArray()
+            );
+
+            OptionsMenuTab selectedTab = OptionsMenuTab.Gameplay;
+            _view.TabSelected += tab => selectedTab = tab;
+            Button[] tabButtons = GetField<Button[]>("_tabButtons");
+
+            tabButtons[3].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
+            tabButtons[4].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.SaveLoad, selectedTab);
         }
 
         /// <summary>

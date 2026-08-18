@@ -9,32 +9,6 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class BalanceSeederTests
     {
-        private static GenerationContext BuildContext(PlanetSystem system, Faction[] factions)
-        {
-            GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Systems = new[] { system };
-            ctx.Factions = factions;
-            return ctx;
-        }
-
-        private static Planet MakePlanet(string id, string owner, bool isHq = false)
-        {
-            return new Planet
-            {
-                InstanceID = id,
-                OwnerInstanceID = owner,
-                IsColonized = true,
-                IsHeadquarters = isHq,
-            };
-        }
-
-        private static PlanetSystem MakeSystem(Planet planet)
-        {
-            PlanetSystem system = new PlanetSystem { InstanceID = $"sys_{planet.InstanceID}" };
-            system.Planets.Add(planet);
-            return system;
-        }
-
         [Test]
         public void Seed_HeadquartersPlanet_OwnerSupportPinnedToMax()
         {
@@ -95,6 +69,32 @@ namespace Rebellion.Tests.Generation
             new BalanceSeeder().Seed(BuildContext(system, factions));
 
             Assert.AreEqual(25, planet.GetPopularSupport("FNALL1"));
+        }
+
+        private static GenerationContext BuildContext(PlanetSystem system, Faction[] factions)
+        {
+            GenerationContext ctx = GenerationContextFactory.CreateDefault();
+            ctx.Systems = new[] { system };
+            ctx.Factions = factions;
+            return ctx;
+        }
+
+        private static Planet MakePlanet(string id, string owner, bool isHq = false)
+        {
+            return new Planet
+            {
+                InstanceID = id,
+                OwnerInstanceID = owner,
+                IsColonized = true,
+                IsHeadquarters = isHq,
+            };
+        }
+
+        private static PlanetSystem MakeSystem(Planet planet)
+        {
+            PlanetSystem system = new PlanetSystem { InstanceID = $"sys_{planet.InstanceID}" };
+            system.Planets.Add(planet);
+            return system;
         }
     }
 }

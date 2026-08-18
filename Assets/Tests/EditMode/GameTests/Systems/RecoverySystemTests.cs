@@ -13,42 +13,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class RecoverySystemTests
     {
-        private (GameRoot game, Planet planet) BuildScene()
-        {
-            GameConfig config = TestConfig.Create();
-            config.Recovery = new GameConfig.RecoveryConfig
-            {
-                NormalHealAmount = 1,
-                FastHealAmount = 3,
-                NormalRepairAmount = 1,
-                FastRepairAmount = 5,
-                NormalReplacementAmount = 1,
-                FastReplacementAmount = 2,
-            };
-            GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "sys1",
-                PositionX = 0,
-                PositionY = 0,
-            };
-            game.AttachNode(system, game.Galaxy);
-
-            Planet planet = new Planet
-            {
-                InstanceID = "p1",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-                PositionX = 0,
-                PositionY = 0,
-            };
-            game.AttachNode(planet, system);
-
-            return (game, planet);
-        }
-
         [Test]
         public void ProcessTick_InjuredOfficerCanHeal_ReducesInjury()
         {
@@ -557,6 +521,42 @@ namespace Rebellion.Tests.Systems
                 squadron.CurrentSquadronSize,
                 "Squadron still under construction should not have fighters replaced"
             );
+        }
+
+        private (GameRoot game, Planet planet) BuildScene()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Recovery = new GameConfig.RecoveryConfig
+            {
+                NormalHealAmount = 1,
+                FastHealAmount = 3,
+                NormalRepairAmount = 1,
+                FastRepairAmount = 5,
+                NormalReplacementAmount = 1,
+                FastReplacementAmount = 2,
+            };
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planet, system);
+
+            return (game, planet);
         }
     }
 }

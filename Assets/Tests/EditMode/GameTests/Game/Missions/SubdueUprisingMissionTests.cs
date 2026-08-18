@@ -13,54 +13,18 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class SubdueUprisingMissionTests
     {
-        private Mission CreateSubdueUprisingMission(
-            string ownerInstanceId,
-            Planet target,
-            List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants
-        )
-        {
-            return MissionTestFactory.TryCreate(
-                MissionTypeIDs.SubdueUprising,
-                null,
-                ownerInstanceId,
-                target,
-                mainParticipants,
-                decoyParticipants
-            );
-        }
-
-        private static MissionSystem CreateMissionSystem(
-            GameRoot game,
-            FogOfWarSystem fog,
-            FixedRNG rng
-        )
-        {
-            FleetSystem fleet = new FleetSystem(game);
-            MovementSystem movement = new MovementSystem(game, fog, fleet);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleet, movement);
-            PlanetaryControlSystem control = new PlanetaryControlSystem(
-                game,
-                movement,
-                manufacturing,
-                fog
-            );
-            UprisingSystem uprising = new UprisingSystem(game, rng, control);
-            return new MissionSystem(game, rng, movement, uprising);
-        }
-
         [Test]
         public void RollParticipantSuccess_ResistanceRegimentRaisesScoreByOne()
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            empPlanet.BeginUprising();
+            empirePlanet.BeginUprising();
             game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
             {
                 { 30, 0 },
@@ -69,11 +33,11 @@ namespace Rebellion.Tests.Game.Missions
 
             Mission mission = CreateSubdueUprisingMission(
                 "empire",
-                empPlanet,
+                empirePlanet,
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(mission, empPlanet);
+            game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
 
             Assert.IsFalse(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
@@ -81,7 +45,7 @@ namespace Rebellion.Tests.Game.Missions
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             regiment.TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
-            game.AttachNode(regiment, empPlanet);
+            game.AttachNode(regiment, empirePlanet);
 
             Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
         }
@@ -91,13 +55,13 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            empPlanet.BeginUprising();
+            empirePlanet.BeginUprising();
             game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
             {
                 { 30, 0 },
@@ -106,19 +70,54 @@ namespace Rebellion.Tests.Game.Missions
 
             Mission mission = CreateSubdueUprisingMission(
                 "empire",
-                empPlanet,
+                empirePlanet,
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(mission, empPlanet);
+            game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Building;
             regiment.TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
-            game.AttachNode(regiment, empPlanet);
+            game.AttachNode(regiment, empirePlanet);
 
             Assert.IsFalse(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
+        }
+
+        [Test]
+        public void RollParticipantSuccess_NonResistanceDefenseRatingDoesNotAffectScore()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            empirePlanet.BeginUprising();
+            game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
+            {
+                { 30, 100 },
+            };
+
+            Mission mission = CreateSubdueUprisingMission(
+                "empire",
+                empirePlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empirePlanet);
+            mission.Initiate(0);
+
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.TypeID = "non-resistance";
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            regiment.DefenseRating = 500;
+            game.AttachNode(regiment, empirePlanet);
+
+            Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
         }
 
         [Test]
@@ -126,21 +125,21 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            empPlanet.BeginUprising();
+            empirePlanet.BeginUprising();
 
             Mission mission = CreateSubdueUprisingMission(
                 "empire",
-                empPlanet,
+                empirePlanet,
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(mission, empPlanet);
+            game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
 
             Assert.AreEqual("Subdue Uprising", mission.DisplayName);
@@ -151,24 +150,24 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            empPlanet.BeginUprising();
+            empirePlanet.BeginUprising();
 
             Mission mission = CreateSubdueUprisingMission(
                 "empire",
-                empPlanet,
+                empirePlanet,
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(mission, empPlanet);
+            game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
 
-            empPlanet.EndUprising();
+            empirePlanet.EndUprising();
 
             Assert.AreEqual(
                 MissionCompletionReason.Failure,
@@ -182,15 +181,15 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            empPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
-            empPlanet.SetPopularSupport("empire", 10);
-            empPlanet.SetPopularSupport("rebels", 90);
-            empPlanet.BeginUprising();
+            empirePlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            empirePlanet.SetPopularSupport("empire", 10);
+            empirePlanet.SetPopularSupport("rebels", 90);
+            empirePlanet.BeginUprising();
             game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
             {
                 { -200, 100 },
@@ -200,15 +199,15 @@ namespace Rebellion.Tests.Game.Missions
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
-            game.AttachNode(regiment, empPlanet);
+            game.AttachNode(regiment, empirePlanet);
 
             Mission mission = CreateSubdueUprisingMission(
                 "empire",
-                empPlanet,
+                empirePlanet,
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(mission, empPlanet);
+            game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
             int leadershipBefore = officer.GetBaseRating(OfficerRating.Leadership);
 
@@ -217,8 +216,8 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
-            Assert.IsTrue(empPlanet.IsInUprising);
-            Assert.AreEqual(11, empPlanet.GetPopularSupport("empire"));
+            Assert.IsTrue(empirePlanet.IsInUprising);
+            Assert.AreEqual(11, empirePlanet.GetPopularSupport("empire"));
             Assert.IsEmpty(results.OfType<PlanetUprisingEndedResult>());
             Assert.AreEqual(leadershipBefore, officer.GetBaseRating(OfficerRating.Leadership));
         }
@@ -228,15 +227,15 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            empPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
-            empPlanet.SetPopularSupport("empire", 10);
-            empPlanet.SetPopularSupport("rebels", 90);
-            empPlanet.BeginUprising();
+            empirePlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            empirePlanet.SetPopularSupport("empire", 10);
+            empirePlanet.SetPopularSupport("rebels", 90);
+            empirePlanet.BeginUprising();
             game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
             {
                 { -200, 100 },
@@ -246,17 +245,17 @@ namespace Rebellion.Tests.Game.Missions
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
-            game.AttachNode(regiment, empPlanet);
+            game.AttachNode(regiment, empirePlanet);
 
             Officer secondOfficer = EntityFactory.CreateOfficer("o2", "empire");
-            game.AttachNode(secondOfficer, empPlanet);
+            game.AttachNode(secondOfficer, empirePlanet);
             Mission mission = CreateSubdueUprisingMission(
                 "empire",
-                empPlanet,
+                empirePlanet,
                 new List<IMissionParticipant> { officer, secondOfficer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(mission, empPlanet);
+            game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
 
             List<GameResult> results = CreateMissionSystem(game, fog, new FixedRNG(0))
@@ -266,7 +265,7 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Failed,
                 results.OfType<MissionCompletedResult>().Single().Outcome
             );
-            Assert.AreEqual(11, empPlanet.GetPopularSupport("empire"));
+            Assert.AreEqual(11, empirePlanet.GetPopularSupport("empire"));
         }
 
         [Test]
@@ -274,15 +273,15 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            empPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
-            empPlanet.SetPopularSupport("empire", 10);
-            empPlanet.SetPopularSupport("rebels", 90);
-            empPlanet.BeginUprising();
+            empirePlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            empirePlanet.SetPopularSupport("empire", 10);
+            empirePlanet.SetPopularSupport("rebels", 90);
+            empirePlanet.BeginUprising();
             game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
             {
                 { -200, 100 },
@@ -294,16 +293,16 @@ namespace Rebellion.Tests.Game.Missions
             {
                 Regiment regiment = EntityFactory.CreateRegiment($"r{i}", "empire");
                 regiment.ManufacturingStatus = ManufacturingStatus.Complete;
-                game.AttachNode(regiment, empPlanet);
+                game.AttachNode(regiment, empirePlanet);
             }
 
             Mission mission = CreateSubdueUprisingMission(
                 "empire",
-                empPlanet,
+                empirePlanet,
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(mission, empPlanet);
+            game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
             int leadershipBefore = officer.GetBaseRating(OfficerRating.Leadership);
 
@@ -312,44 +311,9 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
-            Assert.IsFalse(empPlanet.IsInUprising);
+            Assert.IsFalse(empirePlanet.IsInUprising);
             Assert.AreEqual(1, results.OfType<PlanetUprisingEndedResult>().Count());
             Assert.AreEqual(leadershipBefore + 1, officer.GetBaseRating(OfficerRating.Leadership));
-        }
-
-        [Test]
-        public void RollParticipantSuccess_NonResistanceDefenseRatingDoesNotAffectScore()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            empPlanet.BeginUprising();
-            game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
-            {
-                { 30, 100 },
-            };
-
-            Mission mission = CreateSubdueUprisingMission(
-                "empire",
-                empPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, empPlanet);
-            mission.Initiate(0);
-
-            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
-            regiment.TypeID = "non-resistance";
-            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
-            regiment.DefenseRating = 500;
-            game.AttachNode(regiment, empPlanet);
-
-            Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
         }
 
         [Test]
@@ -357,7 +321,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -366,7 +330,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(
                 CreateSubdueUprisingMission(
                     "empire",
-                    empPlanet,
+                    empirePlanet,
                     new List<IMissionParticipant> { officer },
                     new List<IMissionParticipant>()
                 ),
@@ -379,7 +343,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (
                 GameRoot game,
-                Planet empPlanet,
+                Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
@@ -424,6 +388,42 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(3, deserialized.MaxProgress);
             Assert.AreEqual(2, deserialized.CurrentProgress);
+        }
+
+        private Mission CreateSubdueUprisingMission(
+            string ownerInstanceId,
+            Planet target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
+        {
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.SubdueUprising,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants
+            );
+        }
+
+        private static MissionSystem CreateMissionSystem(
+            GameRoot game,
+            FogOfWarSystem fog,
+            FixedRNG rng
+        )
+        {
+            FleetSystem fleet = new FleetSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog, fleet);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleet, movement);
+            PlanetaryControlSystem control = new PlanetaryControlSystem(
+                game,
+                movement,
+                manufacturing,
+                fog
+            );
+            UprisingSystem uprising = new UprisingSystem(game, rng, control);
+            return new MissionSystem(game, rng, movement, uprising);
         }
     }
 }

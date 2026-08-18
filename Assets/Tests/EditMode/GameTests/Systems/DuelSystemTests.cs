@@ -121,14 +121,14 @@ namespace Rebellion.Tests.Systems
         private static DuelRequest Request(
             Officer encountered,
             Officer opposing,
-            string sourceEventInstanceID = null
+            string sourceEventInstanceId = null
         )
         {
             return new DuelRequest
             {
                 EncounteredOfficer = encountered,
                 OpposingOfficer = opposing,
-                SourceEventInstanceID = sourceEventInstanceID,
+                SourceEventInstanceID = sourceEventInstanceId,
             };
         }
     }

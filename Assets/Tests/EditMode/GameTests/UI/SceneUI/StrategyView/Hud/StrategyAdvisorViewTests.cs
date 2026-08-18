@@ -212,64 +212,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void PausePlayback_ActiveAnimation_FreezesAndResumesAtCurrentFrame()
-        {
-            _view.Render(CreatePresentation(true));
-            _view.EnqueuePlaybacks(
-                new[]
-                {
-                    new StrategyAdvisorAnimationViewData(
-                        new[] { _protocolFirstTexture, _protocolSecondTexture },
-                        false,
-                        "briefing"
-                    ),
-                }
-            );
-
-            _view.PausePlayback();
-            _view.AdvanceAnimation(1f);
-
-            Assert.AreSame(_protocolFirstTexture, GetField<RawImage>("protocolImage").texture);
-
-            _view.ResumePlayback();
-            _view.AdvanceAnimation(0.5f);
-
-            Assert.AreSame(_protocolSecondTexture, GetField<RawImage>("protocolImage").texture);
-        }
-
-        [Test]
-        public void CancelPlayback_PausedAnimation_AllowsSubsequentPlaybackToComplete()
-        {
-            _view.Render(CreatePresentation(true));
-            _view.EnqueuePlaybacks(
-                new[]
-                {
-                    new StrategyAdvisorAnimationViewData(
-                        new[] { _protocolFirstTexture, _protocolSecondTexture },
-                        false,
-                        "briefing"
-                    ),
-                }
-            );
-            _view.PausePlayback();
-
-            _view.CancelPlayback();
-            _view.EnqueuePlaybacks(
-                new[]
-                {
-                    new StrategyAdvisorAnimationViewData(
-                        new[] { _droidPlaybackTexture },
-                        true,
-                        "notification"
-                    ),
-                }
-            );
-            _view.AdvanceAnimation(0.5f);
-
-            Assert.AreSame(_droidIdleTexture, GetField<RawImage>("droidImage").texture);
-        }
-
-        [Test]
         public void EnqueuePlaybacks_DelayedAnimation_WaitsBeforeStarting()
         {
             _view.Render(CreatePresentation(true));
@@ -343,6 +285,64 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
 
             Assert.AreEqual(0, startedCount);
             Assert.AreSame(_protocolIdleTexture, GetField<RawImage>("protocolImage").texture);
+            Assert.AreSame(_droidIdleTexture, GetField<RawImage>("droidImage").texture);
+        }
+
+        [Test]
+        public void PausePlayback_ActiveAnimation_FreezesAndResumesAtCurrentFrame()
+        {
+            _view.Render(CreatePresentation(true));
+            _view.EnqueuePlaybacks(
+                new[]
+                {
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { _protocolFirstTexture, _protocolSecondTexture },
+                        false,
+                        "briefing"
+                    ),
+                }
+            );
+
+            _view.PausePlayback();
+            _view.AdvanceAnimation(1f);
+
+            Assert.AreSame(_protocolFirstTexture, GetField<RawImage>("protocolImage").texture);
+
+            _view.ResumePlayback();
+            _view.AdvanceAnimation(0.5f);
+
+            Assert.AreSame(_protocolSecondTexture, GetField<RawImage>("protocolImage").texture);
+        }
+
+        [Test]
+        public void CancelPlayback_PausedAnimation_AllowsSubsequentPlaybackToComplete()
+        {
+            _view.Render(CreatePresentation(true));
+            _view.EnqueuePlaybacks(
+                new[]
+                {
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { _protocolFirstTexture, _protocolSecondTexture },
+                        false,
+                        "briefing"
+                    ),
+                }
+            );
+            _view.PausePlayback();
+
+            _view.CancelPlayback();
+            _view.EnqueuePlaybacks(
+                new[]
+                {
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { _droidPlaybackTexture },
+                        true,
+                        "notification"
+                    ),
+                }
+            );
+            _view.AdvanceAnimation(0.5f);
+
             Assert.AreSame(_droidIdleTexture, GetField<RawImage>("droidImage").texture);
         }
 

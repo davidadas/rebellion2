@@ -3,13 +3,13 @@ using Rebellion.Game.Encyclopedia;
 
 internal static class TestContent
 {
-    private static ContentAssets assets;
-    private static ContentPack pack;
+    private static ContentAssets _assets;
+    private static ContentPack _pack;
 
-    internal static ContentPack Pack => pack ??= ContentPackLoader.OpenActive();
+    internal static ContentPack Pack => _pack ??= ContentPackLoader.OpenActive();
 
     internal static ContentAssets Assets =>
-        assets ??= new ContentAssets(Pack.ContentRootPath, Pack.PackRootPath);
+        _assets ??= new ContentAssets(Pack.ContentRootPath, Pack.PackRootPath);
 
     internal static GameDataCatalog Data => Pack.GameData;
 

@@ -31,91 +31,6 @@ namespace Rebellion.Tests.Generation
             };
         }
 
-        private GameGenerationConfig CreateRules(
-            int allianceStrongPct,
-            int allianceWeakPct,
-            int empireStrongPct,
-            int empireWeakPct
-        )
-        {
-            return new GameGenerationConfig
-            {
-                GalaxyClassification = new GalaxyClassificationSection
-                {
-                    FactionSetups = new List<FactionSetup>
-                    {
-                        new FactionSetup
-                        {
-                            FactionID = "FNALL1",
-                            StartingPlanets = new List<StartingPlanet>(),
-                        },
-                        new FactionSetup
-                        {
-                            FactionID = "FNEMP1",
-                            StartingPlanets = new List<StartingPlanet>(),
-                        },
-                    },
-                    Profiles = new List<DifficultyProfile>
-                    {
-                        new DifficultyProfile
-                        {
-                            Name = "Default",
-                            Difficulty = -1,
-                            FactionBuckets = new List<FactionBucketConfig>
-                            {
-                                new FactionBucketConfig
-                                {
-                                    FactionID = "FNALL1",
-                                    StrongPct = allianceStrongPct,
-                                    WeakPct = allianceWeakPct,
-                                },
-                                new FactionBucketConfig
-                                {
-                                    FactionID = "FNEMP1",
-                                    StrongPct = empireStrongPct,
-                                    WeakPct = empireWeakPct,
-                                },
-                            },
-                        },
-                    },
-                },
-            };
-        }
-
-        private static GalaxyClassificationResult Classify(
-            PlanetSystem[] systems,
-            Faction[] factions,
-            GameSummary summary,
-            GameGenerationConfig config,
-            IRandomNumberProvider rng
-        )
-        {
-            GenerationContext ctx = new GenerationContext
-            {
-                Systems = systems,
-                Factions = factions,
-                Summary = summary,
-                Config = config,
-                Rng = rng,
-            };
-            new GalaxySeeder().Seed(ctx);
-            return ctx.Classification;
-        }
-
-        private PlanetSystem[] CreateCoreGalaxy(int planetCount)
-        {
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
-            };
-            for (int i = 0; i < planetCount; i++)
-            {
-                system.Planets.Add(new Planet { InstanceID = $"p{i}", TypeID = $"p{i}" });
-            }
-            return new[] { system };
-        }
-
         [Test]
         public void Seed_StrongBucketPlanet_IsAssignedOwnership()
         {
@@ -302,6 +217,91 @@ namespace Rebellion.Tests.Generation
                 startingPlanet.OwnerInstanceID,
                 "Starting planet ownership should be preserved even if a bucket would overwrite it."
             );
+        }
+
+        private GameGenerationConfig CreateRules(
+            int allianceStrongPct,
+            int allianceWeakPct,
+            int empireStrongPct,
+            int empireWeakPct
+        )
+        {
+            return new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>
+                    {
+                        new FactionSetup
+                        {
+                            FactionID = "FNALL1",
+                            StartingPlanets = new List<StartingPlanet>(),
+                        },
+                        new FactionSetup
+                        {
+                            FactionID = "FNEMP1",
+                            StartingPlanets = new List<StartingPlanet>(),
+                        },
+                    },
+                    Profiles = new List<DifficultyProfile>
+                    {
+                        new DifficultyProfile
+                        {
+                            Name = "Default",
+                            Difficulty = -1,
+                            FactionBuckets = new List<FactionBucketConfig>
+                            {
+                                new FactionBucketConfig
+                                {
+                                    FactionID = "FNALL1",
+                                    StrongPct = allianceStrongPct,
+                                    WeakPct = allianceWeakPct,
+                                },
+                                new FactionBucketConfig
+                                {
+                                    FactionID = "FNEMP1",
+                                    StrongPct = empireStrongPct,
+                                    WeakPct = empireWeakPct,
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+        }
+
+        private static GalaxyClassificationResult Classify(
+            PlanetSystem[] systems,
+            Faction[] factions,
+            GameSummary summary,
+            GameGenerationConfig config,
+            IRandomNumberProvider rng
+        )
+        {
+            GenerationContext ctx = new GenerationContext
+            {
+                Systems = systems,
+                Factions = factions,
+                Summary = summary,
+                Config = config,
+                Rng = rng,
+            };
+            new GalaxySeeder().Seed(ctx);
+            return ctx.Classification;
+        }
+
+        private PlanetSystem[] CreateCoreGalaxy(int planetCount)
+        {
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                SystemType = PlanetSystemType.CoreSystem,
+            };
+            for (int i = 0; i < planetCount; i++)
+            {
+                system.Planets.Add(new Planet { InstanceID = $"p{i}", TypeID = $"p{i}" });
+            }
+            return new[] { system };
         }
     }
 }

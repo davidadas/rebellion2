@@ -19,52 +19,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class BlockadeSystemTests
     {
-        private (GameRoot game, Planet planet, Fleet hostileFleet) BuildScene()
-        {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "s1",
-                DisplayName = "Tatooine System",
-            };
-            Planet planet = new Planet
-            {
-                InstanceID = "p1",
-                DisplayName = "Tatooine",
-                OwnerInstanceID = "empire",
-            };
-            Fleet hostileFleet = new Fleet
-            {
-                InstanceID = "f1",
-                DisplayName = "Rebel Fleet",
-                OwnerInstanceID = "alliance",
-            };
-
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
-            game.AttachNode(system, game.GetGalaxyMap());
-            game.AttachNode(planet, system);
-            game.AttachNode(hostileFleet, planet);
-            AttachOperationalCapitalShip(game, hostileFleet, "hostile-ship");
-
-            return (game, planet, hostileFleet);
-        }
-
-        private static void AttachOperationalCapitalShip(GameRoot game, Fleet fleet, string id)
-        {
-            game.AttachNode(
-                new CapitalShip
-                {
-                    InstanceID = id,
-                    OwnerInstanceID = fleet.OwnerInstanceID,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                },
-                fleet
-            );
-        }
-
         [Test]
         public void ProcessTick_NewBlockade_EmitsBlockadeStarted()
         {
@@ -254,6 +208,52 @@ namespace Rebellion.Tests.Systems
             BlockadeSystem system = new BlockadeSystem(game, new MaxRNG());
 
             Assert.IsTrue(system.RollEvacuationLoss());
+        }
+
+        private (GameRoot game, Planet planet, Fleet hostileFleet) BuildScene()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            Fleet hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(hostileFleet, planet);
+            AttachOperationalCapitalShip(game, hostileFleet, "hostile-ship");
+
+            return (game, planet, hostileFleet);
+        }
+
+        private static void AttachOperationalCapitalShip(GameRoot game, Fleet fleet, string id)
+        {
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = id,
+                    OwnerInstanceID = fleet.OwnerInstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet
+            );
         }
     }
 }
