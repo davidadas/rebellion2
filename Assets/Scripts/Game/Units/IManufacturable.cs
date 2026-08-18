@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Rebellion.Game.Units
 {
@@ -29,6 +30,7 @@ namespace Rebellion.Game.Units
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
         public int BaseBuildSpeed { get; set; }
+        public List<string> ManufacturingFactionInstanceIDs { get; set; }
 
         // Research Info.
         public int ResearchOrder { get; set; }
@@ -119,6 +121,21 @@ namespace Rebellion.Game.Units
         public ManufacturingStatus GetManufacturingStatus()
         {
             return ManufacturingStatus;
+        }
+
+        /// <summary>
+        /// Returns whether the specified faction may manufacture this definition.
+        /// </summary>
+        /// <param name="manufacturable">Definition whose manufacturing access should be checked.</param>
+        /// <param name="factionInstanceID">Faction whose manufacturing access should be checked.</param>
+        /// <returns>True when the definition is available to that faction.</returns>
+        public static bool CanBeManufacturedBy(
+            IManufacturable manufacturable,
+            string factionInstanceID
+        )
+        {
+            return manufacturable.ManufacturingFactionInstanceIDs?.Contains(factionInstanceID)
+                != false;
         }
 
         /// <summary>

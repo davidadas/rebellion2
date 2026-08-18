@@ -13,7 +13,7 @@ namespace Rebellion.Game.Events
     [PersistableObject]
     public sealed class GameEventTarget
     {
-        [PersistableMember(Name = "Candidates")]
+        [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <summary>

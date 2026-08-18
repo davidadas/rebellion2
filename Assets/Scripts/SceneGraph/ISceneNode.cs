@@ -39,7 +39,6 @@ namespace Rebellion.SceneGraph
         // Owner Info.
         [CloneIgnore]
         public string OwnerInstanceID { get; set; }
-        public List<string> AllowedOwnerInstanceIDs { get; set; }
 
         /// <summary>
         /// Sets the parent node of this scene node.
@@ -113,13 +112,6 @@ namespace Rebellion.SceneGraph
         /// <returns>The matching children.</returns>
         IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recurse = true)
             where T : class, ISceneNode;
-
-        /// <summary>
-        /// Returns whether the specified owner instance ID is in this node's allowed owner list.
-        /// </summary>
-        /// <param name="ownerInstanceId"></param>
-        /// <returns>True if the owner instance ID is allowed; otherwise, false.</returns>
-        bool HasAllowedOwnerInstanceID(string ownerInstanceId);
 
         /// <summary>
         /// Visits this node and all descendants, invoking the given action on each.

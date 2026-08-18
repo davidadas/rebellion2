@@ -9,6 +9,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -22,26 +23,108 @@ namespace Rebellion.Tests.Game.Events
     /// </summary>
     internal static class GameActionTestExtensions
     {
-        internal static List<GameResult> Execute(this GameAction action, GameRoot game) =>
-            action.Execute(new GameActionContext(game, game.Random));
+        /// <summary>
+        /// Executes an action with the game's random-number provider.
+        /// </summary>
+        internal static List<GameResult> Execute(this GameAction action, GameRoot game)
+        {
+            GameActionContext context = new GameActionContext(game, game.Random);
+            action.Execute(context);
+            return context.Results;
+        }
 
+        /// <summary>
+        /// Executes an action with a caller-supplied random-number provider.
+        /// </summary>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random
-        ) => action.Execute(new GameActionContext(game, random));
+        )
+        {
+            GameActionContext context = new GameActionContext(game, random);
+            action.Execute(context);
+            return context.Results;
+        }
 
+        /// <summary>
+        /// Executes an action with a caller-supplied event activation context.
+        /// </summary>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random,
             GameEventExecutionContext activation
-        ) => action.Execute(new GameActionContext(game, random, activation));
+        )
+        {
+            GameActionContext context = new GameActionContext(game, random, activation);
+            action.Execute(context);
+            return context.Results;
+        }
+
+        /// <summary>
+        /// Executes an action with the unit definitions required to spawn runtime units.
+        /// </summary>
+        internal static List<GameResult> Execute(
+            this GameAction action,
+            GameRoot game,
+            UnitFactory unitFactory
+        )
+        {
+            GameActionContext context = new GameActionContext(game, game.Random, null, unitFactory);
+            action.Execute(context);
+            return context.Results;
+        }
+
+        /// <summary>
+        /// Executes an action and returns the authoritative work it requested.
+        /// </summary>
+        internal static List<GameRequest> ExecuteRequests(this GameAction action, GameRoot game)
+        {
+            GameActionContext context = new GameActionContext(game, game.Random);
+            action.Execute(context);
+            return context.Requests;
+        }
+
+        /// <summary>
+        /// Executes an action with a caller-supplied event activation and returns its requests.
+        /// </summary>
+        internal static List<GameRequest> ExecuteRequests(
+            this GameAction action,
+            GameRoot game,
+            IRandomNumberProvider random,
+            GameEventExecutionContext activation
+        )
+        {
+            GameActionContext context = new GameActionContext(game, random, activation);
+            action.Execute(context);
+            return context.Requests;
+        }
+
+        /// <summary>
+        /// Executes an action with a unit factory and returns its authoritative requests.
+        /// </summary>
+        internal static List<GameRequest> ExecuteRequests(
+            this GameAction action,
+            GameRoot game,
+            UnitFactory unitFactory
+        )
+        {
+            GameActionContext context = new GameActionContext(game, game.Random, null, unitFactory);
+            action.Execute(context);
+            return context.Requests;
+        }
     }
 
+    /// <summary>
+    /// Verifies data-defined action behavior and authored XML contracts.
+    /// </summary>
     [TestFixture]
     public class GameActionsTests
     {
+        /// <summary>
+        /// Creates a two-faction game with one colonized planet owned by each faction.
+        /// </summary>
         private GameRoot BuildGame(out Planet empPlanet, out Planet rebelPlanet)
         {
             GameConfig config = TestConfig.Create();
@@ -68,6 +151,325 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void PlaceUnits_MixedExistingAndSpawnSources_EmitsPlacementBatch()
+        {
+            GameRoot game = BuildGame(out Planet destination, out _);
+            Officer officer = new Officer
+            {
+                InstanceID = "existing-officer",
+                OwnerInstanceID = "empire",
+            };
+            game.AttachNode(officer, destination);
+            Starfighter fighterTemplate = new Starfighter
+            {
+                TypeID = "X_WING",
+                DisplayName = "X-Wing",
+            };
+            Regiment regimentTemplate = new Regiment
+            {
+                TypeID = "ALLIANCE_REGIMENT",
+                DisplayName = "Alliance Regiment",
+            };
+            UnitFactory factory = new UnitFactory(
+                Array.Empty<Building>(),
+                Array.Empty<CapitalShip>(),
+                new[] { fighterTemplate },
+                new[] { regimentTemplate },
+                Array.Empty<SpecialForces>()
+            );
+            PlaceUnitsAction action = new PlaceUnitsAction
+            {
+                DestinationInstanceID = destination.InstanceID,
+                Units = new List<GameEventSelector>
+                {
+                    new SelectOfficers { InstanceID = officer.InstanceID },
+                    new SpawnUnits
+                    {
+                        TypeID = "X_WING",
+                        Count = 2,
+                        OwnerFactionInstanceID = "empire",
+                    },
+                    new SpawnUnits
+                    {
+                        TypeID = "ALLIANCE_REGIMENT",
+                        OwnerFactionInstanceID = "empire",
+                    },
+                },
+            };
+
+            UnitPlacementRequest result = action
+                .ExecuteRequests(game, factory)
+                .OfType<UnitPlacementRequest>()
+                .Single();
+
+            Assert.AreEqual(4, result.Units.Count);
+            Assert.AreSame(officer, result.Units.OfType<Officer>().Single());
+            Assert.AreEqual(2, result.Units.OfType<Starfighter>().Count());
+            Assert.AreEqual(1, result.Units.OfType<Regiment>().Count());
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsTrue(
+                result
+                    .Units.Where(unit => unit != officer)
+                    .Cast<ISceneNode>()
+                    .All(unit => unit.GetParent() == null)
+            );
+            Assert.IsTrue(
+                result.Units.Cast<ISceneNode>().All(unit => unit.OwnerInstanceID == "empire")
+            );
+            Assert.AreSame(destination, result.Destinations.Single());
+        }
+
+        [Test]
+        public void PlaceUnits_SpawnSources_RoundTripsAuthoredStructure()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SPAWN_REINFORCEMENTS",
+                Actions = new List<GameAction>
+                {
+                    new PlaceUnitsAction
+                    {
+                        DestinationInstanceID = "NABOO",
+                        Units = new List<GameEventSelector>
+                        {
+                            new SpawnUnits
+                            {
+                                TypeID = "X_WING",
+                                Count = 3,
+                                OwnerFactionInstanceID = "FNALL1",
+                            },
+                            new SpawnUnits
+                            {
+                                TypeID = "ALLIANCE_REGIMENT",
+                                Count = 2,
+                                OwnerFactionInstanceID = "FNALL1",
+                            },
+                        },
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize(gameEvent);
+            GameEvent restoredEvent = SerializationHelper.Deserialize<GameEvent>(xml);
+            PlaceUnitsAction restored = restoredEvent.Actions.OfType<PlaceUnitsAction>().Single();
+
+            StringAssert.Contains("<PlaceUnits DestinationInstanceID=\"NABOO\">", xml);
+            StringAssert.Contains("<SpawnUnits", xml);
+            StringAssert.Contains("TypeID=\"X_WING\"", xml);
+            Assert.AreEqual("NABOO", restored.DestinationInstanceID);
+            SpawnUnits[] sources = restored.Units.OfType<SpawnUnits>().ToArray();
+            Assert.AreEqual(2, sources.Length);
+            Assert.AreEqual("X_WING", sources[0].TypeID);
+            Assert.AreEqual(3, sources[0].Count);
+            Assert.AreEqual("FNALL1", sources[0].OwnerFactionInstanceID);
+            Assert.AreEqual("ALLIANCE_REGIMENT", sources[1].TypeID);
+            Assert.AreEqual(2, sources[1].Count);
+            Assert.AreEqual("FNALL1", sources[1].OwnerFactionInstanceID);
+        }
+
+        [Test]
+        public void PlaceUnits_AuthoredSpawnSources_DeserializesStructure()
+        {
+            const string xml =
+                @"
+                <PlaceUnits DestinationInstanceID=""NABOO"">
+                  <Units>
+                    <SpawnUnits TypeID=""X_WING"" Count=""3"" OwnerFactionInstanceID=""FNALL1""/>
+                    <SpawnUnits TypeID=""ALLIANCE_REGIMENT"" Count=""2"" OwnerFactionInstanceID=""FNALL1""/>
+                  </Units>
+                </PlaceUnits>";
+
+            PlaceUnitsAction action = (PlaceUnitsAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            Assert.AreEqual("NABOO", action.DestinationInstanceID);
+            SpawnUnits[] sources = action.Units.OfType<SpawnUnits>().ToArray();
+            Assert.AreEqual(2, sources.Length);
+            Assert.AreEqual("X_WING", sources[0].TypeID);
+            Assert.AreEqual(3, sources[0].Count);
+            Assert.AreEqual("FNALL1", sources[0].OwnerFactionInstanceID);
+            Assert.AreEqual("ALLIANCE_REGIMENT", sources[1].TypeID);
+            Assert.AreEqual(2, sources[1].Count);
+            Assert.AreEqual("FNALL1", sources[1].OwnerFactionInstanceID);
+        }
+
+        [Test]
+        public void PlaceUnits_AuthoredSelectors_DeserializesStructure()
+        {
+            const string xml =
+                @"
+                <PlaceUnits>
+                  <Units>
+                    <SelectBinding Binding=""$participants""/>
+                  </Units>
+                  <Destination>
+                    <SelectFirst>
+                      <From>
+                        <SelectPreviousLocation UnitInstanceID=""LUKE_SKYWALKER""/>
+                        <SelectPlanets InstanceID=""YAVIN""/>
+                      </From>
+                    </SelectFirst>
+                  </Destination>
+                </PlaceUnits>";
+
+            PlaceUnitsAction action = (PlaceUnitsAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            Assert.AreEqual("$participants", action.Units.OfType<SelectBinding>().Single().Binding);
+            SelectFirst destination = action.Destination.OfType<SelectFirst>().Single();
+            Assert.AreEqual(
+                "LUKE_SKYWALKER",
+                destination.Selectors.OfType<SelectPreviousLocation>().Single().UnitInstanceID
+            );
+            Assert.AreEqual(
+                "YAVIN",
+                destination.Selectors.OfType<SelectPlanets>().Single().InstanceID
+            );
+        }
+
+        [Test]
+        public void PlaceUnits_Selectors_RoundTripsTransferStructure()
+        {
+            PlaceUnitsAction action = new PlaceUnitsAction
+            {
+                Units = new List<GameEventSelector>
+                {
+                    new SelectBinding { Binding = "$participants" },
+                },
+                Destination = new List<GameEventSelector>
+                {
+                    new SelectFirst
+                    {
+                        Selectors = new List<GameEventSelector>
+                        {
+                            new SelectPreviousLocation { UnitInstanceID = "LUKE_SKYWALKER" },
+                            new SelectPlanets { InstanceID = "YAVIN" },
+                        },
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize<GameAction>(action);
+            PlaceUnitsAction restored = (PlaceUnitsAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            Assert.AreEqual(
+                "$participants",
+                restored.Units.OfType<SelectBinding>().Single().Binding
+            );
+            SelectFirst destination = restored.Destination.OfType<SelectFirst>().Single();
+            Assert.AreEqual(
+                "LUKE_SKYWALKER",
+                destination.Selectors.OfType<SelectPreviousLocation>().Single().UnitInstanceID
+            );
+            Assert.AreEqual(
+                "YAVIN",
+                destination.Selectors.OfType<SelectPlanets>().Single().InstanceID
+            );
+        }
+
+        [Test]
+        public void ChangeOwner_UnitSelectors_EmitsOwnershipRequest()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer officer = new Officer { InstanceID = "officer", OwnerInstanceID = "empire" };
+            game.AttachNode(officer, planet);
+            ChangeOwnerAction action = new ChangeOwnerAction
+            {
+                FactionInstanceID = "rebels",
+                Units = new List<GameEventSelector>
+                {
+                    new SelectOfficers { InstanceID = officer.InstanceID },
+                },
+            };
+
+            OwnershipChangeRequest result = action
+                .ExecuteRequests(game)
+                .OfType<OwnershipChangeRequest>()
+                .Single();
+
+            Assert.AreEqual("rebels", result.NewOwner.InstanceID);
+            Assert.AreSame(officer, result.Units.Single());
+            Assert.IsEmpty(result.Planets);
+        }
+
+        [Test]
+        public void ChangeOwner_WithPlanetsAndUnits_RejectsAmbiguousRequest()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            ChangeOwnerAction action = new ChangeOwnerAction
+            {
+                FactionInstanceID = "rebels",
+                Planets = new List<GameEventSelector> { new SelectPlanets() },
+                Units = new List<GameEventSelector> { new SelectOfficers() },
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                action.Execute(game)
+            );
+
+            StringAssert.Contains("exactly one", exception.Message);
+        }
+
+        [Test]
+        public void ChangeOwner_PlanetSelectors_RoundTripsAuthoredStructure()
+        {
+            ChangeOwnerAction action = new ChangeOwnerAction
+            {
+                FactionInstanceID = "FNALL1",
+                Planets = new List<GameEventSelector>
+                {
+                    new SelectPlanets { InstanceID = "NABOO" },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize<GameAction>(action);
+            ChangeOwnerAction restored = (ChangeOwnerAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            Assert.AreEqual("FNALL1", restored.FactionInstanceID);
+            Assert.AreEqual("NABOO", restored.Planets.OfType<SelectPlanets>().Single().InstanceID);
+            Assert.IsEmpty(restored.Units);
+        }
+
+        [Test]
+        public void AddToVoid_ElementUnitInstanceID_DeserializesUnitInstanceID()
+        {
+            AddToVoidAction action = (AddToVoidAction)
+                SerializationHelper.Deserialize<GameAction>(
+                    "<AddToVoid><UnitInstanceID>LUKE_SKYWALKER</UnitInstanceID></AddToVoid>"
+                );
+
+            Assert.AreEqual("LUKE_SKYWALKER", action.UnitInstanceID);
+        }
+
+        [Test]
+        public void RemoveFromVoid_RetainedOfficerSelector_RoundTripsSelector()
+        {
+            RemoveFromVoidAction action = new RemoveFromVoidAction
+            {
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectOfficers
+                    {
+                        PlanetBinding = "$destination",
+                        IsCaptured = true,
+                        IncludeRetained = true,
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize<GameAction>(action);
+            RemoveFromVoidAction restored = (RemoveFromVoidAction)
+                SerializationHelper.Deserialize<GameAction>(xml);
+
+            SelectOfficers selector = restored.Selectors.OfType<SelectOfficers>().Single();
+            Assert.AreEqual("$destination", selector.PlanetBinding);
+            Assert.AreEqual(true, selector.IsCaptured);
+            Assert.IsTrue(selector.IncludeRetained);
+        }
+
+        [Test]
         public void TriggerDuel_ValidIDs_EmitsRequest()
         {
             GameRoot game = BuildGame(out Planet empPlanet, out Planet rebelPlanet);
@@ -84,9 +486,9 @@ namespace Rebellion.Tests.Game.Events
                 SecondOfficerInstanceID = "d1",
             };
 
-            List<GameResult> results = action.Execute(game);
+            List<GameRequest> requests = action.ExecuteRequests(game);
 
-            DuelRequestedResult request = results.OfType<DuelRequestedResult>().Single();
+            DuelRequest request = requests.OfType<DuelRequest>().Single();
             Assert.AreSame(attacker, request.EncounteredOfficer);
             Assert.AreSame(defender, request.OpposingOfficer);
         }
@@ -120,9 +522,9 @@ namespace Rebellion.Tests.Game.Events
                 completion
             );
 
-            DuelRequestedResult request = action
-                .Execute(game, game.Random, context)
-                .OfType<DuelRequestedResult>()
+            DuelRequest request = action
+                .ExecuteRequests(game, game.Random, context)
+                .OfType<DuelRequest>()
                 .Single();
 
             Assert.AreSame(vader, request.EncounteredOfficer);
@@ -148,13 +550,13 @@ namespace Rebellion.Tests.Game.Events
                 SecondOfficerInstanceID = vader.InstanceID,
             };
 
-            IEnumerable<GameResult> results = action.Execute(
+            IEnumerable<GameRequest> requests = action.ExecuteRequests(
                 game,
                 new SequenceRNG(new[] { 20 }),
                 null
             );
 
-            Assert.AreEqual(1, results.OfType<DuelRequestedResult>().Count());
+            Assert.AreEqual(1, requests.OfType<DuelRequest>().Count());
         }
 
         [Test]
@@ -225,9 +627,9 @@ namespace Rebellion.Tests.Game.Events
                 BackgroundAudio = new MessageAudio { Path = "Audio/Luke/dialogue" },
             };
 
-            MessageRequestedResult result = action
-                .Execute(game)
-                .OfType<MessageRequestedResult>()
+            MessageDeliveryRequest result = action
+                .ExecuteRequests(game)
+                .OfType<MessageDeliveryRequest>()
                 .Single();
 
             Assert.AreEqual("rebels", result.Recipient.InstanceID);
@@ -261,9 +663,9 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            MessageRequestedResult result = action
-                .Execute(game)
-                .OfType<MessageRequestedResult>()
+            MessageDeliveryRequest result = action
+                .ExecuteRequests(game)
+                .OfType<MessageDeliveryRequest>()
                 .Single();
 
             Assert.AreEqual("Luke learned the truth. Luke was injured.", result.Body);
@@ -293,9 +695,9 @@ namespace Rebellion.Tests.Game.Events
                 new GameEventTrigger("core:duel.completed", ("AudioPath", "audioPath"))
             );
 
-            MessageRequestedResult result = action
-                .Execute(game, game.Random, context)
-                .OfType<MessageRequestedResult>()
+            MessageDeliveryRequest result = action
+                .ExecuteRequests(game, game.Random, context)
+                .OfType<MessageDeliveryRequest>()
                 .Single();
 
             Assert.AreEqual("selected-encounter-voice", result.BackgroundAudioPath);
@@ -317,9 +719,9 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            MessageRequestedResult result = action
-                .Execute(game, new FixedRNG(0), null)
-                .OfType<MessageRequestedResult>()
+            MessageDeliveryRequest result = action
+                .ExecuteRequests(game, new FixedRNG(0), null)
+                .OfType<MessageDeliveryRequest>()
                 .Single();
 
             Assert.AreEqual("luke-success", result.OfficerVoicePath);
@@ -394,9 +796,9 @@ namespace Rebellion.Tests.Game.Events
                 DestinationInstanceID = destination.InstanceID,
             };
 
-            UnitMovementRequestedResult result = action
-                .Execute(game)
-                .OfType<UnitMovementRequestedResult>()
+            UnitMovementRequest result = action
+                .ExecuteRequests(game)
+                .OfType<UnitMovementRequest>()
                 .Single();
 
             CollectionAssert.AreEqual(new[] { officer }, result.Units);
@@ -453,9 +855,9 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            UnitMovementRequestedResult result = action
-                .Execute(game)
-                .OfType<UnitMovementRequestedResult>()
+            UnitMovementRequest result = action
+                .ExecuteRequests(game)
+                .OfType<UnitMovementRequest>()
                 .Single();
 
             CollectionAssert.AreEqual(new[] { first, second }, result.Destinations);
@@ -1188,7 +1590,7 @@ namespace Rebellion.Tests.Game.Events
                 planet
             );
 
-            List<GameResult> results = gameEvent.Execute(game, new FixedRNG(0.99), context);
+            List<GameResult> results = gameEvent.Execute(game, new FixedRNG(0.99), context).Results;
 
             Assert.IsFalse(planet.Buildings.Contains(shipyard));
             Assert.AreSame(

@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -15,7 +16,7 @@ namespace Rebellion.Tests.Systems
     public class MessageSystemTests
     {
         [Test]
-        public void ProcessResults_WithMessageRequestedResult_AddsMessageToFaction()
+        public void ProcessResults_WithMessageDeliveryRequest_AddsMessageToFaction()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };

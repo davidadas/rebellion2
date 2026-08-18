@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
@@ -16,31 +18,15 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Executes the action within one event activation.
         /// </summary>
-        internal abstract List<GameResult> Execute(GameActionContext context);
+        internal abstract void Execute(GameActionContext context);
 
-        internal static List<GameResult> ExecuteAll(
-            IEnumerable<GameAction> actions,
-            GameActionContext context
-        )
+        /// <summary>
+        /// Executes an ordered action collection against one shared action context.
+        /// </summary>
+        internal static void ExecuteAll(IEnumerable<GameAction> actions, GameActionContext context)
         {
-            List<GameResult> results = new List<GameResult>();
             foreach (GameAction action in actions ?? Enumerable.Empty<GameAction>())
-            {
-                foreach (GameResult result in action.Execute(context))
-                {
-                    if (result == null)
-                        continue;
-
-                    if (
-                        string.IsNullOrEmpty(result.SourceEventInstanceID)
-                        && context.Activation?.Event != null
-                    )
-                        result.SourceEventInstanceID = context.Activation.Event.InstanceID;
-                    context.Activation?.AddResult(result);
-                    results.Add(result);
-                }
-            }
-            return results;
+                action.Execute(context);
         }
     }
 
@@ -52,16 +38,55 @@ namespace Rebellion.Game.Events
         public GameRoot Game { get; }
         public IRandomNumberProvider Random { get; }
         public GameEventExecutionContext Activation { get; }
+        public UnitFactory UnitFactory { get; }
+        internal List<GameRequest> Requests { get; } = new List<GameRequest>();
+        internal List<GameResult> Results { get; } = new List<GameResult>();
 
         public GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventExecutionContext activation = null
+            GameEventExecutionContext activation = null,
+            UnitFactory unitFactory = null
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
             Random = random ?? throw new ArgumentNullException(nameof(random));
             Activation = activation;
+            UnitFactory = unitFactory;
+        }
+
+        /// <summary>
+        /// Adds authoritative work requested by the current action.
+        /// </summary>
+        internal void Request(GameRequest request)
+        {
+            if (request == null)
+                return;
+            if (string.IsNullOrEmpty(request.SourceEventInstanceID) && Activation?.Event != null)
+                request.SourceEventInstanceID = Activation.Event.InstanceID;
+            Requests.Add(request);
+        }
+
+        /// <summary>
+        /// Records one factual result produced directly by the current action.
+        /// </summary>
+        internal void Record(GameResult result)
+        {
+            if (result == null)
+                return;
+            if (string.IsNullOrEmpty(result.SourceEventInstanceID) && Activation?.Event != null)
+                result.SourceEventInstanceID = Activation.Event.InstanceID;
+            Activation?.AddResult(result);
+            Results.Add(result);
+        }
+
+        /// <summary>
+        /// Records factual results produced directly by the current action.
+        /// </summary>
+        internal void Record(IEnumerable<GameResult> results)
+        {
+            foreach (GameResult result in results ?? Enumerable.Empty<GameResult>())
+                Record(result);
         }
     }
 }

@@ -610,7 +610,6 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "SHIP",
                 OwnerInstanceID = owner.InstanceID,
-                AllowedOwnerInstanceIDs = new List<string> { owner.InstanceID },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 1,
             };
@@ -690,7 +689,6 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "SHIP",
                 OwnerInstanceID = owner.InstanceID,
-                AllowedOwnerInstanceIDs = new List<string> { owner.InstanceID },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 1,
             };
@@ -812,9 +810,9 @@ namespace Rebellion.Tests.Managers
                 _result = result;
             }
 
-            internal override List<GameResult> Execute(GameActionContext context)
+            internal override void Execute(GameActionContext context)
             {
-                return new List<GameResult> { _result };
+                context.Record(_result);
             }
         }
     }

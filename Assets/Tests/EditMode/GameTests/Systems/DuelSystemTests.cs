@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -24,7 +25,7 @@ namespace Rebellion.Tests.Systems
                 new FixedRandomProvider(new[] { 0.99, 0.99, 0.99 })
             );
 
-            List<GameResult> results = system.HandleResults(
+            List<GameResult> results = system.HandleRequests(
                 new[] { Request(encountered, opposing, "event") }
             );
 
@@ -49,7 +50,7 @@ namespace Rebellion.Tests.Systems
                 new FixedRandomProvider(new[] { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 })
             );
 
-            List<GameResult> results = system.HandleResults(
+            List<GameResult> results = system.HandleRequests(
                 new[] { Request(encountered, opposing) }
             );
 
@@ -75,7 +76,7 @@ namespace Rebellion.Tests.Systems
             game.MoveNode(opposing, other);
             DuelSystem system = new DuelSystem(game, new FixedRandomProvider(new[] { 0.0 }));
 
-            List<GameResult> results = system.HandleResults(
+            List<GameResult> results = system.HandleRequests(
                 new[] { Request(encountered, opposing) }
             );
 
@@ -117,13 +118,13 @@ namespace Rebellion.Tests.Systems
             return (game, encountered, opposing);
         }
 
-        private static DuelRequestedResult Request(
+        private static DuelRequest Request(
             Officer encountered,
             Officer opposing,
             string sourceEventInstanceID = null
         )
         {
-            return new DuelRequestedResult
+            return new DuelRequest
             {
                 EncounteredOfficer = encountered,
                 OpposingOfficer = opposing,

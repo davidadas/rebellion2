@@ -256,7 +256,7 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            return building.HasAllowedOwnerInstanceID(context.Faction.InstanceID);
+            return IManufacturable.CanBeManufacturedBy(building, context.Faction.InstanceID);
         }
 
         /// <summary>
@@ -498,7 +498,7 @@ namespace Rebellion.AI.Proposals
             return Destination is Fleet destinationFleet
                 && destinationFleet.GetOwnerInstanceID() == context.Faction.InstanceID
                 && Product.GetReference() is CapitalShip capitalShip
-                && capitalShip.HasAllowedOwnerInstanceID(context.Faction.InstanceID);
+                && IManufacturable.CanBeManufacturedBy(capitalShip, context.Faction.InstanceID);
         }
 
         /// <summary>

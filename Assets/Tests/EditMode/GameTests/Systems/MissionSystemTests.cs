@@ -1148,9 +1148,9 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(secondOfficer, planet);
 
             Officer firstTarget = EntityFactory.CreateOfficer("target1", "rebels");
-            firstTarget.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            firstTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
             Officer secondTarget = EntityFactory.CreateOfficer("target2", "rebels");
-            secondTarget.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            secondTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(firstTarget);
             game.UnrecruitedOfficers.Add(secondTarget);
 
@@ -2208,7 +2208,7 @@ namespace Rebellion.Tests.Systems
                 new Officer
                 {
                     InstanceID = "unrecruited",
-                    AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                    RecruitingFactionInstanceIDs = new List<string> { "empire" },
                 }
             );
 

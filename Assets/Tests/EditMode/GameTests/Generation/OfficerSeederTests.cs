@@ -229,7 +229,7 @@ namespace Rebellion.Tests.Generation
             {
                 InstanceID = "O1",
                 OwnerInstanceID = null,
-                AllowedOwnerInstanceIDs = new List<string> { "FNALL1", "FNEMP1" },
+                RecruitingFactionInstanceIDs = new List<string> { "FNALL1", "FNEMP1" },
                 IsRecruitable = true,
             };
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
@@ -402,7 +402,7 @@ namespace Rebellion.Tests.Generation
             sys.Planets.Add(yavin);
 
             Officer pinned = MakeOfficer("CHEWBACCA", null);
-            pinned.AllowedOwnerInstanceIDs = new List<string> { "FNALL1" };
+            pinned.RecruitingFactionInstanceIDs = new List<string> { "FNALL1" };
             _rules.Officers.InitialOfficers.Add(
                 new InitialOfficerRule
                 {

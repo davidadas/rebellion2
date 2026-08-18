@@ -240,7 +240,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         )
         {
             CapitalShip definition = TestContent.Data.CapitalShips.First(ship =>
-                ship.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                ship.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
             );
             return new CapitalShip
             {

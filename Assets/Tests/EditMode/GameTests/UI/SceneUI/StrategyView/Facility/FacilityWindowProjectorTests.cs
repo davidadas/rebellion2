@@ -283,14 +283,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             return TestContent.Data.Buildings.First(building =>
                 building.BuildingType == buildingType
-                && building.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                && building.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
             );
         }
 
         private static CapitalShip CreateCapitalShip(string instanceId, string displayName)
         {
             CapitalShip definition = TestContent.Data.CapitalShips.First(ship =>
-                ship.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                ship.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
             );
             return new CapitalShip
             {

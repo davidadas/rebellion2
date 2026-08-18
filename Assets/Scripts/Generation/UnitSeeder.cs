@@ -6,7 +6,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Generation
 {
@@ -25,9 +24,10 @@ namespace Rebellion.Generation
         public void Seed(GenerationContext ctx)
         {
             UnitFactory factory = new UnitFactory(
-                ctx.Regiments,
-                ctx.Starfighters,
+                ctx.Buildings,
                 ctx.CapitalShips,
+                ctx.Starfighters,
+                ctx.Regiments,
                 ctx.SpecialForces
             );
             UnitDeploymentSection config = ctx.Config.UnitDeployment;
@@ -813,115 +813,6 @@ namespace Rebellion.Generation
             }
 
             return total;
-        }
-
-        /// <summary>
-        /// Encapsulates unit template lookups and the create-and-initialize boilerplate.
-        /// Holds unit template dictionaries and provides
-        /// a single Create method that clones, sets ownership, and marks as complete.
-        /// </summary>
-        private class UnitFactory
-        {
-            private readonly Dictionary<string, Regiment> _regimentMap;
-            private readonly Dictionary<string, Starfighter> _fighterMap;
-            private readonly Dictionary<string, CapitalShip> _shipMap;
-            private readonly Dictionary<string, SpecialForces> _specialForcesMap;
-
-            /// <summary>
-            /// Creates a unit factory from generation templates.
-            /// </summary>
-            /// <param name="regiments">Regiment templates keyed during construction.</param>
-            /// <param name="fighters">Starfighter templates keyed during construction.</param>
-            /// <param name="ships">Capital ship templates keyed during construction.</param>
-            /// <param name="specialForces">Special-forces templates keyed during construction.</param>
-            public UnitFactory(
-                Regiment[] regiments,
-                Starfighter[] fighters,
-                CapitalShip[] ships,
-                SpecialForces[] specialForces
-            )
-            {
-                _regimentMap = regiments
-                    .GroupBy(r => r.TypeID)
-                    .ToDictionary(g => g.Key, g => g.First());
-                _fighterMap = fighters
-                    .GroupBy(s => s.TypeID)
-                    .ToDictionary(g => g.Key, g => g.First());
-                _shipMap = ships.GroupBy(s => s.TypeID).ToDictionary(g => g.Key, g => g.First());
-                _specialForcesMap = specialForces
-                    .GroupBy(s => s.TypeID)
-                    .ToDictionary(g => g.Key, g => g.First());
-            }
-
-            /// <summary>
-            /// Creates a new unit instance from a template, setting ownership and marking complete.
-            /// </summary>
-            /// <param name="typeID">The template TypeID to look up.</param>
-            /// <param name="ownerID">The faction ID to assign as owner.</param>
-            /// <returns>The created unit.</returns>
-            public ISceneNode Create(string typeID, string ownerID)
-            {
-                if (_shipMap.TryGetValue(typeID, out CapitalShip shipTemplate))
-                {
-                    CapitalShip ship = shipTemplate.GetDeepCopy();
-                    ship.SetOwnerInstanceID(ownerID);
-                    ship.ManufacturingStatus = ManufacturingStatus.Complete;
-                    ship.Movement = null;
-                    return ship;
-                }
-
-                if (_regimentMap.TryGetValue(typeID, out Regiment regTemplate))
-                {
-                    Regiment reg = regTemplate.GetDeepCopy();
-                    reg.SetOwnerInstanceID(ownerID);
-                    reg.ManufacturingStatus = ManufacturingStatus.Complete;
-                    reg.Movement = null;
-                    return reg;
-                }
-
-                if (_fighterMap.TryGetValue(typeID, out Starfighter sfTemplate))
-                {
-                    Starfighter sf = sfTemplate.GetDeepCopy();
-                    sf.SetOwnerInstanceID(ownerID);
-                    sf.ManufacturingStatus = ManufacturingStatus.Complete;
-                    sf.Movement = null;
-                    return sf;
-                }
-
-                if (_specialForcesMap.TryGetValue(typeID, out SpecialForces specialForcesTemplate))
-                {
-                    SpecialForces specialForces = specialForcesTemplate.GetDeepCopy();
-                    specialForces.SetOwnerInstanceID(ownerID);
-                    specialForces.ManufacturingStatus = ManufacturingStatus.Complete;
-                    specialForces.Movement = null;
-                    return specialForces;
-                }
-
-                throw new InvalidOperationException(
-                    $"Unit type '{typeID}' is not present in generation unit templates."
-                );
-            }
-
-            /// <summary>
-            /// Returns the maintenance cost for a unit type without creating an instance.
-            /// </summary>
-            /// <param name="typeID">The template TypeID to look up.</param>
-            /// <returns>The maintenance cost.</returns>
-            public int GetMaintenanceCost(string typeID)
-            {
-                if (_shipMap.TryGetValue(typeID, out CapitalShip ship))
-                    return ship.MaintenanceCost;
-                if (_regimentMap.TryGetValue(typeID, out Regiment reg))
-                    return reg.MaintenanceCost;
-                if (_fighterMap.TryGetValue(typeID, out Starfighter sf))
-                    return sf.MaintenanceCost;
-                if (_specialForcesMap.TryGetValue(typeID, out SpecialForces specialForces))
-                    return specialForces.MaintenanceCost;
-
-                throw new InvalidOperationException(
-                    $"Unit type '{typeID}' is not present in generation unit templates."
-                );
-            }
         }
     }
 }

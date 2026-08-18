@@ -217,6 +217,9 @@ namespace Rebellion.Game.Factions
                 .ToList();
         }
 
+        /// <summary>
+        /// Clears the runtime ownership index before it is rebuilt from scene state.
+        /// </summary>
         public void ClearOwnedUnits()
         {
             foreach (List<ISceneNode> units in _ownedEntities.Values)
@@ -764,13 +767,7 @@ namespace Rebellion.Game.Factions
 
             foreach (IManufacturable template in templates)
             {
-                if (template is Building { CanBeManufactured: false })
-                    continue;
-
-                if (
-                    template.AllowedOwnerInstanceIDs?.Count > 0
-                    && !template.AllowedOwnerInstanceIDs.Contains(InstanceID)
-                )
+                if (template.ManufacturingFactionInstanceIDs?.Contains(InstanceID) == false)
                     continue;
 
                 ResearchDiscipline discipline = template

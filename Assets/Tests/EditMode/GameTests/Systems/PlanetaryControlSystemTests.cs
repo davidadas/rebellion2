@@ -102,12 +102,7 @@ namespace Rebellion.Tests.Systems
             _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
-            Building building = new Building
-            {
-                InstanceID = "b1",
-                OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
-            };
+            Building building = new Building { InstanceID = "b1", OwnerInstanceID = "empire" };
             _game.AttachNode(building, _targetPlanet);
 
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
@@ -517,7 +512,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "b1",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -592,7 +586,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "mine1",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
                 ConstructionCost = 100,
             };
@@ -639,7 +632,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "carrier",
                 OwnerInstanceID = _empire.InstanceID,
-                AllowedOwnerInstanceIDs = new List<string> { _empire.InstanceID },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 1,
             };
@@ -714,7 +706,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "carrier",
                 OwnerInstanceID = _empire.InstanceID,
-                AllowedOwnerInstanceIDs = new List<string> { _empire.InstanceID },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 1,
             };
@@ -765,7 +756,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = $"{planetId}-ship",
                 OwnerInstanceID = ownerInstanceId,
-                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 4,
             };
@@ -775,7 +765,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = $"{planetId}-reg",
                 OwnerInstanceID = ownerInstanceId,
-                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 Movement = null,
             };
@@ -962,7 +951,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = instanceId,
                 OwnerInstanceID = planet.GetOwnerInstanceID(),
-                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
                 BuildingType = BuildingType.Mine,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };

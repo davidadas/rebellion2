@@ -4,8 +4,10 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -13,7 +15,9 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages planetary ownership and popular support.
     /// </summary>
-    public class PlanetaryControlSystem : IGameResultHandler<PlanetGarrisonChangedResult>
+    public class PlanetaryControlSystem
+        : IGameResultHandler<PlanetGarrisonChangedResult>,
+            IGameRequestHandler<OwnershipChangeRequest>
     {
         private readonly GameRoot _game;
         private readonly MovementSystem _movementSystem;
@@ -75,6 +79,42 @@ namespace Rebellion.Systems
                 controlResults.AddRange(ReconcilePlanet(planet));
 
             return controlResults;
+        }
+
+        /// <summary>
+        /// Applies event-requested ownership changes through the authoritative rules.
+        /// </summary>
+        List<GameResult> IGameRequestHandler<OwnershipChangeRequest>.HandleRequests(
+            IReadOnlyList<OwnershipChangeRequest> requests
+        )
+        {
+            List<GameResult> results = new List<GameResult>();
+            foreach (OwnershipChangeRequest request in requests)
+            {
+                foreach (Planet planet in request.Planets)
+                {
+                    if (planet.OwnerInstanceID != request.NewOwner.InstanceID)
+                        results.Add(TransferPlanet(planet, request.NewOwner));
+                }
+
+                foreach (ISceneNode unit in request.Units)
+                {
+                    Faction previousOwner = _game.GetFactionByOwnerInstanceID(unit.OwnerInstanceID);
+                    if (previousOwner == request.NewOwner)
+                        continue;
+                    _game.ChangeOwnership(unit, request.NewOwner.InstanceID);
+                    results.Add(
+                        new UnitOwnershipChangedResult
+                        {
+                            Unit = unit,
+                            PreviousOwner = previousOwner,
+                            NewOwner = request.NewOwner,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                }
+            }
+            return results;
         }
 
         /// <summary>
@@ -655,7 +695,6 @@ namespace Rebellion.Systems
         {
             foreach (Building building in planet.GetChildren<Building>(_ => true, recurse: false))
             {
-                building.AllowedOwnerInstanceIDs = new List<string> { newOwner.InstanceID };
                 _game.ChangeOwnership(building, newOwner.InstanceID);
             }
         }
