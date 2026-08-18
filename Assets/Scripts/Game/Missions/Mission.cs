@@ -107,6 +107,54 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Copies shared mission state into an empty mission destination.
+        /// </summary>
+        /// <param name="destination">The destination mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            Mission copy = (Mission)destination;
+            copy.ConfigKey = ConfigKey;
+            copy.LocationInstanceID = LocationInstanceID;
+            copy.OriginInstanceID = OriginInstanceID;
+            copy.SourceEventInstanceID = SourceEventInstanceID;
+            copy._participantInstanceIds = new HashSet<string>(
+                _participantInstanceIds,
+                StringComparer.Ordinal
+            );
+            copy._hasCapturedParticipantIds = _hasCapturedParticipantIds;
+            copy.ParticipantRating = ParticipantRating;
+            copy.HasInitiated = HasInitiated;
+            copy.MaxProgress = MaxProgress;
+            copy.CurrentProgress = CurrentProgress;
+            copy.DecoyParticipantRating = DecoyParticipantRating;
+        }
+
+        /// <summary>
+        /// Attaches a copied participant to the same primary or decoy role as its source.
+        /// </summary>
+        /// <param name="destination">The copied mission receiving the participant.</param>
+        /// <param name="sourceChild">The source participant.</param>
+        /// <param name="copiedChild">The copied participant.</param>
+        protected override void AttachCopiedChild(
+            BaseSceneNode destination,
+            ISceneNode sourceChild,
+            ISceneNode copiedChild
+        )
+        {
+            if (copiedChild is not IMissionParticipant participant)
+                return;
+
+            if (_decoyParticipants.Contains(sourceChild))
+                ((Mission)destination).AddDecoyParticipant(participant);
+            else
+                destination.AddChild(copiedChild);
+
+            if (HasInitiated)
+                copiedChild.SetParent(destination);
+        }
+
+        /// <summary>
         /// Validates that <paramref name="target"/> is non-null and is a Planet, then returns it.
         /// Call at the top of each mission constructor before mission-specific validation.
         /// </summary>
@@ -244,27 +292,6 @@ namespace Rebellion.Game.Missions
             includeDisabled
                 ? _decoyParticipants
                 : _decoyParticipants.Where(participant => participant.IsActive()).ToList();
-
-        /// <summary>
-        /// Replaces both participant groups while preserving their authored roles.
-        /// </summary>
-        /// <param name="mainParticipants">The replacement primary participants.</param>
-        /// <param name="decoyParticipants">The replacement decoy participants.</param>
-        internal void ReplaceParticipants(
-            IEnumerable<IMissionParticipant> mainParticipants,
-            IEnumerable<IMissionParticipant> decoyParticipants
-        )
-        {
-            _mainParticipants = mainParticipants?.ToList() ?? new List<IMissionParticipant>();
-            _decoyParticipants = decoyParticipants?.ToList() ?? new List<IMissionParticipant>();
-            _participantInstanceIds = new HashSet<string>(
-                _mainParticipants
-                    .Concat(_decoyParticipants)
-                    .Select(participant => participant.InstanceID),
-                StringComparer.Ordinal
-            );
-            _hasCapturedParticipantIds = true;
-        }
 
         /// <summary>
         /// Returns whether any mission participant is still travelling to the mission.
@@ -900,12 +927,30 @@ namespace Rebellion.Game.Missions
         /// <returns>All main and decoy participants as scene nodes.</returns>
         protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            if (HasInitiated)
-                return _mainParticipants
-                    .Cast<ISceneNode>()
-                    .Concat(_decoyParticipants.Cast<ISceneNode>());
+            if (!HasInitiated)
+                return Enumerable.Empty<ISceneNode>();
 
-            return Enumerable.Empty<ISceneNode>();
+            return EnumerateParticipants();
+        }
+
+        /// <summary>
+        /// Returns authored participants so recursive copies retain mission relationships.
+        /// </summary>
+        /// <returns>All primary and decoy participants.</returns>
+        protected override IEnumerable<ISceneNode> EnumerateChildrenToCopy()
+        {
+            return EnumerateParticipants();
+        }
+
+        /// <summary>
+        /// Enumerates all primary and decoy participants without applying lifecycle visibility.
+        /// </summary>
+        /// <returns>All primary and decoy participants.</returns>
+        private IEnumerable<ISceneNode> EnumerateParticipants()
+        {
+            return _mainParticipants
+                .Cast<ISceneNode>()
+                .Concat(_decoyParticipants.Cast<ISceneNode>());
         }
 
         /// <summary>

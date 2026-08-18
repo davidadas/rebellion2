@@ -52,6 +52,20 @@ namespace Rebellion.Game.Units
         /// </summary>
         public Fleet() { }
 
+        /// <summary>Creates an empty fleet copy.</summary>
+        protected override BaseSceneNode CreateNodeCopy() => new Fleet();
+
+        /// <summary>Copies fleet state into an empty destination.</summary>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            Fleet copy = (Fleet)destination;
+            copy.Movement = Movement?.CreateCopy();
+            copy.RoleType = RoleType;
+            copy.Order = Order?.CreateCopy();
+            copy.IsInCombat = IsInCombat;
+        }
+
         public Fleet(
             string ownerInstanceId,
             string displayName,

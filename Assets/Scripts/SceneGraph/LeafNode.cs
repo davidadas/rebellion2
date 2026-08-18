@@ -19,6 +19,12 @@ namespace Rebellion.SceneGraph
         protected LeafNode() { }
 
         /// <summary>
+        /// Creates an empty leaf-node copy.
+        /// </summary>
+        /// <returns>An empty leaf node.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new LeafNode();
+
+        /// <summary>
         /// Leaf nodes cannot have children.
         /// </summary>
         /// <param name="child">The candidate child node.</param>

@@ -38,6 +38,34 @@ namespace Rebellion.Game.Units
         /// </summary>
         public Regiment() { }
 
+        /// <summary>Creates an empty regiment copy.</summary>
+        protected override BaseSceneNode CreateNodeCopy() => new Regiment();
+
+        /// <summary>Copies regiment state into an empty destination.</summary>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            Regiment copy = (Regiment)destination;
+            copy.ConstructionCost = ConstructionCost;
+            copy.MaintenanceCost = MaintenanceCost;
+            copy.BaseBuildSpeed = BaseBuildSpeed;
+            copy.ManufacturingFactionInstanceIDs = ManufacturingFactionInstanceIDs == null
+                ? null
+                : new List<string>(ManufacturingFactionInstanceIDs);
+            copy.ResearchOrder = ResearchOrder;
+            copy.ResearchDifficulty = ResearchDifficulty;
+            copy.AttackRating = AttackRating;
+            copy.DefenseRating = DefenseRating;
+            copy.DetectionRating = DetectionRating;
+            copy.BombardmentDefense = BombardmentDefense;
+            copy.UprisingDefense = UprisingDefense;
+            copy.ProducerOwnerID = ProducerOwnerID;
+            copy.ProducerPlanetID = ProducerPlanetID;
+            copy.ManufacturingProgress = ManufacturingProgress;
+            copy.ManufacturingStatus = ManufacturingStatus;
+            copy.Movement = Movement?.CreateCopy();
+        }
+
         /// <summary>
         /// Returns the manufacturing type for this unit.
         /// </summary>

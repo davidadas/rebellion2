@@ -2944,6 +2944,11 @@ namespace Rebellion.Tests.Systems
         {
             private readonly Officer _target;
 
+            /// <summary>Creates an empty officer-killing mission copy.</summary>
+            /// <returns>An empty officer-killing mission.</returns>
+            protected override BaseSceneNode CreateNodeCopy() =>
+                new OfficerKillingMission(null, null, null, null);
+
             public OfficerKillingMission(
                 string ownerInstanceId,
                 string locationInstanceId,

@@ -128,6 +128,71 @@ namespace Rebellion.Game.Galaxy
         public Planet() { }
 
         /// <summary>
+        /// Creates an empty planet copy.
+        /// </summary>
+        /// <returns>An empty planet.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new Planet();
+
+        /// <summary>
+        /// Copies planet state into an empty destination.
+        /// </summary>
+        /// <param name="destination">The destination node.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            Planet copy = (Planet)destination;
+            copy.IsColonized = IsColonized;
+            copy.SystemDataId = SystemDataId;
+            copy.NumRawResourceNodes = NumRawResourceNodes;
+            copy.EnergyCapacity = EnergyCapacity;
+            copy.AllocatedEnergy = AllocatedEnergy;
+            copy.PositionX = PositionX;
+            copy.PositionY = PositionY;
+            copy.PlanetIconPath = PlanetIconPath;
+            copy.IsUnexploredView = IsUnexploredView;
+            copy.IsDestroyed = IsDestroyed;
+            copy.IsHeadquarters = IsHeadquarters;
+            copy.IsInUprising = IsInUprising;
+            copy.NextUprisingSupportDriftTick = NextUprisingSupportDriftTick;
+            copy.NextUprisingIncidentTick = NextUprisingIncidentTick;
+            copy.NextUprisingClearTick = NextUprisingClearTick;
+            copy.UprisingSupportDriftTimerOrder = UprisingSupportDriftTimerOrder;
+            copy.UprisingIncidentTimerOrder = UprisingIncidentTimerOrder;
+            copy.UprisingClearTimerOrder = UprisingClearTimerOrder;
+            copy.NextUprisingTimerOrder = NextUprisingTimerOrder;
+            copy.PopularSupport = new Dictionary<string, int>(PopularSupport);
+            copy.ManufacturingQueue = ManufacturingQueue.Keys.ToDictionary(
+                type => type,
+                _ => new List<IManufacturable>()
+            );
+            copy.VisitingFactionIDs = new List<string>(VisitingFactionIDs);
+        }
+
+        /// <summary>
+        /// Attaches a copied child and preserves its manufacturing-queue membership.
+        /// </summary>
+        /// <param name="destination">The copied planet receiving the child.</param>
+        /// <param name="sourceChild">The original child.</param>
+        /// <param name="copiedChild">The copied child.</param>
+        protected override void AttachCopiedChild(
+            BaseSceneNode destination,
+            ISceneNode sourceChild,
+            ISceneNode copiedChild
+        )
+        {
+            base.AttachCopiedChild(destination, sourceChild, copiedChild);
+            if (sourceChild is not IManufacturable source || copiedChild is not IManufacturable copy)
+                return;
+
+            Planet copiedPlanet = (Planet)destination;
+            foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> queue in ManufacturingQueue)
+            {
+                if (queue.Value.Contains(source))
+                    copiedPlanet.ManufacturingQueue[queue.Key].Add(copy);
+            }
+        }
+
+        /// <summary>
         /// Checks if the planet is blockaded.
         /// A planet is blockaded only when a stationary hostile fleet has an operational capital
         /// ship and no equivalent defending fleet is present.

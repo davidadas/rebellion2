@@ -2621,6 +2621,36 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RecordEspionageSnapshot_DisabledMissionParticipant_PreservesParticipant()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+            Mission empireMission = CreateMission("M1", _empire, _coruscant);
+            _game.AttachNode(empireMission, _coruscant);
+            _game.MoveNode(vader, empireMission);
+            vader.IsEnabled = false;
+
+            new FogOfWarRecorder().RecordEspionageSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSystem,
+                10
+            );
+
+            Mission recordedMission = _alliance
+                .Fog.Snapshots[_coreSystem.InstanceID]
+                .Planets[_coruscant.InstanceID]
+                .Missions.Single();
+            Officer recordedParticipant = recordedMission
+                .GetMainParticipants(includeDisabled: true)
+                .Single() as Officer;
+
+            Assert.IsNotNull(recordedParticipant);
+            Assert.AreEqual(vader.InstanceID, recordedParticipant.InstanceID);
+            Assert.IsFalse(recordedParticipant.IsEnabled);
+        }
+
+        [Test]
         public void RecordEspionageSnapshot_IncomingEnemyFleet_RevealsFleet()
         {
             Fleet empireFleet = CreateFleet("INCOMING_FLEET", _empire);

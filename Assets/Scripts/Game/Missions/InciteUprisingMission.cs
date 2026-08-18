@@ -17,6 +17,10 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public override bool CanceledOnOwnershipChange => false;
 
+        /// <summary>Creates an empty incite-uprising mission copy.</summary>
+        /// <returns>An empty incite-uprising mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new InciteUprisingMission();
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>

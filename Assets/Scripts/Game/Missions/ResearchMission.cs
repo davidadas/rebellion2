@@ -23,6 +23,18 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public ResearchDiscipline Discipline { get; set; }
 
+        /// <summary>Creates an empty research mission copy.</summary>
+        /// <returns>An empty research mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new ResearchMission();
+
+        /// <summary>Copies research-specific state into an empty destination.</summary>
+        /// <param name="destination">The destination mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            ((ResearchMission)destination).Discipline = Discipline;
+        }
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>

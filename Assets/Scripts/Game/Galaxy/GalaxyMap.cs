@@ -19,6 +19,12 @@ namespace Rebellion.Game.Galaxy
         public GalaxyMap() { }
 
         /// <summary>
+        /// Creates an empty galaxy-map copy.
+        /// </summary>
+        /// <returns>An empty galaxy map.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new GalaxyMap();
+
+        /// <summary>
         /// Returns true if the child is a PlanetSystem.
         /// </summary>
         /// <param name="child">The candidate child node.</param>

@@ -75,6 +75,23 @@ namespace Rebellion.Game.Movement
         public MovementState() { }
 
         /// <summary>
+        /// Creates an independent copy of this movement state.
+        /// </summary>
+        /// <returns>The copied movement state.</returns>
+        public MovementState CreateCopy() =>
+            new MovementState
+            {
+                TransitTicks = TransitTicks,
+                TicksElapsed = TicksElapsed,
+                MovementGroupID = MovementGroupID,
+                SourceEventInstanceID = SourceEventInstanceID,
+                OriginPositionX = OriginPositionX,
+                OriginPositionY = OriginPositionY,
+                CurrentPositionX = CurrentPositionX,
+                CurrentPositionY = CurrentPositionY,
+            };
+
+        /// <summary>
         /// Progress fraction in [0.0, 1.0] - 0.0 = just departed, 1.0 = arrived.
         /// </summary>
         /// <returns>Progress as a float in [0.0, 1.0].</returns>

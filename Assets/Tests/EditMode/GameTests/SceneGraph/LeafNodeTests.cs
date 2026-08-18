@@ -265,6 +265,8 @@ namespace Rebellion.Tests.SceneGraph
         {
             private readonly List<ISceneNode> _children = new List<ISceneNode>();
 
+            protected override BaseSceneNode CreateNodeCopy() => new MockContainerNode();
+
             public override bool CanAcceptChild(ISceneNode child) => true;
 
             public override void AddChild(ISceneNode child)

@@ -34,5 +34,17 @@ namespace Rebellion.Game.Units
         public FleetOrderStatus Status { get; set; }
 
         public string TargetPlanetId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Creates an independent copy of this fleet order.
+        /// </summary>
+        /// <returns>The copied fleet order.</returns>
+        public FleetOrder CreateCopy() =>
+            new FleetOrder
+            {
+                OrderType = OrderType,
+                Status = Status,
+                TargetPlanetId = TargetPlanetId,
+            };
     }
 }

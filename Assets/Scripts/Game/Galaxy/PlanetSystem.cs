@@ -48,6 +48,28 @@ namespace Rebellion.Game.Galaxy
         public PlanetSystem() { }
 
         /// <summary>
+        /// Creates an empty planet-system copy.
+        /// </summary>
+        /// <returns>An empty planet system.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new PlanetSystem();
+
+        /// <summary>
+        /// Copies planet-system state into an empty destination.
+        /// </summary>
+        /// <param name="destination">The destination node.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            PlanetSystem copy = (PlanetSystem)destination;
+            copy.SectorDataId = SectorDataId;
+            copy.Visibility = Visibility;
+            copy.SystemType = SystemType;
+            copy.Importance = Importance;
+            copy.PositionX = PositionX;
+            copy.PositionY = PositionY;
+        }
+
+        /// <summary>
         /// Replaces the system's planet collection while constructing a detached projection.
         /// </summary>
         /// <param name="planets">The planets to retain in the projection.</param>

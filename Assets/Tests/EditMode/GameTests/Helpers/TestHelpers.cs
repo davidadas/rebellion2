@@ -142,6 +142,10 @@ public class QueueRNG : IRandomNumberProvider
 /// </summary>
 public class StubMission : Mission
 {
+    /// <summary>Creates an empty stub mission copy.</summary>
+    /// <returns>An empty stub mission.</returns>
+    protected override BaseSceneNode CreateNodeCopy() => new StubMission();
+
     /// <summary>
     /// Default constructor — sets empty participant lists.
     /// Use when the mission only needs to exist as a parent node, not in the scene graph.

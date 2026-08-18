@@ -77,6 +77,44 @@ namespace Rebellion.Game.Units
         /// </summary>
         public Building() { }
 
+        /// <summary>Creates an empty building copy.</summary>
+        protected override BaseSceneNode CreateNodeCopy() => new Building();
+
+        /// <summary>Copies building state into an empty destination.</summary>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            Building copy = (Building)destination;
+            copy.ConstructionCost = ConstructionCost;
+            copy.MaintenanceCost = MaintenanceCost;
+            copy.BaseBuildSpeed = BaseBuildSpeed;
+            copy.ManufacturingFactionInstanceIDs = ManufacturingFactionInstanceIDs == null
+                ? null
+                : new List<string>(ManufacturingFactionInstanceIDs);
+            copy.ResearchOrder = ResearchOrder;
+            copy.ResearchDifficulty = ResearchDifficulty;
+            copy.BuildingType = BuildingType;
+            copy.ProcessRate = ProcessRate;
+            copy.Bombardment = Bombardment;
+            copy.WeaponStrength = WeaponStrength;
+            copy.ShieldStrength = ShieldStrength;
+            copy.WeaponPower = WeaponPower;
+            copy.DefenseFacilityClass = DefenseFacilityClass;
+            copy.ProductionModifier = ProductionModifier;
+            copy.ProducerOwnerID = ProducerOwnerID;
+            copy.ProducerPlanetID = ProducerPlanetID;
+            copy.ManufacturingProgress = ManufacturingProgress;
+            copy.ManufacturingStatus = ManufacturingStatus;
+            copy.ProductionType = ProductionType;
+            copy.ProductionCycleProgress = ProductionCycleProgress;
+            copy.ProductionCycleDuration = ProductionCycleDuration;
+            copy.ProductionPointReady = ProductionPointReady;
+            copy.ProductionInputReserved = ProductionInputReserved;
+            copy.ResourceMaintenanceAllocation = ResourceMaintenanceAllocation;
+            copy.ResourceStartupCyclePending = ResourceStartupCyclePending;
+            copy.Movement = Movement?.CreateCopy();
+        }
+
         /// <summary>
         /// Returns the building's type.
         /// </summary>
