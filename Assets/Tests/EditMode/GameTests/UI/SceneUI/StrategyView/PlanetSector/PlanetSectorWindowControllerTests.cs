@@ -15,12 +15,12 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
-namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
     [TestFixture]
-    public class PlanetSystemWindowControllerTests
+    public class PlanetSectorWindowControllerTests
     {
         private const string _opposingFactionId = "FNEMP1";
         private const string _playerFactionId = "FNALL1";
@@ -28,7 +28,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
         private TestActions _actions;
-        private PlanetSystemWindowController _controller;
+        private PlanetSectorWindowController _controller;
         private int _dirtyCount;
         private GameFleet _fleet;
         private StrategyFleetCommandController _fleetCommandController;
@@ -37,7 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
-        private GamePlanetSystem _system;
+        private GamePlanetSector _system;
         private TargetingController _targetingController;
         private UIContext _uiContext;
         private StrategyWindowLayerView _windowLayer;
@@ -78,7 +78,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             StrategyFleetCommandController fleetCommands = CreateFleetCommandController();
 
             Assert.Throws<ArgumentNullException>(() =>
-                new PlanetSystemWindowController(
+                new PlanetSectorWindowController(
                     fleetCommands,
                     null,
                     _targetingController,
@@ -103,9 +103,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
-            PlanetSystemWindowController controller = CreateController();
-            PlanetSystemWindowView view = UnityEngine.Object.Instantiate(
-                _windowLayer.PlanetSystemWindowPrefab,
+            PlanetSectorWindowController controller = CreateController();
+            PlanetSectorWindowView view = UnityEngine.Object.Instantiate(
+                _windowLayer.PlanetSectorWindowPrefab,
                 _rootObject.transform
             );
             UIWindow window = view.GetComponent<UIWindow>();
@@ -125,16 +125,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void Open_ValidSector_CreatesNamedWindowInFirstSlot()
         {
             bool opened = _controller.Open(_sector);
-            PlanetSystemWindowView view = GetOpenView(out UIWindow window);
+            PlanetSectorWindowView view = GetOpenView(out UIWindow window);
             Vector2Int requestedPosition = GetWindowPosition(SectorWindowPositions.Left);
             Vector2Int expectedPosition = _windowManager.ClampPosition(
                 requestedPosition.x,
                 requestedPosition.y,
-                _windowLayer.GetWindowSize(_windowLayer.PlanetSystemWindowPrefab)
+                _windowLayer.GetWindowSize(_windowLayer.PlanetSectorWindowPrefab)
             );
 
             Assert.IsTrue(opened);
-            Assert.AreEqual($"PlanetSystemWindow-{_system.GetDisplayName()}", view.name);
+            Assert.AreEqual($"PlanetSectorWindow-{_system.GetDisplayName()}", view.name);
             Assert.AreEqual(expectedPosition, new Vector2Int(window.X, window.Y));
             Assert.AreSame(_sector, _controller.GetSector(view));
             Assert.AreEqual(SectorWindowPositions.Left, _controller.GetSectorPosition(view));
@@ -157,7 +157,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void SetSectorPosition_InitializedWindow_UpdatesSessionSlot()
         {
-            PlanetSystemWindowView view = OpenWindow(out UIWindow _);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow _);
 
             _controller.SetSectorPosition(view, SectorWindowPositions.Right);
 
@@ -167,7 +167,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Swap_InitializedWindow_MovesToNextSlotAndMarksDirty()
         {
-            PlanetSystemWindowView view = OpenWindow(out UIWindow window);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
 
             _controller.Swap(window);
 
@@ -178,9 +178,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         }
 
         [Test]
-        public void ReconcileWindows_MatchingSystemIdentity_ReplacesSectorSnapshot()
+        public void ReconcileWindows_MatchingSectorIdentity_ReplacesSectorSnapshot()
         {
-            PlanetSystemWindowView view = OpenWindow(out UIWindow window);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
             GalaxyMapSector freshSector = CreateFreshSector();
 
             _controller.ReconcileWindows(new[] { freshSector });
@@ -217,7 +217,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void TryCreateContextMenu_FleetElement_SelectsFleetContextAndStatus()
         {
-            PlanetSystemWindowView view = OpenWindow(out UIWindow window);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
             _controller.RenderWindow(view, window);
             PointerEventData eventData = CreateFleetPointerEvent(view);
             StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
@@ -271,7 +271,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
             _controller.Initialize(_actions, _actions, _actions, (_, _) => { });
-            PlanetSystemWindowView view = OpenWindow(out UIWindow window);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
             _controller.RenderWindow(view, window);
             StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
                 window,
@@ -297,7 +297,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void ClearSelection_SelectedFleet_ClearsContextAndStatus()
         {
-            PlanetSystemWindowView view = OpenWindow(out UIWindow window);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
             _controller.RenderWindow(view, window);
             CaptureFleetContext(view, window);
 
@@ -332,7 +332,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesSectorAssociation()
         {
-            PlanetSystemWindowView view = OpenWindow(out UIWindow _);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow _);
 
             UIComponentTestHelper.InvokeLifecycle(view, "OnDestroy");
 
@@ -343,11 +343,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void CreateTargetForHit_CreateMissionOnPlanetOverlayIcon_TargetsPlanet()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Facility, false);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Facility, false);
             GameFleet fleet = new GameFleet();
             TargetingRequest request = CreateRequest(StrategyMenuAction.CreateMission);
 
-            StrategyMissionTarget target = PlanetSystemWindowController.CreateTargetForHit(
+            StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
                 hit,
                 request,
                 fleet
@@ -361,11 +361,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void CreateTargetForHit_DestinationOnFleetOverlayIcon_TargetsPlanet()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet();
             TargetingRequest request = CreateRequest(StrategyMenuAction.Destination);
 
-            StrategyMissionTarget target = PlanetSystemWindowController.CreateTargetForHit(
+            StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
                 hit,
                 request,
                 fleet
@@ -379,11 +379,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void CreateTargetForHit_MoveOnFleetOverlayIcon_TargetsFleet()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet();
             TargetingRequest request = CreateRequest(StrategyMenuAction.Move);
 
-            StrategyMissionTarget target = PlanetSystemWindowController.CreateTargetForHit(
+            StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
                 hit,
                 request,
                 fleet
@@ -397,11 +397,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void CreateTargetForHit_MoveConfirmOnFleetOverlayIcon_TargetsFleet()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet();
             TargetingRequest request = CreateRequest(StrategyMenuAction.MoveConfirm);
 
-            StrategyMissionTarget target = PlanetSystemWindowController.CreateTargetForHit(
+            StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
                 hit,
                 request,
                 fleet
@@ -415,14 +415,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void CreateTargetForHit_EmptyHit_ReturnsNull()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.None, false);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.None, false);
 
-            StrategyMissionTarget missingHit = PlanetSystemWindowController.CreateTargetForHit(
+            StrategyMissionTarget missingHit = PlanetSectorWindowController.CreateTargetForHit(
                 null,
                 CreateRequest(StrategyMenuAction.Move),
                 _fleet
             );
-            StrategyMissionTarget emptyHit = PlanetSystemWindowController.CreateTargetForHit(
+            StrategyMissionTarget emptyHit = PlanetSectorWindowController.CreateTargetForHit(
                 hit,
                 CreateRequest(StrategyMenuAction.Move),
                 _fleet
@@ -432,9 +432,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             Assert.IsNull(emptyHit);
         }
 
-        private PlanetSystemWindowController CreateController()
+        private PlanetSectorWindowController CreateController()
         {
-            return new PlanetSystemWindowController(
+            return new PlanetSectorWindowController(
                 _fleetCommandController,
                 () => _uiContext,
                 _targetingController,
@@ -468,7 +468,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
         private GalaxyMapSector CreateSector()
         {
-            _system = new GamePlanetSystem { InstanceID = "system", DisplayName = "Core System" };
+            _system = new GamePlanetSector { InstanceID = "system", DisplayName = "Core System" };
             _game.AttachNode(_system, _game.GetGalaxyMap());
             Planet planet = new Planet
             {
@@ -491,7 +491,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
         private GalaxyMapSector CreateFreshSector()
         {
-            GamePlanetSystem system = new GamePlanetSystem
+            GamePlanetSector system = new GamePlanetSector
             {
                 InstanceID = _system.InstanceID,
                 DisplayName = "Fresh System",
@@ -511,20 +511,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             return new GalaxyMapSector(system, new[] { strategyPlanet });
         }
 
-        private PlanetSystemWindowView OpenWindow(out UIWindow window)
+        private PlanetSectorWindowView OpenWindow(out UIWindow window)
         {
             _controller.Open(_sector);
             return GetOpenView(out window);
         }
 
-        private PlanetSystemWindowView GetOpenView(out UIWindow window)
+        private PlanetSectorWindowView GetOpenView(out UIWindow window)
         {
             window = _windowManager.Windows.Single();
-            _windowManager.TryGetWindowView(window, out PlanetSystemWindowView view);
+            _windowManager.TryGetWindowView(window, out PlanetSectorWindowView view);
             return view;
         }
 
-        private void CaptureFleetContext(PlanetSystemWindowView view, UIWindow window)
+        private void CaptureFleetContext(PlanetSectorWindowView view, UIWindow window)
         {
             StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
                 window,
@@ -536,10 +536,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             _controller.TryCreateContextMenu(context, out _, out _);
         }
 
-        private static PointerEventData CreateFleetPointerEvent(PlanetSystemWindowView view)
+        private static PointerEventData CreateFleetPointerEvent(PlanetSectorWindowView view)
         {
-            PlanetSystemPlanetView planetView =
-                view.GetComponentsInChildren<PlanetSystemPlanetView>(true)
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
                     .Single(item => item.name == "Planet0");
             RawImage fleetImage = GetField<RawImage>(planetView, "fleetImage");
             return new PointerEventData(null)
@@ -591,12 +591,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
         }
 
-        private static PlanetSystemWindowHit CreateHit(PlanetIcon icon, bool planetImage)
+        private static PlanetSectorWindowHit CreateHit(PlanetIcon icon, bool planetImage)
         {
-            GamePlanetSystem system = new GamePlanetSystem();
+            GamePlanetSector system = new GamePlanetSector();
             Planet planet = new Planet();
             GalaxyMapPlanet galaxyMapPlanet = new GalaxyMapPlanet(system, planet, string.Empty);
-            return new PlanetSystemWindowHit(galaxyMapPlanet, icon, planetImage);
+            return new PlanetSectorWindowHit(galaxyMapPlanet, icon, planetImage);
         }
 
         private sealed class TestTargetingReceiver : ITargetingReceiver
@@ -607,7 +607,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         }
 
         private sealed class TestActions
-            : IPlanetSystemWindowActions,
+            : IPlanetSectorWindowActions,
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {
@@ -630,26 +630,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 LastTarget = target;
             }
 
-            public void OpenPlanetSystemBattleResult(GameResult result)
+            public void OpenPlanetSectorBattleResult(GameResult result)
             {
                 LastBattleResult = result;
             }
 
-            public void RefreshPlanetSystemState()
+            public void RefreshPlanetSectorState()
             {
                 RefreshCount++;
             }
 
-            public void OpenPlanetSystemPlanetWindow(
+            public void OpenPlanetSectorPlanetWindow(
                 GalaxyMapPlanet planet,
                 PlanetIcon icon,
                 int sourceX,
                 int sourceY
             ) { }
 
-            public void OpenPlanetSystemInfo(StrategyStatusTarget target) { }
+            public void OpenPlanetSectorInfo(StrategyStatusTarget target) { }
 
-            public void OpenPlanetSystemStatus(StrategyStatusTarget target) { }
+            public void OpenPlanetSectorStatus(StrategyStatusTarget target) { }
 
             public void OpenScrapConfirmWindow(
                 UIWindow sourceWindow,

@@ -14,10 +14,10 @@ public static class StrategyViewPrefabBuilder
 {
     private const string _fallbackPreviewThemeId = "DEFAULT";
     private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
-    private const string _planetSystemWindowPrefabPath =
-        "Assets/Prefabs/UI/StrategyView/PlanetSystemWindow.prefab";
-    private const string _planetSystemPlanetPrefabPath =
-        "Assets/Prefabs/UI/StrategyView/PlanetSystemPlanet.prefab";
+    private const string _planetSectorWindowPrefabPath =
+        "Assets/Prefabs/UI/StrategyView/PlanetSectorWindow.prefab";
+    private const string _planetSectorPlanetPrefabPath =
+        "Assets/Prefabs/UI/StrategyView/PlanetSectorPlanet.prefab";
     private const string _confirmDialogWindowPrefabPath =
         "Assets/Prefabs/UI/StrategyView/ConfirmDialogWindow.prefab";
     private const string _battleAlertWindowPrefabPath =
@@ -50,8 +50,8 @@ public static class StrategyViewPrefabBuilder
         "Assets/Prefabs/UI/StrategyView/EncyclopediaWindow.prefab";
     private const string _optionsMenuWindowPrefabPath =
         "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
-    private const string _planetSystemClusterPrefabPath =
-        "Assets/Prefabs/UI/StrategyView/PlanetSystemCluster.prefab";
+    private const string _planetSectorClusterPrefabPath =
+        "Assets/Prefabs/UI/StrategyView/PlanetSectorCluster.prefab";
     private const string _commonScrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _commonTextInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     private const string _strategyScenePath = "Assets/Scenes/StrategyView.unity";
@@ -75,13 +75,13 @@ public static class StrategyViewPrefabBuilder
     private const string _contextMenuPanelTemplateName = "PanelTemplate";
     private const string _contextMenuCommandTemplateName = "CommandTemplate";
     private const string _galaxyBackgroundImageName = "BackgroundImage";
-    private const string _planetSystemClustersName = "PlanetSystemClusters";
+    private const string _planetSectorClustersName = "PlanetSectorClusters";
     private const string _activeGalacticInformationFilterLabelName =
         "ActiveGalacticInformationFilterLabel";
     private const string _galaxyStarPreviewPath =
         "Application/Strategy/UI/Windows/ui_strategyview_galaxy_star_preview.png";
     private const string _planetPreviewPath =
-        "Application/Strategy/UI/Windows/ui_strategyview_planetsystem_planet_preview.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_planetsector_planet_preview.png";
     private const string _windowOpenSectorPreviewPath =
         "Application/Strategy/UI/Shell/ui_strategyview_window_open_sector_button.png";
     private const string _windowOpenSectorDownPreviewPath =
@@ -186,7 +186,7 @@ public static class StrategyViewPrefabBuilder
     private const int _contextMenuCommandHeight = 20;
     private const int _speedContextMenuWidth = 60;
     private const int _facilityContextMenuWidth = 89;
-    private const int _planetSystemContextMenuWidth = 130;
+    private const int _planetSectorContextMenuWidth = 130;
     private const int _defenseContextMenuWidth = 110;
     private const int _missionsContextMenuWidth = 100;
     private const int _fallbackContextMenuWidth = 100;
@@ -206,16 +206,16 @@ public static class StrategyViewPrefabBuilder
     private const float _galaxyProjectionWidth = 315f;
     private const float _galaxyProjectionHeight = 215f;
     private const int _planetPreviewWidth = 37;
-    private const int _planetSystemPlanetImageWidth = 37;
-    private const int _planetSystemPlanetImageHeight = 37;
-    private const int _planetSystemFacilityIconWidth = 27;
-    private const int _planetSystemFacilityIconHeight = 18;
-    private const int _planetSystemDefenseIconWidth = 27;
-    private const int _planetSystemDefenseIconHeight = 19;
-    private const int _planetSystemFleetIconWidth = 28;
-    private const int _planetSystemFleetIconHeight = 18;
-    private const int _planetSystemMissionIconWidth = 28;
-    private const int _planetSystemMissionIconHeight = 19;
+    private const int _planetSectorPlanetImageWidth = 37;
+    private const int _planetSectorPlanetImageHeight = 37;
+    private const int _planetSectorFacilityIconWidth = 27;
+    private const int _planetSectorFacilityIconHeight = 18;
+    private const int _planetSectorDefenseIconWidth = 27;
+    private const int _planetSectorDefenseIconHeight = 19;
+    private const int _planetSectorFleetIconWidth = 28;
+    private const int _planetSectorFleetIconHeight = 18;
+    private const int _planetSectorMissionIconWidth = 28;
+    private const int _planetSectorMissionIconHeight = 19;
     private const int _defenseItemWidth = 61;
     private const int _defenseItemHeight = 70;
     private const int _defenseItemSpacing = 10;
@@ -573,8 +573,8 @@ public static class StrategyViewPrefabBuilder
         Directory.CreateDirectory(Path.GetDirectoryName(_prefabPath));
         _previewThemes = null;
         _previewThemeId = null;
-        PlanetSystemWindowView planetSystemWindowPrefab = LoadWindowPrefab<PlanetSystemWindowView>(
-            _planetSystemWindowPrefabPath
+        PlanetSectorWindowView planetSectorWindowPrefab = LoadWindowPrefab<PlanetSectorWindowView>(
+            _planetSectorWindowPrefabPath
         );
         ConfirmDialogWindowView confirmDialogWindowPrefab =
             LoadWindowPrefab<ConfirmDialogWindowView>(_confirmDialogWindowPrefabPath);
@@ -615,8 +615,8 @@ public static class StrategyViewPrefabBuilder
         OptionsMenuView optionsMenuWindowPrefab = LoadWindowPrefab<OptionsMenuView>(
             _optionsMenuWindowPrefabPath
         );
-        PlanetSystemClusterView planetSystemClusterPrefab =
-            LoadPrefabComponent<PlanetSystemClusterView>(_planetSystemClusterPrefabPath);
+        PlanetSectorClusterView planetSectorClusterPrefab =
+            LoadPrefabComponent<PlanetSectorClusterView>(_planetSectorClusterPrefabPath);
 
         GameObject sceneRoot = new GameObject(_sceneInstanceName);
         BuildSceneInfrastructure(sceneRoot);
@@ -680,8 +680,8 @@ public static class StrategyViewPrefabBuilder
                 ToSourceUnits(backgroundTexture.height)
             );
 
-        RectTransform planetSystemClusters = CreateChildLayer(
-            _planetSystemClustersName,
+        RectTransform planetSectorClusters = CreateChildLayer(
+            _planetSectorClustersName,
             galaxyMap.transform
         );
         GalacticInformationDisplayTheme galacticInformationTheme =
@@ -867,7 +867,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(bookmarkBarView, "slotTemplate", bookmarkSlotTemplate);
         AssignWindowPrefabs(
             windowsView,
-            planetSystemWindowPrefab,
+            planetSectorWindowPrefab,
             facilityWindowPrefab,
             defenseWindowPrefab,
             fleetWindowPrefab,
@@ -903,9 +903,9 @@ public static class StrategyViewPrefabBuilder
         AssignReference(hudView, "advisorView", advisorView);
         AssignReference(galaxyMapView, "background", background);
         AssignReference(galaxyMapView, "backgroundImage", backgroundImage);
-        AssignReference(galaxyMapView, "planetSystemClusters", planetSystemClusters);
+        AssignReference(galaxyMapView, "planetSectorClusters", planetSectorClusters);
         AssignReference(galaxyMapView, "activeFilterLabel", activeFilterLabel);
-        AssignReference(galaxyMapView, "planetSystemClusterPrefab", planetSystemClusterPrefab);
+        AssignReference(galaxyMapView, "planetSectorClusterPrefab", planetSectorClusterPrefab);
 
         SaveGeneratedPrefabAsset(sceneRoot, _prefabPath);
         Object.DestroyImmediate(sceneRoot);
@@ -956,9 +956,9 @@ public static class StrategyViewPrefabBuilder
         _previewThemes = null;
         _previewThemeId = null;
 
-        PlanetSystemPlanetView planetPrefab = BuildPlanetSystemPlanetPrefab();
-        BuildPlanetSystemWindowPrefab(planetPrefab);
-        BuildPlanetSystemClusterPrefab();
+        PlanetSectorPlanetView planetPrefab = BuildPlanetSectorPlanetPrefab();
+        BuildPlanetSectorWindowPrefab(planetPrefab);
+        BuildPlanetSectorClusterPrefab();
         BuildConfirmDialogWindowPrefab();
         BuildBattleAlertWindowPrefab();
         BuildFacilityWindowPrefab();
@@ -5878,12 +5878,12 @@ public static class StrategyViewPrefabBuilder
 
         WindowButtonImageTheme[] resultDirectButtonThemes =
         {
-            theme?.ResultDirectSystemButton,
+            theme?.ResultDirectSectorButton,
             theme?.ResultDirectFleetButton,
         };
         string[] resultDirectButtonNames =
         {
-            "ResultDirectSystemButtonImage",
+            "ResultDirectSectorButtonImage",
             "ResultDirectFleetButtonImage",
         };
         int[] resultDirectButtonFallbackXs = { 29, 226 };
@@ -6424,16 +6424,16 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Authors the reusable planet-system cluster prefab.
+    /// Authors the reusable planet-sector cluster prefab.
     /// </summary>
-    /// <returns>The generated planet-system cluster view.</returns>
-    private static PlanetSystemClusterView BuildPlanetSystemClusterPrefab()
+    /// <returns>The generated planet-sector cluster view.</returns>
+    private static PlanetSectorClusterView BuildPlanetSectorClusterPrefab()
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_planetSystemClusterPrefabPath));
+        Directory.CreateDirectory(Path.GetDirectoryName(_planetSectorClusterPrefabPath));
 
-        GameObject root = new GameObject("PlanetSystemCluster", typeof(RectTransform));
-        PlanetSystemClusterView view = EnableRuntimeComponent(
-            root.AddComponent<PlanetSystemClusterView>()
+        GameObject root = new GameObject("PlanetSectorCluster", typeof(RectTransform));
+        PlanetSectorClusterView view = EnableRuntimeComponent(
+            root.AddComponent<PlanetSectorClusterView>()
         );
         SetSourceRect(root.GetComponent<RectTransform>(), 0, 0, 50, 50);
 
@@ -6473,11 +6473,11 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "starImageTemplate", starTemplate);
         AssignReference(view, "headquartersImageTemplate", headquartersTemplate);
 
-        GameObject saved = SaveGeneratedPrefabAsset(root, _planetSystemClusterPrefabPath);
+        GameObject saved = SaveGeneratedPrefabAsset(root, _planetSectorClusterPrefabPath);
         Object.DestroyImmediate(root);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        return saved.GetComponent<PlanetSystemClusterView>();
+        return saved.GetComponent<PlanetSectorClusterView>();
     }
 
     /// <summary>
@@ -7014,7 +7014,7 @@ public static class StrategyViewPrefabBuilder
         AssignInt(presenter, "facilityMenuWidth", _facilityContextMenuWidth);
         AssignInt(presenter, "fleetMenuWidth", _fleetContextMenuWidth);
         AssignInt(presenter, "fleetBombardmentMenuWidth", _fleetBombardmentContextMenuWidth);
-        AssignInt(presenter, "planetSystemMenuWidth", _planetSystemContextMenuWidth);
+        AssignInt(presenter, "planetSectorMenuWidth", _planetSectorContextMenuWidth);
         AssignInt(presenter, "defenseMenuWidth", _defenseContextMenuWidth);
         AssignInt(presenter, "missionsMenuWidth", _missionsContextMenuWidth);
         AssignInt(presenter, "fallbackMenuWidth", _fallbackContextMenuWidth);
@@ -7072,15 +7072,15 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Authors the reusable planet-system planet prefab.
+    /// Authors the reusable planet-sector planet prefab.
     /// </summary>
-    /// <returns>The generated planet-system planet view.</returns>
-    private static PlanetSystemPlanetView BuildPlanetSystemPlanetPrefab()
+    /// <returns>The generated planet-sector planet view.</returns>
+    private static PlanetSectorPlanetView BuildPlanetSectorPlanetPrefab()
     {
-        GameObject root = new GameObject("PlanetSystemPlanet", typeof(RectTransform));
+        GameObject root = new GameObject("PlanetSectorPlanet", typeof(RectTransform));
         root.SetActive(false);
-        PlanetSystemPlanetView planetView = EnableRuntimeComponent(
-            root.AddComponent<PlanetSystemPlanetView>()
+        PlanetSectorPlanetView planetView = EnableRuntimeComponent(
+            root.AddComponent<PlanetSectorPlanetView>()
         );
         const int rootWidth = _planetPreviewWidth + 19;
         const int rootHeight = 98;
@@ -7097,17 +7097,17 @@ public static class StrategyViewPrefabBuilder
             _planetPreviewPath,
             10,
             1,
-            _planetSystemPlanetImageWidth,
-            _planetSystemPlanetImageHeight
+            _planetSectorPlanetImageWidth,
+            _planetSectorPlanetImageHeight
         );
         RawImage uprising = CreateRawImage(
             "UprisingImage",
             root.transform,
-            PreviewTheme?.PlanetOverlayTheme?.PlanetSystemUprisingImagePath,
+            PreviewTheme?.PlanetOverlayTheme?.PlanetSectorUprisingImagePath,
             10,
             1,
-            _planetSystemPlanetImageWidth,
-            _planetSystemPlanetImageHeight
+            _planetSectorPlanetImageWidth,
+            _planetSectorPlanetImageHeight
         );
         uprising.raycastTarget = false;
         RawImage facility = CreateRawImage(
@@ -7116,8 +7116,8 @@ public static class StrategyViewPrefabBuilder
             PreviewTheme?.PlanetOverlayTheme?.PlanetOverlayIcons?.Buildings?.NormalImagePath,
             0,
             0,
-            _planetSystemFacilityIconWidth,
-            _planetSystemFacilityIconHeight
+            _planetSectorFacilityIconWidth,
+            _planetSectorFacilityIconHeight
         );
         RawImage defense = CreateRawImage(
             "DefenseImage",
@@ -7125,8 +7125,8 @@ public static class StrategyViewPrefabBuilder
             PreviewTheme?.PlanetOverlayTheme?.PlanetOverlayIcons?.Defenses?.NormalImagePath,
             0,
             20,
-            _planetSystemDefenseIconWidth,
-            _planetSystemDefenseIconHeight
+            _planetSectorDefenseIconWidth,
+            _planetSectorDefenseIconHeight
         );
         RawImage fleet = CreateRawImage(
             "FleetImage",
@@ -7134,8 +7134,8 @@ public static class StrategyViewPrefabBuilder
             PreviewTheme?.PlanetOverlayTheme?.PlanetOverlayIcons?.Fleets?.NormalImagePath,
             29,
             0,
-            _planetSystemFleetIconWidth,
-            _planetSystemFleetIconHeight
+            _planetSectorFleetIconWidth,
+            _planetSectorFleetIconHeight
         );
         RawImage mission = CreateRawImage(
             "MissionImage",
@@ -7143,19 +7143,19 @@ public static class StrategyViewPrefabBuilder
             PreviewTheme?.PlanetOverlayTheme?.PlanetOverlayIcons?.Missions?.NormalImagePath,
             28,
             20,
-            _planetSystemMissionIconWidth,
-            _planetSystemMissionIconHeight
+            _planetSectorMissionIconWidth,
+            _planetSectorMissionIconHeight
         );
         RawImage headquarters = CreateRawImage(
             "HeadquartersImage",
             root.transform,
-            PreviewTheme?.PlanetOverlayTheme?.PlanetSystemHeadquartersImagePath,
+            PreviewTheme?.PlanetOverlayTheme?.PlanetSectorHeadquartersImagePath,
             10,
             1,
-            _planetSystemPlanetImageWidth,
-            _planetSystemPlanetImageHeight
+            _planetSectorPlanetImageWidth,
+            _planetSectorPlanetImageHeight
         );
-        int segmentedBarCellCount = GetPlanetSystemSegmentedBarCellCount();
+        int segmentedBarCellCount = GetPlanetSectorSegmentedBarCellCount();
         BarPrefabParts energyBar = CreateBar(
             "EnergyBar",
             root.transform,
@@ -7210,43 +7210,43 @@ public static class StrategyViewPrefabBuilder
         AssignReference(planetView, "supportBarFillImage", supportBar.Fill);
 
         root.SetActive(true);
-        GameObject saved = SaveGeneratedPrefabAsset(root, _planetSystemPlanetPrefabPath);
+        GameObject saved = SaveGeneratedPrefabAsset(root, _planetSectorPlanetPrefabPath);
         Object.DestroyImmediate(root);
-        return saved.GetComponent<PlanetSystemPlanetView>();
+        return saved.GetComponent<PlanetSectorPlanetView>();
     }
 
     /// <summary>
-    /// Authors the Planet System window prefab around its nested planet prefab.
+    /// Authors the Planet Sector window prefab around its nested planet prefab.
     /// </summary>
     /// <param name="planetPrefab">The reusable planet view prefab.</param>
-    /// <returns>The generated Planet System window view.</returns>
-    private static PlanetSystemWindowView BuildPlanetSystemWindowPrefab(
-        PlanetSystemPlanetView planetPrefab
+    /// <returns>The generated Planet Sector window view.</returns>
+    private static PlanetSectorWindowView BuildPlanetSectorWindowPrefab(
+        PlanetSectorPlanetView planetPrefab
     )
     {
-        GameObject window = CreatePlanetSystemWindowObject("PlanetSystemWindow", planetPrefab);
-        GameObject saved = SaveGeneratedPrefabAsset(window, _planetSystemWindowPrefabPath);
+        GameObject window = CreatePlanetSectorWindowObject("PlanetSectorWindow", planetPrefab);
+        GameObject saved = SaveGeneratedPrefabAsset(window, _planetSectorWindowPrefabPath);
         Object.DestroyImmediate(window);
-        return saved.GetComponent<PlanetSystemWindowView>();
+        return saved.GetComponent<PlanetSectorWindowView>();
     }
 
     /// <summary>
-    /// Authors a Planet System window hierarchy before prefab serialization.
+    /// Authors a Planet Sector window hierarchy before prefab serialization.
     /// </summary>
     /// <param name="name">The window object name.</param>
     /// <param name="planetPrefab">The reusable planet view prefab.</param>
     /// <returns>The generated window hierarchy root.</returns>
-    private static GameObject CreatePlanetSystemWindowObject(
+    private static GameObject CreatePlanetSectorWindowObject(
         string name,
-        PlanetSystemPlanetView planetPrefab
+        PlanetSectorPlanetView planetPrefab
     )
     {
         const int windowWidth = 226;
         const int windowHeight = 349;
         GameObject window = new GameObject(name, typeof(RectTransform), typeof(UIWindow));
         window.SetActive(false);
-        PlanetSystemWindowView view = EnableRuntimeComponent(
-            window.AddComponent<PlanetSystemWindowView>()
+        PlanetSectorWindowView view = EnableRuntimeComponent(
+            window.AddComponent<PlanetSectorWindowView>()
         );
         RectTransform rect = window.GetComponent<RectTransform>();
         SetSourceRect(rect, 59, 36, windowWidth, windowHeight);
@@ -7689,7 +7689,7 @@ public static class StrategyViewPrefabBuilder
             StrategyWindowButtonActions.MinimizeWindow => _windowMinimizeDownPreviewPath,
             StrategyWindowButtonActions.CloseWindow => _windowCloseDownPreviewPath,
             StrategyWindowButtonActions.SwapWindow =>
-                "Application/Strategy/UI/Windows/ui_strategyview_planetsystem_window_swap_button_pressed.png",
+                "Application/Strategy/UI/Windows/ui_strategyview_planetsector_window_swap_button_pressed.png",
             _ => null,
         };
     }
@@ -7910,7 +7910,7 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Authors one segmented planet-system status bar.
+    /// Authors one segmented planet-sector status bar.
     /// </summary>
     /// <param name="name">The bar object name.</param>
     /// <param name="parent">The planet view transform.</param>
@@ -7954,10 +7954,10 @@ public static class StrategyViewPrefabBuilder
     /// Gets the largest segmented resource count supported by game generation.
     /// </summary>
     /// <returns>The required authored cell count.</returns>
-    private static int GetPlanetSystemSegmentedBarCellCount()
+    private static int GetPlanetSectorSegmentedBarCellCount()
     {
         GameGenerationConfig config = ContentPackEditor.LoadGameData().GenerationConfig;
-        IReadOnlyList<SystemResourceProfile> profiles = config?.SystemResources?.Profiles;
+        IReadOnlyList<PlanetResourceProfile> profiles = config?.PlanetResources?.Profiles;
         if (profiles == null || profiles.Count == 0)
         {
             throw new System.InvalidOperationException(
@@ -7968,7 +7968,7 @@ public static class StrategyViewPrefabBuilder
         int cellCount = 0;
         for (int index = 0; index < profiles.Count; index++)
         {
-            SystemResourceProfile profile = profiles[index];
+            PlanetResourceProfile profile = profiles[index];
             if (profile == null)
                 continue;
 
@@ -7998,7 +7998,7 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Authors one continuous planet-system status bar.
+    /// Authors one continuous planet-sector status bar.
     /// </summary>
     /// <param name="name">The bar object name.</param>
     /// <param name="parent">The planet view transform.</param>
@@ -8386,7 +8386,7 @@ public static class StrategyViewPrefabBuilder
     /// Assigns every generated Strategy window prefab to the root registry.
     /// </summary>
     /// <param name="target">The generated Strategy window layer.</param>
-    /// <param name="planetSystemWindowPrefab">The planet-system window prefab.</param>
+    /// <param name="planetSectorWindowPrefab">The planet-sector window prefab.</param>
     /// <param name="facilityWindowPrefab">The facility window prefab.</param>
     /// <param name="defenseWindowPrefab">The defense window prefab.</param>
     /// <param name="fleetWindowPrefab">The fleet window prefab.</param>
@@ -8403,7 +8403,7 @@ public static class StrategyViewPrefabBuilder
     /// <param name="optionsMenuWindowPrefab">The shared Options window prefab.</param>
     private static void AssignWindowPrefabs(
         StrategyWindowLayerView target,
-        PlanetSystemWindowView planetSystemWindowPrefab,
+        PlanetSectorWindowView planetSectorWindowPrefab,
         FacilityWindowView facilityWindowPrefab,
         DefenseWindowView defenseWindowPrefab,
         FleetWindowView fleetWindowPrefab,
@@ -8420,7 +8420,7 @@ public static class StrategyViewPrefabBuilder
         OptionsMenuView optionsMenuWindowPrefab
     )
     {
-        AssignWindowPrefab(target, "planetSystemWindowPrefab", planetSystemWindowPrefab);
+        AssignWindowPrefab(target, "planetSectorWindowPrefab", planetSectorWindowPrefab);
         AssignWindowPrefab(target, "facilityWindowPrefab", facilityWindowPrefab);
         AssignWindowPrefab(target, "defenseWindowPrefab", defenseWindowPrefab);
         AssignWindowPrefab(target, "fleetWindowPrefab", fleetWindowPrefab);
@@ -8474,7 +8474,7 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Groups the authored visual references for one planet-system status bar.
+    /// Groups the authored visual references for one planet-sector status bar.
     /// </summary>
     private readonly struct BarPrefabParts
     {

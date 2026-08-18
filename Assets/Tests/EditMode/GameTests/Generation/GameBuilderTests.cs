@@ -229,7 +229,7 @@ namespace Rebellion.Tests.Generation
             foreach (Faction faction in _game.Factions)
             {
                 bool hasHQ = _game
-                    .Galaxy.PlanetSystems.SelectMany(ps => ps.Planets)
+                    .Galaxy.PlanetSectors.SelectMany(ps => ps.Planets)
                     .Any(planet =>
                         planet.OwnerInstanceID == faction.InstanceID && planet.IsHeadquarters
                     );
@@ -271,7 +271,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_ColonizedPlanets_DoNotExceedEnergyCapacity()
         {
-            foreach (PlanetSystem sector in _game.Galaxy.PlanetSystems)
+            foreach (PlanetSector sector in _game.Galaxy.PlanetSectors)
             {
                 foreach (Planet planet in sector.Planets.Where(p => p.IsColonized))
                 {
@@ -290,7 +290,7 @@ namespace Rebellion.Tests.Generation
             foreach (Faction faction in _game.Factions)
             {
                 bool ownsOne = _game
-                    .Galaxy.PlanetSystems.SelectMany(s => s.Planets)
+                    .Galaxy.PlanetSectors.SelectMany(s => s.Planets)
                     .SelectMany(p => p.Buildings)
                     .Any(b =>
                         b.OwnerInstanceID == faction.InstanceID
@@ -410,11 +410,11 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Build_FogOfWar_CoreSystemsHaveInitialResourceSnapshotsForNonOwners()
+        public void Build_FogOfWar_CoreSectorsHaveInitialResourceSnapshotsForNonOwners()
         {
             foreach (
-                PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
-                    s.SystemType == PlanetSystemType.CoreSystem
+                PlanetSector system in _game.Galaxy.PlanetSectors.Where(s =>
+                    s.SectorType == PlanetSectorType.Core
                 )
             )
             {
@@ -429,12 +429,12 @@ namespace Rebellion.Tests.Generation
                         Assert.IsTrue(
                             faction.Fog.Snapshots.TryGetValue(
                                 system.InstanceID,
-                                out SystemSnapshot systemSnapshot
+                                out PlanetSectorSnapshot sectorSnapshot
                             ),
                             $"Faction '{faction.GetDisplayName()}' should have an initial snapshot for core system '{system.GetDisplayName()}'"
                         );
                         Assert.IsTrue(
-                            systemSnapshot.Planets.TryGetValue(
+                            sectorSnapshot.Planets.TryGetValue(
                                 planet.InstanceID,
                                 out PlanetSnapshot snapshot
                             ),
@@ -460,7 +460,7 @@ namespace Rebellion.Tests.Generation
         {
             GameGenerationConfig rules = TestContent.Data.GenerationConfig;
             Dictionary<string, string> planetInstanceIdsByTypeId = _game
-                .Galaxy.PlanetSystems.SelectMany(system => system.Planets)
+                .Galaxy.PlanetSectors.SelectMany(system => system.Planets)
                 .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
                 .ToDictionary(planet => planet.TypeID, planet => planet.InstanceID);
             HashSet<(string planetId, string factionId)> visibilityOverrides = new HashSet<(
@@ -484,8 +484,8 @@ namespace Rebellion.Tests.Generation
             );
 
             foreach (
-                PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
-                    s.SystemType == PlanetSystemType.OuterRim
+                PlanetSector system in _game.Galaxy.PlanetSectors.Where(s =>
+                    s.SectorType == PlanetSectorType.OuterRim
                 )
             )
             {
@@ -503,7 +503,7 @@ namespace Rebellion.Tests.Generation
                         bool hasSnapshot =
                             faction.Fog.Snapshots.TryGetValue(
                                 system.InstanceID,
-                                out SystemSnapshot ss
+                                out PlanetSectorSnapshot ss
                             ) && ss.Planets.ContainsKey(planet.InstanceID);
 
                         Assert.IsFalse(
@@ -521,8 +521,8 @@ namespace Rebellion.Tests.Generation
             FogOfWarSystem fogSystem = new FogOfWarSystem(_game);
 
             foreach (
-                PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
-                    s.SystemType == PlanetSystemType.OuterRim
+                PlanetSector system in _game.Galaxy.PlanetSectors.Where(s =>
+                    s.SectorType == PlanetSectorType.OuterRim
                 )
             )
             {
@@ -546,8 +546,8 @@ namespace Rebellion.Tests.Generation
             FogOfWarSystem fogSystem = new FogOfWarSystem(_game);
 
             foreach (
-                PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
-                    s.SystemType == PlanetSystemType.OuterRim
+                PlanetSector system in _game.Galaxy.PlanetSectors.Where(s =>
+                    s.SectorType == PlanetSectorType.OuterRim
                 )
             )
             {

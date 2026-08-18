@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_StrongBucketPlanet_IsAssignedOwnership()
         {
-            PlanetSystem[] systems = CreateCoreGalaxy(10);
+            PlanetSector[] systems = CreateCoreGalaxy(10);
             GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 20,
                 allianceWeakPct: 0,
@@ -66,7 +66,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_WeakBucketPlanet_IsAssignedOwnership()
         {
-            PlanetSystem[] systems = CreateCoreGalaxy(10);
+            PlanetSector[] systems = CreateCoreGalaxy(10);
             GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 0,
                 allianceWeakPct: 30,
@@ -109,7 +109,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_NeutralBucketPlanet_RemainsUnowned()
         {
-            PlanetSystem[] systems = CreateCoreGalaxy(10);
+            PlanetSector[] systems = CreateCoreGalaxy(10);
             GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 10,
                 allianceWeakPct: 10,
@@ -147,7 +147,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_ProfileWithStrongAndWeakBuckets_OwnsSumOfBoth()
         {
-            PlanetSystem[] systems = CreateCoreGalaxy(20);
+            PlanetSector[] systems = CreateCoreGalaxy(20);
             GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 20,
                 allianceWeakPct: 0,
@@ -181,10 +181,10 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_StartingPlanetInBucket_PreservesOriginalOwnership()
         {
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             Planet startingPlanet = new Planet { InstanceID = "CORUSCANT", TypeID = "PLSEW05" };
             system.Planets.Add(startingPlanet);
@@ -271,7 +271,7 @@ namespace Rebellion.Tests.Generation
         }
 
         private static GalaxyClassificationResult Classify(
-            PlanetSystem[] systems,
+            PlanetSector[] systems,
             Faction[] factions,
             GameSummary summary,
             GameGenerationConfig config,
@@ -290,12 +290,12 @@ namespace Rebellion.Tests.Generation
             return ctx.Classification;
         }
 
-        private PlanetSystem[] CreateCoreGalaxy(int planetCount)
+        private PlanetSector[] CreateCoreGalaxy(int planetCount)
         {
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             for (int i = 0; i < planetCount; i++)
             {

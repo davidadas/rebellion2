@@ -12,7 +12,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.UI;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 {
@@ -333,7 +333,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             game.Factions.Add(new Faction { InstanceID = _playerFactionId });
             game.Factions.Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSystem system = new GamePlanetSystem
+            GamePlanetSector system = new GamePlanetSector
             {
                 InstanceID = "system",
                 DisplayName = "Core System",

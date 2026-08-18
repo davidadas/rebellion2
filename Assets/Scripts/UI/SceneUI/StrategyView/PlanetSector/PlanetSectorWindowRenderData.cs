@@ -3,28 +3,28 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Describes the immutable presentation of one planet-system window.
+/// Describes the immutable presentation of one planet-sector window.
 /// </summary>
-public sealed class PlanetSystemWindowRenderData
+public sealed class PlanetSectorWindowRenderData
 {
     /// <summary>
-    /// Creates a planet-system window presentation.
+    /// Creates a planet-sector window presentation.
     /// </summary>
     /// <param name="title">The displayed system title.</param>
     /// <param name="planets">The displayed planet presentations.</param>
-    public PlanetSystemWindowRenderData(
+    public PlanetSectorWindowRenderData(
         string title,
-        IReadOnlyList<PlanetSystemPlanetRenderData> planets
+        IReadOnlyList<PlanetSectorPlanetRenderData> planets
     )
     {
         Title = title ?? string.Empty;
         Planets =
             planets == null
-                ? Array.Empty<PlanetSystemPlanetRenderData>()
-                : new List<PlanetSystemPlanetRenderData>(planets).AsReadOnly();
+                ? Array.Empty<PlanetSectorPlanetRenderData>()
+                : new List<PlanetSectorPlanetRenderData>(planets).AsReadOnly();
     }
 
-    public IReadOnlyList<PlanetSystemPlanetRenderData> Planets { get; }
+    public IReadOnlyList<PlanetSectorPlanetRenderData> Planets { get; }
 
     public string Title { get; }
 }
@@ -32,7 +32,7 @@ public sealed class PlanetSystemWindowRenderData
 /// <summary>
 /// Describes the immutable presentation of one planet inside a system window.
 /// </summary>
-public sealed class PlanetSystemPlanetRenderData
+public sealed class PlanetSectorPlanetRenderData
 {
     /// <summary>
     /// Creates a planet presentation.
@@ -57,7 +57,7 @@ public sealed class PlanetSystemPlanetRenderData
     /// <param name="energyBar">The energy status bar.</param>
     /// <param name="rawResourceBar">The raw-resource status bar.</param>
     /// <param name="supportBar">The popular-support status bar.</param>
-    public PlanetSystemPlanetRenderData(
+    public PlanetSectorPlanetRenderData(
         int planetIndex,
         Vector2Int galaxyOffset,
         Texture2D planetTexture,
@@ -75,9 +75,9 @@ public sealed class PlanetSystemPlanetRenderData
         Color32 nameColor,
         PlanetIcon selectedIcon,
         PlanetIcon hoveredIcon,
-        PlanetSystemBarRenderData energyBar,
-        PlanetSystemBarRenderData rawResourceBar,
-        PlanetSystemBarRenderData supportBar
+        PlanetSectorBarRenderData energyBar,
+        PlanetSectorBarRenderData rawResourceBar,
+        PlanetSectorBarRenderData supportBar
     )
     {
         PlanetIndex = planetIndex;
@@ -106,7 +106,7 @@ public sealed class PlanetSystemPlanetRenderData
 
     public Texture2D DefenseTexture { get; }
 
-    public PlanetSystemBarRenderData EnergyBar { get; }
+    public PlanetSectorBarRenderData EnergyBar { get; }
 
     public Texture2D FacilityPressedTexture { get; }
 
@@ -134,11 +134,11 @@ public sealed class PlanetSystemPlanetRenderData
 
     public Vector2Int GalaxyOffset { get; }
 
-    public PlanetSystemBarRenderData RawResourceBar { get; }
+    public PlanetSectorBarRenderData RawResourceBar { get; }
 
     public PlanetIcon SelectedIcon { get; }
 
-    public PlanetSystemBarRenderData SupportBar { get; }
+    public PlanetSectorBarRenderData SupportBar { get; }
 
     public Texture2D UprisingTexture { get; }
 }
@@ -146,7 +146,7 @@ public sealed class PlanetSystemPlanetRenderData
 /// <summary>
 /// Describes one immutable segmented or continuous planet status bar.
 /// </summary>
-public sealed class PlanetSystemBarRenderData
+public sealed class PlanetSectorBarRenderData
 {
     /// <summary>
     /// Creates a planet status-bar presentation.
@@ -158,7 +158,7 @@ public sealed class PlanetSystemBarRenderData
     /// <param name="fillColor">The occupied or continuous fill color.</param>
     /// <param name="emptyColor">The unoccupied segmented cell color.</param>
     /// <param name="backgroundColor">The bar background color.</param>
-    public PlanetSystemBarRenderData(
+    public PlanetSectorBarRenderData(
         bool visible,
         int cellCount,
         int litCells,
@@ -193,17 +193,17 @@ public sealed class PlanetSystemBarRenderData
 }
 
 /// <summary>
-/// Identifies one interactive element in a rendered planet-system presentation.
+/// Identifies one interactive element in a rendered planet-sector presentation.
 /// </summary>
-public sealed class PlanetSystemWindowElement
+public sealed class PlanetSectorWindowElement
 {
     /// <summary>
-    /// Creates a semantic planet-system presentation element.
+    /// Creates a semantic planet-sector presentation element.
     /// </summary>
     /// <param name="planetIndex">The planet's position in the rendered sector.</param>
     /// <param name="icon">The represented overlay icon.</param>
     /// <param name="planetImage">Whether the element represents the planet image.</param>
-    public PlanetSystemWindowElement(int planetIndex, PlanetIcon icon, bool planetImage)
+    public PlanetSectorWindowElement(int planetIndex, PlanetIcon icon, bool planetImage)
     {
         PlanetIndex = planetIndex;
         Icon = icon;

@@ -6,7 +6,7 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 {
@@ -30,7 +30,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _window = _windowObject.GetComponent<UIWindow>();
             _window.Configure(1, 0, 0, 100, 100, false, true, false);
             _planet = new Planet { InstanceID = "planet", DisplayName = "Corellia" };
-            _mapPlanet = new GalaxyMapPlanet(new GamePlanetSystem(), _planet, string.Empty);
+            _mapPlanet = new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty);
             _session = new DefenseWindowSession(_mapPlanet, _window);
         }
 
@@ -312,7 +312,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 Officers = { replacement },
             };
             GalaxyMapPlanet refreshedProjection = new GalaxyMapPlanet(
-                new GamePlanetSystem(),
+                new GamePlanetSector(),
                 refreshedPlanet,
                 string.Empty
             );

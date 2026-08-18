@@ -106,10 +106,10 @@ namespace Rebellion.Game.Events
     public sealed class SelectPlanets : OwnedSceneNodeSelector<Planet>
     {
         [PersistableAttribute]
-        public PlanetSystemType? SystemType { get; set; }
+        public PlanetSectorType? SectorType { get; set; }
 
         /// <summary>
-        /// Returns active planets that match the authored ownership and system filters.
+        /// Returns active planets that match the authored ownership and sector filters.
         /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
@@ -119,36 +119,36 @@ namespace Rebellion.Game.Events
             SelectOwned(game)
                 .Where(planet => !planet.IsDestroyed)
                 .Where(planet =>
-                    !SystemType.HasValue
-                    || planet.GetParentOfType<PlanetSystem>()?.SystemType == SystemType.Value
+                    !SectorType.HasValue
+                    || planet.GetParentOfType<PlanetSector>()?.SectorType == SectorType.Value
                 );
     }
 
     /// <summary>
-    /// Selects active planet systems.
+    /// Selects active planet sectors.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectPlanetSystems : GameEventSelector
+    public sealed class SelectPlanetSectors : GameEventSelector
     {
         [PersistableAttribute]
         public string InstanceID { get; set; }
 
         [PersistableAttribute]
-        public PlanetSystemType? SystemType { get; set; }
+        public PlanetSectorType? SectorType { get; set; }
 
         /// <summary>
-        /// Returns active planet systems that match the authored filters.
+        /// Returns active planet sectors that match the authored filters.
         /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventExecutionContext context
         ) =>
-            Active<PlanetSystem>(game)
-                .Where(system =>
-                    string.IsNullOrWhiteSpace(InstanceID) || system.InstanceID == InstanceID
+            Active<PlanetSector>(game)
+                .Where(sector =>
+                    string.IsNullOrWhiteSpace(InstanceID) || sector.InstanceID == InstanceID
                 )
-                .Where(system => !SystemType.HasValue || system.SystemType == SystemType.Value);
+                .Where(sector => !SectorType.HasValue || sector.SectorType == SectorType.Value);
     }
 
     #endregion

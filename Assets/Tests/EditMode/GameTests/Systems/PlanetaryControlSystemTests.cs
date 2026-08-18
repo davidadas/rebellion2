@@ -35,7 +35,7 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(_rebels);
             _game.Factions.Add(_empire);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
@@ -106,7 +106,7 @@ namespace Rebellion.Tests.Systems
         public void TransferPlanet_HiddenObserverSnapshot_NotRefreshed()
         {
             Faction observer = AddFaction("observer");
-            _targetPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
@@ -148,7 +148,7 @@ namespace Rebellion.Tests.Systems
         public void TransferPlanet_OuterRimVisibleObserverSnapshot_RefreshesOwnershipOnly()
         {
             Faction observer = AddFaction("observer");
-            _targetPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.EnergyCapacity = 1;
             CapturePlanetSnapshot(observer, _targetPlanet, 5);
@@ -757,7 +757,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_ReleaseToNeutral_HiddenObserverSnapshot_NotRefreshed()
         {
             Faction observer = AddFaction("observer");
-            _targetPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet(
                 "wild-hidden-release",
                 "empire"
@@ -956,7 +956,7 @@ namespace Rebellion.Tests.Systems
             int positionX = 50
         )
         {
-            PlanetSystem system = _targetPlanet.GetParentOfType<PlanetSystem>();
+            PlanetSector system = _targetPlanet.GetParentOfType<PlanetSector>();
 
             Planet planet = new Planet
             {
@@ -1006,8 +1006,8 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem planetSystem = new PlanetSystem { InstanceID = "sys1" };
-            game.AttachNode(planetSystem, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
                 InstanceID = "p1",
@@ -1015,7 +1015,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = isColonized,
                 PopularSupport = new Dictionary<string, int> { { "empire", support } },
             };
-            game.AttachNode(planet, planetSystem);
+            game.AttachNode(planet, planetSector);
 
             FogOfWarSystem fogOfWarSystem = new FogOfWarSystem(game);
             FleetSystem fleetSystem = new FleetSystem(game);
@@ -1056,13 +1056,13 @@ namespace Rebellion.Tests.Systems
 
         private void CapturePlanetSnapshot(Faction faction, Planet planet, int tick)
         {
-            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            PlanetSector system = planet.GetParentOfType<PlanetSector>();
             new FogOfWarSystem(_game).CaptureSnapshot(faction, planet, system, tick);
         }
 
         private static PlanetSnapshot GetPlanetSnapshot(Faction faction, Planet planet)
         {
-            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            PlanetSector system = planet.GetParentOfType<PlanetSector>();
             return faction.Fog.Snapshots[system.InstanceID].Planets[planet.InstanceID];
         }
 

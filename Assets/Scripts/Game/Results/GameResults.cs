@@ -294,9 +294,9 @@ namespace Rebellion.Game.Results
     /// <summary>
     /// An espionage mission revealed intelligence about systems beyond its primary target.
     /// </summary>
-    public class SystemsRevealedResult : GameResult
+    public class PlanetSectorsRevealedResult : GameResult
     {
-        public List<PlanetSystem> AdditionalSystems { get; set; } = new List<PlanetSystem>();
+        public List<PlanetSector> AdditionalSectors { get; set; } = new List<PlanetSector>();
     }
 
     #endregion

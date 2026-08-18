@@ -9,7 +9,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 {
@@ -200,7 +200,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 BuildingType = BuildingType.Shipyard,
             };
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSystem { InstanceID = "fresh-system" },
+                new GamePlanetSector { InstanceID = "fresh-system" },
                 new Planet
                 {
                     InstanceID = _planet.Planet.InstanceID,
@@ -281,7 +281,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
-            GamePlanetSystem system = new GamePlanetSystem
+            GamePlanetSector system = new GamePlanetSector
             {
                 InstanceID = "system",
                 DisplayName = "Core System",

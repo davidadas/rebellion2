@@ -19,7 +19,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithIdleBattleFleetAndEnemyPlanet_AddsAttackProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID, "fleet");
@@ -42,7 +42,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithAssemblingAttackFleet_AddsDifferentAttackOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet firstEnemy = AITestSceneBuilder.AddPlanet(
                 game,

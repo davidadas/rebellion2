@@ -403,7 +403,7 @@ public sealed class StrategyScreenInputController : ICancelable
         }
 
         UIWindow window = windowManager.GetWindow(eventData);
-        if (window != null && windowManager.TryGetWindowView(window, out PlanetSystemWindowView _))
+        if (window != null && windowManager.TryGetWindowView(window, out PlanetSectorWindowView _))
         {
             galaxyMapController.ClearHover();
             return;

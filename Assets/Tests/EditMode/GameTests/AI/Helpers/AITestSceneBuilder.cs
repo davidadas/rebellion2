@@ -20,14 +20,14 @@ namespace Rebellion.Tests.AI.Helpers
             return game;
         }
 
-        public static PlanetSystem AddSystem(
+        public static PlanetSector AddSector(
             GameRoot game,
             string instanceId,
             int positionX = 0,
             int positionY = 0
         )
         {
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = instanceId,
                 PositionX = positionX,
@@ -39,7 +39,7 @@ namespace Rebellion.Tests.AI.Helpers
 
         public static Planet AddPlanet(
             GameRoot game,
-            PlanetSystem system,
+            PlanetSector system,
             string instanceId,
             string ownerInstanceId,
             int positionX = 0,

@@ -203,7 +203,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     /// <summary>
     /// Occurs when an open-system request is raised.
     /// </summary>
-    internal event Action<BattleAlertWindowView> OpenSystemRequested;
+    internal event Action<BattleAlertWindowView> OpenSectorRequested;
 
     /// <summary>
     /// Occurs when a primary panel request is raised.
@@ -303,7 +303,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     /// </summary>
     internal void RequestOpenSystem()
     {
-        OpenSystemRequested?.Invoke(this);
+        OpenSectorRequested?.Invoke(this);
     }
 
     /// <summary>
@@ -382,11 +382,11 @@ public sealed class BattleAlertWindowView : MonoBehaviour
             resultCategoryButtons[i].onClick.AddListener(listener);
         }
 
-        UnityAction openSystem = RequestOpenSystem;
+        UnityAction openSector = RequestOpenSystem;
         UnityAction openFleet = RequestOpenFleet;
-        resultDirectButtonListeners.Add(openSystem);
+        resultDirectButtonListeners.Add(openSector);
         resultDirectButtonListeners.Add(openFleet);
-        resultDirectButtons[0].onClick.AddListener(openSystem);
+        resultDirectButtons[0].onClick.AddListener(openSector);
         resultDirectButtons[1].onClick.AddListener(openFleet);
     }
 

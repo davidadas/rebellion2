@@ -13,7 +13,7 @@ public static class StrategyWindowButtonActions
 }
 
 /// <summary>
-/// Defines the authored planet-system window slots.
+/// Defines the authored planet-sector window slots.
 /// </summary>
 public static class SectorWindowPositions
 {

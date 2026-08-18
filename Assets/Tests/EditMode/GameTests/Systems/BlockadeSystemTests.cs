@@ -94,7 +94,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
-            PlanetSystem system = new PlanetSystem { InstanceID = "s1" };
+            PlanetSector system = new PlanetSector { InstanceID = "s1" };
             Planet planet = new Planet { InstanceID = "p1", OwnerInstanceID = "empire" };
             game.Factions.Add(empire);
             game.AttachNode(system, game.GetGalaxyMap());
@@ -137,8 +137,8 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem sys1 = new PlanetSystem { InstanceID = "s1" };
-            PlanetSystem sys2 = new PlanetSystem { InstanceID = "s2" };
+            PlanetSector sys1 = new PlanetSector { InstanceID = "s1" };
+            PlanetSector sys2 = new PlanetSector { InstanceID = "s2" };
             Planet blockaded = new Planet { InstanceID = "p1", OwnerInstanceID = "empire" };
             Planet safe = new Planet { InstanceID = "p2", OwnerInstanceID = "empire" };
             Fleet hostile = new Fleet { InstanceID = "f1", OwnerInstanceID = "alliance" };
@@ -215,7 +215,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
             Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "s1",
                 DisplayName = "Tatooine System",

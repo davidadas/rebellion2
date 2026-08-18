@@ -13,7 +13,7 @@ namespace Rebellion.Generation
     public sealed class PlanetSeeder : IGameSeeder
     {
         /// <summary>
-        /// Seeds per-planet stats across every system in the generation context.
+        /// Seeds per-planet stats across every sector in the generation context.
         /// </summary>
         /// <param name="ctx">The generation context.</param>
         public void Seed(GenerationContext ctx)
@@ -22,34 +22,34 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Populates per-planet stats across every system. Core and rim systems follow
+        /// Populates per-planet stats across every sector. Core and rim sectors follow
         /// different rules derived from the classification result and generation config.
         /// </summary>
-        /// <param name="systems">All generated planet systems to configure.</param>
+        /// <param name="sectors">All generated planet sectors to configure.</param>
         /// <param name="classification">Bucket and HQ assignments produced by <see cref="GalaxySeeder"/>.</param>
         /// <param name="rules">Generation rules for resources and support.</param>
         /// <param name="summary">Game summary; resource availability selects the resource profile, faction IDs drive support distribution.</param>
         /// <param name="rng">Random number provider for dice rolls and colonization chances.</param>
         private void Configure(
-            PlanetSystem[] systems,
+            PlanetSector[] sectors,
             GalaxyClassificationResult classification,
             GameGenerationConfig rules,
             GameSummary summary,
             IRandomNumberProvider rng
         )
         {
-            SystemResourceProfile res = ResolveResourceProfile(
-                rules.SystemResources,
+            PlanetResourceProfile res = ResolveResourceProfile(
+                rules.PlanetResources,
                 summary.ResourceAvailability
             );
-            SystemSupportSection sup = rules.SystemSupport;
+            PlanetSupportSection sup = rules.PlanetSupport;
             string[] factionIds = summary.StartingFactionIDs;
 
-            foreach (PlanetSystem system in systems)
+            foreach (PlanetSector sector in sectors)
             {
-                bool isCore = system.SystemType == PlanetSystemType.CoreSystem;
+                bool isCore = sector.SectorType == PlanetSectorType.Core;
 
-                foreach (Planet planet in system.Planets)
+                foreach (Planet planet in sector.Planets)
                 {
                     RollPlanetResources(planet, isCore, res, rng);
                     ResolveColonization(planet, isCore, res.RimColonizationPct, rng);
@@ -65,16 +65,16 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="section">The resource section with all profiles.</param>
         /// <param name="availability">The availability tier chosen on the new-game screen.</param>
-        /// <returns>The matching <see cref="SystemResourceProfile"/>.</returns>
-        private SystemResourceProfile ResolveResourceProfile(
-            SystemResourcesSection section,
+        /// <returns>The matching <see cref="PlanetResourceProfile"/>.</returns>
+        private PlanetResourceProfile ResolveResourceProfile(
+            PlanetResourcesSection section,
             GameResourceAvailability availability
         )
         {
             if (section?.Profiles == null || section.Profiles.Count == 0)
             {
                 throw new InvalidOperationException(
-                    "SystemResources must define at least one profile in the active scenario."
+                    "PlanetResources must define at least one profile in the active scenario."
                 );
             }
 
@@ -91,13 +91,13 @@ namespace Rebellion.Generation
         /// energy so a planet never has more mineable nodes than energy slots.
         /// </summary>
         /// <param name="planet">The planet to update.</param>
-        /// <param name="isCore">True when the planet sits in a core system.</param>
+        /// <param name="isCore">True when the planet sits in a core sector.</param>
         /// <param name="res">Resource roll settings and clamps.</param>
         /// <param name="rng">Random number provider.</param>
         private void RollPlanetResources(
             Planet planet,
             bool isCore,
-            SystemResourceProfile res,
+            PlanetResourceProfile res,
             IRandomNumberProvider rng
         )
         {
@@ -116,7 +116,7 @@ namespace Rebellion.Generation
         /// that aren't already colonized roll for it against the configured percentage.
         /// </summary>
         /// <param name="planet">The planet to update.</param>
-        /// <param name="isCore">True when the planet sits in a core system.</param>
+        /// <param name="isCore">True when the planet sits in a core sector.</param>
         /// <param name="rimColonizationPct">Chance a rim planet is colonized.</param>
         /// <param name="rng">Random number provider.</param>
         private void ResolveColonization(
@@ -146,7 +146,7 @@ namespace Rebellion.Generation
         /// planets are visible to every faction; rim planets only to their owner.
         /// </summary>
         /// <param name="planet">The planet to update.</param>
-        /// <param name="isCore">True when the planet sits in a core system.</param>
+        /// <param name="isCore">True when the planet sits in a core sector.</param>
         /// <param name="factionIds">IDs of every faction in the game.</param>
         private void RecordStartingVisitors(Planet planet, bool isCore, string[] factionIds)
         {
@@ -170,7 +170,7 @@ namespace Rebellion.Generation
         /// planet, a rim planet, or a core planet with or without a bucket assignment.
         /// </summary>
         /// <param name="planet">The planet whose support is being set.</param>
-        /// <param name="isCore">True when the planet sits in a core system.</param>
+        /// <param name="isCore">True when the planet sits in a core sector.</param>
         /// <param name="classification">Bucket and HQ assignments from <see cref="GalaxySeeder"/>.</param>
         /// <param name="sup">Support settings keyed by bucket strength.</param>
         /// <param name="factionIds">IDs of every faction in the game.</param>
@@ -179,7 +179,7 @@ namespace Rebellion.Generation
             Planet planet,
             bool isCore,
             GalaxyClassificationResult classification,
-            SystemSupportSection sup,
+            PlanetSupportSection sup,
             string[] factionIds,
             IRandomNumberProvider rng
         )
@@ -279,7 +279,7 @@ namespace Rebellion.Generation
         /// <returns>A clamped support value in the [0, 100] range.</returns>
         private int RollBucketSupport(
             PlanetBucket bucket,
-            SystemSupportSection sup,
+            PlanetSupportSection sup,
             IRandomNumberProvider rng
         )
         {

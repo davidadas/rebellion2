@@ -231,10 +231,10 @@ public static class ContentPackLoader
             nameof(GameGenerationConfig),
             ResolveSafePath(contentRootPath, _generationConfigSchemaRelativePath)
         );
-        PlanetSystem[] planetSystems = DeserializeGameData<PlanetSystem[]>(
+        PlanetSector[] planetSectors = DeserializeGameData<PlanetSector[]>(
             packRoot,
-            pack.PlanetSystemsPath,
-            "PlanetSystems"
+            pack.PlanetSectorsPath,
+            "PlanetSectors"
         );
         Building[] buildings = DeserializeGameData<Building[]>(
             packRoot,
@@ -324,7 +324,7 @@ public static class ContentPackLoader
             gameConfig,
             generationConfig,
             factionData.ToArray(),
-            planetSystems,
+            planetSectors,
             buildings,
             capitalShips.ToArray(),
             starfighters.ToArray(),

@@ -38,7 +38,7 @@ namespace Rebellion.Tests.AI.Proposals
         public void Execute_WithValidBuildingProposal_QueuesManufacturing()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
                 system,

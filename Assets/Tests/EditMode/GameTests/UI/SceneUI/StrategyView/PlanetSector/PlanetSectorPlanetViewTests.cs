@@ -6,13 +6,13 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
     [TestFixture]
-    public class PlanetSystemPlanetViewTests
+    public class PlanetSectorPlanetViewTests
     {
         private const string _prefabPath =
-            "Assets/Prefabs/UI/StrategyView/PlanetSystemPlanet.prefab";
+            "Assets/Prefabs/UI/StrategyView/PlanetSectorPlanet.prefab";
 
         private Texture2D _headquartersTexture;
         private Texture2D _normalTexture;
@@ -20,13 +20,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         private Texture2D _pressedTexture;
         private Texture2D _uprisingTexture;
         private GameObject _rootObject;
-        private PlanetSystemPlanetView _view;
+        private PlanetSectorPlanetView _view;
 
         [SetUp]
         public void SetUp()
         {
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
-            _view = _rootObject.GetComponent<PlanetSystemPlanetView>();
+            _view = _rootObject.GetComponent<PlanetSectorPlanetView>();
             _planetTexture = new Texture2D(100, 80);
             _normalTexture = new Texture2D(24, 24);
             _pressedTexture = new Texture2D(24, 24);
@@ -56,7 +56,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Render_CompletePresentation_AppliesImagesNamePositionAndBars()
         {
-            PlanetSystemPlanetRenderData data = CreateData(
+            PlanetSectorPlanetRenderData data = CreateData(
                 PlanetIcon.Facility,
                 PlanetIcon.Mission,
                 CreateSegmentedBar(true, 4, 2),
@@ -121,7 +121,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Render_ContinuousZeroFill_HidesFillImage()
         {
-            PlanetSystemPlanetRenderData data = CreateData(
+            PlanetSectorPlanetRenderData data = CreateData(
                 PlanetIcon.None,
                 PlanetIcon.None,
                 CreateContinuousBar(true, 0f),
@@ -181,7 +181,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             bool found = _view.TryCreateElement(
                 GetField<RawImage>("facilityImage").gameObject,
                 eventData,
-                out PlanetSystemWindowElement element
+                out PlanetSectorWindowElement element
             );
 
             Assert.IsTrue(found);
@@ -204,7 +204,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             bool found = _view.TryCreateElement(
                 planetImage.gameObject,
                 eventData,
-                out PlanetSystemWindowElement element
+                out PlanetSectorWindowElement element
             );
 
             Assert.IsTrue(found);
@@ -227,7 +227,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             int pressedCount = 0;
             int clickedCount = 0;
             int releasedCount = 0;
-            PlanetSystemWindowElement lastElement = null;
+            PlanetSectorWindowElement lastElement = null;
             _view.Hovered += (_, element, _) =>
             {
                 hoveredCount++;
@@ -286,15 +286,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             Assert.AreEqual(0, interactionCount);
         }
 
-        private PlanetSystemPlanetRenderData CreateData(
+        private PlanetSectorPlanetRenderData CreateData(
             PlanetIcon selectedIcon = PlanetIcon.None,
             PlanetIcon hoveredIcon = PlanetIcon.None,
-            PlanetSystemBarRenderData energyBar = null,
-            PlanetSystemBarRenderData rawBar = null,
-            PlanetSystemBarRenderData supportBar = null
+            PlanetSectorBarRenderData energyBar = null,
+            PlanetSectorBarRenderData rawBar = null,
+            PlanetSectorBarRenderData supportBar = null
         )
         {
-            return new PlanetSystemPlanetRenderData(
+            return new PlanetSectorPlanetRenderData(
                 7,
                 new Vector2Int(10, 20),
                 _planetTexture,
@@ -318,13 +318,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
         }
 
-        private static PlanetSystemBarRenderData CreateSegmentedBar(
+        private static PlanetSectorBarRenderData CreateSegmentedBar(
             bool visible,
             int cellCount,
             int litCells
         )
         {
-            return new PlanetSystemBarRenderData(
+            return new PlanetSectorBarRenderData(
                 visible,
                 cellCount,
                 litCells,
@@ -335,9 +335,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
         }
 
-        private static PlanetSystemBarRenderData CreateContinuousBar(bool visible, float ratio)
+        private static PlanetSectorBarRenderData CreateContinuousBar(bool visible, float ratio)
         {
-            return new PlanetSystemBarRenderData(
+            return new PlanetSectorBarRenderData(
                 visible,
                 0,
                 0,
@@ -367,7 +367,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         private T GetField<T>(string fieldName)
         {
             return (T)
-                typeof(PlanetSystemPlanetView)
+                typeof(PlanetSectorPlanetView)
                     .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(_view);
         }

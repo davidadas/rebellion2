@@ -7,7 +7,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 {
@@ -454,7 +454,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             };
             return new FinderWindowRow(
                 name,
-                new GalaxyMapPlanet(new GamePlanetSystem(), planet, string.Empty),
+                new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty),
                 node: planet,
                 counts: counts
             );

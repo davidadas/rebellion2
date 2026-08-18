@@ -11,8 +11,8 @@ namespace Rebellion.Tests.Generation
     public class PlanetSeederTests
     {
         private GalaxyClassificationSection _gc;
-        private SystemSupportSection _sup;
-        private SystemResourcesSection _res;
+        private PlanetSupportSection _sup;
+        private PlanetResourcesSection _res;
         private string[] _factionIds;
 
         [SetUp]
@@ -77,7 +77,7 @@ namespace Rebellion.Tests.Generation
                 },
             };
 
-            _sup = new SystemSupportSection
+            _sup = new PlanetSupportSection
             {
                 Strong = new SupportFormula { Base = 60, Random = 30 },
                 Weak = new SupportFormula { Base = 20, Random = 30 },
@@ -85,11 +85,11 @@ namespace Rebellion.Tests.Generation
                 RimSupportRandom = 0,
             };
 
-            _res = new SystemResourcesSection
+            _res = new PlanetResourcesSection
             {
-                Profiles = new List<SystemResourceProfile>
+                Profiles = new List<PlanetResourceProfile>
                 {
-                    new SystemResourceProfile
+                    new PlanetResourceProfile
                     {
                         Availability = GameResourceAvailability.Normal,
                         CoreEnergy = new DiceFormula { Base = 10, Random1 = 4 },
@@ -123,10 +123,10 @@ namespace Rebellion.Tests.Generation
                 IsColonized = true,
                 OwnerInstanceID = "FNEMP1",
             };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             system.Planets.Add(planet);
 
@@ -154,10 +154,10 @@ namespace Rebellion.Tests.Generation
                 IsColonized = true,
                 OwnerInstanceID = "FNALL1",
             };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             system.Planets.Add(planet);
 
@@ -179,10 +179,10 @@ namespace Rebellion.Tests.Generation
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             system.Planets.Add(planet);
 
@@ -198,10 +198,10 @@ namespace Rebellion.Tests.Generation
         public void Seed_UnownedRim_Gets50_50()
         {
             Planet planet = new Planet { InstanceID = "RIM_PLANET", IsColonized = true };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             system.Planets.Add(planet);
 
@@ -218,10 +218,10 @@ namespace Rebellion.Tests.Generation
         {
             // StubRNG returns min (0), so support = 60 + 0 = 60
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             system.Planets.Add(planet);
 
@@ -244,10 +244,10 @@ namespace Rebellion.Tests.Generation
             // StubRNG returns min (0), so support = 60 + 0 = 60 for Empire
             // Alliance gets remainder = 40
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             system.Planets.Add(planet);
 
@@ -269,10 +269,10 @@ namespace Rebellion.Tests.Generation
         {
             // StubRNG returns min (0), so support = 41 + 0 = 41
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             system.Planets.Add(planet);
 
@@ -293,10 +293,10 @@ namespace Rebellion.Tests.Generation
         public void Seed_CorePlanet_SetsEnergyInRange()
         {
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             system.Planets.Add(planet);
 
@@ -329,10 +329,10 @@ namespace Rebellion.Tests.Generation
             );
 
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             system.Planets.Add(planet);
 
@@ -353,10 +353,10 @@ namespace Rebellion.Tests.Generation
         public void Seed_CorePlanet_IsAlwaysColonized()
         {
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = false };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             system.Planets.Add(planet);
 
@@ -377,10 +377,10 @@ namespace Rebellion.Tests.Generation
         {
             // StubRNG returns min (0) for NextInt, so roll=0 < 31 -> colonized
             Planet planet = new Planet { InstanceID = "RIM1", IsColonized = false };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             system.Planets.Add(planet);
 
@@ -406,10 +406,10 @@ namespace Rebellion.Tests.Generation
             );
 
             Planet planet = new Planet { InstanceID = "RIM1", IsColonized = false };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             system.Planets.Add(planet);
 
@@ -426,10 +426,10 @@ namespace Rebellion.Tests.Generation
             SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 0, 50 });
 
             Planet planet = new Planet { InstanceID = "RIM1", IsColonized = false };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             system.Planets.Add(planet);
 
@@ -448,10 +448,10 @@ namespace Rebellion.Tests.Generation
             SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 0, 99 });
 
             Planet planet = new Planet { InstanceID = "RIM1", IsColonized = true };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             system.Planets.Add(planet);
 
@@ -466,22 +466,22 @@ namespace Rebellion.Tests.Generation
         public void Seed_AbundantAvailability_SelectsMatchingResourceProfile()
         {
             Planet planet = new Planet { InstanceID = "p1" };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             system.Planets.Add(planet);
 
             GameGenerationConfig config = new GameGenerationConfig
             {
                 GalaxyClassification = _gc,
-                SystemSupport = _sup,
-                SystemResources = new SystemResourcesSection
+                PlanetSupport = _sup,
+                PlanetResources = new PlanetResourcesSection
                 {
-                    Profiles = new List<SystemResourceProfile>
+                    Profiles = new List<PlanetResourceProfile>
                     {
-                        new SystemResourceProfile
+                        new PlanetResourceProfile
                         {
                             Availability = GameResourceAvailability.Normal,
                             CoreEnergy = new DiceFormula { Base = 5 },
@@ -494,7 +494,7 @@ namespace Rebellion.Tests.Generation
                             RawMaterialsMax = 100,
                             RimColonizationPct = 0,
                         },
-                        new SystemResourceProfile
+                        new PlanetResourceProfile
                         {
                             Availability = GameResourceAvailability.Abundant,
                             CoreEnergy = new DiceFormula { Base = 50 },
@@ -532,22 +532,22 @@ namespace Rebellion.Tests.Generation
         public void Seed_AvailabilityHasNoProfile_FallsBackToNormalProfile()
         {
             Planet planet = new Planet { InstanceID = "p1" };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             system.Planets.Add(planet);
 
             GameGenerationConfig config = new GameGenerationConfig
             {
                 GalaxyClassification = _gc,
-                SystemSupport = _sup,
-                SystemResources = new SystemResourcesSection
+                PlanetSupport = _sup,
+                PlanetResources = new PlanetResourcesSection
                 {
-                    Profiles = new List<SystemResourceProfile>
+                    Profiles = new List<PlanetResourceProfile>
                     {
-                        new SystemResourceProfile
+                        new PlanetResourceProfile
                         {
                             Availability = GameResourceAvailability.Normal,
                             CoreEnergy = new DiceFormula { Base = 7 },
@@ -582,7 +582,7 @@ namespace Rebellion.Tests.Generation
         }
 
         private static void Configure(
-            PlanetSystem[] systems,
+            PlanetSector[] systems,
             GalaxyClassificationResult classification,
             GameGenerationConfig config,
             string[] factionIds,
@@ -605,8 +605,8 @@ namespace Rebellion.Tests.Generation
             return new GameGenerationConfig
             {
                 GalaxyClassification = _gc,
-                SystemSupport = _sup,
-                SystemResources = _res,
+                PlanetSupport = _sup,
+                PlanetResources = _res,
             };
         }
     }

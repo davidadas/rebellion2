@@ -186,7 +186,7 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            empirePlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            empirePlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             empirePlanet.SetPopularSupport("empire", 10);
             empirePlanet.SetPopularSupport("rebels", 90);
             empirePlanet.BeginUprising();
@@ -232,7 +232,7 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            empirePlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            empirePlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             empirePlanet.SetPopularSupport("empire", 10);
             empirePlanet.SetPopularSupport("rebels", 90);
             empirePlanet.BeginUprising();
@@ -278,7 +278,7 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            empirePlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            empirePlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             empirePlanet.SetPopularSupport("empire", 10);
             empirePlanet.SetPopularSupport("rebels", 90);
             empirePlanet.BeginUprising();

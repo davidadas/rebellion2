@@ -8,7 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
@@ -92,7 +92,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 _playerFactionId,
                 GalacticInformationFilterMode.DisplayOff
             );
-            PlanetSystemClusterView cluster = FindRenderedCluster();
+            PlanetSectorClusterView cluster = FindRenderedCluster();
             PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
             eventData.button = PointerEventData.InputButton.Left;
             eventData.clickCount = 2;
@@ -103,7 +103,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             cluster.OnPointerClick(eventData);
 
             Assert.AreEqual(2, _actions.RenderRequestCount);
-            Assert.AreSame(_sector.System, _actions.OpenedSystem);
+            Assert.AreSame(_sector.PlanetSector, _actions.OpenedSystem);
             Assert.AreEqual(426, _actions.OpenedX);
             Assert.AreEqual(240, _actions.OpenedY);
         }
@@ -116,7 +116,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 _playerFactionId,
                 GalacticInformationFilterMode.DisplayOff
             );
-            PlanetSystemClusterView cluster = FindRenderedCluster();
+            PlanetSectorClusterView cluster = FindRenderedCluster();
             PointerEventData eventData = CreateClusterPointerEvent(cluster, new Vector2(10f, 14f));
             _controller.Render(null, _playerFactionId, GalacticInformationFilterMode.DisplayOff);
 
@@ -137,7 +137,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 _playerFactionId,
                 GalacticInformationFilterMode.DisplayOff
             );
-            PlanetSystemClusterView cluster = FindRenderedCluster();
+            PlanetSectorClusterView cluster = FindRenderedCluster();
             PointerEventData eventData = CreateClusterPointerEvent(cluster, new Vector2(10f, 14f));
 
             bool found = _controller.TryGetMissionTarget(
@@ -167,20 +167,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void ClearHover_NoHoveredSystem_ReturnsFalse()
+        public void ClearHover_NoHoveredSector_ReturnsFalse()
         {
             Assert.IsFalse(_controller.ClearHover());
         }
 
         [Test]
-        public void GetSystemSourcePosition_NullSector_ReturnsZero()
+        public void GetSectorSourcePosition_NullSector_ReturnsZero()
         {
-            Assert.AreEqual(Vector2Int.zero, _controller.GetSystemSourcePosition(null));
+            Assert.AreEqual(Vector2Int.zero, _controller.GetSectorSourcePosition(null));
         }
 
         private static GalaxyMapSector CreateSector()
         {
-            GamePlanetSystem system = new GamePlanetSystem
+            GamePlanetSector system = new GamePlanetSector
             {
                 InstanceID = "system",
                 DisplayName = "Corellia",
@@ -214,7 +214,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         private static PointerEventData CreateClusterPointerEvent(
-            PlanetSystemClusterView cluster,
+            PlanetSectorClusterView cluster,
             Vector2 sourcePosition
         )
         {
@@ -233,21 +233,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
-        private PlanetSystemClusterView FindRenderedCluster()
+        private PlanetSectorClusterView FindRenderedCluster()
         {
             return _view
-                .GetComponentsInChildren<PlanetSystemClusterView>(true)
-                .Single(cluster => cluster.name == _sector.System.InstanceID);
+                .GetComponentsInChildren<PlanetSectorClusterView>(true)
+                .Single(cluster => cluster.name == _sector.PlanetSector.InstanceID);
         }
 
         private sealed class TestActions : IGalaxyMapActions
         {
-            public GamePlanetSystem OpenedSystem { get; private set; }
+            public GamePlanetSector OpenedSystem { get; private set; }
             public int OpenedX { get; private set; } = -1;
             public int OpenedY { get; private set; } = -1;
             public int RenderRequestCount { get; private set; }
 
-            public void OpenPlanetSystemWindow(GamePlanetSystem system, int sourceX, int sourceY)
+            public void OpenPlanetSectorWindow(GamePlanetSector system, int sourceX, int sourceY)
             {
                 OpenedSystem = system;
                 OpenedX = sourceX;

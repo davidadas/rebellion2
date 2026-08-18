@@ -316,9 +316,9 @@ public sealed class StrategyBriefingController
             throw new InvalidOperationException($"Briefing target '{targetID}' was not found.");
 
         Planet targetPlanet = target as Planet ?? target?.GetParentOfType<Planet>();
-        PlanetSystem targetSystem =
-            target as PlanetSystem ?? target?.GetParentOfType<PlanetSystem>();
-        if (requiresTarget && targetSystem == null)
+        PlanetSector targetSector =
+            target as PlanetSector ?? target?.GetParentOfType<PlanetSector>();
+        if (requiresTarget && targetSector == null)
         {
             throw new InvalidOperationException(
                 $"Briefing target '{targetID}' cannot be presented on the galaxy map."
@@ -338,7 +338,7 @@ public sealed class StrategyBriefingController
         return new StrategyBriefingMapPresentation(
             mapMode,
             label,
-            targetSystem?.InstanceID,
+            targetSector?.InstanceID,
             targetPlanet?.InstanceID,
             playerFaction?.InstanceID,
             opponentFaction?.InstanceID,

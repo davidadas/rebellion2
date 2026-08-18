@@ -6,9 +6,9 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// Presents one authored planet-system cluster and translates pointer input into cluster events.
+/// Presents one authored planet-sector cluster and translates pointer input into cluster events.
 /// </summary>
-public sealed class PlanetSystemClusterView
+public sealed class PlanetSectorClusterView
     : MonoBehaviour,
         IPointerEnterHandler,
         IPointerExitHandler,
@@ -36,19 +36,19 @@ public sealed class PlanetSystemClusterView
     /// <summary>
     /// Raised when the pointer enters the rendered cluster.
     /// </summary>
-    public event Action<PlanetSystemClusterView> Hovered;
+    public event Action<PlanetSectorClusterView> Hovered;
 
     /// <summary>
     /// Raised when the pointer exits the rendered cluster.
     /// </summary>
-    public event Action<PlanetSystemClusterView> HoverCleared;
+    public event Action<PlanetSectorClusterView> HoverCleared;
 
     /// <summary>
     /// Raised when the rendered cluster receives a left-button double-click.
     /// </summary>
-    public event Action<PlanetSystemClusterView, PointerEventData> OpenRequested;
+    public event Action<PlanetSectorClusterView, PointerEventData> OpenRequested;
 
-    public string SystemInstanceId => renderData?.SystemInstanceId;
+    public string SectorInstanceId => renderData?.SectorInstanceId;
 
     /// <summary>
     /// Validates authored references when Unity creates the view.
@@ -161,7 +161,7 @@ public sealed class PlanetSystemClusterView
     /// <param name="eventData">The originating pointer event.</param>
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (!string.IsNullOrEmpty(SystemInstanceId) && gameObject.activeInHierarchy)
+        if (!string.IsNullOrEmpty(SectorInstanceId) && gameObject.activeInHierarchy)
             Hovered?.Invoke(this);
     }
 
@@ -181,7 +181,7 @@ public sealed class PlanetSystemClusterView
     public void OnPointerClick(PointerEventData eventData)
     {
         if (
-            !string.IsNullOrEmpty(SystemInstanceId)
+            !string.IsNullOrEmpty(SectorInstanceId)
             && eventData?.button == PointerEventData.InputButton.Left
             && eventData.clickCount >= 2
         )

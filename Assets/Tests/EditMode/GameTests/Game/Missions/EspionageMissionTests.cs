@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            game.Config.Espionage.CoreSystemBonus = new GameConfig.RandomCountConfig();
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig();
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
@@ -136,12 +136,12 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            PlanetSystem targetSystem = enemyPlanet.GetParentOfType<PlanetSystem>();
-            targetSystem.SystemType = PlanetSystemType.CoreSystem;
-            AddSystem(game, "core2", "core_planet2", PlanetSystemType.CoreSystem);
-            AddSystem(game, "core3", "core_planet3", PlanetSystemType.CoreSystem);
-            AddSystem(game, "rim1", "rim_planet1", PlanetSystemType.OuterRim);
-            game.Config.Espionage.CoreSystemBonus = new GameConfig.RandomCountConfig
+            PlanetSector targetSector = enemyPlanet.GetParentOfType<PlanetSector>();
+            targetSector.SectorType = PlanetSectorType.Core;
+            AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
+            AddSector(game, "core3", "core_planet3", PlanetSectorType.Core);
+            AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim);
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig
             {
                 Base = 2,
                 Spread = 0,
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CoreTarget_ReportsEveryAdditionalSystemRevealed()
+        public void Execute_CoreTarget_ReportsEveryAdditionalSectorRevealed()
         {
             (
                 GameRoot game,
@@ -177,22 +177,12 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            enemyPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.CoreSystem;
-            PlanetSystem corellia = AddSystem(
-                game,
-                "core2",
-                "core_planet2",
-                PlanetSystemType.CoreSystem
-            );
+            enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            PlanetSector corellia = AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
             corellia.DisplayName = "Corellia";
-            PlanetSystem sullust = AddSystem(
-                game,
-                "core3",
-                "core_planet3",
-                PlanetSystemType.CoreSystem
-            );
+            PlanetSector sullust = AddSector(game, "core3", "core_planet3", PlanetSectorType.Core);
             sullust.DisplayName = "Sullust";
-            game.Config.Espionage.CoreSystemBonus = new GameConfig.RandomCountConfig { Base = 2 };
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig { Base = 2 };
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
@@ -209,11 +199,13 @@ namespace Rebellion.Tests.Game.Missions
 
             List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
 
-            SystemsRevealedResult intelligence = results.OfType<SystemsRevealedResult>().Single();
+            PlanetSectorsRevealedResult intelligence = results
+                .OfType<PlanetSectorsRevealedResult>()
+                .Single();
             Assert.AreEqual(mission.InstanceID, intelligence.MissionInstanceID);
             CollectionAssert.AreEquivalent(
                 new[] { "Corellia", "Sullust" },
-                intelligence.AdditionalSystems.Select(system => system.DisplayName)
+                intelligence.AdditionalSectors.Select(system => system.DisplayName)
             );
         }
 
@@ -227,9 +219,9 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            enemyPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
-            AddSystem(game, "core2", "core_planet2", PlanetSystemType.CoreSystem);
-            game.Config.Espionage.CoreSystemBonus = new GameConfig.RandomCountConfig { Base = 10 };
+            enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig { Base = 10 };
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
@@ -258,10 +250,10 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            enemyPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.CoreSystem;
-            AddSystem(game, "core2", "core_planet2", PlanetSystemType.CoreSystem);
-            AddSystem(game, "rim1", "rim_planet1", PlanetSystemType.OuterRim);
-            AddSystem(game, "neutral1", "neutral_planet1", PlanetSystemType.OuterRim, null);
+            enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
+            AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim);
+            AddSector(game, "neutral1", "neutral_planet1", PlanetSectorType.OuterRim, null);
             Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
             rebels.HQInstanceID = enemyPlanet.InstanceID;
             rebels.Settings.Headquarters.IsMobile = true;
@@ -300,8 +292,8 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            enemyPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.CoreSystem;
-            AddSystem(game, "rim1", "rim_planet1", PlanetSystemType.OuterRim);
+            enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim);
             game.Config.Espionage.CapitalPlanetInstanceID = enemyPlanet.InstanceID;
             game.Config.Espionage.CapitalObserverFactionInstanceID = "empire";
             game.Config.Espionage.CapitalBonus = new GameConfig.RandomCountConfig { Base = 10 };
@@ -625,18 +617,18 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        private static PlanetSystem AddSystem(
+        private static PlanetSector AddSector(
             GameRoot game,
-            string systemInstanceId,
+            string sectorInstanceId,
             string planetInstanceId,
-            PlanetSystemType systemType,
+            PlanetSectorType systemType,
             string ownerInstanceId = "rebels"
         )
         {
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
-                InstanceID = systemInstanceId,
-                SystemType = systemType,
+                InstanceID = sectorInstanceId,
+                SectorType = systemType,
             };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(

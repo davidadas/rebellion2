@@ -404,7 +404,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(
                 anotherEnemyPlanet,
-                game.GetSceneNodeByInstanceID<PlanetSystem>("sys1")
+                game.GetSceneNodeByInstanceID<PlanetSector>("sys1")
             );
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");

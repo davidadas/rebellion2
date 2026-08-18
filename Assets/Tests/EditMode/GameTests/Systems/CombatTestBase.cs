@@ -84,14 +84,14 @@ namespace Rebellion.Tests.Systems
             return game;
         }
 
-        protected (Planet planet, PlanetSystem system) CreatePlanet(
+        protected (Planet planet, PlanetSector system) CreatePlanet(
             GameRoot game,
             string id,
             string owner = null,
             int energy = 5
         )
         {
-            PlanetSystem system = new PlanetSystem { InstanceID = $"sys_{id}" };
+            PlanetSector system = new PlanetSector { InstanceID = $"sys_{id}" };
             game.AttachNode(system, game.Galaxy);
             Planet planet = new Planet
             {

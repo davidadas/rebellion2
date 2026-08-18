@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Missions
             _game = new GameRoot(TestConfig.Create());
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
             _game.AttachNode(system, _game.Galaxy);
 
             _planet = new Planet

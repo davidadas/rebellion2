@@ -157,7 +157,7 @@ namespace Rebellion.Tests.UI.Runtime
         public void GetEntityStatusTexture_ShipCarriedByMovingFleet_ReturnsTransitArtwork()
         {
             string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            PlanetSector system = new PlanetSector { InstanceID = "system" };
             Planet planet = new Planet { InstanceID = "planet" };
             Fleet fleet = new Fleet
             {

@@ -60,7 +60,7 @@ public class PlanetOverlayIcons
 }
 
 /// <summary>
-/// Defines galaxy and planet-system overlay presentation.
+/// Defines galaxy and planet-sector overlay presentation.
 /// </summary>
 [PersistableObject]
 public class PlanetOverlayTheme
@@ -71,9 +71,9 @@ public class PlanetOverlayTheme
 
     public string GalaxyHeadquartersImagePath { get; set; }
 
-    public string PlanetSystemHeadquartersImagePath { get; set; }
+    public string PlanetSectorHeadquartersImagePath { get; set; }
 
-    public string PlanetSystemUprisingImagePath { get; set; }
+    public string PlanetSectorUprisingImagePath { get; set; }
 }
 
 /// <summary>

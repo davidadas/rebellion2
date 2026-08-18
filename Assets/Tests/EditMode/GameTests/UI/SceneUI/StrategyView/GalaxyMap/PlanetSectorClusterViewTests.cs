@@ -9,22 +9,22 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
     [TestFixture]
-    public class PlanetSystemClusterViewTests
+    public class PlanetSectorClusterViewTests
     {
         private const string _prefabPath =
-            "Assets/Prefabs/UI/StrategyView/PlanetSystemCluster.prefab";
+            "Assets/Prefabs/UI/StrategyView/PlanetSectorCluster.prefab";
 
         private Texture2D _headquartersTexture;
         private Texture2D _largeStarTexture;
         private Texture2D _starTexture;
-        private PlanetSystemClusterView _view;
+        private PlanetSectorClusterView _view;
         private GameObject _viewObject;
 
         [SetUp]
         public void SetUp()
         {
             _viewObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
-            _view = _viewObject.GetComponent<PlanetSystemClusterView>();
+            _view = _viewObject.GetComponent<PlanetSectorClusterView>();
             _starTexture = new Texture2D(15, 15);
             _largeStarTexture = new Texture2D(21, 19);
             _headquartersTexture = new Texture2D(14, 14);
@@ -68,7 +68,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
             _view.Render(data);
 
-            Assert.AreEqual("system-1", _view.SystemInstanceId);
+            Assert.AreEqual("system-1", _view.SectorInstanceId);
             Assert.AreEqual(new RectInt(100, 120, 50, 50), _view.GetRenderedSourceRect());
             RawImage hitArea = FindComponent<RawImage>("HitAreaImage");
             Assert.AreEqual(
@@ -259,9 +259,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void PointerEvents_RenderedCluster_EmitHoverExitAndDoubleClickRequests()
         {
             _view.Render(CreateCluster("system-1", "Corellia", true, null));
-            PlanetSystemClusterView hoveredView = null;
-            PlanetSystemClusterView exitedView = null;
-            PlanetSystemClusterView openedView = null;
+            PlanetSectorClusterView hoveredView = null;
+            PlanetSectorClusterView exitedView = null;
+            PlanetSectorClusterView openedView = null;
             PointerEventData openedEvent = null;
             _view.Hovered += view => hoveredView = view;
             _view.HoverCleared += view => exitedView = view;
@@ -307,14 +307,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         private GalaxyMapClusterRenderData CreateCluster(
-            string systemInstanceId,
+            string sectorInstanceId,
             string label,
             bool showLabel,
             GalaxyMapStarRenderData[] stars
         )
         {
             return new GalaxyMapClusterRenderData(
-                systemInstanceId,
+                sectorInstanceId,
                 100,
                 120,
                 label,

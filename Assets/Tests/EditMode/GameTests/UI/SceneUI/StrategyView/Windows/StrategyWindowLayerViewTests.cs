@@ -31,7 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void PrefabProperties_AuthoredLayer_ExposeEveryRequiredWindowPrefab()
         {
-            Assert.IsNotNull(_view.PlanetSystemWindowPrefab);
+            Assert.IsNotNull(_view.PlanetSectorWindowPrefab);
             Assert.IsNotNull(_view.FacilityWindowPrefab);
             Assert.IsNotNull(_view.DefenseWindowPrefab);
             Assert.IsNotNull(_view.FleetWindowPrefab);
@@ -87,13 +87,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void GetWindowSize_AuthoredPrefab_ReturnsFixedPrefabDimensions()
         {
-            RectTransform rect = _view.PlanetSystemWindowPrefab.transform as RectTransform;
+            RectTransform rect = _view.PlanetSectorWindowPrefab.transform as RectTransform;
             Vector2Int expected = new Vector2Int(
                 Mathf.RoundToInt(rect.sizeDelta.x),
                 Mathf.RoundToInt(rect.sizeDelta.y)
             );
 
-            Vector2Int size = _view.GetWindowSize(_view.PlanetSystemWindowPrefab);
+            Vector2Int size = _view.GetWindowSize(_view.PlanetSectorWindowPrefab);
 
             Assert.AreEqual(expected, size);
             Assert.Greater(size.x, 0);

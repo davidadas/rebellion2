@@ -17,7 +17,7 @@ namespace Rebellion.Tests.AI.Proposals
         public void Execute_WithSamePlanetCapitalShipTransfer_ReparentsUnitToTargetFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet staging = AITestSceneBuilder.AddPlanet(
                 game,
                 system,

@@ -16,7 +16,7 @@ namespace Rebellion.Tests.AI.Proposals
         public void Execute_WithFleetNotReady_AssignsStagingOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID);
@@ -40,7 +40,7 @@ namespace Rebellion.Tests.AI.Proposals
         public void Execute_WithCompletedAttackOrder_ClearsOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", empire.InstanceID);
             Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID);
@@ -67,7 +67,7 @@ namespace Rebellion.Tests.AI.Proposals
         public void CanExecute_WithFriendlyTarget_ReturnsFalse()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet friendlyTarget = AITestSceneBuilder.AddPlanet(
                 game,

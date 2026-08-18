@@ -29,7 +29,7 @@ namespace Rebellion.Tests.Systems
             };
             _game.Factions.Add(_faction);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "SYSTEM" };
+            PlanetSector system = new PlanetSector { InstanceID = "SYSTEM" };
             _game.AttachNode(system, _game.Galaxy);
             _producer = CreatePlanet("PRODUCER", 100, 10);
             _destination = CreatePlanet("DESTINATION", 10, 10);

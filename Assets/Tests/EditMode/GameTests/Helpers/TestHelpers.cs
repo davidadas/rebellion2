@@ -220,7 +220,7 @@ public static class TestGameData
             config ?? new GameConfig(),
             new GameGenerationConfig(),
             Array.Empty<Faction>(),
-            Array.Empty<PlanetSystem>(),
+            Array.Empty<PlanetSector>(),
             Array.Empty<Building>(),
             Array.Empty<CapitalShip>(),
             Array.Empty<Starfighter>(),
@@ -244,7 +244,7 @@ public static class MapPositionTestHelper
         return planet;
     }
 
-    public static PlanetSystem WithMapPosition(this PlanetSystem system, int x, int y)
+    public static PlanetSector WithMapPosition(this PlanetSector system, int x, int y)
     {
         system.PositionX = x;
         system.PositionY = y;
@@ -269,7 +269,7 @@ public static class MissionSceneBuilder
         game.Factions.Add(empire);
         game.Factions.Add(rebels);
 
-        PlanetSystem system = new PlanetSystem
+        PlanetSector system = new PlanetSector
         {
             InstanceID = "sys1",
             PositionX = 0,
@@ -482,7 +482,7 @@ public static class GenerationContextFactory
     {
         return new GenerationContext
         {
-            Systems = Array.Empty<PlanetSystem>(),
+            Systems = Array.Empty<PlanetSector>(),
             Factions = Array.Empty<Faction>(),
             Buildings = Array.Empty<Building>(),
             CapitalShips = Array.Empty<CapitalShip>(),

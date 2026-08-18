@@ -10,7 +10,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using TMPro;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 {
@@ -187,7 +187,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         {
             ConstructionWindowView view = OpenAdvisorWindow(out UIWindow _);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSystem { InstanceID = "fresh-system" },
+                new GamePlanetSector { InstanceID = "fresh-system" },
                 new Planet
                 {
                     InstanceID = _planet.Planet.InstanceID,
@@ -277,7 +277,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
-            GamePlanetSystem system = new GamePlanetSystem
+            GamePlanetSector system = new GamePlanetSector
             {
                 InstanceID = "system",
                 DisplayName = "Core System",

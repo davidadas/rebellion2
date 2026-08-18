@@ -31,26 +31,26 @@ public sealed class GalaxyMapProjector
     /// <param name="sectors">The visible sectors in render order.</param>
     /// <param name="playerFactionId">The viewing player's faction identifier.</param>
     /// <param name="filterMode">The active galactic-information filter.</param>
-    /// <param name="hoveredSystemInstanceId">The planet-system identifier whose label is revealed.</param>
+    /// <param name="hoveredSectorInstanceId">The planet-sector identifier whose label is revealed.</param>
     /// <param name="briefing">The transient briefing presentation, or null.</param>
     /// <returns>The complete immutable map presentation.</returns>
     public GalaxyMapRenderData Project(
         IReadOnlyList<GalaxyMapSector> sectors,
         string playerFactionId,
         GalacticInformationFilterMode filterMode,
-        string hoveredSystemInstanceId,
+        string hoveredSectorInstanceId,
         StrategyBriefingMapPresentation briefing = null
     )
     {
         UIContext context = GetRequiredContext();
-        hoveredSystemInstanceId = briefing?.TargetSystemInstanceID ?? hoveredSystemInstanceId;
+        hoveredSectorInstanceId = briefing?.TargetSectorInstanceID ?? hoveredSectorInstanceId;
         FactionTheme playerTheme = context.GetPlayerFactionTheme();
         GalacticInformationFilterTheme filter = ResolveFilter(playerTheme, filterMode);
         List<GalaxyMapClusterRenderData> clusters = ProjectClusters(
             sectors,
             playerFactionId,
             filter,
-            hoveredSystemInstanceId,
+            hoveredSectorInstanceId,
             context,
             briefing
         );
@@ -122,20 +122,20 @@ public sealed class GalaxyMapProjector
     }
 
     /// <summary>
-    /// Resolves a planet system's absolute source-space map position.
+    /// Resolves a planet sector's absolute source-space map position.
     /// </summary>
-    /// <param name="system">The represented planet system.</param>
-    /// <returns>The source-space map position, or zero for a missing system.</returns>
-    public Vector2Int GetSystemSourcePosition(PlanetSystem system)
+    /// <param name="sector">The represented planet sector.</param>
+    /// <returns>The source-space map position, or zero for a missing sector.</returns>
+    public Vector2Int GetSectorSourcePosition(PlanetSector sector)
     {
-        if (system == null)
+        if (sector == null)
             return Vector2Int.zero;
 
         UIContext context = GetRequiredContext();
         SourcePointLayout backgroundPosition = context
             .GetPlayerFactionTheme()
             ?.GalaxyBackground?.SourcePosition;
-        System.Drawing.Point localPosition = system.GetPosition();
+        System.Drawing.Point localPosition = sector.GetPosition();
         return new Vector2Int(
             (backgroundPosition?.X ?? 0) + localPosition.X,
             (backgroundPosition?.Y ?? 0) + localPosition.Y
@@ -165,7 +165,7 @@ public sealed class GalaxyMapProjector
     /// <param name="sectors">The visible sectors in render order.</param>
     /// <param name="playerFactionId">The viewing player's faction identifier.</param>
     /// <param name="filter">The active filter configuration, or null when display is off.</param>
-    /// <param name="hoveredSystemInstanceId">The planet-system identifier whose label is revealed.</param>
+    /// <param name="hoveredSectorInstanceId">The planet-sector identifier whose label is revealed.</param>
     /// <param name="context">The current strategy UI context.</param>
     /// <param name="briefing">The transient briefing presentation, or null.</param>
     /// <returns>The projected cluster presentations.</returns>
@@ -173,7 +173,7 @@ public sealed class GalaxyMapProjector
         IReadOnlyList<GalaxyMapSector> sectors,
         string playerFactionId,
         GalacticInformationFilterTheme filter,
-        string hoveredSystemInstanceId,
+        string hoveredSectorInstanceId,
         UIContext context,
         StrategyBriefingMapPresentation briefing
     )
@@ -184,19 +184,19 @@ public sealed class GalaxyMapProjector
 
         foreach (GalaxyMapSector sector in sectors)
         {
-            if (sector?.System == null)
+            if (sector?.PlanetSector == null)
                 continue;
 
-            System.Drawing.Point systemPosition = sector.System.GetPosition();
+            System.Drawing.Point systemPosition = sector.PlanetSector.GetPosition();
             clusters.Add(
                 new GalaxyMapClusterRenderData(
-                    sector.System.InstanceID,
+                    sector.PlanetSector.InstanceID,
                     systemPosition.X,
                     systemPosition.Y,
-                    sector.System.DisplayName,
+                    sector.PlanetSector.DisplayName,
                     string.Equals(
-                        sector.System.InstanceID,
-                        hoveredSystemInstanceId,
+                        sector.PlanetSector.InstanceID,
+                        hoveredSectorInstanceId,
                         StringComparison.Ordinal
                     ),
                     ProjectStars(sector, playerFactionId, filter, context, systemPosition, briefing)

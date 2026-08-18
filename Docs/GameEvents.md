@@ -159,7 +159,7 @@ Comparisons are `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessT
 `ForceMaster`.
 
 `ShareParent` checks the exact immediate parent. `ShareAncestor` checks a shared nearest `Galaxy`,
-`PlanetSystem`, `Planet`, `Fleet`, `Mission`, or `CapitalShip` ancestor:
+`PlanetSector`, `Planet`, `Fleet`, `Mission`, or `CapitalShip` ancestor:
 
 ```xml
 <ShareAncestor Type="Planet">
@@ -182,7 +182,7 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
   <From>
     <SelectRandom Count="1">
       <From>
-        <SelectPlanets SystemType="CoreSystem"/>
+        <SelectPlanets SectorType="Core"/>
       </From>
     </SelectRandom>
   </From>
@@ -191,8 +191,8 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 
 | Selector | Filters or behavior |
 | --- | --- |
-| `SelectPlanets` | `InstanceID`, `OwnerFactionInstanceID`, `SystemType` |
-| `SelectPlanetSystems` | `InstanceID`, `SystemType` |
+| `SelectPlanets` | `InstanceID`, `OwnerFactionInstanceID`, `SectorType` |
+| `SelectPlanetSectors` | `InstanceID`, `SectorType` |
 | `SelectOfficers` | ID, planet, owner, capture state, and whether retained officers are included |
 | `SelectSpecialForces`, `SelectFleets`, `SelectMissions` | ID, planet, and owner |
 | `SelectCapitalShips`, `SelectStarfighters`, `SelectRegiments` | ID, planet, owner, `TypeID`, and `ManufacturingStatus` |
@@ -205,7 +205,7 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 | `SelectPreviousLocation` | Returns a retained unit's recorded previous location. |
 | `SpawnUnits` | Creates `Count` detached units from a catalog `TypeID` for immediate use by `PlaceUnits`. |
 
-Planet location filters use `PlanetInstanceID` or `PlanetBinding`. System types are `CoreSystem` and
+Planet location filters use `PlanetInstanceID` or `PlanetBinding`. Sector types are `Core` and
 `OuterRim`. Manufacturing statuses are `Building` and `Complete`. Manufacturing types are `Ship`,
 `Building`, and `Troop`. Building categories are `Any`, `PlanetaryDefense`, and
 `ManufacturingFacility`.
@@ -407,7 +407,7 @@ records the incident, and sends a message:
     <From>
       <SelectRandom Count="1">
         <From>
-          <SelectPlanets SystemType="CoreSystem"/>
+          <SelectPlanets SectorType="Core"/>
         </From>
       </SelectRandom>
     </From>

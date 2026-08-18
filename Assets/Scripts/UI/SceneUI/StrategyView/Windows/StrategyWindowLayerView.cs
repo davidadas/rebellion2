@@ -19,7 +19,7 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
     private RawImage modalBackgroundDimImage;
 
     [SerializeField]
-    private PlanetSystemWindowView planetSystemWindowPrefab;
+    private PlanetSectorWindowView planetSectorWindowPrefab;
 
     [SerializeField]
     private FacilityWindowView facilityWindowPrefab;
@@ -69,7 +69,7 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
     [SerializeField]
     private int itemDragStartDistance;
 
-    internal PlanetSystemWindowView PlanetSystemWindowPrefab => planetSystemWindowPrefab;
+    internal PlanetSectorWindowView PlanetSectorWindowPrefab => planetSectorWindowPrefab;
 
     internal FacilityWindowView FacilityWindowPrefab => facilityWindowPrefab;
 

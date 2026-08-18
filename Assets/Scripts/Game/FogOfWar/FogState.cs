@@ -14,7 +14,7 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// System snapshots keyed by system instance ID.
         /// </summary>
-        public Dictionary<string, SystemSnapshot> Snapshots;
+        public Dictionary<string, PlanetSectorSnapshot> Snapshots;
 
         /// <summary>
         /// Last observed planet for each visible entity instance ID.
@@ -24,16 +24,16 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// System instance ID for each observed planet instance ID.
         /// </summary>
-        public Dictionary<string, string> PlanetToSystem;
+        public Dictionary<string, string> PlanetToSector;
 
         /// <summary>
         /// Default constructor.
         /// </summary>
         public FogState()
         {
-            Snapshots = new Dictionary<string, SystemSnapshot>();
+            Snapshots = new Dictionary<string, PlanetSectorSnapshot>();
             EntityLastSeenAt = new Dictionary<string, string>();
-            PlanetToSystem = new Dictionary<string, string>();
+            PlanetToSector = new Dictionary<string, string>();
         }
     }
 }

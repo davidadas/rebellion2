@@ -14,15 +14,15 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_ForeignCorePlanet_CapturesResourceSnapshotForNonOwner()
         {
-            var (game, coreSystem, empirePlanet, _, alliance) = BuildScene();
+            var (game, coreSector, empirePlanet, _, alliance) = BuildScene();
 
             new FogOfWarSeeder().Seed(Wrap(game));
 
             Assert.IsTrue(
-                alliance.Fog.Snapshots.ContainsKey(coreSystem.InstanceID),
+                alliance.Fog.Snapshots.ContainsKey(coreSector.InstanceID),
                 "Alliance should have a snapshot of the Empire-owned core system."
             );
-            PlanetSnapshot snapshot = alliance.Fog.Snapshots[coreSystem.InstanceID].Planets[
+            PlanetSnapshot snapshot = alliance.Fog.Snapshots[coreSector.InstanceID].Planets[
                 empirePlanet.InstanceID
             ];
             Assert.AreEqual(empirePlanet.EnergyCapacity, snapshot.EnergyCapacity);
@@ -32,12 +32,12 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_OwnedCorePlanet_NoSnapshotForOwner()
         {
-            var (game, coreSystem, _, empire, _) = BuildScene();
+            var (game, coreSector, _, empire, _) = BuildScene();
 
             new FogOfWarSeeder().Seed(Wrap(game));
 
             Assert.IsFalse(
-                empire.Fog.Snapshots.ContainsKey(coreSystem.InstanceID),
+                empire.Fog.Snapshots.ContainsKey(coreSector.InstanceID),
                 "Owner should not have a snapshot of their own planet from the seeder."
             );
         }
@@ -52,10 +52,10 @@ namespace Rebellion.Tests.Generation
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem rim = new PlanetSystem
+            PlanetSector rim = new PlanetSector
             {
                 InstanceID = "rim_sys",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             rim.Planets.Add(
                 new Planet
@@ -65,7 +65,7 @@ namespace Rebellion.Tests.Generation
                     IsColonized = true,
                 }
             );
-            game.Galaxy = new GalaxyMap { PlanetSystems = new List<PlanetSystem> { rim } };
+            game.Galaxy = new GalaxyMap { PlanetSectors = new List<PlanetSector> { rim } };
 
             new FogOfWarSeeder().Seed(Wrap(game));
 
@@ -85,10 +85,10 @@ namespace Rebellion.Tests.Generation
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem rim = new PlanetSystem
+            PlanetSector rim = new PlanetSector
             {
                 InstanceID = "rim_sys",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             rim.Planets.Add(
                 new Planet
@@ -99,7 +99,7 @@ namespace Rebellion.Tests.Generation
                     IsColonized = true,
                 }
             );
-            game.Galaxy = new GalaxyMap { PlanetSystems = new List<PlanetSystem> { rim } };
+            game.Galaxy = new GalaxyMap { PlanetSectors = new List<PlanetSector> { rim } };
 
             GameGenerationConfig config = new GameGenerationConfig
             {
@@ -137,7 +137,7 @@ namespace Rebellion.Tests.Generation
 
         private static (
             GameRoot game,
-            PlanetSystem coreSystem,
+            PlanetSector coreSector,
             Planet empirePlanet,
             Faction empire,
             Faction alliance
@@ -151,10 +151,10 @@ namespace Rebellion.Tests.Generation
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem coreSystem = new PlanetSystem
+            PlanetSector coreSector = new PlanetSector
             {
                 InstanceID = "core_sys",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             Planet empirePlanet = new Planet
             {
@@ -165,10 +165,10 @@ namespace Rebellion.Tests.Generation
                 EnergyCapacity = 9,
                 NumRawResourceNodes = 6,
             };
-            coreSystem.Planets.Add(empirePlanet);
-            game.Galaxy = new GalaxyMap { PlanetSystems = new List<PlanetSystem> { coreSystem } };
+            coreSector.Planets.Add(empirePlanet);
+            game.Galaxy = new GalaxyMap { PlanetSectors = new List<PlanetSector> { coreSector } };
 
-            return (game, coreSystem, empirePlanet, empire, alliance);
+            return (game, coreSector, empirePlanet, empire, alliance);
         }
 
         private static GenerationContext Wrap(GameRoot game, GameGenerationConfig config = null)

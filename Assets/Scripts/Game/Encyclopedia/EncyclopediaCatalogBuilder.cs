@@ -23,7 +23,7 @@ namespace Rebellion.Game.Encyclopedia
 
             return Build(
                 gameData.EncyclopediaEntries,
-                gameData.PlanetSystems,
+                gameData.PlanetSectors,
                 gameData.Buildings,
                 gameData.CapitalShips,
                 gameData.Starfighters,
@@ -37,7 +37,7 @@ namespace Rebellion.Game.Encyclopedia
         /// Builds the encyclopedia catalog from authored entries and static game data.
         /// </summary>
         /// <param name="authoredEntries">The authored encyclopedia entries.</param>
-        /// <param name="planetSystems">The static planet system data.</param>
+        /// <param name="planetSectors">The static planet sector data.</param>
         /// <param name="buildings">The static building data.</param>
         /// <param name="capitalShips">The static capital ship data.</param>
         /// <param name="starfighters">The static starfighter data.</param>
@@ -47,7 +47,7 @@ namespace Rebellion.Game.Encyclopedia
         /// <returns>The built encyclopedia catalog.</returns>
         public EncyclopediaCatalog Build(
             EncyclopediaEntries authoredEntries,
-            IEnumerable<PlanetSystem> planetSystems,
+            IEnumerable<PlanetSector> planetSectors,
             IEnumerable<Building> buildings,
             IEnumerable<CapitalShip> capitalShips,
             IEnumerable<Starfighter> starfighters,
@@ -57,7 +57,7 @@ namespace Rebellion.Game.Encyclopedia
         )
         {
             List<EncyclopediaEntry> generatedEntries = BuildGeneratedEntries(
-                planetSystems,
+                planetSectors,
                 buildings,
                 capitalShips,
                 starfighters,
@@ -100,7 +100,7 @@ namespace Rebellion.Game.Encyclopedia
         /// <summary>
         /// Builds generated encyclopedia entries from static game data.
         /// </summary>
-        /// <param name="planetSystems">The static planet system data.</param>
+        /// <param name="planetSectors">The static planet sector data.</param>
         /// <param name="buildings">The static building data.</param>
         /// <param name="capitalShips">The static capital ship data.</param>
         /// <param name="starfighters">The static starfighter data.</param>
@@ -109,7 +109,7 @@ namespace Rebellion.Game.Encyclopedia
         /// <param name="officers">The static officer data.</param>
         /// <returns>The generated encyclopedia entries.</returns>
         private static List<EncyclopediaEntry> BuildGeneratedEntries(
-            IEnumerable<PlanetSystem> planetSystems,
+            IEnumerable<PlanetSector> planetSectors,
             IEnumerable<Building> buildings,
             IEnumerable<CapitalShip> capitalShips,
             IEnumerable<Starfighter> starfighters,
@@ -119,7 +119,7 @@ namespace Rebellion.Game.Encyclopedia
         )
         {
             List<EncyclopediaEntry> entries = new List<EncyclopediaEntry>();
-            AddPlanets(entries, planetSystems);
+            AddPlanets(entries, planetSectors);
             AddEntities(entries, buildings, EncyclopediaEntryCategory.Facility);
             AddEntities(entries, capitalShips, EncyclopediaEntryCategory.Ship);
             AddEntities(entries, starfighters, EncyclopediaEntryCategory.Ship);
@@ -130,24 +130,24 @@ namespace Rebellion.Game.Encyclopedia
         }
 
         /// <summary>
-        /// Adds planet entries from planet system data.
+        /// Adds planet entries from planet sector data.
         /// </summary>
         /// <param name="entries">The entry accumulator.</param>
-        /// <param name="planetSystems">The static planet system data.</param>
+        /// <param name="planetSectors">The static planet sector data.</param>
         private static void AddPlanets(
             List<EncyclopediaEntry> entries,
-            IEnumerable<PlanetSystem> planetSystems
+            IEnumerable<PlanetSector> planetSectors
         )
         {
-            if (planetSystems == null)
+            if (planetSectors == null)
                 return;
 
-            foreach (PlanetSystem planetSystem in planetSystems)
+            foreach (PlanetSector planetSector in planetSectors)
             {
-                if (planetSystem?.Planets == null)
+                if (planetSector?.Planets == null)
                     continue;
 
-                foreach (Planet planet in planetSystem.Planets)
+                foreach (Planet planet in planetSector.Planets)
                 {
                     EncyclopediaEntry entry = CreateEntry(planet, EncyclopediaEntryCategory.System);
                     if (entry != null)

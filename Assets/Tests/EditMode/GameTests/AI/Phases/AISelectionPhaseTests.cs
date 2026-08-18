@@ -80,7 +80,7 @@ namespace Rebellion.Tests.AI.Phases
         public void Select_WithManufactureProposalBeyondMaintenanceHeadroom_DoesNotSelectProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "p1", empire.InstanceID);
             AITestSceneBuilder.AddProductionFacility(
                 game,

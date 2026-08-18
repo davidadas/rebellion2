@@ -16,9 +16,9 @@ namespace Rebellion.Generation
 
         public GalaxyClassificationSection GalaxyClassification;
 
-        public SystemResourcesSection SystemResources;
+        public PlanetResourcesSection PlanetResources;
 
-        public SystemSupportSection SystemSupport;
+        public PlanetSupportSection PlanetSupport;
 
         public FacilityGenerationSection FacilityGeneration;
 
@@ -125,19 +125,19 @@ namespace Rebellion.Generation
     #region SYSTEM RESOURCES
 
     /// <summary>
-    /// Defines resource profiles used by planet system generation.
+    /// Defines resource profiles used by planet sector generation.
     /// </summary>
     [PersistableObject]
-    public class SystemResourcesSection
+    public class PlanetResourcesSection
     {
-        public List<SystemResourceProfile> Profiles;
+        public List<PlanetResourceProfile> Profiles;
     }
 
     /// <summary>
     /// Defines energy, raw material, and colonization settings for one resource profile.
     /// </summary>
     [PersistableObject]
-    public class SystemResourceProfile
+    public class PlanetResourceProfile
     {
         public GameResourceAvailability Availability;
         public DiceFormula CoreEnergy;
@@ -170,7 +170,7 @@ namespace Rebellion.Generation
     /// Defines popular support generation settings for system ownership buckets.
     /// </summary>
     [PersistableObject]
-    public class SystemSupportSection
+    public class PlanetSupportSection
     {
         public SupportFormula Strong;
         public SupportFormula Weak;

@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(_alliance);
             _game.Factions.Add(_empire);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "TATOO",
                 PositionX = 0,

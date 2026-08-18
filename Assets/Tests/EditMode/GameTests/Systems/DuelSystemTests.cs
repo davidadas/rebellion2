@@ -72,7 +72,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 IsColonized = true,
             };
-            game.AttachNode(other, game.Galaxy.PlanetSystems[0]);
+            game.AttachNode(other, game.Galaxy.PlanetSectors[0]);
             game.MoveNode(opposing, other);
             DuelSystem system = new DuelSystem(game, new FixedRandomProvider(new[] { 0.0 }));
 
@@ -98,15 +98,15 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "rebels" });
             game.Factions.Add(new Faction { InstanceID = "empire" });
-            PlanetSystem planetSystem = new PlanetSystem { InstanceID = "system" };
-            game.AttachNode(planetSystem, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
                 InstanceID = "planet",
                 OwnerInstanceID = "rebels",
                 IsColonized = true,
             };
-            game.AttachNode(planet, planetSystem);
+            game.AttachNode(planet, planetSector);
             Officer encountered = EntityFactory.CreateOfficer("luke", "rebels");
             Officer opposing = EntityFactory.CreateOfficer("vader", "empire");
             encountered.SetBaseRating(OfficerRating.Combat, 50);

@@ -57,7 +57,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.Greater(layout.FacilityMenuWidth, 0);
             Assert.Greater(layout.FleetMenuWidth, 0);
             Assert.Greater(layout.FleetBombardmentMenuWidth, 0);
-            Assert.Greater(layout.PlanetSystemMenuWidth, 0);
+            Assert.Greater(layout.PlanetSectorMenuWidth, 0);
             Assert.Greater(layout.DefenseMenuWidth, 0);
             Assert.Greater(layout.MissionsMenuWidth, 0);
             Assert.Greater(layout.FallbackMenuWidth, 0);

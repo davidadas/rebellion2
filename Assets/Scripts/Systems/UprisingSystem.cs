@@ -811,10 +811,10 @@ namespace Rebellion.Systems
         /// <returns>The troop multiplier for this planet and faction.</returns>
         private static int GetUprisingTroopMultiplier(Planet planet, Faction faction)
         {
-            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
+            PlanetSector parentSector = planet.GetParentOfType<PlanetSector>();
             if (
-                parentSystem != null
-                && parentSystem.SystemType == PlanetSystemType.CoreSystem
+                parentSector != null
+                && parentSector.SectorType == PlanetSectorType.Core
                 && faction.Settings.UprisingResistance > 1
             )
             {
@@ -1154,8 +1154,8 @@ namespace Rebellion.Systems
             if (shift == 0)
                 return;
 
-            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
-            if (parentSystem != null && parentSystem.SystemType == PlanetSystemType.CoreSystem)
+            PlanetSector parentSector = planet.GetParentOfType<PlanetSector>();
+            if (parentSector != null && parentSector.SectorType == PlanetSectorType.Core)
             {
                 bool penaltyApplies = faction.Settings.WeakSupportPenaltyTrigger switch
                 {
@@ -1196,10 +1196,10 @@ namespace Rebellion.Systems
                     (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
                 );
 
-            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
+            PlanetSector parentSector = planet.GetParentOfType<PlanetSector>();
             if (
-                parentSystem != null
-                && parentSystem.SystemType == PlanetSystemType.CoreSystem
+                parentSector != null
+                && parentSector.SectorType == PlanetSectorType.Core
                 && faction.Settings.GarrisonEfficiency > 1
             )
             {

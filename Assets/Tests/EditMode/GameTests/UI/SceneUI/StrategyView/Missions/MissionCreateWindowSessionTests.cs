@@ -5,7 +5,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
@@ -28,7 +28,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
             _window = _windowObject.GetComponent<UIWindow>();
             _window.Configure(1, 10, 20, 300, 200, false, true, true);
-            GamePlanetSystem system = new GamePlanetSystem();
+            GamePlanetSector system = new GamePlanetSector();
             GalaxyMapPlanet planet = new GalaxyMapPlanet(
                 system,
                 new Planet { InstanceID = "planet" },

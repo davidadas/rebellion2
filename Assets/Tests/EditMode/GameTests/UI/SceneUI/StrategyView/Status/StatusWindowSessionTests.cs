@@ -4,7 +4,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
@@ -76,7 +76,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Planet currentPlanet = new Planet { InstanceID = "planet" };
             GalaxyMapPlanet currentMapPlanet = CreateMapPlanet(currentPlanet);
             GalaxyMapSector sector = new GalaxyMapSector(
-                currentMapPlanet.SectorSystem,
+                currentMapPlanet.PlanetSector,
                 new[] { currentMapPlanet }
             );
             currentOfficer = new Officer { InstanceID = "officer" };
@@ -170,7 +170,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
         private static GalaxyMapPlanet CreateMapPlanet(Planet planet)
         {
-            return new GalaxyMapPlanet(new GamePlanetSystem(), planet, string.Empty);
+            return new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty);
         }
     }
 }

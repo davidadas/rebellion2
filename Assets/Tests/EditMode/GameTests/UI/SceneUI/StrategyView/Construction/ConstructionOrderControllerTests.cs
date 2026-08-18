@@ -6,7 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 {
@@ -39,7 +39,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 ((IManufacturable)template).GetResearchOrder()
             );
             game.Factions.Add(owner);
-            GamePlanetSystem system = new GamePlanetSystem { InstanceID = "system" };
+            GamePlanetSector system = new GamePlanetSector { InstanceID = "system" };
             game.AttachNode(system, game.GetGalaxyMap());
             Planet producer = CreatePlanet("producer", ownerId, 10);
             Planet destination = CreatePlanet("destination", ownerId, _destinationEnergyCapacity);

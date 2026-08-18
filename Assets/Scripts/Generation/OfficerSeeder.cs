@@ -289,12 +289,12 @@ namespace Rebellion.Generation
         /// or fleet.
         /// </summary>
         /// <param name="officers">The officers selected for deployment.</param>
-        /// <param name="systems">All planet systems, used to enumerate per-faction destinations.</param>
+        /// <param name="systems">All planet sectors, used to enumerate per-faction destinations.</param>
         /// <param name="startingOfficerRules">Starting-officer placement rules for this galaxy.</param>
         /// <param name="rng">Random number provider for destination selection.</param>
         private void DeployOfficers(
             Officer[] officers,
-            PlanetSystem[] systems,
+            PlanetSector[] systems,
             IReadOnlyList<StartingOfficerRule> startingOfficerRules,
             IRandomNumberProvider rng
         )

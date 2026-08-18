@@ -24,7 +24,7 @@ namespace Rebellion.Tests.AI.Scoring
             game.Config.AI.FleetDeployment.AttackExpectedLossPenaltyWeight = 0;
             game.Config.AI.FleetDeployment.AttackOpportunityCostPenaltyWeight = 0;
             game.Config.AI.FleetDeployment.HeadquartersAttackBonus = 50;
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet normalTarget = AITestSceneBuilder.AddPlanet(
                 game,

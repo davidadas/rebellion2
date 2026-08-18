@@ -5,12 +5,12 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
-namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
     [TestFixture]
-    public class PlanetSystemWindowContextMenuBuilderTests
+    public class PlanetSectorWindowContextMenuBuilderTests
     {
         private const string _opposingFactionId = "FNEMP1";
         private const string _playerFactionId = "FNALL1";
@@ -18,7 +18,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Create_MissingHit_ReturnsDisabledPlanetInformationCommands()
         {
-            List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
                 null,
                 null,
                 _playerFactionId
@@ -42,9 +42,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             bool planetImage
         )
         {
-            PlanetSystemWindowHit hit = CreateHit(icon, planetImage);
+            PlanetSectorWindowHit hit = CreateHit(icon, planetImage);
 
-            List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
                 hit,
                 null,
                 _playerFactionId
@@ -60,9 +60,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Create_MissionHit_ReturnsDisabledMissionCommands()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Mission, false);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Mission, false);
 
-            List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
                 hit,
                 null,
                 _playerFactionId
@@ -83,14 +83,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Create_MobileHeadquarters_ReturnsMoveCommands()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.None, true);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.None, true);
             Building headquarters = new Building
             {
                 BuildingType = BuildingType.Headquarters,
                 OwnerInstanceID = _playerFactionId,
             };
 
-            List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
                 hit,
                 new List<ISceneNode> { headquarters },
                 _playerFactionId,
@@ -107,9 +107,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Create_EmptyFleetHit_ReturnsDisabledFleetCommands()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
 
-            List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
                 hit,
                 null,
                 _playerFactionId
@@ -135,13 +135,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Create_PlayerFleetHit_ReturnsEnabledFleetCommandsAndStatus()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             List<ISceneNode> fleets = new List<ISceneNode>
             {
                 new GameFleet(_playerFactionId, "Fleet"),
             };
 
-            List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
                 hit,
                 fleets,
                 _playerFactionId,
@@ -176,13 +176,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Create_OpposingFleetHit_ReturnsDisabledCommandsAndEnabledStatus()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             List<ISceneNode> fleets = new List<ISceneNode>
             {
                 new GameFleet(_opposingFactionId, "Fleet"),
             };
 
-            List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
                 hit,
                 fleets,
                 _playerFactionId,
@@ -201,14 +201,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Create_MultiplePlayerFleets_ReturnsCommandsWithoutSingleFleetStatus()
         {
-            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             List<ISceneNode> fleets = new List<ISceneNode>
             {
                 new GameFleet(_playerFactionId, "First Fleet"),
                 new GameFleet(_playerFactionId, "Second Fleet"),
             };
 
-            List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
                 hit,
                 fleets,
                 _playerFactionId,
@@ -225,11 +225,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             Assert.IsTrue(commands[6].Enabled);
         }
 
-        private static PlanetSystemWindowHit CreateHit(PlanetIcon icon, bool planetImage)
+        private static PlanetSectorWindowHit CreateHit(PlanetIcon icon, bool planetImage)
         {
-            GamePlanetSystem system = new GamePlanetSystem();
+            GamePlanetSector system = new GamePlanetSector();
             GalaxyMapPlanet planet = new GalaxyMapPlanet(system, new Planet(), string.Empty);
-            return new PlanetSystemWindowHit(planet, icon, planetImage);
+            return new PlanetSectorWindowHit(planet, icon, planetImage);
         }
     }
 }

@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Systems
         {
             _game = new GameRoot(TestConfig.Create());
             _game.Factions.Add(new Faction { InstanceID = _ownerId });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            PlanetSector system = new PlanetSector { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             _planet = new Planet
             {
