@@ -97,7 +97,7 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Returns the faction that should own an officer at game start: their explicit
-        /// owner if set, or their single allowed owner. Officers with ambiguous owners
+        /// owner if set, or their single recruiting faction. Officers with ambiguous factions
         /// return null and are skipped.
         /// </summary>
         /// <param name="officer">The officer being grouped.</param>
@@ -106,8 +106,8 @@ namespace Rebellion.Generation
         {
             if (officer.OwnerInstanceID != null)
                 return officer.OwnerInstanceID;
-            if (officer.AllowedOwnerInstanceIDs.Count == 1)
-                return officer.AllowedOwnerInstanceIDs[0];
+            if (officer.RecruitingFactionInstanceIDs.Count == 1)
+                return officer.RecruitingFactionInstanceIDs[0];
             return null;
         }
 

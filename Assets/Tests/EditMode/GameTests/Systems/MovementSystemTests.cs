@@ -9,6 +9,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -193,12 +194,12 @@ namespace Rebellion.Tests.Systems
         {
             (GameRoot game, _, Planet destination, Officer officer, MovementSystem movement) =
                 BuildScene();
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitMovementRequest> handler = movement;
 
-            handler.HandleResults(
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitMovementRequestedResult
+                    new UnitMovementRequest
                     {
                         Units = new List<IMovable> { officer },
                         Destinations = new List<ContainerNode> { destination },
@@ -214,11 +215,11 @@ namespace Rebellion.Tests.Systems
         public void HandleMovementRequest_EventOriginatedRequest_PropagatesSourceToArrival()
         {
             (_, _, Planet destination, Officer officer, MovementSystem movement) = BuildScene();
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
-            handler.HandleResults(
+            IGameRequestHandler<UnitMovementRequest> handler = movement;
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitMovementRequestedResult
+                    new UnitMovementRequest
                     {
                         Units = new List<IMovable> { officer },
                         Destinations = new List<ContainerNode> { destination },
@@ -240,12 +241,12 @@ namespace Rebellion.Tests.Systems
         public void HandleMovementRequest_EventOriginatedRequestAlreadyAtDestination_EmitsArrival()
         {
             (_, Planet origin, _, Officer officer, MovementSystem movement) = BuildScene();
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitMovementRequest> handler = movement;
 
-            List<GameResult> results = handler.HandleResults(
+            List<GameResult> results = handler.HandleRequests(
                 new[]
                 {
-                    new UnitMovementRequestedResult
+                    new UnitMovementRequest
                     {
                         Units = new List<IMovable> { officer },
                         Destinations = new List<ContainerNode> { origin },
@@ -272,12 +273,12 @@ namespace Rebellion.Tests.Systems
             ) = BuildScene();
             game.AddToVoid(officer);
             game.RemoveFromVoid(officer);
-            IGameResultHandler<UnitPlacementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitPlacementRequest> handler = movement;
 
-            handler.HandleResults(
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitPlacementRequestedResult
+                    new UnitPlacementRequest
                     {
                         Units = new List<IMovable> { officer },
                         Destinations = new List<ContainerNode> { destination },
@@ -288,6 +289,37 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(destination, officer.GetParent());
             Assert.IsNull(officer.Movement);
             Assert.AreEqual(origin.InstanceID, officer.LastParentInstanceID);
+        }
+
+        [Test]
+        public void HandlePlacementRequest_NewDetachedUnit_AttachesAndRegistersUnit()
+        {
+            (GameRoot game, _, Planet destination, _, MovementSystem movement) = BuildScene();
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "created-regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            IGameRequestHandler<UnitPlacementRequest> handler = movement;
+
+            handler.HandleRequests(
+                new[]
+                {
+                    new UnitPlacementRequest
+                    {
+                        Units = new List<IMovable> { regiment },
+                        Destinations = new List<ContainerNode> { destination },
+                    },
+                }
+            );
+
+            Assert.AreSame(destination, regiment.GetParent());
+            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            CollectionAssert.Contains(
+                game.GetFactionByOwnerInstanceID("empire").GetOwnedUnitsByType<Regiment>(),
+                regiment
+            );
         }
 
         [Test]
@@ -307,12 +339,12 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
             };
             game.AttachNode(rejected, origin.GetParent());
-            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitMovementRequest> handler = movement;
 
-            handler.HandleResults(
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitMovementRequestedResult
+                    new UnitMovementRequest
                     {
                         Units = new List<IMovable> { officer },
                         Destinations = new List<ContainerNode> { rejected, destination },
@@ -363,12 +395,12 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(second, sourceShip);
             game.AttachNode(destinationFleet, destination);
             game.AttachNode(destinationShip, destinationFleet);
-            IGameResultHandler<UnitPlacementRequestedResult> handler = movement;
+            IGameRequestHandler<UnitPlacementRequest> handler = movement;
 
-            handler.HandleResults(
+            handler.HandleRequests(
                 new[]
                 {
-                    new UnitPlacementRequestedResult
+                    new UnitPlacementRequest
                     {
                         Units = new List<IMovable> { first, second },
                         Destinations = new List<ContainerNode> { destinationFleet },
@@ -3844,7 +3876,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "b1",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             game.AttachNode(building, origin);
@@ -3988,7 +4019,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = $"{factionId}-ship-{planet.InstanceID}",
                 OwnerInstanceID = factionId,
-                AllowedOwnerInstanceIDs = new List<string> { factionId },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 4,
             };
@@ -3998,7 +4028,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = $"{factionId}-reg-{planet.InstanceID}",
                 OwnerInstanceID = factionId,
-                AllowedOwnerInstanceIDs = new List<string> { factionId },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 Movement = null,
             };
@@ -4074,7 +4103,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "reg-from-planet",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(regiment, origin);
@@ -4114,7 +4142,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "fighter-to-uncolonized",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(starfighter, origin);
@@ -4179,7 +4206,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "garrison-reg",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(regiment, destination);
@@ -4190,7 +4216,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "pickup-ship",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 4,
             };
@@ -4213,7 +4238,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "garrison-reg",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(regiment, destination);
@@ -4224,7 +4248,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "pickup-ship",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 4,
             };
@@ -4244,7 +4267,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "garrison-reg",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(regiment, origin);
@@ -4255,7 +4277,6 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "pickup-ship",
                 OwnerInstanceID = "empire",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 1,
             };

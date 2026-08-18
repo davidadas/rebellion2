@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "ur1",
                 DisplayName = "ur1",
-                AllowedOwnerInstanceIDs = new List<string> { factionId },
+                RecruitingFactionInstanceIDs = new List<string> { factionId },
             };
         }
 

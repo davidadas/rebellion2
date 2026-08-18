@@ -477,7 +477,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         )
         {
             CapitalShip definition = TestContent.Data.CapitalShips.First(item =>
-                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
             );
             return new CapitalShip
             {
@@ -505,7 +505,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         )
         {
             Starfighter definition = TestContent.Data.Starfighters.First(item =>
-                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
             );
             return new Starfighter
             {
@@ -534,7 +534,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         )
         {
             Building definition = TestContent.Data.Buildings.First(item =>
-                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
             );
             return new Building
             {
@@ -558,7 +558,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         )
         {
             Regiment definition = TestContent.Data.Regiments.First(item =>
-                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
             );
             return new Regiment
             {
@@ -575,7 +575,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             Officer definition = TestContent.Data.Officers.First(item =>
                 item.OwnerInstanceID == ownerId
-                || item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+                || item.RecruitingFactionInstanceIDs?.Contains(ownerId) == true
             );
             return new Officer
             {
@@ -596,7 +596,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             SpecialForces definition = TestContent.Data.SpecialForces.First(item =>
                 item.OwnerInstanceID == ownerId
-                || item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+                || item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
             );
             return new SpecialForces
             {

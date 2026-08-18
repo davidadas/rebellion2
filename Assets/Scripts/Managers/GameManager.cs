@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -303,8 +304,13 @@ public sealed class GameManager
     private void InitializeSystems()
     {
         _messageSystem = new MessageSystem(_game, _gameData.MessageDefinitions.GetDeepCopy());
-        _eventSystem = new GameEventSystem(_game, _randomProvider);
-        _eventSystem.ValidateEvents(_game.GetEventPool());
+        UnitFactory unitFactory = new UnitFactory(
+            _gameData.Buildings,
+            _gameData.CapitalShips,
+            _gameData.Starfighters,
+            _gameData.Regiments,
+            _gameData.SpecialForces
+        );
         _fogOfWarSystem = new FogOfWarSystem(_game);
         _blockadeSystem = new BlockadeSystem(_game, _randomProvider);
         _fleetSystem = new FleetSystem(_game);
@@ -350,6 +356,14 @@ public sealed class GameManager
         );
         _researchSystem = new ResearchSystem(_game, _randomProvider);
         _victorySystem = new VictorySystem(_game);
+        GameRequestDispatcher requestDispatcher = new GameRequestDispatcher();
+        requestDispatcher.Subscribe<UnitMovementRequest>(_movementSystem);
+        requestDispatcher.Subscribe<UnitPlacementRequest>(_movementSystem);
+        requestDispatcher.Subscribe<OwnershipChangeRequest>(_planetaryControlSystem);
+        requestDispatcher.Subscribe<DuelRequest>(_duelSystem);
+        requestDispatcher.Subscribe<MessageDeliveryRequest>(_messageSystem);
+        _eventSystem = new GameEventSystem(_game, _randomProvider, unitFactory, requestDispatcher);
+        _eventSystem.ValidateEvents(_game.GetEventPool());
         _aiSystem = new AISystem(
             _game,
             _missionSystem,
@@ -371,9 +385,6 @@ public sealed class GameManager
         _resultProcessor = new GameResultProcessor();
         _resultProcessor.Subscribe<GameResult>(_eventSystem);
         _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
-        _resultProcessor.Subscribe<UnitMovementRequestedResult>(_movementSystem);
-        _resultProcessor.Subscribe<UnitPlacementRequestedResult>(_movementSystem);
-        _resultProcessor.Subscribe<DuelRequestedResult>(_duelSystem);
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_officerLoyaltySystem);

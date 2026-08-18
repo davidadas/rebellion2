@@ -24,13 +24,17 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string OwnerFactionInstanceID { get; set; }
 
-        /// <summary>Returns active nodes that match the authored identity filters.</summary>
+        /// <summary>
+        /// Returns active nodes that match the authored identity filters.
+        /// </summary>
         protected IEnumerable<T> SelectOwned(GameRoot game)
         {
             return SelectOwned(Active<T>(game));
         }
 
-        /// <summary>Filters a supplied node sequence by authored identity and ownership.</summary>
+        /// <summary>
+        /// Filters a supplied node sequence by authored identity and ownership.
+        /// </summary>
         protected IEnumerable<T> SelectOwned(IEnumerable<T> nodes)
         {
             return nodes
@@ -44,7 +48,9 @@ namespace Rebellion.Game.Events
         }
     }
 
-    /// <summary>Additionally filters owned nodes by an explicit or bound planet.</summary>
+    /// <summary>
+    /// Additionally filters owned nodes by an explicit or bound planet.
+    /// </summary>
     public abstract class LocatedSceneNodeSelector<T> : OwnedSceneNodeSelector<T>
         where T : class, ISceneNode
     {
@@ -54,13 +60,17 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string PlanetBinding { get; set; }
 
-        /// <summary>Returns owned nodes located at the selected planet.</summary>
+        /// <summary>
+        /// Returns owned nodes located at the selected planet.
+        /// </summary>
         protected IEnumerable<T> SelectLocated(GameRoot game, GameEventExecutionContext context) =>
             SelectOwned(game)
                 .Where(node => MatchesLocation(node, context, PlanetInstanceID, PlanetBinding));
     }
 
-    /// <summary>Additionally filters manufacturable nodes by type and production state.</summary>
+    /// <summary>
+    /// Additionally filters manufacturable nodes by type and production state.
+    /// </summary>
     public abstract class ManufacturableSelector<T> : LocatedSceneNodeSelector<T>
         where T : class, ISceneNode, IManufacturable
     {
@@ -70,7 +80,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public ManufacturingStatus? ManufacturingStatus { get; set; }
 
-        /// <summary>Returns located units matching the authored manufacturing filters.</summary>
+        /// <summary>
+        /// Returns located units matching the authored manufacturing filters.
+        /// </summary>
         protected IEnumerable<T> SelectManufacturable(
             GameRoot game,
             GameEventExecutionContext context
@@ -87,13 +99,18 @@ namespace Rebellion.Game.Events
 
     #region Galaxy selectors
 
-    /// <summary>Selects active, non-destroyed planets.</summary>
+    /// <summary>
+    /// Selects active, non-destroyed planets.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectPlanets : OwnedSceneNodeSelector<Planet>
     {
         [PersistableAttribute]
         public PlanetSystemType? SystemType { get; set; }
 
+        /// <summary>
+        /// Returns active planets that match the authored ownership and system filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -107,7 +124,9 @@ namespace Rebellion.Game.Events
                 );
     }
 
-    /// <summary>Selects active planet systems.</summary>
+    /// <summary>
+    /// Selects active planet systems.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectPlanetSystems : GameEventSelector
     {
@@ -117,6 +136,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public PlanetSystemType? SystemType { get; set; }
 
+        /// <summary>
+        /// Returns active planet systems that match the authored filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -133,7 +155,9 @@ namespace Rebellion.Game.Events
 
     #region Unit selectors
 
-    /// <summary>Selects active or retained officers.</summary>
+    /// <summary>
+    /// Selects active or retained officers.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectOfficers : LocatedSceneNodeSelector<Officer>
     {
@@ -143,6 +167,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public bool? IsCaptured { get; set; }
 
+        /// <summary>
+        /// Returns officers that match the authored location and captivity filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -166,10 +193,15 @@ namespace Rebellion.Game.Events
         }
     }
 
-    /// <summary>Selects active special-forces units.</summary>
+    /// <summary>
+    /// Selects active special-forces units.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectSpecialForces : LocatedSceneNodeSelector<SpecialForces>
     {
+        /// <summary>
+        /// Returns special-forces units that match the authored location filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -177,10 +209,15 @@ namespace Rebellion.Game.Events
         ) => SelectLocated(game, context);
     }
 
-    /// <summary>Selects active fleets.</summary>
+    /// <summary>
+    /// Selects active fleets.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectFleets : LocatedSceneNodeSelector<Fleet>
     {
+        /// <summary>
+        /// Returns fleets that match the authored location filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -188,10 +225,15 @@ namespace Rebellion.Game.Events
         ) => SelectLocated(game, context);
     }
 
-    /// <summary>Selects active missions.</summary>
+    /// <summary>
+    /// Selects active missions.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectMissions : LocatedSceneNodeSelector<Mission>
     {
+        /// <summary>
+        /// Returns missions that match the authored location filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -199,10 +241,15 @@ namespace Rebellion.Game.Events
         ) => SelectLocated(game, context);
     }
 
-    /// <summary>Selects active capital ships.</summary>
+    /// <summary>
+    /// Selects active capital ships.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectCapitalShips : ManufacturableSelector<CapitalShip>
     {
+        /// <summary>
+        /// Returns capital ships that match the authored unit filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -210,10 +257,15 @@ namespace Rebellion.Game.Events
         ) => SelectManufacturable(game, context);
     }
 
-    /// <summary>Selects active starfighter units.</summary>
+    /// <summary>
+    /// Selects active starfighter units.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectStarfighters : ManufacturableSelector<Starfighter>
     {
+        /// <summary>
+        /// Returns starfighters that match the authored unit filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -221,10 +273,15 @@ namespace Rebellion.Game.Events
         ) => SelectManufacturable(game, context);
     }
 
-    /// <summary>Selects active regiment units.</summary>
+    /// <summary>
+    /// Selects active regiment units.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectRegiments : ManufacturableSelector<Regiment>
     {
+        /// <summary>
+        /// Returns regiments that match the authored unit filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -232,7 +289,9 @@ namespace Rebellion.Game.Events
         ) => SelectManufacturable(game, context);
     }
 
-    /// <summary>Groups buildings by their strategic purpose for authored selection.</summary>
+    /// <summary>
+    /// Groups buildings by their strategic purpose for authored selection.
+    /// </summary>
     public enum BuildingSelectionCategory
     {
         Any,
@@ -240,20 +299,27 @@ namespace Rebellion.Game.Events
         ManufacturingFacility,
     }
 
-    /// <summary>Selects active buildings.</summary>
+    /// <summary>
+    /// Selects active buildings.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectBuildings : ManufacturableSelector<Building>
     {
         [PersistableAttribute]
         public BuildingSelectionCategory Category { get; set; }
 
+        /// <summary>
+        /// Returns buildings that match the authored unit and strategic-category filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventExecutionContext context
         ) => SelectManufacturable(game, context).Where(MatchesCategory);
 
-        /// <summary>Returns whether a building belongs to the authored strategic category.</summary>
+        /// <summary>
+        /// Returns whether a building belongs to the authored strategic category.
+        /// </summary>
         private bool MatchesCategory(Building building) =>
             Category switch
             {
@@ -269,7 +335,9 @@ namespace Rebellion.Game.Events
             };
     }
 
-    /// <summary>Selects manufacturing orders queued at matching planets.</summary>
+    /// <summary>
+    /// Selects manufacturing orders queued at matching planets.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectManufacturingOrders : GameEventSelector
     {
@@ -285,6 +353,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public ManufacturingType? ManufacturingType { get; set; }
 
+        /// <summary>
+        /// Returns manufacturing orders that match the authored planet, owner, and type filters.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -315,7 +386,9 @@ namespace Rebellion.Game.Events
 
     #region Composite selectors
 
-    /// <summary>Randomly samples the union of its candidate selectors.</summary>
+    /// <summary>
+    /// Randomly samples the union of its candidate selectors.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectRandom : GameEventSelector
     {
@@ -331,9 +404,12 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int? MaximumCount { get; set; }
 
-        [PersistableMember(Name = "Candidates")]
+        [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
+        /// <summary>
+        /// Randomly samples the authored candidate selectors within the configured limits.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -382,20 +458,27 @@ namespace Rebellion.Game.Events
         }
     }
 
-    /// <summary>Selects the first node from an ordered candidate union.</summary>
+    /// <summary>
+    /// Selects the first node from an ordered candidate union.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectFirst : GameEventSelector
     {
-        [PersistableMember(Name = "Candidates")]
+        [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
+        /// <summary>
+        /// Returns the first distinct node produced by the authored candidate selectors.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventExecutionContext context
         ) => SelectCandidates(game, provider, context).Take(1);
 
-        /// <summary>Returns the distinct candidate sequence before taking its first node.</summary>
+        /// <summary>
+        /// Returns the distinct candidate sequence before taking its first node.
+        /// </summary>
         internal IEnumerable<ISceneNode> SelectCandidates(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -403,13 +486,18 @@ namespace Rebellion.Game.Events
         ) => Selectors.SelectMany(selector => selector.Select(game, provider, context)).Distinct();
     }
 
-    /// <summary>Selects canonical scene nodes held in an event binding.</summary>
+    /// <summary>
+    /// Selects canonical scene nodes held in an event binding.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectBinding : GameEventSelector
     {
         [PersistableAttribute]
         public string Binding { get; set; }
 
+        /// <summary>
+        /// Returns the scene node or nodes held by the authored event binding.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -447,16 +535,21 @@ namespace Rebellion.Game.Events
         }
     }
 
-    /// <summary>Selects a requested ancestor for each candidate node.</summary>
+    /// <summary>
+    /// Selects a requested ancestor for each candidate node.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectAncestors : GameEventSelector
     {
         [PersistableAttribute]
         public SceneAncestorType Type { get; set; }
 
-        [PersistableMember(Name = "Candidates")]
+        [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
+        /// <summary>
+        /// Returns the requested ancestor of each authored candidate node.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -469,7 +562,9 @@ namespace Rebellion.Game.Events
                 .Distinct();
     }
 
-    /// <summary>Selects the remembered previous parent of one active or retained unit.</summary>
+    /// <summary>
+    /// Selects the remembered previous parent of one active or retained unit.
+    /// </summary>
     [PersistableObject]
     public sealed class SelectPreviousLocation : GameEventSelector
     {
@@ -479,6 +574,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string UnitBinding { get; set; }
 
+        /// <summary>
+        /// Returns the remembered previous location of the authored unit.
+        /// </summary>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,

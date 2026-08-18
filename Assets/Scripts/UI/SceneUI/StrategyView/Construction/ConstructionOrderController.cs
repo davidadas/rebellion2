@@ -57,7 +57,7 @@ public sealed class ConstructionOrderController
             .GetUnlockedTechnologies(manufacturingType.Value)
             .Select(technology => technology.GetReference())
             .Where(item => BelongsToManufacturingTab(item, manufacturingTab))
-            .Where(item => item.HasAllowedOwnerInstanceID(playerFactionId))
+            .Where(item => IManufacturable.CanBeManufacturedBy(item, playerFactionId))
             .OrderBy(item => item.GetResearchOrder())
             .ThenBy(item => item.GetDisplayName())
             .ToList()

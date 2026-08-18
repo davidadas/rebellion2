@@ -14,6 +14,7 @@ namespace Rebellion.Game.Units
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
         public int BaseBuildSpeed { get; set; }
+        public List<string> ManufacturingFactionInstanceIDs { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
 

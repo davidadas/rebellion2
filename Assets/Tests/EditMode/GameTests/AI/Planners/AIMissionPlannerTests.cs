@@ -74,7 +74,7 @@ namespace Rebellion.Tests.AI.Planners
         private static void AddRecruitableOfficer(GameRoot game, string ownerInstanceId)
         {
             Officer target = EntityFactory.CreateOfficer("recruitable", "neutral");
-            target.AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
+            target.RecruitingFactionInstanceIDs = new List<string> { ownerInstanceId };
             game.UnrecruitedOfficers.Add(target);
         }
     }

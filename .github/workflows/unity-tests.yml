@@ -13,6 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  LOG_LEVEL: None
   UNITY_VERSION: 6000.4.0f1
   UNITY_IMAGE_VERSION: 3
 

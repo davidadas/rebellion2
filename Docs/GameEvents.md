@@ -179,13 +179,13 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 
 ```xml
 <Target>
-  <Candidates>
+  <From>
     <SelectRandom Count="1">
-      <Candidates>
+      <From>
         <SelectPlanets SystemType="CoreSystem"/>
-      </Candidates>
+      </From>
     </SelectRandom>
-  </Candidates>
+  </From>
 </Target>
 ```
 
@@ -203,6 +203,7 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 | `SelectBinding` | Returns the object or collection in a binding. |
 | `SelectAncestors` | Maps candidates to their nearest ancestor of `Type`. |
 | `SelectPreviousLocation` | Returns a retained unit's recorded previous location. |
+| `SpawnUnits` | Creates `Count` detached units from a catalog `TypeID` for immediate use by `PlaceUnits`. |
 
 Planet location filters use `PlanetInstanceID` or `PlanetBinding`. System types are `CoreSystem` and
 `OuterRim`. Manufacturing statuses are `Building` and `Complete`. Manufacturing types are `Ship`,
@@ -213,10 +214,10 @@ Planet location filters use `PlanetInstanceID` or `PlanetBinding`. System types 
 
 ```xml
 <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
-  <Candidates>
+  <From>
     <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
     <SelectRegiments PlanetBinding="$target"/>
-  </Candidates>
+  </From>
 </SelectRandom>
 ```
 
@@ -236,7 +237,8 @@ Actions run from top to bottom. Later actions see changes and results produced b
 | `ReducePlanetStats` | Applies probabilistic resource losses to selected planet stats. |
 | `RecordPlanetIncident` | Records `Uprising`, `Intelligence`, `Disaster`, or `Resource` from results already produced against `$target`. |
 | `DestroyUnits` | Permanently deletes selected units. |
-| `PlaceUnits` | Immediately places units at a valid destination. |
+| `ChangeOwner` | Transfers either selected planets or selected units to a faction. |
+| `PlaceUnits` | Immediately places selected units or newly spawned units at a valid destination. |
 | `SendUnits` | Sends units using normal movement and transit. |
 | `AddToVoid`, `RemoveFromVoid` | Retains units outside active play or releases that retention. |
 | `SetDisplayName`, `SetDisplayStatus`, `ClearDisplayStatus` | Changes display metadata for selected nodes. |
@@ -285,6 +287,58 @@ Actions run from top to bottom. Later actions see changes and results produced b
                       MinimumAmount="1">
   <PercentOfPositiveGap>25</PercentOfPositiveGap>
 </IncreaseOfficerForce>
+```
+
+`PlaceUnits` accepts existing-unit selectors and any number of `SpawnUnits` sources in the same
+`Units` collection. Each spawned unit receives a new runtime instance ID and starts complete and
+stationary:
+
+```xml
+<PlaceUnits DestinationInstanceID="NABOO">
+  <Units>
+    <SelectOfficers InstanceID="LUKE_SKYWALKER"/>
+    <SpawnUnits TypeID="X_WING" Count="3" OwnerFactionInstanceID="FNALL1"/>
+    <SpawnUnits TypeID="ALLIANCE_REGIMENT" Count="2" OwnerFactionInstanceID="FNALL1"/>
+  </Units>
+</PlaceUnits>
+```
+
+`SpawnUnits` requires a `TypeID` defined in the appropriate unit data file. A definition's optional
+`ManufacturingFactionInstanceIDs` controls which faction research and production catalogs include it;
+an empty collection makes the definition available only to scenarios and events.
+
+Faction collections use the serializer's standard `String` item elements:
+
+```xml
+<ManufacturingFactionInstanceIDs>
+  <String>FNALL1</String>
+</ManufacturingFactionInstanceIDs>
+
+<RecruitingFactionInstanceIDs>
+  <String>FNALL1</String>
+</RecruitingFactionInstanceIDs>
+```
+
+Ownership does not restrict how a unit was acquired. `ManufacturingFactionInstanceIDs` controls who may
+manufacture a definition, while an officer's `RecruitingFactionInstanceIDs` controls who may recruit
+that officer. Once acquired or transferred, any faction may own either.
+
+`ChangeOwner` accepts exactly one of `Planets` or `Units` per action. Planet transfers use planetary
+control rules; unit transfers preserve containment while updating faction ownership indexes:
+
+```xml
+<ChangeOwner FactionInstanceID="FNALL1">
+  <Planets>
+    <SelectPlanets InstanceID="NABOO"/>
+  </Planets>
+</ChangeOwner>
+
+<ChangeOwner FactionInstanceID="FNALL1">
+  <Units>
+    <SelectCapitalShips InstanceID="STAR_DESTROYER_12"/>
+    <SelectOfficers InstanceID="OFFICER_7"/>
+  </Units>
+</ChangeOwner>
 ```
 
 `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `DestinationInstanceID` attributes or
@@ -350,13 +404,13 @@ records the incident, and sends a message:
     <Random MinimumTicks="100" MaximumTicks="300"/>
   </Schedule>
   <Target>
-    <Candidates>
+    <From>
       <SelectRandom Count="1">
-        <Candidates>
+        <From>
           <SelectPlanets SystemType="CoreSystem"/>
-        </Candidates>
+        </From>
       </SelectRandom>
-    </Candidates>
+    </From>
   </Target>
   <Conditionals>
     <IsOwned PlanetBinding="$target"/>
@@ -365,10 +419,10 @@ records the incident, and sends a message:
     <DestroyUnits>
       <Units>
         <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
-          <Candidates>
+          <From>
             <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
             <SelectRegiments PlanetBinding="$target"/>
-          </Candidates>
+          </From>
         </SelectRandom>
       </Units>
     </DestroyUnits>

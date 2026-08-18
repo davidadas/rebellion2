@@ -151,6 +151,16 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// Ownership of one unit changed hands.
+    /// </summary>
+    public sealed class UnitOwnershipChangedResult : GameResult
+    {
+        public ISceneNode Unit { get; set; }
+        public Faction PreviousOwner { get; set; }
+        public Faction NewOwner { get; set; }
+    }
+
+    /// <summary>
     /// A mobile headquarters was destroyed when its planet fell to an enemy faction.
     /// </summary>
     public class HeadquartersDestroyedResult : GameResult
@@ -357,17 +367,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Requests authoritative resolution of a linked-officer encounter.
-    /// </summary>
-    public class DuelRequestedResult : GameResult
-    {
-        public Officer EncounteredOfficer { get; set; }
-        public Officer OpposingOfficer { get; set; }
-        public string ImagePath { get; set; }
-        public string AudioPath { get; set; }
-    }
-
-    /// <summary>
     /// Records the complete outcome of a linked-officer encounter.
     /// </summary>
     public class DuelResult : GameResult
@@ -415,33 +414,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A data-defined event requested a faction message.
-    /// </summary>
-    public class MessageRequestedResult : GameResult
-    {
-        public Faction Recipient { get; set; }
-        public MessageResultType ResultType { get; set; }
-        public ISceneNode SubjectNode { get; set; }
-        public ISceneNode RelatedSubjectNode { get; set; }
-        public Planet Location { get; set; }
-        public MessageType MessageType { get; set; }
-        public string Subject { get; set; }
-        public string Body { get; set; }
-        public string BackgroundImageKey { get; set; }
-        public string BackgroundImagePath { get; set; }
-        public string OverlayImagePath { get; set; }
-        public string BackgroundAudioPath { get; set; }
-        public string OfficerVoicePath { get; set; }
-        public AdvisorNotification AdvisorNotification { get; set; }
-        public AdvisorNotificationType NotificationType { get; set; }
-        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
-        public string AdvisorSubjectTypeID { get; set; }
-        public string EventLocationInstanceID { get; set; }
-        public string NavigationTargetInstanceID { get; set; }
-        public string NavigationSecondaryTargetInstanceID { get; set; }
-    }
-
-    /// <summary>
     /// A message was created and delivered to a faction.
     /// </summary>
     public sealed class MessageDeliveredResult : GameResult
@@ -452,24 +424,6 @@ namespace Rebellion.Game.Results
         public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
         public string AdvisorSubjectTypeID { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
-    }
-
-    /// <summary>
-    /// A data-defined event requested movement through the authoritative movement system.
-    /// </summary>
-    public class UnitMovementRequestedResult : GameResult
-    {
-        public List<IMovable> Units { get; set; } = new List<IMovable>();
-        public List<ContainerNode> Destinations { get; set; } = new List<ContainerNode>();
-    }
-
-    /// <summary>
-    /// A data-defined event requested immediate placement without transit.
-    /// </summary>
-    public sealed class UnitPlacementRequestedResult : GameResult
-    {
-        public List<IMovable> Units { get; set; } = new List<IMovable>();
-        public List<ContainerNode> Destinations { get; set; } = new List<ContainerNode>();
     }
 
     #endregion
@@ -636,10 +590,6 @@ namespace Rebellion.Game.Results
 
             Unit = unit.GetShallowCopy();
             Unit.InstanceID = unit.GetInstanceID();
-            Unit.AllowedOwnerInstanceIDs =
-                unit.AllowedOwnerInstanceIDs == null
-                    ? null
-                    : new List<string>(unit.AllowedOwnerInstanceIDs);
             Unit.OwnerInstanceID = unit.GetOwnerInstanceID();
             Unit.ParentInstanceID = unit.ParentInstanceID;
             Unit.LastParentInstanceID = unit.LastParentInstanceID;

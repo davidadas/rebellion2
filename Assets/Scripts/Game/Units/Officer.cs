@@ -195,6 +195,8 @@ namespace Rebellion.Game.Units
         // Officer Info.
         public bool IsMain { get; set; }
         public bool IsRecruitable { get; set; }
+        public List<string> RecruitingFactionInstanceIDs { get; set; } = new List<string>();
+
         public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }
         public bool CanEscape { get; set; }
@@ -269,6 +271,9 @@ namespace Rebellion.Game.Units
         public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
         public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
 
+        /// <summary>
+        /// Applies authored image-set overrides to the officer's active image paths.
+        /// </summary>
         public void ApplyImageSet()
         {
             DisplayImagePath = ImageSet.DisplayImagePath ?? DisplayImagePath;

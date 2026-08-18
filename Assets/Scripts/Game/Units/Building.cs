@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Rebellion.Game.Movement;
 using Rebellion.SceneGraph;
 
@@ -41,6 +42,7 @@ namespace Rebellion.Game.Units
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
         public int BaseBuildSpeed { get; set; }
+        public List<string> ManufacturingFactionInstanceIDs { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
 
@@ -53,7 +55,6 @@ namespace Rebellion.Game.Units
         public int WeaponPower { get; set; }
         public DefenseFacilityClass DefenseFacilityClass { get; set; }
         public int ProductionModifier { get; set; }
-        public bool CanBeManufactured { get; set; } = true;
 
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
