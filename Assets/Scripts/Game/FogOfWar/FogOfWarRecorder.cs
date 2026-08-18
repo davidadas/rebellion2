@@ -454,7 +454,7 @@ namespace Rebellion.Game.FogOfWar
             snapshot.Officers.Clear();
             snapshot.Officers.AddRange(
                 planet
-                    .GetChildren<Officer>(_ => true)
+                    .GetDescendants<Officer>()
                     .Where(officer => officer.OwnerInstanceID != faction.InstanceID)
                     .Select(CopyOfficerForSnapshot)
             );
@@ -503,12 +503,12 @@ namespace Rebellion.Game.FogOfWar
             snapshot.Regiments.Clear();
             snapshot.SpecialForces.Clear();
             AddIntelligenceEntityCopies(
-                planet.GetChildren<Regiment>(_ => true),
+                planet.GetDescendants<Regiment>(),
                 snapshot.Regiments,
                 faction
             );
             AddEntityCopiesToSnapshot(
-                planet.GetChildren<SpecialForces>(_ => true),
+                planet.GetDescendants<SpecialForces>(),
                 snapshot.SpecialForces,
                 faction,
                 true
@@ -530,7 +530,7 @@ namespace Rebellion.Game.FogOfWar
 
             snapshot.Starfighters.Clear();
             AddIntelligenceEntityCopies(
-                planet.GetChildren<Starfighter>(_ => true),
+                planet.GetDescendants<Starfighter>(),
                 snapshot.Starfighters,
                 faction
             );
@@ -823,7 +823,7 @@ namespace Rebellion.Game.FogOfWar
         private static HashSet<string> GetSnapshotEntityIDs(PlanetSnapshot snapshot)
         {
             IEnumerable<ISceneNode> fleetEntities = snapshot.Fleets.SelectMany(fleet =>
-                fleet.GetChildren<ISceneNode>(_ => true).Prepend(fleet)
+                fleet.GetDescendants<ISceneNode>().Prepend(fleet)
             );
             return snapshot
                 .Officers.Cast<ISceneNode>()
@@ -1067,7 +1067,7 @@ namespace Rebellion.Game.FogOfWar
             snapshot.HasManufacturingIntelligence = true;
             HashSet<string> observedIds = GetManufacturableIDs(snapshot);
             HashSet<string> liveEntityIds = planet
-                .GetChildren<ISceneNode>(_ => true)
+                .GetDescendants<ISceneNode>()
                 .Select(entity => entity.InstanceID)
                 .Concat(
                     planet.ManufacturingQueue.Values.SelectMany(queue =>

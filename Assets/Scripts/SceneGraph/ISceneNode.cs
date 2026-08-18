@@ -112,16 +112,31 @@ namespace Rebellion.SceneGraph
         /// Returns all direct children of this node.
         /// </summary>
         /// <returns>The children of this node.</returns>
-        IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false);
+        IReadOnlyList<ISceneNode> GetChildren(bool includeDisabled = false);
 
         /// <summary>
-        /// Returns children of type <typeparamref name="T"/> matching the given predicate, optionally recursing into descendants.
+        /// Returns direct children assignable to <typeparamref name="T"/>.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="predicate"></param>
-        /// <param name="recurse"></param>
-        /// <returns>The matching children.</returns>
-        IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recurse = true)
+        /// <typeparam name="T">The direct child type to return.</typeparam>
+        /// <param name="includeDisabled">Whether disabled children may be returned.</param>
+        /// <returns>The matching direct children.</returns>
+        IReadOnlyList<T> GetChildren<T>(bool includeDisabled = false)
+            where T : class, ISceneNode;
+
+        /// <summary>
+        /// Returns all descendants of this node.
+        /// </summary>
+        /// <param name="includeDisabled">Whether disabled branches may be traversed.</param>
+        /// <returns>The descendants of this node.</returns>
+        IReadOnlyList<ISceneNode> GetDescendants(bool includeDisabled = false);
+
+        /// <summary>
+        /// Returns descendants assignable to <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">The descendant type to return.</typeparam>
+        /// <param name="includeDisabled">Whether disabled branches may be traversed.</param>
+        /// <returns>The matching descendants.</returns>
+        IReadOnlyList<T> GetDescendants<T>(bool includeDisabled = false)
             where T : class, ISceneNode;
 
         /// <summary>

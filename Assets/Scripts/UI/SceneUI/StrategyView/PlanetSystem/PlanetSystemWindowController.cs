@@ -471,14 +471,12 @@ public sealed class PlanetSystemWindowController
             return null;
 
         return hit
-            .Planet.GetChildren<Building>(
-                building =>
-                    building.BuildingType == BuildingType.Headquarters
-                    && building.OwnerInstanceID == playerFactionId
-                    && building.Movement == null,
-                recurse: false
-            )
-            .SingleOrDefault();
+            .Planet.GetChildren<Building>()
+            .SingleOrDefault(building =>
+                building.BuildingType == BuildingType.Headquarters
+                && building.OwnerInstanceID == playerFactionId
+                && building.Movement == null
+            );
     }
 
     /// <summary>

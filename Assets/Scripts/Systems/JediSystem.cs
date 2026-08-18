@@ -194,7 +194,7 @@ namespace Rebellion.Systems
             if (planet == null)
                 return;
 
-            foreach (Officer candidate in planet.GetChildren<Officer>(_ => true, recurse: true))
+            foreach (Officer candidate in planet.GetDescendants<Officer>())
             {
                 if (CanDiscoverForceUser(scanner, candidate))
                     DiscoverForceUser(scanner, candidate, results);

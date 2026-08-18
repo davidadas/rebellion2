@@ -693,7 +693,7 @@ namespace Rebellion.Systems
         /// <param name="newOwner">The faction receiving ownership of the buildings.</param>
         private void TransferBuildings(Planet planet, Faction newOwner)
         {
-            foreach (Building building in planet.GetChildren<Building>(_ => true, recurse: false))
+            foreach (Building building in planet.GetChildren<Building>())
             {
                 _game.ChangeOwnership(building, newOwner.InstanceID);
             }
@@ -707,10 +707,9 @@ namespace Rebellion.Systems
         private void EvictEnemyUnits(Planet planet, string newOwnerID)
         {
             List<IMovable> enemies = planet
-                .GetChildren<IMovable>(
-                    m =>
-                        m.GetOwnerInstanceID() != newOwnerID && m is not Fleet && m is not Building,
-                    recurse: false
+                .GetChildren<IMovable>()
+                .Where(m =>
+                    m.GetOwnerInstanceID() != newOwnerID && m is not Fleet && m is not Building
                 )
                 .ToList();
 

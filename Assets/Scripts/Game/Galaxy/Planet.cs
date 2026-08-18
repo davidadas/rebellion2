@@ -643,7 +643,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>A list of fleets.</returns>
         public IReadOnlyList<Fleet> GetFleets(bool includeDisabled = false)
         {
-            return Select(_fleets, includeDisabled);
+            return GetChildren<Fleet>(includeDisabled);
         }
 
         /// <summary>
@@ -651,53 +651,42 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <returns>The planet's officers.</returns>
         public IReadOnlyList<Officer> GetOfficers(bool includeDisabled = false) =>
-            Select(_officers, includeDisabled);
+            GetChildren<Officer>(includeDisabled);
 
         /// <summary>
         /// Gets the regiments stationed directly on the planet.
         /// </summary>
         /// <returns>The planet's regiments.</returns>
         public IReadOnlyList<Regiment> GetRegiments(bool includeDisabled = false) =>
-            Select(_regiments, includeDisabled);
+            GetChildren<Regiment>(includeDisabled);
 
         /// <summary>
         /// Gets the special-forces units stationed directly on the planet.
         /// </summary>
         /// <returns>The planet's special-forces units.</returns>
         public IReadOnlyList<SpecialForces> GetSpecialForces(bool includeDisabled = false) =>
-            Select(_specialForces, includeDisabled);
+            GetChildren<SpecialForces>(includeDisabled);
 
         /// <summary>
         /// Gets the starfighters stationed directly on the planet.
         /// </summary>
         /// <returns>The planet's starfighters.</returns>
         public IReadOnlyList<Starfighter> GetStarfighters(bool includeDisabled = false) =>
-            Select(_starfighters, includeDisabled);
+            GetChildren<Starfighter>(includeDisabled);
 
         /// <summary>
         /// Gets the missions attached directly to the planet.
         /// </summary>
         /// <returns>The planet's missions.</returns>
         public IReadOnlyList<Mission> GetMissions(bool includeDisabled = false) =>
-            Select(_missions, includeDisabled);
+            GetChildren<Mission>(includeDisabled);
 
         /// <summary>
         /// Gets the buildings attached directly to the planet.
         /// </summary>
         /// <returns>The planet's buildings.</returns>
         public IReadOnlyList<Building> GetBuildings(bool includeDisabled = false) =>
-            Select(_buildings, includeDisabled);
-
-        /// <summary>
-        /// Returns enabled nodes from a direct child collection.
-        /// </summary>
-        private static IReadOnlyList<T> Select<T>(IEnumerable<T> nodes, bool includeDisabled)
-            where T : ISceneNode
-        {
-            return includeDisabled
-                ? nodes.ToList()
-                : nodes.Where(node => node.IsEnabledInHierarchy()).ToList();
-        }
+            GetChildren<Building>(includeDisabled);
 
         /// <summary>
         /// Replaces the planet's child collections while constructing a detached projection.
@@ -1216,16 +1205,16 @@ namespace Rebellion.Game.Galaxy
         /// Gets the child nodes of the planet.
         /// </summary>
         /// <returns>An enumerable of child nodes.</returns>
-        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
+        protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return GetFleets(includeDisabled)
+            return _fleets
                 .Cast<ISceneNode>()
-                .Concat(GetOfficers(includeDisabled))
-                .Concat(GetMissions(includeDisabled))
-                .Concat(GetRegiments(includeDisabled))
-                .Concat(GetSpecialForces(includeDisabled))
-                .Concat(GetStarfighters(includeDisabled))
-                .Concat(GetBuildings(includeDisabled));
+                .Concat(_officers)
+                .Concat(_missions)
+                .Concat(_regiments)
+                .Concat(_specialForces)
+                .Concat(_starfighters)
+                .Concat(_buildings);
         }
     }
 }

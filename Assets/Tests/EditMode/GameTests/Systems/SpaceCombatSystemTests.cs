@@ -733,7 +733,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(allianceFleet.InstanceID));
             bool foundFleet = false;
-            foreach (Fleet fleet in planet.GetChildren<Fleet>(null, recurse: false))
+            foreach (Fleet fleet in planet.GetChildren<Fleet>())
             {
                 if (fleet == allianceFleet)
                 {

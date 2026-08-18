@@ -38,45 +38,7 @@ namespace Rebellion.Tests.SceneGraph
                 _children.Remove(child);
             }
 
-            public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recursive)
-            {
-                IEnumerable<T> direct = _children.OfType<T>();
-
-                if (predicate != null)
-                {
-                    direct = direct.Where(predicate);
-                }
-
-                if (!recursive)
-                {
-                    return direct;
-                }
-
-                List<T> result = new List<T>(direct);
-
-                foreach (ISceneNode child in _children)
-                {
-                    result.AddRange(child.GetChildren<T>(predicate, true));
-                }
-
-                return result;
-            }
-
-            public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
-            {
-                return includeDisabled
-                    ? _children
-                    : _children.Where(child => child.IsEnabledInHierarchy());
-            }
-
-            public override void Traverse(Action<ISceneNode> action)
-            {
-                action(this);
-                foreach (ISceneNode child in _children)
-                {
-                    child.Traverse(action);
-                }
-            }
+            protected override IEnumerable<ISceneNode> EnumerateChildren() => _children;
         }
 
         private MockLeafNode _leafNode;
@@ -185,7 +147,7 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildrenGeneric_WithTypeFilter_ReturnsEmptyEnumerable()
         {
-            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(null, true);
+            IEnumerable<MockLeafNode> children = _leafNode.GetDescendants<MockLeafNode>();
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());
@@ -194,10 +156,9 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildrenGeneric_WithPredicate_ReturnsEmptyEnumerable()
         {
-            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(
-                node => node.DisplayName == "Test",
-                true
-            );
+            IEnumerable<MockLeafNode> children = _leafNode
+                .GetDescendants<MockLeafNode>()
+                .Where(node => node.DisplayName == "Test");
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());
@@ -206,7 +167,7 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildrenGeneric_WithNonRecursive_ReturnsEmptyEnumerable()
         {
-            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(null, false);
+            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>();
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());
@@ -215,7 +176,7 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildrenGeneric_WithDifferentType_ReturnsEmptyEnumerable()
         {
-            IEnumerable<MockLeafNodeA> children = _leafNode.GetChildren<MockLeafNodeA>(null, true);
+            IEnumerable<MockLeafNodeA> children = _leafNode.GetDescendants<MockLeafNodeA>();
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());
@@ -348,11 +309,11 @@ namespace Rebellion.Tests.SceneGraph
             oldParent.AddChild(_leafNode);
             _leafNode.SetParent(oldParent);
 
-            Assert.AreEqual(1, oldParent.GetChildren().Count());
+            Assert.AreEqual(1, oldParent.GetChildren().Count);
 
             _leafNode.SetParent(newParent);
 
-            Assert.AreEqual(0, oldParent.GetChildren().Count());
+            Assert.AreEqual(0, oldParent.GetChildren().Count);
             Assert.AreSame(newParent, _leafNode.GetParent());
         }
 
@@ -418,10 +379,9 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildrenGeneric_WithComplexPredicate_ReturnsEmpty()
         {
-            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(
-                node => node.DisplayName.StartsWith("Test") && node.InstanceID != null,
-                true
-            );
+            IEnumerable<MockLeafNode> children = _leafNode
+                .GetDescendants<MockLeafNode>()
+                .Where(node => node.DisplayName.StartsWith("Test") && node.InstanceID != null);
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());

@@ -120,39 +120,28 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <returns>The ship's officers.</returns>
         public IReadOnlyList<Officer> GetOfficers(bool includeDisabled = false) =>
-            Select(_officers, includeDisabled);
+            GetChildren<Officer>(includeDisabled);
 
         /// <summary>
         /// Gets the regiments carried by this ship.
         /// </summary>
         /// <returns>The ship's regiments.</returns>
         public IReadOnlyList<Regiment> GetRegiments(bool includeDisabled = false) =>
-            Select(_regiments, includeDisabled);
+            GetChildren<Regiment>(includeDisabled);
 
         /// <summary>
         /// Gets the special-forces units carried by this ship.
         /// </summary>
         /// <returns>The ship's special-forces units.</returns>
         public IReadOnlyList<SpecialForces> GetSpecialForces(bool includeDisabled = false) =>
-            Select(_specialForces, includeDisabled);
+            GetChildren<SpecialForces>(includeDisabled);
 
         /// <summary>
         /// Gets the starfighters carried by this ship.
         /// </summary>
         /// <returns>The ship's starfighters.</returns>
         public IReadOnlyList<Starfighter> GetStarfighters(bool includeDisabled = false) =>
-            Select(_starfighters, includeDisabled);
-
-        /// <summary>
-        /// Returns enabled nodes from a direct child collection.
-        /// </summary>
-        private static IReadOnlyList<T> Select<T>(IEnumerable<T> nodes, bool includeDisabled)
-            where T : ISceneNode
-        {
-            return includeDisabled
-                ? nodes.ToList()
-                : nodes.Where(node => node.IsEnabledInHierarchy()).ToList();
-        }
+            GetChildren<Starfighter>(includeDisabled);
 
         /// <summary>
         /// Replaces the ship's child collections while constructing a detached projection.
@@ -493,13 +482,13 @@ namespace Rebellion.Game.Units
         /// Returns the ship's carried units and officers.
         /// </summary>
         /// <returns>The children carried by this ship.</returns>
-        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
+        protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return GetOfficers(includeDisabled)
+            return _officers
                 .Cast<ISceneNode>()
-                .Concat(GetStarfighters(includeDisabled).Cast<ISceneNode>())
-                .Concat(GetRegiments(includeDisabled).Cast<ISceneNode>())
-                .Concat(GetSpecialForces(includeDisabled).Cast<ISceneNode>());
+                .Concat(_starfighters)
+                .Concat(_regiments)
+                .Concat(_specialForces);
         }
     }
 }

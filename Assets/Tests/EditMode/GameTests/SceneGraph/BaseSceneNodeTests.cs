@@ -26,45 +26,7 @@ namespace Rebellion.Tests.SceneGraph
                 _children.Remove(child);
             }
 
-            public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recursive)
-            {
-                IEnumerable<T> direct = _children.OfType<T>();
-
-                if (predicate != null)
-                {
-                    direct = direct.Where(predicate);
-                }
-
-                if (!recursive)
-                {
-                    return direct;
-                }
-
-                List<T> result = new List<T>(direct);
-
-                foreach (ISceneNode child in _children)
-                {
-                    result.AddRange(child.GetChildren<T>(predicate, true));
-                }
-
-                return result;
-            }
-
-            public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
-            {
-                return includeDisabled
-                    ? _children
-                    : _children.Where(child => child.IsEnabledInHierarchy());
-            }
-
-            public override void Traverse(Action<ISceneNode> action)
-            {
-                action(this);
-                foreach (ISceneNode child in _children)
-                {
-                    child.Traverse(action);
-                }
-            }
+            protected override IEnumerable<ISceneNode> EnumerateChildren() => _children;
         }
 
         private class MockSceneNodeA : MockSceneNode { }
@@ -164,10 +126,9 @@ namespace Rebellion.Tests.SceneGraph
             _rootNode.AddChild(_childNode1);
             _rootNode.AddChild(_childNode2);
 
-            IEnumerable<MockSceneNode> matchingChildren = _rootNode.GetChildren<MockSceneNode>(
-                child => child.OwnerInstanceID == "Owner1",
-                false
-            );
+            IEnumerable<MockSceneNode> matchingChildren = _rootNode
+                .GetChildren<MockSceneNode>()
+                .Where(child => child.OwnerInstanceID == "Owner1");
 
             Assert.AreEqual(1, matchingChildren.Count());
             Assert.AreEqual(_childNode1, matchingChildren.First());
@@ -234,10 +195,7 @@ namespace Rebellion.Tests.SceneGraph
             _childNode1.AddChild(grandchild1);
             _childNode2.AddChild(grandchild2);
 
-            IEnumerable<MockSceneNode> allDescendants = _rootNode.GetChildren<MockSceneNode>(
-                null,
-                true
-            );
+            IEnumerable<MockSceneNode> allDescendants = _rootNode.GetDescendants<MockSceneNode>();
 
             Assert.AreEqual(4, allDescendants.Count());
             Assert.IsTrue(allDescendants.Contains(_childNode1));
@@ -271,10 +229,9 @@ namespace Rebellion.Tests.SceneGraph
             _childNode1.AddChild(grandchild1);
             _childNode2.AddChild(grandchild2);
 
-            IEnumerable<MockSceneNode> matchingDescendants = _rootNode.GetChildren<MockSceneNode>(
-                child => child.OwnerInstanceID == "Owner1",
-                true
-            );
+            IEnumerable<MockSceneNode> matchingDescendants = _rootNode
+                .GetDescendants<MockSceneNode>()
+                .Where(child => child.OwnerInstanceID == "Owner1");
 
             Assert.AreEqual(2, matchingDescendants.Count());
             Assert.IsTrue(matchingDescendants.Contains(_childNode1));
@@ -302,6 +259,45 @@ namespace Rebellion.Tests.SceneGraph
             IEnumerable<ISceneNode> children = _rootNode.GetChildren();
 
             Assert.AreEqual(0, children.Count());
+        }
+
+        [Test]
+        public void GetChildren_AfterHierarchyChanges_PreservesReturnedSnapshot()
+        {
+            _rootNode.AddChild(_childNode1);
+            IReadOnlyList<ISceneNode> snapshot = _rootNode.GetChildren();
+
+            _rootNode.AddChild(_childNode2);
+
+            CollectionAssert.AreEqual(new[] { _childNode1 }, snapshot);
+            CollectionAssert.AreEquivalent(
+                new[] { _childNode1, _childNode2 },
+                _rootNode.GetChildren()
+            );
+        }
+
+        [Test]
+        public void GetChildren_DisabledChild_RequiresExplicitInclusion()
+        {
+            _childNode1.IsEnabled = false;
+            _rootNode.AddChild(_childNode1);
+
+            CollectionAssert.IsEmpty(_rootNode.GetChildren());
+            CollectionAssert.Contains(_rootNode.GetChildren(includeDisabled: true), _childNode1);
+        }
+
+        [Test]
+        public void GetDescendants_DisabledBranch_RequiresExplicitInclusion()
+        {
+            _childNode1.IsEnabled = false;
+            _rootNode.AddChild(_childNode1);
+            _childNode1.AddChild(_nodeA);
+
+            CollectionAssert.IsEmpty(_rootNode.GetDescendants());
+            CollectionAssert.AreEquivalent(
+                new ISceneNode[] { _childNode1, _nodeA },
+                _rootNode.GetDescendants(includeDisabled: true)
+            );
         }
 
         [Test]

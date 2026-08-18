@@ -219,9 +219,7 @@ public static class GalacticInformationFilterEvaluator
     private static Dictionary<string, int> CountPersonnel(Planet planet, bool idle)
     {
         Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (
-            IMissionParticipant participant in planet.GetChildren<IMissionParticipant>(_ => true)
-        )
+        foreach (IMissionParticipant participant in planet.GetDescendants<IMissionParticipant>())
         {
             if (IsIdle(participant) != idle)
                 continue;

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -53,9 +52,7 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <returns>The planet system's planets.</returns>
         public IReadOnlyList<Planet> GetPlanets(bool includeDisabled = false) =>
-            includeDisabled
-                ? _planets
-                : _planets.Where(planet => planet.IsEnabledInHierarchy()).ToList();
+            GetChildren<Planet>(includeDisabled);
 
         /// <summary>
         /// Replaces the system's planet collection while constructing a detached projection.
@@ -119,9 +116,9 @@ namespace Rebellion.Game.Galaxy
         /// Returns the planets in the planet system.
         /// </summary>
         /// <returns>The planets in the planet system.</returns>
-        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
+        protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return GetPlanets(includeDisabled).Cast<ISceneNode>();
+            return _planets;
         }
     }
 }

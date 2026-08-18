@@ -114,7 +114,7 @@ namespace Rebellion.Systems
                 defender.HQInstanceID
             );
             Building headquarters = headquartersPlanet
-                ?.GetChildren<Building>(_ => true, recurse: false)
+                ?.GetChildren<Building>()
                 .FirstOrDefault(building =>
                     building.BuildingType == BuildingType.Headquarters && building.Movement == null
                 );

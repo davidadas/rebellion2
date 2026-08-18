@@ -392,13 +392,12 @@ namespace Rebellion.Systems
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 List<Fleet> fleets = planet
-                    .GetChildren<Fleet>(
-                        fleet =>
-                            !fleet.IsInCombat
-                            && !excludedFleetIds.Contains(fleet.GetInstanceID())
-                            && fleet.Movement == null
-                            && HasActiveSpaceUnits(fleet),
-                        recurse: false
+                    .GetChildren<Fleet>()
+                    .Where(fleet =>
+                        !fleet.IsInCombat
+                        && !excludedFleetIds.Contains(fleet.GetInstanceID())
+                        && fleet.Movement == null
+                        && HasActiveSpaceUnits(fleet)
                     )
                     .ToList();
 
@@ -1846,7 +1845,7 @@ namespace Rebellion.Systems
                 .SelectMany(ship =>
                     new[] { ship.Ship }
                         .Cast<ISceneNode>()
-                        .Concat(ship.Ship.GetChildren<ISceneNode>(_ => true))
+                        .Concat(ship.Ship.GetDescendants<ISceneNode>())
                 )
                 .Concat(fighters.Select(fighter => fighter.Fighter))
                 .Where(unit => unit != null)

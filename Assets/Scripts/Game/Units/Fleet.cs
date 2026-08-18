@@ -68,9 +68,7 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <returns>The fleet's capital ships.</returns>
         public IReadOnlyList<CapitalShip> GetCapitalShips(bool includeDisabled = false) =>
-            includeDisabled
-                ? _capitalShips
-                : _capitalShips.Where(ship => ship.IsEnabledInHierarchy()).ToList();
+            GetChildren<CapitalShip>(includeDisabled);
 
         /// <summary>
         /// Replaces the fleet's child collection while constructing a detached projection.
@@ -338,9 +336,9 @@ namespace Rebellion.Game.Units
         /// Enumerates the fleet's direct children (its capital ships) as scene nodes.
         /// </summary>
         /// <returns>An enumerable over the fleet's capital ships.</returns>
-        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
+        protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return GetCapitalShips(includeDisabled).Cast<ISceneNode>();
+            return _capitalShips;
         }
     }
 }

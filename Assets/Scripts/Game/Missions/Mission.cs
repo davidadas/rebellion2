@@ -544,9 +544,7 @@ namespace Rebellion.Game.Missions
             int sameContainerRating = 0;
             int otherContainerRating = 0;
 
-            foreach (
-                IMissionParticipant candidate in planet.GetChildren<IMissionParticipant>(_ => true)
-            )
+            foreach (IMissionParticipant candidate in planet.GetDescendants<IMissionParticipant>())
             {
                 if (candidate.GetOwnerInstanceID() != locationOwnerId || !CanSupportFoil(candidate))
                     continue;
@@ -879,14 +877,14 @@ namespace Rebellion.Game.Missions
         /// Returns all mission participants as children of the mission.
         /// </summary>
         /// <returns>All main and decoy participants as scene nodes.</returns>
-        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
+        protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
             if (HasInitiated)
-                return GetMainParticipants(includeDisabled)
+                return _mainParticipants
                     .Cast<ISceneNode>()
-                    .Concat(GetDecoyParticipants(includeDisabled).Cast<ISceneNode>());
+                    .Concat(_decoyParticipants.Cast<ISceneNode>());
 
-            return new List<ISceneNode>();
+            return Enumerable.Empty<ISceneNode>();
         }
 
         /// <summary>

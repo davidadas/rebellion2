@@ -177,10 +177,75 @@ namespace Rebellion.SceneGraph
         public abstract void RemoveChild(ISceneNode child);
 
         /// <summary>
-        /// Called to retrieve all children of the scene node.
+        /// Enumerates the raw direct children stored by this node.
         /// </summary>
-        /// <returns>An enumerable collection of children.</returns>
-        public abstract IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false);
+        /// <returns>The raw direct children.</returns>
+        protected abstract IEnumerable<ISceneNode> EnumerateChildren();
+
+        /// <summary>
+        /// Returns a read-only snapshot of this node's direct children.
+        /// </summary>
+        /// <param name="includeDisabled">Whether disabled children may be returned.</param>
+        /// <returns>The direct children.</returns>
+        public IReadOnlyList<ISceneNode> GetChildren(bool includeDisabled = false)
+        {
+            IEnumerable<ISceneNode> children = EnumerateChildren();
+            return (
+                includeDisabled ? children : children.Where(child => child.IsEnabledInHierarchy())
+            )
+                .ToList()
+                .AsReadOnly();
+        }
+
+        /// <summary>
+        /// Returns a read-only snapshot of direct children assignable to <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">The direct child type to return.</typeparam>
+        /// <param name="includeDisabled">Whether disabled children may be returned.</param>
+        /// <returns>The matching direct children.</returns>
+        public IReadOnlyList<T> GetChildren<T>(bool includeDisabled = false)
+            where T : class, ISceneNode
+        {
+            return GetChildren(includeDisabled).OfType<T>().ToList().AsReadOnly();
+        }
+
+        /// <summary>
+        /// Returns a read-only snapshot of all descendants of this node.
+        /// </summary>
+        /// <param name="includeDisabled">Whether disabled branches may be traversed.</param>
+        /// <returns>All descendants.</returns>
+        public IReadOnlyList<ISceneNode> GetDescendants(bool includeDisabled = false)
+        {
+            List<ISceneNode> descendants = new List<ISceneNode>();
+            HashSet<ISceneNode> currentPath = new HashSet<ISceneNode> { this };
+
+            void Collect(ISceneNode node)
+            {
+                foreach (ISceneNode child in node.GetChildren(includeDisabled))
+                {
+                    if (!currentPath.Add(child))
+                        throw new InvalidOperationException("Cycle detected in scene graph.");
+                    descendants.Add(child);
+                    Collect(child);
+                    currentPath.Remove(child);
+                }
+            }
+
+            Collect(this);
+            return descendants.AsReadOnly();
+        }
+
+        /// <summary>
+        /// Returns a read-only snapshot of descendants assignable to <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">The descendant type to return.</typeparam>
+        /// <param name="includeDisabled">Whether disabled branches may be traversed.</param>
+        /// <returns>The matching descendants.</returns>
+        public IReadOnlyList<T> GetDescendants<T>(bool includeDisabled = false)
+            where T : class, ISceneNode
+        {
+            return GetDescendants(includeDisabled).OfType<T>().ToList().AsReadOnly();
+        }
 
         /// <summary>
         /// Visits this node and all descendants, including disabled branches.
@@ -189,24 +254,19 @@ namespace Rebellion.SceneGraph
         internal void TraverseIncludingDisabled(Action<ISceneNode> action)
         {
             action(this);
-            foreach (ISceneNode child in GetChildren(includeDisabled: true).ToList())
+            foreach (ISceneNode child in GetChildren(includeDisabled: true))
                 ((BaseSceneNode)child).TraverseIncludingDisabled(action);
         }
-
-        /// <summary>
-        /// Called to retrieve all children of the scene node that match the specified type.
-        /// </summary>
-        /// <typeparam name="T">The type of scene node to retrieve.</typeparam>
-        /// <param name="predicate">The predicate to filter the children.</param>
-        /// <param name="recurse">Whether to recursively search for children.</param>
-        /// <returns>An enumerable collection of children.</returns>
-        public abstract IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recurse = true)
-            where T : class, ISceneNode;
 
         /// <summary>
         /// Called to traverse this scene node and all of its children.
         /// </summary>
         /// <param name="action">The action to perform on each scene node.</param>
-        public abstract void Traverse(Action<ISceneNode> action);
+        public void Traverse(Action<ISceneNode> action)
+        {
+            action(this);
+            foreach (ISceneNode child in GetChildren())
+                child.Traverse(action);
+        }
     }
 }

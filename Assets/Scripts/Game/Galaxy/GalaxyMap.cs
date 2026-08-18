@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -24,9 +23,7 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <returns>The galaxy map's planet systems.</returns>
         public IReadOnlyList<PlanetSystem> GetPlanetSystems(bool includeDisabled = false) =>
-            includeDisabled
-                ? _planetSystems
-                : _planetSystems.Where(system => system.IsEnabledInHierarchy()).ToList();
+            GetChildren<PlanetSystem>(includeDisabled);
 
         /// <summary>
         /// Returns true if the child is a PlanetSystem.
@@ -63,9 +60,9 @@ namespace Rebellion.Game.Galaxy
         /// Retrieves the children of the node.
         /// </summary>
         /// <returns>An array of child nodes.</returns>
-        public override IEnumerable<ISceneNode> GetChildren(bool includeDisabled = false)
+        protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return GetPlanetSystems(includeDisabled).Cast<ISceneNode>();
+            return _planetSystems;
         }
     }
 }
