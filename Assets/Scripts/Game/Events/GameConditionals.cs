@@ -18,7 +18,6 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "All")]
     public sealed class AllConditional : GameConditional
     {
-        [PersistableMember(Name = "Conditionals")]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public AllConditional()
@@ -39,7 +38,6 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Any")]
     public sealed class AnyConditional : GameConditional
     {
-        [PersistableMember(Name = "Conditionals")]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public AnyConditional()
@@ -60,7 +58,6 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Not")]
     public sealed class NotConditional : GameConditional
     {
-        [PersistableMember(Name = "Conditionals")]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public NotConditional()
@@ -81,7 +78,6 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Xor")]
     public sealed class XorConditional : GameConditional
     {
-        [PersistableMember(Name = "Conditionals")]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public XorConditional()
@@ -683,7 +679,6 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "AreOnOpposingFactions")]
     public sealed class AreOnOpposingFactionsConditional : GameConditional
     {
-        [PersistableMember(Name = "UnitInstanceIDs")]
         public List<string> UnitInstanceIDs { get; set; } = new List<string>();
 
         public AreOnOpposingFactionsConditional()

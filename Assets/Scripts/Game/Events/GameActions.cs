@@ -1471,10 +1471,8 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string FactionInstanceID { get; set; }
 
-        [PersistableMember(Name = "Planets")]
         public List<GameEventSelector> Planets { get; set; } = new List<GameEventSelector>();
 
-        [PersistableMember(Name = "Units")]
         public List<GameEventSelector> Units { get; set; } = new List<GameEventSelector>();
 
         /// <summary>

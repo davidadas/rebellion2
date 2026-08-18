@@ -307,6 +307,18 @@ stationary:
 `ManufacturingFactionInstanceIDs` controls which faction research and production catalogs include it;
 an empty collection makes the definition available only to scenarios and events.
 
+Faction collections use the serializer's standard `String` item elements:
+
+```xml
+<ManufacturingFactionInstanceIDs>
+  <String>FNALL1</String>
+</ManufacturingFactionInstanceIDs>
+
+<RecruitingFactionInstanceIDs>
+  <String>FNALL1</String>
+</RecruitingFactionInstanceIDs>
+```
+
 Ownership does not restrict how a unit was acquired. `ManufacturingFactionInstanceIDs` controls who may
 manufacture a definition, while an officer's `RecruitingFactionInstanceIDs` controls who may recruit
 that officer. Once acquired or transferred, any faction may own either.

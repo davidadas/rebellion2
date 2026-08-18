@@ -287,7 +287,7 @@ namespace Rebellion.Systems
                     factionSetup.GarrisonTroopTypeID,
                     StringComparison.Ordinal
                 )
-                && template.CanBeManufacturedBy(faction.InstanceID)
+                && IManufacturable.CanBeManufacturedBy(template, faction.InstanceID)
                 && template.ResearchOrder <= unlockedOrder
             );
         }
@@ -304,7 +304,7 @@ namespace Rebellion.Systems
             return _gameData
                 .Buildings.Where(template =>
                     template.BuildingType == buildingType
-                    && template.CanBeManufacturedBy(faction.InstanceID)
+                    && IManufacturable.CanBeManufacturedBy(template, faction.InstanceID)
                     && template.ResearchOrder <= unlockedOrder
                 )
                 .OrderByDescending(template => template.ResearchOrder)

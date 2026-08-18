@@ -124,6 +124,21 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Returns whether the specified faction may manufacture this definition.
+        /// </summary>
+        /// <param name="manufacturable">Definition whose manufacturing access should be checked.</param>
+        /// <param name="factionInstanceID">Faction whose manufacturing access should be checked.</param>
+        /// <returns>True when the definition is available to that faction.</returns>
+        public static bool CanBeManufacturedBy(
+            IManufacturable manufacturable,
+            string factionInstanceID
+        )
+        {
+            return manufacturable.ManufacturingFactionInstanceIDs?.Contains(factionInstanceID)
+                != false;
+        }
+
+        /// <summary>
         /// Sets the manufacturing status of the manufacturable.
         /// </summary>
         /// <param name="status">The new manufacturing status.</param>
@@ -143,19 +158,5 @@ namespace Rebellion.Game.Units
 
             ManufacturingStatus = status;
         }
-    }
-
-    /// <summary>
-    /// Provides acquisition rules shared by all manufacturable definitions.
-    /// </summary>
-    public static class ManufacturableExtensions
-    {
-        /// <summary>
-        /// Returns whether the specified faction may manufacture this definition.
-        /// </summary>
-        public static bool CanBeManufacturedBy(
-            this IManufacturable manufacturable,
-            string factionInstanceID
-        ) => manufacturable.ManufacturingFactionInstanceIDs?.Contains(factionInstanceID) != false;
     }
 }
