@@ -76,7 +76,9 @@ addresses beginning with `Pack/` resolve from the active pack.
 Copy or edit a scenario under `Scenarios/`. Its `scenario.xml` controls the scenario ID, display
 name, playable factions, default player faction, and generation-config path. The referenced
 `generation.xml` controls starting planets, headquarters, garrisons, difficulty profiles, and
-initial officer counts.
+starting officer counts. Generation configuration must conform to
+`Content/Application/Schemas/generation-config.xsd`; invalid scenario rules are rejected when the
+content pack loads.
 
 Add a new scenario's `scenario.xml` path to `ScenarioPaths` in `pack.xml`, then select its ID in
 `catalog.xml`.

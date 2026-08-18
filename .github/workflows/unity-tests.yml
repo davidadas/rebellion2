@@ -43,10 +43,14 @@ jobs:
           PULL_REQUEST_BRANCH: ${{ github.head_ref }}
         run: |
           revision="main"
-          if [ -n "$PULL_REQUEST_BRANCH" ] && git -C .ci/rebellion2-media \
-            ls-remote --exit-code --heads origin \
-            "refs/heads/$PULL_REQUEST_BRANCH" >/dev/null; then
-            revision="$PULL_REQUEST_BRANCH"
+          if [ -n "$PULL_REQUEST_BRANCH" ]; then
+            for candidate in "$PULL_REQUEST_BRANCH" "$PULL_REQUEST_BRANCH-media"; do
+              if git -C .ci/rebellion2-media ls-remote --exit-code --heads origin \
+                "refs/heads/$candidate" >/dev/null; then
+                revision="$candidate"
+                break
+              fi
+            done
           fi
           echo "Using rebellion2-media revision: $revision"
           echo "revision=$revision" >> "$GITHUB_OUTPUT"

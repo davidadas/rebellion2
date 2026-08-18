@@ -35,9 +35,9 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class OfficerSection
     {
-        public PlanetSizeProfile NumInitialOfficers;
+        public PlanetSizeProfile NumStartingOfficers;
 
-        public List<InitialOfficerRule> InitialOfficers = new List<InitialOfficerRule>();
+        public List<StartingOfficerRule> StartingOfficers = new List<StartingOfficerRule>();
     }
 
     /// <summary>
@@ -45,7 +45,7 @@ namespace Rebellion.Generation
     /// optional fixed deployment destination.
     /// </summary>
     [PersistableObject]
-    public class InitialOfficerRule
+    public class StartingOfficerRule
     {
         public string OfficerInstanceID;
 

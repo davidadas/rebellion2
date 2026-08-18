@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Generation
             {
                 Officers = new OfficerSection
                 {
-                    NumInitialOfficers = new PlanetSizeProfile
+                    NumStartingOfficers = new PlanetSizeProfile
                     {
                         Small = 2,
                         Medium = 3,
@@ -116,12 +116,12 @@ namespace Rebellion.Tests.Generation
             Officer m1 = MakeOfficer("M1", "FNALL1", isMain: true);
             Officer m2 = MakeOfficer("M2", "FNALL1", isMain: true);
             Officer m3 = MakeOfficer("M3", "FNALL1", isMain: true);
-            _rules.Officers.InitialOfficers.AddRange(
+            _rules.Officers.StartingOfficers.AddRange(
                 new[]
                 {
-                    new InitialOfficerRule { OfficerInstanceID = m1.InstanceID },
-                    new InitialOfficerRule { OfficerInstanceID = m2.InstanceID },
-                    new InitialOfficerRule { OfficerInstanceID = m3.InstanceID },
+                    new StartingOfficerRule { OfficerInstanceID = m1.InstanceID },
+                    new StartingOfficerRule { OfficerInstanceID = m2.InstanceID },
+                    new StartingOfficerRule { OfficerInstanceID = m3.InstanceID },
                 }
             );
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
@@ -157,13 +157,13 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_InitialOfficerCount_IsTotalRatherThanAdditionalRecruitableCount()
+        public void Seed_StartingOfficerCount_IsTotalRatherThanAdditionalRecruitableCount()
         {
             Officer main = MakeOfficer("M1", "FNALL1", isMain: true);
             Officer recruitable1 = MakeOfficer("O1", "FNALL1");
             Officer recruitable2 = MakeOfficer("O2", "FNALL1");
-            _rules.Officers.InitialOfficers.Add(
-                new InitialOfficerRule { OfficerInstanceID = main.InstanceID }
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule { OfficerInstanceID = main.InstanceID }
             );
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
@@ -182,9 +182,9 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_GuaranteedStarter_IsIncludedWithoutBecomingMainCharacter()
         {
-            _rules.Officers.NumInitialOfficers.Small = 1;
-            _rules.Officers.InitialOfficers.Add(
-                new InitialOfficerRule { OfficerInstanceID = "STARTER" }
+            _rules.Officers.NumStartingOfficers.Small = 1;
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule { OfficerInstanceID = "STARTER" }
             );
             Officer starter = MakeOfficer("STARTER", "FNALL1");
             Officer recruitable = MakeOfficer("RANDOM", "FNALL1");
@@ -204,11 +204,11 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_InitialOfficerRuleForDifferentGalaxySize_DoesNotGuaranteeOfficer()
+        public void Seed_StartingOfficerRuleForDifferentGalaxySize_DoesNotGuaranteeOfficer()
         {
-            _rules.Officers.NumInitialOfficers.Small = 0;
-            _rules.Officers.InitialOfficers.Add(
-                new InitialOfficerRule
+            _rules.Officers.NumStartingOfficers.Small = 0;
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule
                 {
                     OfficerInstanceID = "LARGE_STARTER",
                     GalaxySizes = new List<GameSize> { GameSize.Large },
@@ -346,7 +346,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_WithInitialOfficerDestinationID_OfficerAddedToDesignatedPlanet()
+        public void Seed_WithStartingOfficerDestinationID_OfficerAddedToDesignatedPlanet()
         {
             Planet other = new Planet
             {
@@ -365,8 +365,8 @@ namespace Rebellion.Tests.Generation
             sys.Planets.Add(target);
 
             Officer officer = MakeOfficer("O1", "FNALL1");
-            _rules.Officers.InitialOfficers.Add(
-                new InitialOfficerRule
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule
                 {
                     OfficerInstanceID = officer.InstanceID,
                     DestinationInstanceID = "target",
@@ -380,9 +380,9 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_WithInitialOfficerDestinationType_DeploysPinnedOfficerOutsideLimit()
+        public void Seed_WithStartingOfficerDestinationType_DeploysPinnedOfficerOutsideLimit()
         {
-            _rules.Officers.NumInitialOfficers.Small = 0;
+            _rules.Officers.NumStartingOfficers.Small = 0;
 
             Planet yavin = new Planet
             {
@@ -403,8 +403,8 @@ namespace Rebellion.Tests.Generation
 
             Officer pinned = MakeOfficer("CHEWBACCA", null);
             pinned.RecruitingFactionInstanceIDs = new List<string> { "FNALL1" };
-            _rules.Officers.InitialOfficers.Add(
-                new InitialOfficerRule
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule
                 {
                     OfficerInstanceID = pinned.InstanceID,
                     DestinationTypeID = "PLSUM06",
