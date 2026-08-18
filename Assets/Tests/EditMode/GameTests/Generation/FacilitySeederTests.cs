@@ -365,7 +365,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(
+            system.AddChild(
                 new Planet
                 {
                     InstanceID = "p1",
@@ -386,7 +386,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "rim1",
                 SystemType = PlanetSystemType.OuterRim,
             };
-            system.Planets.Add(
+            system.AddChild(
                 new Planet
                 {
                     InstanceID = "rp1",

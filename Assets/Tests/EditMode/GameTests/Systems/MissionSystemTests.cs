@@ -1329,7 +1329,7 @@ namespace Rebellion.Tests.Systems
         {
             (GameRoot game, Planet missionPlanet, Officer officer, MovementSystem movement) =
                 BuildScene(factionOwnsPlanet: true);
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             Planet rebelPlanet = new Planet
             {
@@ -1362,7 +1362,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_OfficerKilledResult_RetainsKilledOfficerInVoid()
+        public void UpdateMission_OfficerKilledResult_DisablesAndRetainsKilledOfficer()
         {
             (GameRoot game, Planet planet, Officer participant, MovementSystem movement) =
                 BuildScene(factionOwnsPlanet: true);
@@ -1382,8 +1382,11 @@ namespace Rebellion.Tests.Systems
             system.UpdateMission(mission);
 
             Assert.IsTrue(target.IsKilled);
-            Assert.IsTrue(game.IsInVoid(target));
-            Assert.AreSame(target, game.GetSceneNodeByInstanceID<Officer>(target.InstanceID));
+            Assert.IsFalse(target.IsActive());
+            Assert.AreSame(
+                target,
+                game.GetSceneNodeByInstanceID<Officer>(target.InstanceID, includeDisabled: true)
+            );
         }
 
         [Test]
@@ -1493,7 +1496,7 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planetA, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem systemB = new PlanetSystem
             {
@@ -1560,7 +1563,7 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             StubMission mission = CreateMission(game, planet, officer);
             officer.MissionReturnParentInstanceID = planet.InstanceID;
             officer.MissionReturnLocationInstanceID = planet.InstanceID;
@@ -1612,8 +1615,8 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem
             {
@@ -1681,8 +1684,8 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem
             {
@@ -1775,8 +1778,8 @@ namespace Rebellion.Tests.Systems
             firstTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
             Officer secondTarget = EntityFactory.CreateOfficer("target2", "rebels");
             secondTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(firstTarget);
-            game.UnrecruitedOfficers.Add(secondTarget);
+            game.GetUnrecruitedOfficers().Add(firstTarget);
+            game.GetUnrecruitedOfficers().Add(secondTarget);
 
             Mission firstMission = MissionTestFactory.TryCreate(
                 MissionTypeIDs.Recruitment,
@@ -1831,7 +1834,7 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(sf);
+            mission.AddChild(sf);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -1865,8 +1868,8 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(officer);
-            mission.DecoyParticipants.Add(decoy);
+            mission.AddChild(officer);
+            mission.AddDecoyParticipant(decoy);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -2020,7 +2023,7 @@ namespace Rebellion.Tests.Systems
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
-            Assert.AreEqual(participant, mission.MainParticipants.Single());
+            Assert.AreEqual(participant, mission.GetMainParticipants().Single());
         }
 
         [Test]
@@ -2537,7 +2540,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction faction = new Faction { InstanceID = "empire" };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
 
             PlanetSystem system = new PlanetSystem
             {
@@ -2584,7 +2587,7 @@ namespace Rebellion.Tests.Systems
         {
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(officer);
+            mission.AddChild(officer);
             return mission;
         }
 
@@ -2692,8 +2695,8 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem
             {
@@ -2759,8 +2762,8 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem
             {
@@ -2832,8 +2835,8 @@ namespace Rebellion.Tests.Systems
 
             Faction rebels = new Faction { InstanceID = "rebels" };
             Faction empire = new Faction { InstanceID = "empire" };
-            game.Factions.Add(rebels);
-            game.Factions.Add(empire);
+            game.GetFactions().Add(rebels);
+            game.GetFactions().Add(empire);
 
             PlanetSystem system = new PlanetSystem
             {

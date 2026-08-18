@@ -685,49 +685,7 @@ namespace Rebellion.Tests.SceneGraph
                 _children.Remove(child);
             }
 
-            public override IEnumerable<ISceneNode> GetChildren()
-            {
-                return _children;
-            }
-
-            public override IEnumerable<T> GetChildren<T>(
-                Func<T, bool> predicate,
-                bool recurse = true
-            )
-            {
-                List<T> matchingChildren = new List<T>();
-
-                if (recurse)
-                {
-                    // Use the Traverse method for recursive traversal.
-                    Traverse(
-                        (ISceneNode node) =>
-                        {
-                            if (
-                                node != this
-                                && node is T typedNode
-                                && (predicate == null || predicate(typedNode))
-                            )
-                            {
-                                matchingChildren.Add(typedNode);
-                            }
-                        }
-                    );
-                }
-                else
-                {
-                    // For non-recursive, only check immediate children.
-                    foreach (ISceneNode child in GetChildren())
-                    {
-                        if (child is T typedNode && (predicate == null || predicate(typedNode)))
-                        {
-                            matchingChildren.Add(typedNode);
-                        }
-                    }
-                }
-
-                return matchingChildren;
-            }
+            protected override IEnumerable<ISceneNode> EnumerateChildren() => _children;
 
             // Helper method to allow modifying children during traversal tests
             public void ClearChildren()

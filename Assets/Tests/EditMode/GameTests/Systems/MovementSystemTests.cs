@@ -2066,37 +2066,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(officer.Movement);
         }
 
-        [Test]
-        public void HandlePlacementRequest_DetachedRetainedUnit_PlacesWithoutTransit()
-        {
-            (
-                GameRoot game,
-                Planet origin,
-                Planet destination,
-                Officer officer,
-                MovementSystem movement
-            ) = BuildScene();
-            game.AddToVoid(officer);
-            game.RemoveFromVoid(officer);
-            IGameRequestHandler<UnitPlacementRequest> handler = movement;
-
-            handler.HandleRequests(
-                new[]
-                {
-                    new UnitPlacementRequest
-                    {
-                        Units = new List<IMovable> { officer },
-                        Destinations = new List<ContainerNode> { destination },
-                    },
-                }
-            );
-
-            Assert.AreSame(destination, officer.GetParent());
-            Assert.IsNull(officer.Movement);
-            Assert.AreEqual(origin.InstanceID, officer.LastParentInstanceID);
-        }
-
-        [Test]
         public void HandlePlacementRequest_NewDetachedUnit_AttachesAndRegistersUnit()
         {
             (GameRoot game, _, Planet destination, _, MovementSystem movement) = BuildScene();
@@ -2700,7 +2669,7 @@ namespace Rebellion.Tests.Systems
                 HasInitiated = true,
             };
             game.AttachNode(mission, destination);
-            mission.MainParticipants.Add(officer);
+            mission.AddChild(officer);
 
             movement.RequestMove(officer, mission);
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
@@ -2743,7 +2712,7 @@ namespace Rebellion.Tests.Systems
                 HasInitiated = true,
             };
             game.AttachNode(mission, destination);
-            mission.MainParticipants.Add(specialForces);
+            mission.AddChild(specialForces);
 
             movement.RequestMove(specialForces, mission);
             specialForces.Movement.TicksElapsed = specialForces.Movement.TransitTicks;
@@ -2790,7 +2759,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
 
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSystem system = new PlanetSystem
             {
@@ -2967,8 +2936,8 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.GetGalaxyMap());
@@ -3031,8 +3000,8 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.GetGalaxyMap());
@@ -3092,8 +3061,8 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.GetGalaxyMap());
@@ -3153,8 +3122,8 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.GetGalaxyMap());
@@ -3411,7 +3380,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(moved);
             Assert.AreSame(origin, firstStarfighter.GetParent());
             Assert.AreSame(origin, secondStarfighter.GetParent());
-            Assert.IsEmpty(carrier.Starfighters);
+            Assert.IsEmpty(carrier.GetChildren<Starfighter>());
             Assert.IsNull(results);
         }
 
@@ -4214,8 +4183,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(config);
 
             Faction empire = new Faction { InstanceID = "empire" };
-            game.Factions.Add(empire);
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem
             {
@@ -4276,7 +4245,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.GetGalaxyMap());
@@ -4395,8 +4364,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             config.Blockade.EvacuationLossPercent = 100;
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             game.AttachNode(system, game.GetGalaxyMap());
@@ -4502,8 +4471,8 @@ namespace Rebellion.Tests.Systems
             config.Blockade.EvacuationLossPercent = 50;
             GameRoot game = new GameRoot(config);
 
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem
             {

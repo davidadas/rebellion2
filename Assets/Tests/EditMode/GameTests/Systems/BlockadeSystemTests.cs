@@ -233,8 +233,8 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "alliance",
             };
 
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
             game.AttachNode(system, game.GetGalaxyMap());
             game.AttachNode(planet, system);
             game.AttachNode(hostileFleet, planet);

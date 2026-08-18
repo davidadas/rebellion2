@@ -1136,8 +1136,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
             Faction alliance = new Faction { InstanceID = "alliance", PlayerID = null };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
@@ -1199,14 +1199,14 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-            empireFleet.CapitalShips[0].Movement = new MovementState
+            empireFleet.GetChildren<CapitalShip>()[0].Movement = new MovementState
             {
                 TransitTicks = 5,
                 TicksElapsed = 1,
                 OriginPosition = planet.GetPosition(),
                 CurrentPosition = planet.GetPosition(),
             };
-            allianceFleet.CapitalShips[0].Movement = new MovementState
+            allianceFleet.GetChildren<CapitalShip>()[0].Movement = new MovementState
             {
                 TransitTicks = 5,
                 TicksElapsed = 1,
@@ -1418,7 +1418,8 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_UnfinishedPlanetaryStarfighters_DoNotTriggerCombat()
         {
             GameRoot game = CreateGame();
-            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
             Fleet fleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             Starfighter defender = new Starfighter
@@ -1446,8 +1447,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1455,7 +1456,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(planet, system);
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
-            allianceFleet.CapitalShips[0].HasGravityWell = true;
+            allianceFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
 
@@ -1821,8 +1822,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1853,7 +1854,7 @@ namespace Rebellion.Tests.Systems
         private bool HasOpposingReadyFleets(Planet planet)
         {
             return planet
-                    .GetFleets()
+                    .GetChildren<Fleet>()
                     .Where(fleet => fleet.Movement == null)
                     .Select(fleet => fleet.GetOwnerInstanceID())
                     .Where(ownerInstanceId => !string.IsNullOrEmpty(ownerInstanceId))

@@ -536,7 +536,7 @@ namespace Rebellion.Tests.Systems
                 FastReplacementAmount = 2,
             };
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSystem system = new PlanetSystem
             {

@@ -449,7 +449,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
             PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
@@ -470,7 +470,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
             empire.Settings.RefinementMultiplier = 1;
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
             PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
@@ -487,7 +487,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
             PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
             Planet minePlanet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
             Planet refineryPlanet = CreatePlanet("p2", "Kessel", empire.InstanceID);

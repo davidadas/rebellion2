@@ -410,7 +410,7 @@ namespace Rebellion.Tests.Game.Missions
             GameRoot game = new GameRoot(config);
 
             Faction empire = new Faction { InstanceID = "empire" };
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
             PlanetSystem system = new PlanetSystem
             {

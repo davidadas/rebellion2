@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
             MissionSceneBuilder.RunToSuccess(mission, game);
@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
             MissionSceneBuilder.RunToSuccess(mission, game);
@@ -52,12 +52,12 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
             MissionSceneBuilder.RunToSuccess(mission, game);
 
-            Assert.IsFalse(game.UnrecruitedOfficers.Contains(target));
+            Assert.IsFalse(game.GetUnrecruitedOfficers().Contains(target));
         }
 
         [Test]
@@ -67,14 +67,14 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer removedTarget = EntityFactory.CreateOfficer("target", "rebels");
             removedTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(removedTarget);
+            game.GetUnrecruitedOfficers().Add(removedTarget);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
 
-            game.UnrecruitedOfficers.Remove(removedTarget);
+            game.GetUnrecruitedOfficers().Remove(removedTarget);
             Officer replacementTarget = EntityFactory.CreateOfficer("replacement", "rebels");
             replacementTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(replacementTarget);
+            game.GetUnrecruitedOfficers().Add(replacementTarget);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -93,12 +93,12 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
 
             // Officer leaves the unrecruited pool before the mission executes
-            game.UnrecruitedOfficers.Remove(target);
+            game.GetUnrecruitedOfficers().Remove(target);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -115,7 +115,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            game.GetUnrecruitedOfficers().Add(target);
             officer.SetBaseRating(OfficerRating.Leadership, 40);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
@@ -143,8 +143,8 @@ namespace Rebellion.Tests.Game.Missions
             firstTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
             Officer secondTarget = EntityFactory.CreateOfficer("second", "rebels");
             secondTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(firstTarget);
-            game.UnrecruitedOfficers.Add(secondTarget);
+            game.GetUnrecruitedOfficers().Add(firstTarget);
+            game.GetUnrecruitedOfficers().Add(secondTarget);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
             MissionSceneBuilder.RunToSuccess(mission, game);
@@ -154,8 +154,8 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("empire", firstTarget.OwnerInstanceID);
             Assert.AreEqual("empire", secondTarget.OwnerInstanceID);
-            Assert.IsFalse(game.UnrecruitedOfficers.Contains(firstTarget));
-            Assert.IsFalse(game.UnrecruitedOfficers.Contains(secondTarget));
+            Assert.IsFalse(game.GetUnrecruitedOfficers().Contains(firstTarget));
+            Assert.IsFalse(game.GetUnrecruitedOfficers().Contains(secondTarget));
             Assert.AreEqual("second", ((RecruitmentMission)mission).TargetOfficerInstanceID);
         }
 
@@ -166,7 +166,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
 
@@ -181,12 +181,12 @@ namespace Rebellion.Tests.Game.Missions
             // Add a target so TryCreate succeeds
             Officer target = EntityFactory.CreateOfficer("temp", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
 
             // Remove all unrecruited officers after mission creation
-            game.UnrecruitedOfficers.Clear();
+            game.GetUnrecruitedOfficers().Clear();
 
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(game));
         }
@@ -198,7 +198,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
 
@@ -220,7 +220,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateRecruitmentMission(
                 game,
@@ -243,7 +243,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateRecruitmentMission(
                 game,

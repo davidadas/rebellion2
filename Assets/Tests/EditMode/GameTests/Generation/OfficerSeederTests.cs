@@ -237,7 +237,7 @@ namespace Rebellion.Tests.Generation
             Officer empireOfficer1 = MakeOfficer("E1", "FNEMP1");
             Officer empireOfficer2 = MakeOfficer("E2", "FNEMP1");
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            system.Planets.Add(
+            system.AddChild(
                 new Planet
                 {
                     InstanceID = "p1",
@@ -245,7 +245,7 @@ namespace Rebellion.Tests.Generation
                     IsColonized = true,
                 }
             );
-            system.Planets.Add(
+            system.AddChild(
                 new Planet
                 {
                     InstanceID = "p2",
@@ -302,7 +302,7 @@ namespace Rebellion.Tests.Generation
                 IsColonized = true,
             };
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
 
             Deploy(new[] { officer }, new[] { system }, _rules, _summary, new StubRNG());
 
@@ -325,8 +325,8 @@ namespace Rebellion.Tests.Generation
                 IsColonized = true,
             };
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            system.Planets.Add(other);
-            system.Planets.Add(target);
+            system.AddChild(other);
+            system.AddChild(target);
 
             Officer officer = MakeOfficer("O1", "FNALL1");
             _rules.Officers.StartingOfficers.Add(
@@ -362,8 +362,8 @@ namespace Rebellion.Tests.Generation
                 IsColonized = true,
             };
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            system.Planets.Add(other);
-            system.Planets.Add(yavin);
+            system.AddChild(other);
+            system.AddChild(yavin);
 
             Officer pinned = MakeOfficer("CHEWBACCA", null);
             pinned.RecruitingFactionInstanceIDs = new List<string> { "FNALL1" };
@@ -432,7 +432,7 @@ namespace Rebellion.Tests.Generation
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             foreach ((string planetId, string ownerId) in planets)
             {
-                system.Planets.Add(
+                system.AddChild(
                     new Planet
                     {
                         InstanceID = planetId,

@@ -731,7 +731,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = $"sys_{planet.InstanceID}",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
             return system;
         }
 

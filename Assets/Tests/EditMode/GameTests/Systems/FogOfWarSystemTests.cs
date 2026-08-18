@@ -1520,6 +1520,7 @@ namespace Rebellion.Tests.Systems
         public void CaptureSnapshot_PlanetWithAllEntities_CreatesAccurateSnapshot()
         {
             _coruscant.NumRawResourceNodes = 5;
+            _coruscant.EnergyCapacity = 1;
             Officer vader = CreateOfficer("VADER", _empire);
             Fleet imperialFleet = CreateFleet("FLEET1", _empire);
             CapitalShip destroyer = new CapitalShip
@@ -1536,8 +1537,8 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(imperialFleet, _coruscant);
             _game.AttachNode(destroyer, imperialFleet);
             _game.AttachNode(stormtroopers, _coruscant);
-            _coruscant.Buildings.Add(starport);
-            _coruscant.Starfighters.Add(tieFighter);
+            _coruscant.AddChild(starport);
+            _coruscant.AddChild(tieFighter);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
@@ -1563,7 +1564,7 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             vader.SetBaseRating(OfficerRating.Diplomacy, 99);
-            _coruscant.Officers.Remove(vader);
+            _coruscant.RemoveChild(vader);
 
             SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
@@ -1704,16 +1705,18 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+                .First(s => s.InstanceID == "CORESYS")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Planet viewTatooine = view
-                .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "TATOOINE");
+            Planet viewTatooine = view.GetChildren<PlanetSystem>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "TATOOINE");
 
-            Assert.AreEqual(0, viewCoruscant.Officers.Count);
-            Assert.AreEqual(1, viewTatooine.Officers.Count);
+            Assert.AreEqual(0, viewCoruscant.GetChildren<Officer>().Count);
+            Assert.AreEqual(1, viewTatooine.GetChildren<Officer>().Count);
         }
 
         [Test]
@@ -1754,7 +1757,13 @@ namespace Rebellion.Tests.Systems
             PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
                 _coruscant.InstanceID
             ];
-            Assert.IsEmpty(oldSnapshot.Fleets.Single().CapitalShips.Single().Regiments);
+            Assert.IsEmpty(
+                oldSnapshot
+                    .Fleets.Single()
+                    .GetChildren<CapitalShip>()
+                    .Single()
+                    .GetChildren<Regiment>()
+            );
             Assert.AreEqual(
                 _tatooine.InstanceID,
                 _alliance.Fog.EntityLastSeenAt[regiment.InstanceID]
@@ -1917,8 +1926,8 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(vader, _coruscant);
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
-            empireMission.MainParticipants.Add(vader);
             _game.AttachNode(empireMission, _coruscant);
+            _game.MoveNode(vader, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
@@ -1932,7 +1941,10 @@ namespace Rebellion.Tests.Systems
                 .Snapshots[_coreSystem.InstanceID]
                 .Planets[_coruscant.InstanceID];
             Officer recordedParticipant =
-                coruscantSnapshot.Missions.Single().MainParticipants.Single() as Officer;
+                coruscantSnapshot
+                    .Missions.Single()
+                    .GetMainParticipants(includeDisabled: true)
+                    .Single() as Officer;
 
             Assert.IsEmpty(coruscantSnapshot.Officers);
             Assert.IsNotNull(recordedParticipant);
@@ -1954,12 +1966,13 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
-            Fleet viewFleet = viewCoruscant.Fleets.Single(fleet =>
-                fleet.InstanceID == empireFleet.InstanceID
-            );
+            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Fleet viewFleet = viewCoruscant
+                .GetChildren<Fleet>()
+                .Single(fleet => fleet.InstanceID == empireFleet.InstanceID);
             Assert.IsNotNull(viewFleet.Movement);
         }
 
@@ -1992,9 +2005,10 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
             List<IManufacturable> queue = viewCoruscant.ManufacturingQueue[
                 ManufacturingType.Building
             ];
@@ -2055,8 +2069,9 @@ namespace Rebellion.Tests.Systems
             ];
             CapitalShip preservedShip = snapshot
                 .Fleets.Single(snapshotFleet => snapshotFleet.InstanceID == fleet.InstanceID)
-                .CapitalShips.Single(ship => ship.InstanceID == knownShip.InstanceID);
-            Assert.IsEmpty(preservedShip.Regiments);
+                .GetChildren<CapitalShip>()
+                .Single(ship => ship.InstanceID == knownShip.InstanceID);
+            Assert.IsEmpty(preservedShip.GetChildren<Regiment>());
         }
 
         [Test]
@@ -2084,7 +2099,7 @@ namespace Rebellion.Tests.Systems
             Fleet preservedFleet = snapshot.Fleets.Single(snapshotFleet =>
                 snapshotFleet.InstanceID == fleet.InstanceID
             );
-            CapitalShip preservedShip = preservedFleet.CapitalShips.Single();
+            CapitalShip preservedShip = preservedFleet.GetChildren<CapitalShip>().Single();
             Assert.AreEqual(knownShip.InstanceID, preservedShip.InstanceID);
             Assert.AreEqual(25, preservedShip.ManufacturingProgress);
             Assert.AreEqual(
@@ -2387,10 +2402,10 @@ namespace Rebellion.Tests.Systems
                 .Fog.Snapshots["CORESYS"]
                 .Planets["CORUSCANT"]
                 .Fleets.Single();
-            CapitalShip knownShip = knownFleet.CapitalShips.Single();
+            CapitalShip knownShip = knownFleet.GetChildren<CapitalShip>().Single();
             Assert.AreEqual("IMPERIAL_FLEET", knownFleet.InstanceID);
             Assert.AreEqual("SELECTED_SHIP", knownShip.InstanceID);
-            Assert.IsEmpty(knownShip.Officers);
+            Assert.IsEmpty(knownShip.GetChildren<Officer>());
         }
 
         [Test]
@@ -2419,10 +2434,13 @@ namespace Rebellion.Tests.Systems
                 .Fog.Snapshots["CORESYS"]
                 .Planets["CORUSCANT"]
                 .Fleets.Single();
-            CapitalShip knownShip = knownFleet.CapitalShips.Single();
+            CapitalShip knownShip = knownFleet.GetChildren<CapitalShip>().Single();
             Assert.AreEqual("IMPERIAL_FLEET", knownFleet.InstanceID);
             Assert.AreEqual("STAR_DESTROYER", knownShip.InstanceID);
-            Assert.AreEqual("SELECTED_OFFICER", knownShip.Officers.Single().InstanceID);
+            Assert.AreEqual(
+                "SELECTED_OFFICER",
+                knownShip.GetChildren<Officer>().Single().InstanceID
+            );
         }
 
         [Test]
@@ -2481,10 +2499,11 @@ namespace Rebellion.Tests.Systems
                 .Fog.Snapshots["CORESYS"]
                 .Planets["CORUSCANT"]
                 .Fleets.Single()
-                .CapitalShips.Single();
+                .GetChildren<CapitalShip>()
+                .Single();
             Assert.AreEqual("STAR_DESTROYER", knownShip.InstanceID);
-            Assert.IsEmpty(knownShip.Officers);
-            Assert.IsEmpty(knownShip.Starfighters);
+            Assert.IsEmpty(knownShip.GetChildren<Officer>());
+            Assert.IsEmpty(knownShip.GetChildren<Starfighter>());
 
             new FogOfWarRecorder().RecordIntelligenceSnapshot(
                 _alliance,
@@ -2501,8 +2520,10 @@ namespace Rebellion.Tests.Systems
                 "TIE_SQUADRON",
                 updatedSnapshot
                     .Fleets.Single()
-                    .CapitalShips.Single()
-                    .Starfighters.Single()
+                    .GetChildren<CapitalShip>()
+                    .Single()
+                    .GetChildren<Starfighter>()
+                    .Single()
                     .InstanceID
             );
         }
@@ -2516,12 +2537,15 @@ namespace Rebellion.Tests.Systems
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             Assert.IsTrue(
-                viewCoruscant.Buildings.Any(building => building.InstanceID == "REVEALED_BUILDING")
+                viewCoruscant
+                    .GetChildren<Building>()
+                    .Any(building => building.InstanceID == "REVEALED_BUILDING")
             );
             Assert.AreEqual(
                 "REVEALED_BUILDING",
@@ -2539,12 +2563,16 @@ namespace Rebellion.Tests.Systems
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
-            Assert.AreEqual(1, viewCoruscant.Missions.Count);
-            Assert.AreEqual(empireMission.InstanceID, viewCoruscant.Missions[0].InstanceID);
+            Assert.AreEqual(1, viewCoruscant.GetChildren<Mission>().Count);
+            Assert.AreEqual(
+                empireMission.InstanceID,
+                viewCoruscant.GetChildren<Mission>()[0].InstanceID
+            );
         }
 
         [Test]
@@ -2559,14 +2587,15 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(tarkin, _coruscant);
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
-            empireMission.MainParticipants.Add(vader);
-            empireMission.DecoyParticipants.Add(tarkin);
             _game.AttachNode(empireMission, _coruscant);
+            _game.MoveNode(vader, empireMission);
+            empireMission.AddDecoyParticipant(tarkin);
+            _game.MoveNode(tarkin, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            empireMission.MainParticipants.Clear();
-            empireMission.DecoyParticipants.Clear();
+            _game.MoveNode(vader, _coruscant);
+            _game.MoveNode(tarkin, _coruscant);
             vader.DisplayName = "Changed live officer";
             vader.DisplayImagePath = "officers/changed";
             tarkin.DisplayName = "Changed live decoy";
@@ -2575,8 +2604,10 @@ namespace Rebellion.Tests.Systems
                 .Fog.Snapshots[_coreSystem.InstanceID]
                 .Planets[_coruscant.InstanceID]
                 .Missions.Single();
-            Officer recordedParticipant = recordedMission.MainParticipants.Single() as Officer;
-            Officer recordedDecoy = recordedMission.DecoyParticipants.Single() as Officer;
+            Officer recordedParticipant =
+                recordedMission.GetMainParticipants(includeDisabled: true).Single() as Officer;
+            Officer recordedDecoy =
+                recordedMission.GetDecoyParticipants(includeDisabled: true).Single() as Officer;
 
             Assert.IsNotNull(recordedParticipant);
             Assert.AreNotSame(vader, recordedParticipant);
@@ -2601,13 +2632,17 @@ namespace Rebellion.Tests.Systems
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
-            Assert.AreEqual(1, viewCoruscant.Fleets.Count);
-            Assert.AreEqual(empireFleet.InstanceID, viewCoruscant.Fleets[0].InstanceID);
-            Assert.IsNotNull(viewCoruscant.Fleets[0].Movement);
+            Assert.AreEqual(1, viewCoruscant.GetChildren<Fleet>().Count);
+            Assert.AreEqual(
+                empireFleet.InstanceID,
+                viewCoruscant.GetChildren<Fleet>()[0].InstanceID
+            );
+            Assert.IsNotNull(viewCoruscant.GetChildren<Fleet>()[0].Movement);
         }
 
         [Test]
@@ -2619,8 +2654,8 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(vader, _coruscant);
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
-            empireMission.MainParticipants.Add(vader);
             _game.AttachNode(empireMission, _coruscant);
+            _game.MoveNode(vader, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
@@ -2630,7 +2665,8 @@ namespace Rebellion.Tests.Systems
             string xml = SerializationHelper.Serialize(snapshot);
             PlanetSnapshot restored = SerializationHelper.Deserialize<PlanetSnapshot>(xml);
             Officer restoredParticipant =
-                restored.Missions.Single().MainParticipants.Single() as Officer;
+                restored.Missions.Single().GetMainParticipants(includeDisabled: true).Single()
+                as Officer;
 
             Assert.IsNotNull(restoredParticipant);
             Assert.AreEqual(vader.InstanceID, restoredParticipant.InstanceID);
@@ -2647,7 +2683,7 @@ namespace Rebellion.Tests.Systems
             building.ProducerOwnerID = faction.InstanceID;
             building.ProducerPlanetID = planet.InstanceID;
             building.ManufacturingProgress = progress;
-            planet.EnergyCapacity = planet.Buildings.Count + 1;
+            planet.EnergyCapacity = planet.GetChildren<Building>().Count + 1;
             _game.AttachNode(building, planet);
             planet.AddToManufacturingQueue(building);
             return building;

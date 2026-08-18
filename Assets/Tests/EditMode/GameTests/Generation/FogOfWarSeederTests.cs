@@ -150,8 +150,8 @@ namespace Rebellion.Tests.Generation
 
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             Faction alliance = new Faction { InstanceID = "FNALL1" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSystem coreSystem = new PlanetSystem
             {
@@ -167,8 +167,9 @@ namespace Rebellion.Tests.Generation
                 EnergyCapacity = 9,
                 NumRawResourceNodes = 6,
             };
-            coreSystem.Planets.Add(empirePlanet);
-            game.Galaxy = new GalaxyMap { PlanetSystems = new List<PlanetSystem> { coreSystem } };
+            coreSystem.AddChild(empirePlanet);
+            game.Galaxy = new GalaxyMap();
+            game.Galaxy.AddChild(coreSystem);
 
             return (game, coreSystem, empirePlanet, empire, alliance);
         }

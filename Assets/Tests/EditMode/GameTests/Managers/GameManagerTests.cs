@@ -553,7 +553,7 @@ namespace Rebellion.Tests.Managers
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "FACTION", DisplayName = "Faction" });
+            game.GetFactions().Add(new Faction { InstanceID = "FACTION", DisplayName = "Faction" });
             GameManager manager = TestContent.CreateGameManager(game);
             manager.SetGameSpeed(TickSpeed.Fast);
             int completedTicks = 0;

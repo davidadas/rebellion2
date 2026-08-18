@@ -90,7 +90,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planet.AddChild(building);
 
-            Assert.Contains(building, _planet.Buildings);
+            Assert.Contains(building, _planet.GetChildren<Building>().ToList());
         }
 
         [Test]

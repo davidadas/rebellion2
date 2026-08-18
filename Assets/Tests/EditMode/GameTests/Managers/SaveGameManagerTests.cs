@@ -89,12 +89,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void SaveGameData_OverlongDisplayName_TruncatesStoredName()
         {
-            GameRoot game = new GameRoot
-            {
-                Summary = new GameSummary(),
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
             string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
 
             _saveGameManager.SaveGameData(game, _saveFileName, overlongName);
@@ -118,12 +113,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNEMP1",
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
@@ -144,12 +134,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
@@ -169,12 +154,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
@@ -198,7 +178,6 @@ namespace Rebellion.Tests.Managers
             {
                 Summary = summary,
                 Metadata = new GameMetadata { SaveVersion = GameMetadata.CurrentSaveVersion + 99 },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -332,7 +311,6 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -544,12 +522,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
             _saveGameManager.SaveGameData(game, _saveFileName);
 
             string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
@@ -578,12 +551,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
             _saveGameManager.SaveGameData(game, _saveFileName);
 
             string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);

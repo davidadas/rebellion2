@@ -336,8 +336,8 @@ namespace Rebellion.Tests.Systems
 
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
-            game.Factions.Add(empire);
-            game.Factions.Add(rebels);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(rebels);
 
             PlanetSystem system = new PlanetSystem
             {

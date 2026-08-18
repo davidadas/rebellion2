@@ -95,7 +95,7 @@ namespace Rebellion.Tests.Systems
 
             _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.Contains(gameEvent, _game.GetEventPool());
+            Assert.Contains(gameEvent, _game.GetEventPool().ToList());
             Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
         }
 
@@ -121,7 +121,7 @@ namespace Rebellion.Tests.Systems
 
             _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.Contains(gameEvent, _game.GetEventPool());
+            Assert.Contains(gameEvent, _game.GetEventPool().ToList());
             Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
         }
 
@@ -165,7 +165,7 @@ namespace Rebellion.Tests.Systems
 
             _game.CurrentTick = 11;
             _system.ProcessEvents(_game.GetEventPool());
-            Assert.Contains(gameEvent, _game.GetEventPool());
+            Assert.Contains(gameEvent, _game.GetEventPool().ToList());
 
             _game.CurrentTick = 12;
             _system.ProcessEvents(_game.GetEventPool());
@@ -285,7 +285,7 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.GetEventPool());
 
             Assert.Zero(_game.EventRuntime.GetVariable("unexpected"));
-            Assert.Contains(gameEvent, _game.GetEventPool());
+            Assert.Contains(gameEvent, _game.GetEventPool().ToList());
         }
 
         [Test]
@@ -508,7 +508,7 @@ namespace Rebellion.Tests.Systems
                     new SetEventVariableAction { Key = "luke.heritage.revealed", Operand = 1 },
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
             _system.HandleResults(
                 new[]
@@ -518,7 +518,7 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("luke.heritage.revealed"));
-            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
+            Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }
 
@@ -542,7 +542,7 @@ namespace Rebellion.Tests.Systems
                     new SetEventVariableAction { Key = "arrival.triggered", Operand = 1 },
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
             Planet destination = new Planet { InstanceID = "destination" };
             Officer officer = new Officer { InstanceID = "officer" };
 
@@ -578,7 +578,7 @@ namespace Rebellion.Tests.Systems
                     new SetEventVariableAction { Key = "source.arrival.triggered", Operand = 1 },
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
 
             _system.HandleResults(
                 new[] { new UnitArrivedResult { SourceEventInstanceID = "EXPECTED_SOURCE" } }
@@ -598,7 +598,7 @@ namespace Rebellion.Tests.Systems
                     new GameEventTrigger("core:mission.completed"),
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
             OfficerCaptureStateResult release = new OfficerCaptureStateResult
             {
                 SourceEventInstanceID = "PALACE_RESCUE",
@@ -640,7 +640,7 @@ namespace Rebellion.Tests.Systems
                     },
                 },
             };
-            _game.EventPool.Add(gameEvent);
+            _game.GetEventPool().Add(gameEvent);
             DuelResult encounter = new DuelResult
             {
                 EncounteredOfficer = luke,
@@ -650,7 +650,7 @@ namespace Rebellion.Tests.Systems
             _system.HandleResults(new[] { encounter });
             _system.HandleResults(new[] { encounter });
 
-            Assert.Contains(gameEvent, _game.EventPool);
+            Assert.Contains(gameEvent, _game.GetEventPool().ToList());
             Assert.AreEqual(2, _game.EventRuntime.GetVariable("encounter.count"));
             Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }

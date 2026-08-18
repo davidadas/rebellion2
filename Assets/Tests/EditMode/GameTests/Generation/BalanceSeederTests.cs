@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Generation
         private static PlanetSystem MakeSystem(Planet planet)
         {
             PlanetSystem system = new PlanetSystem { InstanceID = $"sys_{planet.InstanceID}" };
-            system.Planets.Add(planet);
+            system.AddChild(planet);
             return system;
         }
     }

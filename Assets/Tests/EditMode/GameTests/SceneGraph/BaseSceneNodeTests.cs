@@ -349,43 +349,7 @@ namespace Rebellion.Tests.SceneGraph
                 _children.Remove(child);
             }
 
-            public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recursive)
-            {
-                IEnumerable<T> direct = _children.OfType<T>();
-
-                if (predicate != null)
-                {
-                    direct = direct.Where(predicate);
-                }
-
-                if (!recursive)
-                {
-                    return direct;
-                }
-
-                List<T> result = new List<T>(direct);
-
-                foreach (ISceneNode child in _children)
-                {
-                    result.AddRange(child.GetChildren<T>(predicate, true));
-                }
-
-                return result;
-            }
-
-            public override IEnumerable<ISceneNode> GetChildren()
-            {
-                return _children;
-            }
-
-            public override void Traverse(Action<ISceneNode> action)
-            {
-                action(this);
-                foreach (ISceneNode child in _children)
-                {
-                    child.Traverse(action);
-                }
-            }
+            protected override IEnumerable<ISceneNode> EnumerateChildren() => _children;
         }
 
         private class MockSceneNodeA : MockSceneNode { }

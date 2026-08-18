@@ -378,15 +378,15 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void GetSceneNodesByType_RetainedOfficer_ExcludesOfficerFromActiveGalaxy()
+        public void GetSceneNodesByType_InactiveOfficer_ExcludesOfficerFromActiveGalaxy()
         {
             Officer officer = new Officer
             {
-                InstanceID = "RETAINED_OFFICER",
+                InstanceID = "INACTIVE_OFFICER",
                 OwnerInstanceID = _faction1.InstanceID,
             };
             _game.AttachNode(officer, _planet);
-            _game.AddToVoid(officer);
+            officer.IsEnabled = false;
 
             List<Officer> activeOfficers = _game.GetSceneNodesByType<Officer>();
 

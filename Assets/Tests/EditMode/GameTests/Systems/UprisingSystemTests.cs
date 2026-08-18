@@ -592,7 +592,7 @@ namespace Rebellion.Tests.Systems
                 ownerSupport: 10,
                 troopCount: 5
             );
-            Regiment departingRegiment = planet.Regiments[0];
+            Regiment departingRegiment = planet.GetChildren<Regiment>()[0];
             game.DetachNode(departingRegiment);
 
             List<GameResult> results = system.HandleResults(
@@ -614,7 +614,7 @@ namespace Rebellion.Tests.Systems
                 opposingSupport: 50,
                 troopCount: 4
             );
-            foreach (Regiment regiment in planet.Regiments.ToList())
+            foreach (Regiment regiment in planet.GetChildren<Regiment>().ToList())
                 game.DetachNode(regiment);
             game.ChangeOwnership(planet, "rebels");
             Regiment occupyingRegiment = EntityFactory.CreateRegiment("occupier", "rebels");
@@ -643,7 +643,7 @@ namespace Rebellion.Tests.Systems
             planet.BeginUprising();
             system.ProcessTick();
 
-            game.DetachNode(planet.Regiments[0]);
+            game.DetachNode(planet.GetChildren<Regiment>()[0]);
             system.ReconcileGarrison(planet);
             game.CurrentTick = 1;
             List<GameResult> results = system.ProcessTick();
@@ -669,8 +669,8 @@ namespace Rebellion.Tests.Systems
             config.Uprising.ClearUprisingMinTicks = 1;
             config.Uprising.ClearUprisingMaxTicks = 1;
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem
             {

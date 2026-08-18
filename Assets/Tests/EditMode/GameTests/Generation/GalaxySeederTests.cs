@@ -299,7 +299,7 @@ namespace Rebellion.Tests.Generation
             };
             for (int i = 0; i < planetCount; i++)
             {
-                system.Planets.Add(new Planet { InstanceID = $"p{i}", TypeID = $"p{i}" });
+                system.AddChild(new Planet { InstanceID = $"p{i}", TypeID = $"p{i}" });
             }
             return new[] { system };
         }

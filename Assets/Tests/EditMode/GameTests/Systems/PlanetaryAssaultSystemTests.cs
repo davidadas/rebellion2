@@ -287,7 +287,12 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 8);
-            foreach (Regiment regiment in fleet.CapitalShips[0].Regiments.Skip(2))
+            foreach (
+                Regiment regiment in fleet
+                    .GetChildren<CapitalShip>()[0]
+                    .GetChildren<Regiment>()
+                    .Skip(2)
+            )
                 regiment.Movement = new MovementState();
             PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
 
@@ -311,7 +316,8 @@ namespace Rebellion.Tests.Systems
             bool shielded = system.CanExecute(new List<Fleet> { fleet }, planet);
             foreach (Building building in planet.GetAllBuildings())
                 building.ManufacturingStatus = ManufacturingStatus.Building;
-            fleet.CapitalShips[0].Regiments[0].Movement = new MovementState();
+            fleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>()[0].Movement =
+                new MovementState();
             bool noReadyRegiments = system.CanExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsFalse(shielded);

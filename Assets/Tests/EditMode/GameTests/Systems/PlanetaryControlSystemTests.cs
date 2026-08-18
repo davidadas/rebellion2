@@ -851,7 +851,9 @@ namespace Rebellion.Tests.Systems
                 support: 61,
                 ownerInstanceId: null
             );
-            planet.Regiments.Add(EntityFactory.CreateRegiment("reg1", "empire"));
+            planet.OwnerInstanceID = "empire";
+            planet.AddChild(EntityFactory.CreateRegiment("reg1", "empire"));
+            planet.OwnerInstanceID = null;
 
             system.ProcessTick();
 
@@ -1003,8 +1005,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = new GameConfig();
             config.SupportShift.OwnershipTransferThreshold = 60;
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem planetSystem = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(planetSystem, game.Galaxy);
