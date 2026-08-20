@@ -39,7 +39,9 @@ namespace Rebellion.Tests.Game
 
             // Create factions.
             _faction1 = new Faction { InstanceID = "FACTION1", DisplayName = "Alliance" };
+            _faction1.Settings.ResourceProcessingPointsPerFacility = 50;
             _faction2 = new Faction { InstanceID = "FACTION2", DisplayName = "Empire" };
+            _faction2.Settings.ResourceProcessingPointsPerFacility = 50;
 
             // Create game objects.
             _galaxyMap = new GalaxyMap();

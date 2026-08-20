@@ -27,6 +27,7 @@ namespace Rebellion.Tests.Systems
                 ManageGarrisons = true,
                 ManageProduction = true,
             };
+            _faction.Settings.ResourceProcessingPointsPerFacility = 50;
             _game.GetFactions().Add(_faction);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "SECTOR" };

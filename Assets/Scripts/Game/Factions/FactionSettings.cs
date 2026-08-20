@@ -12,7 +12,7 @@ namespace Rebellion.Game.Factions
     public class FactionSettings
     {
         private int _refinementMultiplier = 1;
-        private int _resourceProcessingPointsPerFacility = 50;
+        private int _resourceProcessingPointsPerFacility;
         private int _garrisonEfficiency = 1;
         private int _troopEffectiveness = 1;
         private int _uprisingResistance = 1;
@@ -20,7 +20,6 @@ namespace Rebellion.Game.Factions
 
         /// <summary>
         /// Multiplier applied when converting raw/refined production into material supply.
-        /// Must be >= 1.
         /// </summary>
         public int RefinementMultiplier
         {
@@ -37,7 +36,6 @@ namespace Rebellion.Game.Factions
         /// <summary>
         /// Garrison requirement divisor on core sectors.
         /// Higher values mean fewer troops needed (2 = half garrison required).
-        /// Must be >= 1.
         /// </summary>
         public int GarrisonEfficiency
         {
@@ -48,7 +46,6 @@ namespace Rebellion.Game.Factions
         /// <summary>
         /// Hostile troop weight multiplier in support calculations.
         /// Higher values mean enemy troops count for more when evaluating support.
-        /// Must be >= 1.
         /// </summary>
         public int TroopEffectiveness
         {
@@ -59,7 +56,6 @@ namespace Rebellion.Game.Factions
         /// <summary>
         /// Uprising resistance multiplier.
         /// Higher values mean the faction is better at suppressing uprisings.
-        /// Must be >= 1.
         /// </summary>
         public int UprisingResistance
         {
@@ -101,10 +97,8 @@ namespace Rebellion.Game.Factions
     /// </summary>
     public enum SupportShiftCondition
     {
-        /// <summary>Penalty triggers when support shift is positive.</summary>
         Positive,
 
-        /// <summary>Penalty triggers when support shift is negative.</summary>
         Negative,
     }
 }

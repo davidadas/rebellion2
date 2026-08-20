@@ -25,8 +25,11 @@ namespace Rebellion.Tests.Systems
         {
             _game = new GameRoot(TestContent.Data.GameConfig) { Random = new StubRNG() };
             _faction = new Faction { InstanceID = "FACTION1" };
+            _faction.Settings.ResourceProcessingPointsPerFacility = 50;
             _game.GetFactions().Add(_faction);
-            _game.GetFactions().Add(new Faction { InstanceID = "FACTION2" });
+            Faction secondFaction = new Faction { InstanceID = "FACTION2" };
+            secondFaction.Settings.ResourceProcessingPointsPerFacility = 50;
+            _game.GetFactions().Add(secondFaction);
 
             _planetSector = new PlanetSector
             {

@@ -622,7 +622,9 @@ namespace Rebellion.Tests.Sectors
 
         private Faction CreateFaction(string id, string name)
         {
-            return new Faction { InstanceID = id, DisplayName = name };
+            Faction faction = new Faction { InstanceID = id, DisplayName = name };
+            faction.Settings.ResourceProcessingPointsPerFacility = 50;
+            return faction;
         }
 
         private Planet CreatePlanet(string id, string name, string ownerId)
