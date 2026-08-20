@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 {
@@ -427,7 +427,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         public void CreateMapPresentation_Target_ResolvesPlanetAndSector()
         {
             GameRoot game = CreateGame();
-            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "SECTOR" };
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "SECTOR" };
             Planet planet = new Planet { InstanceID = "PLANET" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -618,7 +618,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private sealed class TestGalaxyMapActions : IGalaxyMapActions
         {
             public void OpenPlanetSectorWindow(
-                GamePlanetSector planetSector,
+                GalaxyPlanetSector planetSector,
                 int sourceX,
                 int sourceY
             ) { }

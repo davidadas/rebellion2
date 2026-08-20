@@ -9,8 +9,8 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
@@ -21,7 +21,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         private const string _opponentId = "opponent";
 
         private GameRoot _game;
-        private GamePlanetSector _planetSector;
+        private GalaxyPlanetSector _planetSector;
         private Planet _planet;
         private GalaxyMapPlanet _mapPlanet;
         private GalaxyMapSector _sector;
@@ -35,7 +35,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             _game.GetFactions().Add(new Faction { InstanceID = _opponentId });
             _game.Summary.PlayerFactionID = _ownerId;
 
-            _planetSector = new GamePlanetSector
+            _planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
                 DisplayName = "Core Sector",

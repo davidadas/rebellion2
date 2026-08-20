@@ -9,8 +9,8 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 {
@@ -69,7 +69,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _window = _windowObject.GetComponent<UIWindow>();
             _window.Configure(1, 18, 29, 410, 300, false, true, true);
             _session = new FleetWindowSession(
-                new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty),
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty),
                 _window
             );
             _projector = new FleetWindowProjector(() => _uiContext);
@@ -298,7 +298,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 OwnerInstanceID = _ownerId,
             };
             FleetWindowSession session = new FleetWindowSession(
-                new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty),
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), planet, string.Empty),
                 _window
             );
 

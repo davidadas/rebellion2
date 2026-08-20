@@ -9,8 +9,8 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
@@ -48,7 +48,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _window = _windowObject.GetComponent<UIWindow>();
             _window.Configure(1, 15, 25, 300, 200, false, true, true);
             _planet = new GalaxyMapPlanet(
-                new GamePlanetSector(),
+                new GalaxyPlanetSector(),
                 new Planet
                 {
                     InstanceID = "planet",

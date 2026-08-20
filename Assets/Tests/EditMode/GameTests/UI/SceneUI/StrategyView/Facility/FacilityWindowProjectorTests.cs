@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 {
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 OwnerInstanceID = _ownerId,
                 NumRawResourceNodes = 3,
             };
-            _mapPlanet = new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty);
+            _mapPlanet = new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty);
             _session = new FacilityWindowSession(_window, _mapPlanet);
             _projector = new FacilityWindowProjector(() => _uiContext);
         }

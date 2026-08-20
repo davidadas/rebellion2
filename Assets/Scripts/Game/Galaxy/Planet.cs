@@ -86,7 +86,6 @@ namespace Rebellion.Game.Galaxy
         public int UprisingClearTimerOrder { get; set; }
         public int NextUprisingTimerOrder { get; set; }
 
-        // Popular Support.
         public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
 
         // Child Nodes.

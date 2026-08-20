@@ -6,8 +6,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 {
@@ -33,8 +33,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             _beta = CreatePlanet("beta", "beta", _opponentFactionId, _opponentFactionId);
             _neutral = CreatePlanet("neutral", "Neutral", null, _playerFactionId);
             _unexplored = CreatePlanet("unexplored", "Unknown", null);
-            GamePlanetSector firstSector = new GamePlanetSector();
-            GamePlanetSector secondSector = new GamePlanetSector();
+            GalaxyPlanetSector firstSector = new GalaxyPlanetSector();
+            GalaxyPlanetSector secondSector = new GalaxyPlanetSector();
             _alphaMapPlanet = new GalaxyMapPlanet(firstSector, _alpha, string.Empty);
             _betaMapPlanet = new GalaxyMapPlanet(secondSector, _beta, string.Empty);
             GalaxyMapPlanet neutralMapPlanet = new GalaxyMapPlanet(
@@ -573,7 +573,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             System.Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds
         )
         {
-            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector();
             return new FinderWindowRowBuilder(
                 new[]
                 {

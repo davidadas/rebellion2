@@ -8,7 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
@@ -177,7 +177,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             };
             freshPlanetNode.AddChildren(new[] { freshSecond, freshFirst });
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSector { InstanceID = "fresh-sector" },
+                new GalaxyPlanetSector { InstanceID = "fresh-sector" },
                 freshPlanetNode,
                 _playerFactionId
             );
@@ -248,7 +248,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
-            GamePlanetSector sector = new GamePlanetSector
+            GalaxyPlanetSector sector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
                 DisplayName = "Core Sector",

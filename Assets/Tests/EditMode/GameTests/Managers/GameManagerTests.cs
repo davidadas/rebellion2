@@ -245,7 +245,11 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
 
-            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR1", DisplayName = "Sector" };
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "SECTOR1",
+                DisplayName = "Sector",
+            };
             game.AttachNode(sector, game.GetGalaxyMap());
 
             Planet planet = new Planet
@@ -323,7 +327,11 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
 
-            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR1", DisplayName = "Sector" };
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "SECTOR1",
+                DisplayName = "Sector",
+            };
             game.AttachNode(sector, game.GetGalaxyMap());
             Planet origin = new Planet
             {
@@ -403,7 +411,11 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
 
-            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR1", DisplayName = "Sector" };
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "SECTOR1",
+                DisplayName = "Sector",
+            };
             game.AttachNode(sector, game.GetGalaxyMap());
             Planet origin = new Planet
             {
@@ -495,7 +507,11 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
 
-            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR1", DisplayName = "Sector" };
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "SECTOR1",
+                DisplayName = "Sector",
+            };
             game.AttachNode(sector, game.GetGalaxyMap());
             Planet planet = new Planet
             {

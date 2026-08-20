@@ -8,8 +8,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using UnityEngine;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 {
@@ -651,7 +651,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             game.GetFactions()
                 .Add(new Faction { InstanceID = _opponentFactionId, DisplayName = "Imperial" });
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "sector" };
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet planet = new Planet
             {

@@ -11,8 +11,8 @@ using Rebellion.SceneGraph;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 {
@@ -295,7 +295,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 
         private static CapitalShip CreateSourceShip(GameRoot game)
         {
-            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "sector" };
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet planet = new Planet
             {

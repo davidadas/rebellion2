@@ -8,8 +8,8 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 {
@@ -30,7 +30,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             _game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             _game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             _game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "sector" };
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "sector" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _planet = new Planet
             {

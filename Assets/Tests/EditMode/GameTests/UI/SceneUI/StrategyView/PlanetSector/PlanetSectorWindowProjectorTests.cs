@@ -7,8 +7,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
@@ -18,7 +18,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private const string _opposingFactionId = "FNEMP1";
         private const string _playerFactionId = "FNALL1";
 
-        private GamePlanetSector _planetSector;
+        private GalaxyPlanetSector _planetSector;
         private PlanetSectorWindowProjector _projector;
         private UIContext _uiContext;
 
@@ -36,7 +36,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
-            _planetSector = new GamePlanetSector
+            _planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
                 DisplayName = "Corellian",

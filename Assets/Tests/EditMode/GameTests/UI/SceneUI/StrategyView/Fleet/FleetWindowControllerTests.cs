@@ -12,8 +12,8 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 {
@@ -325,7 +325,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             freshPlanetNode.AddChild(freshFleet);
             AttachFleetGraph(freshPlanetNode, freshFleet);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSector { InstanceID = "fresh-sector" },
+                new GalaxyPlanetSector { InstanceID = "fresh-sector" },
                 freshPlanetNode,
                 _playerFactionId
             );
@@ -449,7 +449,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
-            GamePlanetSector planetSector = new GamePlanetSector
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
                 DisplayName = "Core Sector",

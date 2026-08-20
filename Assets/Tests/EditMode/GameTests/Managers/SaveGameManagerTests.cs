@@ -1048,7 +1048,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(1, loadedAlliance.Fog.Snapshots.Count);
             Assert.IsTrue(loadedAlliance.Fog.Snapshots.ContainsKey("SECTOR1"));
 
-            PlanetSectorSnapshot loadedPlanetSectorSnapshot = loadedAlliance.Fog.Snapshots["SECTOR1"];
+            PlanetSectorSnapshot loadedPlanetSectorSnapshot = loadedAlliance.Fog.Snapshots[
+                "SECTOR1"
+            ];
             Assert.AreEqual(1, loadedPlanetSectorSnapshot.Planets.Count);
 
             PlanetSnapshot loadedPlanetSnapshot = loadedPlanetSectorSnapshot.Planets["CORUSCANT"];
@@ -1136,7 +1138,9 @@ namespace Rebellion.Tests.Managers
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
-            PlanetSnapshot loadedSnapshot = loadedAlliance.Fog.Snapshots["SECTOR1"].Planets["PLANET1"];
+            PlanetSnapshot loadedSnapshot = loadedAlliance.Fog.Snapshots["SECTOR1"].Planets[
+                "PLANET1"
+            ];
 
             Assert.AreEqual(50, loadedSnapshot.TickCaptured);
             Assert.AreEqual("FNEMP1", loadedSnapshot.OwnerInstanceID);

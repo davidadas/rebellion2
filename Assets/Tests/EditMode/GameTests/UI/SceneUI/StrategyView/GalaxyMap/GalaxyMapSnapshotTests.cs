@@ -1,7 +1,7 @@
 using System;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
@@ -11,7 +11,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Planet_Values_PreservesNormalizedSnapshot()
         {
-            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector();
             Planet planet = new Planet { OwnerInstanceID = "owner" };
 
             GalaxyMapPlanet snapshot = new GalaxyMapPlanet(planetSector, planet, null);
@@ -26,7 +26,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Sector_SourceChanges_PreservesPlanetSnapshotAndAttachesSector()
         {
-            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector();
             GalaxyMapPlanet planet = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
             GalaxyMapPlanet replacement = new GalaxyMapPlanet(
                 planetSector,
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Sector_NullPlanets_ReturnsEmptySnapshot()
         {
-            GalaxyMapSector sector = new GalaxyMapSector(new GamePlanetSector(), null);
+            GalaxyMapSector sector = new GalaxyMapSector(new GalaxyPlanetSector(), null);
 
             Assert.IsEmpty(sector.Planets);
         }
@@ -57,7 +57,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Sector_PlanetAlreadyAttachedToDifferentSector_ThrowsInvalidOperationException()
         {
-            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector();
             GalaxyMapPlanet planet = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
             new GalaxyMapSector(planetSector, new[] { planet });
 
@@ -70,7 +70,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void AttachToSector_NullSector_ThrowsArgumentNullException()
         {
             GalaxyMapPlanet planet = new GalaxyMapPlanet(
-                new GamePlanetSector(),
+                new GalaxyPlanetSector(),
                 new Planet(),
                 string.Empty
             );

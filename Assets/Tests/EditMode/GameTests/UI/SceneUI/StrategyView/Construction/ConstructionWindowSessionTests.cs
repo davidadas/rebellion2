@@ -2,7 +2,7 @@ using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 {
@@ -31,7 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             UIWindow sourceWindow = _sourceWindowObject.GetComponent<UIWindow>();
             sourceWindow.Configure(2, 0, 0, 100, 100, false, true, false);
             GalaxyMapPlanet planet = new GalaxyMapPlanet(
-                new GamePlanetSector(),
+                new GalaxyPlanetSector(),
                 new Planet { InstanceID = "producer" },
                 string.Empty
             );

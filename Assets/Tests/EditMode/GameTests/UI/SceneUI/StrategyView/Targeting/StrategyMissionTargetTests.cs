@@ -3,8 +3,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
 {
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         private static GalaxyMapPlanet CreateMapPlanet(string instanceId, string ownerId)
         {
             Planet planet = new Planet { InstanceID = instanceId, OwnerInstanceID = ownerId };
-            return new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty);
+            return new GalaxyMapPlanet(new GalaxyPlanetSector(), planet, string.Empty);
         }
     }
 }
