@@ -280,7 +280,7 @@ namespace Rebellion.Tests.Generation
         {
             GenerationContext ctx = new GenerationContext
             {
-                Systems = systems,
+                Sectors = systems,
                 Factions = factions,
                 Summary = summary,
                 Config = config,

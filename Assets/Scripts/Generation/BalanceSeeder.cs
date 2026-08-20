@@ -16,7 +16,7 @@ namespace Rebellion.Generation
         /// <param name="ctx">The generation context.</param>
         public void Seed(GenerationContext ctx)
         {
-            Apply(ctx.Systems, ctx.Config.Balance);
+            Apply(ctx.Sectors, ctx.Config.Balance);
         }
 
         /// <summary>

@@ -173,7 +173,7 @@ public sealed class GalaxyMapClusterRenderData
     {
         if (string.IsNullOrEmpty(sectorInstanceId))
             throw new ArgumentException(
-                "A galaxy-map cluster requires a system identifier.",
+                "A galaxy-map cluster requires a sector identifier.",
                 nameof(sectorInstanceId)
             );
 

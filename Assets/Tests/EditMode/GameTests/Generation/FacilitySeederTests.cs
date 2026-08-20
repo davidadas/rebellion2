@@ -286,7 +286,7 @@ namespace Rebellion.Tests.Generation
         {
             GenerationContext ctx = new GenerationContext
             {
-                Systems = systems,
+                Sectors = systems,
                 Buildings = templates,
                 Config = config,
                 Classification = classification,

@@ -31,9 +31,9 @@ namespace Rebellion.Generation
                 ctx.SpecialForces
             );
             UnitDeploymentSection config = ctx.Config.UnitDeployment;
-            Dictionary<string, Planet> planetsByTypeId = BuildPlanetMapByTypeID(ctx.Systems);
+            Dictionary<string, Planet> planetsByTypeId = BuildPlanetMapByTypeID(ctx.Sectors);
 
-            SeedLowSupportGarrisons(ctx.Systems, config, ctx.Config.GalaxyClassification, factory);
+            SeedLowSupportGarrisons(ctx.Sectors, config, ctx.Config.GalaxyClassification, factory);
             DeployFixedGarrisons(
                 config.FixedGarrisons,
                 planetsByTypeId,
@@ -383,7 +383,7 @@ namespace Rebellion.Generation
                 if (deployBudget <= 0)
                     continue;
 
-                List<Planet> ownedCorePlanets = GetOwnedCorePlanets(ctx.Systems, faction);
+                List<Planet> ownedCorePlanets = GetOwnedCorePlanets(ctx.Sectors, faction);
 
                 if (ownedCorePlanets.Count == 0)
                     continue;
@@ -535,8 +535,8 @@ namespace Rebellion.Generation
                 effectiveDifficulty,
                 isAI
             );
-            int maintenanceCapacity = CalculateMaintenanceCapacity(ctx.Systems, faction);
-            int maintenanceUsed = CalculateDeployedMaintenanceCost(ctx.Systems, faction.InstanceID);
+            int maintenanceCapacity = CalculateMaintenanceCapacity(ctx.Sectors, faction);
+            int maintenanceUsed = CalculateDeployedMaintenanceCost(ctx.Sectors, faction.InstanceID);
             int availableCapacity = Math.Max(0, maintenanceCapacity - maintenanceUsed);
 
             return availableCapacity * level.Percentage / 100;

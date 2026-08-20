@@ -684,7 +684,7 @@ namespace Rebellion.Tests.Generation
         )
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Systems = systems;
+            ctx.Sectors = systems;
             ctx.Factions = factions;
             ctx.Config = config;
             ctx.Classification = classification;

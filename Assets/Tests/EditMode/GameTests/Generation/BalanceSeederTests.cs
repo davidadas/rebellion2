@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Generation
         private static GenerationContext BuildContext(PlanetSector system, Faction[] factions)
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Systems = new[] { system };
+            ctx.Sectors = new[] { system };
             ctx.Factions = factions;
             return ctx;
         }

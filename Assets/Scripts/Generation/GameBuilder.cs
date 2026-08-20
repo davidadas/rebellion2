@@ -106,7 +106,7 @@ namespace Rebellion.Generation
                 GameConfig = _gameData.GameConfig.GetDeepCopy(CloneMode.Full),
                 Rng = _randomProvider,
 
-                Systems = systems,
+                Sectors = systems,
                 Factions = _gameData.Factions.GetDeepCopy(CloneMode.Full),
                 Buildings = _gameData.Buildings.GetDeepCopy(CloneMode.Full),
                 CapitalShips = _gameData.CapitalShips.GetDeepCopy(CloneMode.Full),
@@ -173,7 +173,7 @@ namespace Rebellion.Generation
                 EventPool = ctx.Events.ToList(),
                 Summary = ctx.Summary,
                 Factions = ctx.Factions.ToList(),
-                Galaxy = new GalaxyMap { PlanetSectors = ctx.Systems.ToList() },
+                Galaxy = new GalaxyMap { PlanetSectors = ctx.Sectors.ToList() },
                 UnrecruitedOfficers = ctx.UnrecruitedOfficers.ToList(),
                 Random = ctx.Rng,
             };

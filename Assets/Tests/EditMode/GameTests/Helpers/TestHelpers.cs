@@ -482,7 +482,7 @@ public static class GenerationContextFactory
     {
         return new GenerationContext
         {
-            Systems = Array.Empty<PlanetSector>(),
+            Sectors = Array.Empty<PlanetSector>(),
             Factions = Array.Empty<Faction>(),
             Buildings = Array.Empty<Building>(),
             CapitalShips = Array.Empty<CapitalShip>(),

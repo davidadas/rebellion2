@@ -46,12 +46,12 @@ namespace Rebellion.Systems
         public event Action<IReadOnlyList<GameResult>> ResultsProduced;
 
         /// <summary>
-        /// Creates the bombardment sector.
+        /// Creates the bombardment system.
         /// </summary>
         /// <param name="game">Active game state.</param>
         /// <param name="provider">Random-number provider used by bombardment resolution.</param>
-        /// <param name="movement">Movement sector used for surviving passenger evacuation.</param>
-        /// <param name="ownership">Planetary control sector used for support and ownership changes.</param>
+        /// <param name="movement">Movement system used for surviving passenger evacuation.</param>
+        /// <param name="ownership">Planetary control system used for support and ownership changes.</param>
         /// <param name="personnelSystem">Personnel lifecycle service.</param>
         public BombardmentSystem(
             GameRoot game,

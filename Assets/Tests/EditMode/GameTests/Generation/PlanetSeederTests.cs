@@ -513,7 +513,7 @@ namespace Rebellion.Tests.Generation
 
             GenerationContext ctx = new GenerationContext
             {
-                Systems = new[] { system },
+                Sectors = new[] { system },
                 Classification = new GalaxyClassificationResult(),
                 Config = config,
                 Summary = new GameSummary
@@ -566,7 +566,7 @@ namespace Rebellion.Tests.Generation
 
             GenerationContext ctx = new GenerationContext
             {
-                Systems = new[] { system },
+                Sectors = new[] { system },
                 Classification = new GalaxyClassificationResult(),
                 Config = config,
                 Summary = new GameSummary
@@ -591,7 +591,7 @@ namespace Rebellion.Tests.Generation
         {
             GenerationContext ctx = new GenerationContext
             {
-                Systems = systems,
+                Sectors = systems,
                 Classification = classification,
                 Config = config,
                 Summary = new GameSummary { StartingFactionIDs = factionIds },

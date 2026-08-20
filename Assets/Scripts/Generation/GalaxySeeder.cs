@@ -22,7 +22,7 @@ namespace Rebellion.Generation
         public void Seed(GenerationContext ctx)
         {
             ctx.Classification = BuildClassification(
-                ctx.Systems,
+                ctx.Sectors,
                 ctx.Factions,
                 ctx.Summary,
                 ctx.Config,

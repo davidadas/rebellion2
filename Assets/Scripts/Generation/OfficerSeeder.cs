@@ -35,7 +35,7 @@ namespace Rebellion.Generation
                 ctx.Rng
             );
             DecorateOfficers(selected, ctx.Rng);
-            DeployOfficers(selected, ctx.Systems, startingOfficerRules, ctx.Rng);
+            DeployOfficers(selected, ctx.Sectors, startingOfficerRules, ctx.Rng);
 
             ctx.DeployedOfficers = selected;
             ctx.UnrecruitedOfficers = ctx.Officers.Except(selected).ToArray();

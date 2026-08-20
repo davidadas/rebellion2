@@ -401,7 +401,7 @@ namespace Rebellion.Tests.Generation
             GenerationContext ctx = new GenerationContext
             {
                 Officers = officers,
-                Systems = systems,
+                Sectors = systems,
                 Config = config,
                 Summary = summary,
                 Rng = rng,

@@ -18,8 +18,8 @@ namespace Rebellion.Systems
 {
     /// <summary>
     /// Manages unit movement during each game tick.
-    /// The only sector that calls game.MoveNode() for movement purposes.
-    /// Other sectors request movement via RequestMove() — never call MoveNode() directly.
+    /// The only system that calls game.MoveNode() for movement purposes.
+    /// Other systems request movement via RequestMove() — never call MoveNode() directly.
     /// </summary>
     public class MovementSystem
         : IGameResultHandler<BlockadeChangedResult>,
@@ -53,9 +53,9 @@ namespace Rebellion.Systems
         /// Initializes a new instance of the MovementSystem class.
         /// </summary>
         /// <param name="game">The game instance.</param>
-        /// <param name="fogOfWar">The fog of war sector for capturing snapshots on arrival.</param>
+        /// <param name="fogOfWar">The fog-of-war system for capturing snapshots on arrival.</param>
         /// <param name="fleetSystem">Owns fleet formation and empty-fleet cleanup.</param>
-        /// <param name="blockade">The blockade sector for evacuation loss rolls.</param>
+        /// <param name="blockade">The blockade system for evacuation loss rolls.</param>
         public MovementSystem(
             GameRoot game,
             FogOfWarSystem fogOfWar,

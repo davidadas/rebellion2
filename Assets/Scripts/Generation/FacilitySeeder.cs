@@ -19,7 +19,7 @@ namespace Rebellion.Generation
         public void Seed(GenerationContext ctx)
         {
             ctx.DeployedBuildings = SeedFacilities(
-                ctx.Systems,
+                ctx.Sectors,
                 ctx.Buildings,
                 ctx.Config,
                 ctx.Classification,
