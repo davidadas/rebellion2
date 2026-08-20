@@ -1342,19 +1342,6 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Copies a mission and its observed participant identities for storage in fog state.
-        /// </summary>
-        /// <param name="mission">The observed mission to copy.</param>
-        /// <returns>The detached mission snapshot.</returns>
-        internal static Mission CopyMissionForSnapshot(Mission mission)
-        {
-            if (mission == null)
-                return null;
-
-            return mission.CreateCopy(recursive: true, includeDisabled: true) as Mission;
-        }
-
-        /// <summary>
         /// Copies the completed portion of an observed fleet for fog state.
         /// </summary>
         /// <param name="fleet">The observed fleet to copy.</param>

@@ -4,7 +4,6 @@ using System.Runtime.ExceptionServices;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.TestTools;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
@@ -147,8 +146,6 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         {
             int completedCount = 0;
             _player.Play(_clip, () => completedCount++);
-            LogAssert.Expect(LogType.Error, "Cutscene playback failed: decoder failed");
-
             Invoke("HandlePlaybackError", _videoPlayer, "decoder failed");
             Invoke("EndCutscene");
 

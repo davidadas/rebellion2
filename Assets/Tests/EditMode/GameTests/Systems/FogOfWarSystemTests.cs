@@ -842,6 +842,9 @@ namespace Rebellion.Tests.Systems
             _coruscant.PopularSupport["FNALL1"] = 50;
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+            _game.MoveNode(vader, empireMission);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
@@ -850,11 +853,15 @@ namespace Rebellion.Tests.Systems
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(
-                1,
-                viewCoruscant.GetChildren<Mission>().Count,
-                "Own missions should be visible on your own planet"
-            );
+            Mission viewMission = viewCoruscant.GetChildren<Mission>().Single();
+            Officer viewParticipant = viewMission
+                .GetMainParticipants(includeDisabled: true)
+                .Cast<Officer>()
+                .Single();
+
+            Assert.AreNotSame(empireMission, viewMission);
+            Assert.AreNotSame(vader, viewParticipant);
+            Assert.AreEqual(vader.InstanceID, viewParticipant.InstanceID);
         }
 
         [Test]

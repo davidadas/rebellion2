@@ -256,6 +256,13 @@ namespace Rebellion.SceneGraph
         public ISceneNode CreateCopy(bool recursive = false, bool includeDisabled = false)
         {
             BaseSceneNode copy = CreateNodeCopy();
+            if (copy == null || copy.GetType() != GetType())
+            {
+                throw new InvalidOperationException(
+                    $"{GetType().Name}.{nameof(CreateNodeCopy)} must return a non-null {GetType().Name}."
+                );
+            }
+
             CopyStateTo(copy);
             if (recursive)
                 CopyChildrenTo(copy, includeDisabled);

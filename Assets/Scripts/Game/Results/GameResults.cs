@@ -10,7 +10,6 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game.Results
 {
@@ -588,9 +587,7 @@ namespace Rebellion.Game.Results
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
 
-            Unit = unit.GetShallowCopy();
-            Unit.InstanceID = unit.GetInstanceID();
-            Unit.OwnerInstanceID = unit.GetOwnerInstanceID();
+            Unit = unit.CreateCopy();
             Unit.ParentInstanceID = unit.ParentInstanceID;
             Unit.LastParentInstanceID = unit.LastParentInstanceID;
             WasOperational =

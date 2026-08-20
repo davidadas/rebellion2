@@ -163,7 +163,7 @@ public sealed class CutscenePlayer : MonoBehaviour
     /// <param name="message">The platform decoder's error message.</param>
     private void HandlePlaybackError(VideoPlayer source, string message)
     {
-        Debug.LogError($"Cutscene playback failed: {message}", source);
+        Debug.LogWarning($"Cutscene playback failed: {message}", source);
         GameStartupTrace.Log($"Faction introduction decoder failed: {message}");
         EndCutscene();
     }

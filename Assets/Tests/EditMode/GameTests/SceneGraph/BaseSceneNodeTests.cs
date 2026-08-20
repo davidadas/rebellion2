@@ -289,6 +289,16 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void CreateCopy_CreateNodeCopyReturnsDifferentType_ThrowsInvalidOperationException()
+        {
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _nodeA.CreateCopy()
+            );
+
+            StringAssert.Contains(nameof(MockSceneNodeA), exception.Message);
+        }
+
+        [Test]
         public void CreateCopy_Recursive_CopiesHierarchyAndReconnectsParents()
         {
             MockSceneNode grandchild = new MockSceneNode
