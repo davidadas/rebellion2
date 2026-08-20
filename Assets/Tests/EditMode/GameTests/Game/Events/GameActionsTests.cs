@@ -1577,22 +1577,22 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = new GameRoot(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.Galaxy);
             empirePlanet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
                 IsColonized = true,
             };
-            game.AttachNode(empirePlanet, system);
+            game.AttachNode(empirePlanet, sector);
             rebelPlanet = new Planet
             {
                 InstanceID = "p2",
                 OwnerInstanceID = "rebels",
                 IsColonized = true,
             };
-            game.AttachNode(rebelPlanet, system);
+            game.AttachNode(rebelPlanet, sector);
             return game;
         }
     }

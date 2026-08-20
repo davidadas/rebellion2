@@ -79,7 +79,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     StrategyMenuAction.BombardMilitaryFacilities,
                     StrategyMenuAction.BombardCivilianFacilities,
                     StrategyMenuAction.GeneralBombardment,
-                    StrategyMenuAction.DestroySystem,
+                    StrategyMenuAction.DestroyPlanet,
                 },
                 commands[2].SubmenuCommands.Select(command => command.Action)
             );
@@ -140,7 +140,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     StrategyMenuAction.BombardMilitaryFacilities,
                     StrategyMenuAction.BombardCivilianFacilities,
                     StrategyMenuAction.GeneralBombardment,
-                    StrategyMenuAction.DestroySystem,
+                    StrategyMenuAction.DestroyPlanet,
                 },
                 commands[2].SubmenuCommands.Select(command => command.Action)
             );

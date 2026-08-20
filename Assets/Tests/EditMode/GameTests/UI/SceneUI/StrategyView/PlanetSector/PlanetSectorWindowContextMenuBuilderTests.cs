@@ -146,7 +146,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 fleets,
                 _playerFactionId,
                 canBombard: true,
-                canDestroySystem: false,
+                canDestroyPlanet: false,
                 canAssault: true
             );
 
@@ -163,7 +163,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                     StrategyMenuAction.BombardMilitaryFacilities,
                     StrategyMenuAction.BombardCivilianFacilities,
                     StrategyMenuAction.GeneralBombardment,
-                    StrategyMenuAction.DestroySystem,
+                    StrategyMenuAction.DestroyPlanet,
                 },
                 commands[2].SubmenuCommands.Select(command => command.Action)
             );
@@ -187,7 +187,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 fleets,
                 _playerFactionId,
                 canBombard: true,
-                canDestroySystem: true,
+                canDestroyPlanet: true,
                 canAssault: true
             );
 
@@ -213,7 +213,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 fleets,
                 _playerFactionId,
                 canBombard: true,
-                canDestroySystem: false,
+                canDestroyPlanet: false,
                 canAssault: true
             );
 

@@ -638,7 +638,7 @@ namespace Rebellion.Systems
             {
                 InstanceID = masterPlanet.InstanceID,
                 DisplayName = masterPlanet.DisplayName,
-                SystemDataId = masterPlanet.SystemDataId,
+                PlanetDataId = masterPlanet.PlanetDataId,
                 PositionX = masterPlanet.PositionX,
                 PositionY = masterPlanet.PositionY,
                 PlanetIconPath = masterPlanet.PlanetIconPath,

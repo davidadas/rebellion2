@@ -15,7 +15,7 @@ internal static class PlanetSectorWindowContextMenuBuilder
     /// <param name="playerFactionId">The player faction identifier.</param>
     /// <param name="mobileHeadquarters">The mobile headquarters selected at the hit planet.</param>
     /// <param name="canBombard">Whether the fleets can bombard the hit planet.</param>
-    /// <param name="canDestroySystem">Whether the fleets can destroy the hit planet.</param>
+    /// <param name="canDestroyPlanet">Whether the fleets can destroy the hit planet.</param>
     /// <param name="canAssault">Whether the fleets can assault the hit planet.</param>
     /// <returns>The available context commands in display order.</returns>
     public static List<StrategyMenuCommand> Create(
@@ -24,7 +24,7 @@ internal static class PlanetSectorWindowContextMenuBuilder
         string playerFactionId,
         Building mobileHeadquarters = null,
         bool canBombard = false,
-        bool canDestroySystem = false,
+        bool canDestroyPlanet = false,
         bool canAssault = false
     )
     {
@@ -51,7 +51,7 @@ internal static class PlanetSectorWindowContextMenuBuilder
                 fleetItems,
                 playerFactionId,
                 canBombard,
-                canDestroySystem,
+                canDestroyPlanet,
                 canAssault
             ),
             PlanetIcon.Mission => new List<StrategyMenuCommand>
@@ -84,14 +84,14 @@ internal static class PlanetSectorWindowContextMenuBuilder
     /// <param name="fleetItems">The player-controlled fleet items at the planet.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>
     /// <param name="canBombard">Whether the fleets can bombard the planet.</param>
-    /// <param name="canDestroySystem">Whether the fleets can destroy the planet.</param>
+    /// <param name="canDestroyPlanet">Whether the fleets can destroy the planet.</param>
     /// <param name="canAssault">Whether the fleets can assault the planet.</param>
     /// <returns>The fleet commands.</returns>
     private static List<StrategyMenuCommand> CreateFleetCommands(
         List<ISceneNode> fleetItems,
         string playerFactionId,
         bool canBombard,
-        bool canDestroySystem,
+        bool canDestroyPlanet,
         bool canAssault
     )
     {
@@ -110,7 +110,7 @@ internal static class PlanetSectorWindowContextMenuBuilder
             ),
             StrategyBombardmentMenuBuilder.Build(
                 canCommandFleets && canBombard,
-                canCommandFleets && canDestroySystem
+                canCommandFleets && canDestroyPlanet
             ),
             new StrategyMenuCommand(
                 StrategyMenuAction.PlanetaryAssault,

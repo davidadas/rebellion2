@@ -2828,7 +2828,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_SabotageResultsAtSameSystem_UseOneCombinedReport()
+        public void CreateMessages_SabotageResultsAtSameSector_UseOneCombinedReport()
         {
             (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
             Building shield = new Building
@@ -4206,8 +4206,8 @@ namespace Rebellion.Tests.Game.Messages
             GameRoot game = new GameRoot(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             game.GetFactions().Add(alliance);
-            PlanetSector system = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector sector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
+            game.AttachNode(sector, game.Galaxy);
             Planet origin = new Planet
             {
                 InstanceID = "CORUSCANT",
@@ -4224,8 +4224,8 @@ namespace Rebellion.Tests.Game.Messages
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            game.AttachNode(origin, system);
-            game.AttachNode(destination, system);
+            game.AttachNode(origin, sector);
+            game.AttachNode(destination, sector);
 
             return (game, alliance, origin, destination);
         }
@@ -4243,8 +4243,8 @@ namespace Rebellion.Tests.Game.Messages
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
-            PlanetSector system = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector sector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
+            game.AttachNode(sector, game.Galaxy);
             Planet origin = new Planet
             {
                 InstanceID = "CORUSCANT",
@@ -4261,8 +4261,8 @@ namespace Rebellion.Tests.Game.Messages
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            game.AttachNode(origin, system);
-            game.AttachNode(target, system);
+            game.AttachNode(origin, sector);
+            game.AttachNode(target, sector);
 
             return (game, alliance, empire, origin, target);
         }

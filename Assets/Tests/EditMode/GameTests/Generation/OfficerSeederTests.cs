@@ -38,11 +38,11 @@ namespace Rebellion.Tests.Generation
         public void Seed_WithRecruitableOfficer_IncludesInDeployed()
         {
             Officer officer = MakeOfficer("O1", "FNALL1", isRecruitable: true);
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { officer },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -55,11 +55,11 @@ namespace Rebellion.Tests.Generation
         public void Seed_WithNonRecruitableOfficer_ExcludesFromDeployed()
         {
             Officer officer = MakeOfficer("O1", "FNALL1", isMain: false, isRecruitable: false);
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { officer },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -82,11 +82,11 @@ namespace Rebellion.Tests.Generation
                     new StartingOfficerRule { OfficerInstanceID = m3.InstanceID },
                 }
             );
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { m1, m2, m3 },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -101,11 +101,11 @@ namespace Rebellion.Tests.Generation
             Officer officer1 = MakeOfficer("O1", "FNALL1");
             Officer officer2 = MakeOfficer("O2", "FNALL1");
             Officer officer3 = MakeOfficer("O3", "FNALL1");
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { officer1, officer2, officer3 },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -123,11 +123,11 @@ namespace Rebellion.Tests.Generation
             _rules.Officers.StartingOfficers.Add(
                 new StartingOfficerRule { OfficerInstanceID = main.InstanceID }
             );
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { main, recruitable1, recruitable2 },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -146,11 +146,11 @@ namespace Rebellion.Tests.Generation
             );
             Officer starter = MakeOfficer("STARTER", "FNALL1");
             Officer recruitable = MakeOfficer("RANDOM", "FNALL1");
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { starter, recruitable },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -173,11 +173,11 @@ namespace Rebellion.Tests.Generation
                 }
             );
             Officer officer = MakeOfficer("LARGE_STARTER", "FNALL1");
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { officer },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -196,11 +196,11 @@ namespace Rebellion.Tests.Generation
                 RecruitingFactionInstanceIDs = new List<string> { "FNALL1", "FNEMP1" },
                 IsRecruitable = true,
             };
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { ambiguous },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -215,11 +215,11 @@ namespace Rebellion.Tests.Generation
             Officer officer1 = MakeOfficer("O1", "FNALL1");
             Officer officer2 = MakeOfficer("O2", "FNALL1");
             Officer officer3 = MakeOfficer("O3", "FNALL1");
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { officer1, officer2, officer3 },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -236,8 +236,8 @@ namespace Rebellion.Tests.Generation
             Officer allianceOfficer2 = MakeOfficer("A2", "FNALL1");
             Officer empireOfficer1 = MakeOfficer("E1", "FNEMP1");
             Officer empireOfficer2 = MakeOfficer("E2", "FNEMP1");
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            system.AddChild(
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            sector.AddChild(
                 new Planet
                 {
                     InstanceID = "p1",
@@ -245,7 +245,7 @@ namespace Rebellion.Tests.Generation
                     IsColonized = true,
                 }
             );
-            system.AddChild(
+            sector.AddChild(
                 new Planet
                 {
                     InstanceID = "p2",
@@ -256,7 +256,7 @@ namespace Rebellion.Tests.Generation
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { allianceOfficer1, allianceOfficer2, empireOfficer1, empireOfficer2 },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -271,9 +271,9 @@ namespace Rebellion.Tests.Generation
             Officer officer = MakeOfficer("O1", "FNALL1");
             officer.Ratings[OfficerRating.Diplomacy] = 10;
             officer.DiplomacyVariance = 0;
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
-            Deploy(new[] { officer }, new[] { system }, _rules, _summary, new StubRNG());
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
 
             Assert.AreEqual(10, officer.Ratings[OfficerRating.Diplomacy]);
         }
@@ -284,9 +284,9 @@ namespace Rebellion.Tests.Generation
             Officer officer = MakeOfficer("O1", "FNALL1");
             officer.Ratings[OfficerRating.Espionage] = 5;
             officer.EspionageVariance = 10;
-            PlanetSector system = MakeSystem(("p1", "FNALL1"));
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
-            Deploy(new[] { officer }, new[] { system }, _rules, _summary, new StubRNG());
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
 
             Assert.GreaterOrEqual(officer.Ratings[OfficerRating.Espionage], 5);
         }
@@ -301,10 +301,10 @@ namespace Rebellion.Tests.Generation
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            system.AddChild(planet);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            sector.AddChild(planet);
 
-            Deploy(new[] { officer }, new[] { system }, _rules, _summary, new StubRNG());
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
 
             Assert.Contains(officer, planet.GetChildren<Officer>().ToList());
         }
@@ -324,9 +324,9 @@ namespace Rebellion.Tests.Generation
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            system.AddChild(other);
-            system.AddChild(target);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            sector.AddChild(other);
+            sector.AddChild(target);
 
             Officer officer = MakeOfficer("O1", "FNALL1");
             _rules.Officers.StartingOfficers.Add(
@@ -337,7 +337,7 @@ namespace Rebellion.Tests.Generation
                 }
             );
 
-            Deploy(new[] { officer }, new[] { system }, _rules, _summary, new StubRNG());
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
 
             Assert.Contains(officer, target.GetChildren<Officer>().ToList());
             Assert.IsEmpty(other.GetChildren<Officer>());
@@ -361,9 +361,9 @@ namespace Rebellion.Tests.Generation
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            system.AddChild(other);
-            system.AddChild(yavin);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            sector.AddChild(other);
+            sector.AddChild(yavin);
 
             Officer pinned = MakeOfficer("CHEWBACCA", null);
             pinned.RecruitingFactionInstanceIDs = new List<string> { "FNALL1" };
@@ -378,7 +378,7 @@ namespace Rebellion.Tests.Generation
 
             (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
                 new[] { recruitable, pinned },
-                new[] { system },
+                new[] { sector },
                 _rules,
                 _summary,
                 new StubRNG()
@@ -392,7 +392,7 @@ namespace Rebellion.Tests.Generation
 
         private static (Officer[] Deployed, Officer[] Unrecruited) Deploy(
             Officer[] officers,
-            PlanetSector[] systems,
+            PlanetSector[] sectors,
             GameGenerationConfig config,
             GameSummary summary,
             IRandomNumberProvider rng
@@ -401,7 +401,7 @@ namespace Rebellion.Tests.Generation
             GenerationContext ctx = new GenerationContext
             {
                 Officers = officers,
-                Sectors = systems,
+                Sectors = sectors,
                 Config = config,
                 Summary = summary,
                 Rng = rng,
@@ -427,12 +427,12 @@ namespace Rebellion.Tests.Generation
             };
         }
 
-        private PlanetSector MakeSystem(params (string planetId, string ownerId)[] planets)
+        private PlanetSector MakeSector(params (string planetId, string ownerId)[] planets)
         {
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
             foreach ((string planetId, string ownerId) in planets)
             {
-                system.AddChild(
+                sector.AddChild(
                     new Planet
                     {
                         InstanceID = planetId,
@@ -441,7 +441,7 @@ namespace Rebellion.Tests.Generation
                     }
                 );
             }
-            return system;
+            return sector;
         }
     }
 }

@@ -675,7 +675,7 @@ public static class HeadlessSimulationRunner
                 )
                 .DefaultIfEmpty()
                 .Max(),
-            LargestSystemConstructionFacilityCount = GetLargestSystemConstructionFacilityCount(
+            LargestSectorConstructionFacilityCount = GetLargestSectorConstructionFacilityCount(
                 ownedPlanets
             ),
             LargestPlanetConstructionFacilityShare = GetShare(
@@ -687,19 +687,19 @@ public static class HeadlessSimulationRunner
                     .Max(),
                 projectedConstructionFacilities
             ),
-            LargestSystemConstructionFacilityShare = GetShare(
-                GetLargestSystemConstructionFacilityCount(ownedPlanets),
+            LargestSectorConstructionFacilityShare = GetShare(
+                GetLargestSectorConstructionFacilityCount(ownedPlanets),
                 projectedConstructionFacilities
             ),
         };
     }
 
     /// <summary>
-    /// Returns the largest number of construction facilities in one system.
+    /// Returns the largest number of construction facilities in one sector.
     /// </summary>
     /// <param name="planets">The planets to inspect.</param>
-    /// <returns>The largest system construction facility count.</returns>
-    private static int GetLargestSystemConstructionFacilityCount(List<Planet> planets)
+    /// <returns>The largest sector construction facility count.</returns>
+    private static int GetLargestSectorConstructionFacilityCount(List<Planet> planets)
     {
         return planets
             .GroupBy(planet =>
@@ -824,9 +824,9 @@ public static class HeadlessSimulationRunner
         public int ProjectedConstructionFacilityCount;
         public int ConstructionFacilityPlanetCount;
         public int LargestPlanetConstructionFacilityCount;
-        public int LargestSystemConstructionFacilityCount;
+        public int LargestSectorConstructionFacilityCount;
         public double LargestPlanetConstructionFacilityShare;
-        public double LargestSystemConstructionFacilityShare;
+        public double LargestSectorConstructionFacilityShare;
     }
 
     [Serializable]

@@ -206,7 +206,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             };
             freshPlanetNode.AddTestChild(freshBuilding);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSector { InstanceID = "fresh-system" },
+                new GamePlanetSector { InstanceID = "fresh-sector" },
                 freshPlanetNode,
                 _playerFactionId
             );
@@ -282,12 +282,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
-            GamePlanetSector system = new GamePlanetSector
+            GamePlanetSector sector = new GamePlanetSector
             {
-                InstanceID = "system",
-                DisplayName = "Core System",
+                InstanceID = "sector",
+                DisplayName = "Core Sector",
             };
-            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(sector, game.GetGalaxyMap());
             Planet planet = new Planet
             {
                 InstanceID = "planet",
@@ -295,8 +295,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 OwnerInstanceID = _playerFactionId,
                 IsColonized = true,
             };
-            game.AttachNode(planet, system);
-            return new GalaxyMapPlanet(system, planet, _playerFactionId);
+            game.AttachNode(planet, sector);
+            return new GalaxyMapPlanet(sector, planet, _playerFactionId);
         }
 
         private FacilityWindowView OpenWindow(out UIWindow window)

@@ -455,13 +455,13 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void LoadGameData_ValidSavedGame_ReconstitutesSceneGraph()
         {
-            // Create planet systems.
-            PlanetSector planetSystem = new PlanetSector { DisplayName = "Planet System" };
-            List<PlanetSector> planetSystems = new List<PlanetSector> { planetSystem };
+            // Create planet sectors.
+            PlanetSector planetSector = new PlanetSector { DisplayName = "Planet Sector" };
+            List<PlanetSector> planetSectors = new List<PlanetSector> { planetSector };
 
             // Create galaxy map.
             GalaxyMap galaxy = new GalaxyMap();
-            galaxy.AddChildren(planetSystems);
+            galaxy.AddChildren(planetSectors);
 
             // Generate the game summary.
             GameSummary summary = new GameSummary
@@ -478,7 +478,7 @@ namespace Rebellion.Tests.Managers
 
             // Create planets.
             Planet planet = new Planet { DisplayName = "Planet" };
-            game.AttachNode(planet, planetSystem);
+            game.AttachNode(planet, planetSector);
 
             // Create fleets.
             Fleet fleet = new Fleet();
@@ -505,7 +505,7 @@ namespace Rebellion.Tests.Managers
             CapitalShip loadedCapitalShip = loadedFleet.GetChildren<CapitalShip>()[0];
             Officer loadedOfficer = loadedCapitalShip.GetChildren<Officer>()[0];
 
-            Assert.AreEqual(planetSystem.InstanceID, loadedPlanet.GetParent().InstanceID);
+            Assert.AreEqual(planetSector.InstanceID, loadedPlanet.GetParent().InstanceID);
             Assert.AreEqual(fleet.InstanceID, loadedCapitalShip.GetParent().InstanceID);
             Assert.AreEqual(capitalShip.InstanceID, loadedOfficer.GetParent().InstanceID);
         }
@@ -1002,7 +1002,7 @@ namespace Rebellion.Tests.Managers
 
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
 
-            alliance.Fog.Snapshots["SYS1"] = new PlanetSectorSnapshot
+            alliance.Fog.Snapshots["SECTOR1"] = new PlanetSectorSnapshot
             {
                 Planets = new Dictionary<string, PlanetSnapshot>
                 {
@@ -1034,7 +1034,7 @@ namespace Rebellion.Tests.Managers
                 },
             };
 
-            alliance.Fog.PlanetToSector["CORUSCANT"] = "SYS1";
+            alliance.Fog.PlanetToSector["CORUSCANT"] = "SECTOR1";
 
             GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
             game.GetFactions().Add(alliance);
@@ -1046,9 +1046,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsNotNull(loadedAlliance);
 
             Assert.AreEqual(1, loadedAlliance.Fog.Snapshots.Count);
-            Assert.IsTrue(loadedAlliance.Fog.Snapshots.ContainsKey("SYS1"));
+            Assert.IsTrue(loadedAlliance.Fog.Snapshots.ContainsKey("SECTOR1"));
 
-            PlanetSectorSnapshot loadedPlanetSectorSnapshot = loadedAlliance.Fog.Snapshots["SYS1"];
+            PlanetSectorSnapshot loadedPlanetSectorSnapshot = loadedAlliance.Fog.Snapshots["SECTOR1"];
             Assert.AreEqual(1, loadedPlanetSectorSnapshot.Planets.Count);
 
             PlanetSnapshot loadedPlanetSnapshot = loadedPlanetSectorSnapshot.Planets["CORUSCANT"];
@@ -1068,7 +1068,7 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(ManufacturingStatus.Building, queuedBuilding.ManufacturingStatus);
 
             Assert.AreEqual(1, loadedAlliance.Fog.PlanetToSector.Count);
-            Assert.AreEqual("SYS1", loadedAlliance.Fog.PlanetToSector["CORUSCANT"]);
+            Assert.AreEqual("SECTOR1", loadedAlliance.Fog.PlanetToSector["CORUSCANT"]);
         }
 
         [Test]
@@ -1113,7 +1113,7 @@ namespace Rebellion.Tests.Managers
 
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
 
-            alliance.Fog.Snapshots["SYS1"] = new PlanetSectorSnapshot
+            alliance.Fog.Snapshots["SECTOR1"] = new PlanetSectorSnapshot
             {
                 Planets = new Dictionary<string, PlanetSnapshot>
                 {
@@ -1127,7 +1127,7 @@ namespace Rebellion.Tests.Managers
             alliance.Fog.EntityLastSeenAt["OFF1"] = "PLANET1";
             alliance.Fog.EntityLastSeenAt["FLEET1"] = "PLANET1";
             alliance.Fog.EntityLastSeenAt["REG1"] = "PLANET1";
-            alliance.Fog.PlanetToSector["PLANET1"] = "SYS1";
+            alliance.Fog.PlanetToSector["PLANET1"] = "SECTOR1";
 
             GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
             game.GetFactions().Add(alliance);
@@ -1136,7 +1136,7 @@ namespace Rebellion.Tests.Managers
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
-            PlanetSnapshot loadedSnapshot = loadedAlliance.Fog.Snapshots["SYS1"].Planets["PLANET1"];
+            PlanetSnapshot loadedSnapshot = loadedAlliance.Fog.Snapshots["SECTOR1"].Planets["PLANET1"];
 
             Assert.AreEqual(50, loadedSnapshot.TickCaptured);
             Assert.AreEqual("FNEMP1", loadedSnapshot.OwnerInstanceID);
@@ -1160,7 +1160,7 @@ namespace Rebellion.Tests.Managers
 
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
 
-            alliance.Fog.Snapshots["SYS1"] = new PlanetSectorSnapshot
+            alliance.Fog.Snapshots["SECTOR1"] = new PlanetSectorSnapshot
             {
                 Planets = new Dictionary<string, PlanetSnapshot>
                 {
@@ -1171,7 +1171,7 @@ namespace Rebellion.Tests.Managers
                 },
             };
 
-            alliance.Fog.Snapshots["SYS2"] = new PlanetSectorSnapshot
+            alliance.Fog.Snapshots["SECTOR2"] = new PlanetSectorSnapshot
             {
                 Planets = new Dictionary<string, PlanetSnapshot>
                 {
@@ -1186,9 +1186,9 @@ namespace Rebellion.Tests.Managers
                 },
             };
 
-            alliance.Fog.PlanetToSector["PLANET1"] = "SYS1";
-            alliance.Fog.PlanetToSector["PLANET2"] = "SYS2";
-            alliance.Fog.PlanetToSector["PLANET3"] = "SYS2";
+            alliance.Fog.PlanetToSector["PLANET1"] = "SECTOR1";
+            alliance.Fog.PlanetToSector["PLANET2"] = "SECTOR2";
+            alliance.Fog.PlanetToSector["PLANET3"] = "SECTOR2";
 
             GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
             game.GetFactions().Add(alliance);
@@ -1199,25 +1199,25 @@ namespace Rebellion.Tests.Managers
             Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
 
             Assert.AreEqual(2, loadedAlliance.Fog.Snapshots.Count);
-            Assert.AreEqual(1, loadedAlliance.Fog.Snapshots["SYS1"].Planets.Count);
-            Assert.AreEqual(2, loadedAlliance.Fog.Snapshots["SYS2"].Planets.Count);
+            Assert.AreEqual(1, loadedAlliance.Fog.Snapshots["SECTOR1"].Planets.Count);
+            Assert.AreEqual(2, loadedAlliance.Fog.Snapshots["SECTOR2"].Planets.Count);
             Assert.AreEqual(
                 10,
-                loadedAlliance.Fog.Snapshots["SYS1"].Planets["PLANET1"].TickCaptured
+                loadedAlliance.Fog.Snapshots["SECTOR1"].Planets["PLANET1"].TickCaptured
             );
             Assert.AreEqual(
                 20,
-                loadedAlliance.Fog.Snapshots["SYS2"].Planets["PLANET2"].TickCaptured
+                loadedAlliance.Fog.Snapshots["SECTOR2"].Planets["PLANET2"].TickCaptured
             );
             Assert.AreEqual(
                 30,
-                loadedAlliance.Fog.Snapshots["SYS2"].Planets["PLANET3"].TickCaptured
+                loadedAlliance.Fog.Snapshots["SECTOR2"].Planets["PLANET3"].TickCaptured
             );
 
             Assert.AreEqual(3, loadedAlliance.Fog.PlanetToSector.Count);
-            Assert.AreEqual("SYS1", loadedAlliance.Fog.PlanetToSector["PLANET1"]);
-            Assert.AreEqual("SYS2", loadedAlliance.Fog.PlanetToSector["PLANET2"]);
-            Assert.AreEqual("SYS2", loadedAlliance.Fog.PlanetToSector["PLANET3"]);
+            Assert.AreEqual("SECTOR1", loadedAlliance.Fog.PlanetToSector["PLANET1"]);
+            Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET2"]);
+            Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET3"]);
         }
     }
 } // namespace Rebellion.Tests.Managers

@@ -133,14 +133,14 @@ namespace Rebellion.Tests.Game.Encyclopedia
         [Test]
         public void Build_WithPlanetSector_AddsPlanetEntries()
         {
-            PlanetSector system = new PlanetSector();
-            system.AddChild(
+            PlanetSector sector = new PlanetSector();
+            sector.AddChild(
                 new Planet
                 {
                     TypeID = "PLANET1",
                     DisplayName = "Balmorra",
                     PlanetIconPath =
-                        "Art/HD/UI/StrategyView/ui_strategyview_planetsystem_planet_preview",
+                        "Art/HD/UI/StrategyView/ui_strategyview_planetsector_planet_preview",
                     EncyclopediaImagePath =
                         "Art/HD/UI/Encyclopedia/ui_encyclopedia_system_ringed_planet",
                     Description = "Planet description.",
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
 
             EncyclopediaCatalog catalog = BuildCatalog(
                 new EncyclopediaEntries(),
-                planetSystems: new[] { system }
+                planetSectors: new[] { sector }
             );
 
             EncyclopediaEntry entry = catalog.FindEntry("PLANET1", null);
@@ -204,8 +204,8 @@ namespace Rebellion.Tests.Game.Encyclopedia
         [Test]
         public void Build_WithNullStaticEntries_IgnoresNullEntries()
         {
-            PlanetSector system = new PlanetSector();
-            system.AddChildren(
+            PlanetSector sector = new PlanetSector();
+            sector.AddChildren(
                 new Planet[]
                 {
                     null,
@@ -226,7 +226,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
 
             EncyclopediaCatalog catalog = BuildCatalog(
                 new EncyclopediaEntries(),
-                planetSystems: new[] { system },
+                planetSectors: new[] { sector },
                 buildings: new Building[] { null, building }
             );
 
@@ -237,7 +237,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
 
         private static EncyclopediaCatalog BuildCatalog(
             EncyclopediaEntries authoredEntries,
-            IEnumerable<PlanetSector> planetSystems = null,
+            IEnumerable<PlanetSector> planetSectors = null,
             IEnumerable<Building> buildings = null,
             IEnumerable<CapitalShip> capitalShips = null,
             IEnumerable<Starfighter> starfighters = null,
@@ -249,7 +249,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
             EncyclopediaCatalogBuilder builder = new EncyclopediaCatalogBuilder();
             return builder.Build(
                 authoredEntries,
-                planetSystems,
+                planetSectors,
                 buildings,
                 capitalShips,
                 starfighters,

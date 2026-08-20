@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Sectors
         private FogOfWarSystem _fogSystem;
         private Faction _alliance;
         private Faction _empire;
-        private PlanetSector _coreSystem;
+        private PlanetSector _coreSector;
         private PlanetSector _outerRim;
         private Planet _coruscant;
         private Planet _tatooine;
@@ -39,7 +39,7 @@ namespace Rebellion.Tests.Sectors
             _game.GetFactions().Add(_alliance);
             _game.GetFactions().Add(_empire);
 
-            _coreSystem = new PlanetSector
+            _coreSector = new PlanetSector
             {
                 InstanceID = "CORESYS",
                 DisplayName = "Coruscant System",
@@ -47,12 +47,12 @@ namespace Rebellion.Tests.Sectors
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(_coreSystem, _game.GetGalaxyMap());
+            _game.AttachNode(_coreSector, _game.GetGalaxyMap());
 
             _outerRim = new PlanetSector
             {
                 InstanceID = "OUTERRIM",
-                DisplayName = "Outer Rim System",
+                DisplayName = "Outer Rim Sector",
                 SectorType = PlanetSectorType.OuterRim,
                 PositionX = 100,
                 PositionY = 100,
@@ -66,7 +66,7 @@ namespace Rebellion.Tests.Sectors
                 OwnerInstanceID = "FNEMP1",
                 IsColonized = true,
             };
-            _game.AttachNode(_coruscant, _coreSystem);
+            _game.AttachNode(_coruscant, _coreSector);
 
             _tatooine = new Planet
             {
@@ -92,13 +92,13 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(
                 2,
                 _game.Galaxy.GetChildren<PlanetSector>().Count,
-                "Setup should have added 2 systems to galaxy"
+                "Setup should have added 2 sectors to galaxy"
             );
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Assert.AreEqual(
                 2,
                 view.GetChildren<PlanetSector>().Count,
-                "BuildFactionView should return galaxy with 2 systems"
+                "BuildFactionView should return galaxy with 2 sectors"
             );
 
             Planet viewTatooine = view.GetChildren<PlanetSector>()
@@ -204,11 +204,11 @@ namespace Rebellion.Tests.Sectors
         [Test]
         public void BuildFactionView_SnapshotPlanet_ReturnsVisitedViewPlanet()
         {
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
-                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
@@ -275,7 +275,7 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
@@ -294,7 +294,7 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
@@ -317,7 +317,7 @@ namespace Rebellion.Tests.Sectors
             Building facility = CreateBuilding("BLDG1", _empire);
             _coruscant.AddTestChild(facility);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
@@ -334,7 +334,7 @@ namespace Rebellion.Tests.Sectors
         {
             _coruscant.PopularSupport["FNALL1"] = 50;
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
             _coruscant.PopularSupport["FNALL1"] = 25;
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
@@ -352,7 +352,7 @@ namespace Rebellion.Tests.Sectors
         {
             _coruscant.NumRawResourceNodes = 5;
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
@@ -375,7 +375,7 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             _game.MoveNode(allianceFleet, _hoth);
 
@@ -438,7 +438,7 @@ namespace Rebellion.Tests.Sectors
         public void BuildFactionView_OwnFleetInTransit_DestinationUsesSnapshot()
         {
             _coruscant.NumRawResourceNodes = 5;
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Fleet ownFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(ownFleet, _coruscant);
@@ -471,7 +471,7 @@ namespace Rebellion.Tests.Sectors
         public void BuildFactionView_OwnFleetArrived_DestinationUsesLive()
         {
             _coruscant.NumRawResourceNodes = 5;
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Fleet ownFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(ownFleet, _coruscant);
@@ -517,7 +517,7 @@ namespace Rebellion.Tests.Sectors
                 new CapitalShip { InstanceID = "cs_a", OwnerInstanceID = _alliance.InstanceID },
                 fleetA
             );
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             _hoth.OwnerInstanceID = _alliance.InstanceID;
             _game.MoveNode(fleetA, _hoth);
@@ -554,7 +554,7 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
@@ -636,7 +636,7 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
@@ -672,11 +672,11 @@ namespace Rebellion.Tests.Sectors
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
-            PlanetSector viewSystem = view.GetChildren<PlanetSector>()
+            PlanetSector viewSector = view.GetChildren<PlanetSector>()
                 .FirstOrDefault(s => s.InstanceID == "CORESYS");
-            Assert.IsNotNull(viewSystem, "CORESYS should exist in view");
+            Assert.IsNotNull(viewSector, "CORESYS should exist in view");
 
-            Planet viewPlanet = viewSystem
+            Planet viewPlanet = viewSector
                 .GetChildren<Planet>()
                 .FirstOrDefault(p => p.InstanceID == "CORUSCANT");
             Assert.IsNotNull(viewPlanet, "CORUSCANT should exist in view");
@@ -731,7 +731,7 @@ namespace Rebellion.Tests.Sectors
             // Captured friendly officers are always live data — must appear even via snapshot path.
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Officer leia = CreateOfficer("LEIA", _alliance);
             leia.IsCaptured = true;
@@ -779,7 +779,7 @@ namespace Rebellion.Tests.Sectors
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewHoth = view.GetChildren<PlanetSector>()
-                .First(system => system.InstanceID == _outerRim.InstanceID)
+                .First(sector => sector.InstanceID == _outerRim.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _hoth.InstanceID);
 
@@ -799,7 +799,7 @@ namespace Rebellion.Tests.Sectors
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
-                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
@@ -874,7 +874,7 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(empireMission, _coruscant);
 
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
@@ -958,7 +958,7 @@ namespace Rebellion.Tests.Sectors
         {
             // Snapshot coruscant; then add a new officer after the snapshot is taken.
             // The new officer must NOT appear in the view.
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Officer lateArrival = CreateOfficer("MOFF1", _empire);
             _game.AttachNode(lateArrival, _coruscant);
@@ -981,7 +981,7 @@ namespace Rebellion.Tests.Sectors
         public void BuildFactionView_SnapshotPlanet_BuildingQueuedAfterSnapshot_NotVisible()
         {
             _coruscant.EnergyCapacity = 1;
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Building queuedBuilding = CreateBuilding(
                 "BLDG_AFTER",
@@ -1067,7 +1067,7 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(enemySpecialForces, _coruscant);
             _game.AttachNode(enemyStarfighter, _coruscant);
             _game.AttachNode(enemyBuilding, _coruscant);
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             _game.DetachNode(enemyFleet);
             _game.DetachNode(enemyOfficer);
@@ -1081,7 +1081,7 @@ namespace Rebellion.Tests.Sectors
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
-                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
@@ -1115,10 +1115,10 @@ namespace Rebellion.Tests.Sectors
                     .Any(building => building.InstanceID == enemyBuilding.InstanceID)
             );
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
             PlanetSnapshot refreshedSnapshot = _alliance
                 .Fog
-                .Snapshots[_coreSystem.InstanceID]
+                .Snapshots[_coreSector.InstanceID]
                 .Planets[_coruscant.InstanceID];
             Assert.IsEmpty(refreshedSnapshot.Fleets);
             Assert.IsEmpty(refreshedSnapshot.Officers);
@@ -1146,7 +1146,7 @@ namespace Rebellion.Tests.Sectors
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             // Alliance takes ownership — empire units depart.
             _coruscant.OwnerInstanceID = _alliance.InstanceID;
@@ -1345,7 +1345,7 @@ namespace Rebellion.Tests.Sectors
             Planet viewCoruscant = _fogSystem
                 .BuildFactionView(_alliance)
                 .GetChildren<PlanetSector>()
-                .Single(system => system.InstanceID == _coreSystem.InstanceID)
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
                 .GetChildren<Planet>()
                 .Single(planet => planet.InstanceID == _coruscant.InstanceID);
 
@@ -1400,7 +1400,7 @@ namespace Rebellion.Tests.Sectors
             Planet viewCoruscant = _fogSystem
                 .BuildFactionView(_alliance)
                 .GetChildren<PlanetSector>()
-                .Single(system => system.InstanceID == _coreSystem.InstanceID)
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
                 .GetChildren<Planet>()
                 .Single(planet => planet.InstanceID == _coruscant.InstanceID);
             Fleet viewFleet = viewCoruscant
@@ -1484,7 +1484,7 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(empireMission, _coruscant);
 
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
@@ -1547,7 +1547,7 @@ namespace Rebellion.Tests.Sectors
             _coruscant.AddChild(starport);
             _coruscant.AddChild(tieFighter);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
@@ -1568,7 +1568,7 @@ namespace Rebellion.Tests.Sectors
             vader.SetBaseRating(OfficerRating.Diplomacy, 50);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             vader.SetBaseRating(OfficerRating.Diplomacy, 99);
             _coruscant.RemoveChild(vader);
@@ -1586,7 +1586,7 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
@@ -1600,7 +1600,7 @@ namespace Rebellion.Tests.Sectors
         {
             Assert.IsFalse(_coruscant.WasVisitedBy(_alliance.InstanceID));
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Assert.IsTrue(_coruscant.WasVisitedBy(_alliance.InstanceID));
         }
@@ -1611,7 +1611,7 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
@@ -1639,7 +1639,7 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(fleet, _coruscant);
             AddCapitalShip(fleet, _empire, "CS1");
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
@@ -1662,8 +1662,8 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
             PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
@@ -1677,14 +1677,14 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             _game.MoveNode(vader, _coruscant);
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 30);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 30);
 
             PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
@@ -1703,7 +1703,7 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
@@ -1755,13 +1755,13 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(fleet, _coruscant);
             _game.AttachNode(ship, fleet);
             _game.AttachNode(regiment, ship);
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(regiment, _tatooine);
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
-            PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+            PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
             ];
             Assert.IsEmpty(
@@ -1783,7 +1783,7 @@ namespace Rebellion.Tests.Sectors
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Assert.AreEqual("CORUSCANT", _alliance.Fog.EntityLastSeenAt["VADER"]);
 
@@ -1797,7 +1797,7 @@ namespace Rebellion.Tests.Sectors
         [Test]
         public void CaptureSnapshot_PlanetInPlanetSector_MapsPlanetToSector()
         {
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Assert.AreEqual("CORESYS", _alliance.Fog.PlanetToSector["CORUSCANT"]);
 
@@ -1813,7 +1813,7 @@ namespace Rebellion.Tests.Sectors
             vader.SetBaseRating(OfficerRating.Diplomacy, 50);
             _game.AttachNode(vader, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
@@ -1855,7 +1855,7 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(fleet, _coruscant);
             _game.AttachNode(destroyer, fleet);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
@@ -1900,7 +1900,7 @@ namespace Rebellion.Tests.Sectors
             leia.IsCaptured = true;
             _game.AttachNode(leia, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESYS"].Planets["CORUSCANT"];
 
@@ -1915,7 +1915,7 @@ namespace Rebellion.Tests.Sectors
         {
             AddQueuedBuilding(_coruscant, _empire, "HIDDEN_BUILDING", 25);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESYS"].Planets["CORUSCANT"];
             Assert.IsFalse(snapshot.HasManufacturingIntelligence);
@@ -1936,7 +1936,7 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(empireMission, _coruscant);
             _game.MoveNode(vader, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
@@ -1945,7 +1945,7 @@ namespace Rebellion.Tests.Sectors
 
             PlanetSnapshot coruscantSnapshot = _alliance
                 .Fog
-                .Snapshots[_coreSystem.InstanceID]
+                .Snapshots[_coreSector.InstanceID]
                 .Planets[_coruscant.InstanceID];
             Officer recordedParticipant =
                 coruscantSnapshot
@@ -1968,13 +1968,13 @@ namespace Rebellion.Tests.Sectors
             AddCapitalShip(empireFleet, _empire, "INCOMING_SHIP");
             empireFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
-                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
             Fleet viewFleet = viewCoruscant
@@ -1989,11 +1989,11 @@ namespace Rebellion.Tests.Sectors
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
             ];
             Assert.AreEqual(1, snapshot.Missions.Count);
@@ -2005,15 +2005,15 @@ namespace Rebellion.Tests.Sectors
         {
             Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             knownBuilding.ManufacturingProgress = 75;
             AddQueuedBuilding(_coruscant, _empire, "UNKNOWN_BUILDING", 10);
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
-                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
             List<IManufacturable> queue = viewCoruscant.ManufacturingQueue[
@@ -2030,13 +2030,13 @@ namespace Rebellion.Tests.Sectors
         {
             Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             _coruscant.ManufacturingQueue[ManufacturingType.Building].Remove(knownBuilding);
             _game.DetachNode(knownBuilding);
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
             ];
             Assert.IsFalse(
@@ -2066,12 +2066,12 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(knownShip, fleet);
             _game.AttachNode(departedRegiment, knownShip);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             _game.DetachNode(departedRegiment);
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
             ];
             CapitalShip preservedShip = snapshot
@@ -2095,12 +2095,12 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(fleet, _coruscant);
             _game.AttachNode(knownShip, fleet);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             knownShip.ManufacturingProgress = 75;
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
             ];
             Fleet preservedFleet = snapshot.Fleets.Single(snapshotFleet =>
@@ -2132,12 +2132,12 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(fleet, _coruscant);
             _game.AttachNode(knownShip, fleet);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             _game.DetachNode(knownShip);
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
             ];
             Assert.IsFalse(
@@ -2167,9 +2167,9 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(fleet, _coruscant);
             AddCapitalShip(fleet, _empire, "MOVING_FLEET_SHIP");
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
             ];
             Assert.IsEmpty(snapshot.Officers);
@@ -2189,7 +2189,7 @@ namespace Rebellion.Tests.Sectors
             };
             _game.AttachNode(emptyFleet, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_empire, _coruscant, _coreSystem, _game.CurrentTick);
+            _fogSystem.CaptureSnapshot(_empire, _coruscant, _coreSector, _game.CurrentTick);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
@@ -2220,7 +2220,7 @@ namespace Rebellion.Tests.Sectors
             };
             _game.AttachNode(ship, fleet);
 
-            _fogSystem.CaptureSnapshot(_empire, _coruscant, _coreSystem, _game.CurrentTick);
+            _fogSystem.CaptureSnapshot(_empire, _coruscant, _coreSector, _game.CurrentTick);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
@@ -2244,7 +2244,7 @@ namespace Rebellion.Tests.Sectors
             Officer han = CreateOfficer("HAN", _alliance);
             _game.AttachNode(han, _hoth);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             _game.DetachNode(mine);
 
@@ -2497,7 +2497,7 @@ namespace Rebellion.Tests.Sectors
             new FogOfWarRecorder().RecordIntelligenceSnapshot(
                 _alliance,
                 _coruscant,
-                _coreSystem,
+                _coreSector,
                 42,
                 PlanetIntelligenceCategory.CapitalShips
             );
@@ -2515,7 +2515,7 @@ namespace Rebellion.Tests.Sectors
             new FogOfWarRecorder().RecordIntelligenceSnapshot(
                 _alliance,
                 _coruscant,
-                _coreSystem,
+                _coreSector,
                 43,
                 PlanetIntelligenceCategory.Starfighters
             );
@@ -2541,11 +2541,11 @@ namespace Rebellion.Tests.Sectors
             AddQueuedBuilding(_coruscant, _empire, "REVEALED_BUILDING", 25);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
 
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
-                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
@@ -2567,11 +2567,11 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(empireMission, _coruscant);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
 
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
-                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
@@ -2599,7 +2599,7 @@ namespace Rebellion.Tests.Sectors
             empireMission.AddDecoyParticipant(tarkin);
             _game.MoveNode(tarkin, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             _game.MoveNode(vader, _coruscant);
             _game.MoveNode(tarkin, _coruscant);
@@ -2608,7 +2608,7 @@ namespace Rebellion.Tests.Sectors
             tarkin.DisplayName = "Changed live decoy";
 
             Mission recordedMission = _alliance
-                .Fog.Snapshots[_coreSystem.InstanceID]
+                .Fog.Snapshots[_coreSector.InstanceID]
                 .Planets[_coruscant.InstanceID]
                 .Missions.Single();
             Officer recordedParticipant =
@@ -2637,10 +2637,10 @@ namespace Rebellion.Tests.Sectors
             _game.MoveNode(vader, empireMission);
             vader.IsEnabled = false;
 
-            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             Mission recordedMission = _alliance
-                .Fog.Snapshots[_coreSystem.InstanceID]
+                .Fog.Snapshots[_coreSector.InstanceID]
                 .Planets[_coruscant.InstanceID]
                 .Missions.Single();
             Officer recordedParticipant =
@@ -2660,11 +2660,11 @@ namespace Rebellion.Tests.Sectors
             empireFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
             FogOfWarRecorder recorder = new FogOfWarRecorder();
 
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
-                .First(system => system.InstanceID == _coreSystem.InstanceID)
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
@@ -2688,9 +2688,9 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(empireMission, _coruscant);
             _game.MoveNode(vader, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
             ];
             string xml = SerializationHelper.Serialize(snapshot);

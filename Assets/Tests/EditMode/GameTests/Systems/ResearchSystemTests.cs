@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Systems
             _system.ProcessTick();
             int after = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
 
-            Assert.AreEqual(1, after - before, "One core-system shipyard should add 1 capacity");
+            Assert.AreEqual(1, after - before, "One core-sector shipyard should add 1 capacity");
         }
 
         [Test]

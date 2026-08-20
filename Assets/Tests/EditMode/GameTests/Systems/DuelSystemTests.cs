@@ -98,15 +98,15 @@ namespace Rebellion.Tests.Sectors
             GameRoot game = new GameRoot(config);
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
-            PlanetSector planetSystem = new PlanetSector { InstanceID = "system" };
-            game.AttachNode(planetSystem, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
                 InstanceID = "planet",
                 OwnerInstanceID = "rebels",
                 IsColonized = true,
             };
-            game.AttachNode(planet, planetSystem);
+            game.AttachNode(planet, planetSector);
             Officer encountered = EntityFactory.CreateOfficer("luke", "rebels");
             Officer opposing = EntityFactory.CreateOfficer("vader", "empire");
             encountered.SetBaseRating(OfficerRating.Combat, 50);

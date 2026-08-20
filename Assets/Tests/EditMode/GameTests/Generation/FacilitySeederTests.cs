@@ -14,10 +14,10 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_CorePlanetWithEnergy_PlacesFacilities()
         {
-            PlanetSector system = CreateCore(energy: 3, rawNodes: 0);
+            PlanetSector sector = CreateCore(energy: 3, rawNodes: 0);
 
             List<Building> deployed = SeedFacilities(
-                new[] { system },
+                new[] { sector },
                 CreateTemplates(),
                 CreateRules(),
                 new GalaxyClassificationResult(),
@@ -33,10 +33,10 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_RimPlanetColonized_PlacesFacilities()
         {
-            PlanetSector system = CreateRim(energy: 3, rawNodes: 0, colonized: true);
+            PlanetSector sector = CreateRim(energy: 3, rawNodes: 0, colonized: true);
 
             List<Building> deployed = SeedFacilities(
-                new[] { system },
+                new[] { sector },
                 CreateTemplates(),
                 CreateRules(),
                 new GalaxyClassificationResult(),
@@ -49,10 +49,10 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_RimPlanetUncolonized_PlacesNoFacilities()
         {
-            PlanetSector system = CreateRim(energy: 3, rawNodes: 0, colonized: false);
+            PlanetSector sector = CreateRim(energy: 3, rawNodes: 0, colonized: false);
 
             List<Building> deployed = SeedFacilities(
-                new[] { system },
+                new[] { sector },
                 CreateTemplates(),
                 CreateRules(),
                 new GalaxyClassificationResult(),
@@ -65,8 +65,8 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_CoreAndRimPlanets_UseTheirRespectiveTables()
         {
-            PlanetSector coreSystem = CreateCore(energy: 3, rawNodes: 0);
-            PlanetSector rimSystem = CreateRim(energy: 3, rawNodes: 0, colonized: true);
+            PlanetSector coreSector = CreateCore(energy: 3, rawNodes: 0);
+            PlanetSector rimSector = CreateRim(energy: 3, rawNodes: 0, colonized: true);
 
             GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.CoreFacilityTable = new List<WeightedFacilityEntry>
@@ -79,7 +79,7 @@ namespace Rebellion.Tests.Generation
             };
 
             SeedFacilities(
-                new[] { coreSystem, rimSystem },
+                new[] { coreSector, rimSector },
                 CreateTemplates(),
                 rules,
                 new GalaxyClassificationResult(),
@@ -87,14 +87,14 @@ namespace Rebellion.Tests.Generation
             );
 
             Assert.IsTrue(
-                coreSystem
+                coreSector
                     .GetChildren<Planet>()[0]
                     .GetChildren<Building>()
                     .All(b => b.TypeID == "BDFA01"),
                 "Core planet should draw from the core facility table."
             );
             Assert.IsTrue(
-                rimSystem
+                rimSector
                     .GetChildren<Planet>()[0]
                     .GetChildren<Building>()
                     .All(b => b.TypeID == "BDFA02"),
@@ -105,10 +105,10 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_EmptyFacilityRoll_LeavesSlotEmptyAndContinues()
         {
-            PlanetSector system = CreateCore(energy: 2, rawNodes: 0);
+            PlanetSector sector = CreateCore(energy: 2, rawNodes: 0);
 
             List<Building> deployed = SeedFacilities(
-                new[] { system },
+                new[] { sector },
                 CreateTemplates(),
                 CreateRules(),
                 new GalaxyClassificationResult(),
@@ -126,14 +126,14 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_CorePlanet_UsesConfiguredFacilityTableRollRange()
         {
-            PlanetSector system = CreateCore(energy: 5, rawNodes: 0);
+            PlanetSector sector = CreateCore(energy: 5, rawNodes: 0);
             GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.FacilityTableRollMin = 3;
             rules.FacilityGeneration.FacilityTableRollMaxExclusive = 17;
             RecordingRNG rng = new RecordingRNG();
 
             SeedFacilities(
-                new[] { system },
+                new[] { sector },
                 CreateTemplates(),
                 rules,
                 new GalaxyClassificationResult(),
@@ -153,7 +153,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_PlanetWithHQLoadout_PlacesConfiguredFacilitiesAfterRandomFacilities()
         {
-            PlanetSector system = CreateCore(energy: 1, rawNodes: 0);
+            PlanetSector sector = CreateCore(energy: 1, rawNodes: 0);
             GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.HQLoadouts = new List<HQFacilityLoadout>
             {
@@ -165,7 +165,7 @@ namespace Rebellion.Tests.Generation
             };
 
             List<Building> deployed = SeedFacilities(
-                new[] { system },
+                new[] { sector },
                 CreateTemplates(),
                 rules,
                 new GalaxyClassificationResult(),
@@ -187,8 +187,8 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_FactionHQLoadout_ResolvesToAssignedHQ()
         {
-            PlanetSector system = CreateCore(energy: 5, rawNodes: 0);
-            Planet hqPlanet = system.GetChildren<Planet>()[0];
+            PlanetSector sector = CreateCore(energy: 5, rawNodes: 0);
+            Planet hqPlanet = sector.GetChildren<Planet>()[0];
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.FactionHQs["FNALL1"] = hqPlanet;
@@ -205,7 +205,7 @@ namespace Rebellion.Tests.Generation
             };
 
             List<Building> deployed = SeedFacilities(
-                new[] { system },
+                new[] { sector },
                 CreateTemplates(),
                 rules,
                 classification,
@@ -221,7 +221,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_HQLoadoutExceedsEnergy_RaisesEnergyCapacity()
         {
-            PlanetSector system = CreateCore(energy: 2, rawNodes: 0);
+            PlanetSector sector = CreateCore(energy: 2, rawNodes: 0);
             GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.HQLoadouts = new List<HQFacilityLoadout>
             {
@@ -233,14 +233,14 @@ namespace Rebellion.Tests.Generation
             };
 
             SeedFacilities(
-                new[] { system },
+                new[] { sector },
                 CreateTemplates(),
                 rules,
                 new GalaxyClassificationResult(),
                 new StubRNG()
             );
 
-            Planet planet = system.GetChildren<Planet>()[0];
+            Planet planet = sector.GetChildren<Planet>()[0];
             Assert.GreaterOrEqual(
                 planet.GetChildren<Building>().Count,
                 4,
@@ -256,7 +256,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_HQLoadoutIncludesMineAboveRawNodes_RaisesRawResourceNodes()
         {
-            PlanetSector system = CreateCore(energy: 5, rawNodes: 0);
+            PlanetSector sector = CreateCore(energy: 5, rawNodes: 0);
             GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.HQLoadouts = new List<HQFacilityLoadout>
             {
@@ -268,7 +268,7 @@ namespace Rebellion.Tests.Generation
             };
 
             SeedFacilities(
-                new[] { system },
+                new[] { sector },
                 CreateTemplates(),
                 rules,
                 new GalaxyClassificationResult(),
@@ -276,14 +276,14 @@ namespace Rebellion.Tests.Generation
             );
 
             Assert.GreaterOrEqual(
-                system.GetChildren<Planet>()[0].NumRawResourceNodes,
+                sector.GetChildren<Planet>()[0].NumRawResourceNodes,
                 2,
                 "NumRawResourceNodes should be raised to cover every loadout mine."
             );
         }
 
         private static List<Building> SeedFacilities(
-            PlanetSector[] systems,
+            PlanetSector[] sectors,
             Building[] templates,
             GameGenerationConfig config,
             GalaxyClassificationResult classification,
@@ -292,7 +292,7 @@ namespace Rebellion.Tests.Generation
         {
             GenerationContext ctx = new GenerationContext
             {
-                Sectors = systems,
+                Sectors = sectors,
                 Buildings = templates,
                 Config = config,
                 Classification = classification,
@@ -360,12 +360,12 @@ namespace Rebellion.Tests.Generation
 
         private PlanetSector CreateCore(int energy, int rawNodes)
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
-            system.AddChild(
+            sector.AddChild(
                 new Planet
                 {
                     InstanceID = "p1",
@@ -376,17 +376,17 @@ namespace Rebellion.Tests.Generation
                     NumRawResourceNodes = rawNodes,
                 }
             );
-            return system;
+            return sector;
         }
 
         private PlanetSector CreateRim(int energy, int rawNodes, bool colonized)
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "rim1",
                 SectorType = PlanetSectorType.OuterRim,
             };
-            system.AddChild(
+            sector.AddChild(
                 new Planet
                 {
                     InstanceID = "rp1",
@@ -396,7 +396,7 @@ namespace Rebellion.Tests.Generation
                     NumRawResourceNodes = rawNodes,
                 }
             );
-            return system;
+            return sector;
         }
 
         /// <summary>

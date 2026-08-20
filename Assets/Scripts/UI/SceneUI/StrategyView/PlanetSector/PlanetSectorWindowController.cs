@@ -423,7 +423,7 @@ public sealed class PlanetSectorWindowController
             fleetCommandController.CanExecutePlanetaryCombat(
                 items,
                 hit?.Planet,
-                StrategyMenuAction.DestroySystem
+                StrategyMenuAction.DestroyPlanet
             ),
             fleetCommandController.CanExecutePlanetaryCombat(
                 items,
@@ -501,7 +501,7 @@ public sealed class PlanetSectorWindowController
             case StrategyMenuAction.BombardMilitaryFacilities:
             case StrategyMenuAction.BombardCivilianFacilities:
             case StrategyMenuAction.GeneralBombardment:
-            case StrategyMenuAction.DestroySystem:
+            case StrategyMenuAction.DestroyPlanet:
             case StrategyMenuAction.PlanetaryAssault:
                 if (windowManager.TryGetWindowView(source.Window, out PlanetSectorWindowView view))
                     TryExecutePlanetaryCombat(view, strategyCommand.Action);

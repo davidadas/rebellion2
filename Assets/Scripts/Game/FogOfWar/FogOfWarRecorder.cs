@@ -70,8 +70,8 @@ namespace Rebellion.Game.FogOfWar
             {
                 if (observation is PlanetSector selectedSector)
                 {
-                    foreach (Planet systemPlanet in selectedSector.GetChildren<Planet>())
-                        RecordObservation(game, faction, systemPlanet, currentTick);
+                    foreach (Planet planet in selectedSector.GetChildren<Planet>())
+                        RecordObservation(game, faction, planet, currentTick);
                     continue;
                 }
 
@@ -426,7 +426,7 @@ namespace Rebellion.Game.FogOfWar
             snapshot.TickCaptured = currentTick;
             PlanetIntelligenceCategory accumulatedCategories =
                 snapshot.RevealedCategories | categories;
-            if (categories.HasFlag(PlanetIntelligenceCategory.System))
+            if (categories.HasFlag(PlanetIntelligenceCategory.Planet))
                 UpdatePlanetState(snapshot, planet, currentTick);
             snapshot.RevealedCategories = accumulatedCategories;
             UpdateOfficerIntelligence(faction, planet, snapshot, categories);

@@ -415,14 +415,14 @@ namespace Rebellion.Tests.Generation
         public void Build_FogOfWar_CoresHaveInitialResourceSnapshotsForNonOwners()
         {
             foreach (
-                PlanetSector system in _game
+                PlanetSector sector in _game
                     .Galaxy.GetChildren<PlanetSector>()
                     .Where(s => s.SectorType == PlanetSectorType.Core)
             )
             {
                 foreach (Faction faction in _game.GetFactions())
                 {
-                    foreach (Planet planet in system.GetChildren<Planet>())
+                    foreach (Planet planet in sector.GetChildren<Planet>())
                     {
                         bool isOwner = planet.OwnerInstanceID == faction.InstanceID;
                         if (isOwner)
@@ -430,10 +430,10 @@ namespace Rebellion.Tests.Generation
 
                         Assert.IsTrue(
                             faction.Fog.Snapshots.TryGetValue(
-                                system.InstanceID,
+                                sector.InstanceID,
                                 out PlanetSectorSnapshot systemSnapshot
                             ),
-                            $"Faction '{faction.GetDisplayName()}' should have an initial snapshot for core system '{system.GetDisplayName()}'"
+                            $"Faction '{faction.GetDisplayName()}' should have an initial snapshot for core sector '{sector.GetDisplayName()}'"
                         );
                         Assert.IsTrue(
                             systemSnapshot.Planets.TryGetValue(
@@ -463,7 +463,7 @@ namespace Rebellion.Tests.Generation
             GameGenerationConfig rules = TestContent.Data.GenerationConfig;
             Dictionary<string, string> planetInstanceIdsByTypeId = _game
                 .Galaxy.GetChildren<PlanetSector>()
-                .SelectMany(system => system.GetChildren<Planet>())
+                .SelectMany(sector => sector.GetChildren<Planet>())
                 .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
                 .ToDictionary(planet => planet.TypeID, planet => planet.InstanceID);
             HashSet<(string planetId, string factionId)> visibilityOverrides = new HashSet<(
@@ -487,14 +487,14 @@ namespace Rebellion.Tests.Generation
             );
 
             foreach (
-                PlanetSector system in _game
+                PlanetSector sector in _game
                     .Galaxy.GetChildren<PlanetSector>()
                     .Where(s => s.SectorType == PlanetSectorType.OuterRim)
             )
             {
                 foreach (Faction faction in _game.GetFactions())
                 {
-                    foreach (Planet planet in system.GetChildren<Planet>())
+                    foreach (Planet planet in sector.GetChildren<Planet>())
                     {
                         bool isOwner = planet.OwnerInstanceID == faction.InstanceID;
                         if (isOwner)
@@ -505,7 +505,7 @@ namespace Rebellion.Tests.Generation
 
                         bool hasSnapshot =
                             faction.Fog.Snapshots.TryGetValue(
-                                system.InstanceID,
+                                sector.InstanceID,
                                 out PlanetSectorSnapshot ss
                             ) && ss.Planets.ContainsKey(planet.InstanceID);
 
@@ -524,13 +524,13 @@ namespace Rebellion.Tests.Generation
             FogOfWarSystem fogSystem = new FogOfWarSystem(_game);
 
             foreach (
-                PlanetSector system in _game
+                PlanetSector sector in _game
                     .Galaxy.GetChildren<PlanetSector>()
                     .Where(s => s.SectorType == PlanetSectorType.OuterRim)
             )
             {
                 foreach (
-                    Planet planet in system
+                    Planet planet in sector
                         .GetChildren<Planet>()
                         .Where(p => p.OwnerInstanceID != null)
                 )
@@ -553,13 +553,13 @@ namespace Rebellion.Tests.Generation
             FogOfWarSystem fogSystem = new FogOfWarSystem(_game);
 
             foreach (
-                PlanetSector system in _game
+                PlanetSector sector in _game
                     .Galaxy.GetChildren<PlanetSector>()
                     .Where(s => s.SectorType == PlanetSectorType.OuterRim)
             )
             {
                 foreach (
-                    Planet planet in system
+                    Planet planet in sector
                         .GetChildren<Planet>()
                         .Where(p => p.OwnerInstanceID != null)
                 )

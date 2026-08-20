@@ -53,14 +53,14 @@ namespace Rebellion.Tests.Game.Events
         public void SelectRandom_FilteredPlanetSet_ReturnsRequestedCount()
         {
             GameRoot game = BuildGame(out _);
-            PlanetSector rimSystem = new PlanetSector
+            PlanetSector rimSector = new PlanetSector
             {
-                InstanceID = "rim-system",
+                InstanceID = "rim-sector",
                 SectorType = PlanetSectorType.OuterRim,
             };
             Planet rimPlanet = new Planet { InstanceID = "rim-planet" };
-            game.AttachNode(rimSystem, game.Galaxy);
-            game.AttachNode(rimPlanet, rimSystem);
+            game.AttachNode(rimSector, game.Galaxy);
+            game.AttachNode(rimPlanet, rimSector);
             SelectRandom selector = new SelectRandom
             {
                 Count = 1,
@@ -147,9 +147,9 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = new GameRoot(new GameConfig());
             game.GetFactions().Add(new Faction { InstanceID = "faction" });
-            PlanetSector system = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
-                InstanceID = "core-system",
+                InstanceID = "core-sector",
                 SectorType = PlanetSectorType.Core,
             };
             planet = new Planet
@@ -158,8 +158,8 @@ namespace Rebellion.Tests.Game.Events
                 OwnerInstanceID = "faction",
                 IsColonized = true,
             };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
             return game;
         }
     }

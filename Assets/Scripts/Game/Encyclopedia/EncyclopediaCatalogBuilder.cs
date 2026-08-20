@@ -37,7 +37,7 @@ namespace Rebellion.Game.Encyclopedia
         /// Builds the encyclopedia catalog from authored entries and static game data.
         /// </summary>
         /// <param name="authoredEntries">The authored encyclopedia entries.</param>
-        /// <param name="planetSectors">The static planet system data.</param>
+        /// <param name="planetSectors">The static planet sector data.</param>
         /// <param name="buildings">The static building data.</param>
         /// <param name="capitalShips">The static capital ship data.</param>
         /// <param name="starfighters">The static starfighter data.</param>
@@ -100,7 +100,7 @@ namespace Rebellion.Game.Encyclopedia
         /// <summary>
         /// Builds generated encyclopedia entries from static game data.
         /// </summary>
-        /// <param name="planetSectors">The static planet system data.</param>
+        /// <param name="planetSectors">The static planet sector data.</param>
         /// <param name="buildings">The static building data.</param>
         /// <param name="capitalShips">The static capital ship data.</param>
         /// <param name="starfighters">The static starfighter data.</param>
@@ -130,10 +130,10 @@ namespace Rebellion.Game.Encyclopedia
         }
 
         /// <summary>
-        /// Adds planet entries from planet system data.
+        /// Adds planet entries from planet sector data.
         /// </summary>
         /// <param name="entries">The entry accumulator.</param>
-        /// <param name="planetSectors">The static planet system data.</param>
+        /// <param name="planetSectors">The static planet sector data.</param>
         private static void AddPlanets(
             List<EncyclopediaEntry> entries,
             IEnumerable<PlanetSector> planetSectors

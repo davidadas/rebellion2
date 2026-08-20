@@ -17,7 +17,7 @@ namespace Rebellion.Systems
         Military,
         Civilian,
         General,
-        DestroySystem,
+        DestroyPlanet,
     }
 
     public enum BombardmentTargetType
@@ -140,7 +140,7 @@ namespace Rebellion.Systems
             try
             {
                 bool destroysPlanet =
-                    type == BombardmentType.DestroySystem
+                    type == BombardmentType.DestroyPlanet
                     && HasPlanetDestroyingShip(attackingFleets);
                 if (destroysPlanet)
                     DestroyPlanet(targetPlanet, result);
@@ -225,7 +225,7 @@ namespace Rebellion.Systems
             if (!CanBombard(fleets, targetPlanet))
                 return false;
 
-            return type == BombardmentType.DestroySystem
+            return type == BombardmentType.DestroyPlanet
                 ? HasPlanetDestroyingShip(fleets)
                 : CalculateBombardmentStrength(fleets) > 0;
         }
@@ -531,7 +531,7 @@ namespace Rebellion.Systems
                 type
                 is BombardmentType.Military
                     or BombardmentType.General
-                    or BombardmentType.DestroySystem
+                    or BombardmentType.DestroyPlanet
             )
             {
                 targets.AddRange(BuildMilitaryTargets(planet, defenderId));
@@ -541,13 +541,13 @@ namespace Rebellion.Systems
                 type
                 is BombardmentType.Civilian
                     or BombardmentType.General
-                    or BombardmentType.DestroySystem
+                    or BombardmentType.DestroyPlanet
             )
             {
                 targets.AddRange(BuildCivilianTargets(planet));
             }
 
-            if (type is BombardmentType.General or BombardmentType.DestroySystem)
+            if (type is BombardmentType.General or BombardmentType.DestroyPlanet)
                 AddEnergyTargets(planet, targets);
 
             return targets;
@@ -797,7 +797,7 @@ namespace Rebellion.Systems
             {
                 if (
                     !RollBombardmentPercent(
-                        _game.Config.Combat.Bombardment.DestroySystemPersonnelInjuryPercent
+                        _game.Config.Combat.Bombardment.DestroyPlanetPersonnelInjuryPercent
                     )
                 )
                     continue;
@@ -814,7 +814,7 @@ namespace Rebellion.Systems
 
                 if (
                     !RollBombardmentPercent(
-                        _game.Config.Combat.Bombardment.DestroySystemMinorPersonnelDeathPercent
+                        _game.Config.Combat.Bombardment.DestroyPlanetMinorPersonnelDeathPercent
                     )
                 )
                     continue;
@@ -923,7 +923,7 @@ namespace Rebellion.Systems
                 _ownership.ShiftBombardmentSupport(
                     corePlanets,
                     attacker,
-                    _game.Config.Combat.Bombardment.DestroySystemCoreSupportPenalty
+                    _game.Config.Combat.Bombardment.DestroyPlanetCoreSupportPenalty
                 )
             );
 
@@ -933,14 +933,14 @@ namespace Rebellion.Systems
                 .SelectMany(GetAffectedPlanets)
                 .Where(planet =>
                     planet.GetPopularSupport(attacker.InstanceID)
-                    < _game.Config.Combat.Bombardment.DestroySystemOuterRimSupportThreshold
+                    < _game.Config.Combat.Bombardment.DestroyPlanetOuterRimSupportThreshold
                 )
                 .ToList();
             results.AddRange(
                 _ownership.ShiftBombardmentSupport(
                     outerRimPlanets,
                     attacker,
-                    _game.Config.Combat.Bombardment.DestroySystemOuterRimSupportPenalty
+                    _game.Config.Combat.Bombardment.DestroyPlanetOuterRimSupportPenalty
                 )
             );
             return results;

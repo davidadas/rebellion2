@@ -60,7 +60,7 @@ namespace Rebellion.Game.Galaxy
 
         // Planet Properties.
         public bool IsColonized { get; set; }
-        public int SystemDataId { get; set; }
+        public int PlanetDataId { get; set; }
         public int NumRawResourceNodes { get; set; }
         public int EnergyCapacity { get; set; }
         public int AllocatedEnergy { get; set; }
@@ -142,7 +142,7 @@ namespace Rebellion.Game.Galaxy
             base.CopyStateTo(destination);
             Planet copy = (Planet)destination;
             copy.IsColonized = IsColonized;
-            copy.SystemDataId = SystemDataId;
+            copy.PlanetDataId = PlanetDataId;
             copy.NumRawResourceNodes = NumRawResourceNodes;
             copy.EnergyCapacity = EnergyCapacity;
             copy.AllocatedEnergy = AllocatedEnergy;
@@ -336,7 +336,7 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the total number of raw resource nodes available on the planet or system.
+        /// Gets the total number of raw resource nodes available on the planet.
         /// This represents the maximum number of resources that can be utilized.
         /// </summary>
         /// <returns>The total number of raw resource nodes.</returns>

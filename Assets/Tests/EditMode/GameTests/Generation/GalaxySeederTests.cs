@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_StrongBucketPlanet_IsAssignedOwnership()
         {
-            PlanetSector[] systems = CreateCoreGalaxy(10);
+            PlanetSector[] sectors = CreateCoreGalaxy(10);
             GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 20,
                 allianceWeakPct: 0,
@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Generation
             );
 
             GalaxyClassificationResult result = Classify(
-                systems,
+                sectors,
                 _factions,
                 _summary,
                 rules,
@@ -66,7 +66,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_WeakBucketPlanet_IsAssignedOwnership()
         {
-            PlanetSector[] systems = CreateCoreGalaxy(10);
+            PlanetSector[] sectors = CreateCoreGalaxy(10);
             GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 0,
                 allianceWeakPct: 30,
@@ -75,7 +75,7 @@ namespace Rebellion.Tests.Generation
             );
 
             GalaxyClassificationResult result = Classify(
-                systems,
+                sectors,
                 _factions,
                 _summary,
                 rules,
@@ -109,7 +109,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_NeutralBucketPlanet_RemainsUnowned()
         {
-            PlanetSector[] systems = CreateCoreGalaxy(10);
+            PlanetSector[] sectors = CreateCoreGalaxy(10);
             GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 10,
                 allianceWeakPct: 10,
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.Generation
             );
 
             GalaxyClassificationResult result = Classify(
-                systems,
+                sectors,
                 _factions,
                 _summary,
                 rules,
@@ -147,7 +147,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_ProfileWithStrongAndWeakBuckets_OwnsSumOfBoth()
         {
-            PlanetSector[] systems = CreateCoreGalaxy(20);
+            PlanetSector[] sectors = CreateCoreGalaxy(20);
             GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 20,
                 allianceWeakPct: 0,
@@ -156,17 +156,17 @@ namespace Rebellion.Tests.Generation
             );
 
             GalaxyClassificationResult result = Classify(
-                systems,
+                sectors,
                 _factions,
                 _summary,
                 rules,
                 new StubRNG()
             );
 
-            int allianceOwned = systems
+            int allianceOwned = sectors
                 .SelectMany(s => s.GetChildren<Planet>())
                 .Count(p => p.OwnerInstanceID == "FNALL1");
-            int empireOwned = systems
+            int empireOwned = sectors
                 .SelectMany(s => s.GetChildren<Planet>())
                 .Count(p => p.OwnerInstanceID == "FNEMP1");
 
@@ -181,16 +181,16 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_StartingPlanetInBucket_PreservesOriginalOwnership()
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
             Planet startingPlanet = new Planet { InstanceID = "CORUSCANT", TypeID = "PLSEW05" };
-            system.AddChild(startingPlanet);
+            sector.AddChild(startingPlanet);
             for (int i = 0; i < 9; i++)
             {
-                system.AddChild(new Planet { InstanceID = $"p{i}" });
+                sector.AddChild(new Planet { InstanceID = $"p{i}" });
             }
 
             GameGenerationConfig rules = CreateRules(
@@ -210,7 +210,7 @@ namespace Rebellion.Tests.Generation
                     }
                 );
 
-            Classify(new[] { system }, _factions, _summary, rules, new StubRNG());
+            Classify(new[] { sector }, _factions, _summary, rules, new StubRNG());
 
             Assert.AreEqual(
                 "FNEMP1",
@@ -271,7 +271,7 @@ namespace Rebellion.Tests.Generation
         }
 
         private static GalaxyClassificationResult Classify(
-            PlanetSector[] systems,
+            PlanetSector[] sectors,
             Faction[] factions,
             GameSummary summary,
             GameGenerationConfig config,
@@ -280,7 +280,7 @@ namespace Rebellion.Tests.Generation
         {
             GenerationContext ctx = new GenerationContext
             {
-                Sectors = systems,
+                Sectors = sectors,
                 Factions = factions,
                 Summary = summary,
                 Config = config,
@@ -292,16 +292,16 @@ namespace Rebellion.Tests.Generation
 
         private PlanetSector[] CreateCoreGalaxy(int planetCount)
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
             for (int i = 0; i < planetCount; i++)
             {
-                system.AddChild(new Planet { InstanceID = $"p{i}", TypeID = $"p{i}" });
+                sector.AddChild(new Planet { InstanceID = $"p{i}", TypeID = $"p{i}" });
             }
-            return new[] { system };
+            return new[] { sector };
         }
     }
 }

@@ -293,12 +293,12 @@ namespace Rebellion.Tests.Sectors
         {
             _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
-            PlanetSector system = new PlanetSector { InstanceID = "system" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
             Planet first = new Planet { InstanceID = "first" };
             Planet second = new Planet { InstanceID = "second" };
-            _game.AttachNode(first, system);
-            _game.AttachNode(second, system);
+            _game.AttachNode(first, sector);
+            _game.AttachNode(second, sector);
             first.OwnerInstanceID = "alliance";
             second.OwnerInstanceID = "empire";
             GameEvent gameEvent = new GameEvent
@@ -342,10 +342,10 @@ namespace Rebellion.Tests.Sectors
         public void ProcessEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
             _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
-            PlanetSector system = new PlanetSector { InstanceID = "system" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planet, sector);
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "OWNED_ONLY",
@@ -384,10 +384,10 @@ namespace Rebellion.Tests.Sectors
         {
             _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
-            PlanetSector system = new PlanetSector { InstanceID = "system" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planet, sector);
             planet.OwnerInstanceID = "alliance";
             GameEvent gameEvent = new GameEvent
             {
@@ -426,10 +426,10 @@ namespace Rebellion.Tests.Sectors
         [Test]
         public void ProcessEvents_OneShotTarget_ExecutesTargetOnce()
         {
-            PlanetSector system = new PlanetSector { InstanceID = "system" };
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet { InstanceID = "planet" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(planet, system);
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "ONE_SHOT_PER_PLANET",
@@ -451,13 +451,13 @@ namespace Rebellion.Tests.Sectors
         [Test]
         public void ProcessEvents_RandomTargetBeforeScheduledTick_DoesNotSelectTarget()
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
-                InstanceID = "system",
+                InstanceID = "sector",
                 SectorType = PlanetSectorType.Core,
             };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(new Planet { InstanceID = "planet" }, system);
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(new Planet { InstanceID = "planet" }, sector);
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "DELAYED_RANDOM_TARGET",

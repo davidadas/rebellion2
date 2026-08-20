@@ -94,11 +94,11 @@ namespace Rebellion.Tests.Sectors
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
-            PlanetSector system = new PlanetSector { InstanceID = "s1" };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1" };
             Planet planet = new Planet { InstanceID = "p1", OwnerInstanceID = "empire" };
             game.GetFactions().Add(empire);
-            game.AttachNode(system, game.GetGalaxyMap());
-            game.AttachNode(planet, system);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
 
             BlockadeSystem manager = new BlockadeSystem(game, new StubRNG());
             List<GameResult> results = manager.ProcessTick();
@@ -215,7 +215,7 @@ namespace Rebellion.Tests.Sectors
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
             Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            PlanetSector system = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "s1",
                 DisplayName = "Tatooine System",
@@ -235,8 +235,8 @@ namespace Rebellion.Tests.Sectors
 
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
-            game.AttachNode(system, game.GetGalaxyMap());
-            game.AttachNode(planet, system);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
             game.AttachNode(hostileFleet, planet);
             AttachOperationalCapitalShip(game, hostileFleet, "hostile-ship");
 

@@ -14,15 +14,15 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_ForeignCorePlanet_CapturesResourceSnapshotForNonOwner()
         {
-            var (game, coreSystem, empirePlanet, _, alliance) = BuildScene();
+            var (game, coreSector, empirePlanet, _, alliance) = BuildScene();
 
             new FogOfWarSeeder().Seed(Wrap(game));
 
             Assert.IsTrue(
-                alliance.Fog.Snapshots.ContainsKey(coreSystem.InstanceID),
-                "Alliance should have a snapshot of the Empire-owned core system."
+                alliance.Fog.Snapshots.ContainsKey(coreSector.InstanceID),
+                "Alliance should have a snapshot of the Empire-owned core sector."
             );
-            PlanetSnapshot snapshot = alliance.Fog.Snapshots[coreSystem.InstanceID].Planets[
+            PlanetSnapshot snapshot = alliance.Fog.Snapshots[coreSector.InstanceID].Planets[
                 empirePlanet.InstanceID
             ];
             Assert.AreEqual(empirePlanet.EnergyCapacity, snapshot.EnergyCapacity);
@@ -32,12 +32,12 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_OwnedCorePlanet_NoSnapshotForOwner()
         {
-            var (game, coreSystem, _, empire, _) = BuildScene();
+            var (game, coreSector, _, empire, _) = BuildScene();
 
             new FogOfWarSeeder().Seed(Wrap(game));
 
             Assert.IsFalse(
-                empire.Fog.Snapshots.ContainsKey(coreSystem.InstanceID),
+                empire.Fog.Snapshots.ContainsKey(coreSector.InstanceID),
                 "Owner should not have a snapshot of their own planet from the seeder."
             );
         }
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Generation
 
         private static (
             GameRoot game,
-            PlanetSector coreSystem,
+            PlanetSector coreSector,
             Planet empirePlanet,
             Faction empire,
             Faction alliance
@@ -153,7 +153,7 @@ namespace Rebellion.Tests.Generation
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
 
-            PlanetSector coreSystem = new PlanetSector
+            PlanetSector coreSector = new PlanetSector
             {
                 InstanceID = "core_sys",
                 SectorType = PlanetSectorType.Core,
@@ -167,11 +167,11 @@ namespace Rebellion.Tests.Generation
                 EnergyCapacity = 9,
                 NumRawResourceNodes = 6,
             };
-            coreSystem.AddChild(empirePlanet);
+            coreSector.AddChild(empirePlanet);
             game.Galaxy = new GalaxyMap();
-            game.Galaxy.AddChild(coreSystem);
+            game.Galaxy.AddChild(coreSector);
 
-            return (game, coreSystem, empirePlanet, empire, alliance);
+            return (game, coreSector, empirePlanet, empire, alliance);
         }
 
         private static GenerationContext Wrap(GameRoot game, GameGenerationConfig config = null)
