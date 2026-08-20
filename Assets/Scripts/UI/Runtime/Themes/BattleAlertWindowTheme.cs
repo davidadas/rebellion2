@@ -84,7 +84,7 @@ public class BattleAlertWindowTheme
 
     public SourceRectLayout PlanetaryResultPersonnelLayout { get; set; }
 
-    public WindowButtonImageTheme ResultDirectSystemButton { get; set; }
+    public WindowButtonImageTheme ResultDirectSectorButton { get; set; }
 
     public WindowButtonImageTheme ResultDirectFleetButton { get; set; }
 

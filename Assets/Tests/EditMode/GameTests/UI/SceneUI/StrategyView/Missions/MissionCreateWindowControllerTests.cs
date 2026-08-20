@@ -12,7 +12,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.UI;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
@@ -216,12 +216,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             game.Factions.Add(new Faction { InstanceID = _playerFactionId });
             game.Factions.Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSystem system = new GamePlanetSystem
+            GamePlanetSector planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
-                DisplayName = "Core System",
+                InstanceID = "sector",
+                DisplayName = "Core Sector",
             };
-            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planetSector, game.GetGalaxyMap());
             origin = new Planet
             {
                 InstanceID = "origin",
@@ -236,9 +236,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 OwnerInstanceID = _opponentFactionId,
                 IsColonized = true,
             };
-            game.AttachNode(origin, system);
-            game.AttachNode(target, system);
-            targetPlanet = new GalaxyMapPlanet(system, target, _playerFactionId);
+            game.AttachNode(origin, planetSector);
+            game.AttachNode(target, planetSector);
+            targetPlanet = new GalaxyMapPlanet(planetSector, target, _playerFactionId);
             return game;
         }
 

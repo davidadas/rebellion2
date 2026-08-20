@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(
                 BuildContext(
-                    new[] { WrapSystem(planet) },
+                    new[] { WrapSector(planet) },
                     factions,
                     config,
                     new GalaxyClassificationResult(),
@@ -88,7 +88,7 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(
                 BuildContext(
-                    new[] { WrapSystem(planet) },
+                    new[] { WrapSector(planet) },
                     factions,
                     config,
                     new GalaxyClassificationResult(),
@@ -143,7 +143,7 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(
                 BuildContext(
-                    new[] { WrapSystem(planet) },
+                    new[] { WrapSector(planet) },
                     factions,
                     config,
                     new GalaxyClassificationResult(),
@@ -196,7 +196,7 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(
                 BuildContext(
-                    new[] { WrapSystem(hq) },
+                    new[] { WrapSector(hq) },
                     factions,
                     config,
                     classification,
@@ -248,7 +248,7 @@ namespace Rebellion.Tests.Generation
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
                 new UnitSeeder().Seed(
                     BuildContext(
-                        new[] { WrapSystem(planet) },
+                        new[] { WrapSector(planet) },
                         factions,
                         config,
                         new GalaxyClassificationResult()
@@ -304,7 +304,7 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(
                 BuildContext(
-                    new[] { WrapSystem(planet) },
+                    new[] { WrapSector(planet) },
                     factions,
                     config,
                     new GalaxyClassificationResult(),
@@ -345,7 +345,7 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(
                 BuildContext(
-                    new[] { WrapSystem(yavin), WrapSystem(hq) },
+                    new[] { WrapSector(yavin), WrapSector(hq) },
                     factions,
                     config,
                     classification,
@@ -388,7 +388,7 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(
                 BuildContext(
-                    new[] { WrapSystem(yavin), WrapSystem(hq) },
+                    new[] { WrapSector(yavin), WrapSector(hq) },
                     factions,
                     config,
                     classification,
@@ -477,7 +477,7 @@ namespace Rebellion.Tests.Generation
             };
 
             GenerationContext context = BuildContext(
-                new[] { WrapSystem(planet) },
+                new[] { WrapSector(planet) },
                 factions,
                 config,
                 new GalaxyClassificationResult(),
@@ -569,7 +569,7 @@ namespace Rebellion.Tests.Generation
             };
 
             GenerationContext context = BuildContext(
-                new[] { WrapSystem(planet) },
+                new[] { WrapSector(planet) },
                 factions,
                 config,
                 new GalaxyClassificationResult(),
@@ -648,7 +648,7 @@ namespace Rebellion.Tests.Generation
             };
 
             GenerationContext context = BuildContext(
-                new[] { WrapSystem(planet) },
+                new[] { WrapSector(planet) },
                 factions,
                 config,
                 new GalaxyClassificationResult(),
@@ -672,7 +672,7 @@ namespace Rebellion.Tests.Generation
         }
 
         private static GenerationContext BuildContext(
-            PlanetSystem[] systems,
+            PlanetSector[] planetSectors,
             Faction[] factions,
             GameGenerationConfig config,
             GalaxyClassificationResult classification,
@@ -684,7 +684,7 @@ namespace Rebellion.Tests.Generation
         )
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Systems = systems;
+            ctx.Sectors = planetSectors;
             ctx.Factions = factions;
             ctx.Config = config;
             ctx.Classification = classification;
@@ -720,15 +720,15 @@ namespace Rebellion.Tests.Generation
             return planet;
         }
 
-        private static PlanetSystem WrapSystem(Planet planet)
+        private static PlanetSector WrapSector(Planet planet)
         {
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = $"sys_{planet.InstanceID}",
-                SystemType = PlanetSystemType.CoreSystem,
+                InstanceID = $"sector_{planet.InstanceID}",
+                SectorType = PlanetSectorType.Core,
             };
-            system.Planets.Add(planet);
-            return system;
+            planetSector.Planets.Add(planet);
+            return planetSector;
         }
 
         private static GameGenerationConfig CreateFixedFleetTargetConfig()

@@ -234,9 +234,9 @@ namespace Rebellion.Tests.Content
       </DifficultyProfile>
     </Profiles>
   </GalaxyClassification>
-  <SystemResources>
+  <PlanetResources>
     <Profiles>
-      <SystemResourceProfile>
+      <PlanetResourceProfile>
         <Availability>Normal</Availability>
         <CoreEnergy><Base>0</Base><Random1>0</Random1><Random2>0</Random2></CoreEnergy>
         <RimEnergy><Base>0</Base><Random1>0</Random1><Random2>0</Random2></RimEnergy>
@@ -247,15 +247,15 @@ namespace Rebellion.Tests.Content
         <RawMaterialsMin>0</RawMaterialsMin>
         <RawMaterialsMax>0</RawMaterialsMax>
         <RimColonizationPct>0</RimColonizationPct>
-      </SystemResourceProfile>
+      </PlanetResourceProfile>
     </Profiles>
-  </SystemResources>
-  <SystemSupport>
+  </PlanetResources>
+  <PlanetSupport>
     <Strong><Base>0</Base><Random>0</Random></Strong>
     <Weak><Base>0</Base><Random>0</Random></Weak>
     <Neutral><Base>0</Base><Random>0</Random></Neutral>
     <RimSupportRandom>0</RimSupportRandom>
-  </SystemSupport>
+  </PlanetSupport>
   <FacilityGeneration>
     <CoreMineMultiplier>0</CoreMineMultiplier>
     <RimMineMultiplier>0</RimMineMultiplier>

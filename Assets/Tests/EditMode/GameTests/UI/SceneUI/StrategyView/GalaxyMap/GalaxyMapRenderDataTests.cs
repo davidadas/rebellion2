@@ -61,7 +61,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void Cluster_MissingSystemIdentifier_ThrowsArgumentException()
+        public void Cluster_MissingSectorIdentifier_ThrowsArgumentException()
         {
             Assert.Throws<ArgumentException>(() =>
                 new GalaxyMapClusterRenderData(null, 0, 0, null, false, null)
@@ -81,7 +81,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GalaxyMapStarRenderData[] stars = { star };
 
             GalaxyMapClusterRenderData data = new GalaxyMapClusterRenderData(
-                "system",
+                "sector",
                 3,
                 4,
                 null,
@@ -90,7 +90,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
             stars[0] = null;
 
-            Assert.AreEqual("system", data.SystemInstanceId);
+            Assert.AreEqual("sector", data.SectorInstanceId);
             Assert.AreEqual(3, data.SourceX);
             Assert.AreEqual(4, data.SourceY);
             Assert.AreEqual(string.Empty, data.Label);
@@ -102,10 +102,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void Map_SourceChanges_PreservesCompleteSnapshot()
         {
             GalaxyMapClusterRenderData cluster = new GalaxyMapClusterRenderData(
-                "system",
+                "sector",
                 1,
                 2,
-                "System",
+                "Sector",
                 false,
                 null
             );

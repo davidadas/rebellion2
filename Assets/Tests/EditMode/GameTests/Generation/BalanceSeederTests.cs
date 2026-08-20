@@ -14,14 +14,14 @@ namespace Rebellion.Tests.Generation
         {
             Planet planet = MakePlanet("CORUSCANT", "FNEMP1", isHq: true);
             planet.SetPopularSupport("FNEMP1", 40);
-            PlanetSystem system = MakeSystem(planet);
+            PlanetSector planetSector = MakeSector(planet);
             Faction[] factions =
             {
                 new Faction { InstanceID = "FNEMP1" },
                 new Faction { InstanceID = "FNALL1" },
             };
 
-            new BalanceSeeder().Seed(BuildContext(system, factions));
+            new BalanceSeeder().Seed(BuildContext(planetSector, factions));
 
             Assert.AreEqual(100, planet.GetPopularSupport("FNEMP1"));
         }
@@ -33,10 +33,10 @@ namespace Rebellion.Tests.Generation
             planet.SetPopularSupport("FNALL1", 50);
             planet.AddChild(new Regiment { InstanceID = "r1", OwnerInstanceID = "FNALL1" });
             planet.AddChild(new Regiment { InstanceID = "r2", OwnerInstanceID = "FNALL1" });
-            PlanetSystem system = MakeSystem(planet);
+            PlanetSector planetSector = MakeSector(planet);
             Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
 
-            new BalanceSeeder().Seed(BuildContext(system, factions));
+            new BalanceSeeder().Seed(BuildContext(planetSector, factions));
 
             Assert.AreEqual(54, planet.GetPopularSupport("FNALL1"));
         }
@@ -50,10 +50,10 @@ namespace Rebellion.Tests.Generation
             {
                 planet.AddChild(new Regiment { InstanceID = $"r{i}", OwnerInstanceID = "FNALL1" });
             }
-            PlanetSystem system = MakeSystem(planet);
+            PlanetSector planetSector = MakeSector(planet);
             Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
 
-            new BalanceSeeder().Seed(BuildContext(system, factions));
+            new BalanceSeeder().Seed(BuildContext(planetSector, factions));
 
             Assert.AreEqual(60, planet.GetPopularSupport("FNALL1"));
         }
@@ -63,18 +63,18 @@ namespace Rebellion.Tests.Generation
         {
             Planet planet = MakePlanet("p1", null);
             planet.SetPopularSupport("FNALL1", 25);
-            PlanetSystem system = MakeSystem(planet);
+            PlanetSector planetSector = MakeSector(planet);
             Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
 
-            new BalanceSeeder().Seed(BuildContext(system, factions));
+            new BalanceSeeder().Seed(BuildContext(planetSector, factions));
 
             Assert.AreEqual(25, planet.GetPopularSupport("FNALL1"));
         }
 
-        private static GenerationContext BuildContext(PlanetSystem system, Faction[] factions)
+        private static GenerationContext BuildContext(PlanetSector planetSector, Faction[] factions)
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Systems = new[] { system };
+            ctx.Sectors = new[] { planetSector };
             ctx.Factions = factions;
             return ctx;
         }
@@ -90,11 +90,14 @@ namespace Rebellion.Tests.Generation
             };
         }
 
-        private static PlanetSystem MakeSystem(Planet planet)
+        private static PlanetSector MakeSector(Planet planet)
         {
-            PlanetSystem system = new PlanetSystem { InstanceID = $"sys_{planet.InstanceID}" };
-            system.Planets.Add(planet);
-            return system;
+            PlanetSector planetSector = new PlanetSector
+            {
+                InstanceID = $"sector_{planet.InstanceID}",
+            };
+            planetSector.Planets.Add(planet);
+            return planetSector;
         }
     }
 }

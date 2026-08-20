@@ -32,7 +32,7 @@ public sealed class StrategyController
         IFacilityWindowActions,
         IFleetWindowActions,
         IDefenseWindowActions,
-        IPlanetSystemWindowActions,
+        IPlanetSectorWindowActions,
         IMissionsWindowActions,
         IMissionCreateWindowActions,
         IMessagesWindowActions,
@@ -108,7 +108,7 @@ public sealed class StrategyController
     private ConstructionWindowController constructionWindowController;
     private FacilityWindowController facilityWindowController;
     private DefenseWindowController defenseWindowController;
-    private PlanetSystemWindowController planetSystemWindowController;
+    private PlanetSectorWindowController planetSectorWindowController;
     private MissionsWindowController missionsWindowController;
     private MessagesWindowController messagesWindowController;
     private EncyclopediaWindowController encyclopediaWindowController;
@@ -351,7 +351,7 @@ public sealed class StrategyController
             MarkDirty,
             getSelectionModifiers
         );
-        planetSystemWindowController = new PlanetSystemWindowController(
+        planetSectorWindowController = new PlanetSectorWindowController(
             fleetCommandController,
             () => uiContext,
             targetingController,
@@ -526,7 +526,7 @@ public sealed class StrategyController
             inputController.OnDrag,
             inputController.OnPointerUp
         );
-        planetSystemWindowController.Initialize(
+        planetSectorWindowController.Initialize(
             this,
             windowCommandController,
             windowCommandController,
@@ -622,7 +622,7 @@ public sealed class StrategyController
                 defenseWindowController,
                 fleetWindowController,
                 missionsWindowController,
-                planetSystemWindowController,
+                planetSectorWindowController,
             }
         );
         inputController = new StrategyScreenInputController(
@@ -1078,7 +1078,7 @@ public sealed class StrategyController
         bookmarkController.ReconcilePlanets(Sectors);
         statusWindowController.ReconcileWindows(Sectors);
         ReconcilePlanetWindows();
-        planetSystemWindowController.ReconcileWindows(Sectors);
+        planetSectorWindowController.ReconcileWindows(Sectors);
         messagesWindowController.ReconcileWindows();
         finderWindowController.ReconcileWindows();
     }
@@ -1188,7 +1188,7 @@ public sealed class StrategyController
         fleetWindowController.RenderWindows();
         defenseWindowController.RenderWindows();
         missionsWindowController.RenderWindows();
-        planetSystemWindowController.RenderWindows();
+        planetSectorWindowController.RenderWindows();
     }
 
     /// <summary>
@@ -1717,17 +1717,17 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Opens the planet-system window requested from a galaxy-map cluster.
+    /// Opens the planet-sector window requested from a galaxy-map cluster.
     /// </summary>
-    /// <param name="system">The requested planet system.</param>
+    /// <param name="sector">The requested planet sector.</param>
     /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
     /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
-    void IGalaxyMapActions.OpenPlanetSystemWindow(PlanetSystem system, int sourceX, int sourceY)
+    void IGalaxyMapActions.OpenPlanetSectorWindow(PlanetSector sector, int sourceX, int sourceY)
     {
         if (!CanInteractWithGalaxy())
             return;
 
-        OpenPlanetSystemWindow(system);
+        OpenPlanetSectorWindow(sector);
         dirty = true;
     }
 
@@ -1862,9 +1862,9 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Rebuilds shared strategy state after a planet-system command changes the game.
+    /// Rebuilds shared strategy state after a planet-sector command changes the game.
     /// </summary>
-    void IPlanetSystemWindowActions.RefreshPlanetSystemState()
+    void IPlanetSectorWindowActions.RefreshPlanetSectorState()
     {
         RefreshStrategyState();
     }
@@ -1873,7 +1873,7 @@ public sealed class StrategyController
     /// Opens the completed planetary combat result.
     /// </summary>
     /// <param name="result">The completed combat result.</param>
-    void IPlanetSystemWindowActions.OpenPlanetSystemBattleResult(GameResult result)
+    void IPlanetSectorWindowActions.OpenPlanetSectorBattleResult(GameResult result)
     {
         battleAlertWindowController.OpenResult(result);
     }
@@ -1885,7 +1885,7 @@ public sealed class StrategyController
     /// <param name="icon">The requested planet icon.</param>
     /// <param name="sourceX">The source-space horizontal position.</param>
     /// <param name="sourceY">The source-space vertical position.</param>
-    void IPlanetSystemWindowActions.OpenPlanetSystemPlanetWindow(
+    void IPlanetSectorWindowActions.OpenPlanetSectorPlanetWindow(
         GalaxyMapPlanet planet,
         PlanetIcon icon,
         int sourceX,
@@ -1896,19 +1896,19 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Opens Encyclopedia information for the active planet-system target.
+    /// Opens Encyclopedia information for the active planet-sector target.
     /// </summary>
     /// <param name="target">The resolved information target.</param>
-    void IPlanetSystemWindowActions.OpenPlanetSystemInfo(StrategyStatusTarget target)
+    void IPlanetSectorWindowActions.OpenPlanetSectorInfo(StrategyStatusTarget target)
     {
         OpenEncyclopediaWindow(target);
     }
 
     /// <summary>
-    /// Opens status information for the active planet-system target.
+    /// Opens status information for the active planet-sector target.
     /// </summary>
     /// <param name="target">The resolved status target.</param>
-    void IPlanetSystemWindowActions.OpenPlanetSystemStatus(StrategyStatusTarget target)
+    void IPlanetSectorWindowActions.OpenPlanetSectorStatus(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
     }
@@ -1984,18 +1984,18 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Opens the system window for a completed battle.
+    /// Opens the sector window for a completed battle.
     /// </summary>
-    /// <param name="system">The battle's planetary system.</param>
+    /// <param name="sector">The battle's planetary sector.</param>
     /// <param name="sourceX">The source window's horizontal coordinate.</param>
     /// <param name="sourceY">The source window's vertical coordinate.</param>
-    void IBattleAlertWindowActions.OpenBattleResultSystem(
-        PlanetSystem system,
+    void IBattleAlertWindowActions.OpenBattleResultSector(
+        PlanetSector sector,
         int sourceX,
         int sourceY
     )
     {
-        OpenPlanetSystemWindow(system);
+        OpenPlanetSectorWindow(sector);
     }
 
     /// <summary>
@@ -2055,10 +2055,10 @@ public sealed class StrategyController
             case StrategyWindowButtonActions.OpenSector:
                 GalaxyMapPlanet planet = GetWindowPlanet(window);
                 if (planet != null)
-                    OpenPlanetSystemWindow(planet.Sector);
+                    OpenPlanetSectorWindow(planet.Sector);
                 break;
             case StrategyWindowButtonActions.SwapWindow:
-                planetSystemWindowController.Swap(window);
+                planetSectorWindowController.Swap(window);
                 break;
             case StrategyWindowButtonActions.MinimizeWindow:
                 MinimizeWindow(window);
@@ -2216,8 +2216,8 @@ public sealed class StrategyController
         CloseWindow(strategyWindowManager.FindWindow<MessagesWindowView>());
         CloseWindow(strategyWindowManager.FindWindow<EncyclopediaWindowView>());
 
-        Vector2Int source = GetSystemSourcePosition(sector);
-        OpenPlanetSystemWindow(sector);
+        Vector2Int source = GetSectorSourcePosition(sector);
+        OpenPlanetSectorWindow(sector);
 
         PlanetIcon icon = GetMessageTargetIcon(target);
         if (planet != null && icon != PlanetIcon.None)
@@ -2318,7 +2318,7 @@ public sealed class StrategyController
     /// <summary>
     /// Resolves a message location identifier to a visible sector.
     /// </summary>
-    /// <param name="locationInstanceId">A system or planet identifier.</param>
+    /// <param name="locationInstanceId">A sector or planet identifier.</param>
     /// <returns>The matching visible sector, or null.</returns>
     private GalaxyMapSector FindMessageLocationSector(string locationInstanceId)
     {
@@ -2326,7 +2326,11 @@ public sealed class StrategyController
             return null;
 
         return Sectors.FirstOrDefault(sector =>
-            string.Equals(sector?.System?.InstanceID, locationInstanceId, StringComparison.Ordinal)
+            string.Equals(
+                sector?.PlanetSector?.InstanceID,
+                locationInstanceId,
+                StringComparison.Ordinal
+            )
             || sector?.Planets?.Any(planet =>
                 string.Equals(
                     planet?.Planet?.InstanceID,
@@ -2382,10 +2386,10 @@ public sealed class StrategyController
         if (
             strategyWindowManager.TryGetWindowView(
                 window,
-                out PlanetSystemWindowView planetSystemView
+                out PlanetSectorWindowView planetSectorView
             )
         )
-            return planetSystemWindowController.GetStatusTarget(planetSystemView);
+            return planetSectorWindowController.GetStatusTarget(planetSectorView);
 
         return null;
     }
@@ -2428,10 +2432,10 @@ public sealed class StrategyController
         if (
             strategyWindowManager.TryGetWindowView(
                 window,
-                out PlanetSystemWindowView planetSystemView
+                out PlanetSectorWindowView planetSectorView
             )
         )
-            return planetSystemWindowController.GetContextItems(planetSystemView);
+            return planetSectorWindowController.GetContextItems(planetSectorView);
 
         return Array.Empty<ISceneNode>();
     }
@@ -2459,12 +2463,12 @@ public sealed class StrategyController
         if (
             strategyWindowManager.TryGetWindowView(
                 window,
-                out PlanetSystemWindowView planetSystemView
+                out PlanetSectorWindowView planetSectorView
             )
         )
         {
-            return planetSystemWindowController.TryGetDragPreview(
-                planetSystemView,
+            return planetSectorWindowController.TryGetDragPreview(
+                planetSectorView,
                 sourceX,
                 sourceY,
                 out preview
@@ -2515,10 +2519,10 @@ public sealed class StrategyController
         if (
             strategyWindowManager.TryGetWindowView(
                 window,
-                out PlanetSystemWindowView planetSystemView
+                out PlanetSectorWindowView planetSectorView
             )
         )
-            planetSystemWindowController.ClearSelection(planetSystemView);
+            planetSectorWindowController.ClearSelection(planetSectorView);
     }
 
     /// <summary>
@@ -2591,19 +2595,21 @@ public sealed class StrategyController
     /// <param name="window">The closing window.</param>
     private void PlaySectorWindowCloseSound(UIWindow window)
     {
-        if (strategyWindowManager.TryGetWindowView(window, out PlanetSystemWindowView _))
+        if (strategyWindowManager.TryGetWindowView(window, out PlanetSectorWindowView _))
             PlayStrategySfx(StrategyUISoundPaths.SectorWindowClose);
     }
 
     /// <summary>
-    /// Opens or focuses the sector window containing a planetary system.
+    /// Opens or focuses the window for a planet sector.
     /// </summary>
-    /// <param name="system">The planetary system to display.</param>
+    /// <param name="planetSector">The planet sector to display.</param>
     /// <returns>True when the sector was opened or focused.</returns>
-    private bool OpenPlanetSystemWindow(PlanetSystem system)
+    private bool OpenPlanetSectorWindow(PlanetSector planetSector)
     {
-        GalaxyMapSector sector = Sectors.FirstOrDefault(candidate => candidate.System == system);
-        return OpenPlanetSystemWindow(sector);
+        GalaxyMapSector sector = Sectors.FirstOrDefault(candidate =>
+            candidate.PlanetSector == planetSector
+        );
+        return OpenPlanetSectorWindow(sector);
     }
 
     /// <summary>
@@ -2611,18 +2617,18 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="sector">The strategy sector to display.</param>
     /// <returns>True when the sector was opened or focused.</returns>
-    private bool OpenPlanetSystemWindow(GalaxyMapSector sector)
+    private bool OpenPlanetSectorWindow(GalaxyMapSector sector)
     {
         if (sector == null)
             return false;
 
-        if (planetSystemWindowController.Open(sector))
+        if (planetSectorWindowController.Open(sector))
         {
             PlayStrategySfx(StrategyUISoundPaths.SectorWindowOpen);
             return true;
         }
 
-        UIWindow window = planetSystemWindowController.FindWindow(sector);
+        UIWindow window = planetSectorWindowController.FindWindow(sector);
         if (window == null)
             return false;
 
@@ -2775,8 +2781,8 @@ public sealed class StrategyController
         if (row?.Planet == null)
             return false;
 
-        Vector2Int position = GetSystemSourcePosition(row.Planet.Sector);
-        OpenPlanetSystemWindow(row.Planet.Sector);
+        Vector2Int position = GetSectorSourcePosition(row.Planet.Sector);
+        OpenPlanetSectorWindow(row.Planet.Sector);
         UIWindow window = OpenPlanetWindowAt(row.Planet, row.TargetIcon, position.x, position.y);
         switch (row.TargetIcon)
         {
@@ -2823,10 +2829,10 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="sector">The visible sector.</param>
     /// <returns>The sector's source-space position, or zero when unavailable.</returns>
-    private Vector2Int GetSystemSourcePosition(GalaxyMapSector sector)
+    private Vector2Int GetSectorSourcePosition(GalaxyMapSector sector)
     {
-        return galaxyMapController != null && sector?.System != null
-            ? galaxyMapController.GetSystemSourcePosition(sector)
+        return galaxyMapController != null && sector?.PlanetSector != null
+            ? galaxyMapController.GetSectorSourcePosition(sector)
             : Vector2Int.zero;
     }
 

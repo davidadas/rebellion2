@@ -25,16 +25,16 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="faction">The faction receiving the observation.</param>
         /// <param name="planet">The observed planet.</param>
-        /// <param name="system">The system containing the planet.</param>
+        /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the observation is recorded.</param>
         public void RecordPlanetSnapshot(
             Faction faction,
             Planet planet,
-            PlanetSystem system,
+            PlanetSector sector,
             int currentTick
         )
         {
-            RecordPlanetSnapshot(faction, planet, system, currentTick, false);
+            RecordPlanetSnapshot(faction, planet, sector, currentTick, false);
         }
 
         /// <summary>
@@ -42,16 +42,16 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="faction">The faction receiving the intelligence.</param>
         /// <param name="planet">The observed planet.</param>
-        /// <param name="system">The system containing the planet.</param>
+        /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the observation is recorded.</param>
         public void RecordEspionageSnapshot(
             Faction faction,
             Planet planet,
-            PlanetSystem system,
+            PlanetSector sector,
             int currentTick
         )
         {
-            RecordPlanetSnapshot(faction, planet, system, currentTick, true);
+            RecordPlanetSnapshot(faction, planet, sector, currentTick, true);
         }
 
         /// <summary>
@@ -69,10 +69,10 @@ namespace Rebellion.Game.FogOfWar
 
             foreach (ISceneNode observation in observations.Where(node => node != null).Distinct())
             {
-                if (observation is PlanetSystem selectedSystem)
+                if (observation is PlanetSector selectedSector)
                 {
-                    foreach (Planet systemPlanet in selectedSystem.Planets)
-                        RecordObservation(game, faction, systemPlanet, currentTick);
+                    foreach (Planet planet in selectedSector.Planets)
+                        RecordObservation(game, faction, planet, currentTick);
                     continue;
                 }
 
@@ -91,14 +91,14 @@ namespace Rebellion.Game.FogOfWar
         )
         {
             Planet planet = GetContainingOrProducingPlanet(game, observation);
-            PlanetSystem system = planet?.GetParentOfType<PlanetSystem>();
-            if (planet == null || system == null)
+            PlanetSector sector = planet?.GetParentOfType<PlanetSector>();
+            if (planet == null || sector == null)
                 return;
 
             PlanetSnapshot snapshot = GetOrCreateObservedPlanetSnapshot(
                 faction,
                 planet,
-                system,
+                sector,
                 currentTick
             );
             if (observation is Planet)
@@ -171,17 +171,17 @@ namespace Rebellion.Game.FogOfWar
         private PlanetSnapshot GetOrCreateObservedPlanetSnapshot(
             Faction faction,
             Planet planet,
-            PlanetSystem system,
+            PlanetSector sector,
             int currentTick
         )
         {
             planet.AddVisitor(faction.InstanceID);
-            SystemSnapshot systemSnapshot = GetOrCreateSystemSnapshot(faction, system);
-            faction.Fog.PlanetToSystem[planet.InstanceID] = system.InstanceID;
-            if (!systemSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
+            PlanetSectorSnapshot sectorSnapshot = GetOrCreateSectorSnapshot(faction, sector);
+            faction.Fog.PlanetToSector[planet.InstanceID] = sector.InstanceID;
+            if (!sectorSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
             {
                 snapshot = new PlanetSnapshot();
-                systemSnapshot.Planets[planet.InstanceID] = snapshot;
+                sectorSnapshot.Planets[planet.InstanceID] = snapshot;
             }
 
             snapshot.TickCaptured = currentTick;
@@ -364,13 +364,13 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="faction">The faction receiving intelligence.</param>
         /// <param name="planet">The observed planet.</param>
-        /// <param name="system">The planet's containing system.</param>
+        /// <param name="sector">The planet's containing sector.</param>
         /// <param name="currentTick">The observation tick.</param>
         /// <param name="categories">The categories revealed by this observation.</param>
         public void RecordIntelligenceSnapshot(
             Faction faction,
             Planet planet,
-            PlanetSystem system,
+            PlanetSector sector,
             int currentTick,
             PlanetIntelligenceCategory categories
         )
@@ -378,16 +378,16 @@ namespace Rebellion.Game.FogOfWar
             if (
                 faction == null
                 || planet == null
-                || system == null
+                || sector == null
                 || categories == PlanetIntelligenceCategory.None
             )
                 return;
 
             planet.AddVisitor(faction.InstanceID);
-            SystemSnapshot systemSnapshot = GetOrCreateSystemSnapshot(faction, system);
-            faction.Fog.PlanetToSystem[planet.InstanceID] = system.InstanceID;
+            PlanetSectorSnapshot sectorSnapshot = GetOrCreateSectorSnapshot(faction, sector);
+            faction.Fog.PlanetToSector[planet.InstanceID] = sector.InstanceID;
             PlanetSnapshot snapshot = GetOrCreatePlanetSnapshot(
-                systemSnapshot,
+                sectorSnapshot,
                 planet,
                 currentTick
             );
@@ -398,12 +398,12 @@ namespace Rebellion.Game.FogOfWar
 
         /// <summary>Returns the existing planet snapshot or creates its initial strategic state.</summary>
         private static PlanetSnapshot GetOrCreatePlanetSnapshot(
-            SystemSnapshot systemSnapshot,
+            PlanetSectorSnapshot sectorSnapshot,
             Planet planet,
             int currentTick
         )
         {
-            if (systemSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
+            if (sectorSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
                 return snapshot;
 
             snapshot = new PlanetSnapshot
@@ -413,7 +413,7 @@ namespace Rebellion.Game.FogOfWar
                 IsColonized = planet.IsColonized,
                 IsDestroyed = planet.IsDestroyed,
             };
-            systemSnapshot.Planets[planet.InstanceID] = snapshot;
+            sectorSnapshot.Planets[planet.InstanceID] = snapshot;
             return snapshot;
         }
 
@@ -618,21 +618,21 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="faction">The faction receiving the ownership observation.</param>
         /// <param name="planet">The observed planet.</param>
-        /// <param name="system">The system containing the planet.</param>
+        /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick used when a new planet snapshot is required.</param>
         public void RecordPlanetOwnershipSnapshot(
             Faction faction,
             Planet planet,
-            PlanetSystem system,
+            PlanetSector sector,
             int currentTick
         )
         {
-            if (faction == null || planet == null || system == null)
+            if (faction == null || planet == null || sector == null)
                 return;
 
-            SystemSnapshot systemSnapshot = GetOrCreateSystemSnapshot(faction, system);
-            faction.Fog.PlanetToSystem[planet.InstanceID] = system.InstanceID;
-            if (!systemSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
+            PlanetSectorSnapshot sectorSnapshot = GetOrCreateSectorSnapshot(faction, sector);
+            faction.Fog.PlanetToSector[planet.InstanceID] = sector.InstanceID;
+            if (!sectorSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
             {
                 snapshot = new PlanetSnapshot
                 {
@@ -640,7 +640,7 @@ namespace Rebellion.Game.FogOfWar
                     IsColonized = planet.IsColonized,
                     IsDestroyed = planet.IsDestroyed,
                 };
-                systemSnapshot.Planets[planet.InstanceID] = snapshot;
+                sectorSnapshot.Planets[planet.InstanceID] = snapshot;
             }
 
             snapshot.OwnerInstanceID = planet.OwnerInstanceID;
@@ -651,25 +651,25 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="faction">The faction receiving the observation.</param>
         /// <param name="planet">The observed planet.</param>
-        /// <param name="system">The system containing the planet.</param>
+        /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the observation is recorded.</param>
         /// <param name="includeEspionageIntelligence">Whether complete espionage intelligence is observable.</param>
         private void RecordPlanetSnapshot(
             Faction faction,
             Planet planet,
-            PlanetSystem system,
+            PlanetSector sector,
             int currentTick,
             bool includeEspionageIntelligence
         )
         {
-            if (faction == null || planet == null || system == null)
+            if (faction == null || planet == null || sector == null)
                 return;
 
             planet.AddVisitor(faction.InstanceID);
 
-            SystemSnapshot systemSnapshot = GetOrCreateSystemSnapshot(faction, system);
-            faction.Fog.PlanetToSystem[planet.InstanceID] = system.InstanceID;
-            systemSnapshot.Planets.TryGetValue(
+            PlanetSectorSnapshot sectorSnapshot = GetOrCreateSectorSnapshot(faction, sector);
+            faction.Fog.PlanetToSector[planet.InstanceID] = sector.InstanceID;
+            sectorSnapshot.Planets.TryGetValue(
                 planet.InstanceID,
                 out PlanetSnapshot previousSnapshot
             );
@@ -718,7 +718,7 @@ namespace Rebellion.Game.FogOfWar
             }
 
             ReconcileEntityLocations(faction, planet.InstanceID, planetSnapshot);
-            systemSnapshot.Planets[planet.InstanceID] = planetSnapshot;
+            sectorSnapshot.Planets[planet.InstanceID] = planetSnapshot;
         }
 
         /// <summary>
@@ -849,9 +849,9 @@ namespace Rebellion.Game.FogOfWar
             if (faction == null || string.IsNullOrEmpty(entityId))
                 return;
 
-            foreach (SystemSnapshot systemSnapshot in faction.Fog.Snapshots.Values)
+            foreach (PlanetSectorSnapshot sectorSnapshot in faction.Fog.Snapshots.Values)
             {
-                foreach (PlanetSnapshot planetSnapshot in systemSnapshot.Planets.Values)
+                foreach (PlanetSnapshot planetSnapshot in sectorSnapshot.Planets.Values)
                     RemoveEntityFromSnapshot(planetSnapshot, entityId);
             }
 
@@ -859,17 +859,22 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Returns the system snapshot for a faction, creating it when needed.
+        /// Returns the sector snapshot for a faction, creating it when needed.
         /// </summary>
         /// <param name="faction">The faction that owns the fog state.</param>
-        /// <param name="system">The system being observed.</param>
-        /// <returns>The snapshot for the observed system.</returns>
-        private SystemSnapshot GetOrCreateSystemSnapshot(Faction faction, PlanetSystem system)
+        /// <param name="sector">The sector being observed.</param>
+        /// <returns>The snapshot for the observed sector.</returns>
+        private PlanetSectorSnapshot GetOrCreateSectorSnapshot(Faction faction, PlanetSector sector)
         {
-            if (!faction.Fog.Snapshots.TryGetValue(system.InstanceID, out SystemSnapshot snapshot))
+            if (
+                !faction.Fog.Snapshots.TryGetValue(
+                    sector.InstanceID,
+                    out PlanetSectorSnapshot snapshot
+                )
+            )
             {
-                snapshot = new SystemSnapshot();
-                faction.Fog.Snapshots[system.InstanceID] = snapshot;
+                snapshot = new PlanetSectorSnapshot();
+                faction.Fog.Snapshots[sector.InstanceID] = snapshot;
             }
 
             return snapshot;
@@ -1621,12 +1626,12 @@ namespace Rebellion.Game.FogOfWar
         )
         {
             if (
-                !faction.Fog.PlanetToSystem.TryGetValue(oldPlanetId, out string oldSystemId)
+                !faction.Fog.PlanetToSector.TryGetValue(oldPlanetId, out string oldSectorId)
                 || !faction.Fog.Snapshots.TryGetValue(
-                    oldSystemId,
-                    out SystemSnapshot systemSnapshot
+                    oldSectorId,
+                    out PlanetSectorSnapshot sectorSnapshot
                 )
-                || !systemSnapshot.Planets.TryGetValue(
+                || !sectorSnapshot.Planets.TryGetValue(
                     oldPlanetId,
                     out PlanetSnapshot oldPlanetSnapshot
                 )

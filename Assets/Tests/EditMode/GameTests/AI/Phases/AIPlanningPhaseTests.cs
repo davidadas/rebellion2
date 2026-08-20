@@ -21,8 +21,13 @@ namespace Rebellion.Tests.AI.Phases
         public void Execute_WithDiplomacyOpportunity_AddsMissionProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
-            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "p1", empire.InstanceID);
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "p1",
+                empire.InstanceID
+            );
             planet.AddVisitor(empire.InstanceID);
             planet.SetPopularSupport(empire.InstanceID, 50);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);

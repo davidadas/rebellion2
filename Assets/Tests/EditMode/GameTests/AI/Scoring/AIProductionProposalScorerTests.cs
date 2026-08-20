@@ -20,10 +20,10 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Infrastructure.FleetReinforcementTravelPenaltyWeight = 1;
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet nearProducer = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                planetSector,
                 "near",
                 empire.InstanceID,
                 positionX: 0,
@@ -31,7 +31,7 @@ namespace Rebellion.Tests.AI.Scoring
             );
             Planet farProducer = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                planetSector,
                 "far",
                 empire.InstanceID,
                 positionX: 100,
@@ -39,7 +39,7 @@ namespace Rebellion.Tests.AI.Scoring
             );
             Planet fleetPlanet = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                planetSector,
                 "fleet-world",
                 empire.InstanceID,
                 positionX: 1,

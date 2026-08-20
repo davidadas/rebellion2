@@ -4,10 +4,10 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.FogOfWar
 {
     /// <summary>
-    /// Stores the last known state of an observed system.
+    /// Stores the last known state of an observed planet sector.
     /// </summary>
     [PersistableObject]
-    public class SystemSnapshot
+    public class PlanetSectorSnapshot
     {
         /// <summary>
         /// Planet snapshots keyed by planet instance ID.
@@ -17,7 +17,7 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Default constructor.
         /// </summary>
-        public SystemSnapshot()
+        public PlanetSectorSnapshot()
         {
             Planets = new Dictionary<string, PlanetSnapshot>();
         }

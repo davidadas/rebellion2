@@ -22,7 +22,7 @@ namespace Rebellion.Generation
         public void Seed(GenerationContext ctx)
         {
             ctx.Classification = BuildClassification(
-                ctx.Systems,
+                ctx.Sectors,
                 ctx.Factions,
                 ctx.Summary,
                 ctx.Config,
@@ -35,14 +35,14 @@ namespace Rebellion.Generation
         /// to bucket-assigned core planets, picks each faction's HQ, and tags every core
         /// planet with a Strong / Weak / Neutral strength bucket.
         /// </summary>
-        /// <param name="systems">All planet systems in the galaxy.</param>
+        /// <param name="sectors">All planet sectors in the galaxy.</param>
         /// <param name="factions">All factions in the game.</param>
         /// <param name="summary">Game summary with player faction and difficulty settings.</param>
         /// <param name="rules">Generation rules containing faction setups and difficulty profiles.</param>
         /// <param name="rng">Random number provider.</param>
         /// <returns>Classification result with bucket map, faction HQs, and starting-planet loyalty.</returns>
         private GalaxyClassificationResult BuildClassification(
-            PlanetSystem[] systems,
+            PlanetSector[] sectors,
             Faction[] factions,
             GameSummary summary,
             GameGenerationConfig rules,
@@ -58,13 +58,13 @@ namespace Rebellion.Generation
             (
                 List<Planet> corePlanets,
                 List<(
-                    PlanetSystem system,
+                    PlanetSector sector,
                     Planet planet,
                     FactionSetup setup,
                     StartingPlanet config
                 )> resolvedStartingPlanets,
                 int preassignedCoreCount
-            ) = PartitionPlanets(systems, config, rng);
+            ) = PartitionPlanets(sectors, config, rng);
 
             AssignStartingPlanets(
                 resolvedStartingPlanets,
@@ -115,7 +115,7 @@ namespace Rebellion.Generation
         /// <summary>
         /// Separates all planets into core, rim, and starting-planet lists.
         /// </summary>
-        /// <param name="systems">All planet systems in the galaxy.</param>
+        /// <param name="sectors">All planet sectors in the galaxy.</param>
         /// <param name="config">Galaxy classification config with faction setups.</param>
         /// <param name="rng">Random number provider for dynamic starting planet selection.</param>
         /// <returns>Core planets, resolved starting planets, and count of
@@ -123,14 +123,14 @@ namespace Rebellion.Generation
         private (
             List<Planet> corePlanets,
             List<(
-                PlanetSystem system,
+                PlanetSector sector,
                 Planet planet,
                 FactionSetup setup,
                 StartingPlanet config
             )> resolvedStartingPlanets,
             int preassignedCoreCount
         ) PartitionPlanets(
-            PlanetSystem[] systems,
+            PlanetSector[] sectors,
             GalaxyClassificationSection config,
             IRandomNumberProvider rng
         )
@@ -149,15 +149,15 @@ namespace Rebellion.Generation
             }
 
             List<Planet> corePlanets = new List<Planet>();
-            List<(PlanetSystem system, Planet planet)> rimPlanets =
-                new List<(PlanetSystem system, Planet planet)>();
-            List<(PlanetSystem, Planet, FactionSetup, StartingPlanet)> resolved =
-                new List<(PlanetSystem, Planet, FactionSetup, StartingPlanet)>();
+            List<(PlanetSector sector, Planet planet)> rimPlanets =
+                new List<(PlanetSector sector, Planet planet)>();
+            List<(PlanetSector, Planet, FactionSetup, StartingPlanet)> resolved =
+                new List<(PlanetSector, Planet, FactionSetup, StartingPlanet)>();
             int preassignedCoreCount = 0;
 
-            foreach (PlanetSystem system in systems)
+            foreach (PlanetSector sector in sectors)
             {
-                foreach (Planet planet in system.Planets)
+                foreach (Planet planet in sector.Planets)
                 {
                     if (
                         !string.IsNullOrEmpty(planet.TypeID)
@@ -167,16 +167,16 @@ namespace Rebellion.Generation
                         )
                     )
                     {
-                        resolved.Add((system, planet, entry.setup, entry.config));
-                        if (system.SystemType == PlanetSystemType.CoreSystem)
+                        resolved.Add((sector, planet, entry.setup, entry.config));
+                        if (sector.SectorType == PlanetSectorType.Core)
                             preassignedCoreCount++;
                         continue;
                     }
 
-                    if (system.SystemType == PlanetSystemType.CoreSystem)
+                    if (sector.SectorType == PlanetSectorType.Core)
                         corePlanets.Add(planet);
                     else
-                        rimPlanets.Add((system, planet));
+                        rimPlanets.Add((sector, planet));
                 }
             }
 
@@ -190,9 +190,9 @@ namespace Rebellion.Generation
                         continue;
 
                     int hqIndex = rng.NextInt(0, rimPlanets.Count);
-                    (PlanetSystem system, Planet planet) = rimPlanets[hqIndex];
+                    (PlanetSector sector, Planet planet) = rimPlanets[hqIndex];
                     rimPlanets.RemoveAt(hqIndex);
-                    resolved.Add((system, planet, setup, sp));
+                    resolved.Add((sector, planet, setup, sp));
                 }
             }
 
@@ -210,7 +210,7 @@ namespace Rebellion.Generation
         /// starting planets, used to adjust bucket sizes later.</param>
         private void AssignStartingPlanets(
             List<(
-                PlanetSystem system,
+                PlanetSector sector,
                 Planet planet,
                 FactionSetup setup,
                 StartingPlanet config
@@ -224,7 +224,7 @@ namespace Rebellion.Generation
 
             foreach (
                 (
-                    PlanetSystem system,
+                    PlanetSector sector,
                     Planet planet,
                     FactionSetup setup,
                     StartingPlanet spConfig
@@ -249,7 +249,7 @@ namespace Rebellion.Generation
                     result.FactionHQs[faction.InstanceID] = planet;
                 }
 
-                if (system.SystemType == PlanetSystemType.CoreSystem)
+                if (sector.SectorType == PlanetSectorType.Core)
                 {
                     if (!strongCountAdjustments.ContainsKey(setup.FactionID))
                         strongCountAdjustments[setup.FactionID] = 0;

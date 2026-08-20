@@ -372,7 +372,7 @@ internal sealed class BattleAlertWindowProjector
     {
         return new[]
         {
-            CreateButton(uiContext, theme?.ResultDirectSystemButton, true, false),
+            CreateButton(uiContext, theme?.ResultDirectSectorButton, true, false),
             CreateButton(uiContext, theme?.ResultDirectFleetButton, true, false),
         };
     }

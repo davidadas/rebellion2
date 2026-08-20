@@ -3,18 +3,18 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
     [TestFixture]
-    public class PlanetSystemWindowRenderDataTests
+    public class PlanetSectorWindowRenderDataTests
     {
-        private PlanetSystemBarRenderData _bar;
+        private PlanetSectorBarRenderData _bar;
         private Texture2D _texture;
 
         [SetUp]
         public void SetUp()
         {
-            _bar = new PlanetSystemBarRenderData(
+            _bar = new PlanetSectorBarRenderData(
                 true,
                 4,
                 2,
@@ -35,25 +35,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Window_SourceChanges_PreservesReadOnlyPlanetSnapshot()
         {
-            PlanetSystemPlanetRenderData planet = CreatePlanetData(_bar, _bar, _bar);
-            PlanetSystemPlanetRenderData[] planets = { planet };
+            PlanetSectorPlanetRenderData planet = CreatePlanetData(_bar, _bar, _bar);
+            PlanetSectorPlanetRenderData[] planets = { planet };
 
-            PlanetSystemWindowRenderData data = new PlanetSystemWindowRenderData(null, planets);
+            PlanetSectorWindowRenderData data = new PlanetSectorWindowRenderData(null, planets);
             planets[0] = null;
 
             Assert.AreEqual(string.Empty, data.Title);
             Assert.AreSame(planet, data.Planets[0]);
             Assert.Throws<NotSupportedException>(() =>
-                ((IList<PlanetSystemPlanetRenderData>)data.Planets)[0] = null
+                ((IList<PlanetSectorPlanetRenderData>)data.Planets)[0] = null
             );
         }
 
         [Test]
         public void Window_NullPlanets_ReturnsEmptySnapshot()
         {
-            PlanetSystemWindowRenderData data = new PlanetSystemWindowRenderData("System", null);
+            PlanetSectorWindowRenderData data = new PlanetSectorWindowRenderData("Sector", null);
 
-            Assert.AreEqual("System", data.Title);
+            Assert.AreEqual("Sector", data.Title);
             Assert.IsEmpty(data.Planets);
         }
 
@@ -62,9 +62,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [TestCase(2)]
         public void Planet_MissingBar_ThrowsArgumentNullException(int missingBarIndex)
         {
-            PlanetSystemBarRenderData energyBar = missingBarIndex == 0 ? null : _bar;
-            PlanetSystemBarRenderData rawResourceBar = missingBarIndex == 1 ? null : _bar;
-            PlanetSystemBarRenderData supportBar = missingBarIndex == 2 ? null : _bar;
+            PlanetSectorBarRenderData energyBar = missingBarIndex == 0 ? null : _bar;
+            PlanetSectorBarRenderData rawResourceBar = missingBarIndex == 1 ? null : _bar;
+            PlanetSectorBarRenderData supportBar = missingBarIndex == 2 ? null : _bar;
 
             Assert.Throws<ArgumentNullException>(() =>
                 CreatePlanetData(energyBar, rawResourceBar, supportBar)
@@ -74,7 +74,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Planet_Values_PreservesCompletePresentation()
         {
-            PlanetSystemPlanetRenderData data = CreatePlanetData(_bar, _bar, _bar);
+            PlanetSectorPlanetRenderData data = CreatePlanetData(_bar, _bar, _bar);
 
             Assert.AreEqual(3, data.PlanetIndex);
             Assert.AreEqual(new Vector2Int(4, 5), data.GalaxyOffset);
@@ -101,7 +101,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Planet_NullName_ReturnsEmptyName()
         {
-            PlanetSystemPlanetRenderData data = new PlanetSystemPlanetRenderData(
+            PlanetSectorPlanetRenderData data = new PlanetSectorPlanetRenderData(
                 0,
                 Vector2Int.zero,
                 null,
@@ -142,7 +142,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Element_Values_PreservesSemanticIdentity()
         {
-            PlanetSystemWindowElement data = new PlanetSystemWindowElement(
+            PlanetSectorWindowElement data = new PlanetSectorWindowElement(
                 2,
                 PlanetIcon.Defense,
                 true
@@ -153,13 +153,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             Assert.IsTrue(data.PlanetImage);
         }
 
-        private PlanetSystemPlanetRenderData CreatePlanetData(
-            PlanetSystemBarRenderData energyBar,
-            PlanetSystemBarRenderData rawResourceBar,
-            PlanetSystemBarRenderData supportBar
+        private PlanetSectorPlanetRenderData CreatePlanetData(
+            PlanetSectorBarRenderData energyBar,
+            PlanetSectorBarRenderData rawResourceBar,
+            PlanetSectorBarRenderData supportBar
         )
         {
-            return new PlanetSystemPlanetRenderData(
+            return new PlanetSectorPlanetRenderData(
                 3,
                 new Vector2Int(4, 5),
                 _texture,

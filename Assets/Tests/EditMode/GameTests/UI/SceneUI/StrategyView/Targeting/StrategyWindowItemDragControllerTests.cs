@@ -6,7 +6,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
 {
@@ -453,7 +453,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         {
             Planet planet = new Planet { InstanceID = instanceId, OwnerInstanceID = ownerId };
             GalaxyMapPlanet mapPlanet = new GalaxyMapPlanet(
-                new GamePlanetSystem(),
+                new GamePlanetSector(),
                 planet,
                 string.Empty
             );

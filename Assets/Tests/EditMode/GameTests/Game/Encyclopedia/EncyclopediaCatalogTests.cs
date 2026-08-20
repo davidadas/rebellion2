@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
                     },
                     new EncyclopediaEntry
                     {
-                        TypeID = "SYSTEM1",
+                        TypeID = "SECTOR1",
                         DisplayName = "Balmorra",
                         Category = EncyclopediaEntryCategory.System,
                     },
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
                     },
                     new EncyclopediaEntry
                     {
-                        TypeID = "SYSTEM1",
+                        TypeID = "SECTOR1",
                         DisplayName = "Balmorra",
                         Category = EncyclopediaEntryCategory.System,
                     },

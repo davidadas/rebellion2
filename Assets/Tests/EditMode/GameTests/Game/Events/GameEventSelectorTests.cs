@@ -53,18 +53,18 @@ namespace Rebellion.Tests.Game.Events
         public void SelectRandom_FilteredPlanetSet_ReturnsRequestedCount()
         {
             GameRoot game = BuildGame(out _);
-            PlanetSystem rimSystem = new PlanetSystem
+            PlanetSector rimSector = new PlanetSector
             {
-                InstanceID = "rim-system",
-                SystemType = PlanetSystemType.OuterRim,
+                InstanceID = "rim-sector",
+                SectorType = PlanetSectorType.OuterRim,
             };
             Planet rimPlanet = new Planet { InstanceID = "rim-planet" };
-            game.AttachNode(rimSystem, game.Galaxy);
-            game.AttachNode(rimPlanet, rimSystem);
+            game.AttachNode(rimSector, game.Galaxy);
+            game.AttachNode(rimPlanet, rimSector);
             SelectRandom selector = new SelectRandom
             {
                 Count = 1,
-                Selectors = { new SelectPlanets { SystemType = PlanetSystemType.OuterRim } },
+                Selectors = { new SelectPlanets { SectorType = PlanetSectorType.OuterRim } },
             };
 
             Planet selected = selector.Select(game, new StubRNG(), null).Cast<Planet>().Single();
@@ -187,10 +187,10 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = new GameRoot(new GameConfig());
             game.Factions.Add(new Faction { InstanceID = "faction" });
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "core-system",
-                SystemType = PlanetSystemType.CoreSystem,
+                InstanceID = "core-sector",
+                SectorType = PlanetSectorType.Core,
             };
             planet = new Planet
             {
@@ -198,8 +198,8 @@ namespace Rebellion.Tests.Game.Events
                 OwnerInstanceID = "faction",
                 IsColonized = true,
             };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
             return game;
         }
     }

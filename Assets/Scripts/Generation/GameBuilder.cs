@@ -94,8 +94,8 @@ namespace Rebellion.Generation
         private GenerationContext LoadContext()
         {
             int galaxySize = (int)_summary.GalaxySize;
-            PlanetSystem[] systems = _gameData
-                .PlanetSystems.GetDeepCopy(CloneMode.Full)
+            PlanetSector[] sectors = _gameData
+                .PlanetSectors.GetDeepCopy(CloneMode.Full)
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
 
@@ -106,7 +106,7 @@ namespace Rebellion.Generation
                 GameConfig = _gameData.GameConfig.GetDeepCopy(CloneMode.Full),
                 Rng = _randomProvider,
 
-                Systems = systems,
+                Sectors = sectors,
                 Factions = _gameData.Factions.GetDeepCopy(CloneMode.Full),
                 Buildings = _gameData.Buildings.GetDeepCopy(CloneMode.Full),
                 CapitalShips = _gameData.CapitalShips.GetDeepCopy(CloneMode.Full),
@@ -173,7 +173,7 @@ namespace Rebellion.Generation
                 EventPool = ctx.Events.ToList(),
                 Summary = ctx.Summary,
                 Factions = ctx.Factions.ToList(),
-                Galaxy = new GalaxyMap { PlanetSystems = ctx.Systems.ToList() },
+                Galaxy = new GalaxyMap { PlanetSectors = ctx.Sectors.ToList() },
                 UnrecruitedOfficers = ctx.UnrecruitedOfficers.ToList(),
                 Random = ctx.Rng,
             };

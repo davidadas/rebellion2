@@ -157,7 +157,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
             Assert.IsFalse(FindObject("ResultRowsScrollArea").activeSelf);
             Assert.IsFalse(FindObject("ResultCapitalShipsButtonImage").activeSelf);
-            Assert.IsFalse(FindObject("ResultDirectSystemButtonImage").activeSelf);
+            Assert.IsFalse(FindObject("ResultDirectSectorButtonImage").activeSelf);
         }
 
         [Test]
@@ -475,7 +475,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             _view.Render(CreateWindowData(BattleAlertWindowMode.Result, null, result));
 
-            Assert.IsTrue(FindObject("ResultDirectSystemButtonImage").activeSelf);
+            Assert.IsTrue(FindObject("ResultDirectSectorButtonImage").activeSelf);
             Assert.IsTrue(FindObject("ResultDirectFleetButtonImage").activeSelf);
             Assert.IsFalse(FindObject("ResultCapitalShipsButtonImage").activeSelf);
             Assert.IsFalse(FindObject("ResultRowsScrollArea").activeSelf);
@@ -553,11 +553,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             int pressedCount = 0;
             int closeCount = 0;
-            int systemCount = 0;
+            int sectorCount = 0;
             int fleetCount = 0;
             _view.ControlPressed += () => pressedCount++;
             _view.CloseRequested += _ => closeCount++;
-            _view.OpenSystemRequested += _ => systemCount++;
+            _view.OpenSectorRequested += _ => sectorCount++;
             _view.OpenFleetRequested += _ => fleetCount++;
             _view.Render(
                 CreateWindowData(
@@ -569,7 +569,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             string[] buttonNames =
             {
                 "ResultCloseButtonImage",
-                "ResultDirectSystemButtonImage",
+                "ResultDirectSectorButtonImage",
                 "ResultDirectFleetButtonImage",
             };
 
@@ -578,7 +578,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             Assert.AreEqual(3, pressedCount);
             Assert.AreEqual(0, closeCount);
-            Assert.AreEqual(0, systemCount);
+            Assert.AreEqual(0, sectorCount);
             Assert.AreEqual(0, fleetCount);
 
             foreach (string buttonName in buttonNames)
@@ -586,7 +586,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             Assert.AreEqual(3, pressedCount);
             Assert.AreEqual(1, closeCount);
-            Assert.AreEqual(1, systemCount);
+            Assert.AreEqual(1, sectorCount);
             Assert.AreEqual(1, fleetCount);
         }
 

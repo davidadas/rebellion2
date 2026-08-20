@@ -8,7 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 {
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 DisplayName = "Corellia",
                 OwnerInstanceID = _ownerId,
             };
-            _mapPlanet = new GalaxyMapPlanet(new GamePlanetSystem(), _planet, string.Empty);
+            _mapPlanet = new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty);
             _session = new DefenseWindowSession(_mapPlanet, _window);
             _projector = new DefenseWindowProjector(() => _uiContext);
         }

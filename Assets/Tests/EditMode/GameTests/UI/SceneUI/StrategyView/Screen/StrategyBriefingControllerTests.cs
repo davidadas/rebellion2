@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 {
@@ -424,13 +424,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void CreateMapPresentation_Target_ResolvesPlanetAndSystem()
+        public void CreateMapPresentation_Target_ResolvesPlanetAndSector()
         {
             GameRoot game = CreateGame();
-            GamePlanetSystem system = new GamePlanetSystem { InstanceID = "SYSTEM" };
+            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "SECTOR" };
             Planet planet = new Planet { InstanceID = "PLANET" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
             StrategyBriefingSegmentTheme segment = new StrategyBriefingSegmentTheme
             {
                 Focus = StrategyBriefingFocus.Target,
@@ -441,7 +441,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 StrategyBriefingController.CreateMapPresentation(game, segment);
 
             Assert.AreEqual(StrategyBriefingMapMode.Spotlight, presentation.Mode);
-            Assert.AreEqual(system.InstanceID, presentation.TargetSystemInstanceID);
+            Assert.AreEqual(planetSector.InstanceID, presentation.TargetSectorInstanceID);
             Assert.AreEqual(planet.InstanceID, presentation.TargetPlanetInstanceID);
             Assert.IsTrue(presentation.DimBackground);
         }
@@ -494,7 +494,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void CreateMapPresentation_TargetOutsidePlanetSystem_ThrowsInvalidOperationException()
+        public void CreateMapPresentation_TargetOutsidePlanetSector_ThrowsInvalidOperationException()
         {
             GameRoot game = CreateGame();
             Officer target = new Officer { InstanceID = "OFFICER" };
@@ -617,8 +617,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 
         private sealed class TestGalaxyMapActions : IGalaxyMapActions
         {
-            public void OpenPlanetSystemWindow(
-                GamePlanetSystem system,
+            public void OpenPlanetSectorWindow(
+                GamePlanetSector planetSector,
                 int sourceX,
                 int sourceY
             ) { }

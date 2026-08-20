@@ -4,7 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 {
@@ -32,7 +32,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 DisplayName = "Corellia",
                 NumRawResourceNodes = 4,
             };
-            _mapPlanet = new GalaxyMapPlanet(new GamePlanetSystem(), _planet, string.Empty);
+            _mapPlanet = new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty);
             _session = new FacilityWindowSession(window, _mapPlanet);
         }
 
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void Constructor_PlanetProjectionWithoutPlanet_ThrowsArgumentException()
         {
             GalaxyMapPlanet projection = new GalaxyMapPlanet(
-                new GamePlanetSystem(),
+                new GamePlanetSector(),
                 null,
                 string.Empty
             );
@@ -271,7 +271,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 Buildings = { replacement },
             };
             GalaxyMapPlanet refreshedProjection = new GalaxyMapPlanet(
-                new GamePlanetSystem(),
+                new GamePlanetSector(),
                 refreshedPlanet,
                 string.Empty
             );

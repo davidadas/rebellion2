@@ -55,7 +55,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual(11, layout.FacilityMenuWidth);
             Assert.AreEqual(12, layout.FleetMenuWidth);
             Assert.AreEqual(13, layout.FleetBombardmentMenuWidth);
-            Assert.AreEqual(14, layout.PlanetSystemMenuWidth);
+            Assert.AreEqual(14, layout.PlanetSectorMenuWidth);
             Assert.AreEqual(15, layout.DefenseMenuWidth);
             Assert.AreEqual(16, layout.MissionsMenuWidth);
             Assert.AreEqual(17, layout.FallbackMenuWidth);

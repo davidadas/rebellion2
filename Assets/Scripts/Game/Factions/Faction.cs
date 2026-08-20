@@ -678,7 +678,7 @@ namespace Rebellion.Game.Factions
                 .OrderBy(participant =>
                     participant
                         .GetParentOfType<Planet>()
-                        ?.GetParentOfType<PlanetSystem>()
+                        ?.GetParentOfType<PlanetSector>()
                         ?.PositionX
                     ?? 0
                 )

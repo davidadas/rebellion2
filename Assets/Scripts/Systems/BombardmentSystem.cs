@@ -827,7 +827,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies direct and local-system support penalties for civilian destruction.
+        /// Applies direct and local-sector support penalties for civilian destruction.
         /// </summary>
         /// <param name="planet">Planet where civilian targets were destroyed.</param>
         /// <param name="attacker">Faction responsible for the bombardment.</param>
@@ -842,13 +842,13 @@ namespace Rebellion.Systems
                 attacker
             );
 
-            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
-            if (system == null)
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            if (sector == null)
                 return results;
 
-            int shift = GetCivilianSystemPenalty(system, attacker);
+            int shift = GetCivilianSectorPenalty(sector, attacker);
             results.AddRange(
-                _ownership.ShiftBombardmentSupport(GetAffectedPlanets(system), attacker, shift)
+                _ownership.ShiftBombardmentSupport(GetAffectedPlanets(sector), attacker, shift)
             );
             return results;
         }
@@ -865,7 +865,7 @@ namespace Rebellion.Systems
         )
         {
             int shift = _game.Config.Combat.Bombardment.CivilianSupportPenalty;
-            if (planet.GetParentOfType<PlanetSystem>()?.SystemType == PlanetSystemType.CoreSystem)
+            if (planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core)
             {
                 bool weaken = attacker.Settings.WeakSupportPenaltyTrigger switch
                 {
@@ -881,15 +881,15 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the local-system support penalty for civilian destruction.
+        /// Returns the local-sector support penalty for civilian destruction.
         /// </summary>
-        /// <param name="system">Planet system where the destruction occurred.</param>
+        /// <param name="sector">Planet sector where the destruction occurred.</param>
         /// <param name="attacker">Faction responsible for the bombardment.</param>
         /// <returns>The applicable popular-support shift.</returns>
-        private int GetCivilianSystemPenalty(PlanetSystem system, Faction attacker)
+        private int GetCivilianSectorPenalty(PlanetSector sector, Faction attacker)
         {
             bool empire = attacker.Settings.InvertSupportShift;
-            if (system.SystemType == PlanetSystemType.CoreSystem)
+            if (sector.SectorType == PlanetSectorType.Core)
             {
                 return empire
                     ? _game.Config.Combat.Bombardment.CivilianCoreEmpireSupportPenalty
@@ -910,8 +910,8 @@ namespace Rebellion.Systems
         {
             List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
             List<Planet> corePlanets = _game
-                .GetSceneNodesByType<PlanetSystem>()
-                .Where(system => system.SystemType == PlanetSystemType.CoreSystem)
+                .GetSceneNodesByType<PlanetSector>()
+                .Where(sector => sector.SectorType == PlanetSectorType.Core)
                 .SelectMany(GetAffectedPlanets)
                 .ToList();
             results.AddRange(
@@ -923,8 +923,8 @@ namespace Rebellion.Systems
             );
 
             List<Planet> outerRimPlanets = _game
-                .GetSceneNodesByType<PlanetSystem>()
-                .Where(system => system.SystemType == PlanetSystemType.OuterRim)
+                .GetSceneNodesByType<PlanetSector>()
+                .Where(sector => sector.SectorType == PlanetSectorType.OuterRim)
                 .SelectMany(GetAffectedPlanets)
                 .Where(planet =>
                     planet.GetPopularSupport(attacker.InstanceID)
@@ -1040,13 +1040,13 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns populated, undestroyed planets affected by a system support shift.
+        /// Returns populated, undestroyed planets affected by a sector support shift.
         /// </summary>
-        /// <param name="system">Planet system to inspect.</param>
+        /// <param name="sector">Planet sector to inspect.</param>
         /// <returns>The planets eligible for the shift.</returns>
-        private static List<Planet> GetAffectedPlanets(PlanetSystem system)
+        private static List<Planet> GetAffectedPlanets(PlanetSector sector)
         {
-            return system
+            return sector
                 .Planets.Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
                 .ToList();
         }
