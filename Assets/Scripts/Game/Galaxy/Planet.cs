@@ -1142,6 +1142,9 @@ namespace Rebellion.Game.Galaxy
         /// <returns>True when the officer can be added to this planet; otherwise false.</returns>
         private bool CanAcceptOfficer(Officer officer)
         {
+            if (!officer.IsActive())
+                return true;
+
             return IsColonized
                 && (officer.IsCaptured || officer.GetOwnerInstanceID() == OwnerInstanceID);
         }

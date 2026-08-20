@@ -184,12 +184,6 @@ namespace Rebellion.SceneGraph
         protected abstract IEnumerable<ISceneNode> EnumerateChildren();
 
         /// <summary>
-        /// Enumerates direct relationships that must be retained by a recursive copy.
-        /// </summary>
-        /// <returns>The direct nodes to copy.</returns>
-        protected virtual IEnumerable<ISceneNode> EnumerateChildrenToCopy() => EnumerateChildren();
-
-        /// <summary>
         /// Returns a read-only snapshot of this node's children at the requested depth.
         /// </summary>
         /// <param name="recursive">Whether to include children at every depth.</param>
@@ -313,7 +307,7 @@ namespace Rebellion.SceneGraph
         /// <param name="includeDisabled">Whether disabled branches should be copied.</param>
         private void CopyChildrenTo(BaseSceneNode copy, bool includeDisabled)
         {
-            foreach (ISceneNode child in EnumerateChildrenToCopy())
+            foreach (ISceneNode child in EnumerateChildren())
             {
                 if (!includeDisabled && !child.IsActive())
                     continue;

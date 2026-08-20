@@ -270,9 +270,12 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns all main and decoy participants as a single list.
         /// </summary>
+        /// <param name="includeDisabled">Whether disabled participants may be returned.</param>
         /// <returns>Combined list of main and decoy participants.</returns>
-        public List<IMissionParticipant> GetAllParticipants() =>
-            GetMainParticipants().Concat(GetDecoyParticipants()).ToList();
+        public List<IMissionParticipant> GetAllParticipants(bool includeDisabled = false) =>
+            GetMainParticipants(includeDisabled)
+                .Concat(GetDecoyParticipants(includeDisabled))
+                .ToList();
 
         /// <summary>
         /// Gets the mission's primary participants.
@@ -927,23 +930,10 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns all mission participants as children of the mission.
         /// </summary>
-        /// <returns>All main and decoy participants as scene nodes.</returns>
-        protected override IEnumerable<ISceneNode> EnumerateChildren()
-        {
-            if (!HasInitiated)
-                return Enumerable.Empty<ISceneNode>();
-
-            return EnumerateParticipants();
-        }
-
-        /// <summary>
-        /// Returns authored participants so recursive copies retain mission relationships.
-        /// </summary>
-        /// <returns>All primary and decoy participants.</returns>
-        protected override IEnumerable<ISceneNode> EnumerateChildrenToCopy()
-        {
-            return EnumerateParticipants();
-        }
+        /// <returns>Assigned participants currently parented to the mission.</returns>
+        protected override IEnumerable<ISceneNode> EnumerateChildren() =>
+            EnumerateParticipants()
+                .Where(participant => participant.ParentInstanceID == InstanceID);
 
         /// <summary>
         /// Enumerates all primary and decoy participants without applying lifecycle visibility.
