@@ -42,7 +42,7 @@ namespace Rebellion.Tests.Systems
             _coreSector = new PlanetSector
             {
                 InstanceID = "CORESYS",
-                DisplayName = "Coruscant System",
+                DisplayName = "Sesswenna",
                 SectorType = PlanetSectorType.Core,
                 PositionX = 0,
                 PositionY = 0,
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.Systems
             _outerRimSector = new PlanetSector
             {
                 InstanceID = "OUTERRIM",
-                DisplayName = "Outer Rim System",
+                DisplayName = "Orus",
                 SectorType = PlanetSectorType.OuterRim,
                 PositionX = 100,
                 PositionY = 100,
@@ -92,7 +92,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(
                 2,
                 _game.Galaxy.PlanetSectors.Count,
-                "Setup should have added 2 systems to galaxy"
+                "Setup should have added 2 sectors to galaxy"
             );
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Assert.AreEqual(

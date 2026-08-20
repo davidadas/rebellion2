@@ -218,7 +218,7 @@ namespace Rebellion.Tests.Systems
             PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "s1",
-                DisplayName = "Tatooine System",
+                DisplayName = "Orus",
             };
             Planet planet = new Planet
             {
