@@ -2630,20 +2630,14 @@ namespace Rebellion.Tests.Systems
             _game.MoveNode(vader, empireMission);
             vader.IsEnabled = false;
 
-            new FogOfWarRecorder().RecordEspionageSnapshot(
-                _alliance,
-                _coruscant,
-                _coreSystem,
-                10
-            );
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             Mission recordedMission = _alliance
                 .Fog.Snapshots[_coreSystem.InstanceID]
                 .Planets[_coruscant.InstanceID]
                 .Missions.Single();
-            Officer recordedParticipant = recordedMission
-                .GetMainParticipants(includeDisabled: true)
-                .Single() as Officer;
+            Officer recordedParticipant =
+                recordedMission.GetMainParticipants(includeDisabled: true).Single() as Officer;
 
             Assert.IsNotNull(recordedParticipant);
             Assert.AreEqual(vader.InstanceID, recordedParticipant.InstanceID);

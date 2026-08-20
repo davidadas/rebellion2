@@ -181,11 +181,16 @@ namespace Rebellion.Game.Galaxy
         )
         {
             base.AttachCopiedChild(destination, sourceChild, copiedChild);
-            if (sourceChild is not IManufacturable source || copiedChild is not IManufacturable copy)
+            if (
+                sourceChild is not IManufacturable source
+                || copiedChild is not IManufacturable copy
+            )
                 return;
 
             Planet copiedPlanet = (Planet)destination;
-            foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> queue in ManufacturingQueue)
+            foreach (
+                KeyValuePair<ManufacturingType, List<IManufacturable>> queue in ManufacturingQueue
+            )
             {
                 if (queue.Value.Contains(source))
                     copiedPlanet.ManufacturingQueue[queue.Key].Add(copy);

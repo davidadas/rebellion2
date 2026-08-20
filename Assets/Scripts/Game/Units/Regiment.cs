@@ -49,9 +49,10 @@ namespace Rebellion.Game.Units
             copy.ConstructionCost = ConstructionCost;
             copy.MaintenanceCost = MaintenanceCost;
             copy.BaseBuildSpeed = BaseBuildSpeed;
-            copy.ManufacturingFactionInstanceIDs = ManufacturingFactionInstanceIDs == null
-                ? null
-                : new List<string>(ManufacturingFactionInstanceIDs);
+            copy.ManufacturingFactionInstanceIDs =
+                ManufacturingFactionInstanceIDs == null
+                    ? null
+                    : new List<string>(ManufacturingFactionInstanceIDs);
             copy.ResearchOrder = ResearchOrder;
             copy.ResearchDifficulty = ResearchDifficulty;
             copy.AttackRating = AttackRating;

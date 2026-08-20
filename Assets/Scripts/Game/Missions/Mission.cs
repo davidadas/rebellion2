@@ -145,7 +145,10 @@ namespace Rebellion.Game.Missions
             if (copiedChild is not IMissionParticipant participant)
                 return;
 
-            if (_decoyParticipants.Contains(sourceChild))
+            if (
+                sourceChild is IMissionParticipant sourceParticipant
+                && _decoyParticipants.Contains(sourceParticipant)
+            )
                 ((Mission)destination).AddDecoyParticipant(participant);
             else
                 destination.AddChild(copiedChild);

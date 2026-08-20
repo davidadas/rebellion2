@@ -1313,8 +1313,7 @@ namespace Rebellion.Game.FogOfWar
         internal static T CopyEntityForSnapshot<T>(T entity)
             where T : class, ISceneNode
         {
-            return entity
-                ?.CreateCopy(recursive: true, includeDisabled: entity is Mission) as T;
+            return entity?.CreateCopy(recursive: true, includeDisabled: entity is Mission) as T;
         }
 
         /// <summary>

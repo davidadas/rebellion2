@@ -279,6 +279,16 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void CreateCopy_NullEncyclopediaStats_PreservesNullStats()
+        {
+            _rootNode.EncyclopediaStats = null;
+
+            MockSceneNode copy = (MockSceneNode)_rootNode.CreateCopy();
+
+            Assert.IsNull(copy.EncyclopediaStats);
+        }
+
+        [Test]
         public void CreateCopy_Recursive_CopiesHierarchyAndReconnectsParents()
         {
             MockSceneNode grandchild = new MockSceneNode
@@ -330,8 +340,7 @@ namespace Rebellion.Tests.SceneGraph
 
             MockSceneNode copy = (MockSceneNode)
                 _rootNode.CreateCopy(recursive: true, includeDisabled: true);
-            MockSceneNode copiedChild = copy
-                .GetChildren<MockSceneNode>(includeDisabled: true)
+            MockSceneNode copiedChild = copy.GetChildren<MockSceneNode>(includeDisabled: true)
                 .Single();
 
             Assert.IsFalse(copiedChild.IsEnabled);

@@ -290,9 +290,11 @@ namespace Rebellion.SceneGraph
             copy.Description = Description;
             copy.EncyclopediaImagePath = EncyclopediaImagePath;
             copy.EncyclopediaDescription = EncyclopediaDescription;
-            copy.EncyclopediaStats = EncyclopediaStats.ConvertAll(stat =>
-                new EncyclopediaEntryStat { Label = stat.Label, Value = stat.Value }
-            );
+            copy.EncyclopediaStats = EncyclopediaStats?.ConvertAll(stat => new EncyclopediaEntryStat
+            {
+                Label = stat.Label,
+                Value = stat.Value,
+            });
             copy.OwnerInstanceID = OwnerInstanceID;
             copy.IsEnabled = IsEnabled;
         }

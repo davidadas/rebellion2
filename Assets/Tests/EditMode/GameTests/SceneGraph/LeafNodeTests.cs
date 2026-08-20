@@ -248,16 +248,28 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreSame(_leafNode, visitedNodes[0]);
         }
 
+        [Test]
+        public void CreateCopy_ReturnsSameConcreteLeafType()
+        {
+            ISceneNode copy = _leafNode.CreateCopy();
+
+            Assert.IsInstanceOf<MockLeafNode>(copy);
+        }
+
         // Mock implementation of LeafNode for testing purposes
         private class MockLeafNode : LeafNode
         {
             public MockLeafNode() { }
+
+            protected override BaseSceneNode CreateNodeCopy() => new MockLeafNode();
         }
 
         // Another mock implementation for type-specific tests
         private class MockLeafNodeA : LeafNode
         {
             public MockLeafNodeA() { }
+
+            protected override BaseSceneNode CreateNodeCopy() => new MockLeafNodeA();
         }
 
         // Mock container node to test parent relationships
