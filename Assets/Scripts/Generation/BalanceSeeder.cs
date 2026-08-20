@@ -16,19 +16,19 @@ namespace Rebellion.Generation
         /// <param name="ctx">The generation context.</param>
         public void Seed(GenerationContext ctx)
         {
-            Apply(ctx.Systems, ctx.Config.Balance);
+            Apply(ctx.Sectors, ctx.Config.Balance);
         }
 
         /// <summary>
-        /// Applies the post-seeding support adjustments to every planet in every system.
+        /// Applies the post-seeding support adjustments to every planet in every sector.
         /// </summary>
-        /// <param name="systems">All planet systems in the galaxy.</param>
+        /// <param name="sectors">All planet sectors in the galaxy.</param>
         /// <param name="balance">Balance-pass tuning values from generation config.</param>
-        private void Apply(PlanetSystem[] systems, BalanceSection balance)
+        private void Apply(PlanetSector[] sectors, BalanceSection balance)
         {
-            foreach (PlanetSystem system in systems)
+            foreach (PlanetSector sector in sectors)
             {
-                foreach (Planet planet in system.Planets)
+                foreach (Planet planet in sector.Planets)
                     ApplyPlanetSupportAdjustments(planet, balance);
             }
         }

@@ -5,18 +5,18 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// Renders an authored planet-system window and reports semantic planet interaction.
+/// Renders an authored planet-sector window and reports semantic planet interaction.
 /// </summary>
-public sealed class PlanetSystemWindowView : MonoBehaviour
+public sealed class PlanetSectorWindowView : MonoBehaviour
 {
     [SerializeField]
-    private TextMeshProUGUI systemNameTextField;
+    private TextMeshProUGUI sectorNameTextField;
 
     [SerializeField]
     private RectTransform planetsRoot;
 
     [SerializeField]
-    private PlanetSystemPlanetView planetPrefab;
+    private PlanetSectorPlanetView planetPrefab;
 
     [SerializeField]
     private float sectorCoordinateRange;
@@ -39,33 +39,33 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     [SerializeField]
     private int planetPositionOffsetY;
 
-    private readonly List<PlanetSystemPlanetView> planetViews = new List<PlanetSystemPlanetView>();
+    private readonly List<PlanetSectorPlanetView> planetViews = new List<PlanetSectorPlanetView>();
 
     /// <summary>
     /// Occurs when the control is clicked.
     /// </summary>
     internal event Action<
-        PlanetSystemWindowView,
-        PlanetSystemWindowElement,
+        PlanetSectorWindowView,
+        PlanetSectorWindowElement,
         PointerEventData
     > Clicked;
 
     /// <summary>
     /// Occurs when the view is destroyed.
     /// </summary>
-    internal event Action<PlanetSystemWindowView> Destroyed;
+    internal event Action<PlanetSectorWindowView> Destroyed;
 
     /// <summary>
     /// Occurs when the pointer hover is cleared.
     /// </summary>
-    internal event Action<PlanetSystemWindowView> HoverCleared;
+    internal event Action<PlanetSectorWindowView> HoverCleared;
 
     /// <summary>
     /// Occurs when the pointer hovers over the control.
     /// </summary>
     internal event Action<
-        PlanetSystemWindowView,
-        PlanetSystemWindowElement,
+        PlanetSectorWindowView,
+        PlanetSectorWindowElement,
         PointerEventData
     > Hovered;
 
@@ -73,8 +73,8 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// Occurs when the control is pressed.
     /// </summary>
     internal event Action<
-        PlanetSystemWindowView,
-        PlanetSystemWindowElement,
+        PlanetSectorWindowView,
+        PlanetSectorWindowElement,
         PointerEventData
     > Pressed;
 
@@ -82,26 +82,26 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// Occurs when the control is released.
     /// </summary>
     internal event Action<
-        PlanetSystemWindowView,
-        PlanetSystemWindowElement,
+        PlanetSectorWindowView,
+        PlanetSectorWindowElement,
         PointerEventData
     > Released;
 
     /// <summary>
-    /// Applies one complete planet-system presentation.
+    /// Applies one complete planet-sector presentation.
     /// </summary>
     /// <param name="data">The immutable window presentation.</param>
-    public void Render(PlanetSystemWindowRenderData data)
+    public void Render(PlanetSectorWindowRenderData data)
     {
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
-        UILayout.SetTextContent(systemNameTextField, data.Title);
+        UILayout.SetTextContent(sectorNameTextField, data.Title);
         RectInt windowBounds = UILayout.GetSourceRect(transform as RectTransform);
         for (int index = 0; index < data.Planets.Count; index++)
         {
-            PlanetSystemPlanetRenderData planet = data.Planets[index];
+            PlanetSectorPlanetRenderData planet = data.Planets[index];
             GetPlanetView(index)
                 .Render(
                     planet,
@@ -162,11 +162,11 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// <returns>True when an active planet view was hit.</returns>
     internal bool TryCreateElement(
         PointerEventData eventData,
-        out PlanetSystemWindowElement element
+        out PlanetSectorWindowElement element
     )
     {
-        PlanetSystemPlanetView view = GetRaycastTarget(eventData)
-            ?.GetComponentInParent<PlanetSystemPlanetView>();
+        PlanetSectorPlanetView view = GetRaycastTarget(eventData)
+            ?.GetComponentInParent<PlanetSectorPlanetView>();
         if (
             view != null
             && planetViews.Contains(view)
@@ -190,7 +190,7 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// <param name="preview">Receives the drag preview.</param>
     /// <returns>True when a visible fleet icon produced a preview.</returns>
     internal bool TryGetFleetDragPreview(
-        PlanetSystemWindowElement element,
+        PlanetSectorWindowElement element,
         int windowX,
         int windowY,
         int sourceX,
@@ -202,7 +202,7 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
         if (element?.Icon != PlanetIcon.Fleet)
             return false;
 
-        PlanetSystemPlanetView view = GetActivePlanetView(element.PlanetIndex);
+        PlanetSectorPlanetView view = GetActivePlanetView(element.PlanetIndex);
         if (view == null || !view.TryGetFleetDragImage(out Texture texture, out RectTransform rect))
             return false;
 
@@ -241,11 +241,11 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// </summary>
     /// <param name="index">The requested planet index.</param>
     /// <returns>The reusable planet view.</returns>
-    private PlanetSystemPlanetView GetPlanetView(int index)
+    private PlanetSectorPlanetView GetPlanetView(int index)
     {
         while (planetViews.Count <= index)
         {
-            PlanetSystemPlanetView view = Instantiate(planetPrefab, planetsRoot);
+            PlanetSectorPlanetView view = Instantiate(planetPrefab, planetsRoot);
             view.name = $"Planet{planetViews.Count}";
             BindPlanetView(view);
             planetViews.Add(view);
@@ -258,7 +258,7 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// </summary>
     /// <param name="index">The requested presentation index.</param>
     /// <returns>The matching active planet view, or null.</returns>
-    private PlanetSystemPlanetView GetActivePlanetView(int index)
+    private PlanetSectorPlanetView GetActivePlanetView(int index)
     {
         return
             index >= 0
@@ -272,7 +272,7 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// Subscribes to one dynamic planet view.
     /// </summary>
     /// <param name="view">The planet view to bind.</param>
-    private void BindPlanetView(PlanetSystemPlanetView view)
+    private void BindPlanetView(PlanetSectorPlanetView view)
     {
         view.Clicked += HandlePlanetClicked;
         view.HoverCleared += HandlePlanetHoverCleared;
@@ -285,7 +285,7 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// Releases subscriptions from one dynamic planet view.
     /// </summary>
     /// <param name="view">The planet view to unbind.</param>
-    private void UnbindPlanetView(PlanetSystemPlanetView view)
+    private void UnbindPlanetView(PlanetSectorPlanetView view)
     {
         if (view == null)
             return;
@@ -304,8 +304,8 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// <param name="element">The semantic presentation element.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandlePlanetClicked(
-        PlanetSystemPlanetView view,
-        PlanetSystemWindowElement element,
+        PlanetSectorPlanetView view,
+        PlanetSectorWindowElement element,
         PointerEventData eventData
     )
     {
@@ -316,7 +316,7 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// Forwards a semantic planet hover clear.
     /// </summary>
     /// <param name="view">The planet view that lost hover.</param>
-    private void HandlePlanetHoverCleared(PlanetSystemPlanetView view)
+    private void HandlePlanetHoverCleared(PlanetSectorPlanetView view)
     {
         HoverCleared?.Invoke(this);
     }
@@ -328,8 +328,8 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// <param name="element">The semantic presentation element.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandlePlanetHovered(
-        PlanetSystemPlanetView view,
-        PlanetSystemWindowElement element,
+        PlanetSectorPlanetView view,
+        PlanetSectorWindowElement element,
         PointerEventData eventData
     )
     {
@@ -343,8 +343,8 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// <param name="element">The semantic presentation element.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandlePlanetPressed(
-        PlanetSystemPlanetView view,
-        PlanetSystemWindowElement element,
+        PlanetSectorPlanetView view,
+        PlanetSectorWindowElement element,
         PointerEventData eventData
     )
     {
@@ -358,8 +358,8 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// <param name="element">The semantic presentation element.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandlePlanetReleased(
-        PlanetSystemPlanetView view,
-        PlanetSystemWindowElement element,
+        PlanetSectorPlanetView view,
+        PlanetSectorWindowElement element,
         PointerEventData eventData
     )
     {
@@ -382,12 +382,12 @@ public sealed class PlanetSystemWindowView : MonoBehaviour
     /// </summary>
     private void VerifyReferences()
     {
-        if (systemNameTextField == null)
-            throw new MissingReferenceException($"{name}/SystemNameTextField is missing.");
+        if (sectorNameTextField == null)
+            throw new MissingReferenceException($"{name}/SectorNameTextField is missing.");
         if (planetsRoot == null)
             throw new MissingReferenceException($"{name}/Planets is missing.");
         if (planetPrefab == null)
-            throw new MissingReferenceException($"{name}/PlanetSystemPlanet prefab is missing.");
+            throw new MissingReferenceException($"{name}/PlanetSectorPlanet prefab is missing.");
         if (sectorCoordinateRange == 0f)
             throw new MissingReferenceException($"{name}/SectorCoordinateRange is invalid.");
     }

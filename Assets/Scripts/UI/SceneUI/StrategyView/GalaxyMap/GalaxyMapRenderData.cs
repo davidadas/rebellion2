@@ -13,7 +13,7 @@ public sealed class StrategyBriefingMapPresentation
     /// </summary>
     /// <param name="mode">The semantic map presentation mode.</param>
     /// <param name="label">The label shown above the galaxy map.</param>
-    /// <param name="targetSystemInstanceID">The focused system identifier, or null.</param>
+    /// <param name="targetSectorInstanceID">The focused sector identifier, or null.</param>
     /// <param name="targetPlanetInstanceID">The spotlighted planet identifier, or null.</param>
     /// <param name="playerFactionInstanceID">The player faction identifier.</param>
     /// <param name="opponentFactionInstanceID">The opposing faction identifier.</param>
@@ -21,7 +21,7 @@ public sealed class StrategyBriefingMapPresentation
     public StrategyBriefingMapPresentation(
         StrategyBriefingMapMode mode,
         string label,
-        string targetSystemInstanceID,
+        string targetSectorInstanceID,
         string targetPlanetInstanceID,
         string playerFactionInstanceID,
         string opponentFactionInstanceID,
@@ -30,7 +30,7 @@ public sealed class StrategyBriefingMapPresentation
     {
         Mode = mode;
         Label = label;
-        TargetSystemInstanceID = targetSystemInstanceID;
+        TargetSectorInstanceID = targetSectorInstanceID;
         TargetPlanetInstanceID = targetPlanetInstanceID;
         PlayerFactionInstanceID = playerFactionInstanceID;
         OpponentFactionInstanceID = opponentFactionInstanceID;
@@ -41,7 +41,7 @@ public sealed class StrategyBriefingMapPresentation
 
     public string Label { get; }
 
-    public string TargetSystemInstanceID { get; }
+    public string TargetSectorInstanceID { get; }
 
     public string TargetPlanetInstanceID { get; }
 
@@ -64,7 +64,7 @@ public sealed class GalaxyMapRenderData
     /// <param name="backgroundBounds">The optional source-space background bounds.</param>
     /// <param name="backgroundColor">The background-only color multiplier.</param>
     /// <param name="activeFilterLabel">The active galactic-information label.</param>
-    /// <param name="clusters">The visible system clusters in render order.</param>
+    /// <param name="clusters">The visible sector clusters in render order.</param>
     public GalaxyMapRenderData(
         Texture2D backgroundTexture,
         RectInt? backgroundBounds,
@@ -149,21 +149,21 @@ public readonly struct GalaxyMapActiveFilterLabelRenderData
 }
 
 /// <summary>
-/// Defines resolved presentation for one planet-system cluster.
+/// Defines resolved presentation for one planet-sector cluster.
 /// </summary>
 public sealed class GalaxyMapClusterRenderData
 {
     /// <summary>
-    /// Creates immutable planet-system cluster presentation data.
+    /// Creates immutable planet-sector cluster presentation data.
     /// </summary>
-    /// <param name="systemInstanceId">The represented planet-system identifier.</param>
+    /// <param name="sectorInstanceId">The represented planet-sector identifier.</param>
     /// <param name="sourceX">The source-space horizontal cluster position.</param>
     /// <param name="sourceY">The source-space vertical cluster position.</param>
-    /// <param name="label">The displayed system label.</param>
+    /// <param name="label">The displayed sector label.</param>
     /// <param name="showLabel">Whether the label is visible.</param>
     /// <param name="stars">The rendered planet markers.</param>
     public GalaxyMapClusterRenderData(
-        string systemInstanceId,
+        string sectorInstanceId,
         int sourceX,
         int sourceY,
         string label,
@@ -171,13 +171,13 @@ public sealed class GalaxyMapClusterRenderData
         IReadOnlyList<GalaxyMapStarRenderData> stars
     )
     {
-        if (string.IsNullOrEmpty(systemInstanceId))
+        if (string.IsNullOrEmpty(sectorInstanceId))
             throw new ArgumentException(
-                "A galaxy-map cluster requires a system identifier.",
-                nameof(systemInstanceId)
+                "A galaxy-map cluster requires a sector identifier.",
+                nameof(sectorInstanceId)
             );
 
-        SystemInstanceId = systemInstanceId;
+        SectorInstanceId = sectorInstanceId;
         SourceX = sourceX;
         SourceY = sourceY;
         Label = label ?? string.Empty;
@@ -185,7 +185,7 @@ public sealed class GalaxyMapClusterRenderData
         Stars = GalaxyMapRenderData.Copy(stars);
     }
 
-    public string SystemInstanceId { get; }
+    public string SectorInstanceId { get; }
 
     public int SourceX { get; }
 

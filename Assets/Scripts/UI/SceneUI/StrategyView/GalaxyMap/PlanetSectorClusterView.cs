@@ -6,9 +6,9 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// Presents one authored planet-system cluster and translates pointer input into cluster events.
+/// Presents one authored planet-sector cluster and translates pointer input into cluster events.
 /// </summary>
-public sealed class PlanetSystemClusterView
+public sealed class PlanetSectorClusterView
     : MonoBehaviour,
         IPointerEnterHandler,
         IPointerExitHandler,
@@ -18,7 +18,7 @@ public sealed class PlanetSystemClusterView
     private RawImage hitAreaImage;
 
     [SerializeField]
-    private TextMeshProUGUI systemNameTextField;
+    private TextMeshProUGUI sectorNameTextField;
 
     [SerializeField]
     private RawImage starImageTemplate;
@@ -36,19 +36,19 @@ public sealed class PlanetSystemClusterView
     /// <summary>
     /// Raised when the pointer enters the rendered cluster.
     /// </summary>
-    public event Action<PlanetSystemClusterView> Hovered;
+    public event Action<PlanetSectorClusterView> Hovered;
 
     /// <summary>
     /// Raised when the pointer exits the rendered cluster.
     /// </summary>
-    public event Action<PlanetSystemClusterView> HoverCleared;
+    public event Action<PlanetSectorClusterView> HoverCleared;
 
     /// <summary>
     /// Raised when the rendered cluster receives a left-button double-click.
     /// </summary>
-    public event Action<PlanetSystemClusterView, PointerEventData> OpenRequested;
+    public event Action<PlanetSectorClusterView, PointerEventData> OpenRequested;
 
-    public string SystemInstanceId => renderData?.SystemInstanceId;
+    public string SectorInstanceId => renderData?.SectorInstanceId;
 
     /// <summary>
     /// Validates authored references when Unity creates the view.
@@ -161,7 +161,7 @@ public sealed class PlanetSystemClusterView
     /// <param name="eventData">The originating pointer event.</param>
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (!string.IsNullOrEmpty(SystemInstanceId) && gameObject.activeInHierarchy)
+        if (!string.IsNullOrEmpty(SectorInstanceId) && gameObject.activeInHierarchy)
             Hovered?.Invoke(this);
     }
 
@@ -181,7 +181,7 @@ public sealed class PlanetSystemClusterView
     public void OnPointerClick(PointerEventData eventData)
     {
         if (
-            !string.IsNullOrEmpty(SystemInstanceId)
+            !string.IsNullOrEmpty(SectorInstanceId)
             && eventData?.button == PointerEventData.InputButton.Left
             && eventData.clickCount >= 2
         )
@@ -216,14 +216,14 @@ public sealed class PlanetSystemClusterView
     }
 
     /// <summary>
-    /// Applies the projected system label and visibility.
+    /// Applies the projected sector label and visibility.
     /// </summary>
-    /// <param name="label">The displayed system name.</param>
+    /// <param name="label">The displayed sector name.</param>
     /// <param name="visible">Whether the label is visible.</param>
     private void RenderLabel(string label, bool visible)
     {
-        systemNameTextField.text = label ?? string.Empty;
-        systemNameTextField.gameObject.SetActive(visible && !string.IsNullOrEmpty(label));
+        sectorNameTextField.text = label ?? string.Empty;
+        sectorNameTextField.gameObject.SetActive(visible && !string.IsNullOrEmpty(label));
     }
 
     /// <summary>
@@ -271,7 +271,7 @@ public sealed class PlanetSystemClusterView
             RawImage image = Instantiate(template, transform);
             image.name = $"{prefix}{images.Count}Image";
             image.raycastTarget = false;
-            image.transform.SetSiblingIndex(systemNameTextField.transform.GetSiblingIndex());
+            image.transform.SetSiblingIndex(sectorNameTextField.transform.GetSiblingIndex());
             images.Add(image);
         }
 
@@ -379,14 +379,14 @@ public sealed class PlanetSystemClusterView
     {
         if (hitAreaImage == null)
             throw new MissingReferenceException($"{name}/HitAreaImage is missing.");
-        if (systemNameTextField == null)
-            throw new MissingReferenceException($"{name}/SystemNameTextField is missing.");
+        if (sectorNameTextField == null)
+            throw new MissingReferenceException($"{name}/SectorNameTextField is missing.");
         if (starImageTemplate == null)
             throw new MissingReferenceException($"{name}/StarImageTemplate is missing.");
         if (headquartersImageTemplate == null)
             throw new MissingReferenceException($"{name}/HeadquartersImageTemplate is missing.");
         starImageTemplate.gameObject.SetActive(false);
         headquartersImageTemplate.gameObject.SetActive(false);
-        systemNameTextField.raycastTarget = false;
+        sectorNameTextField.raycastTarget = false;
     }
 }

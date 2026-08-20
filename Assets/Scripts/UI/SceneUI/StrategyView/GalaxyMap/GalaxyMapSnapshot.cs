@@ -16,22 +16,22 @@ public enum PlanetIcon
 }
 
 /// <summary>
-/// Contains one visible planet system and its projected galaxy-map planets.
+/// Contains one visible planet sector and its projected galaxy-map planets.
 /// </summary>
 public sealed class GalaxyMapSector
 {
     /// <summary>
-    /// Creates a visible galaxy-map sector for one planet system.
+    /// Creates a visible galaxy-map sector for one planet sector.
     /// </summary>
-    /// <param name="system">The represented planet system.</param>
+    /// <param name="planetSector">The represented planet sector.</param>
     /// <param name="planets">The visible planets in source render order.</param>
-    public GalaxyMapSector(PlanetSystem system, IReadOnlyList<GalaxyMapPlanet> planets)
+    public GalaxyMapSector(PlanetSector planetSector, IReadOnlyList<GalaxyMapPlanet> planets)
     {
-        System = system;
+        PlanetSector = planetSector;
         Planets = CreatePlanetSnapshot(planets);
     }
 
-    public PlanetSystem System { get; }
+    public PlanetSector PlanetSector { get; }
 
     public IReadOnlyList<GalaxyMapPlanet> Planets { get; }
 
@@ -67,19 +67,19 @@ public sealed class GalaxyMapPlanet
     /// <summary>
     /// Creates a visible galaxy-map planet snapshot.
     /// </summary>
-    /// <param name="sector">The represented planet system.</param>
+    /// <param name="sector">The represented planet sector.</param>
     /// <param name="planet">The visible planet snapshot.</param>
     /// <param name="planetIconPath">The resolved planet-art resource path.</param>
-    public GalaxyMapPlanet(PlanetSystem sector, Planet planet, string planetIconPath)
+    public GalaxyMapPlanet(PlanetSector sector, Planet planet, string planetIconPath)
     {
-        SectorSystem = sector;
+        PlanetSector = sector;
         Planet = planet;
         PlanetIconPath = planetIconPath ?? string.Empty;
     }
 
     public GalaxyMapSector Sector { get; private set; }
 
-    public PlanetSystem SectorSystem { get; }
+    public PlanetSector PlanetSector { get; }
 
     public Planet Planet { get; }
 

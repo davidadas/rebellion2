@@ -94,11 +94,11 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
-            PlanetSystem system = new PlanetSystem { InstanceID = "s1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "s1" };
             Planet planet = new Planet { InstanceID = "p1", OwnerInstanceID = "empire" };
             game.Factions.Add(empire);
-            game.AttachNode(system, game.GetGalaxyMap());
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.GetGalaxyMap());
+            game.AttachNode(planet, planetSector);
 
             BlockadeSystem manager = new BlockadeSystem(game, new StubRNG());
             List<GameResult> results = manager.ProcessTick();
@@ -137,17 +137,17 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem sys1 = new PlanetSystem { InstanceID = "s1" };
-            PlanetSystem sys2 = new PlanetSystem { InstanceID = "s2" };
+            PlanetSector sector1 = new PlanetSector { InstanceID = "s1" };
+            PlanetSector sector2 = new PlanetSector { InstanceID = "s2" };
             Planet blockaded = new Planet { InstanceID = "p1", OwnerInstanceID = "empire" };
             Planet safe = new Planet { InstanceID = "p2", OwnerInstanceID = "empire" };
             Fleet hostile = new Fleet { InstanceID = "f1", OwnerInstanceID = "alliance" };
             Fleet defender = new Fleet { InstanceID = "f2", OwnerInstanceID = "empire" };
 
-            game.AttachNode(sys1, game.GetGalaxyMap());
-            game.AttachNode(sys2, game.GetGalaxyMap());
-            game.AttachNode(blockaded, sys1);
-            game.AttachNode(safe, sys2);
+            game.AttachNode(sector1, game.GetGalaxyMap());
+            game.AttachNode(sector2, game.GetGalaxyMap());
+            game.AttachNode(blockaded, sector1);
+            game.AttachNode(safe, sector2);
             game.AttachNode(hostile, blockaded);
             game.AttachNode(defender, safe);
             AttachOperationalCapitalShip(game, hostile, "hostile-ship");
@@ -215,10 +215,10 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
             Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "s1",
-                DisplayName = "Tatooine System",
+                DisplayName = "Orus",
             };
             Planet planet = new Planet
             {
@@ -235,8 +235,8 @@ namespace Rebellion.Tests.Systems
 
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
-            game.AttachNode(system, game.GetGalaxyMap());
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.GetGalaxyMap());
+            game.AttachNode(planet, planetSector);
             game.AttachNode(hostileFleet, planet);
             AttachOperationalCapitalShip(game, hostileFleet, "hostile-ship");
 

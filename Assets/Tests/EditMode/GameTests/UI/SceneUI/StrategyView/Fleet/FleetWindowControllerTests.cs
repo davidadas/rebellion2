@@ -13,7 +13,7 @@ using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 {
@@ -324,7 +324,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             };
             AttachFleetGraph(freshPlanetNode, freshFleet);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSystem { InstanceID = "fresh-system" },
+                new GamePlanetSector { InstanceID = "fresh-sector" },
                 freshPlanetNode,
                 _playerFactionId
             );
@@ -448,12 +448,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
-            GamePlanetSystem system = new GamePlanetSystem
+            GamePlanetSector planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
-                DisplayName = "Core System",
+                InstanceID = "sector",
+                DisplayName = "Core Sector",
             };
-            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet planet = new Planet
             {
                 InstanceID = "planet",
@@ -461,8 +461,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 OwnerInstanceID = _playerFactionId,
                 IsColonized = true,
             };
-            game.AttachNode(planet, system);
-            return new GalaxyMapPlanet(system, planet, _playerFactionId);
+            game.AttachNode(planet, planetSector);
+            return new GalaxyMapPlanet(planetSector, planet, _playerFactionId);
         }
 
         private GameFleet CreateFleet(string instanceId, string displayName, out Officer officer)

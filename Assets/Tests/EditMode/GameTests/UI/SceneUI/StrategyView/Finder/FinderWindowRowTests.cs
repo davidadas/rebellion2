@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 {
@@ -48,7 +48,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 OwnerInstanceID = "unit-owner",
             };
             GalaxyMapPlanet mapPlanet = new GalaxyMapPlanet(
-                new GamePlanetSystem(),
+                new GamePlanetSector(),
                 planet,
                 string.Empty
             );
@@ -71,7 +71,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 
             FinderWindowRow row = new FinderWindowRow(
                 "Planet",
-                new GalaxyMapPlanet(new GamePlanetSystem(), planet, string.Empty)
+                new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty)
             );
 
             Assert.AreEqual("planet", row.Identity);

@@ -856,7 +856,7 @@ namespace Rebellion.AI.Director
             return _context
                 .Game.GetSceneNodesByType<Planet>()
                 .Where(planet => planet.IsColonized && !planet.IsDestroyed)
-                .OrderBy(GetPlanetSystemPositionX)
+                .OrderBy(GetPlanetSectorPositionX)
                 .ThenBy(planet => planet.InstanceID)
                 .ToList();
         }
@@ -873,7 +873,7 @@ namespace Rebellion.AI.Director
             return _context
                 .Faction.GetOwnedUnitsByType<Planet>()
                 .Where(planet => planet != null)
-                .OrderBy(GetPlanetSystemPositionX)
+                .OrderBy(GetPlanetSectorPositionX)
                 .ThenBy(planet => planet.InstanceID)
                 .ToList();
         }
@@ -890,7 +890,7 @@ namespace Rebellion.AI.Director
             return _context
                 .Game.GetSceneNodesByType<Planet>()
                 .Where(IsEnemyPlanet)
-                .OrderBy(GetPlanetSystemPositionX)
+                .OrderBy(GetPlanetSectorPositionX)
                 .ThenBy(planet => planet.InstanceID)
                 .ToList();
         }
@@ -949,7 +949,7 @@ namespace Rebellion.AI.Director
                         .Where(IsTargetableEnemyOfficer)
                         .Select(officer => (Planet: planet, TargetOfficer: officer))
                 )
-                .OrderBy(candidate => GetPlanetSystemPositionX(candidate.Planet))
+                .OrderBy(candidate => GetPlanetSectorPositionX(candidate.Planet))
                 .ThenBy(candidate => candidate.Planet.InstanceID)
                 .ThenBy(candidate => candidate.TargetOfficer.InstanceID)
                 .ToList();
@@ -1012,13 +1012,13 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns a planet's system x position.
+        /// Returns a planet's sector x position.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The system x position.</returns>
-        private int GetPlanetSystemPositionX(Planet planet)
+        /// <returns>The sector x position.</returns>
+        private int GetPlanetSectorPositionX(Planet planet)
         {
-            return planet.GetParentOfType<PlanetSystem>()?.PositionX ?? 0;
+            return planet.GetParentOfType<PlanetSector>()?.PositionX ?? 0;
         }
 
         /// <summary>

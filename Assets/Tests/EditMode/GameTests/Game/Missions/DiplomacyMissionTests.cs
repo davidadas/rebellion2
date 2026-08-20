@@ -132,10 +132,10 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CoreSystemWeakSupport_AppliesConfiguredDivisor()
+        public void Execute_CoreSectorWeakSupport_AppliesConfiguredDivisor()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
-            planet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.CoreSystem;
+            planet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
             game.GetFactionByOwnerInstanceID("empire").Settings.WeakSupportPenaltyTrigger =
                 SupportShiftCondition.Positive;
             Mission mission = CreateAndAttachMission(game, planet);
@@ -426,12 +426,12 @@ namespace Rebellion.Tests.Game.Missions
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
+                InstanceID = "sector1",
+                SectorType = PlanetSectorType.OuterRim,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
 
             planet = new Planet
             {
@@ -441,7 +441,7 @@ namespace Rebellion.Tests.Game.Missions
                 PopularSupport = new Dictionary<string, int> { { "empire", empireSupport } },
                 VisitingFactionIDs = new List<string> { "empire" },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             return game;
         }
 

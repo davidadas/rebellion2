@@ -71,7 +71,7 @@ public readonly struct StrategyContextMenuLayout
     /// <param name="facilityMenuWidth">The facility menu width.</param>
     /// <param name="fleetMenuWidth">The standard fleet menu width.</param>
     /// <param name="fleetBombardmentMenuWidth">The fleet menu width when bombardment is available.</param>
-    /// <param name="planetSystemMenuWidth">The planet-system menu width.</param>
+    /// <param name="planetSectorMenuWidth">The planet-sector menu width.</param>
     /// <param name="defenseMenuWidth">The defense menu width.</param>
     /// <param name="missionsMenuWidth">The missions menu width.</param>
     /// <param name="fallbackMenuWidth">The fallback menu width.</param>
@@ -79,7 +79,7 @@ public readonly struct StrategyContextMenuLayout
         int facilityMenuWidth,
         int fleetMenuWidth,
         int fleetBombardmentMenuWidth,
-        int planetSystemMenuWidth,
+        int planetSectorMenuWidth,
         int defenseMenuWidth,
         int missionsMenuWidth,
         int fallbackMenuWidth
@@ -88,7 +88,7 @@ public readonly struct StrategyContextMenuLayout
         FacilityMenuWidth = facilityMenuWidth;
         FleetMenuWidth = fleetMenuWidth;
         FleetBombardmentMenuWidth = fleetBombardmentMenuWidth;
-        PlanetSystemMenuWidth = planetSystemMenuWidth;
+        PlanetSectorMenuWidth = planetSectorMenuWidth;
         DefenseMenuWidth = defenseMenuWidth;
         MissionsMenuWidth = missionsMenuWidth;
         FallbackMenuWidth = fallbackMenuWidth;
@@ -100,7 +100,7 @@ public readonly struct StrategyContextMenuLayout
 
     public int FleetBombardmentMenuWidth { get; }
 
-    public int PlanetSystemMenuWidth { get; }
+    public int PlanetSectorMenuWidth { get; }
 
     public int DefenseMenuWidth { get; }
 

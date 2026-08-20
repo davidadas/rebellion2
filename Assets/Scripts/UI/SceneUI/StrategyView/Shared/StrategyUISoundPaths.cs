@@ -8,7 +8,7 @@ internal static class StrategyUISoundPaths
     public const string ControlPress = "Application/Strategy/Audio/Controls/control-press";
 
     public const string SectorWindowOpen =
-        "Application/Strategy/Audio/Controls/planet-system-panel-open";
+        "Application/Strategy/Audio/Controls/planet-sector-panel-open";
 
     public const string SectorWindowClose =
         "Application/Strategy/Audio/Controls/sector-window-close";

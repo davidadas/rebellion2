@@ -293,12 +293,12 @@ namespace Rebellion.Tests.Systems
         {
             _game.Factions.Add(new Faction { InstanceID = "alliance" });
             _game.Factions.Add(new Faction { InstanceID = "empire" });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(planetSector, _game.Galaxy);
             Planet first = new Planet { InstanceID = "first" };
             Planet second = new Planet { InstanceID = "second" };
-            _game.AttachNode(first, system);
-            _game.AttachNode(second, system);
+            _game.AttachNode(first, planetSector);
+            _game.AttachNode(second, planetSector);
             first.OwnerInstanceID = "alliance";
             second.OwnerInstanceID = "empire";
             GameEvent gameEvent = new GameEvent
@@ -342,10 +342,10 @@ namespace Rebellion.Tests.Systems
         public void ProcessEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
             _game.Factions.Add(new Faction { InstanceID = "alliance" });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(planetSector, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planet, planetSector);
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "OWNED_ONLY",
@@ -384,10 +384,10 @@ namespace Rebellion.Tests.Systems
         {
             _game.Factions.Add(new Faction { InstanceID = "alliance" });
             _game.Factions.Add(new Faction { InstanceID = "empire" });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(planetSector, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planet, planetSector);
             planet.OwnerInstanceID = "alliance";
             GameEvent gameEvent = new GameEvent
             {
@@ -426,10 +426,10 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessEvents_OneShotTarget_ExecutesTargetOnce()
         {
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet { InstanceID = "planet" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.AttachNode(planet, planetSector);
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "ONE_SHOT_PER_PLANET",
@@ -451,13 +451,13 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessEvents_RandomTargetBeforeScheduledTick_DoesNotSelectTarget()
         {
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "system",
-                SystemType = PlanetSystemType.CoreSystem,
+                InstanceID = "sector",
+                SectorType = PlanetSectorType.Core,
             };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(new Planet { InstanceID = "planet" }, system);
+            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.AttachNode(new Planet { InstanceID = "planet" }, planetSector);
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "DELAYED_RANDOM_TARGET",
@@ -472,7 +472,7 @@ namespace Rebellion.Tests.Systems
                             Count = 1,
                             Selectors = new List<GameEventSelector>
                             {
-                                new SelectPlanets { SystemType = PlanetSystemType.CoreSystem },
+                                new SelectPlanets { SectorType = PlanetSectorType.Core },
                             },
                         },
                     },

@@ -23,7 +23,7 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
     private int fleetBombardmentMenuWidth;
 
     [SerializeField]
-    private int planetSystemMenuWidth;
+    private int planetSectorMenuWidth;
 
     [SerializeField]
     private int defenseMenuWidth;
@@ -52,7 +52,7 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
             facilityMenuWidth,
             fleetMenuWidth,
             fleetBombardmentMenuWidth,
-            planetSystemMenuWidth,
+            planetSectorMenuWidth,
             defenseMenuWidth,
             missionsMenuWidth,
             fallbackMenuWidth

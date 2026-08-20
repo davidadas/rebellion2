@@ -19,7 +19,7 @@ public sealed class GameDataCatalog
 
     public Faction[] Factions { get; }
 
-    public PlanetSystem[] PlanetSystems { get; }
+    public PlanetSector[] PlanetSectors { get; }
 
     public Building[] Buildings { get; }
 
@@ -47,7 +47,7 @@ public sealed class GameDataCatalog
     /// <param name="gameConfig">The runtime game configuration.</param>
     /// <param name="generationConfig">The selected scenario's generation configuration.</param>
     /// <param name="factions">The faction templates.</param>
-    /// <param name="planetSystems">The planet-system templates.</param>
+    /// <param name="planetSectors">The planet-sector templates.</param>
     /// <param name="buildings">The building templates.</param>
     /// <param name="capitalShips">The capital-ship templates.</param>
     /// <param name="starfighters">The starfighter templates.</param>
@@ -62,7 +62,7 @@ public sealed class GameDataCatalog
         GameConfig gameConfig,
         GameGenerationConfig generationConfig,
         Faction[] factions,
-        PlanetSystem[] planetSystems,
+        PlanetSector[] planetSectors,
         Building[] buildings,
         CapitalShip[] capitalShips,
         Starfighter[] starfighters,
@@ -79,7 +79,7 @@ public sealed class GameDataCatalog
         GenerationConfig =
             generationConfig ?? throw new ArgumentNullException(nameof(generationConfig));
         Factions = factions ?? throw new ArgumentNullException(nameof(factions));
-        PlanetSystems = planetSystems ?? throw new ArgumentNullException(nameof(planetSystems));
+        PlanetSectors = planetSectors ?? throw new ArgumentNullException(nameof(planetSectors));
         Buildings = buildings ?? throw new ArgumentNullException(nameof(buildings));
         CapitalShips = capitalShips ?? throw new ArgumentNullException(nameof(capitalShips));
         Starfighters = starfighters ?? throw new ArgumentNullException(nameof(starfighters));

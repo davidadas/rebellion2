@@ -161,9 +161,9 @@ namespace Rebellion.Game.Missions
             planet.AddVisitor(OwnerInstanceID);
 
             Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
-            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetSnapshot(faction, planet, system, game?.CurrentTick ?? 0);
+            recorder.RecordPlanetSnapshot(faction, planet, sector, game?.CurrentTick ?? 0);
 
             return new List<GameResult>();
         }

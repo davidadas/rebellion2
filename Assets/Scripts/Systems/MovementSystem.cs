@@ -53,7 +53,7 @@ namespace Rebellion.Systems
         /// Initializes a new instance of the MovementSystem class.
         /// </summary>
         /// <param name="game">The game instance.</param>
-        /// <param name="fogOfWar">The fog of war system for capturing snapshots on arrival.</param>
+        /// <param name="fogOfWar">The fog-of-war system for capturing snapshots on arrival.</param>
         /// <param name="fleetSystem">Owns fleet formation and empty-fleet cleanup.</param>
         /// <param name="blockade">The blockade system for evacuation loss rolls.</param>
         public MovementSystem(
@@ -1509,9 +1509,9 @@ namespace Rebellion.Systems
             if (faction == null || !_fogOfWar.IsPlanetVisible(destinationPlanet, faction))
                 return;
 
-            PlanetSystem system = destinationPlanet.GetParentOfType<PlanetSystem>();
-            if (system != null)
-                _fogOfWar.CaptureSnapshot(faction, destinationPlanet, system, _game.CurrentTick);
+            PlanetSector sector = destinationPlanet.GetParentOfType<PlanetSector>();
+            if (sector != null)
+                _fogOfWar.CaptureSnapshot(faction, destinationPlanet, sector, _game.CurrentTick);
         }
 
         /// <summary>
@@ -2013,7 +2013,7 @@ namespace Rebellion.Systems
                     movable,
                     currentPosition,
                     destinationPlanet,
-                    sameSystem: false
+                    sameSector: false
                 ),
                 TicksElapsed = 0,
                 MovementGroupID = movementGroupID,
@@ -2314,7 +2314,7 @@ namespace Rebellion.Systems
                 unit,
                 origin.GetPosition(),
                 destination,
-                IsSameSystem(origin, destination)
+                IsSameSector(origin, destination)
             );
         }
 
@@ -2337,7 +2337,7 @@ namespace Rebellion.Systems
                 unit,
                 originPos,
                 destination,
-                IsSameSystem(origin, destination)
+                IsSameSector(origin, destination)
             );
         }
 
@@ -2347,13 +2347,13 @@ namespace Rebellion.Systems
         /// <param name="unit">The moving unit.</param>
         /// <param name="originPos">The current movement origin position.</param>
         /// <param name="destination">The destination planet.</param>
-        /// <param name="sameSystem">Whether the movement remains within one planet system.</param>
+        /// <param name="sameSector">Whether the movement remains within one planet sector.</param>
         /// <returns>The movement duration in ticks.</returns>
         private int CalculateTransitTicks(
             IMovable unit,
             Point originPos,
             Planet destination,
-            bool sameSystem
+            bool sameSector
         )
         {
             double distance = destination.GetRawDistanceTo(originPos);
@@ -2381,24 +2381,24 @@ namespace Rebellion.Systems
                     distance * _game.GetConfig().Movement.DistanceScale / slowestHyperdrive
                 );
 
-            int minimumTransitTicks = sameSystem
-                ? _game.GetConfig().Movement.SameSystemMinTransitTicks
+            int minimumTransitTicks = sameSector
+                ? _game.GetConfig().Movement.SameSectorMinTransitTicks
                 : _game.GetConfig().Movement.MinTransitTicks;
 
             return Math.Max(baseTicks, minimumTransitTicks);
         }
 
         /// <summary>
-        /// Returns whether two planets belong to the same planet system.
+        /// Returns whether two planets belong to the same planet sector.
         /// </summary>
         /// <param name="origin">The origin planet.</param>
         /// <param name="destination">The destination planet.</param>
-        /// <returns>True if both planets share a parent planet system; otherwise false.</returns>
-        private static bool IsSameSystem(Planet origin, Planet destination)
+        /// <returns>True if both planets share a parent planet sector; otherwise false.</returns>
+        private static bool IsSameSector(Planet origin, Planet destination)
         {
-            PlanetSystem originSystem = origin?.GetParentOfType<PlanetSystem>();
-            PlanetSystem destinationSystem = destination?.GetParentOfType<PlanetSystem>();
-            return originSystem != null && ReferenceEquals(originSystem, destinationSystem);
+            PlanetSector originSector = origin?.GetParentOfType<PlanetSector>();
+            PlanetSector destinationSector = destination?.GetParentOfType<PlanetSector>();
+            return originSector != null && ReferenceEquals(originSector, destinationSector);
         }
 
         /// <summary>

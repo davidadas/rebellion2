@@ -9,7 +9,7 @@ namespace Rebellion.Generation
 {
     /// <summary>
     /// Seeds initial fog-of-war visibility snapshots for every faction. Each faction
-    /// receives a starting snapshot of any planet sitting in a core system it does not
+    /// receives a starting snapshot of any planet sitting in a core sector it does not
     /// own, plus any planet explicitly granted to it by a
     /// <see cref="StartingPlanet.VisibleToFactionIDs"/> override.
     /// </summary>
@@ -36,20 +36,20 @@ namespace Rebellion.Generation
             HashSet<(string PlanetID, string ViewerFactionID)> visibilityOverrides =
                 CollectStartingVisibilityOverrides(game, config);
 
-            foreach (PlanetSystem system in game.Galaxy.PlanetSystems)
+            foreach (PlanetSector sector in game.Galaxy.PlanetSectors)
             {
                 foreach (Faction faction in game.Factions)
                 {
-                    foreach (Planet planet in system.Planets)
+                    foreach (Planet planet in sector.Planets)
                     {
-                        if (IsForeignCorePlanet(system, planet, faction))
+                        if (IsForeignCorePlanet(sector, planet, faction))
                         {
-                            fog.CaptureSnapshot(faction, planet, system, currentTick: 0);
+                            fog.CaptureSnapshot(faction, planet, sector, currentTick: 0);
                         }
 
                         if (visibilityOverrides.Contains((planet.InstanceID, faction.InstanceID)))
                         {
-                            fog.CaptureSnapshot(faction, planet, system, currentTick: 0);
+                            fog.CaptureSnapshot(faction, planet, sector, currentTick: 0);
                         }
                     }
                 }
@@ -57,22 +57,22 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Returns true when the planet sits in a core system and is owned by some
+        /// Returns true when the planet sits in a core sector and is owned by some
         /// faction other than the viewer.
         /// </summary>
-        /// <param name="system">The system containing the planet.</param>
+        /// <param name="sector">The sector containing the planet.</param>
         /// <param name="planet">The candidate planet.</param>
         /// <param name="viewer">The faction whose visibility is being decided.</param>
         /// <returns>True when the viewer should see the planet as a foreign core planet.</returns>
-        private bool IsForeignCorePlanet(PlanetSystem system, Planet planet, Faction viewer)
+        private bool IsForeignCorePlanet(PlanetSector sector, Planet planet, Faction viewer)
         {
-            return system.SystemType == PlanetSystemType.CoreSystem
+            return sector.SectorType == PlanetSectorType.Core
                 && planet.OwnerInstanceID != viewer.InstanceID;
         }
 
         /// <summary>
         /// Walks the configured faction setups and collects every (planet, viewer-faction)
-        /// pair that should grant starting visibility regardless of system type.
+        /// pair that should grant starting visibility regardless of sector type.
         /// </summary>
         /// <param name="game">The game containing the live planet instances.</param>
         /// <param name="config">The generation config.</param>
@@ -84,7 +84,7 @@ namespace Rebellion.Generation
         {
             HashSet<(string, string)> overrides = new HashSet<(string, string)>();
             Dictionary<string, Planet> planetsByTypeId = game
-                .Galaxy.PlanetSystems.SelectMany(system => system.Planets)
+                .Galaxy.PlanetSectors.SelectMany(sector => sector.Planets)
                 .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
                 .ToDictionary(planet => planet.TypeID);
 

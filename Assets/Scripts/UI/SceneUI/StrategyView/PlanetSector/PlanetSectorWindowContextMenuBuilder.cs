@@ -3,12 +3,12 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 /// <summary>
-/// Builds context-menu commands for one planet-system window hit.
+/// Builds context-menu commands for one planet-sector window hit.
 /// </summary>
-internal static class PlanetSystemWindowContextMenuBuilder
+internal static class PlanetSectorWindowContextMenuBuilder
 {
     /// <summary>
-    /// Creates context commands for one planet-system hit.
+    /// Creates context commands for one planet-sector hit.
     /// </summary>
     /// <param name="hit">The active semantic planet hit.</param>
     /// <param name="fleetItems">The player-controlled fleet items at the hit planet.</param>
@@ -19,7 +19,7 @@ internal static class PlanetSystemWindowContextMenuBuilder
     /// <param name="canAssault">Whether the fleets can assault the hit planet.</param>
     /// <returns>The available context commands in display order.</returns>
     public static List<StrategyMenuCommand> Create(
-        PlanetSystemWindowHit hit,
+        PlanetSectorWindowHit hit,
         List<ISceneNode> fleetItems,
         string playerFactionId,
         Building mobileHeadquarters = null,
@@ -79,7 +79,7 @@ internal static class PlanetSystemWindowContextMenuBuilder
     }
 
     /// <summary>
-    /// Creates fleet commands for one planet-system fleet overlay.
+    /// Creates fleet commands for one planet-sector fleet overlay.
     /// </summary>
     /// <param name="fleetItems">The player-controlled fleet items at the planet.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>

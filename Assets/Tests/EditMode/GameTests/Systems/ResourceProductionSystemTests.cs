@@ -16,7 +16,7 @@ namespace Rebellion.Tests.Systems
         private GameRoot _game;
         private ResourceProductionSystem _system;
         private Faction _faction;
-        private PlanetSystem _planetSystem;
+        private PlanetSector _planetSector;
         private Planet _planet;
         private int _nextBuildingId;
 
@@ -28,16 +28,16 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(_faction);
             _game.Factions.Add(new Faction { InstanceID = "FACTION2" });
 
-            _planetSystem = new PlanetSystem
+            _planetSector = new PlanetSector
             {
-                InstanceID = "SYSTEM1",
+                InstanceID = "SECTOR1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(_planetSystem, _game.Galaxy);
+            _game.AttachNode(_planetSector, _game.Galaxy);
 
             _planet = CreateOwnedPlanet("PLANET1");
-            _game.AttachNode(_planet, _planetSystem);
+            _game.AttachNode(_planet, _planetSector);
             _system = new ResourceProductionSystem(_game);
         }
 
@@ -224,7 +224,7 @@ namespace Rebellion.Tests.Systems
 
             Planet suspendedPlanet = CreateOwnedPlanet("PLANET2");
             suspendedPlanet.IsInUprising = true;
-            _game.AttachNode(suspendedPlanet, _planetSystem);
+            _game.AttachNode(suspendedPlanet, _planetSector);
             Building refinery = AddCompleteBuilding(
                 suspendedPlanet,
                 BuildingType.Refinery,
@@ -343,7 +343,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_MineAndRefineryOnDifferentPlanets_ShareMaintenanceDemand()
         {
             Planet secondPlanet = CreateOwnedPlanet("PLANET2");
-            _game.AttachNode(secondPlanet, _planetSystem);
+            _game.AttachNode(secondPlanet, _planetSector);
             Building mine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 2);
             Building refinery = AddCompleteBuilding(
                 secondPlanet,

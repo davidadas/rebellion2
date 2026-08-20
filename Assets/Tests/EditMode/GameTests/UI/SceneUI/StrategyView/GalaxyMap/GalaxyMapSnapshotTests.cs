@@ -1,7 +1,7 @@
 using System;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
@@ -11,12 +11,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Planet_Values_PreservesNormalizedSnapshot()
         {
-            GamePlanetSystem system = new GamePlanetSystem();
+            GamePlanetSector planetSector = new GamePlanetSector();
             Planet planet = new Planet { OwnerInstanceID = "owner" };
 
-            GalaxyMapPlanet snapshot = new GalaxyMapPlanet(system, planet, null);
+            GalaxyMapPlanet snapshot = new GalaxyMapPlanet(planetSector, planet, null);
 
-            Assert.AreSame(system, snapshot.SectorSystem);
+            Assert.AreSame(planetSector, snapshot.PlanetSector);
             Assert.AreSame(planet, snapshot.Planet);
             Assert.AreEqual(string.Empty, snapshot.PlanetIconPath);
             Assert.AreEqual("owner", snapshot.OwnerFactionId);
@@ -26,15 +26,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Sector_SourceChanges_PreservesPlanetSnapshotAndAttachesSector()
         {
-            GamePlanetSystem system = new GamePlanetSystem();
-            GalaxyMapPlanet planet = new GalaxyMapPlanet(system, new Planet(), string.Empty);
-            GalaxyMapPlanet replacement = new GalaxyMapPlanet(system, new Planet(), string.Empty);
+            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyMapPlanet planet = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
+            GalaxyMapPlanet replacement = new GalaxyMapPlanet(
+                planetSector,
+                new Planet(),
+                string.Empty
+            );
             GalaxyMapPlanet[] planets = { planet };
 
-            GalaxyMapSector sector = new GalaxyMapSector(system, planets);
+            GalaxyMapSector sector = new GalaxyMapSector(planetSector, planets);
             planets[0] = replacement;
 
-            Assert.AreSame(system, sector.System);
+            Assert.AreSame(planetSector, sector.PlanetSector);
             Assert.AreSame(planet, sector.Planets[0]);
             Assert.AreSame(sector, planet.Sector);
             Assert.Throws<NotSupportedException>(() =>
@@ -45,7 +49,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Sector_NullPlanets_ReturnsEmptySnapshot()
         {
-            GalaxyMapSector sector = new GalaxyMapSector(new GamePlanetSystem(), null);
+            GalaxyMapSector sector = new GalaxyMapSector(new GamePlanetSector(), null);
 
             Assert.IsEmpty(sector.Planets);
         }
@@ -53,12 +57,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Sector_PlanetAlreadyAttachedToDifferentSector_ThrowsInvalidOperationException()
         {
-            GamePlanetSystem system = new GamePlanetSystem();
-            GalaxyMapPlanet planet = new GalaxyMapPlanet(system, new Planet(), string.Empty);
-            new GalaxyMapSector(system, new[] { planet });
+            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyMapPlanet planet = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
+            new GalaxyMapSector(planetSector, new[] { planet });
 
             Assert.Throws<InvalidOperationException>(() =>
-                new GalaxyMapSector(system, new[] { planet })
+                new GalaxyMapSector(planetSector, new[] { planet })
             );
         }
 
@@ -66,7 +70,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void AttachToSector_NullSector_ThrowsArgumentNullException()
         {
             GalaxyMapPlanet planet = new GalaxyMapPlanet(
-                new GamePlanetSystem(),
+                new GamePlanetSector(),
                 new Planet(),
                 string.Empty
             );

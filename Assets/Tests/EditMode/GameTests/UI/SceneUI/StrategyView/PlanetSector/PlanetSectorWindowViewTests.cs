@@ -7,25 +7,25 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
     [TestFixture]
-    public class PlanetSystemWindowViewTests
+    public class PlanetSectorWindowViewTests
     {
         private const string _prefabPath =
-            "Assets/Prefabs/UI/StrategyView/PlanetSystemWindow.prefab";
+            "Assets/Prefabs/UI/StrategyView/PlanetSectorWindow.prefab";
 
         private Texture2D _fleetTexture;
         private Texture2D _planetTexture;
         private Texture2D _pressedTexture;
         private GameObject _rootObject;
-        private PlanetSystemWindowView _view;
+        private PlanetSectorWindowView _view;
 
         [SetUp]
         public void SetUp()
         {
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
-            _view = _rootObject.GetComponent<PlanetSystemWindowView>();
+            _view = _rootObject.GetComponent<PlanetSectorWindowView>();
             _planetTexture = new Texture2D(100, 80);
             _fleetTexture = new Texture2D(24, 24);
             _pressedTexture = new Texture2D(24, 24);
@@ -51,17 +51,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Render_MultiplePlanets_AppliesTitleProjectionAndStableViewNames()
         {
-            PlanetSystemPlanetRenderData first = CreatePlanet(0, new Vector2Int(0, 0), "Coruscant");
-            PlanetSystemPlanetRenderData second = CreatePlanet(
+            PlanetSectorPlanetRenderData first = CreatePlanet(0, new Vector2Int(0, 0), "Coruscant");
+            PlanetSectorPlanetRenderData second = CreatePlanet(
                 1,
                 new Vector2Int(100, 80),
                 "Corellia"
             );
 
-            _view.Render(new PlanetSystemWindowRenderData("Sesswenna", new[] { first, second }));
+            _view.Render(new PlanetSectorWindowRenderData("Sesswenna", new[] { first, second }));
 
-            Assert.AreEqual("Sesswenna", GetField<TextMeshProUGUI>("systemNameTextField").text);
-            List<PlanetSystemPlanetView> planets = GetPlanetViews();
+            Assert.AreEqual("Sesswenna", GetField<TextMeshProUGUI>("sectorNameTextField").text);
+            List<PlanetSectorPlanetView> planets = GetPlanetViews();
             Assert.AreEqual(2, planets.Count);
             Assert.AreEqual("Planet0", planets[0].name);
             Assert.AreEqual("Planet1", planets[1].name);
@@ -82,7 +82,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void Render_ShorterSnapshot_ReusesAndHidesSurplusPlanetViews()
         {
             _view.Render(
-                new PlanetSystemWindowRenderData(
+                new PlanetSectorWindowRenderData(
                     "Sesswenna",
                     new[]
                     {
@@ -91,18 +91,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                     }
                 )
             );
-            List<PlanetSystemPlanetView> original = new List<PlanetSystemPlanetView>(
+            List<PlanetSectorPlanetView> original = new List<PlanetSectorPlanetView>(
                 GetPlanetViews()
             );
 
             _view.Render(
-                new PlanetSystemWindowRenderData(
+                new PlanetSectorWindowRenderData(
                     "Sesswenna",
                     new[] { CreatePlanet(0, Vector2Int.zero, "Coruscant") }
                 )
             );
 
-            List<PlanetSystemPlanetView> planets = GetPlanetViews();
+            List<PlanetSectorPlanetView> planets = GetPlanetViews();
             Assert.AreEqual(2, planets.Count);
             Assert.AreSame(original[0], planets[0]);
             Assert.AreSame(original[1], planets[1]);
@@ -114,12 +114,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void TryCreateElement_RenderedFleetRaycast_ReturnsSemanticElement()
         {
             _view.Render(
-                new PlanetSystemWindowRenderData(
+                new PlanetSectorWindowRenderData(
                     "Sesswenna",
                     new[] { CreatePlanet(0, Vector2Int.zero, "Coruscant") }
                 )
             );
-            PlanetSystemPlanetView planet = GetPlanetViews()[0];
+            PlanetSectorPlanetView planet = GetPlanetViews()[0];
             RawImage fleetImage = GetPlanetField<RawImage>(planet, "fleetImage");
             PointerEventData eventData = CreatePointerEvent(
                 fleetImage.gameObject,
@@ -127,7 +127,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 1
             );
 
-            bool found = _view.TryCreateElement(eventData, out PlanetSystemWindowElement element);
+            bool found = _view.TryCreateElement(eventData, out PlanetSectorWindowElement element);
 
             Assert.IsTrue(found);
             Assert.AreEqual(0, element.PlanetIndex);
@@ -139,18 +139,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void TryGetFleetDragPreview_RenderedFleet_ReturnsPressedTextureAndIconGeometry()
         {
             _view.Render(
-                new PlanetSystemWindowRenderData(
+                new PlanetSectorWindowRenderData(
                     "Sesswenna",
                     new[] { CreatePlanet(0, Vector2Int.zero, "Coruscant") }
                 )
             );
-            PlanetSystemPlanetView planet = GetPlanetViews()[0];
+            PlanetSectorPlanetView planet = GetPlanetViews()[0];
             RectInt iconBounds = GetSourceRect(
                 GetPlanetField<RawImage>(planet, "fleetImage").transform
             );
 
             bool found = _view.TryGetFleetDragPreview(
-                new PlanetSystemWindowElement(0, PlanetIcon.Fleet, false),
+                new PlanetSectorWindowElement(0, PlanetIcon.Fleet, false),
                 100,
                 50,
                 120,
@@ -168,14 +168,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void TryGetFleetDragPreview_NonFleetOrMissingPlanet_ReturnsFalse()
         {
             _view.Render(
-                new PlanetSystemWindowRenderData(
+                new PlanetSectorWindowRenderData(
                     "Sesswenna",
                     new[] { CreatePlanet(0, Vector2Int.zero, "Coruscant") }
                 )
             );
 
             bool planetFound = _view.TryGetFleetDragPreview(
-                new PlanetSystemWindowElement(0, PlanetIcon.None, true),
+                new PlanetSectorWindowElement(0, PlanetIcon.None, true),
                 0,
                 0,
                 0,
@@ -183,7 +183,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 out DragPreview planetPreview
             );
             bool missingFound = _view.TryGetFleetDragPreview(
-                new PlanetSystemWindowElement(10, PlanetIcon.Fleet, false),
+                new PlanetSectorWindowElement(10, PlanetIcon.Fleet, false),
                 0,
                 0,
                 0,
@@ -201,12 +201,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void PlanetInteraction_RenderedChild_ForwardsAllSemanticEvents()
         {
             _view.Render(
-                new PlanetSystemWindowRenderData(
+                new PlanetSectorWindowRenderData(
                     "Sesswenna",
                     new[] { CreatePlanet(0, Vector2Int.zero, "Coruscant") }
                 )
             );
-            PlanetSystemPlanetView planet = GetPlanetViews()[0];
+            PlanetSectorPlanetView planet = GetPlanetViews()[0];
             RawImage fleetImage = GetPlanetField<RawImage>(planet, "fleetImage");
             PointerEventData eventData = CreatePointerEvent(
                 fleetImage.gameObject,
@@ -240,19 +240,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void OnDestroy_RenderedChildren_UnbindsEventsAndRaisesDestroyedEvent()
         {
             _view.Render(
-                new PlanetSystemWindowRenderData(
+                new PlanetSectorWindowRenderData(
                     "Sesswenna",
                     new[] { CreatePlanet(0, Vector2Int.zero, "Coruscant") }
                 )
             );
-            PlanetSystemPlanetView planet = GetPlanetViews()[0];
+            PlanetSectorPlanetView planet = GetPlanetViews()[0];
             RawImage fleetImage = GetPlanetField<RawImage>(planet, "fleetImage");
             PointerEventData eventData = CreatePointerEvent(
                 fleetImage.gameObject,
                 PointerEventData.InputButton.Left,
                 2
             );
-            PlanetSystemWindowView destroyedView = null;
+            PlanetSectorWindowView destroyedView = null;
             int clickedCount = 0;
             _view.Destroyed += view => destroyedView = view;
             _view.Clicked += (_, _, _) => clickedCount++;
@@ -264,9 +264,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             Assert.AreEqual(0, clickedCount);
         }
 
-        private PlanetSystemPlanetRenderData CreatePlanet(int index, Vector2Int offset, string name)
+        private PlanetSectorPlanetRenderData CreatePlanet(int index, Vector2Int offset, string name)
         {
-            PlanetSystemBarRenderData segmented = new PlanetSystemBarRenderData(
+            PlanetSectorBarRenderData segmented = new PlanetSectorBarRenderData(
                 true,
                 4,
                 2,
@@ -275,7 +275,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 Color.red,
                 Color.black
             );
-            PlanetSystemBarRenderData continuous = new PlanetSystemBarRenderData(
+            PlanetSectorBarRenderData continuous = new PlanetSectorBarRenderData(
                 true,
                 0,
                 0,
@@ -284,7 +284,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 Color.clear,
                 Color.black
             );
-            return new PlanetSystemPlanetRenderData(
+            return new PlanetSectorPlanetRenderData(
                 index,
                 offset,
                 _planetTexture,
@@ -328,29 +328,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
         }
 
-        private static Vector2Int GetPlanetImagePosition(PlanetSystemPlanetView planet)
+        private static Vector2Int GetPlanetImagePosition(PlanetSectorPlanetView planet)
         {
             RectInt bounds = planet.GetRenderedPlanetImageSourceRect();
             return new Vector2Int(bounds.x, bounds.y);
         }
 
-        private List<PlanetSystemPlanetView> GetPlanetViews()
+        private List<PlanetSectorPlanetView> GetPlanetViews()
         {
-            return GetField<List<PlanetSystemPlanetView>>("planetViews");
+            return GetField<List<PlanetSectorPlanetView>>("planetViews");
         }
 
         private T GetField<T>(string fieldName)
         {
             return (T)
-                typeof(PlanetSystemWindowView)
+                typeof(PlanetSectorWindowView)
                     .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(_view);
         }
 
-        private static T GetPlanetField<T>(PlanetSystemPlanetView view, string fieldName)
+        private static T GetPlanetField<T>(PlanetSectorPlanetView view, string fieldName)
         {
             return (T)
-                typeof(PlanetSystemPlanetView)
+                typeof(PlanetSectorPlanetView)
                     .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(view);
         }

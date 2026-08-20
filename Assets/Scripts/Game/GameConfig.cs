@@ -377,7 +377,7 @@ namespace Rebellion.Game
 
             public int MinTransitTicks { get; set; }
 
-            public int SameSystemMinTransitTicks { get; set; }
+            public int SameSectorMinTransitTicks { get; set; }
 
             public int DefaultFighterHyperdrive { get; set; }
         }
@@ -708,7 +708,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Controls the additional system intelligence granted by successful espionage.
+        /// Controls the additional sector intelligence granted by successful espionage.
         /// </summary>
         [PersistableObject]
         public class EspionageConfig
@@ -717,7 +717,7 @@ namespace Rebellion.Game
 
             public string CapitalObserverFactionInstanceID { get; set; }
 
-            public RandomCountConfig CoreSystemBonus { get; set; } = new RandomCountConfig();
+            public RandomCountConfig CoreSectorBonus { get; set; } = new RandomCountConfig();
 
             public RandomCountConfig CapitalBonus { get; set; } = new RandomCountConfig();
 

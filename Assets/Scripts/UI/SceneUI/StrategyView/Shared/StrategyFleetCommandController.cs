@@ -9,7 +9,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
 /// <summary>
-/// Executes fleet mutations shared by fleet and planet-system UI features.
+/// Executes fleet mutations shared by fleet and planet-sector UI features.
 /// </summary>
 public sealed class StrategyFleetCommandController
 {

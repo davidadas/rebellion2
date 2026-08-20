@@ -79,7 +79,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Refreshes discipline research capacity from completed facilities on owned core systems
+        /// Refreshes discipline research capacity from completed facilities on owned core sectors
         /// and immediately applies any resulting single-step order advances.
         /// </summary>
         /// <param name="faction">The faction to accumulate research capacity for.</param>
@@ -89,8 +89,8 @@ namespace Rebellion.Systems
             List<Planet> corePlanets = faction
                 .GetOwnedUnitsByType<Planet>()
                 .Where(planet =>
-                    planet.GetParent() is PlanetSystem system
-                    && system.GetSystemType() == PlanetSystemType.CoreSystem
+                    planet.GetParent() is PlanetSector sector
+                    && sector.GetSectorType() == PlanetSectorType.Core
                 )
                 .ToList();
 

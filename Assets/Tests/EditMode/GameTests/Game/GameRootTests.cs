@@ -20,7 +20,7 @@ namespace Rebellion.Tests.Game
         private Faction _faction1;
         private Faction _faction2;
         private GalaxyMap _galaxyMap;
-        private PlanetSystem _planetSystem;
+        private PlanetSector _planetSector;
         private Planet _planet;
         private Fleet _fleet;
 
@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Game
 
             // Create game objects.
             _galaxyMap = new GalaxyMap();
-            _planetSystem = new PlanetSystem { InstanceID = "SYSTEM1" };
+            _planetSector = new PlanetSector { InstanceID = "SECTOR1" };
             _planet = new Planet
             {
                 InstanceID = "PLANET1",
@@ -149,8 +149,8 @@ namespace Rebellion.Tests.Game
             _planet.NumRawResourceNodes = 10;
             _planet.IsColonized = true;
             _planet.EnergyCapacity = 10;
-            _game.AttachNode(_planetSystem, _game.GetGalaxyMap());
-            _game.AttachNode(_planet, _planetSystem);
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(_planet, _planetSector);
             _game.AttachNode(CreateBuilding("MINE1", BuildingType.Mine, 0), _planet);
             _game.AttachNode(CreateBuilding("MINE2", BuildingType.Mine, 0), _planet);
             _game.AttachNode(CreateBuilding("MINE3", BuildingType.Mine, 0), _planet);
@@ -167,8 +167,8 @@ namespace Rebellion.Tests.Game
             _planet.NumRawResourceNodes = 10;
             _planet.IsColonized = true;
             _planet.EnergyCapacity = 10;
-            _game.AttachNode(_planetSystem, _game.GetGalaxyMap());
-            _game.AttachNode(_planet, _planetSystem);
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(_planet, _planetSector);
             _game.AttachNode(CreateBuilding("MINE1", BuildingType.Mine, 0), _planet);
             _game.AttachNode(CreateBuilding("REFINERY1", BuildingType.Refinery, 0), _planet);
             _game.AttachNode(
@@ -188,17 +188,17 @@ namespace Rebellion.Tests.Game
         public void AttachNode_ValidNode_AddsToSceneGraph()
         {
             // Attach node and verify.
-            _game.AttachNode(_planet, _planetSystem);
+            _game.AttachNode(_planet, _planetSector);
 
             Assert.AreEqual(
-                _planetSystem,
+                _planetSector,
                 _planet.GetParent(),
-                "Planet should have planetSystem as parent"
+                "Planet should have planetSector as parent"
             );
             Assert.Contains(
                 _planet,
-                _planetSystem.GetChildren().ToList(),
-                "PlanetSystem should contain planet as child"
+                _planetSector.GetChildren().ToList(),
+                "PlanetSector should contain planet as child"
             );
             Assert.IsTrue(
                 _game.NodesByInstanceID.ContainsKey(_planet.InstanceID),
@@ -217,11 +217,11 @@ namespace Rebellion.Tests.Game
         public void AttachNode_ThrowsException_WhenNodeAlreadyHasParent()
         {
             // Attach node to a parent.
-            _game.AttachNode(_planet, _planetSystem);
+            _game.AttachNode(_planet, _planetSector);
 
             // Attempt to attach the same node to another parent.
             Assert.Throws<InvalidOperationException>(
-                () => _game.AttachNode(_planet, new PlanetSystem()),
+                () => _game.AttachNode(_planet, new PlanetSector()),
                 "Should throw exception when attaching a node that already has a parent"
             );
         }
@@ -230,14 +230,14 @@ namespace Rebellion.Tests.Game
         public void DetachNode_AttachedNode_RemovesFromSceneGraph()
         {
             // Attach and then detach node.
-            _game.AttachNode(_planet, _planetSystem);
+            _game.AttachNode(_planet, _planetSector);
             _game.DetachNode(_planet);
 
             // Verify detachment is successful and node is removed from all relevant structures.
             Assert.IsNull(_planet.GetParent(), "Planet should have no parent after detachment");
             Assert.IsFalse(
-                _planetSystem.GetChildren().Contains(_planet),
-                "PlanetSystem should not contain planet as child"
+                _planetSector.GetChildren().Contains(_planet),
+                "PlanetSector should not contain planet as child"
             );
             Assert.IsFalse(
                 _game.NodesByInstanceID.ContainsKey(_planet.InstanceID),
@@ -362,8 +362,8 @@ namespace Rebellion.Tests.Game
         {
             // Set up galaxy structure.
             _game.Galaxy = _galaxyMap;
-            _game.AttachNode(_planetSystem, _galaxyMap);
-            _game.AttachNode(_planet, _planetSystem);
+            _game.AttachNode(_planetSector, _galaxyMap);
+            _game.AttachNode(_planet, _planetSector);
             _game.AttachNode(_fleet, _planet);
 
             // Retrieve planets and verify the count and contents.
@@ -474,9 +474,9 @@ namespace Rebellion.Tests.Game
         {
             // Set up galaxy structure.
             _game.Galaxy = _galaxyMap;
-            _game.AttachNode(_planetSystem, _galaxyMap);
-            _game.AttachNode(_planet, _planetSystem);
-            _game.AttachNode(_fleet, _planetSystem);
+            _game.AttachNode(_planetSector, _galaxyMap);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(_fleet, _planetSector);
 
             // Verify galaxy initialization.
             Assert.IsTrue(
@@ -484,8 +484,8 @@ namespace Rebellion.Tests.Game
                 "Game should contain galaxyMap in NodesByInstanceID"
             );
             Assert.IsTrue(
-                _game.NodesByInstanceID.ContainsKey(_planetSystem.InstanceID),
-                "Game should contain planetSystem in NodesByInstanceID"
+                _game.NodesByInstanceID.ContainsKey(_planetSector.InstanceID),
+                "Game should contain planetSector in NodesByInstanceID"
             );
             Assert.IsTrue(
                 _game.NodesByInstanceID.ContainsKey(_planet.InstanceID),
@@ -498,18 +498,18 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 _galaxyMap,
-                _planetSystem.GetParent(),
-                "PlanetSystem should have galaxyMap as parent"
+                _planetSector.GetParent(),
+                "PlanetSector should have galaxyMap as parent"
             );
             Assert.AreEqual(
-                _planetSystem,
+                _planetSector,
                 _planet.GetParent(),
-                "Planet should have planetSystem as parent"
+                "Planet should have planetSector as parent"
             );
             Assert.AreEqual(
-                _planetSystem,
+                _planetSector,
                 _fleet.GetParent(),
-                "Fleet should have planetSystem as parent"
+                "Fleet should have planetSector as parent"
             );
 
             Assert.IsTrue(

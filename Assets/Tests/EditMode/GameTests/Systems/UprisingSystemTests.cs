@@ -435,15 +435,15 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = null,
                 PopularSupport = new Dictionary<string, int>(),
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
 
             MovementSystem movementSystem = new MovementSystem(
                 game,
@@ -467,9 +467,9 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_EmpireGarrisonOnCoreSystem_HalvesRequirement()
+        public void ProcessTick_EmpireGarrisonOnCoreSector_HalvesRequirement()
         {
-            // On a core system with GarrisonEfficiency=2, the base garrison requirement of 3
+            // In a core sector with GarrisonEfficiency=2, the base garrison requirement of 3
             // is halved to 1. One troop meets it, so no uprising.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -481,12 +481,12 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                InstanceID = "sector1",
+                SectorType = PlanetSectorType.Core,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
                 InstanceID = "p1",
@@ -494,7 +494,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "empire", 30 }, { "rebels", 50 } },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, planet);
@@ -519,7 +519,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsFalse(
                 planet.IsInUprising,
-                "GarrisonEfficiency=2 on core system should halve the garrison requirement"
+                "GarrisonEfficiency=2 in a core sector should halve the garrison requirement"
             );
         }
 
@@ -538,12 +538,12 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
+                InstanceID = "sector1",
+                SectorType = PlanetSectorType.OuterRim,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
                 InstanceID = "p1",
@@ -551,7 +551,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "empire", 30 }, { "rebels", 50 } },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, planet);
@@ -682,7 +682,7 @@ namespace Rebellion.Tests.Systems
             int ownerSupport = 10,
             int opposingSupport = 50,
             int troopCount = 0,
-            bool isCoreSystem = false,
+            bool isCoreSector = false,
             IRandomNumberProvider rng = null
         )
         {
@@ -697,12 +697,12 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
-                SystemType = isCoreSystem ? PlanetSystemType.CoreSystem : PlanetSystemType.OuterRim,
+                InstanceID = "sector1",
+                SectorType = isCoreSector ? PlanetSectorType.Core : PlanetSectorType.OuterRim,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -715,7 +715,7 @@ namespace Rebellion.Tests.Systems
                     { "rebels", opposingSupport },
                 },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
 
             // Add garrison troops
             for (int i = 0; i < troopCount; i++)
@@ -818,12 +818,12 @@ namespace Rebellion.Tests.Systems
             Faction faction = new Faction { InstanceID = "empire" };
             game.Factions.Add(faction);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
+                InstanceID = "sector1",
+                SectorType = PlanetSectorType.OuterRim,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -832,7 +832,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "empire", support } },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
 
             int garrison = UprisingSystem.CalculateGarrisonRequirement(
                 planet,
@@ -855,12 +855,12 @@ namespace Rebellion.Tests.Systems
             };
             game.Factions.Add(empire);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                InstanceID = "sector1",
+                SectorType = PlanetSectorType.Core,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -869,7 +869,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "empire", 20 } },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
 
             // Base: ceil((60-20)/10) = 4. Halved: 4/2 = 2.
             int garrison = UprisingSystem.CalculateGarrisonRequirement(
@@ -893,12 +893,12 @@ namespace Rebellion.Tests.Systems
             };
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                InstanceID = "sector1",
+                SectorType = PlanetSectorType.Core,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -907,7 +907,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "alliance", 20 } },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
 
             // Base: ceil((60-20)/10) = 4. Alliance: no halving.
             int garrison = UprisingSystem.CalculateGarrisonRequirement(
@@ -931,12 +931,12 @@ namespace Rebellion.Tests.Systems
             };
             game.Factions.Add(empire);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
+                InstanceID = "sector1",
+                SectorType = PlanetSectorType.Core,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -945,7 +945,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "empire", 55 } },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
 
             // Base: ceil((60-55)/10) = 1. Halved: 1/2 = 0 (integer division).
             int garrison = UprisingSystem.CalculateGarrisonRequirement(

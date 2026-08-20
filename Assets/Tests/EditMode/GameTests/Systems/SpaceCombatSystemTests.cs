@@ -30,10 +30,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
@@ -77,10 +77,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(
                 game,
@@ -133,10 +133,10 @@ namespace Rebellion.Tests.Systems
             Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet fleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             int initialHull = fleet.CapitalShips[0].CurrentHullStrength;
@@ -251,10 +251,10 @@ namespace Rebellion.Tests.Systems
             Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet fleet1 = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet fleet2 = CreateFleet(game, "f2", "empire", planet, 1, 100, 10);
@@ -277,10 +277,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet1 = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet empireFleet2 = CreateFleet(game, "f2", "empire", planet, 1, 100, 10);
@@ -314,10 +314,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
@@ -343,10 +343,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1, 0);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1000, 100);
@@ -372,10 +372,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(
                 game,
@@ -421,10 +421,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
@@ -450,10 +450,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
@@ -479,10 +479,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleetWithFighters(
                 game,
@@ -545,10 +545,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
@@ -580,10 +580,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 0);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 0);
@@ -621,10 +621,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
@@ -649,10 +649,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet attacker = CreateFleet(
                 game,
@@ -694,10 +694,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet attacker = CreateFleet(
                 game,
@@ -739,10 +739,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet attacker = CreateFleet(
                 game,
@@ -784,10 +784,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet attacker = CreateFleet(
                 game,
@@ -832,10 +832,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet attacker = CreateFleet(
                 game,
@@ -878,10 +878,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet attacker = CreateFleet(
                 game,
@@ -925,10 +925,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet attacker = CreateFleet(
                 game,
@@ -970,10 +970,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet attacker = CreateFleetWithFighters(game, "f1", "empire", planet, 1, 100, 0, 12);
             Fleet defender = CreateFleet(
@@ -1006,10 +1006,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet fighterFleet = CreateFleetWithFighters(
                 game,
@@ -1075,10 +1075,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "empire" };
             Fleet allianceFleet = new Fleet { InstanceID = "f2", OwnerInstanceID = "alliance" };
@@ -1102,10 +1102,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 10000, 1);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 10000, 1);
@@ -1139,8 +1139,8 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
                 InstanceID = "p1",
@@ -1148,7 +1148,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "alliance", 80 } },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
 
             // Weak empire fleet vs strong alliance fleet — alliance defends
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1, 0);
@@ -1237,10 +1237,10 @@ namespace Rebellion.Tests.Systems
 
             for (int i = 1; i <= 3; i++)
             {
-                PlanetSystem system = new PlanetSystem { InstanceID = $"system{i}" };
+                PlanetSector planetSector = new PlanetSector { InstanceID = $"sector{i}" };
                 Planet planet = new Planet { InstanceID = $"p{i}" };
-                game.AttachNode(system, game.Galaxy);
-                game.AttachNode(planet, system);
+                game.AttachNode(planetSector, game.Galaxy);
+                game.AttachNode(planet, planetSector);
                 CreateFleet(game, $"ef{i}", "empire", planet, 1, 1000, 20);
                 CreateFleet(game, $"af{i}", "alliance", planet, 1, 1000, 20);
             }
@@ -1353,10 +1353,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
             CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
 
@@ -1448,10 +1448,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
             allianceFleet.CapitalShips[0].HasGravityWell = true;
@@ -1564,10 +1564,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
             CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
 
@@ -1629,10 +1629,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "alliance" });
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
 
             // Alliance fleet: two ships. Weak ship dies, strong ship survives.
             Fleet allianceFleet = new Fleet { InstanceID = "af1", OwnerInstanceID = "alliance" };
@@ -1692,20 +1692,20 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "alliance" });
 
-            PlanetSystem sys1 = new PlanetSystem { InstanceID = "sys1" };
-            game.AttachNode(sys1, game.Galaxy);
+            PlanetSector sector1 = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector1, game.Galaxy);
             Planet combatPlanet = new Planet { InstanceID = "p1" };
-            game.AttachNode(combatPlanet, sys1);
+            game.AttachNode(combatPlanet, sector1);
 
-            PlanetSystem sys2 = new PlanetSystem { InstanceID = "sys2" };
-            game.AttachNode(sys2, game.Galaxy);
+            PlanetSector sector2 = new PlanetSector { InstanceID = "sector2" };
+            game.AttachNode(sector2, game.Galaxy);
             Planet alliancePlanet = new Planet
             {
                 InstanceID = "p2",
                 OwnerInstanceID = "alliance",
                 IsColonized = true,
             };
-            game.AttachNode(alliancePlanet, sys2);
+            game.AttachNode(alliancePlanet, sector2);
 
             // Alliance fleet: single ship that is immediately destroyed.
             Fleet allianceFleet = new Fleet { InstanceID = "af1", OwnerInstanceID = "alliance" };
@@ -1821,10 +1821,10 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
 
             CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
             CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);

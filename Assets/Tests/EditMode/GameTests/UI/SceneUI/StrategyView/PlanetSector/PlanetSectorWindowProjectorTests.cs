@@ -8,18 +8,18 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
-namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
     [TestFixture]
-    public class PlanetSystemWindowProjectorTests
+    public class PlanetSectorWindowProjectorTests
     {
         private const string _opposingFactionId = "FNEMP1";
         private const string _playerFactionId = "FNALL1";
 
-        private GamePlanetSystem _planetSystem;
-        private PlanetSystemWindowProjector _projector;
+        private GamePlanetSector _planetSector;
+        private PlanetSectorWindowProjector _projector;
         private UIContext _uiContext;
 
         [SetUp]
@@ -38,26 +38,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
-            _planetSystem = new GamePlanetSystem
+            _planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
-                DisplayName = "Corellia System",
+                InstanceID = "sector",
+                DisplayName = "Corellian",
                 PositionX = 10,
                 PositionY = 20,
             };
-            _projector = new PlanetSystemWindowProjector(() => _uiContext);
+            _projector = new PlanetSectorWindowProjector(() => _uiContext);
         }
 
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new PlanetSystemWindowProjector(null));
+            Assert.Throws<ArgumentNullException>(() => new PlanetSectorWindowProjector(null));
         }
 
         [Test]
         public void CreateRenderData_UnavailableContext_ThrowsInvalidOperationException()
         {
-            PlanetSystemWindowProjector projector = new PlanetSystemWindowProjector(() => null);
+            PlanetSectorWindowProjector projector = new PlanetSectorWindowProjector(() => null);
 
             Assert.Throws<InvalidOperationException>(() =>
                 projector.CreateRenderData(null, null, PlanetIcon.None, null, PlanetIcon.None)
@@ -67,7 +67,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void CreateRenderData_NullSector_ReturnsEmptyPresentation()
         {
-            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 null,
                 null,
                 PlanetIcon.None,
@@ -98,12 +98,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 .GetPlayerFactionTheme()
                 .GalaxyBackground.ImagePath;
             GalaxyMapSector sector = CreateSector(
-                new GalaxyMapPlanet(_planetSystem, planet, planetTexturePath)
+                new GalaxyMapPlanet(_planetSector, planet, planetTexturePath)
             );
             FactionTheme playerTheme = _uiContext.GetTheme(_playerFactionId);
             FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
 
-            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 sector,
                 planet.InstanceID,
                 PlanetIcon.Fleet,
@@ -111,9 +111,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 PlanetIcon.Mission
             );
 
-            Assert.AreEqual("Corellia System", data.Title);
+            Assert.AreEqual("Corellian", data.Title);
             Assert.AreEqual(1, data.Planets.Count);
-            PlanetSystemPlanetRenderData presentation = data.Planets[0];
+            PlanetSectorPlanetRenderData presentation = data.Planets[0];
             Assert.AreEqual(0, presentation.PlanetIndex);
             Assert.AreEqual(new Vector2Int(3, 5), presentation.GalaxyOffset);
             Assert.AreSame(_uiContext.GetTexture(planetTexturePath), presentation.PlanetTexture);
@@ -167,7 +167,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
             Assert.AreSame(
                 _uiContext.GetTexture(
-                    playerTheme.PlanetOverlayTheme.PlanetSystemHeadquartersImagePath
+                    playerTheme.PlanetOverlayTheme.PlanetSectorHeadquartersImagePath
                 ),
                 presentation.HeadquartersTexture
             );
@@ -205,10 +205,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
             GalaxyMapSector sector = CreateSector(
-                new GalaxyMapPlanet(_planetSystem, planet, string.Empty)
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
             );
 
-            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 sector,
                 "other",
                 PlanetIcon.Facility,
@@ -227,12 +227,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             planet.IsInUprising = true;
             planet.Missions.Add(new TestMission(_opposingFactionId));
             GalaxyMapSector sector = CreateSector(
-                new GalaxyMapPlanet(_planetSystem, planet, string.Empty)
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
             );
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
             FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
 
-            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 sector,
                 null,
                 PlanetIcon.None,
@@ -241,7 +241,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
 
             Assert.AreSame(
-                _uiContext.GetTexture(playerTheme.PlanetOverlayTheme.PlanetSystemUprisingImagePath),
+                _uiContext.GetTexture(playerTheme.PlanetOverlayTheme.PlanetSectorUprisingImagePath),
                 data.Planets[0].UprisingTexture
             );
             Assert.AreSame(
@@ -265,11 +265,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             planet.Buildings.Add(CreateBuilding(BuildingType.Mine));
             planet.Buildings.Add(CreateBuilding(BuildingType.Defense));
             GalaxyMapSector sector = CreateSector(
-                new GalaxyMapPlanet(_planetSystem, planet, string.Empty)
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
             );
             FactionTheme neutralTheme = _uiContext.GetTheme(null);
 
-            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 sector,
                 null,
                 PlanetIcon.None,
@@ -277,7 +277,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 PlanetIcon.None
             );
 
-            PlanetSystemPlanetRenderData presentation = data.Planets[0];
+            PlanetSectorPlanetRenderData presentation = data.Planets[0];
             Assert.AreSame(
                 _uiContext.GetTexture(
                     neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.NormalImagePath
@@ -321,10 +321,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             planet.Buildings.Add(CreateBuilding(BuildingType.Mine));
             planet.Regiments.Add(new Regiment());
             GalaxyMapSector sector = CreateSector(
-                new GalaxyMapPlanet(_planetSystem, planet, string.Empty)
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
             );
 
-            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 sector,
                 null,
                 PlanetIcon.None,
@@ -332,7 +332,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 PlanetIcon.None
             );
 
-            PlanetSystemPlanetRenderData presentation = data.Planets[0];
+            PlanetSectorPlanetRenderData presentation = data.Planets[0];
             Assert.IsNull(presentation.FacilityTexture);
             Assert.IsNull(presentation.FacilityPressedTexture);
             Assert.IsNull(presentation.DefenseTexture);
@@ -349,10 +349,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
             GalaxyMapSector sector = CreateSector(
-                new GalaxyMapPlanet(_planetSystem, planet, string.Empty)
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
             );
 
-            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 sector,
                 null,
                 PlanetIcon.None,
@@ -360,7 +360,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 PlanetIcon.None
             );
 
-            PlanetSystemPlanetRenderData presentation = data.Planets[0];
+            PlanetSectorPlanetRenderData presentation = data.Planets[0];
             Assert.IsTrue(presentation.EnergyBar.Visible);
             Assert.AreEqual(0, presentation.EnergyBar.CellCount);
             Assert.AreEqual(1f, presentation.EnergyBar.FillRatio);
@@ -379,13 +379,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             planet.IsDestroyed = true;
             GalaxyMapSector sector = CreateSector(
                 new GalaxyMapPlanet(
-                    _planetSystem,
+                    _planetSector,
                     planet,
                     _uiContext.GetPlayerFactionTheme().GalaxyBackground.ImagePath
                 )
             );
 
-            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 sector,
                 null,
                 PlanetIcon.None,
@@ -402,13 +402,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         }
 
         [Test]
-        public void CreateRenderData_NullPlanet_ReturnsSystemRelativePlaceholder()
+        public void CreateRenderData_NullPlanet_ReturnsSectorRelativePlaceholder()
         {
             GalaxyMapSector sector = CreateSector(
-                new GalaxyMapPlanet(_planetSystem, null, string.Empty)
+                new GalaxyMapPlanet(_planetSector, null, string.Empty)
             );
 
-            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 sector,
                 null,
                 PlanetIcon.None,
@@ -455,7 +455,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
         private GalaxyMapSector CreateSector(GalaxyMapPlanet planet)
         {
-            return new GalaxyMapSector(_planetSystem, new[] { planet });
+            return new GalaxyMapSector(_planetSector, new[] { planet });
         }
 
         private sealed class TestMission : Mission

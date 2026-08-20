@@ -814,10 +814,10 @@ namespace Rebellion.Systems
         /// <returns>The troop multiplier for this planet and faction.</returns>
         private static int GetUprisingTroopMultiplier(Planet planet, Faction faction)
         {
-            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
+            PlanetSector parentSector = planet.GetParentOfType<PlanetSector>();
             if (
-                parentSystem != null
-                && parentSystem.SystemType == PlanetSystemType.CoreSystem
+                parentSector != null
+                && parentSector.SectorType == PlanetSectorType.Core
                 && faction.Settings.UprisingResistance > 1
             )
             {
@@ -1133,7 +1133,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Applies a scheduled popular support shift to the controlling faction during uprising.
-        /// On core systems the shift is halved when it moves against the faction's favor.
+        /// On core sectors the shift is halved when it moves against the faction's favor.
         /// </summary>
         /// <param name="planet">The planet in uprising.</param>
         /// <param name="faction">The controlling faction whose support is shifted.</param>
@@ -1193,10 +1193,10 @@ namespace Rebellion.Systems
                     (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
                 );
 
-            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
+            PlanetSector parentSector = planet.GetParentOfType<PlanetSector>();
             if (
-                parentSystem != null
-                && parentSystem.SystemType == PlanetSystemType.CoreSystem
+                parentSector != null
+                && parentSector.SectorType == PlanetSectorType.Core
                 && faction.Settings.GarrisonEfficiency > 1
             )
             {

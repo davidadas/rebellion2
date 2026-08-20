@@ -6,9 +6,9 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// Renders one authored planet-system planet and reports semantic pointer interaction.
+/// Renders one authored planet-sector planet and reports semantic pointer interaction.
 /// </summary>
-public sealed class PlanetSystemPlanetView
+public sealed class PlanetSectorPlanetView
     : MonoBehaviour,
         IPointerEnterHandler,
         IPointerExitHandler,
@@ -85,31 +85,31 @@ public sealed class PlanetSystemPlanetView
     [SerializeField]
     private Image supportBarFillImage;
 
-    private PlanetSystemBarView energyBar;
-    private PlanetSystemPlanetRenderData lastRenderData;
-    private PlanetSystemBarView rawBar;
-    private PlanetSystemBarView supportBar;
+    private PlanetSectorBarView energyBar;
+    private PlanetSectorPlanetRenderData lastRenderData;
+    private PlanetSectorBarView rawBar;
+    private PlanetSectorBarView supportBar;
 
     /// <summary>
     /// Occurs when the control is clicked.
     /// </summary>
     internal event Action<
-        PlanetSystemPlanetView,
-        PlanetSystemWindowElement,
+        PlanetSectorPlanetView,
+        PlanetSectorWindowElement,
         PointerEventData
     > Clicked;
 
     /// <summary>
     /// Occurs when the pointer hover is cleared.
     /// </summary>
-    internal event Action<PlanetSystemPlanetView> HoverCleared;
+    internal event Action<PlanetSectorPlanetView> HoverCleared;
 
     /// <summary>
     /// Occurs when the pointer hovers over the control.
     /// </summary>
     internal event Action<
-        PlanetSystemPlanetView,
-        PlanetSystemWindowElement,
+        PlanetSectorPlanetView,
+        PlanetSectorWindowElement,
         PointerEventData
     > Hovered;
 
@@ -117,8 +117,8 @@ public sealed class PlanetSystemPlanetView
     /// Occurs when the control is pressed.
     /// </summary>
     internal event Action<
-        PlanetSystemPlanetView,
-        PlanetSystemWindowElement,
+        PlanetSectorPlanetView,
+        PlanetSectorWindowElement,
         PointerEventData
     > Pressed;
 
@@ -126,8 +126,8 @@ public sealed class PlanetSystemPlanetView
     /// Occurs when the control is released.
     /// </summary>
     internal event Action<
-        PlanetSystemPlanetView,
-        PlanetSystemWindowElement,
+        PlanetSectorPlanetView,
+        PlanetSectorWindowElement,
         PointerEventData
     > Released;
 
@@ -136,7 +136,7 @@ public sealed class PlanetSystemPlanetView
     /// </summary>
     /// <param name="data">The immutable planet presentation.</param>
     /// <param name="position">The projected source-space planet image position.</param>
-    public void Render(PlanetSystemPlanetRenderData data, Vector2Int position)
+    public void Render(PlanetSectorPlanetRenderData data, Vector2Int position)
     {
         if (data == null)
             throw new ArgumentNullException(nameof(data));
@@ -250,7 +250,7 @@ public sealed class PlanetSystemPlanetView
     /// <returns>True when a visible planet element was hit.</returns>
     internal bool TryCreateElement(
         PointerEventData eventData,
-        out PlanetSystemWindowElement element
+        out PlanetSectorWindowElement element
     )
     {
         element = CreateElement(null, eventData, true);
@@ -267,7 +267,7 @@ public sealed class PlanetSystemPlanetView
     internal bool TryCreateElement(
         GameObject target,
         PointerEventData eventData,
-        out PlanetSystemWindowElement element
+        out PlanetSectorWindowElement element
     )
     {
         element = CreateElement(target, eventData, true);
@@ -310,7 +310,7 @@ public sealed class PlanetSystemPlanetView
         if (
             eventData?.button
                 is not (PointerEventData.InputButton.Left or PointerEventData.InputButton.Right)
-            || CreateElement(null, eventData, true) is not PlanetSystemWindowElement element
+            || CreateElement(null, eventData, true) is not PlanetSectorWindowElement element
         )
             return;
 
@@ -325,7 +325,7 @@ public sealed class PlanetSystemPlanetView
     {
         if (
             eventData?.button != PointerEventData.InputButton.Left
-            || CreateElement(null, eventData, true) is not PlanetSystemWindowElement element
+            || CreateElement(null, eventData, true) is not PlanetSectorWindowElement element
         )
             return;
 
@@ -340,7 +340,7 @@ public sealed class PlanetSystemPlanetView
     /// <param name="eventData">The pointer event.</param>
     public void OnDrop(PointerEventData eventData)
     {
-        PlanetSystemWindowElement element = CreateElement(null, eventData, false);
+        PlanetSectorWindowElement element = CreateElement(null, eventData, false);
         if (element != null)
             Released?.Invoke(this, element, eventData);
     }
@@ -391,7 +391,7 @@ public sealed class PlanetSystemPlanetView
     /// <param name="eventData">The pointer event.</param>
     private void DispatchHover(PointerEventData eventData)
     {
-        PlanetSystemWindowElement element = CreateElement(null, eventData, true);
+        PlanetSectorWindowElement element = CreateElement(null, eventData, true);
         if (element == null)
             HoverCleared?.Invoke(this);
         else
@@ -405,7 +405,7 @@ public sealed class PlanetSystemPlanetView
     /// <param name="eventData">The pointer event.</param>
     /// <param name="allowPressFallback">Whether the pressed raycast target may be used.</param>
     /// <returns>The semantic hit, or null.</returns>
-    private PlanetSystemWindowElement CreateElement(
+    private PlanetSectorWindowElement CreateElement(
         GameObject target,
         PointerEventData eventData,
         bool allowPressFallback
@@ -434,7 +434,7 @@ public sealed class PlanetSystemPlanetView
 
         return icon == PlanetIcon.None && !planetImageHit
             ? null
-            : new PlanetSystemWindowElement(lastRenderData.PlanetIndex, icon, planetImageHit);
+            : new PlanetSectorWindowElement(lastRenderData.PlanetIndex, icon, planetImageHit);
     }
 
     /// <summary>
@@ -571,19 +571,19 @@ public sealed class PlanetSystemPlanetView
     /// </summary>
     private void EnsureBars()
     {
-        energyBar ??= new PlanetSystemBarView(
+        energyBar ??= new PlanetSectorBarView(
             energyBarRoot,
             energyBarBackgroundImage,
             energyBarFillImage,
             energyBarCellImages
         );
-        rawBar ??= new PlanetSystemBarView(
+        rawBar ??= new PlanetSectorBarView(
             rawBarRoot,
             rawBarBackgroundImage,
             rawBarFillImage,
             rawBarCellImages
         );
-        supportBar ??= new PlanetSystemBarView(
+        supportBar ??= new PlanetSectorBarView(
             supportBarRoot,
             supportBarBackgroundImage,
             supportBarFillImage,
@@ -654,7 +654,7 @@ public sealed class PlanetSystemPlanetView
     /// <summary>
     /// Renders one authored segmented or continuous planet status bar.
     /// </summary>
-    private sealed class PlanetSystemBarView
+    private sealed class PlanetSectorBarView
     {
         private readonly Image background;
         private readonly RectInt backgroundTemplate;
@@ -673,7 +673,7 @@ public sealed class PlanetSystemPlanetView
         /// <param name="background">The authored background image.</param>
         /// <param name="fill">The authored continuous fill image.</param>
         /// <param name="cells">The authored segmented cells.</param>
-        public PlanetSystemBarView(
+        public PlanetSectorBarView(
             RectTransform root,
             Image background,
             Image fill,
@@ -702,7 +702,7 @@ public sealed class PlanetSystemPlanetView
         /// </summary>
         /// <param name="data">The status-bar presentation.</param>
         /// <param name="continuousWidth">The authored width for a continuous bar.</param>
-        public void Render(PlanetSystemBarRenderData data, int continuousWidth)
+        public void Render(PlanetSectorBarRenderData data, int continuousWidth)
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
@@ -753,7 +753,7 @@ public sealed class PlanetSystemPlanetView
         /// </summary>
         /// <param name="data">The status-bar presentation.</param>
         /// <param name="continuousWidth">The authored continuous bar width.</param>
-        private void RenderContinuousFill(PlanetSystemBarRenderData data, int continuousWidth)
+        private void RenderContinuousFill(PlanetSectorBarRenderData data, int continuousWidth)
         {
             int fillWidth = Mathf.RoundToInt(Mathf.Clamp01(data.FillRatio) * continuousWidth);
             bool visible = fillWidth > 0 && data.FillColor.a > 0;
