@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Systems
                         Settings = new FactionSettings
                         {
                             InvertSupportShift = true,
-                            WeakSupportPenaltyTrigger = SupportShiftCondition.Negative,
+                            SupportResistance = SupportChange.Decrease,
                             Headquarters = new HeadquartersSettings { IsBombardable = false },
                         },
                     }
@@ -78,7 +78,7 @@ namespace Rebellion.Tests.Systems
                         Settings = new FactionSettings
                         {
                             InvertSupportShift = false,
-                            WeakSupportPenaltyTrigger = SupportShiftCondition.Positive,
+                            SupportResistance = SupportChange.Increase,
                             Headquarters = new HeadquartersSettings { IsBombardable = true },
                         },
                     }

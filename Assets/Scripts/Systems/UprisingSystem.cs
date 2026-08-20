@@ -1159,10 +1159,10 @@ namespace Rebellion.Systems
             PlanetSector parentSector = planet.GetParentOfType<PlanetSector>();
             if (parentSector != null && parentSector.SectorType == PlanetSectorType.Core)
             {
-                bool penaltyApplies = faction.Settings.WeakSupportPenaltyTrigger switch
+                bool penaltyApplies = faction.Settings.SupportResistance switch
                 {
-                    SupportShiftCondition.Positive => shift > 0,
-                    SupportShiftCondition.Negative => shift < 0,
+                    SupportChange.Increase => shift > 0,
+                    SupportChange.Decrease => shift < 0,
                     _ => false,
                 };
                 if (penaltyApplies)

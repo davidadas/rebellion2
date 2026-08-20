@@ -4,6 +4,15 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Factions
 {
     /// <summary>
+    /// Identifies the direction of a popular-support change.
+    /// </summary>
+    public enum SupportChange
+    {
+        Increase,
+        Decrease,
+    }
+
+    /// <summary>
     /// Defines faction-specific gameplay settings.
     /// These settings affect game mechanics for all players controlling this faction,
     /// not just AI behavior.
@@ -71,8 +80,7 @@ namespace Rebellion.Game.Factions
         /// <summary>
         /// Condition under which the weak support penalty triggers.
         /// </summary>
-        public SupportShiftCondition WeakSupportPenaltyTrigger { get; set; } =
-            SupportShiftCondition.Positive;
+        public SupportChange SupportResistance { get; set; } = SupportChange.Increase;
 
         public HeadquartersSettings Headquarters
         {
@@ -90,15 +98,5 @@ namespace Rebellion.Game.Factions
         public string FacilityTypeID { get; set; }
         public bool IsMobile { get; set; }
         public bool IsBombardable { get; set; }
-    }
-
-    /// <summary>
-    /// Determines when the weak support penalty applies to a faction.
-    /// </summary>
-    public enum SupportShiftCondition
-    {
-        Positive,
-
-        Negative,
     }
 }

@@ -872,10 +872,10 @@ namespace Rebellion.Systems
             int shift = _game.Config.Combat.Bombardment.CivilianSupportPenalty;
             if (planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core)
             {
-                bool weaken = attacker.Settings.WeakSupportPenaltyTrigger switch
+                bool weaken = attacker.Settings.SupportResistance switch
                 {
-                    SupportShiftCondition.Positive => shift > 0,
-                    SupportShiftCondition.Negative => shift < 0,
+                    SupportChange.Increase => shift > 0,
+                    SupportChange.Decrease => shift < 0,
                     _ => false,
                 };
                 if (weaken)
