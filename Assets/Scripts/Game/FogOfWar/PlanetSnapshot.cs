@@ -37,6 +37,7 @@ namespace Rebellion.Game.FogOfWar
         public int EnergyCapacity;
         public int AllocatedEnergy;
 
+        // Popular Support.
         public Dictionary<string, int> PopularSupport;
 
         // Visible Entities.
