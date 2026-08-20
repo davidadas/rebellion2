@@ -672,7 +672,7 @@ namespace Rebellion.Tests.Generation
         }
 
         private static GenerationContext BuildContext(
-            PlanetSector[] systems,
+            PlanetSector[] planetSectors,
             Faction[] factions,
             GameGenerationConfig config,
             GalaxyClassificationResult classification,
@@ -684,7 +684,7 @@ namespace Rebellion.Tests.Generation
         )
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Sectors = systems;
+            ctx.Sectors = planetSectors;
             ctx.Factions = factions;
             ctx.Config = config;
             ctx.Classification = classification;
@@ -722,13 +722,13 @@ namespace Rebellion.Tests.Generation
 
         private static PlanetSector WrapSector(Planet planet)
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = $"sys_{planet.InstanceID}",
                 SectorType = PlanetSectorType.Core,
             };
-            system.Planets.Add(planet);
-            return system;
+            planetSector.Planets.Add(planet);
+            return planetSector;
         }
 
         private static GameGenerationConfig CreateFixedFleetTargetConfig()

@@ -20,7 +20,7 @@ namespace Rebellion.Tests.Generation
 
             Assert.IsTrue(
                 alliance.Fog.Snapshots.ContainsKey(coreSector.InstanceID),
-                "Alliance should have a snapshot of the Empire-owned core system."
+                "Alliance should have a snapshot of the Empire-owned core sector."
             );
             PlanetSnapshot snapshot = alliance.Fog.Snapshots[coreSector.InstanceID].Planets[
                 empirePlanet.InstanceID

@@ -28,8 +28,8 @@ namespace Rebellion.Tests.Systems
             _faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _game.Factions.Add(_faction);
 
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
 
             _planet = new Planet
             {
@@ -38,7 +38,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 20,
             };
-            _game.AttachNode(_planet, system);
+            _game.AttachNode(_planet, planetSector);
 
             _system = new ResearchSystem(_game, new StubRNG());
         }

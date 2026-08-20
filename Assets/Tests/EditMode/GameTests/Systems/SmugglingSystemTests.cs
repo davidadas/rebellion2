@@ -26,8 +26,8 @@ namespace Rebellion.Tests.Systems
             _controller = new Faction { InstanceID = "FACTION1" };
             _game.Factions.Add(_controller);
             _game.Factions.Add(new Faction { InstanceID = "FACTION2" });
-            PlanetSector system = new PlanetSector { InstanceID = "SYSTEM1" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "SYSTEM1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
             _planet = new Planet
             {
                 InstanceID = "PLANET1",
@@ -35,7 +35,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { _controller.InstanceID, 100 } },
             };
-            _game.AttachNode(_planet, system);
+            _game.AttachNode(_planet, planetSector);
             _system = new SmugglingSystem(_game);
         }
 

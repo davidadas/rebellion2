@@ -130,8 +130,8 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
-            PlanetSector system = new PlanetSector { InstanceID = "system" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            game.AttachNode(planetSector, game.Galaxy);
             empirePlanet = new Planet
             {
                 InstanceID = "empire-planet",
@@ -144,8 +144,8 @@ namespace Rebellion.Tests.Game.Events
                 OwnerInstanceID = "rebels",
                 IsColonized = true,
             };
-            game.AttachNode(empirePlanet, system);
-            game.AttachNode(rebelPlanet, system);
+            game.AttachNode(empirePlanet, planetSector);
+            game.AttachNode(rebelPlanet, planetSector);
             return game;
         }
     }

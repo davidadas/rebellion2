@@ -37,13 +37,13 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(_empire);
 
             // Create planet sector
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "SYSTEM1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(system, galaxy);
+            _game.AttachNode(planetSector, galaxy);
 
             // Create planet with resources
             _coruscant = new Planet
@@ -56,7 +56,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            _game.AttachNode(_coruscant, system);
+            _game.AttachNode(_coruscant, planetSector);
 
             // Create construction yard for production
             _shipyard = new Building
@@ -1358,7 +1358,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_BuildingForOwnedUncolonizedPlanet_ColonizesOnArrival()
         {
-            PlanetSector system = _coruscant.GetParentOfType<PlanetSector>();
+            PlanetSector planetSector = _coruscant.GetParentOfType<PlanetSector>();
             Planet destination = new Planet
             {
                 InstanceID = "OUTER_RIM",
@@ -1366,7 +1366,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = false,
                 EnergyCapacity = 5,
             };
-            _game.AttachNode(destination, system);
+            _game.AttachNode(destination, planetSector);
             _game.AttachNode(
                 new Regiment { InstanceID = "GARRISON", OwnerInstanceID = "EMPIRE" },
                 destination
@@ -1409,8 +1409,8 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(empire);
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
             AddResourceSupplyPlanet(_game, "resource_supply_changed_sides", "empire");
 
             Planet planetA = new Planet
@@ -1423,7 +1423,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 NumRawResourceNodes = 10,
             };
-            _game.AttachNode(planetA, system);
+            _game.AttachNode(planetA, planetSector);
 
             Building constructionYard = new Building
             {
@@ -1446,7 +1446,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 NumRawResourceNodes = 10,
             };
-            _game.AttachNode(planetB, system);
+            _game.AttachNode(planetB, planetSector);
 
             Building mine = new Building
             {
@@ -1497,8 +1497,8 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(empire);
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
             AddResourceSupplyPlanet(_game, "resource_supply_no_capacity", "empire");
 
             Planet planetA = new Planet
@@ -1511,7 +1511,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 NumRawResourceNodes = 10,
             };
-            _game.AttachNode(planetA, system);
+            _game.AttachNode(planetA, planetSector);
 
             // Fill planetA to capacity.
             Building constructionYard = new Building
@@ -1543,7 +1543,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 NumRawResourceNodes = 10,
             };
-            _game.AttachNode(planetB, system);
+            _game.AttachNode(planetB, planetSector);
 
             Building mine = new Building
             {
@@ -1874,13 +1874,13 @@ namespace Rebellion.Tests.Systems
             Faction empire = new Faction { InstanceID = "empire" };
             _game.Factions.Add(empire);
 
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(system, _game.Galaxy);
+            _game.AttachNode(planetSector, _game.Galaxy);
 
             // Planet with NO facilities at all
             Planet planet = new Planet
@@ -1893,7 +1893,7 @@ namespace Rebellion.Tests.Systems
                 EnergyCapacity = 10,
                 NumRawResourceNodes = 100,
             };
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planet, planetSector);
 
             CapitalShip ship = new CapitalShip
             {
@@ -1929,13 +1929,13 @@ namespace Rebellion.Tests.Systems
             Faction empire = new Faction { InstanceID = "empire" };
             _game.Factions.Add(empire);
 
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(system, _game.Galaxy);
+            _game.AttachNode(planetSector, _game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -1946,7 +1946,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 EnergyCapacity = 10,
             };
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planet, planetSector);
 
             // Add a _shipyard but NOT a training facility
             Building _shipyard = new Building
@@ -1993,13 +1993,13 @@ namespace Rebellion.Tests.Systems
             Faction empire = new Faction { InstanceID = "empire" };
             _game.Factions.Add(empire);
 
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(system, _game.Galaxy);
+            _game.AttachNode(planetSector, _game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -2010,7 +2010,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 EnergyCapacity = 10,
             };
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planet, planetSector);
 
             Building mine = new Building
             {
@@ -2226,8 +2226,8 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(empire);
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
             AddResourceSupplyPlanet(_game, "resource_supply_batch_capacity", "empire");
 
             // Production planet A: EnergyCapacity 10, with 3 construction yards using 3 slots,
@@ -2242,7 +2242,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 NumRawResourceNodes = 10,
             };
-            _game.AttachNode(planetA, system);
+            _game.AttachNode(planetA, planetSector);
 
             for (int i = 1; i <= 3; i++)
             {
@@ -2269,7 +2269,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 NumRawResourceNodes = 10,
             };
-            _game.AttachNode(planetB, system);
+            _game.AttachNode(planetB, planetSector);
 
             Building mine1 = new Building
             {
@@ -2352,8 +2352,8 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(empire);
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
             AddResourceSupplyPlanet(_game, "resource_supply_batch_no_capacity", "empire");
 
             // Production planet A: EnergyCapacity 5, fully occupied by 3 yards + 2 dummies (0 available).
@@ -2367,7 +2367,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 NumRawResourceNodes = 10,
             };
-            _game.AttachNode(planetA, system);
+            _game.AttachNode(planetA, planetSector);
 
             for (int i = 1; i <= 3; i++)
             {
@@ -2411,7 +2411,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 NumRawResourceNodes = 10,
             };
-            _game.AttachNode(planetB, system);
+            _game.AttachNode(planetB, planetSector);
 
             Building mine1 = new Building
             {
@@ -2716,14 +2716,14 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Enqueue_RegimentToUncolonizedPlanet_ReturnsFalse()
         {
-            PlanetSector system = _coruscant.GetParentOfType<PlanetSector>();
+            PlanetSector planetSector = _coruscant.GetParentOfType<PlanetSector>();
             Planet destination = new Planet
             {
                 InstanceID = "UNCHARTED",
                 OwnerInstanceID = null,
                 IsColonized = false,
             };
-            _game.AttachNode(destination, system);
+            _game.AttachNode(destination, planetSector);
 
             Regiment regiment = new Regiment
             {
@@ -3531,9 +3531,9 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(planet, system);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.AttachNode(planet, planetSector);
 
             ManufacturingSystem _manager = new ManufacturingSystem(_game, new FleetSystem(_game));
             _manager.RebuildQueues();
@@ -3557,9 +3557,9 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(planet, system);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.AttachNode(planet, planetSector);
 
             Building item1 = new Building
             {
@@ -3635,10 +3635,10 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(planet1, system);
-            _game.AttachNode(planet2, system);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.AttachNode(planet1, planetSector);
+            _game.AttachNode(planet2, planetSector);
 
             Building item1 = new Building
             {
@@ -3705,9 +3705,9 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(planet, system);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.AttachNode(planet, planetSector);
 
             Building item = new Building
             {
@@ -3746,9 +3746,9 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(planet, system);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.AttachNode(planet, planetSector);
 
             Building itemBuilding = new Building
             {
@@ -3800,9 +3800,9 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(planet, system);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.AttachNode(planet, planetSector);
 
             Building itemNoProducer = new Building
             {
@@ -3840,9 +3840,9 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(planet, system);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.AttachNode(planet, planetSector);
 
             Building itemOrphan = new Building
             {
@@ -4349,13 +4349,13 @@ namespace Rebellion.Tests.Systems
 
         private Planet BuildShipyardPlanet(GameRoot _game, string planetId, string factionId)
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = $"{planetId}_sys",
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(system, _game.Galaxy);
+            _game.AttachNode(planetSector, _game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -4367,7 +4367,7 @@ namespace Rebellion.Tests.Systems
                 EnergyCapacity = 10,
                 NumRawResourceNodes = 100,
             };
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planet, planetSector);
 
             Building _shipyard = new Building
             {
@@ -4427,8 +4427,8 @@ namespace Rebellion.Tests.Systems
 
         private void AddResourceSupplyPlanet(GameRoot game, string planetId, string factionId)
         {
-            PlanetSector system = new PlanetSector { InstanceID = $"{planetId}_sys" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = $"{planetId}_sys" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
                 InstanceID = planetId,
@@ -4437,7 +4437,7 @@ namespace Rebellion.Tests.Systems
                 EnergyCapacity = 50,
                 NumRawResourceNodes = 50,
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             AddResourceSupply(game, planet, factionId, 20);
         }
 
@@ -4507,8 +4507,8 @@ namespace Rebellion.Tests.Systems
             string factionId
         )
         {
-            PlanetSector system = new PlanetSector { InstanceID = $"{planetId}_system" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = $"{planetId}_system" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
                 InstanceID = planetId,
@@ -4517,7 +4517,7 @@ namespace Rebellion.Tests.Systems
                 EnergyCapacity = 10,
                 NumRawResourceNodes = 10,
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             return planet;
         }
 

@@ -11,12 +11,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Planet_Values_PreservesNormalizedSnapshot()
         {
-            GamePlanetSector system = new GamePlanetSector();
+            GamePlanetSector planetSector = new GamePlanetSector();
             Planet planet = new Planet { OwnerInstanceID = "owner" };
 
-            GalaxyMapPlanet snapshot = new GalaxyMapPlanet(system, planet, null);
+            GalaxyMapPlanet snapshot = new GalaxyMapPlanet(planetSector, planet, null);
 
-            Assert.AreSame(system, snapshot.PlanetSector);
+            Assert.AreSame(planetSector, snapshot.PlanetSector);
             Assert.AreSame(planet, snapshot.Planet);
             Assert.AreEqual(string.Empty, snapshot.PlanetIconPath);
             Assert.AreEqual("owner", snapshot.OwnerFactionId);
@@ -26,15 +26,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Sector_SourceChanges_PreservesPlanetSnapshotAndAttachesSector()
         {
-            GamePlanetSector system = new GamePlanetSector();
-            GalaxyMapPlanet planet = new GalaxyMapPlanet(system, new Planet(), string.Empty);
-            GalaxyMapPlanet replacement = new GalaxyMapPlanet(system, new Planet(), string.Empty);
+            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyMapPlanet planet = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
+            GalaxyMapPlanet replacement = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
             GalaxyMapPlanet[] planets = { planet };
 
-            GalaxyMapSector sector = new GalaxyMapSector(system, planets);
+            GalaxyMapSector sector = new GalaxyMapSector(planetSector, planets);
             planets[0] = replacement;
 
-            Assert.AreSame(system, sector.PlanetSector);
+            Assert.AreSame(planetSector, sector.PlanetSector);
             Assert.AreSame(planet, sector.Planets[0]);
             Assert.AreSame(sector, planet.Sector);
             Assert.Throws<NotSupportedException>(() =>
@@ -53,12 +53,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Sector_PlanetAlreadyAttachedToDifferentSector_ThrowsInvalidOperationException()
         {
-            GamePlanetSector system = new GamePlanetSector();
-            GalaxyMapPlanet planet = new GalaxyMapPlanet(system, new Planet(), string.Empty);
-            new GalaxyMapSector(system, new[] { planet });
+            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyMapPlanet planet = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
+            new GalaxyMapSector(planetSector, new[] { planet });
 
             Assert.Throws<InvalidOperationException>(() =>
-                new GalaxyMapSector(system, new[] { planet })
+                new GalaxyMapSector(planetSector, new[] { planet })
             );
         }
 

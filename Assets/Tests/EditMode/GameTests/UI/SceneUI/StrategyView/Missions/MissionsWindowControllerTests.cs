@@ -247,12 +247,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
-            GamePlanetSector system = new GamePlanetSector
+            GamePlanetSector planetSector = new GamePlanetSector
             {
                 InstanceID = "system",
-                DisplayName = "Core System",
+                DisplayName = "Core Sector",
             };
-            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet planet = new Planet
             {
                 InstanceID = "planet",
@@ -260,8 +260,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 OwnerInstanceID = _playerFactionId,
                 IsColonized = true,
             };
-            game.AttachNode(planet, system);
-            return new GalaxyMapPlanet(system, planet, _playerFactionId);
+            game.AttachNode(planet, planetSector);
+            return new GalaxyMapPlanet(planetSector, planet, _playerFactionId);
         }
 
         private static TestMission CreateMission(

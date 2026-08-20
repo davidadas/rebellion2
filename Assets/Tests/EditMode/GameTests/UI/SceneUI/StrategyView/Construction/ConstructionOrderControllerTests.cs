@@ -39,12 +39,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 ((IManufacturable)template).GetResearchOrder()
             );
             game.Factions.Add(owner);
-            GamePlanetSector system = new GamePlanetSector { InstanceID = "system" };
-            game.AttachNode(system, game.GetGalaxyMap());
+            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "system" };
+            game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet producer = CreatePlanet("producer", ownerId, 10);
             Planet destination = CreatePlanet("destination", ownerId, _destinationEnergyCapacity);
-            game.AttachNode(producer, system);
-            game.AttachNode(destination, system);
+            game.AttachNode(producer, planetSector);
+            game.AttachNode(destination, planetSector);
             game.AttachNode(CreateConstructionFacility(ownerId), producer);
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));

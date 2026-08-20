@@ -143,7 +143,7 @@ namespace Rebellion.Tests.Game.Events
             config.Jedi.RankLabelByMinimumForceRank[100] = (int)ForceRankLabel.ForceKnight;
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "faction" });
-            PlanetSector system = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
             planet = new Planet
             {
                 InstanceID = "planet",
@@ -157,8 +157,8 @@ namespace Rebellion.Tests.Game.Events
                 OwnerInstanceID = "faction",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             return game;

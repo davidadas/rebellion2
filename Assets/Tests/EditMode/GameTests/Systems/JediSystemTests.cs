@@ -37,13 +37,13 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(_alliance);
             _game.Factions.Add(_empire);
 
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "TATOO",
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(system, _game.GetGalaxyMap());
+            _game.AttachNode(planetSector, _game.GetGalaxyMap());
 
             _tatooine = new Planet
             {
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            _game.AttachNode(_tatooine, system);
+            _game.AttachNode(_tatooine, planetSector);
         }
 
         [Test]

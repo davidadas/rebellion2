@@ -295,15 +295,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 
         private static CapitalShip CreateSourceShip(GameRoot game)
         {
-            GamePlanetSector system = new GamePlanetSector { InstanceID = "system" };
-            game.AttachNode(system, game.GetGalaxyMap());
+            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "system" };
+            game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet planet = new Planet
             {
                 InstanceID = "planet",
                 OwnerInstanceID = _playerFactionId,
                 IsColonized = true,
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             GameFleet fleet = new GameFleet
             {
                 InstanceID = "fleet",

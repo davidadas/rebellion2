@@ -427,10 +427,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         public void CreateMapPresentation_Target_ResolvesPlanetAndSector()
         {
             GameRoot game = CreateGame();
-            GamePlanetSector system = new GamePlanetSector { InstanceID = "SYSTEM" };
+            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "SYSTEM" };
             Planet planet = new Planet { InstanceID = "PLANET" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
             StrategyBriefingSegmentTheme segment = new StrategyBriefingSegmentTheme
             {
                 Focus = StrategyBriefingFocus.Target,
@@ -441,7 +441,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 StrategyBriefingController.CreateMapPresentation(game, segment);
 
             Assert.AreEqual(StrategyBriefingMapMode.Spotlight, presentation.Mode);
-            Assert.AreEqual(system.InstanceID, presentation.TargetSectorInstanceID);
+            Assert.AreEqual(planetSector.InstanceID, presentation.TargetSectorInstanceID);
             Assert.AreEqual(planet.InstanceID, presentation.TargetPlanetInstanceID);
             Assert.IsTrue(presentation.DimBackground);
         }
@@ -618,7 +618,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private sealed class TestGalaxyMapActions : IGalaxyMapActions
         {
             public void OpenPlanetSectorWindow(
-                GamePlanetSector system,
+                GamePlanetSector planetSector,
                 int sourceX,
                 int sourceY
             ) { }

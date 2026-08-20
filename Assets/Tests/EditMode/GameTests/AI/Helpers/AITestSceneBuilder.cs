@@ -27,19 +27,19 @@ namespace Rebellion.Tests.AI.Helpers
             int positionY = 0
         )
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = instanceId,
                 PositionX = positionX,
                 PositionY = positionY,
             };
-            game.AttachNode(system, game.Galaxy);
-            return system;
+            game.AttachNode(planetSector, game.Galaxy);
+            return planetSector;
         }
 
         public static Planet AddPlanet(
             GameRoot game,
-            PlanetSector system,
+            PlanetSector planetSector,
             string instanceId,
             string ownerInstanceId,
             int positionX = 0,
@@ -59,7 +59,7 @@ namespace Rebellion.Tests.AI.Helpers
                 EnergyCapacity = energyCapacity,
                 NumRawResourceNodes = rawResourceNodes,
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             return planet;
         }
 

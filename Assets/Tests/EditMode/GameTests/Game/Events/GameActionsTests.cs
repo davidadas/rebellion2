@@ -1584,22 +1584,22 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            game.AttachNode(planetSector, game.Galaxy);
             empirePlanet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
                 IsColonized = true,
             };
-            game.AttachNode(empirePlanet, system);
+            game.AttachNode(empirePlanet, planetSector);
             rebelPlanet = new Planet
             {
                 InstanceID = "p2",
                 OwnerInstanceID = "rebels",
                 IsColonized = true,
             };
-            game.AttachNode(rebelPlanet, system);
+            game.AttachNode(rebelPlanet, planetSector);
             return game;
         }
     }

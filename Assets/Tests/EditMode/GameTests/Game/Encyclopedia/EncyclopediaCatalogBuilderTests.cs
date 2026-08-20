@@ -133,7 +133,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
         [Test]
         public void Build_WithPlanetSector_AddsPlanetEntries()
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 Planets = new List<Planet>
                 {
@@ -153,7 +153,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
 
             EncyclopediaCatalog catalog = BuildCatalog(
                 new EncyclopediaEntries(),
-                planetSectors: new[] { system }
+                planetSectors: new[] { planetSector }
             );
 
             EncyclopediaEntry entry = catalog.FindEntry("PLANET1", null);
@@ -207,7 +207,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
         [Test]
         public void Build_WithNullStaticEntries_IgnoresNullEntries()
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 Planets = new List<Planet>
                 {
@@ -229,7 +229,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
 
             EncyclopediaCatalog catalog = BuildCatalog(
                 new EncyclopediaEntries(),
-                planetSectors: new[] { system },
+                planetSectors: new[] { planetSector },
                 buildings: new Building[] { null, building }
             );
 

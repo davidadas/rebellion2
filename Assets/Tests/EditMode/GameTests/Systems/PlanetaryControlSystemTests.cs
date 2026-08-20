@@ -35,13 +35,13 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(_rebels);
             _game.Factions.Add(_empire);
 
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(system, _game.Galaxy);
+            _game.AttachNode(planetSector, _game.Galaxy);
 
             // Planet being transferred — starts neutral
             _targetPlanet = new Planet
@@ -53,7 +53,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(_targetPlanet, system);
+            _game.AttachNode(_targetPlanet, planetSector);
 
             // Empire's home planet — fallback destination for evicted units
             _empirePlanet = new Planet
@@ -65,7 +65,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = 100,
                 PositionY = 0,
             };
-            _game.AttachNode(_empirePlanet, system);
+            _game.AttachNode(_empirePlanet, planetSector);
 
             _movementSystem = new MovementSystem(
                 _game,
@@ -956,7 +956,7 @@ namespace Rebellion.Tests.Systems
             int positionX = 50
         )
         {
-            PlanetSector system = _targetPlanet.GetParentOfType<PlanetSector>();
+            PlanetSector planetSector = _targetPlanet.GetParentOfType<PlanetSector>();
 
             Planet planet = new Planet
             {
@@ -967,7 +967,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = positionX,
                 PositionY = 0,
             };
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planet, planetSector);
             planet.AddVisitor(ownerInstanceId);
 
             Fleet fleet = new Fleet(ownerInstanceId, $"{ownerInstanceId}-fleet");
@@ -1056,14 +1056,14 @@ namespace Rebellion.Tests.Systems
 
         private void CapturePlanetSnapshot(Faction faction, Planet planet, int tick)
         {
-            PlanetSector system = planet.GetParentOfType<PlanetSector>();
-            new FogOfWarSystem(_game).CaptureSnapshot(faction, planet, system, tick);
+            PlanetSector planetSector = planet.GetParentOfType<PlanetSector>();
+            new FogOfWarSystem(_game).CaptureSnapshot(faction, planet, planetSector, tick);
         }
 
         private static PlanetSnapshot GetPlanetSnapshot(Faction faction, Planet planet)
         {
-            PlanetSector system = planet.GetParentOfType<PlanetSector>();
-            return faction.Fog.Snapshots[system.InstanceID].Planets[planet.InstanceID];
+            PlanetSector planetSector = planet.GetParentOfType<PlanetSector>();
+            return faction.Fog.Snapshots[planetSector.InstanceID].Planets[planet.InstanceID];
         }
 
         private class UncancelableMission : StubMission

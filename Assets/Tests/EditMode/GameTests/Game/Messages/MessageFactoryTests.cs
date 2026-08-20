@@ -4206,8 +4206,8 @@ namespace Rebellion.Tests.Game.Messages
             GameRoot game = new GameRoot(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             game.Factions.Add(alliance);
-            PlanetSector system = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet origin = new Planet
             {
                 InstanceID = "CORUSCANT",
@@ -4224,8 +4224,8 @@ namespace Rebellion.Tests.Game.Messages
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            game.AttachNode(origin, system);
-            game.AttachNode(destination, system);
+            game.AttachNode(origin, planetSector);
+            game.AttachNode(destination, planetSector);
 
             return (game, alliance, origin, destination);
         }
@@ -4243,8 +4243,8 @@ namespace Rebellion.Tests.Game.Messages
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.Factions.Add(alliance);
             game.Factions.Add(empire);
-            PlanetSector system = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet origin = new Planet
             {
                 InstanceID = "CORUSCANT",
@@ -4261,8 +4261,8 @@ namespace Rebellion.Tests.Game.Messages
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            game.AttachNode(origin, system);
-            game.AttachNode(target, system);
+            game.AttachNode(origin, planetSector);
+            game.AttachNode(target, planetSector);
 
             return (game, alliance, empire, origin, target);
         }

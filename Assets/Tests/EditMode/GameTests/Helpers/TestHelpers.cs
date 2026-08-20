@@ -244,11 +244,11 @@ public static class MapPositionTestHelper
         return planet;
     }
 
-    public static PlanetSector WithMapPosition(this PlanetSector system, int x, int y)
+    public static PlanetSector WithMapPosition(this PlanetSector planetSector, int x, int y)
     {
-        system.PositionX = x;
-        system.PositionY = y;
-        return system;
+        planetSector.PositionX = x;
+        planetSector.PositionY = y;
+        return planetSector;
     }
 }
 
@@ -269,13 +269,13 @@ public static class MissionSceneBuilder
         game.Factions.Add(empire);
         game.Factions.Add(rebels);
 
-        PlanetSector system = new PlanetSector
+        PlanetSector planetSector = new PlanetSector
         {
             InstanceID = "sys1",
             PositionX = 0,
             PositionY = 0,
         };
-        game.AttachNode(system, game.Galaxy);
+        game.AttachNode(planetSector, game.Galaxy);
 
         Planet empirePlanet = new Planet
         {
@@ -286,7 +286,7 @@ public static class MissionSceneBuilder
             PositionY = 0,
             PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
         };
-        game.AttachNode(empirePlanet, system);
+        game.AttachNode(empirePlanet, planetSector);
 
         Planet enemyPlanet = new Planet
         {
@@ -298,7 +298,7 @@ public static class MissionSceneBuilder
             EnergyCapacity = 5,
             PopularSupport = new Dictionary<string, int> { { "rebels", 60 } },
         };
-        game.AttachNode(enemyPlanet, system);
+        game.AttachNode(enemyPlanet, planetSector);
 
         Officer officer = EntityFactory.CreateOfficer("o1", "empire");
         game.AttachNode(officer, empirePlanet);

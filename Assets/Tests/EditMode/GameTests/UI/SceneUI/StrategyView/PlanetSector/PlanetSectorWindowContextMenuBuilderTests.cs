@@ -227,8 +227,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         private static PlanetSectorWindowHit CreateHit(PlanetIcon icon, bool planetImage)
         {
-            GamePlanetSector system = new GamePlanetSector();
-            GalaxyMapPlanet planet = new GalaxyMapPlanet(system, new Planet(), string.Empty);
+            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyMapPlanet planet = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
             return new PlanetSectorWindowHit(planet, icon, planetImage);
         }
     }

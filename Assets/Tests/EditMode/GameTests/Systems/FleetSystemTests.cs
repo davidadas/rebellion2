@@ -24,15 +24,15 @@ namespace Rebellion.Tests.Systems
         {
             _game = new GameRoot(TestConfig.Create());
             _game.Factions.Add(new Faction { InstanceID = _ownerId });
-            PlanetSector system = new PlanetSector { InstanceID = "system" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            _game.AttachNode(planetSector, _game.Galaxy);
             _planet = new Planet
             {
                 InstanceID = "planet",
                 OwnerInstanceID = _ownerId,
                 IsColonized = true,
             };
-            _game.AttachNode(_planet, system);
+            _game.AttachNode(_planet, planetSector);
             _fleetSystem = new FleetSystem(_game);
         }
 

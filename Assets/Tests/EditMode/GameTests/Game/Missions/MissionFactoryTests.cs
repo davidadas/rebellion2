@@ -411,13 +411,13 @@ namespace Rebellion.Tests.Game.Missions
             Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
 
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -428,7 +428,7 @@ namespace Rebellion.Tests.Game.Missions
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, planet);

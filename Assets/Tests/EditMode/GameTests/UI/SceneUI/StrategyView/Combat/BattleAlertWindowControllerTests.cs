@@ -335,12 +335,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             game.Factions.Add(new Faction { InstanceID = _playerFactionId });
             game.Factions.Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSector system = new GamePlanetSector
+            GamePlanetSector planetSector = new GamePlanetSector
             {
                 InstanceID = "system",
-                DisplayName = "Core System",
+                DisplayName = "Core Sector",
             };
-            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planetSector, game.GetGalaxyMap());
             planet = new Planet
             {
                 InstanceID = "planet",
@@ -348,7 +348,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 OwnerInstanceID = _opponentFactionId,
                 IsColonized = true,
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             playerFleet = CreateFleet("player-fleet", _playerFactionId);
             opponentFleet = CreateFleet("opponent-fleet", _opponentFactionId);
             return game;
@@ -389,7 +389,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             public void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY) { }
 
             public void OpenBattleResultSector(
-                GamePlanetSector system,
+                GamePlanetSector planetSector,
                 int sourceX,
                 int sourceY
             ) { }

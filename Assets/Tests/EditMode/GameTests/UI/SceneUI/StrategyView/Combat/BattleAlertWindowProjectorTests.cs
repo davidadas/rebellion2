@@ -653,8 +653,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 new Faction { InstanceID = _opponentFactionId, DisplayName = "Imperial" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSector system = new GamePlanetSector { InstanceID = "system" };
-            game.AttachNode(system, game.GetGalaxyMap());
+            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "system" };
+            game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet planet = new Planet
             {
                 InstanceID = "planet",
@@ -663,7 +663,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 OwnerInstanceID = _playerFactionId,
                 EnergyCapacity = 10,
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
 
             GameFleet playerFleet = null;
             GameFleet opponentFleet = null;

@@ -185,13 +185,13 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
 
             Planet empirePlanet = new Planet
             {
@@ -201,7 +201,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = 100,
                 PositionY = 0,
             };
-            game.AttachNode(empirePlanet, system);
+            game.AttachNode(empirePlanet, planetSector);
 
             Planet rebelPlanet = new Planet
             {
@@ -211,7 +211,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(rebelPlanet, system);
+            game.AttachNode(rebelPlanet, planetSector);
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
             captive.IsCaptured = true;

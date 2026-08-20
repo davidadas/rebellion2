@@ -591,13 +591,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             System.Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds
         )
         {
-            GamePlanetSector system = new GamePlanetSector();
+            GamePlanetSector planetSector = new GamePlanetSector();
             return new FinderWindowRowBuilder(
                 new[]
                 {
                     new GalaxyMapSector(
-                        system,
-                        new[] { new GalaxyMapPlanet(system, _alpha, string.Empty) }
+                        planetSector,
+                        new[] { new GalaxyMapPlanet(planetSector, _alpha, string.Empty) }
                     ),
                 },
                 new[]

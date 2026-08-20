@@ -84,15 +84,15 @@ namespace Rebellion.Tests.Systems
             return game;
         }
 
-        protected (Planet planet, PlanetSector system) CreatePlanet(
+        protected (Planet planet, PlanetSector planetSector) CreatePlanet(
             GameRoot game,
             string id,
             string owner = null,
             int energy = 5
         )
         {
-            PlanetSector system = new PlanetSector { InstanceID = $"sys_{id}" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = $"sys_{id}" };
+            game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
                 InstanceID = id,
@@ -105,8 +105,8 @@ namespace Rebellion.Tests.Systems
                     { "alliance", 50 },
                 },
             };
-            game.AttachNode(planet, system);
-            return (planet, system);
+            game.AttachNode(planet, planetSector);
+            return (planet, planetSector);
         }
 
         /// <summary>

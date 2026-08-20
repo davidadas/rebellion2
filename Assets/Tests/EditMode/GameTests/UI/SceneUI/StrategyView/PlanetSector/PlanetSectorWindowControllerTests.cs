@@ -37,7 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
-        private GamePlanetSector _system;
+        private GamePlanetSector _planetSector;
         private TargetingController _targetingController;
         private UIContext _uiContext;
         private StrategyWindowLayerView _windowLayer;
@@ -134,7 +134,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
 
             Assert.IsTrue(opened);
-            Assert.AreEqual($"PlanetSectorWindow-{_system.GetDisplayName()}", view.name);
+            Assert.AreEqual($"PlanetSectorWindow-{_planetSector.GetDisplayName()}", view.name);
             Assert.AreEqual(expectedPosition, new Vector2Int(window.X, window.Y));
             Assert.AreSame(_sector, _controller.GetSector(view));
             Assert.AreEqual(SectorWindowPositions.Left, _controller.GetSectorPosition(view));
@@ -144,7 +144,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         [Test]
         public void Open_ExistingSector_ReturnsFalseWithoutAdditionalWindow()
         {
-            bool first = _controller.Open(_system);
+            bool first = _controller.Open(_planetSector);
 
             bool second = _controller.Open(_sector);
 
@@ -468,8 +468,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         private GalaxyMapSector CreateSector()
         {
-            _system = new GamePlanetSector { InstanceID = "system", DisplayName = "Core System" };
-            _game.AttachNode(_system, _game.GetGalaxyMap());
+            _planetSector = new GamePlanetSector { InstanceID = "system", DisplayName = "Core Sector" };
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
             Planet planet = new Planet
             {
                 InstanceID = "planet",
@@ -477,7 +477,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 OwnerInstanceID = _playerFactionId,
                 IsColonized = true,
             };
-            _game.AttachNode(planet, _system);
+            _game.AttachNode(planet, _planetSector);
             _fleet = new GameFleet
             {
                 InstanceID = "fleet",
@@ -485,15 +485,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 OwnerInstanceID = _playerFactionId,
             };
             _game.AttachNode(_fleet, planet);
-            _planet = new GalaxyMapPlanet(_system, planet, planet.GetPlanetIconPath());
-            return new GalaxyMapSector(_system, new[] { _planet });
+            _planet = new GalaxyMapPlanet(_planetSector, planet, planet.GetPlanetIconPath());
+            return new GalaxyMapSector(_planetSector, new[] { _planet });
         }
 
         private GalaxyMapSector CreateFreshSector()
         {
-            GamePlanetSector system = new GamePlanetSector
+            GamePlanetSector planetSector = new GamePlanetSector
             {
-                InstanceID = _system.InstanceID,
+                InstanceID = _planetSector.InstanceID,
                 DisplayName = "Fresh System",
             };
             Planet planet = new Planet
@@ -504,11 +504,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 IsColonized = true,
             };
             GalaxyMapPlanet strategyPlanet = new GalaxyMapPlanet(
-                system,
+                planetSector,
                 planet,
                 planet.GetPlanetIconPath()
             );
-            return new GalaxyMapSector(system, new[] { strategyPlanet });
+            return new GalaxyMapSector(planetSector, new[] { strategyPlanet });
         }
 
         private PlanetSectorWindowView OpenWindow(out UIWindow window)
@@ -593,9 +593,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         private static PlanetSectorWindowHit CreateHit(PlanetIcon icon, bool planetImage)
         {
-            GamePlanetSector system = new GamePlanetSector();
+            GamePlanetSector planetSector = new GamePlanetSector();
             Planet planet = new Planet();
-            GalaxyMapPlanet galaxyMapPlanet = new GalaxyMapPlanet(system, planet, string.Empty);
+            GalaxyMapPlanet galaxyMapPlanet = new GalaxyMapPlanet(planetSector, planet, string.Empty);
             return new PlanetSectorWindowHit(galaxyMapPlanet, icon, planetImage);
         }
 

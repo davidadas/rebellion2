@@ -216,12 +216,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             game.Factions.Add(new Faction { InstanceID = _playerFactionId });
             game.Factions.Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSector system = new GamePlanetSector
+            GamePlanetSector planetSector = new GamePlanetSector
             {
                 InstanceID = "system",
-                DisplayName = "Core System",
+                DisplayName = "Core Sector",
             };
-            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planetSector, game.GetGalaxyMap());
             origin = new Planet
             {
                 InstanceID = "origin",
@@ -236,9 +236,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 OwnerInstanceID = _opponentFactionId,
                 IsColonized = true,
             };
-            game.AttachNode(origin, system);
-            game.AttachNode(target, system);
-            targetPlanet = new GalaxyMapPlanet(system, target, _playerFactionId);
+            game.AttachNode(origin, planetSector);
+            game.AttachNode(target, planetSector);
+            targetPlanet = new GalaxyMapPlanet(planetSector, target, _playerFactionId);
             return game;
         }
 

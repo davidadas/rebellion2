@@ -204,7 +204,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view
-                .PlanetSectors.First(system => system.InstanceID == _coreSector.InstanceID)
+                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             Assert.IsTrue(viewCoruscant.WasVisitedBy(_alliance.InstanceID));
@@ -746,7 +746,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewHoth = view
-                .PlanetSectors.First(system => system.InstanceID == _outerRimSector.InstanceID)
+                .PlanetSectors.First(sector => sector.InstanceID == _outerRimSector.InstanceID)
                 .Planets.First(planet => planet.InstanceID == _hoth.InstanceID);
 
             Assert.AreSame(
@@ -765,7 +765,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view
-                .PlanetSectors.First(system => system.InstanceID == _coreSector.InstanceID)
+                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             Assert.IsFalse(
@@ -1023,7 +1023,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view
-                .PlanetSectors.First(system => system.InstanceID == _coreSector.InstanceID)
+                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             CollectionAssert.AreEqual(
@@ -1265,7 +1265,7 @@ namespace Rebellion.Tests.Systems
 
             Planet viewCoruscant = _fogSystem
                 .BuildFactionView(_alliance)
-                .PlanetSectors.Single(system => system.InstanceID == _coreSector.InstanceID)
+                .PlanetSectors.Single(sector => sector.InstanceID == _coreSector.InstanceID)
                 .Planets.Single(planet => planet.InstanceID == _coruscant.InstanceID);
 
             Assert.IsEmpty(viewCoruscant.Officers);
@@ -1318,7 +1318,7 @@ namespace Rebellion.Tests.Systems
 
             Planet viewCoruscant = _fogSystem
                 .BuildFactionView(_alliance)
-                .PlanetSectors.Single(system => system.InstanceID == _coreSector.InstanceID)
+                .PlanetSectors.Single(sector => sector.InstanceID == _coreSector.InstanceID)
                 .Planets.Single(planet => planet.InstanceID == _coruscant.InstanceID);
             Fleet viewFleet = viewCoruscant.Fleets.Single(fleet =>
                 fleet.InstanceID == empireFleet.InstanceID
@@ -1868,7 +1868,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view
-                .PlanetSectors.First(system => system.InstanceID == _coreSector.InstanceID)
+                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
             Fleet viewFleet = viewCoruscant.Fleets.Single(fleet =>
                 fleet.InstanceID == empireFleet.InstanceID
@@ -1906,7 +1906,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view
-                .PlanetSectors.First(system => system.InstanceID == _coreSector.InstanceID)
+                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
             List<IManufacturable> queue = viewCoruscant.ManufacturingQueue[
                 ManufacturingType.Building
@@ -2428,7 +2428,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view
-                .PlanetSectors.First(system => system.InstanceID == _coreSector.InstanceID)
+                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             Assert.IsTrue(
@@ -2451,7 +2451,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view
-                .PlanetSectors.First(system => system.InstanceID == _coreSector.InstanceID)
+                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             Assert.AreEqual(1, viewCoruscant.Missions.Count);
@@ -2513,7 +2513,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view
-                .PlanetSectors.First(system => system.InstanceID == _coreSector.InstanceID)
+                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
                 .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             Assert.AreEqual(1, viewCoruscant.Fleets.Count);

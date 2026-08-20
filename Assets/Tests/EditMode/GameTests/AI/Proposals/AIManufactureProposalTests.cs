@@ -38,10 +38,10 @@ namespace Rebellion.Tests.AI.Proposals
         public void Execute_WithValidBuildingProposal_QueuesManufacturing()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                planetSector,
                 "resource-world",
                 empire.InstanceID,
                 rawResourceNodes: 4

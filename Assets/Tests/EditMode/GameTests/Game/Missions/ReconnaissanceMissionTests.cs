@@ -57,7 +57,7 @@ namespace Rebellion.Tests.Game.Missions
 
             GalaxyMap view = fog.BuildFactionView(empire);
             Planet viewPlanet = view
-                .PlanetSectors.First(system => system.InstanceID == "sys1")
+                .PlanetSectors.First(sector => sector.InstanceID == "sys1")
                 .Planets.First(planet => planet.InstanceID == "enemy_planet");
             Assert.IsFalse(viewPlanet.IsUnexploredView);
         }

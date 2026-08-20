@@ -28,9 +28,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
             _window = _windowObject.GetComponent<UIWindow>();
             _window.Configure(1, 10, 20, 300, 200, false, true, true);
-            GamePlanetSector system = new GamePlanetSector();
+            GamePlanetSector planetSector = new GamePlanetSector();
             GalaxyMapPlanet planet = new GalaxyMapPlanet(
-                system,
+                planetSector,
                 new Planet { InstanceID = "planet" },
                 string.Empty
             );

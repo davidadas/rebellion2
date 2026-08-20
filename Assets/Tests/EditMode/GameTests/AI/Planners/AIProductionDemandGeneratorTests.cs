@@ -18,10 +18,10 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithUnminedResourcesAndBalancedEconomy_AddsMineAndRefineryDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
             AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                planetSector,
                 "resource-world",
                 empire.InstanceID,
                 rawResourceNodes: 4
@@ -40,9 +40,9 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.Infrastructure.StarfighterParentFillPercent = 100;
             game.Config.AI.Infrastructure.AssaultRegimentLoadPercent = 100;
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
-            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, planetSector, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, planetSector, "enemy", rebels.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             fleet.RoleType = FleetRoleType.Battle;
             fleet.Order = new FleetOrder

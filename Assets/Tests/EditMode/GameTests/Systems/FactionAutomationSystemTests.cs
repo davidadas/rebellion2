@@ -29,12 +29,12 @@ namespace Rebellion.Tests.Systems
             };
             _game.Factions.Add(_faction);
 
-            PlanetSector system = new PlanetSector { InstanceID = "SYSTEM" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "SYSTEM" };
+            _game.AttachNode(planetSector, _game.Galaxy);
             _producer = CreatePlanet("PRODUCER", 100, 10);
             _destination = CreatePlanet("DESTINATION", 10, 10);
-            _game.AttachNode(_producer, system);
-            _game.AttachNode(_destination, system);
+            _game.AttachNode(_producer, planetSector);
+            _game.AttachNode(_destination, planetSector);
 
             AddProductionFacility(_producer, "TRAINING", ManufacturingType.Troop);
             AddProductionFacility(_producer, "CONSTRUCTION", ManufacturingType.Building);

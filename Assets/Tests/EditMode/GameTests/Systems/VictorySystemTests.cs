@@ -323,7 +323,7 @@ namespace Rebellion.Tests.Systems
             Faction empire,
             Faction rebels,
             Planet empireHQ,
-            VictorySystem system
+            VictorySystem planetSector
         ) BuildScene(
             GameVictoryCondition victoryCondition = GameVictoryCondition.Headquarters,
             bool rebelsCaptureEmpireHQ = true
@@ -339,13 +339,13 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(rebels);
 
-            PlanetSector system = new PlanetSector
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planetSector, game.Galaxy);
 
             Planet empireHQ = new Planet
             {
@@ -356,7 +356,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int>(),
             };
-            game.AttachNode(empireHQ, system);
+            game.AttachNode(empireHQ, planetSector);
             empire.HQInstanceID = "hq_empire";
 
             return (game, empire, rebels, empireHQ, new VictorySystem(game));

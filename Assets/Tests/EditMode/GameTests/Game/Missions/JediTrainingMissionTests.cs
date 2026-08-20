@@ -25,8 +25,8 @@ namespace Rebellion.Tests.Game.Missions
             _game = new GameRoot(TestConfig.Create());
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector system = new PlanetSector { InstanceID = "sys1" };
-            _game.AttachNode(system, _game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            _game.AttachNode(planetSector, _game.Galaxy);
 
             _planet = new Planet
             {
@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "rebels",
                 IsColonized = true,
             };
-            _game.AttachNode(_planet, system);
+            _game.AttachNode(_planet, planetSector);
 
             _trainer = CreateJedi("trainer", 120, isTrainer: true);
             _student = CreateJedi("student", 40);

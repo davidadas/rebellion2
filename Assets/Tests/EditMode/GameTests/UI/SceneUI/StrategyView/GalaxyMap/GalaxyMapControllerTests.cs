@@ -103,7 +103,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             cluster.OnPointerClick(eventData);
 
             Assert.AreEqual(2, _actions.RenderRequestCount);
-            Assert.AreSame(_sector.PlanetSector, _actions.OpenedSystem);
+            Assert.AreSame(_sector.PlanetSector, _actions.OpenedSector);
             Assert.AreEqual(426, _actions.OpenedX);
             Assert.AreEqual(240, _actions.OpenedY);
         }
@@ -180,7 +180,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
         private static GalaxyMapSector CreateSector()
         {
-            GamePlanetSector system = new GamePlanetSector
+            GamePlanetSector planetSector = new GamePlanetSector
             {
                 InstanceID = "system",
                 DisplayName = "Corellia",
@@ -196,8 +196,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 PositionY = 61,
             };
             return new GalaxyMapSector(
-                system,
-                new[] { new GalaxyMapPlanet(system, planet, string.Empty) }
+                planetSector,
+                new[] { new GalaxyMapPlanet(planetSector, planet, string.Empty) }
             );
         }
 
@@ -242,14 +242,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
         private sealed class TestActions : IGalaxyMapActions
         {
-            public GamePlanetSector OpenedSystem { get; private set; }
+            public GamePlanetSector OpenedSector { get; private set; }
             public int OpenedX { get; private set; } = -1;
             public int OpenedY { get; private set; } = -1;
             public int RenderRequestCount { get; private set; }
 
-            public void OpenPlanetSectorWindow(GamePlanetSector system, int sourceX, int sourceY)
+            public void OpenPlanetSectorWindow(GamePlanetSector planetSector, int sourceX, int sourceY)
             {
-                OpenedSystem = system;
+                OpenedSector = planetSector;
                 OpenedX = sourceX;
                 OpenedY = sourceY;
             }

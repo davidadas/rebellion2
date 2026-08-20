@@ -157,7 +157,7 @@ namespace Rebellion.Tests.UI.Runtime
         public void GetEntityStatusTexture_ShipCarriedByMovingFleet_ReturnsTransitArtwork()
         {
             string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
-            PlanetSector system = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
             Planet planet = new Planet { InstanceID = "planet" };
             Fleet fleet = new Fleet
             {
@@ -165,8 +165,8 @@ namespace Rebellion.Tests.UI.Runtime
                 Movement = new MovementState { TransitTicks = 10 },
             };
             CapitalShip ship = new CapitalShip { InstanceID = "ship", InTransitImagePath = path };
-            _game.AttachNode(system, _game.GetGalaxyMap());
-            _game.AttachNode(planet, system);
+            _game.AttachNode(planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(planet, planetSector);
             _game.AttachNode(fleet, planet);
             _game.AttachNode(ship, fleet);
 

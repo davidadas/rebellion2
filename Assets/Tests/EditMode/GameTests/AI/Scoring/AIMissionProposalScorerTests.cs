@@ -18,16 +18,16 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_DiplomacyProposal_ReturnsHigherScoreForLowerSupportPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
             Planet lowSupport = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                planetSector,
                 "low-support",
                 empire.InstanceID
             );
             Planet highSupport = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                planetSector,
                 "high-support",
                 empire.InstanceID
             );
@@ -54,16 +54,16 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_RecruitmentProposal_ReturnsHigherScoreForHigherSupportPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
             Planet lowSupport = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                planetSector,
                 "low-support",
                 empire.InstanceID
             );
             Planet highSupport = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                planetSector,
                 "high-support",
                 empire.InstanceID
             );
@@ -90,10 +90,10 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_TargetedOfficerMission_ReturnsLowerScoreForStrongerTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
             Planet enemyPlanet = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                planetSector,
                 "enemy",
                 rebels.InstanceID
             );
