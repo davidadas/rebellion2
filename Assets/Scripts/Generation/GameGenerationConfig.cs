@@ -110,7 +110,7 @@ namespace Rebellion.Generation
     }
 
     /// <summary>
-    /// Defines how strongly one faction is represented in generated core systems.
+    /// Defines how strongly one faction is represented in generated core sectors.
     /// </summary>
     [PersistableObject]
     public class FactionBucketConfig

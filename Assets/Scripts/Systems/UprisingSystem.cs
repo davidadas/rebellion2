@@ -1130,7 +1130,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Applies a scheduled popular support shift to the controlling faction during uprising.
-        /// On core systems the shift is halved when it moves against the faction's favor.
+        /// On core sectors the shift is halved when it moves against the faction's favor.
         /// </summary>
         /// <param name="planet">The planet in uprising.</param>
         /// <param name="faction">The controlling faction whose support is shifted.</param>

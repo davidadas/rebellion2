@@ -4,7 +4,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.FogOfWar
 {
     /// <summary>
-    /// Stores the last known state of an observed system.
+    /// Stores the last known state of an observed planet sector.
     /// </summary>
     [PersistableObject]
     public class PlanetSectorSnapshot

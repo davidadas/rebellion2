@@ -1012,10 +1012,10 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns a planet's system x position.
+        /// Returns a planet's sector x position.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The system x position.</returns>
+        /// <returns>The sector x position.</returns>
         private int GetPlanetSectorPositionX(Planet planet)
         {
             return planet.GetParentOfType<PlanetSector>()?.PositionX ?? 0;

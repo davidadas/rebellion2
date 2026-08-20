@@ -39,17 +39,17 @@ public sealed class GalaxyMapView : MonoBehaviour
     public event Action<GalaxyMapView> Destroyed;
 
     /// <summary>
-    /// Raised when the pointer leaves a rendered system cluster.
+    /// Raised when the pointer leaves a rendered sector cluster.
     /// </summary>
     public event Action SectorHoverCleared;
 
     /// <summary>
-    /// Raised when the pointer enters a rendered system cluster.
+    /// Raised when the pointer enters a rendered sector cluster.
     /// </summary>
     public event Action<string> SectorHovered;
 
     /// <summary>
-    /// Raised when a rendered system cluster is double-clicked.
+    /// Raised when a rendered sector cluster is double-clicked.
     /// </summary>
     public event Action<string, int, int> SectorOpenRequested;
 
@@ -261,7 +261,7 @@ public sealed class GalaxyMapView : MonoBehaviour
     }
 
     /// <summary>
-    /// Forwards a child cluster hover entry as a semantic system event.
+    /// Forwards a child cluster hover entry as a semantic sector event.
     /// </summary>
     /// <param name="clusterView">The hovered cluster view.</param>
     private void HandleClusterHovered(PlanetSectorClusterView clusterView)
@@ -280,7 +280,7 @@ public sealed class GalaxyMapView : MonoBehaviour
     }
 
     /// <summary>
-    /// Converts a child cluster double-click to a semantic system-open request.
+    /// Converts a child cluster double-click to a semantic sector-open request.
     /// </summary>
     /// <param name="clusterView">The requested cluster view.</param>
     /// <param name="eventData">The originating pointer event.</param>

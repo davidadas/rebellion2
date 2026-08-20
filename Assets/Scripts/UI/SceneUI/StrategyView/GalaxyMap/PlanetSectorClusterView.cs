@@ -216,9 +216,9 @@ public sealed class PlanetSectorClusterView
     }
 
     /// <summary>
-    /// Applies the projected system label and visibility.
+    /// Applies the projected sector label and visibility.
     /// </summary>
-    /// <param name="label">The displayed system name.</param>
+    /// <param name="label">The displayed sector name.</param>
     /// <param name="visible">Whether the label is visible.</param>
     private void RenderLabel(string label, bool visible)
     {

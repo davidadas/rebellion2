@@ -289,12 +289,12 @@ namespace Rebellion.Generation
         /// or fleet.
         /// </summary>
         /// <param name="officers">The officers selected for deployment.</param>
-        /// <param name="systems">All planet sectors, used to enumerate per-faction destinations.</param>
+        /// <param name="sectors">All planet sectors, used to enumerate per-faction destinations.</param>
         /// <param name="startingOfficerRules">Starting-officer placement rules for this galaxy.</param>
         /// <param name="rng">Random number provider for destination selection.</param>
         private void DeployOfficers(
             Officer[] officers,
-            PlanetSector[] systems,
+            PlanetSector[] sectors,
             IReadOnlyList<StartingOfficerRule> startingOfficerRules,
             IRandomNumberProvider rng
         )
@@ -303,7 +303,7 @@ namespace Rebellion.Generation
                 new Dictionary<string, List<ISceneNode>>();
 
             foreach (
-                Planet planet in systems
+                Planet planet in sectors
                     .SelectMany(s => s.Planets)
                     .Where(p => p.OwnerInstanceID != null)
             )

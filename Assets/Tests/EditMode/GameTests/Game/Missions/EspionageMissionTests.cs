@@ -205,7 +205,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(mission.InstanceID, intelligence.MissionInstanceID);
             CollectionAssert.AreEquivalent(
                 new[] { "Corellia", "Sullust" },
-                intelligence.AdditionalSectors.Select(system => system.DisplayName)
+                intelligence.AdditionalSectors.Select(sector => sector.DisplayName)
             );
         }
 
@@ -621,16 +621,16 @@ namespace Rebellion.Tests.Game.Missions
             GameRoot game,
             string sectorInstanceId,
             string planetInstanceId,
-            PlanetSectorType systemType,
+            PlanetSectorType sectorType,
             string ownerInstanceId = "rebels"
         )
         {
-            PlanetSector system = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = sectorInstanceId,
-                SectorType = systemType,
+                SectorType = sectorType,
             };
-            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(sector, game.Galaxy);
             game.AttachNode(
                 new Planet
                 {
@@ -638,9 +638,9 @@ namespace Rebellion.Tests.Game.Missions
                     OwnerInstanceID = ownerInstanceId,
                     IsColonized = true,
                 },
-                system
+                sector
             );
-            return system;
+            return sector;
         }
 
         private static List<string> RevealedPlanetIDs(Faction faction)

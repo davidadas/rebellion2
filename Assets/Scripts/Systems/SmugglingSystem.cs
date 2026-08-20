@@ -82,7 +82,7 @@ namespace Rebellion.Systems
             foreach (
                 Planet planet in _game
                     .GetGalaxyMap()
-                    .PlanetSectors.SelectMany(system => system.Planets)
+                    .PlanetSectors.SelectMany(sector => sector.Planets)
             )
             {
                 Faction controller = FindFaction(planet.OwnerInstanceID);
@@ -110,7 +110,7 @@ namespace Rebellion.Systems
             foreach (
                 Planet planet in _game
                     .GetGalaxyMap()
-                    .PlanetSectors.SelectMany(system => system.Planets)
+                    .PlanetSectors.SelectMany(sector => sector.Planets)
                     .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {

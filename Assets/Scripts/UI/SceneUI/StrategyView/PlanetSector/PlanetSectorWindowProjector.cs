@@ -177,11 +177,11 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>The projected galaxy offset.</returns>
     private static Vector2Int CreatePlanetOffset(PlanetSector sector, Planet planet)
     {
-        System.Drawing.Point systemPosition = sector?.GetPosition() ?? System.Drawing.Point.Empty;
+        System.Drawing.Point sectorPosition = sector?.GetPosition() ?? System.Drawing.Point.Empty;
         System.Drawing.Point planetPosition = planet?.GetPosition() ?? System.Drawing.Point.Empty;
         return new Vector2Int(
-            planetPosition.X - systemPosition.X,
-            planetPosition.Y - systemPosition.Y
+            planetPosition.X - sectorPosition.X,
+            planetPosition.Y - sectorPosition.Y
         );
     }
 

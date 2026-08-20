@@ -10,7 +10,7 @@ public sealed class PlanetSectorWindowRenderData
     /// <summary>
     /// Creates a planet-sector window presentation.
     /// </summary>
-    /// <param name="title">The displayed system title.</param>
+    /// <param name="title">The displayed sector title.</param>
     /// <param name="planets">The displayed planet presentations.</param>
     public PlanetSectorWindowRenderData(
         string title,
@@ -30,7 +30,7 @@ public sealed class PlanetSectorWindowRenderData
 }
 
 /// <summary>
-/// Describes the immutable presentation of one planet inside a system window.
+/// Describes the immutable presentation of one planet inside a sector window.
 /// </summary>
 public sealed class PlanetSectorPlanetRenderData
 {
@@ -38,7 +38,7 @@ public sealed class PlanetSectorPlanetRenderData
     /// Creates a planet presentation.
     /// </summary>
     /// <param name="planetIndex">The planet's stable position in the rendered sector.</param>
-    /// <param name="galaxyOffset">The planet's projected galaxy offset from its parent system.</param>
+    /// <param name="galaxyOffset">The planet's projected galaxy offset from its parent sector.</param>
     /// <param name="planetTexture">The planet image.</param>
     /// <param name="uprisingTexture">The uprising marker occupying the mission-icon slot.</param>
     /// <param name="facilityTexture">The facility icon image.</param>

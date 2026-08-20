@@ -13,7 +13,7 @@ public sealed class StrategyBriefingMapPresentation
     /// </summary>
     /// <param name="mode">The semantic map presentation mode.</param>
     /// <param name="label">The label shown above the galaxy map.</param>
-    /// <param name="targetSectorInstanceID">The focused system identifier, or null.</param>
+    /// <param name="targetSectorInstanceID">The focused sector identifier, or null.</param>
     /// <param name="targetPlanetInstanceID">The spotlighted planet identifier, or null.</param>
     /// <param name="playerFactionInstanceID">The player faction identifier.</param>
     /// <param name="opponentFactionInstanceID">The opposing faction identifier.</param>
@@ -64,7 +64,7 @@ public sealed class GalaxyMapRenderData
     /// <param name="backgroundBounds">The optional source-space background bounds.</param>
     /// <param name="backgroundColor">The background-only color multiplier.</param>
     /// <param name="activeFilterLabel">The active galactic-information label.</param>
-    /// <param name="clusters">The visible system clusters in render order.</param>
+    /// <param name="clusters">The visible sector clusters in render order.</param>
     public GalaxyMapRenderData(
         Texture2D backgroundTexture,
         RectInt? backgroundBounds,
@@ -159,7 +159,7 @@ public sealed class GalaxyMapClusterRenderData
     /// <param name="sectorInstanceId">The represented planet-sector identifier.</param>
     /// <param name="sourceX">The source-space horizontal cluster position.</param>
     /// <param name="sourceY">The source-space vertical cluster position.</param>
-    /// <param name="label">The displayed system label.</param>
+    /// <param name="label">The displayed sector label.</param>
     /// <param name="showLabel">Whether the label is visible.</param>
     /// <param name="stars">The rendered planet markers.</param>
     public GalaxyMapClusterRenderData(

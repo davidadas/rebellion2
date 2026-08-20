@@ -1361,8 +1361,8 @@ namespace Rebellion.Tests.Game.Messages
                 outcome: MessageResultOutcome.Success,
                 missionTypeId: MissionTypeIDs.Espionage
             );
-            definition.DetailListHeaderTemplate = "Additional systems:";
-            definition.DetailListItemTemplate = "\n     {system}";
+            definition.DetailListHeaderTemplate = "Additional sectors:";
+            definition.DetailListItemTemplate = "\n     {sector}";
 
             Message message = FirstMessageFor(
                 CreateMessages(
@@ -1386,7 +1386,7 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(
-                "Successful.  Additional systems:\n     Corellia\n     Sullust",
+                "Successful.  Additional sectors:\n     Corellia\n     Sullust",
                 message.Body
             );
         }

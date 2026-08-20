@@ -187,19 +187,19 @@ public sealed class GalaxyMapProjector
             if (sector?.PlanetSector == null)
                 continue;
 
-            System.Drawing.Point systemPosition = sector.PlanetSector.GetPosition();
+            System.Drawing.Point sectorPosition = sector.PlanetSector.GetPosition();
             clusters.Add(
                 new GalaxyMapClusterRenderData(
                     sector.PlanetSector.InstanceID,
-                    systemPosition.X,
-                    systemPosition.Y,
+                    sectorPosition.X,
+                    sectorPosition.Y,
                     sector.PlanetSector.DisplayName,
                     string.Equals(
                         sector.PlanetSector.InstanceID,
                         hoveredSectorInstanceId,
                         StringComparison.Ordinal
                     ),
-                    ProjectStars(sector, playerFactionId, filter, context, systemPosition, briefing)
+                    ProjectStars(sector, playerFactionId, filter, context, sectorPosition, briefing)
                 )
             );
         }
@@ -214,7 +214,7 @@ public sealed class GalaxyMapProjector
     /// <param name="playerFactionId">The viewing player's faction identifier.</param>
     /// <param name="filter">The active filter configuration, or null when display is off.</param>
     /// <param name="context">The current strategy UI context.</param>
-    /// <param name="systemPosition">The sector's source-space map position.</param>
+    /// <param name="sectorPosition">The sector's source-space map position.</param>
     /// <param name="briefing">The transient briefing presentation, or null.</param>
     /// <returns>The projected marker presentations.</returns>
     private static List<GalaxyMapStarRenderData> ProjectStars(
@@ -222,7 +222,7 @@ public sealed class GalaxyMapProjector
         string playerFactionId,
         GalacticInformationFilterTheme filter,
         UIContext context,
-        System.Drawing.Point systemPosition,
+        System.Drawing.Point sectorPosition,
         StrategyBriefingMapPresentation briefing
     )
     {
@@ -251,8 +251,8 @@ public sealed class GalaxyMapProjector
             stars.Add(
                 new GalaxyMapStarRenderData(
                     planet.Planet.InstanceID,
-                    planetPosition.X - systemPosition.X,
-                    planetPosition.Y - systemPosition.Y,
+                    planetPosition.X - sectorPosition.X,
+                    planetPosition.Y - sectorPosition.Y,
                     ResolveStarTexture(
                         context,
                         planet.Planet,

@@ -71,8 +71,8 @@ namespace Rebellion.Game.FogOfWar
             {
                 if (observation is PlanetSector selectedSector)
                 {
-                    foreach (Planet systemPlanet in selectedSector.Planets)
-                        RecordObservation(game, faction, systemPlanet, currentTick);
+                    foreach (Planet planet in selectedSector.Planets)
+                        RecordObservation(game, faction, planet, currentTick);
                     continue;
                 }
 

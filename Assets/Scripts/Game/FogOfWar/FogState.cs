@@ -4,7 +4,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.FogOfWar
 {
     /// <summary>
-    /// Stores a faction's known view of observed systems.
+    /// Stores a faction's known view of observed planet sectors.
     /// </summary>
     [PersistableObject]
     public class FogState
@@ -12,7 +12,7 @@ namespace Rebellion.Game.FogOfWar
         // Snapshots.
 
         /// <summary>
-        /// System snapshots keyed by system instance ID.
+        /// Planet-sector snapshots keyed by sector instance ID.
         /// </summary>
         public Dictionary<string, PlanetSectorSnapshot> Snapshots;
 
@@ -22,7 +22,7 @@ namespace Rebellion.Game.FogOfWar
         public Dictionary<string, string> EntityLastSeenAt;
 
         /// <summary>
-        /// System instance ID for each observed planet instance ID.
+        /// Sector instance ID for each observed planet instance ID.
         /// </summary>
         public Dictionary<string, string> PlanetToSector;
 

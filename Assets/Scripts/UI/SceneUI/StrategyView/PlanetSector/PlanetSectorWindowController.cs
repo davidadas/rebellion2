@@ -299,8 +299,8 @@ public sealed class PlanetSectorWindowController
     /// <returns>The matching registered window, or null.</returns>
     public UIWindow FindWindow(GalaxyMapSector sector)
     {
-        string systemId = sector?.PlanetSector?.InstanceID;
-        if (string.IsNullOrEmpty(systemId))
+        string sectorId = sector?.PlanetSector?.InstanceID;
+        if (string.IsNullOrEmpty(sectorId))
             return null;
 
         foreach (UIWindow window in windowManager.Windows)
@@ -310,7 +310,7 @@ public sealed class PlanetSectorWindowController
                 && sessions.TryGetValue(view, out PlanetSectorWindowSession session)
                 && string.Equals(
                     session.Sector?.PlanetSector?.InstanceID,
-                    systemId,
+                    sectorId,
                     StringComparison.Ordinal
                 )
             )
@@ -1059,10 +1059,10 @@ public sealed class PlanetSectorWindowController
         IReadOnlyList<GalaxyMapSector> sectors
     )
     {
-        string systemId = sector?.PlanetSector?.InstanceID;
-        return systemId == null
+        string sectorId = sector?.PlanetSector?.InstanceID;
+        return sectorId == null
             ? null
-            : sectors.FirstOrDefault(item => item.PlanetSector?.InstanceID == systemId);
+            : sectors.FirstOrDefault(item => item.PlanetSector?.InstanceID == sectorId);
     }
 
     /// <summary>

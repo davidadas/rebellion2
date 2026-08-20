@@ -232,7 +232,7 @@ Actions run from top to bottom. Later actions see changes and results produced b
 | `Random` | Chooses one weighted outcome whose optional `When` passes. |
 | `PerformSkillCheck` | Uses an officer rating and probability table, then runs `OnSuccess` or `OnFailure`. |
 | `SetEventVariable` | Applies `Set`, `Add`, `Minimum`, or `Maximum` to a saved integer. |
-| `RevealToFaction` | Reveals selected planets, systems, fleets, missions, units, buildings, or manufacturing orders. |
+| `RevealToFaction` | Reveals selected planets, sectors, fleets, missions, units, buildings, or manufacturing orders. |
 | `ChangePlanetStat` | Changes a planet stat by signed `Amount` or `PercentOfCurrent`. |
 | `ReducePlanetStats` | Applies probabilistic resource losses to selected planet stats. |
 | `RecordPlanetIncident` | Records `Uprising`, `Intelligence`, `Disaster`, or `Resource` from results already produced against `$target`. |
