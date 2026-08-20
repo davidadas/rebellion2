@@ -262,6 +262,102 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void CreateCopy_Default_CopiesOnlyDetachedNode()
+        {
+            _rootNode.OwnerInstanceID = "Owner1";
+            _rootNode.AddChild(_childNode1);
+
+            MockSceneNode copy = (MockSceneNode)_rootNode.CreateCopy();
+
+            Assert.AreNotSame(_rootNode, copy);
+            Assert.AreEqual(_rootNode.InstanceID, copy.InstanceID);
+            Assert.AreEqual("Owner1", copy.OwnerInstanceID);
+            Assert.IsNull(copy.GetParent());
+            Assert.IsNull(copy.GetLastParent());
+            Assert.IsEmpty(copy.GetChildren(includeDisabled: true));
+            Assert.AreEqual(1, _rootNode.GetChildren().Count);
+        }
+
+        [Test]
+        public void CreateCopy_NullEncyclopediaStats_PreservesNullStats()
+        {
+            _rootNode.EncyclopediaStats = null;
+
+            MockSceneNode copy = (MockSceneNode)_rootNode.CreateCopy();
+
+            Assert.IsNull(copy.EncyclopediaStats);
+        }
+
+        [Test]
+        public void CreateCopy_CreateNodeCopyReturnsDifferentType_ThrowsInvalidOperationException()
+        {
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _nodeA.CreateCopy()
+            );
+
+            StringAssert.Contains(nameof(MockSceneNodeA), exception.Message);
+        }
+
+        [Test]
+        public void CreateCopy_Recursive_CopiesHierarchyAndReconnectsParents()
+        {
+            MockSceneNode grandchild = new MockSceneNode
+            {
+                DisplayName = "Grandchild",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+            _childNode1.AddChild(grandchild);
+            grandchild.SetParent(_childNode1);
+
+            MockSceneNode copy = (MockSceneNode)_rootNode.CreateCopy(recursive: true);
+            MockSceneNode copiedChild = copy.GetChildren<MockSceneNode>().Single();
+            MockSceneNode copiedGrandchild = copiedChild.GetChildren<MockSceneNode>().Single();
+
+            Assert.AreNotSame(_childNode1, copiedChild);
+            Assert.AreSame(copy, copiedChild.GetParent());
+            Assert.AreSame(copiedChild, copiedGrandchild.GetParent());
+            Assert.AreEqual(copy.InstanceID, copiedChild.ParentInstanceID);
+            Assert.AreEqual(copiedChild.InstanceID, copiedGrandchild.ParentInstanceID);
+        }
+
+        [Test]
+        public void CreateCopy_RecursiveByDefault_ExcludesDisabledBranches()
+        {
+            MockSceneNode grandchild = new MockSceneNode
+            {
+                DisplayName = "Grandchild",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+            _childNode1.IsEnabled = false;
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+            _childNode1.AddChild(grandchild);
+            grandchild.SetParent(_childNode1);
+
+            MockSceneNode copy = (MockSceneNode)_rootNode.CreateCopy(recursive: true);
+
+            Assert.IsEmpty(copy.GetChildren(includeDisabled: true));
+        }
+
+        [Test]
+        public void CreateCopy_RecursiveIncludingDisabled_CopiesDisabledBranches()
+        {
+            _childNode1.IsEnabled = false;
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+
+            MockSceneNode copy = (MockSceneNode)
+                _rootNode.CreateCopy(recursive: true, includeDisabled: true);
+            MockSceneNode copiedChild = copy.GetChildren<MockSceneNode>(includeDisabled: true)
+                .Single();
+
+            Assert.IsFalse(copiedChild.IsEnabled);
+            Assert.AreSame(copy, copiedChild.GetParent());
+        }
+
+        [Test]
         public void Traverse_HierarchicalNodes_VisitsAllNodes()
         {
             _rootNode.AddChild(_childNode1);
@@ -336,6 +432,10 @@ namespace Rebellion.Tests.SceneGraph
         private class MockSceneNode : BaseSceneNode
         {
             private readonly List<ISceneNode> _children = new List<ISceneNode>();
+
+            public MockSceneNode() { }
+
+            protected override BaseSceneNode CreateNodeCopy() => new MockSceneNode();
 
             public override bool CanAcceptChild(ISceneNode child) => true;
 

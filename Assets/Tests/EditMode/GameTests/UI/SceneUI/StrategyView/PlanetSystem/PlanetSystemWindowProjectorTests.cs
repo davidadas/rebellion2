@@ -458,6 +458,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
         private sealed class TestMission : Mission
         {
+            /// <summary>Creates an empty test mission copy.</summary>
+            /// <returns>An empty test mission.</returns>
+            protected override Rebellion.SceneGraph.BaseSceneNode CreateNodeCopy() =>
+                new TestMission(null);
+
             public TestMission(string ownerInstanceId)
             {
                 OwnerInstanceID = ownerInstanceId;

@@ -127,6 +127,14 @@ namespace Rebellion.SceneGraph
             where T : class, ISceneNode;
 
         /// <summary>
+        /// Creates a detached copy of this node and, when requested, its descendant hierarchy.
+        /// </summary>
+        /// <param name="recursive">Whether to copy descendants at every depth.</param>
+        /// <param name="includeDisabled">Whether disabled descendants may be copied.</param>
+        /// <returns>A detached copy of this node.</returns>
+        ISceneNode CreateCopy(bool recursive = false, bool includeDisabled = false);
+
+        /// <summary>
         /// Visits this node and all descendants, invoking the given action on each.
         /// </summary>
         /// <param name="action"></param>

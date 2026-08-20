@@ -11,7 +11,7 @@ namespace Rebellion.SceneGraph
     /// officers, starfighters, and other entities that do not have children. For nodes
     /// that have children, see the <see cref="ContainerNode"/> class.
     /// </remarks>
-    public class LeafNode : BaseSceneNode
+    public abstract class LeafNode : BaseSceneNode
     {
         /// <summary>
         /// Default constructor.

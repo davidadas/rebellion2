@@ -3,7 +3,6 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Extensions;
@@ -1314,24 +1313,7 @@ namespace Rebellion.Game.FogOfWar
         internal static T CopyEntityForSnapshot<T>(T entity)
             where T : class, ISceneNode
         {
-            if (entity is Building building)
-                return CopyBuildingForSnapshot(building) as T;
-            if (entity is CapitalShip capitalShip)
-                return CopyCapitalShipForSnapshot(capitalShip) as T;
-            if (entity is Mission mission)
-                return CopyMissionForSnapshot(mission) as T;
-            if (entity is Officer officer)
-                return CopyOfficerForSnapshot(officer) as T;
-            if (entity is Regiment regiment)
-                return CopyRegimentForSnapshot(regiment) as T;
-            if (entity is SpecialForces specialForces)
-                return CopySpecialForcesForSnapshot(specialForces) as T;
-            if (entity is Starfighter starfighter)
-                return CopyStarfighterForSnapshot(starfighter) as T;
-
-            T copy = entity.GetShallowCopy(CloneMode.Full);
-            ClearParentReferences(copy);
-            return copy;
+            return entity?.CreateCopy(recursive: true, includeDisabled: entity is Mission) as T;
         }
 
         /// <summary>
@@ -1341,11 +1323,7 @@ namespace Rebellion.Game.FogOfWar
         /// <returns>The copied officer.</returns>
         internal static Officer CopyOfficerForSnapshot(Officer officer)
         {
-            Officer copy = officer.GetShallowCopy(CloneMode.Full);
-            copy.Ratings = new Dictionary<OfficerRating, int>(officer.Ratings);
-            copy.Movement = CopyMovementForSnapshot(officer.Movement);
-            ClearParentReferences(copy);
-            return copy;
+            return officer?.CreateCopy() as Officer;
         }
 
         /// <summary>
@@ -1358,57 +1336,9 @@ namespace Rebellion.Game.FogOfWar
             if (fleet == null)
                 return null;
 
-            Fleet copy = fleet.GetShallowCopy(CloneMode.Full);
-            copy.Movement = CopyMovementForSnapshot(fleet.Movement);
-            copy.Order = fleet.Order?.GetShallowCopy(CloneMode.Full);
-            copy.SetCapitalShips(
-                fleet.GetChildren<CapitalShip>().Select(CopyCapitalShipForSnapshot)
-            );
-            ClearParentReferences(copy);
-
-            foreach (CapitalShip capitalShip in copy.GetChildren<CapitalShip>())
-                capitalShip.SetParent(copy);
-
+            Fleet copy = fleet.CreateCopy(recursive: true) as Fleet;
+            copy.Order = null;
             return copy;
-        }
-
-        /// <summary>
-        /// Copies a mission and its observed participant identities for storage in fog state.
-        /// </summary>
-        /// <param name="mission">The observed mission to copy.</param>
-        /// <returns>The detached mission snapshot.</returns>
-        internal static Mission CopyMissionForSnapshot(Mission mission)
-        {
-            if (mission == null)
-                return null;
-
-            List<IMissionParticipant> mainParticipants = mission
-                .GetMainParticipants(includeDisabled: true)
-                .ToList();
-            List<IMissionParticipant> decoyParticipants = mission
-                .GetDecoyParticipants(includeDisabled: true)
-                .ToList();
-            Mission copy = mission.GetShallowCopy(CloneMode.Full);
-            copy.ReplaceParticipants(
-                CopyMissionParticipantsForSnapshot(mainParticipants),
-                CopyMissionParticipantsForSnapshot(decoyParticipants)
-            );
-            ClearParentReferences(copy);
-            return copy;
-        }
-
-        /// <summary>
-        /// Creates independent copies of participants observed in one mission role.
-        /// </summary>
-        /// <param name="participants">The participants assigned to the observed role.</param>
-        /// <returns>The detached participant snapshots in their original order.</returns>
-        private static List<IMissionParticipant> CopyMissionParticipantsForSnapshot(
-            IEnumerable<IMissionParticipant> participants
-        )
-        {
-            return (participants ?? Enumerable.Empty<IMissionParticipant>())
-                .Select(participant => CopyEntityForSnapshot(participant))
-                .ToList();
         }
 
         /// <summary>
@@ -1514,100 +1444,7 @@ namespace Rebellion.Game.FogOfWar
         /// <returns>The detached capital-ship snapshot.</returns>
         private static CapitalShip CopyCapitalShipForSnapshot(CapitalShip capitalShip)
         {
-            CapitalShip copy = capitalShip.GetShallowCopy(CloneMode.Full);
-            copy.Roles = new List<CapitalShipRole>(capitalShip.Roles);
-            copy.PrimaryWeapons = capitalShip.PrimaryWeapons.ToDictionary(
-                entry => entry.Key,
-                entry => entry.Value?.ToArray()
-            );
-            copy.Movement = CopyMovementForSnapshot(capitalShip.Movement);
-            copy.SetChildren(
-                capitalShip.GetChildren<Officer>().Select(CopyOfficerForSnapshot),
-                capitalShip.GetChildren<Regiment>().Select(CopyRegimentForSnapshot),
-                capitalShip.GetChildren<SpecialForces>().Select(CopySpecialForcesForSnapshot),
-                capitalShip.GetChildren<Starfighter>().Select(CopyStarfighterForSnapshot)
-            );
-            ClearParentReferences(copy);
-
-            foreach (ISceneNode child in copy.GetChildren())
-                child.SetParent(copy);
-
-            return copy;
-        }
-
-        /// <summary>
-        /// Copies a building for storage in fog state.
-        /// </summary>
-        /// <param name="building">The building to copy.</param>
-        /// <returns>The detached building snapshot.</returns>
-        private static Building CopyBuildingForSnapshot(Building building)
-        {
-            Building copy = building.GetShallowCopy(CloneMode.Full);
-            copy.Movement = CopyMovementForSnapshot(building.Movement);
-            ClearParentReferences(copy);
-            return copy;
-        }
-
-        /// <summary>
-        /// Copies a regiment for storage in fog state.
-        /// </summary>
-        /// <param name="regiment">The regiment to copy.</param>
-        /// <returns>The detached regiment snapshot.</returns>
-        private static Regiment CopyRegimentForSnapshot(Regiment regiment)
-        {
-            Regiment copy = regiment.GetShallowCopy(CloneMode.Full);
-            copy.Movement = CopyMovementForSnapshot(regiment.Movement);
-            ClearParentReferences(copy);
-            return copy;
-        }
-
-        /// <summary>
-        /// Copies a special-forces unit for storage in fog state.
-        /// </summary>
-        /// <param name="specialForces">The special-forces unit to copy.</param>
-        /// <returns>The detached special-forces snapshot.</returns>
-        private static SpecialForces CopySpecialForcesForSnapshot(SpecialForces specialForces)
-        {
-            SpecialForces copy = specialForces.GetShallowCopy(CloneMode.Full);
-            copy.Ratings = new Dictionary<OfficerRating, int>(specialForces.Ratings);
-            copy.Movement = CopyMovementForSnapshot(specialForces.Movement);
-            ClearParentReferences(copy);
-            return copy;
-        }
-
-        /// <summary>
-        /// Copies a starfighter unit for storage in fog state.
-        /// </summary>
-        /// <param name="starfighter">The starfighter to copy.</param>
-        /// <returns>The detached starfighter snapshot.</returns>
-        private static Starfighter CopyStarfighterForSnapshot(Starfighter starfighter)
-        {
-            Starfighter copy = starfighter.GetShallowCopy(CloneMode.Full);
-            copy.Movement = CopyMovementForSnapshot(starfighter.Movement);
-            ClearParentReferences(copy);
-            return copy;
-        }
-
-        /// <summary>
-        /// Removes live scene-graph parent references from a snapshot node.
-        /// </summary>
-        /// <param name="node">The copied node to detach.</param>
-        private static void ClearParentReferences(ISceneNode node)
-        {
-            node.ParentInstanceID = null;
-            node.LastParentInstanceID = null;
-            node.ParentNode = null;
-            node.LastParentNode = null;
-        }
-
-        /// <summary>
-        /// Copies movement state for storage in fog state.
-        /// </summary>
-        /// <param name="movement">The movement state to copy.</param>
-        /// <returns>The copied movement state, or null when the entity is stationary.</returns>
-        private static MovementState CopyMovementForSnapshot(MovementState movement)
-        {
-            return movement?.GetShallowCopy(CloneMode.Full);
+            return capitalShip?.CreateCopy(recursive: true) as CapitalShip;
         }
 
         /// <summary>

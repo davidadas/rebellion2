@@ -115,6 +115,61 @@ namespace Rebellion.Game.Units
         /// </summary>
         public CapitalShip() { }
 
+        /// <summary>Creates an empty capital-ship copy.</summary>
+        protected override BaseSceneNode CreateNodeCopy() => new CapitalShip();
+
+        /// <summary>Copies capital-ship state into an empty destination.</summary>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            CapitalShip copy = (CapitalShip)destination;
+            copy.BattleResultImagePath = BattleResultImagePath;
+            copy.BattleResultInTransitImagePath = BattleResultInTransitImagePath;
+            copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;
+            copy.ProducerOwnerID = ProducerOwnerID;
+            copy.ProducerPlanetID = ProducerPlanetID;
+            copy.ConstructionCost = ConstructionCost;
+            copy.MaintenanceCost = MaintenanceCost;
+            copy.BaseBuildSpeed = BaseBuildSpeed;
+            copy.ManufacturingFactionInstanceIDs =
+                ManufacturingFactionInstanceIDs == null
+                    ? null
+                    : new List<string>(ManufacturingFactionInstanceIDs);
+            copy.ResearchOrder = ResearchOrder;
+            copy.ResearchDifficulty = ResearchDifficulty;
+            copy.MaxHullStrength = MaxHullStrength;
+            copy.CurrentHullStrength = CurrentHullStrength;
+            copy.DamageControl = DamageControl;
+            copy.MaxShieldStrength = MaxShieldStrength;
+            copy.ShieldRechargeRate = ShieldRechargeRate;
+            copy.Hyperdrive = Hyperdrive;
+            copy.SublightSpeed = SublightSpeed;
+            copy.Maneuverability = Maneuverability;
+            copy.StarfighterCapacity = StarfighterCapacity;
+            copy.RegimentCapacity = RegimentCapacity;
+            copy.Roles = new List<CapitalShipRole>(Roles);
+            copy.PrimaryWeapons = PrimaryWeapons.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value?.ToArray()
+            );
+            copy.WeaponRecharge = WeaponRecharge;
+            copy.Bombardment = Bombardment;
+            copy.ManufacturingProgress = ManufacturingProgress;
+            copy.ManufacturingStatus = ManufacturingStatus;
+            copy.RefinedMaterialProgress = RefinedMaterialProgress;
+            copy.ProductionCapacity = ProductionCapacity;
+            copy.ProductionCapacityUsed = ProductionCapacityUsed;
+            copy.KdyPool = KdyPool;
+            copy.LnrPool = LnrPool;
+            copy.Movement = Movement?.CreateCopy();
+            copy.TractorBeamPower = TractorBeamPower;
+            copy.TractorBeamnRange = TractorBeamnRange;
+            copy.HasGravityWell = HasGravityWell;
+            copy.CanDestroyPlanets = CanDestroyPlanets;
+            copy.DetectionRating = DetectionRating;
+            copy.InitialParentInstanceID = InitialParentInstanceID;
+        }
+
         /// <summary>
         /// Replaces the ship's child collections while constructing a detached projection.
         /// </summary>

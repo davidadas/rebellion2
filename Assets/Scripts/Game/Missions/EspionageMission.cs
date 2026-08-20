@@ -27,6 +27,10 @@ namespace Rebellion.Game.Missions
         /// </summary>
         internal override bool AppliesFoiledParticipantConsequences => false;
 
+        /// <summary>Creates an empty espionage mission copy.</summary>
+        /// <returns>An empty espionage mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new EspionageMission();
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>

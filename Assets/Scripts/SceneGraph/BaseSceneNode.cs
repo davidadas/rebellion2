@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
@@ -238,6 +239,101 @@ namespace Rebellion.SceneGraph
             where T : class, ISceneNode
         {
             return GetChildren(recursive, includeDisabled).OfType<T>().ToList().AsReadOnly();
+        }
+
+        /// <summary>
+        /// Creates a detached copy of this node and, when requested, its descendant hierarchy.
+        /// </summary>
+        /// <param name="recursive">Whether to copy descendants at every depth.</param>
+        /// <param name="includeDisabled">Whether disabled descendants may be copied.</param>
+        /// <returns>A detached copy of this node.</returns>
+        public ISceneNode CreateCopy(bool recursive = false, bool includeDisabled = false)
+        {
+            BaseSceneNode copy = CreateNodeCopy();
+            if (copy == null || copy.GetType() != GetType())
+            {
+                throw new InvalidOperationException(
+                    $"{GetType().Name}.{nameof(CreateNodeCopy)} must return a non-null {GetType().Name}."
+                );
+            }
+
+            CopyStateTo(copy);
+            if (recursive)
+                CopyChildrenTo(copy, includeDisabled);
+            return copy;
+        }
+
+        /// <summary>
+        /// Creates an empty copy with the same concrete scene-node type.
+        /// </summary>
+        /// <returns>An empty node of the same concrete type.</returns>
+        protected abstract BaseSceneNode CreateNodeCopy();
+
+        /// <summary>
+        /// Copies the state shared by every scene node into a detached destination.
+        /// </summary>
+        /// <param name="copy">The destination node.</param>
+        protected virtual void CopyStateTo(BaseSceneNode copy)
+        {
+            copy.InstanceID = InstanceID;
+            copy.TypeID = TypeID;
+            copy.DisplayName = DisplayName;
+            copy.DisplayStatus = DisplayStatus;
+            copy.DisplayImagePath = DisplayImagePath;
+            copy.SmallDisplayImagePath = SmallDisplayImagePath;
+            copy.MessageImagePath = MessageImagePath;
+            copy.InTransitImagePath = InTransitImagePath;
+            copy.InTransitSmallImagePath = InTransitSmallImagePath;
+            copy.DamagedImagePath = DamagedImagePath;
+            copy.DamagedSmallImagePath = DamagedSmallImagePath;
+            copy.CapturedOverlayImagePath = CapturedOverlayImagePath;
+            copy.InjuredImagePath = InjuredImagePath;
+            copy.Description = Description;
+            copy.EncyclopediaImagePath = EncyclopediaImagePath;
+            copy.EncyclopediaDescription = EncyclopediaDescription;
+            copy.EncyclopediaStats = EncyclopediaStats?.ConvertAll(stat => new EncyclopediaEntryStat
+            {
+                Label = stat.Label,
+                Value = stat.Value,
+            });
+            copy.OwnerInstanceID = OwnerInstanceID;
+            copy.IsEnabled = IsEnabled;
+        }
+
+        /// <summary>
+        /// Copies eligible direct children and attaches them to their copied parent.
+        /// </summary>
+        /// <param name="copy">The destination parent.</param>
+        /// <param name="includeDisabled">Whether disabled branches should be copied.</param>
+        private void CopyChildrenTo(BaseSceneNode copy, bool includeDisabled)
+        {
+            foreach (ISceneNode child in EnumerateChildren())
+            {
+                if (!includeDisabled && !child.IsActive())
+                    continue;
+
+                ISceneNode childCopy = child.CreateCopy(
+                    recursive: true,
+                    includeDisabled: includeDisabled
+                );
+                AttachCopiedChild(copy, child, childCopy);
+            }
+        }
+
+        /// <summary>
+        /// Attaches a copied child while preserving any relationship metadata owned by the parent.
+        /// </summary>
+        /// <param name="destination">The copied parent receiving the child.</param>
+        /// <param name="sourceChild">The source child whose relationship is being copied.</param>
+        /// <param name="copiedChild">The detached copied child.</param>
+        protected virtual void AttachCopiedChild(
+            BaseSceneNode destination,
+            ISceneNode sourceChild,
+            ISceneNode copiedChild
+        )
+        {
+            destination.AddChild(copiedChild);
+            copiedChild.SetParent(destination);
         }
 
         /// <summary>

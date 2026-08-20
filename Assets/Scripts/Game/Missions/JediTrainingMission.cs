@@ -21,6 +21,18 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string TrainerInstanceID { get; set; }
 
+        /// <summary>Creates an empty Jedi-training mission copy.</summary>
+        /// <returns>An empty Jedi-training mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new JediTrainingMission();
+
+        /// <summary>Copies Jedi-training-specific state into an empty destination.</summary>
+        /// <param name="destination">The destination mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            ((JediTrainingMission)destination).TrainerInstanceID = TrainerInstanceID;
+        }
+
         /// <summary>
         /// Gets the selected trainer from the mission's current participants.
         /// </summary>

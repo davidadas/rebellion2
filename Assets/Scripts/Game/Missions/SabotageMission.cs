@@ -19,6 +19,18 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string SabotageTargetInstanceID { get; set; }
 
+        /// <summary>Creates an empty sabotage mission copy.</summary>
+        /// <returns>An empty sabotage mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new SabotageMission();
+
+        /// <summary>Copies sabotage-specific state into an empty destination.</summary>
+        /// <param name="destination">The destination mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            ((SabotageMission)destination).SabotageTargetInstanceID = SabotageTargetInstanceID;
+        }
+
         /// <summary>
         /// Returns whether this mission should cancel when the target planet changes owner.
         /// </summary>

@@ -738,6 +738,11 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(spy.IsKilled, "Officer should be killed when capture probability is 0");
             Assert.IsFalse(spy.IsActive(), "Killed officer should be inactive");
             Assert.AreSame(
+                planet,
+                spy.GetParent(),
+                "Killed officer should remain retained at the mission planet"
+            );
+            Assert.AreSame(
                 spy,
                 game.GetSceneNodeByInstanceID<Officer>(spy.InstanceID, includeDisabled: true)
             );
@@ -2943,6 +2948,11 @@ namespace Rebellion.Tests.Systems
         private sealed class OfficerKillingMission : Mission
         {
             private readonly Officer _target;
+
+            /// <summary>Creates an empty officer-killing mission copy.</summary>
+            /// <returns>An empty officer-killing mission.</returns>
+            protected override BaseSceneNode CreateNodeCopy() =>
+                new OfficerKillingMission(null, null, null, null);
 
             public OfficerKillingMission(
                 string ownerInstanceId,

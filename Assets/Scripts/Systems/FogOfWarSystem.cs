@@ -8,7 +8,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Systems
 {
@@ -142,9 +141,8 @@ namespace Rebellion.Systems
 
             foreach (PlanetSystem masterSystem in _game.Galaxy.GetChildren<PlanetSystem>())
             {
-                PlanetSystem viewSystem = masterSystem.GetShallowCopy(CloneMode.Full);
+                PlanetSystem viewSystem = (PlanetSystem)masterSystem.CreateCopy();
                 viewSystem.SetPlanets(Enumerable.Empty<Planet>());
-                ClearParentReferences(viewSystem);
                 viewSystem.SetParent(factionView);
 
                 faction.Fog.Snapshots.TryGetValue(
@@ -190,8 +188,8 @@ namespace Rebellion.Systems
                             .Where(mission => mission.GetOwnerInstanceID() == faction.InstanceID)
                     )
                     {
-                        Mission viewMission = mission.GetShallowCopy(CloneMode.Full);
-                        ClearParentReferences(viewMission);
+                        Mission viewMission = (Mission)
+                            mission.CreateCopy(recursive: true, includeDisabled: true);
                         viewMission.SetParent(viewPlanet);
                         viewPlanet.AddChild(viewMission);
                     }
@@ -378,7 +376,7 @@ namespace Rebellion.Systems
         /// <returns>A blank planet view with empty entity lists.</returns>
         private Planet BlankPlanetView(Planet masterPlanet)
         {
-            Planet viewPlanet = masterPlanet.GetShallowCopy(CloneMode.Full);
+            Planet viewPlanet = (Planet)masterPlanet.CreateCopy();
             viewPlanet.SetChildren(
                 Enumerable.Empty<Fleet>(),
                 Enumerable.Empty<Officer>(),
@@ -392,7 +390,6 @@ namespace Rebellion.Systems
                 new Dictionary<ManufacturingType, List<IManufacturable>>();
             viewPlanet.VisitingFactionIDs = new List<string>();
             viewPlanet.PopularSupport = new Dictionary<string, int>();
-            ClearParentReferences(viewPlanet);
             return viewPlanet;
         }
 
@@ -662,18 +659,6 @@ namespace Rebellion.Systems
             );
 
             return viewPlanet;
-        }
-
-        /// <summary>
-        /// Removes live scene-graph parent references from a copied view node.
-        /// </summary>
-        /// <param name="node">The copied node to detach.</param>
-        private static void ClearParentReferences(ISceneNode node)
-        {
-            node.ParentInstanceID = null;
-            node.LastParentInstanceID = null;
-            node.ParentNode = null;
-            node.LastParentNode = null;
         }
     }
 }

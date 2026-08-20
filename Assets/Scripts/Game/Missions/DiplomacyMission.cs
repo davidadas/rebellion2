@@ -14,6 +14,10 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "Diplomacy";
 
+        /// <summary>Creates an empty diplomacy mission copy.</summary>
+        /// <returns>An empty diplomacy mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new DiplomacyMission();
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
