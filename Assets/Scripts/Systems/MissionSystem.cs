@@ -858,7 +858,7 @@ namespace Rebellion.Systems
                     continue;
                 }
 
-                ResolveRelativeEvasion(decoy, detector, planet, results);
+                ResolveEvasion(decoy, detector, planet, results);
             }
         }
 
@@ -881,7 +881,7 @@ namespace Rebellion.Systems
 
             MissionDetector detector = Mission.SelectDetector(detectors, _provider);
             if (detector != null)
-                ResolveRelativeEvasion(participant, detector, planet, results);
+                ResolveEvasion(participant, detector, planet, results);
         }
 
         /// <summary>
@@ -891,7 +891,7 @@ namespace Rebellion.Systems
         /// <param name="detector">The detector confronting the participant.</param>
         /// <param name="planet">The planet where the confrontation occurs.</param>
         /// <param name="results">The result collection receiving capture or destruction outcomes.</param>
-        private void ResolveRelativeEvasion(
+        private void ResolveEvasion(
             IMissionParticipant participant,
             MissionDetector detector,
             Planet planet,
@@ -900,7 +900,7 @@ namespace Rebellion.Systems
         {
             int defenderCombat = detector.Commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
             int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
-            bool evaded = _provider.NextDouble() * 100 < GetRelativeEvasionProbability(score);
+            bool evaded = _provider.NextDouble() * 100 < GetEvasionProbability(score);
 
             if (participant is SpecialForces specialForces)
             {
@@ -977,17 +977,17 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the configured relative-evasion probability for a confronted participant.
+        /// Returns the configured evasion probability for a confronted participant.
         /// </summary>
         /// <param name="score">The participant combat rating minus commander combat rating.</param>
         /// <returns>The configured evasion probability.</returns>
-        private double GetRelativeEvasionProbability(int score)
+        private double GetEvasionProbability(int score)
         {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
             return LookupProbability(
-                missionTables.RelativeEvasion,
+                missionTables.Evasion,
                 score,
-                missionTables.DefaultRelativeEvasionProbability
+                missionTables.DefaultEvasionProbability
             );
         }
 

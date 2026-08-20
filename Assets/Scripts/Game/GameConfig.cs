@@ -777,11 +777,11 @@ namespace Rebellion.Game
 
             public Dictionary<int, int> Foil { get; set; } = new Dictionary<int, int>();
 
-            public Dictionary<int, int> RelativeEvasion { get; set; } = new Dictionary<int, int>();
+            public Dictionary<int, int> Evasion { get; set; } = new Dictionary<int, int>();
 
             public int DefaultSuccessProbability { get; set; } = 50;
 
-            public int DefaultRelativeEvasionProbability { get; set; } = 50;
+            public int DefaultEvasionProbability { get; set; } = 50;
 
             public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
 

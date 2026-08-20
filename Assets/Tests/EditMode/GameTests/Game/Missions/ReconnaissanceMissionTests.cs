@@ -82,7 +82,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 { -1000, 100 },
             };
-            game.Config.ProbabilityTables.Mission.RelativeEvasion = new Dictionary<int, int>
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
             {
                 { -1000, 0 },
             };

@@ -426,7 +426,7 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.MainParticipants.Add(traveler);
@@ -521,7 +521,7 @@ namespace Rebellion.Tests.Systems
                 new List<IMissionParticipant>()
             );
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -561,7 +561,7 @@ namespace Rebellion.Tests.Systems
                 new List<IMissionParticipant> { recruiter }
             );
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(recruiter, mission);
@@ -637,7 +637,7 @@ namespace Rebellion.Tests.Systems
             game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 35;
             game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = -1;
             SetFoilTable(game, new Dictionary<int, int> { { -100, 100 }, { 50, 0 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -709,7 +709,7 @@ namespace Rebellion.Tests.Systems
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = -1;
             SetFoilTable(game, new Dictionary<int, int> { { -100, 100 }, { 1, 0 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -837,7 +837,7 @@ namespace Rebellion.Tests.Systems
             game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 35;
             game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = -1;
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 }, { 1, 0 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -862,14 +862,14 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_RelativeEvasionFails_CapturesParticipant()
+        public void UpdateMission_EvasionFails_CapturesParticipant()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -902,7 +902,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_EspionageRelativeEvasionFails_CapturesParticipant()
+        public void UpdateMission_EspionageEvasionFails_CapturesParticipant()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
@@ -918,7 +918,7 @@ namespace Rebellion.Tests.Systems
             );
             Assert.IsNotNull(mission);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -978,14 +978,14 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_RelativeEvasionFails_MovesCaptiveToMissionPlanet()
+        public void UpdateMission_EvasionFails_MovesCaptiveToMissionPlanet()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -1012,14 +1012,14 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_RelativeEvasionSucceeds_ReturnsParticipant()
+        public void UpdateMission_EvasionSucceeds_ReturnsParticipant()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
             DisableCaptureEvasionInjury(game);
             mission.SetExecutionTick(5);
             game.AttachNode(mission, planet);
@@ -1065,17 +1065,17 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_DetectionWithoutRelativeEvasionTable_UsesConfiguredDefault()
+        public void UpdateMission_DetectionWithoutEvasionTable_UsesConfiguredDefault()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
-            game.Config.ProbabilityTables.Mission.DefaultRelativeEvasionProbability = 0;
+            game.Config.ProbabilityTables.Mission.DefaultEvasionProbability = 0;
             DisableCaptureEvasionInjury(game);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int>());
+            SetEvasionTable(game, new Dictionary<int, int>());
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
@@ -1128,7 +1128,7 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
             mission.SetExecutionTick(5);
             game.AttachNode(mission, planet);
@@ -1166,7 +1166,7 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
 
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.DecoyParticipants.Add(decoy);
@@ -1207,7 +1207,7 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
 
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -1251,7 +1251,7 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
 
             SetDecoyTable(game, new Dictionary<int, int> { { -200, 0 }, { 200, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -1292,7 +1292,7 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
 
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -1326,7 +1326,7 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -1366,7 +1366,7 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(sf);
             sf.SetParent(mission);
@@ -1406,7 +1406,7 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(specialForces);
             game.AttachNode(specialForces, mission);
@@ -1444,7 +1444,7 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
@@ -1488,7 +1488,7 @@ namespace Rebellion.Tests.Systems
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             SetDecoyTable(game, new Dictionary<int, int> { { -1000, 0 } });
-            SetRelativeEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.DecoyParticipants.Add(decoy);
@@ -3102,9 +3102,9 @@ namespace Rebellion.Tests.Systems
             game.Config.ProbabilityTables.Mission.FleetDecoy = table;
         }
 
-        private static void SetRelativeEvasionTable(GameRoot game, Dictionary<int, int> table)
+        private static void SetEvasionTable(GameRoot game, Dictionary<int, int> table)
         {
-            game.Config.ProbabilityTables.Mission.RelativeEvasion = table;
+            game.Config.ProbabilityTables.Mission.Evasion = table;
         }
 
         private static void DisableCaptureEvasionInjury(GameRoot game)
