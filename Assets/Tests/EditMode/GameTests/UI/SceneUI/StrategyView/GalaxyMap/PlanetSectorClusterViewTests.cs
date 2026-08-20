@@ -78,7 +78,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsTrue(hitArea.enabled);
             Assert.IsTrue(hitArea.raycastTarget);
             Assert.IsFalse(hitArea.canvasRenderer.cullTransparentMesh);
-            TextMeshProUGUI label = FindComponent<TextMeshProUGUI>("SystemNameTextField");
+            TextMeshProUGUI label = FindComponent<TextMeshProUGUI>("SectorNameTextField");
             Assert.AreEqual("Corellia", label.text);
             Assert.IsTrue(label.gameObject.activeSelf);
             RawImage[] stars = FindGeneratedImages("Star");
@@ -155,7 +155,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(secondStar.gameObject.activeSelf);
             Assert.IsFalse(secondHeadquarters.gameObject.activeSelf);
             Assert.IsFalse(
-                FindComponent<TextMeshProUGUI>("SystemNameTextField").gameObject.activeSelf
+                FindComponent<TextMeshProUGUI>("SectorNameTextField").gameObject.activeSelf
             );
         }
 
@@ -187,7 +187,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(star.gameObject.activeSelf);
             Assert.IsFalse(headquarters.gameObject.activeSelf);
             Assert.IsFalse(
-                FindComponent<TextMeshProUGUI>("SystemNameTextField").gameObject.activeSelf
+                FindComponent<TextMeshProUGUI>("SectorNameTextField").gameObject.activeSelf
             );
         }
 

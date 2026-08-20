@@ -494,7 +494,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             GamePlanetSector planetSector = new GamePlanetSector
             {
                 InstanceID = _planetSector.InstanceID,
-                DisplayName = "Fresh System",
+                DisplayName = "Fresh Sector",
             };
             Planet planet = new Planet
             {

@@ -846,7 +846,7 @@ namespace Rebellion.Systems
             if (sector == null)
                 return results;
 
-            int shift = GetCivilianSystemPenalty(sector, attacker);
+            int shift = GetCivilianSectorPenalty(sector, attacker);
             results.AddRange(
                 _ownership.ShiftBombardmentSupport(GetAffectedPlanets(sector), attacker, shift)
             );
@@ -886,7 +886,7 @@ namespace Rebellion.Systems
         /// <param name="sector">Planet sector where the destruction occurred.</param>
         /// <param name="attacker">Faction responsible for the bombardment.</param>
         /// <returns>The applicable popular-support shift.</returns>
-        private int GetCivilianSystemPenalty(PlanetSector sector, Faction attacker)
+        private int GetCivilianSectorPenalty(PlanetSector sector, Faction attacker)
         {
             bool empire = attacker.Settings.InvertSupportShift;
             if (sector.SectorType == PlanetSectorType.Core)

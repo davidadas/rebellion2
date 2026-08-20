@@ -1555,12 +1555,12 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(ship, fleet);
             planetA.OwnerInstanceID = "rebels";
 
-            MissionSystem planetSector = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            planetSector.UpdateMission(mission);
+            system.UpdateMission(mission);
 
             Assert.AreEqual(
                 ship,

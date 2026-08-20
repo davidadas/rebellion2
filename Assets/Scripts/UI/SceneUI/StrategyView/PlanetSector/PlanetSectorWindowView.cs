@@ -10,7 +10,7 @@ using UnityEngine.EventSystems;
 public sealed class PlanetSectorWindowView : MonoBehaviour
 {
     [SerializeField]
-    private TextMeshProUGUI systemNameTextField;
+    private TextMeshProUGUI sectorNameTextField;
 
     [SerializeField]
     private RectTransform planetsRoot;
@@ -97,7 +97,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
-        UILayout.SetTextContent(systemNameTextField, data.Title);
+        UILayout.SetTextContent(sectorNameTextField, data.Title);
         RectInt windowBounds = UILayout.GetSourceRect(transform as RectTransform);
         for (int index = 0; index < data.Planets.Count; index++)
         {
@@ -382,8 +382,8 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     /// </summary>
     private void VerifyReferences()
     {
-        if (systemNameTextField == null)
-            throw new MissingReferenceException($"{name}/SystemNameTextField is missing.");
+        if (sectorNameTextField == null)
+            throw new MissingReferenceException($"{name}/SectorNameTextField is missing.");
         if (planetsRoot == null)
             throw new MissingReferenceException($"{name}/Planets is missing.");
         if (planetPrefab == null)

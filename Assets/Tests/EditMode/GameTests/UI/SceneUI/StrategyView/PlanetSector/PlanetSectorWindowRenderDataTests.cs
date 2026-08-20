@@ -51,9 +51,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         [Test]
         public void Window_NullPlanets_ReturnsEmptySnapshot()
         {
-            PlanetSectorWindowRenderData data = new PlanetSectorWindowRenderData("System", null);
+            PlanetSectorWindowRenderData data = new PlanetSectorWindowRenderData("Sector", null);
 
-            Assert.AreEqual("System", data.Title);
+            Assert.AreEqual("Sector", data.Title);
             Assert.IsEmpty(data.Planets);
         }
 

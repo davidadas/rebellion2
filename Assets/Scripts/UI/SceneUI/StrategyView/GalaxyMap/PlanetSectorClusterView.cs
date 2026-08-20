@@ -18,7 +18,7 @@ public sealed class PlanetSectorClusterView
     private RawImage hitAreaImage;
 
     [SerializeField]
-    private TextMeshProUGUI systemNameTextField;
+    private TextMeshProUGUI sectorNameTextField;
 
     [SerializeField]
     private RawImage starImageTemplate;
@@ -222,8 +222,8 @@ public sealed class PlanetSectorClusterView
     /// <param name="visible">Whether the label is visible.</param>
     private void RenderLabel(string label, bool visible)
     {
-        systemNameTextField.text = label ?? string.Empty;
-        systemNameTextField.gameObject.SetActive(visible && !string.IsNullOrEmpty(label));
+        sectorNameTextField.text = label ?? string.Empty;
+        sectorNameTextField.gameObject.SetActive(visible && !string.IsNullOrEmpty(label));
     }
 
     /// <summary>
@@ -271,7 +271,7 @@ public sealed class PlanetSectorClusterView
             RawImage image = Instantiate(template, transform);
             image.name = $"{prefix}{images.Count}Image";
             image.raycastTarget = false;
-            image.transform.SetSiblingIndex(systemNameTextField.transform.GetSiblingIndex());
+            image.transform.SetSiblingIndex(sectorNameTextField.transform.GetSiblingIndex());
             images.Add(image);
         }
 
@@ -379,14 +379,14 @@ public sealed class PlanetSectorClusterView
     {
         if (hitAreaImage == null)
             throw new MissingReferenceException($"{name}/HitAreaImage is missing.");
-        if (systemNameTextField == null)
-            throw new MissingReferenceException($"{name}/SystemNameTextField is missing.");
+        if (sectorNameTextField == null)
+            throw new MissingReferenceException($"{name}/SectorNameTextField is missing.");
         if (starImageTemplate == null)
             throw new MissingReferenceException($"{name}/StarImageTemplate is missing.");
         if (headquartersImageTemplate == null)
             throw new MissingReferenceException($"{name}/HeadquartersImageTemplate is missing.");
         starImageTemplate.gameObject.SetActive(false);
         headquartersImageTemplate.gameObject.SetActive(false);
-        systemNameTextField.raycastTarget = false;
+        sectorNameTextField.raycastTarget = false;
     }
 }

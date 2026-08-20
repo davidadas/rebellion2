@@ -648,7 +648,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results.OfType<PlanetUprisingEndedResult>());
         }
 
-        private (GameRoot game, Planet planet, UprisingSystem planetSector) BuildScene(
+        private (GameRoot game, Planet planet, UprisingSystem system) BuildScene(
             int ownerSupport = 10,
             int opposingSupport = 50,
             int troopCount = 0,

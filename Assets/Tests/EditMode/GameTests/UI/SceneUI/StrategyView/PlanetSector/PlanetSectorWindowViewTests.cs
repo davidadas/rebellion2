@@ -60,7 +60,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             _view.Render(new PlanetSectorWindowRenderData("Sesswenna", new[] { first, second }));
 
-            Assert.AreEqual("Sesswenna", GetField<TextMeshProUGUI>("systemNameTextField").text);
+            Assert.AreEqual("Sesswenna", GetField<TextMeshProUGUI>("sectorNameTextField").text);
             List<PlanetSectorPlanetView> planets = GetPlanetViews();
             Assert.AreEqual(2, planets.Count);
             Assert.AreEqual("Planet0", planets[0].name);

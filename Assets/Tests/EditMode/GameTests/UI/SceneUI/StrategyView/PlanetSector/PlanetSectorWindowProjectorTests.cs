@@ -41,7 +41,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _planetSector = new GamePlanetSector
             {
                 InstanceID = "system",
-                DisplayName = "Corellia System",
+                DisplayName = "Corellia Sector",
                 PositionX = 10,
                 PositionY = 20,
             };
@@ -111,7 +111,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 PlanetIcon.Mission
             );
 
-            Assert.AreEqual("Corellia System", data.Title);
+            Assert.AreEqual("Corellia Sector", data.Title);
             Assert.AreEqual(1, data.Planets.Count);
             PlanetSectorPlanetRenderData presentation = data.Planets[0];
             Assert.AreEqual(0, presentation.PlanetIndex);

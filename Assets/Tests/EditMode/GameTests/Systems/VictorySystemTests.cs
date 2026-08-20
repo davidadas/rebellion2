@@ -323,7 +323,7 @@ namespace Rebellion.Tests.Systems
             Faction empire,
             Faction rebels,
             Planet empireHQ,
-            VictorySystem planetSector
+            VictorySystem system
         ) BuildScene(
             GameVictoryCondition victoryCondition = GameVictoryCondition.Headquarters,
             bool rebelsCaptureEmpireHQ = true

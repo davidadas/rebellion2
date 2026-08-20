@@ -6458,18 +6458,18 @@ public static class StrategyViewPrefabBuilder
             17,
             17
         );
-        TextMeshProUGUI systemNameTextField = CreateTextLabel(
-            "SystemNameTextField",
+        TextMeshProUGUI sectorNameTextField = CreateTextLabel(
+            "SectorNameTextField",
             root.transform
         );
-        systemNameTextField.text = "SystemName";
-        systemNameTextField.color = new Color32(231, 243, 83, 255);
-        systemNameTextField.fontSize = 13;
-        systemNameTextField.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(systemNameTextField.rectTransform, 0, 0, 100, 32);
+        sectorNameTextField.text = "SectorName";
+        sectorNameTextField.color = new Color32(231, 243, 83, 255);
+        sectorNameTextField.fontSize = 13;
+        sectorNameTextField.alignment = TextAlignmentOptions.TopLeft;
+        SetSourceRect(sectorNameTextField.rectTransform, 0, 0, 100, 32);
 
         AssignReference(view, "hitAreaImage", hitArea);
-        AssignReference(view, "systemNameTextField", systemNameTextField);
+        AssignReference(view, "sectorNameTextField", sectorNameTextField);
         AssignReference(view, "starImageTemplate", starTemplate);
         AssignReference(view, "headquartersImageTemplate", headquartersTemplate);
 
@@ -7270,15 +7270,15 @@ public static class StrategyViewPrefabBuilder
         UILayout.SetLeftStretchRect(borderLeft.rectTransform, 0, 0, 0, 1);
         RawImage borderRight = CreatePanelImage("BorderRightImage", window.transform, Color.white);
         UILayout.SetRightStretchRect(borderRight.rectTransform, 0, 0, 0, 1);
-        TextMeshProUGUI systemNameTextField = CreateTextLabel(
-            "SystemNameTextField",
+        TextMeshProUGUI sectorNameTextField = CreateTextLabel(
+            "SectorNameTextField",
             window.transform
         );
-        systemNameTextField.text = "SystemName";
-        systemNameTextField.color = new Color32(231, 243, 83, 255);
-        systemNameTextField.fontSize = 13;
-        systemNameTextField.alignment = TextAlignmentOptions.Top;
-        UILayout.SetTopStretchRect(systemNameTextField.rectTransform, 0, 5, 0, 13);
+        sectorNameTextField.text = "SectorName";
+        sectorNameTextField.color = new Color32(231, 243, 83, 255);
+        sectorNameTextField.fontSize = 13;
+        sectorNameTextField.alignment = TextAlignmentOptions.Top;
+        UILayout.SetTopStretchRect(sectorNameTextField.rectTransform, 0, 5, 0, 13);
         RawImage swapButton = CreateRawButton(
             "SwapButtonImage",
             window.transform,
@@ -7305,7 +7305,7 @@ public static class StrategyViewPrefabBuilder
         planets.transform.SetParent(window.transform, false);
         UILayout.SetStretch(planets.GetComponent<RectTransform>());
 
-        AssignReference(view, "systemNameTextField", systemNameTextField);
+        AssignReference(view, "sectorNameTextField", sectorNameTextField);
         AssignReference(view, "planetsRoot", planets.GetComponent<RectTransform>());
         AssignReference(view, "planetPrefab", planetPrefab);
         AssignFloat(view, "sectorCoordinateRange", _sectorCoordinateRange);
