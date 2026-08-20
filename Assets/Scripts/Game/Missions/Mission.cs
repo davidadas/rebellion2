@@ -153,8 +153,7 @@ namespace Rebellion.Game.Missions
             else
                 destination.AddChild(copiedChild);
 
-            if (HasInitiated)
-                copiedChild.SetParent(destination);
+            copiedChild.SetParent(destination);
         }
 
         /// <summary>

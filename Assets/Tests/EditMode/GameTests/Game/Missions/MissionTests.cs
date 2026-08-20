@@ -38,6 +38,11 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.IsFalse(mission.HasInitiated);
             CollectionAssert.AreEqual(new[] { officer }, mission.GetChildren().ToArray());
+
+            Mission copy = (Mission)mission.CreateCopy(recursive: true);
+            IMissionParticipant copiedParticipant = copy.GetMainParticipants().Single();
+
+            Assert.AreEqual(copy, copiedParticipant.GetParent());
         }
 
         [Test]
