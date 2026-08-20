@@ -324,7 +324,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             };
             AttachFleetGraph(freshPlanetNode, freshFleet);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSector { InstanceID = "fresh-system" },
+                new GamePlanetSector { InstanceID = "fresh-sector" },
                 freshPlanetNode,
                 _playerFactionId
             );
@@ -450,7 +450,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             GamePlanetSector planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
+                InstanceID = "sector",
                 DisplayName = "Core Sector",
             };
             game.AttachNode(planetSector, game.GetGalaxyMap());

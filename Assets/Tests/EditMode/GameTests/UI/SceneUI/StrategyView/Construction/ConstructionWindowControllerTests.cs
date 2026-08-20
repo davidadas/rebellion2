@@ -187,7 +187,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         {
             ConstructionWindowView view = OpenAdvisorWindow(out UIWindow _);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSector { InstanceID = "fresh-system" },
+                new GamePlanetSector { InstanceID = "fresh-sector" },
                 new Planet
                 {
                     InstanceID = _planet.Planet.InstanceID,
@@ -279,7 +279,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         {
             GamePlanetSector planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
+                InstanceID = "sector",
                 DisplayName = "Core Sector",
             };
             game.AttachNode(planetSector, game.GetGalaxyMap());

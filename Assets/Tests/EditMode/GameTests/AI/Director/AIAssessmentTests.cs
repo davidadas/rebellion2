@@ -15,9 +15,19 @@ namespace Rebellion.Tests.AI.Director
         public void Constructor_WithMixedPlanetOwnership_BuildsOwnershipLists()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet owned = AITestSceneBuilder.AddPlanet(game, planetSector, "owned", empire.InstanceID);
-            Planet enemy = AITestSceneBuilder.AddPlanet(game, planetSector, "enemy", rebels.InstanceID);
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet owned = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "owned",
+                empire.InstanceID
+            );
+            Planet enemy = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "enemy",
+                rebels.InstanceID
+            );
             Planet neutral = AITestSceneBuilder.AddPlanet(game, planetSector, "neutral", null);
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
@@ -31,9 +41,14 @@ namespace Rebellion.Tests.AI.Director
         public void Constructor_WithEnemyOfficer_BuildsTargetableEnemyOfficerTargets()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             AITestSceneBuilder.AddPlanet(game, planetSector, "owned", empire.InstanceID);
-            Planet enemy = AITestSceneBuilder.AddPlanet(game, planetSector, "enemy", rebels.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "enemy",
+                rebels.InstanceID
+            );
             Officer target = EntityFactory.CreateOfficer("target", rebels.InstanceID);
             game.AttachNode(target, enemy);
 
@@ -51,9 +66,19 @@ namespace Rebellion.Tests.AI.Director
         public void GetAttackTargetPlanet_EnemyAttackOrder_ReturnsTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet owned = AITestSceneBuilder.AddPlanet(game, planetSector, "owned", empire.InstanceID);
-            Planet enemy = AITestSceneBuilder.AddPlanet(game, planetSector, "enemy", rebels.InstanceID);
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet owned = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "owned",
+                empire.InstanceID
+            );
+            Planet enemy = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "enemy",
+                rebels.InstanceID
+            );
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             fleet.Order = new FleetOrder
             {
@@ -72,9 +97,19 @@ namespace Rebellion.Tests.AI.Director
         public void GetAttackTargetPlanet_NonEnemyAttackOrder_ReturnsNull()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet owned = AITestSceneBuilder.AddPlanet(game, planetSector, "owned", empire.InstanceID);
-            Planet enemy = AITestSceneBuilder.AddPlanet(game, planetSector, "enemy", rebels.InstanceID);
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet owned = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "owned",
+                empire.InstanceID
+            );
+            Planet enemy = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "enemy",
+                rebels.InstanceID
+            );
             Planet neutral = AITestSceneBuilder.AddPlanet(game, planetSector, "neutral", null);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             game.AttachNode(fleet, owned);

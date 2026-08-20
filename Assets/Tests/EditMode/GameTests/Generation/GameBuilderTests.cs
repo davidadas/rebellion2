@@ -526,7 +526,9 @@ namespace Rebellion.Tests.Generation
                 )
             )
             {
-                foreach (Planet planet in planetSector.Planets.Where(p => p.OwnerInstanceID != null))
+                foreach (
+                    Planet planet in planetSector.Planets.Where(p => p.OwnerInstanceID != null)
+                )
                 {
                     Faction owner = _game.Factions.First(f =>
                         f.InstanceID == planet.OwnerInstanceID
@@ -551,7 +553,9 @@ namespace Rebellion.Tests.Generation
                 )
             )
             {
-                foreach (Planet planet in planetSector.Planets.Where(p => p.OwnerInstanceID != null))
+                foreach (
+                    Planet planet in planetSector.Planets.Where(p => p.OwnerInstanceID != null)
+                )
                 {
                     foreach (
                         Faction other in _game.Factions.Where(f =>

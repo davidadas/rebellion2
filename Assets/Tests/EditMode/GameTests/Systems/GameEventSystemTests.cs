@@ -293,7 +293,7 @@ namespace Rebellion.Tests.Systems
         {
             _game.Factions.Add(new Faction { InstanceID = "alliance" });
             _game.Factions.Add(new Faction { InstanceID = "empire" });
-            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             _game.AttachNode(planetSector, _game.Galaxy);
             Planet first = new Planet { InstanceID = "first" };
             Planet second = new Planet { InstanceID = "second" };
@@ -342,7 +342,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
             _game.Factions.Add(new Faction { InstanceID = "alliance" });
-            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             _game.AttachNode(planetSector, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
             _game.AttachNode(planet, planetSector);
@@ -384,7 +384,7 @@ namespace Rebellion.Tests.Systems
         {
             _game.Factions.Add(new Faction { InstanceID = "alliance" });
             _game.Factions.Add(new Faction { InstanceID = "empire" });
-            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             _game.AttachNode(planetSector, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
             _game.AttachNode(planet, planetSector);
@@ -426,7 +426,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessEvents_OneShotTarget_ExecutesTargetOnce()
         {
-            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet { InstanceID = "planet" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _game.AttachNode(planet, planetSector);
@@ -453,7 +453,7 @@ namespace Rebellion.Tests.Systems
         {
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "system",
+                InstanceID = "sector",
                 SectorType = PlanetSectorType.Core,
             };
             _game.AttachNode(planetSector, _game.Galaxy);

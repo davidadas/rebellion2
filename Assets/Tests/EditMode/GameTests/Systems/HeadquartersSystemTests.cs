@@ -164,7 +164,7 @@ namespace Rebellion.Tests.Systems
             };
             game.Factions.Add(faction);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet origin = new Planet
             {

@@ -19,7 +19,7 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             _planetSector = new PlanetSector
             {
-                InstanceID = "SYSTEM1",
+                InstanceID = "SECTOR1",
                 Visibility = GameSize.Medium,
                 SectorType = PlanetSectorType.Core,
                 Importance = PlanetSectorImportance.High,

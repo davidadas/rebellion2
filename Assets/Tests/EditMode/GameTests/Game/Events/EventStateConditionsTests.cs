@@ -130,7 +130,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
-            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.Galaxy);
             empirePlanet = new Planet
             {

@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -1006,7 +1006,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {

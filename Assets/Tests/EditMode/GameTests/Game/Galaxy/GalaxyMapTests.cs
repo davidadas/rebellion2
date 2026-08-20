@@ -17,9 +17,9 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             _galaxyMap = new GalaxyMap { InstanceID = "GALAXY1" };
 
-            _planetSector1 = new PlanetSector { InstanceID = "SYSTEM1" };
+            _planetSector1 = new PlanetSector { InstanceID = "SECTOR1" };
 
-            _planetSector2 = new PlanetSector { InstanceID = "SYSTEM2" };
+            _planetSector2 = new PlanetSector { InstanceID = "SECTOR2" };
         }
 
         [Test]
@@ -33,7 +33,7 @@ namespace Rebellion.Tests.Game.Galaxy
         [Test]
         public void AddChild_WithMultiplePlanetSectors_AddsAllSectors()
         {
-            PlanetSector planetSector3 = new PlanetSector { InstanceID = "SYSTEM3" };
+            PlanetSector planetSector3 = new PlanetSector { InstanceID = "SECTOR3" };
 
             _galaxyMap.AddChild(_planetSector1);
             _galaxyMap.AddChild(_planetSector2);

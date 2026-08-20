@@ -28,7 +28,7 @@ namespace Rebellion.Tests.Systems
             _faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _game.Factions.Add(_faction);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
 
             _planet = new Planet
@@ -172,7 +172,7 @@ namespace Rebellion.Tests.Systems
         {
             PlanetSector outerRimSector = new PlanetSector
             {
-                InstanceID = "system-outer",
+                InstanceID = "sector-outer",
                 SectorType = PlanetSectorType.OuterRim,
             };
             _game.AttachNode(outerRimSector, _game.Galaxy);
@@ -221,8 +221,8 @@ namespace Rebellion.Tests.Systems
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             _game.Factions.Add(empire);
 
-            PlanetSector sys2 = new PlanetSector { InstanceID = "sys2" };
-            _game.AttachNode(sys2, _game.Galaxy);
+            PlanetSector sector2 = new PlanetSector { InstanceID = "sector2" };
+            _game.AttachNode(sector2, _game.Galaxy);
             Planet empirePlanet = new Planet
             {
                 InstanceID = "p2",
@@ -230,20 +230,20 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 20,
             };
-            _game.AttachNode(empirePlanet, sys2);
+            _game.AttachNode(empirePlanet, sector2);
 
             // Alliance gets 1 shipyard, Empire gets 3
             _game.AttachNode(CreateShipyard("SY1"), _planet);
 
-            Building firstEmpireSystem = CreateShipyard("ESY1");
-            firstEmpireSystem.OwnerInstanceID = "FNEMP1";
-            Building secondEmpireSystem = CreateShipyard("ESY2");
-            secondEmpireSystem.OwnerInstanceID = "FNEMP1";
-            Building thirdEmpireSystem = CreateShipyard("ESY3");
-            thirdEmpireSystem.OwnerInstanceID = "FNEMP1";
-            _game.AttachNode(firstEmpireSystem, empirePlanet);
-            _game.AttachNode(secondEmpireSystem, empirePlanet);
-            _game.AttachNode(thirdEmpireSystem, empirePlanet);
+            Building firstEmpireShipyard = CreateShipyard("ESY1");
+            firstEmpireShipyard.OwnerInstanceID = "FNEMP1";
+            Building secondEmpireShipyard = CreateShipyard("ESY2");
+            secondEmpireShipyard.OwnerInstanceID = "FNEMP1";
+            Building thirdEmpireShipyard = CreateShipyard("ESY3");
+            thirdEmpireShipyard.OwnerInstanceID = "FNEMP1";
+            _game.AttachNode(firstEmpireShipyard, empirePlanet);
+            _game.AttachNode(secondEmpireShipyard, empirePlanet);
+            _game.AttachNode(thirdEmpireShipyard, empirePlanet);
             _game.CurrentTick = 30;
 
             _system.ProcessTick();

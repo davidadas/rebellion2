@@ -162,7 +162,7 @@ namespace Rebellion.Tests.Systems
             config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Maximum = 5;
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
-            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.Galaxy);
             planet = new Planet
             {

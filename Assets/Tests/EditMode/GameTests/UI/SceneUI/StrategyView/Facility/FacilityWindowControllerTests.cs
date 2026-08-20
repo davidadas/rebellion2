@@ -200,7 +200,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 BuildingType = BuildingType.Shipyard,
             };
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSector { InstanceID = "fresh-system" },
+                new GamePlanetSector { InstanceID = "fresh-sector" },
                 new Planet
                 {
                     InstanceID = _planet.Planet.InstanceID,
@@ -283,7 +283,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             GamePlanetSector planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
+                InstanceID = "sector",
                 DisplayName = "Core Sector",
             };
             game.AttachNode(planetSector, game.GetGalaxyMap());

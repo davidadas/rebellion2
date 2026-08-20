@@ -540,7 +540,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };

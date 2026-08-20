@@ -51,13 +51,13 @@ namespace Rebellion.Tests.Game.Missions
 
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
             Assert.IsTrue(
-                empire.Fog.Snapshots.TryGetValue("sys1", out PlanetSectorSnapshot snapshot)
+                empire.Fog.Snapshots.TryGetValue("sector1", out PlanetSectorSnapshot snapshot)
             );
             Assert.IsTrue(snapshot.Planets.ContainsKey("enemy_planet"));
 
             GalaxyMap view = fog.BuildFactionView(empire);
             Planet viewPlanet = view
-                .PlanetSectors.First(sector => sector.InstanceID == "sys1")
+                .PlanetSectors.First(sector => sector.InstanceID == "sector1")
                 .Planets.First(planet => planet.InstanceID == "enemy_planet");
             Assert.IsFalse(viewPlanet.IsUnexploredView);
         }

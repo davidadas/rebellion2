@@ -653,7 +653,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 new Faction { InstanceID = _opponentFactionId, DisplayName = "Imperial" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "system" };
+            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet planet = new Planet
             {

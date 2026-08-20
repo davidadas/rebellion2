@@ -40,7 +40,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
             _planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
+                InstanceID = "sector",
                 DisplayName = "Corellian",
                 PositionX = 10,
                 PositionY = 20,

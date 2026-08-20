@@ -44,7 +44,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
             Assert.IsTrue(
-                empire.Fog.Snapshots.ContainsKey("sys1"),
+                empire.Fog.Snapshots.ContainsKey("sector1"),
                 "Espionage success should capture a FOW snapshot for the faction"
             );
             CollectionAssert.AreEquivalent(
@@ -85,7 +85,7 @@ namespace Rebellion.Tests.Game.Missions
             MissionSceneBuilder.RunToSuccess(mission, game);
 
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
-            PlanetSnapshot snapshot = empire.Fog.Snapshots["sys1"].Planets["enemy_planet"];
+            PlanetSnapshot snapshot = empire.Fog.Snapshots["sector1"].Planets["enemy_planet"];
             Assert.IsTrue(snapshot.Buildings.Any(item => item.InstanceID == "enemy_building"));
         }
 
@@ -121,7 +121,7 @@ namespace Rebellion.Tests.Game.Missions
             MissionSceneBuilder.RunToSuccess(espionageMission, game);
 
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
-            PlanetSnapshot snapshot = empire.Fog.Snapshots["sys1"].Planets["enemy_planet"];
+            PlanetSnapshot snapshot = empire.Fog.Snapshots["sector1"].Planets["enemy_planet"];
             Assert.AreEqual(1, snapshot.Missions.Count);
             Assert.AreEqual(enemyMission.InstanceID, snapshot.Missions[0].InstanceID);
         }
@@ -178,10 +178,15 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
             enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
-            PlanetSector corellia = AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
-            corellia.DisplayName = "Corellia";
-            PlanetSector sullust = AddSector(game, "core3", "core_planet3", PlanetSectorType.Core);
-            sullust.DisplayName = "Sullust";
+            PlanetSector corellian = AddSector(
+                game,
+                "core2",
+                "core_planet2",
+                PlanetSectorType.Core
+            );
+            corellian.DisplayName = "Corellian";
+            PlanetSector sluis = AddSector(game, "core3", "core_planet3", PlanetSectorType.Core);
+            sluis.DisplayName = "Sluis";
             game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig { Base = 2 };
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
@@ -204,7 +209,7 @@ namespace Rebellion.Tests.Game.Missions
                 .Single();
             Assert.AreEqual(mission.InstanceID, intelligence.MissionInstanceID);
             CollectionAssert.AreEquivalent(
-                new[] { "Corellia", "Sullust" },
+                new[] { "Corellian", "Sluis" },
                 intelligence.AdditionalSectors.Select(sector => sector.DisplayName)
             );
         }

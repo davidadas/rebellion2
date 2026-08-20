@@ -18,7 +18,7 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_DiplomacyProposal_ReturnsHigherScoreForLowerSupportPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet lowSupport = AITestSceneBuilder.AddPlanet(
                 game,
                 planetSector,
@@ -54,7 +54,7 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_RecruitmentProposal_ReturnsHigherScoreForHigherSupportPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet lowSupport = AITestSceneBuilder.AddPlanet(
                 game,
                 planetSector,
@@ -90,7 +90,7 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_TargetedOfficerMission_ReturnsLowerScoreForStrongerTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet enemyPlanet = AITestSceneBuilder.AddPlanet(
                 game,
                 planetSector,

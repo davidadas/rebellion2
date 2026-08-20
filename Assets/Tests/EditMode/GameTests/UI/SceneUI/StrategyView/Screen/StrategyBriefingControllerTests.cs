@@ -427,7 +427,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         public void CreateMapPresentation_Target_ResolvesPlanetAndSector()
         {
             GameRoot game = CreateGame();
-            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "SYSTEM" };
+            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "SECTOR" };
             Planet planet = new Planet { InstanceID = "PLANET" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);

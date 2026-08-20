@@ -47,7 +47,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -111,7 +111,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);
 
             Planet planet = new Planet
@@ -172,7 +172,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -319,7 +319,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "empire" };
             game.Factions.Add(faction);
-            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet origin = new Planet
             {
@@ -1512,7 +1512,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSectorB = new PlanetSector
             {
-                InstanceID = "sys2",
+                InstanceID = "sector2",
                 PositionX = 100,
                 PositionY = 0,
             };
@@ -1632,7 +1632,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -1701,7 +1701,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -2405,7 +2405,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -2555,7 +2555,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -2711,7 +2711,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -2778,7 +2778,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -2851,7 +2851,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };

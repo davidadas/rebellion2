@@ -2254,11 +2254,11 @@ namespace Rebellion.Game.Messages
                 { "factionOutcome", GetSideOutcome(faction, result).ToString() },
                 { "opponentOutcome", GetSideOutcome(opponent, result).ToString() },
                 {
-                    "retreatSector",
+                    "retreatSystem",
                     GetPlanetName(game, GetRetreatPlanetInstanceID(faction, result))
                 },
                 {
-                    "opponentRetreatSector",
+                    "opponentRetreatSystem",
                     GetPlanetName(game, GetRetreatPlanetInstanceID(opponent, result))
                 },
             };

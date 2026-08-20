@@ -50,7 +50,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void Render_CompleteCluster_AppliesBoundsLabelStarsAndHeadquarters()
         {
             GalaxyMapClusterRenderData data = CreateCluster(
-                "system-1",
+                "sector-1",
                 "Corellia",
                 true,
                 new[]
@@ -68,7 +68,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
             _view.Render(data);
 
-            Assert.AreEqual("system-1", _view.SectorInstanceId);
+            Assert.AreEqual("sector-1", _view.SectorInstanceId);
             Assert.AreEqual(new RectInt(100, 120, 50, 50), _view.GetRenderedSourceRect());
             RawImage hitArea = FindComponent<RawImage>("HitAreaImage");
             Assert.AreEqual(
@@ -115,7 +115,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             _view.Render(
                 CreateCluster(
-                    "system-1",
+                    "sector-1",
                     "Corellia",
                     true,
                     new[]
@@ -143,7 +143,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
             _view.Render(
                 CreateCluster(
-                    "system-1",
+                    "sector-1",
                     string.Empty,
                     true,
                     new[] { new GalaxyMapStarRenderData("planet-3", 8, 9, _largeStarTexture, null) }
@@ -164,7 +164,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             _view.Render(
                 CreateCluster(
-                    "system-1",
+                    "sector-1",
                     "Corellia",
                     true,
                     new[]
@@ -182,7 +182,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             RawImage star = FindGeneratedImages("Star").Single();
             RawImage headquarters = FindGeneratedImages("Headquarters").Single();
 
-            _view.Render(CreateCluster("system-1", "Corellia", false, null));
+            _view.Render(CreateCluster("sector-1", "Corellian", false, null));
 
             Assert.IsFalse(star.gameObject.activeSelf);
             Assert.IsFalse(headquarters.gameObject.activeSelf);
@@ -196,7 +196,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             _view.Render(
                 CreateCluster(
-                    "system-1",
+                    "sector-1",
                     "Corellia",
                     true,
                     new[]
@@ -219,7 +219,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             _view.Render(
                 CreateCluster(
-                    "system-1",
+                    "sector-1",
                     "Corellia",
                     true,
                     new[] { new GalaxyMapStarRenderData(string.Empty, 10, 10, _starTexture, null) }
@@ -246,7 +246,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void GetRenderedStarSourceRect_InvalidIndex_ReturnsDefaultBounds()
         {
-            _view.Render(CreateCluster("system-1", "Corellia", true, null));
+            _view.Render(CreateCluster("sector-1", "Corellian", true, null));
 
             RectInt negativeBounds = _view.GetRenderedStarSourceRect(-1);
             RectInt missingBounds = _view.GetRenderedStarSourceRect(0);
@@ -258,7 +258,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void PointerEvents_RenderedCluster_EmitHoverExitAndDoubleClickRequests()
         {
-            _view.Render(CreateCluster("system-1", "Corellia", true, null));
+            _view.Render(CreateCluster("sector-1", "Corellian", true, null));
             PlanetSectorClusterView hoveredView = null;
             PlanetSectorClusterView exitedView = null;
             PlanetSectorClusterView openedView = null;
@@ -297,7 +297,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
             _view.OnPointerEnter(eventData);
             _view.OnPointerClick(eventData);
-            _view.Render(CreateCluster("system-1", "Corellia", true, null));
+            _view.Render(CreateCluster("sector-1", "Corellian", true, null));
             eventData.button = PointerEventData.InputButton.Left;
             eventData.clickCount = 1;
             _view.OnPointerClick(eventData);

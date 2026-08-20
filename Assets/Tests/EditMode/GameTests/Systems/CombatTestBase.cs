@@ -91,7 +91,7 @@ namespace Rebellion.Tests.Systems
             int energy = 5
         )
         {
-            PlanetSector planetSector = new PlanetSector { InstanceID = $"sys_{id}" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = $"sector_{id}" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {

@@ -20,7 +20,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithMineDemandAndUnlockedMine_AddsManufactureProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
                 planetSector,

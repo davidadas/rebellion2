@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "rebels" });
             game.Factions.Add(new Faction { InstanceID = "empire" });
-            PlanetSector planetSector = new PlanetSector { InstanceID = "system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {

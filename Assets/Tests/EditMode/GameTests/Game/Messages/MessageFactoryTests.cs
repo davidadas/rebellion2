@@ -1349,10 +1349,10 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
             };
             game.AttachNode(mission, target);
-            PlanetSector corellia = new PlanetSector { DisplayName = "Corellia" };
-            PlanetSector sullust = new PlanetSector { DisplayName = "Sullust" };
-            game.AttachNode(corellia, game.Galaxy);
-            game.AttachNode(sullust, game.Galaxy);
+            PlanetSector corellian = new PlanetSector { DisplayName = "Corellian" };
+            PlanetSector sluis = new PlanetSector { DisplayName = "Sluis" };
+            game.AttachNode(corellian, game.Galaxy);
+            game.AttachNode(sluis, game.Galaxy);
             MessageDefinition definition = Definition(
                 MessageResultType.MissionReport,
                 MessageType.Mission,
@@ -1371,7 +1371,7 @@ namespace Rebellion.Tests.Game.Messages
                     new PlanetSectorsRevealedResult
                     {
                         MissionInstanceID = mission.InstanceID,
-                        AdditionalSectors = new List<PlanetSector> { corellia, sullust },
+                        AdditionalSectors = new List<PlanetSector> { corellian, sluis },
                     },
                     new MissionCompletedResult
                     {
@@ -1386,7 +1386,7 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(
-                "Successful.  Additional sectors:\n     Corellia\n     Sullust",
+                "Successful.  Additional sectors:\n     Corellian\n     Sluis",
                 message.Body
             );
         }
@@ -4036,7 +4036,7 @@ namespace Rebellion.Tests.Game.Messages
             MessageDefinition[] definitions = SpaceBattleDefinitions();
             foreach (MessageDefinition definition in definitions)
                 definition.Body =
-                    "{factionOutcome}|{opponentOutcome}|{retreatSector}|{opponentRetreatSector}";
+                    "{factionOutcome}|{opponentOutcome}|{retreatSystem}|{opponentRetreatSystem}";
             return definitions;
         }
 
@@ -4206,7 +4206,11 @@ namespace Rebellion.Tests.Game.Messages
             GameRoot game = new GameRoot(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             game.Factions.Add(alliance);
-            PlanetSector planetSector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
+            PlanetSector planetSector = new PlanetSector
+            {
+                InstanceID = "CORE",
+                DisplayName = "Core",
+            };
             game.AttachNode(planetSector, game.Galaxy);
             Planet origin = new Planet
             {
@@ -4243,7 +4247,11 @@ namespace Rebellion.Tests.Game.Messages
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.Factions.Add(alliance);
             game.Factions.Add(empire);
-            PlanetSector planetSector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
+            PlanetSector planetSector = new PlanetSector
+            {
+                InstanceID = "CORE",
+                DisplayName = "Core",
+            };
             game.AttachNode(planetSector, game.Galaxy);
             Planet origin = new Planet
             {

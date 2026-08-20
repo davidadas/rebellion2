@@ -468,7 +468,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         private GalaxyMapSector CreateSector()
         {
-            _planetSector = new GamePlanetSector { InstanceID = "system", DisplayName = "Core Sector" };
+            _planetSector = new GamePlanetSector
+            {
+                InstanceID = "sector",
+                DisplayName = "Core Sector",
+            };
             _game.AttachNode(_planetSector, _game.GetGalaxyMap());
             Planet planet = new Planet
             {
@@ -595,7 +599,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         {
             GamePlanetSector planetSector = new GamePlanetSector();
             Planet planet = new Planet();
-            GalaxyMapPlanet galaxyMapPlanet = new GalaxyMapPlanet(planetSector, planet, string.Empty);
+            GalaxyMapPlanet galaxyMapPlanet = new GalaxyMapPlanet(
+                planetSector,
+                planet,
+                string.Empty
+            );
             return new PlanetSectorWindowHit(galaxyMapPlanet, icon, planetImage);
         }
 

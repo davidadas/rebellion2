@@ -183,7 +183,7 @@ namespace Rebellion.Tests.Generation
         {
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
             Planet startingPlanet = new Planet { InstanceID = "CORUSCANT", TypeID = "PLSEW05" };
@@ -294,7 +294,7 @@ namespace Rebellion.Tests.Generation
         {
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
             for (int i = 0; i < planetCount; i++)

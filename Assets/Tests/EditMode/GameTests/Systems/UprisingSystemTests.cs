@@ -435,7 +435,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
@@ -483,7 +483,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
             game.AttachNode(planetSector, game.Galaxy);
@@ -540,7 +540,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.OuterRim,
             };
             game.AttachNode(planetSector, game.Galaxy);
@@ -669,7 +669,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = isCoreSector ? PlanetSectorType.Core : PlanetSectorType.OuterRim,
             };
             game.AttachNode(planetSector, game.Galaxy);
@@ -777,7 +777,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.OuterRim,
             };
             game.AttachNode(planetSector, game.Galaxy);
@@ -814,7 +814,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
             game.AttachNode(planetSector, game.Galaxy);
@@ -852,7 +852,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
             game.AttachNode(planetSector, game.Galaxy);
@@ -890,7 +890,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
             game.AttachNode(planetSector, game.Galaxy);

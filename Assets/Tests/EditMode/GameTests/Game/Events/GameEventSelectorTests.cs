@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out _);
             PlanetSector rimSector = new PlanetSector
             {
-                InstanceID = "rim-system",
+                InstanceID = "rim-sector",
                 SectorType = PlanetSectorType.OuterRim,
             };
             Planet rimPlanet = new Planet { InstanceID = "rim-planet" };
@@ -189,7 +189,7 @@ namespace Rebellion.Tests.Game.Events
             game.Factions.Add(new Faction { InstanceID = "faction" });
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "core-system",
+                InstanceID = "core-sector",
                 SectorType = PlanetSectorType.Core,
             };
             planet = new Planet

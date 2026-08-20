@@ -17,14 +17,19 @@ namespace Rebellion.Tests.AI.Proposals
         public void Execute_WithSamePlanetCapitalShipTransfer_ReparentsUnitToTargetFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sys1");
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet staging = AITestSceneBuilder.AddPlanet(
                 game,
                 planetSector,
                 "staging",
                 empire.InstanceID
             );
-            Planet target = AITestSceneBuilder.AddPlanet(game, planetSector, "target", rebels.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "target",
+                rebels.InstanceID
+            );
             Fleet sourceFleet = EntityFactory.CreateFleet("source", empire.InstanceID);
             Fleet targetFleet = EntityFactory.CreateFleet("targetFleet", empire.InstanceID);
             targetFleet.RoleType = FleetRoleType.Battle;

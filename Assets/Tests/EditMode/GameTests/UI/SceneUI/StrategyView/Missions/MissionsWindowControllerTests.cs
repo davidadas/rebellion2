@@ -171,7 +171,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 out Officer _
             );
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSector { InstanceID = "fresh-system" },
+                new GamePlanetSector { InstanceID = "fresh-sector" },
                 new Planet
                 {
                     InstanceID = _planet.Planet.InstanceID,
@@ -249,7 +249,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             GamePlanetSector planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
+                InstanceID = "sector",
                 DisplayName = "Core Sector",
             };
             game.AttachNode(planetSector, game.GetGalaxyMap());

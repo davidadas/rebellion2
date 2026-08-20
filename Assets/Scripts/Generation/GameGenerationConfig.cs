@@ -122,7 +122,7 @@ namespace Rebellion.Generation
 
     #endregion
 
-    #region SYSTEM RESOURCES
+    #region PLANET RESOURCES
 
     /// <summary>
     /// Defines resource profiles used by planet sector generation.
@@ -164,10 +164,10 @@ namespace Rebellion.Generation
 
     #endregion
 
-    #region SYSTEM SUPPORT
+    #region PLANET SUPPORT
 
     /// <summary>
-    /// Defines popular support generation settings for system ownership buckets.
+    /// Defines popular support generation settings for planet ownership buckets.
     /// </summary>
     [PersistableObject]
     public class PlanetSupportSection

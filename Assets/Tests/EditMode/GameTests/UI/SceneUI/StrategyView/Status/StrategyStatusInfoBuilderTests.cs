@@ -35,7 +35,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             _game.Factions.Add(new Faction { InstanceID = _opponentId });
             _game.Summary.PlayerFactionID = _ownerId;
 
-            _planetSector = new GamePlanetSector { InstanceID = "system", DisplayName = "Core Sector" };
+            _planetSector = new GamePlanetSector
+            {
+                InstanceID = "sector",
+                DisplayName = "Core Sector",
+            };
             _planet = new Planet
             {
                 InstanceID = "planet",
@@ -137,7 +141,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 EnergyCapacity = 4,
             };
             _game.AttachNode(neutralPlanet, _planetSector);
-            GalaxyMapPlanet mapPlanet = new GalaxyMapPlanet(_planetSector, neutralPlanet, string.Empty);
+            GalaxyMapPlanet mapPlanet = new GalaxyMapPlanet(
+                _planetSector,
+                neutralPlanet,
+                string.Empty
+            );
 
             StrategyStatusInfo info = _builder.Build(
                 new StrategyStatusTarget(mapPlanet, neutralPlanet)

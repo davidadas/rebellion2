@@ -28,7 +28,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             GamePlanetSector planetSector = new GamePlanetSector();
             GalaxyMapPlanet planet = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
-            GalaxyMapPlanet replacement = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
+            GalaxyMapPlanet replacement = new GalaxyMapPlanet(
+                planetSector,
+                new Planet(),
+                string.Empty
+            );
             GalaxyMapPlanet[] planets = { planet };
 
             GalaxyMapSector sector = new GalaxyMapSector(planetSector, planets);

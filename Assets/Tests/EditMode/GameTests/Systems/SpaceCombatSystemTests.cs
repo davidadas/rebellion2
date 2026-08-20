@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -77,7 +77,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -133,7 +133,7 @@ namespace Rebellion.Tests.Systems
             Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -251,7 +251,7 @@ namespace Rebellion.Tests.Systems
             Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -277,7 +277,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -314,7 +314,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -343,7 +343,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -372,7 +372,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -421,7 +421,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -450,7 +450,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -479,7 +479,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -545,7 +545,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -580,7 +580,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -621,7 +621,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -649,7 +649,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -694,7 +694,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -739,7 +739,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -784,7 +784,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -832,7 +832,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -878,7 +878,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -925,7 +925,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -970,7 +970,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -1006,7 +1006,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -1075,7 +1075,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -1102,7 +1102,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -1139,7 +1139,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
@@ -1237,7 +1237,7 @@ namespace Rebellion.Tests.Systems
 
             for (int i = 1; i <= 3; i++)
             {
-                PlanetSector planetSector = new PlanetSector { InstanceID = $"system{i}" };
+                PlanetSector planetSector = new PlanetSector { InstanceID = $"sector{i}" };
                 Planet planet = new Planet { InstanceID = $"p{i}" };
                 game.AttachNode(planetSector, game.Galaxy);
                 game.AttachNode(planet, planetSector);
@@ -1353,7 +1353,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -1448,7 +1448,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -1564,7 +1564,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
@@ -1629,7 +1629,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "alliance" });
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planet, planetSector);
@@ -1692,20 +1692,20 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "alliance" });
 
-            PlanetSector sys1 = new PlanetSector { InstanceID = "sys1" };
-            game.AttachNode(sys1, game.Galaxy);
+            PlanetSector sector1 = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector1, game.Galaxy);
             Planet combatPlanet = new Planet { InstanceID = "p1" };
-            game.AttachNode(combatPlanet, sys1);
+            game.AttachNode(combatPlanet, sector1);
 
-            PlanetSector sys2 = new PlanetSector { InstanceID = "sys2" };
-            game.AttachNode(sys2, game.Galaxy);
+            PlanetSector sector2 = new PlanetSector { InstanceID = "sector2" };
+            game.AttachNode(sector2, game.Galaxy);
             Planet alliancePlanet = new Planet
             {
                 InstanceID = "p2",
                 OwnerInstanceID = "alliance",
                 IsColonized = true,
             };
-            game.AttachNode(alliancePlanet, sys2);
+            game.AttachNode(alliancePlanet, sector2);
 
             // Alliance fleet: single ship that is immediately destroyed.
             Fleet allianceFleet = new Fleet { InstanceID = "af1", OwnerInstanceID = "alliance" };
@@ -1821,7 +1821,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);

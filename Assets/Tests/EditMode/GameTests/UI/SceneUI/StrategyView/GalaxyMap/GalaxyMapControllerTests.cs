@@ -182,8 +182,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             GamePlanetSector planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
-                DisplayName = "Corellia",
+                InstanceID = "sector",
+                DisplayName = "Corellian",
                 PositionX = 40,
                 PositionY = 50,
             };
@@ -247,7 +247,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             public int OpenedY { get; private set; } = -1;
             public int RenderRequestCount { get; private set; }
 
-            public void OpenPlanetSectorWindow(GamePlanetSector planetSector, int sourceX, int sourceY)
+            public void OpenPlanetSectorWindow(
+                GamePlanetSector planetSector,
+                int sourceX,
+                int sourceY
+            )
             {
                 OpenedSector = planetSector;
                 OpenedX = sourceX;

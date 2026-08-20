@@ -96,7 +96,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_DisplayOff_ReturnsFactionMarkerOffsetsAndHeadquartersOverlay()
         {
-            GamePlanetSector planetSector = CreatePlanetSector("system", "Corellia", 40, 50);
+            GamePlanetSector planetSector = CreatePlanetSector("sector", "Corellian", 40, 50);
             Planet planet = CreatePlanet("planet", _opposingFactionId, 47, 61);
             planet.IsHeadquarters = true;
             GalaxyMapSector sector = CreateSector(planetSector, planet);
@@ -111,10 +111,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
             Assert.AreEqual(1, data.Clusters.Count);
             GalaxyMapClusterRenderData cluster = data.Clusters[0];
-            Assert.AreEqual("system", cluster.SectorInstanceId);
+            Assert.AreEqual("sector", cluster.SectorInstanceId);
             Assert.AreEqual(40, cluster.SourceX);
             Assert.AreEqual(50, cluster.SourceY);
-            Assert.AreEqual("Corellia", cluster.Label);
+            Assert.AreEqual("Corellian", cluster.Label);
             Assert.IsTrue(cluster.ShowLabel);
             Assert.AreEqual(1, cluster.Stars.Count);
             GalaxyMapStarRenderData star = cluster.Stars[0];
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_UnexploredHeadquarters_ReturnsUnknownMarkerWithoutOverlay()
         {
-            GamePlanetSector planetSector = CreatePlanetSector("system", "Corellia", 0, 0);
+            GamePlanetSector planetSector = CreatePlanetSector("sector", "Corellian", 0, 0);
             Planet planet = CreatePlanet("planet", _opposingFactionId, 1, 2);
             planet.IsHeadquarters = true;
             planet.IsUnexploredView = true;
@@ -194,7 +194,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_HighestFilterValue_ReturnsExtraLargeMarkerAndActiveLabel()
         {
-            GamePlanetSector planetSector = CreatePlanetSector("system", "Corellia", 0, 0);
+            GamePlanetSector planetSector = CreatePlanetSector("sector", "Corellian", 0, 0);
             Planet planet = CreatePlanet("planet", _playerFactionId, 1, 2);
             planet.IsInUprising = true;
             GalaxyMapSector sector = CreateSector(planetSector, planet);
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_OpponentLoyaltyBriefing_HighlightsOnlyOpponentAndUsesCueLabel()
         {
-            GamePlanetSector planetSector = CreatePlanetSector("system", "Corellia", 0, 0);
+            GamePlanetSector planetSector = CreatePlanetSector("sector", "Corellian", 0, 0);
             Planet playerPlanet = CreatePlanet("player", _playerFactionId, 1, 2);
             Planet opposingPlanet = CreatePlanet("opposing", _opposingFactionId, 3, 4);
             playerPlanet.SetFullPopularSupport(_playerFactionId);
@@ -277,7 +277,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_UnexploredSystemsBriefing_UsesBlueHighlightForUnexploredPlanets()
         {
-            GamePlanetSector planetSector = CreatePlanetSector("system", "Outer Rim", 0, 0);
+            GamePlanetSector planetSector = CreatePlanetSector("sector", "Outer Rim", 0, 0);
             Planet exploredPlanet = CreatePlanet("explored", _playerFactionId, 1, 2);
             Planet unexploredPlanet = CreatePlanet("unexplored", null, 3, 4);
             unexploredPlanet.IsUnexploredView = true;
@@ -314,7 +314,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_DimmedBriefing_DimsOnlyGalaxyBackground()
         {
-            GamePlanetSector planetSector = CreatePlanetSector("system", "Corellia", 0, 0);
+            GamePlanetSector planetSector = CreatePlanetSector("sector", "Corellian", 0, 0);
             Planet planet = CreatePlanet("planet", _playerFactionId, 1, 2);
             GalaxyMapSector sector = CreateSector(planetSector, planet);
             StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
@@ -343,7 +343,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_TargetBriefing_RevealsTargetSectorAndOverridesLabel()
         {
-            GamePlanetSector planetSector = CreatePlanetSector("system", "Corellia", 0, 0);
+            GamePlanetSector planetSector = CreatePlanetSector("sector", "Corellian", 0, 0);
             Planet targetPlanet = CreatePlanet("planet", _playerFactionId, 1, 2);
             GalaxyMapSector sector = CreateSector(planetSector, targetPlanet);
             StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
@@ -376,7 +376,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_UnsupportedBriefingMode_ThrowsArgumentOutOfRangeException()
         {
-            GamePlanetSector planetSector = CreatePlanetSector("system", "Corellia", 0, 0);
+            GamePlanetSector planetSector = CreatePlanetSector("sector", "Corellian", 0, 0);
             Planet planet = CreatePlanet("planet", _playerFactionId, 1, 2);
             GalaxyMapSector sector = CreateSector(planetSector, planet);
             StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
@@ -402,7 +402,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_MixedFactionFleets_ReturnsMixedMarker()
         {
-            GamePlanetSector planetSector = CreatePlanetSector("system", "Corellia", 0, 0);
+            GamePlanetSector planetSector = CreatePlanetSector("sector", "Corellian", 0, 0);
             Planet planet = CreatePlanet("planet", _playerFactionId, 1, 2);
             planet.Fleets.Add(new GameFleet(_playerFactionId, "Player Fleet"));
             planet.Fleets.Add(new GameFleet(_opposingFactionId, "Opposing Fleet"));
@@ -425,7 +425,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_NullEntries_SkipsInvalidSectorsAndPlanets()
         {
-            GamePlanetSector planetSector = CreatePlanetSector("system", "Corellia", 0, 0);
+            GamePlanetSector planetSector = CreatePlanetSector("sector", "Corellian", 0, 0);
             GalaxyMapSector sector = new GalaxyMapSector(
                 planetSector,
                 new GalaxyMapPlanet[]

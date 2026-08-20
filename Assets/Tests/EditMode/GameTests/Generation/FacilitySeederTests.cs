@@ -356,7 +356,7 @@ namespace Rebellion.Tests.Generation
         {
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
             planetSector.Planets.Add(

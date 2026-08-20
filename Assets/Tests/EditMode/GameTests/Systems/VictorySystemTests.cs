@@ -79,7 +79,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int>(),
             };
-            game.AttachNode(empirePlanet, game.GetSceneNodeByInstanceID<PlanetSector>("sys1"));
+            game.AttachNode(empirePlanet, game.GetSceneNodeByInstanceID<PlanetSector>("sector1"));
 
             Officer leader = new Officer
             {
@@ -272,7 +272,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(
                 thirdHeadquartersPlanet,
-                game.GetSceneNodeByInstanceID<PlanetSector>("sys1")
+                game.GetSceneNodeByInstanceID<PlanetSector>("sector1")
             );
             game.AttachNode(
                 new Building
@@ -341,7 +341,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };

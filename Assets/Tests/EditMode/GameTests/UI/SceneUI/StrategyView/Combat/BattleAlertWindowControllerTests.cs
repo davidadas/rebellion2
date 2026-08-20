@@ -337,7 +337,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             game.Summary.PlayerFactionID = _playerFactionId;
             GamePlanetSector planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
+                InstanceID = "sector",
                 DisplayName = "Core Sector",
             };
             game.AttachNode(planetSector, game.GetGalaxyMap());

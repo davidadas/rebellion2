@@ -39,7 +39,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 ((IManufacturable)template).GetResearchOrder()
             );
             game.Factions.Add(owner);
-            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "system" };
+            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet producer = CreatePlanet("producer", ownerId, 10);
             Planet destination = CreatePlanet("destination", ownerId, _destinationEnergyCapacity);

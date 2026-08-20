@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Systems
 
             _planetSector = new PlanetSector
             {
-                InstanceID = "SYSTEM1",
+                InstanceID = "SECTOR1",
                 PositionX = 0,
                 PositionY = 0,
             };

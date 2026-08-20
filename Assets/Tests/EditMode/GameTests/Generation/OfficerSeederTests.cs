@@ -236,7 +236,7 @@ namespace Rebellion.Tests.Generation
             Officer allianceOfficer2 = MakeOfficer("A2", "FNALL1");
             Officer empireOfficer1 = MakeOfficer("E1", "FNEMP1");
             Officer empireOfficer2 = MakeOfficer("E2", "FNEMP1");
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             planetSector.Planets.Add(
                 new Planet
                 {
@@ -301,7 +301,7 @@ namespace Rebellion.Tests.Generation
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             planetSector.Planets.Add(planet);
 
             Deploy(new[] { officer }, new[] { planetSector }, _rules, _summary, new StubRNG());
@@ -324,7 +324,7 @@ namespace Rebellion.Tests.Generation
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             planetSector.Planets.Add(other);
             planetSector.Planets.Add(target);
 
@@ -361,7 +361,7 @@ namespace Rebellion.Tests.Generation
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             planetSector.Planets.Add(other);
             planetSector.Planets.Add(yavin);
 
@@ -429,7 +429,7 @@ namespace Rebellion.Tests.Generation
 
         private PlanetSector MakeSector(params (string planetId, string ownerId)[] planets)
         {
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             foreach ((string planetId, string ownerId) in planets)
             {
                 planetSector.Planets.Add(

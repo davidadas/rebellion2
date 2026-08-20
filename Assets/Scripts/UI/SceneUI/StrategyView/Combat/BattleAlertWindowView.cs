@@ -299,9 +299,9 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     }
 
     /// <summary>
-    /// Raises a system-navigation request for the owning controller.
+    /// Raises a sector-navigation request for the owning controller.
     /// </summary>
-    internal void RequestOpenSystem()
+    internal void RequestOpenSector()
     {
         OpenSectorRequested?.Invoke(this);
     }
@@ -382,7 +382,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
             resultCategoryButtons[i].onClick.AddListener(listener);
         }
 
-        UnityAction openSector = RequestOpenSystem;
+        UnityAction openSector = RequestOpenSector;
         UnityAction openFleet = RequestOpenFleet;
         resultDirectButtonListeners.Add(openSector);
         resultDirectButtonListeners.Add(openFleet);

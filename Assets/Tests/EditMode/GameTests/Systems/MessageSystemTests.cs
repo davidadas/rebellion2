@@ -22,7 +22,11 @@ namespace Rebellion.Tests.Systems
             Faction faction = new Faction { InstanceID = "alliance" };
             game.Factions.Add(faction);
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "system", DisplayName = "Yavin" };
+            PlanetSector planetSector = new PlanetSector
+            {
+                InstanceID = "sector",
+                DisplayName = "Sumitra",
+            };
             Planet planet = new Planet { InstanceID = "planet", DisplayName = "Yavin" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);

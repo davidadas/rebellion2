@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Game
 
             // Create game objects.
             _galaxyMap = new GalaxyMap();
-            _planetSector = new PlanetSector { InstanceID = "SYSTEM1" };
+            _planetSector = new PlanetSector { InstanceID = "SECTOR1" };
             _planet = new Planet
             {
                 InstanceID = "PLANET1",

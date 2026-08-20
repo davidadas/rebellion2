@@ -39,7 +39,7 @@ namespace Rebellion.Tests.Systems
             // Create planet sector
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "SYSTEM1",
+                InstanceID = "SECTOR1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -1409,7 +1409,7 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(empire);
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             AddResourceSupplyPlanet(_game, "resource_supply_changed_sides", "empire");
 
@@ -1497,7 +1497,7 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(empire);
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             AddResourceSupplyPlanet(_game, "resource_supply_no_capacity", "empire");
 
@@ -1876,7 +1876,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -1931,7 +1931,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -1995,7 +1995,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = "sys1",
+                InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -2226,7 +2226,7 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(empire);
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             AddResourceSupplyPlanet(_game, "resource_supply_batch_capacity", "empire");
 
@@ -2352,7 +2352,7 @@ namespace Rebellion.Tests.Systems
             _game.Factions.Add(empire);
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             AddResourceSupplyPlanet(_game, "resource_supply_batch_no_capacity", "empire");
 
@@ -3531,7 +3531,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _game.AttachNode(planet, planetSector);
 
@@ -3557,7 +3557,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _game.AttachNode(planet, planetSector);
 
@@ -3635,7 +3635,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _game.AttachNode(planet1, planetSector);
             _game.AttachNode(planet2, planetSector);
@@ -3705,7 +3705,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _game.AttachNode(planet, planetSector);
 
@@ -3746,7 +3746,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _game.AttachNode(planet, planetSector);
 
@@ -3800,7 +3800,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _game.AttachNode(planet, planetSector);
 
@@ -3840,7 +3840,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sys1" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _game.AttachNode(planet, planetSector);
 
@@ -4351,7 +4351,7 @@ namespace Rebellion.Tests.Systems
         {
             PlanetSector planetSector = new PlanetSector
             {
-                InstanceID = $"{planetId}_sys",
+                InstanceID = $"{planetId}_sector",
                 PositionX = 0,
                 PositionY = 0,
             };
@@ -4427,7 +4427,7 @@ namespace Rebellion.Tests.Systems
 
         private void AddResourceSupplyPlanet(GameRoot game, string planetId, string factionId)
         {
-            PlanetSector planetSector = new PlanetSector { InstanceID = $"{planetId}_sys" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = $"{planetId}_sector" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
@@ -4507,7 +4507,7 @@ namespace Rebellion.Tests.Systems
             string factionId
         )
         {
-            PlanetSector planetSector = new PlanetSector { InstanceID = $"{planetId}_system" };
+            PlanetSector planetSector = new PlanetSector { InstanceID = $"{planetId}_sector" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
             {
