@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 {
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Planet planet = new Planet { InstanceID = instanceId, DisplayName = name };
             return new FinderWindowRow(
                 name,
-                new GalaxyMapPlanet(new GamePlanetSystem(), planet, string.Empty),
+                new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty),
                 node: planet
             );
         }

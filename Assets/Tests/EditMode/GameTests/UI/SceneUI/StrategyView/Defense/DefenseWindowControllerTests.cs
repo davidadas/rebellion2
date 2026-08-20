@@ -9,7 +9,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 {
@@ -200,7 +200,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             };
             freshPlanetNode.AddTestChild(freshOfficer);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSystem { InstanceID = "fresh-system" },
+                new GamePlanetSector { InstanceID = "fresh-system" },
                 freshPlanetNode,
                 _playerFactionId
             );
@@ -280,7 +280,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
-            GamePlanetSystem system = new GamePlanetSystem
+            GamePlanetSector system = new GamePlanetSector
             {
                 InstanceID = "system",
                 DisplayName = "Core System",

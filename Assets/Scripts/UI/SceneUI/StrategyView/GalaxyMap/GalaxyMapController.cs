@@ -13,12 +13,12 @@ using UnityEngine.EventSystems;
 public interface IGalaxyMapActions
 {
     /// <summary>
-    /// Opens the planet-system window requested from a galaxy-map cluster.
+    /// Opens the planet-sector window requested from a galaxy-map cluster.
     /// </summary>
-    /// <param name="system">The requested planet system.</param>
+    /// <param name="sector">The requested planet sector.</param>
     /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
     /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
-    void OpenPlanetSystemWindow(PlanetSystem system, int sourceX, int sourceY);
+    void OpenPlanetSectorWindow(PlanetSector sector, int sourceX, int sourceY);
 
     /// <summary>
     /// Requests a strategy render after galaxy-map interaction state changes.
@@ -38,16 +38,16 @@ public sealed class GalaxyMapController
         string,
         GalaxyMapPlanet
     >(StringComparer.Ordinal);
-    private readonly Dictionary<string, PlanetSystem> systemsByInstanceId = new Dictionary<
+    private readonly Dictionary<string, PlanetSector> sectorsByInstanceId = new Dictionary<
         string,
-        PlanetSystem
+        PlanetSector
     >(StringComparer.Ordinal);
 
     private IGalaxyMapActions actions;
     private GalaxyMapView view;
     private GalaxyMap visibleGalaxyMap;
     private StrategyBriefingMapPresentation briefingPresentation;
-    private string hoveredSystemInstanceId;
+    private string hoveredSectorInstanceId;
     private string playerFactionId = string.Empty;
 
     public string PlayerFactionId => playerFactionId;
@@ -91,9 +91,9 @@ public sealed class GalaxyMapController
         ReleaseView();
         view = nextView;
         view.Destroyed += HandleViewDestroyed;
-        view.SystemHoverCleared += HandleSystemHoverCleared;
-        view.SystemHovered += HandleSystemHovered;
-        view.SystemOpenRequested += HandleSystemOpenRequested;
+        view.SectorHoverCleared += HandleSectorHoverCleared;
+        view.SectorHovered += HandleSectorHovered;
+        view.SectorOpenRequested += HandleSectorOpenRequested;
     }
 
     /// <summary>
@@ -112,22 +112,22 @@ public sealed class GalaxyMapController
         if (playerFaction != null)
         {
             visibleGalaxyMap = gameManager.GetFogOfWarSystem().BuildFactionView(playerFaction);
-            IReadOnlyList<PlanetSystem> visibleSystems =
-                visibleGalaxyMap?.GetChildren<PlanetSystem>();
-            foreach (PlanetSystem system in visibleSystems ?? Array.Empty<PlanetSystem>())
+            IReadOnlyList<PlanetSector> visibleSectors =
+                visibleGalaxyMap?.GetChildren<PlanetSector>();
+            foreach (PlanetSector sector in visibleSectors ?? Array.Empty<PlanetSector>())
             {
                 List<GalaxyMapPlanet> planets = new List<GalaxyMapPlanet>();
-                foreach (Planet planet in system.GetChildren<Planet>())
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
-                    planets.Add(new GalaxyMapPlanet(system, planet, planet.GetPlanetIconPath()));
+                    planets.Add(new GalaxyMapPlanet(sector, planet, planet.GetPlanetIconPath()));
                 }
 
-                sectors.Add(new GalaxyMapSector(system, planets));
+                sectors.Add(new GalaxyMapSector(sector, planets));
             }
         }
 
         RebuildDomainLookups(sectors);
-        ReconcileHoveredSystem();
+        ReconcileHoveredSector();
     }
 
     /// <summary>
@@ -149,7 +149,7 @@ public sealed class GalaxyMapController
                     sectors,
                     playerFactionId,
                     filterMode,
-                    hoveredSystemInstanceId,
+                    hoveredSectorInstanceId,
                     briefingPresentation
                 )
             );
@@ -162,7 +162,7 @@ public sealed class GalaxyMapController
     public void SetBriefingPresentation(StrategyBriefingMapPresentation presentation)
     {
         briefingPresentation = presentation;
-        hoveredSystemInstanceId = presentation?.TargetSystemInstanceID;
+        hoveredSectorInstanceId = presentation?.TargetSectorInstanceID;
         actions.RequestGalaxyMapRender();
     }
 
@@ -196,12 +196,12 @@ public sealed class GalaxyMapController
     }
 
     /// <summary>
-    /// Clears the currently revealed system label.
+    /// Clears the currently revealed sector label.
     /// </summary>
     /// <returns>True when hover state changed.</returns>
     public bool ClearHover()
     {
-        return SetHoveredSystem(null);
+        return SetHoveredSector(null);
     }
 
     /// <summary>
@@ -209,9 +209,9 @@ public sealed class GalaxyMapController
     /// </summary>
     /// <param name="sector">The visible sector.</param>
     /// <returns>The source-space position of the sector.</returns>
-    public Vector2Int GetSystemSourcePosition(GalaxyMapSector sector)
+    public Vector2Int GetSectorSourcePosition(GalaxyMapSector sector)
     {
-        return projector.GetSystemSourcePosition(sector?.System);
+        return projector.GetSectorSourcePosition(sector?.PlanetSector);
     }
 
     /// <summary>
@@ -250,10 +250,10 @@ public sealed class GalaxyMapController
     /// <summary>
     /// Handles a cluster hover transition emitted by the authored map view.
     /// </summary>
-    /// <param name="systemInstanceId">The hovered planet-system identifier.</param>
-    private void HandleSystemHovered(string systemInstanceId)
+    /// <param name="sectorInstanceId">The hovered planet-sector identifier.</param>
+    private void HandleSectorHovered(string sectorInstanceId)
     {
-        if (!SetHoveredSystem(systemInstanceId))
+        if (!SetHoveredSector(sectorInstanceId))
             return;
 
         actions.RequestGalaxyMapRender();
@@ -262,7 +262,7 @@ public sealed class GalaxyMapController
     /// <summary>
     /// Handles a cluster hover exit emitted by the authored map view.
     /// </summary>
-    private void HandleSystemHoverCleared()
+    private void HandleSectorHoverCleared()
     {
         if (!ClearHover())
             return;
@@ -273,16 +273,16 @@ public sealed class GalaxyMapController
     /// <summary>
     /// Routes a cluster open request to the strategy screen.
     /// </summary>
-    /// <param name="systemInstanceId">The requested planet-system identifier.</param>
+    /// <param name="sectorInstanceId">The requested planet-sector identifier.</param>
     /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
     /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
-    private void HandleSystemOpenRequested(string systemInstanceId, int sourceX, int sourceY)
+    private void HandleSectorOpenRequested(string sectorInstanceId, int sourceX, int sourceY)
     {
         if (
-            !string.IsNullOrEmpty(systemInstanceId)
-            && systemsByInstanceId.TryGetValue(systemInstanceId, out PlanetSystem system)
+            !string.IsNullOrEmpty(sectorInstanceId)
+            && sectorsByInstanceId.TryGetValue(sectorInstanceId, out PlanetSector sector)
         )
-            actions.OpenPlanetSystemWindow(system, sourceX, sourceY);
+            actions.OpenPlanetSectorWindow(sector, sourceX, sourceY);
     }
 
     /// <summary>
@@ -296,40 +296,40 @@ public sealed class GalaxyMapController
     }
 
     /// <summary>
-    /// Replaces the currently revealed system label.
+    /// Replaces the currently revealed sector label.
     /// </summary>
-    /// <param name="systemInstanceId">The newly hovered system identifier, or null to clear hover.</param>
+    /// <param name="sectorInstanceId">The newly hovered sector identifier, or null to clear hover.</param>
     /// <returns>True when hover state changed.</returns>
-    private bool SetHoveredSystem(string systemInstanceId)
+    private bool SetHoveredSector(string sectorInstanceId)
     {
-        if (string.Equals(hoveredSystemInstanceId, systemInstanceId, StringComparison.Ordinal))
+        if (string.Equals(hoveredSectorInstanceId, sectorInstanceId, StringComparison.Ordinal))
             return false;
 
-        hoveredSystemInstanceId = systemInstanceId;
+        hoveredSectorInstanceId = sectorInstanceId;
         return true;
     }
 
     /// <summary>
-    /// Clears hover state when its system is absent from the refreshed snapshot.
+    /// Clears hover state when its sector is absent from the refreshed snapshot.
     /// </summary>
-    private void ReconcileHoveredSystem()
+    private void ReconcileHoveredSector()
     {
-        if (string.IsNullOrEmpty(hoveredSystemInstanceId))
+        if (string.IsNullOrEmpty(hoveredSectorInstanceId))
             return;
 
         foreach (GalaxyMapSector sector in sectors)
         {
             if (
                 string.Equals(
-                    sector?.System?.InstanceID,
-                    hoveredSystemInstanceId,
+                    sector?.PlanetSector?.InstanceID,
+                    hoveredSectorInstanceId,
                     StringComparison.Ordinal
                 )
             )
                 return;
         }
 
-        hoveredSystemInstanceId = null;
+        hoveredSectorInstanceId = null;
     }
 
     /// <summary>
@@ -338,15 +338,15 @@ public sealed class GalaxyMapController
     /// <param name="sectors">The current visible sectors.</param>
     private void RebuildDomainLookups(IReadOnlyList<GalaxyMapSector> sectors)
     {
-        systemsByInstanceId.Clear();
+        sectorsByInstanceId.Clear();
         planetsByInstanceId.Clear();
         if (sectors == null)
             return;
 
         foreach (GalaxyMapSector sector in sectors)
         {
-            if (!string.IsNullOrEmpty(sector?.System?.InstanceID))
-                systemsByInstanceId[sector.System.InstanceID] = sector.System;
+            if (!string.IsNullOrEmpty(sector?.PlanetSector?.InstanceID))
+                sectorsByInstanceId[sector.PlanetSector.InstanceID] = sector.PlanetSector;
 
             if (sector?.Planets == null)
                 continue;
@@ -368,9 +368,9 @@ public sealed class GalaxyMapController
             return;
 
         view.Destroyed -= HandleViewDestroyed;
-        view.SystemHoverCleared -= HandleSystemHoverCleared;
-        view.SystemHovered -= HandleSystemHovered;
-        view.SystemOpenRequested -= HandleSystemOpenRequested;
+        view.SectorHoverCleared -= HandleSectorHoverCleared;
+        view.SectorHovered -= HandleSectorHovered;
+        view.SectorOpenRequested -= HandleSectorOpenRequested;
         view = null;
     }
 

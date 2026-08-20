@@ -99,9 +99,9 @@ namespace Rebellion.Systems
         private HashSet<string> DetectBlockadedPlanets()
         {
             HashSet<string> blockaded = new HashSet<string>();
-            foreach (PlanetSystem system in _game.GetGalaxyMap().GetChildren<PlanetSystem>())
+            foreach (PlanetSector sector in _game.GetGalaxyMap().GetChildren<PlanetSector>())
             {
-                foreach (Planet planet in system.GetChildren<Planet>())
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (planet.IsBlockaded())
                         blockaded.Add(planet.InstanceID);

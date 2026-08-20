@@ -14,7 +14,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class GameEventSystemTests
@@ -293,7 +293,7 @@ namespace Rebellion.Tests.Systems
         {
             _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            PlanetSector system = new PlanetSector { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             Planet first = new Planet { InstanceID = "first" };
             Planet second = new Planet { InstanceID = "second" };
@@ -342,7 +342,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
             _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            PlanetSector system = new PlanetSector { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
             _game.AttachNode(planet, system);
@@ -384,7 +384,7 @@ namespace Rebellion.Tests.Systems
         {
             _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            PlanetSector system = new PlanetSector { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
             _game.AttachNode(planet, system);
@@ -426,7 +426,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessEvents_OneShotTarget_ExecutesTargetOnce()
         {
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            PlanetSector system = new PlanetSector { InstanceID = "system" };
             Planet planet = new Planet { InstanceID = "planet" };
             _game.AttachNode(system, _game.Galaxy);
             _game.AttachNode(planet, system);
@@ -451,10 +451,10 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessEvents_RandomTargetBeforeScheduledTick_DoesNotSelectTarget()
         {
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "system",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             _game.AttachNode(system, _game.Galaxy);
             _game.AttachNode(new Planet { InstanceID = "planet" }, system);
@@ -472,7 +472,7 @@ namespace Rebellion.Tests.Systems
                             Count = 1,
                             Selectors = new List<GameEventSelector>
                             {
-                                new SelectPlanets { SystemType = PlanetSystemType.CoreSystem },
+                                new SelectPlanets { SectorType = PlanetSectorType.Core },
                             },
                         },
                     },

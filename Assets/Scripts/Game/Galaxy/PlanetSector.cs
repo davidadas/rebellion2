@@ -6,18 +6,18 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Galaxy
 {
     /// <summary>
-    /// The type of planet system (core system or outer rim).
+    /// The galactic region containing a planet sector.
     /// </summary>
-    public enum PlanetSystemType
+    public enum PlanetSectorType
     {
-        CoreSystem,
+        Core,
         OuterRim,
     }
 
     /// <summary>
-    /// Classifies the strategic importance of a planet system.
+    /// Classifies the strategic importance of a planet sector.
     /// </summary>
-    public enum PlanetSystemImportance
+    public enum PlanetSectorImportance
     {
         Low,
         Medium,
@@ -25,52 +25,51 @@ namespace Rebellion.Game.Galaxy
     }
 
     /// <summary>
-    /// Represents a system of planets, which is primarily a collection of planets.
+    /// Represents a named galactic sector containing a collection of planets.
     /// </summary>
     [PersistableObject]
-    public class PlanetSystem : ContainerNode
+    public class PlanetSector : ContainerNode
     {
-        // Planet System Properties.
+        // Planet sector properties.
         public int SectorDataId { get; set; }
         public GameSize Visibility { get; set; }
-        public PlanetSystemType SystemType { get; set; }
-        public PlanetSystemImportance Importance { get; set; }
+        public PlanetSectorType SectorType { get; set; }
+        public PlanetSectorImportance Importance { get; set; }
         public int PositionX { get; set; }
         public int PositionY { get; set; }
 
-        // Child Nodes.
         [PersistableMember(Name = "Planets")]
         private List<Planet> _planets = new List<Planet>();
 
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
-        public PlanetSystem() { }
+        public PlanetSector() { }
 
         /// <summary>
-        /// Creates an empty planet-system copy.
+        /// Creates an empty planet-sector copy.
         /// </summary>
-        /// <returns>An empty planet system.</returns>
-        protected override BaseSceneNode CreateNodeCopy() => new PlanetSystem();
+        /// <returns>An empty planet sector.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new PlanetSector();
 
         /// <summary>
-        /// Copies planet-system state into an empty destination.
+        /// Copies planet-sector state into an empty destination.
         /// </summary>
         /// <param name="destination">The destination node.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
             base.CopyStateTo(destination);
-            PlanetSystem copy = (PlanetSystem)destination;
+            PlanetSector copy = (PlanetSector)destination;
             copy.SectorDataId = SectorDataId;
             copy.Visibility = Visibility;
-            copy.SystemType = SystemType;
+            copy.SectorType = SectorType;
             copy.Importance = Importance;
             copy.PositionX = PositionX;
             copy.PositionY = PositionY;
         }
 
         /// <summary>
-        /// Replaces the system's planet collection while constructing a detached projection.
+        /// Replaces the sector's planet collection while constructing a detached projection.
         /// </summary>
         /// <param name="planets">The planets to retain in the projection.</param>
         internal void SetPlanets(IEnumerable<Planet> planets)
@@ -79,18 +78,18 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns the type of the planet system.
+        /// Returns the galactic region containing the planet sector.
         /// </summary>
-        /// <returns>The type of the planet system.</returns>
-        public PlanetSystemType GetSystemType()
+        /// <returns>The sector's galactic region.</returns>
+        public PlanetSectorType GetSectorType()
         {
-            return SystemType;
+            return SectorType;
         }
 
         /// <summary>
-        /// Returns the position of the planet system.
+        /// Returns the position of the planet sector.
         /// </summary>
-        /// <returns>The position of the planet system as a Point.</returns>
+        /// <returns>The position of the planet sector as a Point.</returns>
         public Point GetPosition()
         {
             return new Point(PositionX, PositionY);
@@ -104,7 +103,7 @@ namespace Rebellion.Game.Galaxy
         public override bool CanAcceptChild(ISceneNode child) => child is Planet;
 
         /// <summary>
-        /// Adds a planet to the planet system.
+        /// Adds a planet to the planet sector.
         /// </summary>
         /// <param name="child">The planet to add.</param>
         public override void AddChild(ISceneNode child)
@@ -116,7 +115,7 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Removes a planet from the planet system.
+        /// Removes a planet from the planet sector.
         /// </summary>
         /// <param name="child">The planet to remove.</param>
         public override void RemoveChild(ISceneNode child)
@@ -128,9 +127,9 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns the planets in the planet system.
+        /// Returns the planets in the planet sector.
         /// </summary>
-        /// <returns>The planets in the planet system.</returns>
+        /// <returns>The planets in the planet sector.</returns>
         protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
             return _planets;

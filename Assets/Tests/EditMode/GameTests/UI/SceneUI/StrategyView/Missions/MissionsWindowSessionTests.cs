@@ -6,7 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
@@ -35,7 +35,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _planet = new Planet { InstanceID = "planet", DisplayName = "Corellia" };
             _planet.AddChild(_firstMission);
             _planet.AddChild(_secondMission);
-            _galaxyMapPlanet = new GalaxyMapPlanet(new GamePlanetSystem(), _planet, string.Empty);
+            _galaxyMapPlanet = new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty);
         }
 
         [TearDown]
@@ -216,7 +216,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             TestMission refreshedSelection = CreateMission("second-mission", "Second Mission");
             refreshedPlanet.AddChild(refreshedSelection);
             GalaxyMapPlanet refreshed = new GalaxyMapPlanet(
-                new GamePlanetSystem(),
+                new GamePlanetSector(),
                 refreshedPlanet,
                 string.Empty
             );

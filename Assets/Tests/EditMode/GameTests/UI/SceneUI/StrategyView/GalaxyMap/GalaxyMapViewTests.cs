@@ -53,8 +53,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GalaxyMapRenderData data = CreateMap(
                 new[]
                 {
-                    CreateCluster("system-1", "Corellia", 100, 120, "planet-1"),
-                    CreateCluster("system-2", "Kessel", 300, 220, "planet-2"),
+                    CreateCluster("sector-1", "Corellian", 100, 120, "planet-1"),
+                    CreateCluster("sector-2", "Kessel", 300, 220, "planet-2"),
                 },
                 "Idle Shipyards"
             );
@@ -73,7 +73,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
             Assert.AreEqual(
                 new RectInt(49, 26, 777, 392),
-                UILayout.GetSourceRect(_view.PlanetSystemClusters)
+                UILayout.GetSourceRect(_view.PlanetSectorClusters)
             );
             TextMeshProUGUI filterLabel = GetField<TextMeshProUGUI>("activeFilterLabel");
             Assert.IsTrue(filterLabel.gameObject.activeSelf);
@@ -84,12 +84,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new RectInt(200, 12, 300, 20),
                 UILayout.GetSourceRect(filterLabel.rectTransform)
             );
-            PlanetSystemClusterView[] clusters = FindClusters();
+            PlanetSectorClusterView[] clusters = FindClusters();
             Assert.AreEqual(2, clusters.Length);
-            Assert.AreEqual("system-1", clusters[0].name);
-            Assert.AreEqual("system-1", clusters[0].SystemInstanceId);
+            Assert.AreEqual("sector-1", clusters[0].name);
+            Assert.AreEqual("sector-1", clusters[0].SectorInstanceId);
             Assert.AreEqual(new RectInt(100, 120, 50, 50), clusters[0].GetRenderedSourceRect());
-            Assert.AreEqual("system-2", clusters[1].name);
+            Assert.AreEqual("sector-2", clusters[1].name);
         }
 
         [Test]
@@ -99,31 +99,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 CreateMap(
                     new[]
                     {
-                        CreateCluster("system-1", "Corellia", 100, 120, "planet-1"),
-                        CreateCluster("system-2", "Kessel", 300, 220, "planet-2"),
+                        CreateCluster("sector-1", "Corellian", 100, 120, "planet-1"),
+                        CreateCluster("sector-2", "Kessel", 300, 220, "planet-2"),
                     },
                     string.Empty
                 )
             );
-            PlanetSystemClusterView first = FindCluster("system-1");
-            PlanetSystemClusterView second = FindCluster("system-2");
+            PlanetSectorClusterView first = FindCluster("sector-1");
+            PlanetSectorClusterView second = FindCluster("sector-2");
 
             _view.Render(
                 CreateMap(
                     new[]
                     {
-                        CreateCluster("system-2", "Updated Kessel", 320, 230, "planet-2"),
-                        CreateCluster("system-3", "Naboo", 500, 100, "planet-3"),
+                        CreateCluster("sector-2", "Updated Kessel", 320, 230, "planet-2"),
+                        CreateCluster("sector-3", "Naboo", 500, 100, "planet-3"),
                     },
                     string.Empty
                 )
             );
 
             Assert.IsFalse(first.gameObject.activeSelf);
-            Assert.AreSame(second, FindCluster("system-2"));
+            Assert.AreSame(second, FindCluster("sector-2"));
             Assert.IsTrue(second.gameObject.activeSelf);
             Assert.AreEqual(new RectInt(320, 230, 50, 50), second.GetRenderedSourceRect());
-            Assert.IsTrue(FindCluster("system-3").gameObject.activeSelf);
+            Assert.IsTrue(FindCluster("sector-3").gameObject.activeSelf);
         }
 
         [Test]
@@ -131,11 +131,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             _view.Render(
                 CreateMap(
-                    new[] { CreateCluster("system-1", "Corellia", 100, 120, "planet-1") },
+                    new[] { CreateCluster("sector-1", "Corellian", 100, 120, "planet-1") },
                     "Idle Shipyards"
                 )
             );
-            PlanetSystemClusterView cluster = FindCluster("system-1");
+            PlanetSectorClusterView cluster = FindCluster("sector-1");
 
             _view.Render(
                 new GalaxyMapRenderData(
@@ -157,11 +157,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             _view.Render(
                 CreateMap(
-                    new[] { CreateCluster("system-1", "Corellia", 100, 120, "planet-1") },
+                    new[] { CreateCluster("sector-1", "Corellian", 100, 120, "planet-1") },
                     string.Empty
                 )
             );
-            PlanetSystemClusterView cluster = FindCluster("system-1");
+            PlanetSectorClusterView cluster = FindCluster("sector-1");
             PointerEventData eventData = CreateClusterPointerEvent(cluster, new Vector2(7f, 9f));
 
             bool found = _view.TryGetPlanetInstanceID(eventData, out string planetInstanceId);
@@ -175,7 +175,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             _view.Render(
                 CreateMap(
-                    new[] { CreateCluster("system-1", "Corellia", 100, 120, "planet-1") },
+                    new[] { CreateCluster("sector-1", "Corellian", 100, 120, "planet-1") },
                     string.Empty
                 )
             );
@@ -224,24 +224,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             _view.Render(
                 CreateMap(
-                    new[] { CreateCluster("system-1", "Corellia", 100, 120, "planet-1") },
+                    new[] { CreateCluster("sector-1", "Corellian", 100, 120, "planet-1") },
                     string.Empty
                 )
             );
-            string hoveredSystem = null;
+            string hoveredSector = null;
             int hoverClearedCount = 0;
-            string openedSystem = null;
+            string openedSector = null;
             int openedX = -1;
             int openedY = -1;
-            _view.SystemHovered += systemId => hoveredSystem = systemId;
-            _view.SystemHoverCleared += () => hoverClearedCount++;
-            _view.SystemOpenRequested += (systemId, x, y) =>
+            _view.SectorHovered += sectorId => hoveredSector = sectorId;
+            _view.SectorHoverCleared += () => hoverClearedCount++;
+            _view.SectorOpenRequested += (sectorId, x, y) =>
             {
-                openedSystem = systemId;
+                openedSector = sectorId;
                 openedX = x;
                 openedY = y;
             };
-            PlanetSystemClusterView cluster = FindCluster("system-1");
+            PlanetSectorClusterView cluster = FindCluster("sector-1");
             PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
             eventData.button = PointerEventData.InputButton.Left;
             eventData.clickCount = 2;
@@ -250,9 +250,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             cluster.OnPointerExit(eventData);
             cluster.OnPointerClick(eventData);
 
-            Assert.AreEqual("system-1", hoveredSystem);
+            Assert.AreEqual("sector-1", hoveredSector);
             Assert.AreEqual(1, hoverClearedCount);
-            Assert.AreEqual("system-1", openedSystem);
+            Assert.AreEqual("sector-1", openedSector);
             Assert.AreEqual(426, openedX);
             Assert.AreEqual(240, openedY);
         }
@@ -262,7 +262,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             _view.Render(
                 CreateMap(
-                    new[] { CreateCluster("system-1", "Corellia", 100, 120, "planet-1") },
+                    new[] { CreateCluster("sector-1", "Corellian", 100, 120, "planet-1") },
                     string.Empty
                 )
             );
@@ -271,10 +271,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             int clearCount = 0;
             int openCount = 0;
             _view.Destroyed += view => destroyedView = view;
-            _view.SystemHovered += _ => hoverCount++;
-            _view.SystemHoverCleared += () => clearCount++;
-            _view.SystemOpenRequested += (_, _, _) => openCount++;
-            PlanetSystemClusterView cluster = FindCluster("system-1");
+            _view.SectorHovered += _ => hoverCount++;
+            _view.SectorHoverCleared += () => clearCount++;
+            _view.SectorOpenRequested += (_, _, _) => openCount++;
+            PlanetSectorClusterView cluster = FindCluster("sector-1");
             PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
             eventData.button = PointerEventData.InputButton.Left;
             eventData.clickCount = 2;
@@ -313,7 +313,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         private GalaxyMapClusterRenderData CreateCluster(
-            string systemInstanceId,
+            string sectorInstanceId,
             string label,
             int sourceX,
             int sourceY,
@@ -321,7 +321,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         )
         {
             return new GalaxyMapClusterRenderData(
-                systemInstanceId,
+                sectorInstanceId,
                 sourceX,
                 sourceY,
                 label,
@@ -352,7 +352,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         private static PointerEventData CreateClusterPointerEvent(
-            PlanetSystemClusterView cluster,
+            PlanetSectorClusterView cluster,
             Vector2 sourcePosition
         )
         {
@@ -371,15 +371,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
-        private PlanetSystemClusterView FindCluster(string systemInstanceId)
+        private PlanetSectorClusterView FindCluster(string sectorInstanceId)
         {
-            return FindClusters().Single(cluster => cluster.name == systemInstanceId);
+            return FindClusters().Single(cluster => cluster.name == sectorInstanceId);
         }
 
-        private PlanetSystemClusterView[] FindClusters()
+        private PlanetSectorClusterView[] FindClusters()
         {
             return _view
-                .GetComponentsInChildren<PlanetSystemClusterView>(true)
+                .GetComponentsInChildren<PlanetSectorClusterView>(true)
                 .OrderBy(cluster => cluster.name)
                 .ToArray();
         }

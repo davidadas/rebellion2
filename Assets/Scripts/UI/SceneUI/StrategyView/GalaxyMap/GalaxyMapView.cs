@@ -17,17 +17,17 @@ public sealed class GalaxyMapView : MonoBehaviour
     private RawImage backgroundImage;
 
     [SerializeField]
-    private RectTransform planetSystemClusters;
+    private RectTransform planetSectorClusters;
 
     [SerializeField]
     private TextMeshProUGUI activeFilterLabel;
 
     [SerializeField]
-    private PlanetSystemClusterView planetSystemClusterPrefab;
+    private PlanetSectorClusterView planetSectorClusterPrefab;
 
-    private readonly Dictionary<string, PlanetSystemClusterView> clusterViews = new Dictionary<
+    private readonly Dictionary<string, PlanetSectorClusterView> clusterViews = new Dictionary<
         string,
-        PlanetSystemClusterView
+        PlanetSectorClusterView
     >(StringComparer.Ordinal);
     private readonly HashSet<string> visibleClusterKeys = new HashSet<string>(
         StringComparer.Ordinal
@@ -39,23 +39,23 @@ public sealed class GalaxyMapView : MonoBehaviour
     public event Action<GalaxyMapView> Destroyed;
 
     /// <summary>
-    /// Raised when the pointer leaves a rendered system cluster.
+    /// Raised when the pointer leaves a rendered sector cluster.
     /// </summary>
-    public event Action SystemHoverCleared;
+    public event Action SectorHoverCleared;
 
     /// <summary>
-    /// Raised when the pointer enters a rendered system cluster.
+    /// Raised when the pointer enters a rendered sector cluster.
     /// </summary>
-    public event Action<string> SystemHovered;
+    public event Action<string> SectorHovered;
 
     /// <summary>
-    /// Raised when a rendered system cluster is double-clicked.
+    /// Raised when a rendered sector cluster is double-clicked.
     /// </summary>
-    public event Action<string, int, int> SystemOpenRequested;
+    public event Action<string, int, int> SectorOpenRequested;
 
     public RectTransform Background => background;
 
-    public RectTransform PlanetSystemClusters => planetSystemClusters;
+    public RectTransform PlanetSectorClusters => planetSectorClusters;
 
     /// <summary>
     /// Validates authored references when Unity creates the view.
@@ -70,7 +70,7 @@ public sealed class GalaxyMapView : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        foreach (PlanetSystemClusterView clusterView in clusterViews.Values)
+        foreach (PlanetSectorClusterView clusterView in clusterViews.Values)
             UnbindClusterView(clusterView);
 
         clusterViews.Clear();
@@ -128,7 +128,7 @@ public sealed class GalaxyMapView : MonoBehaviour
         if (eventData == null)
             return false;
 
-        foreach (PlanetSystemClusterView clusterView in clusterViews.Values)
+        foreach (PlanetSectorClusterView clusterView in clusterViews.Values)
         {
             if (
                 clusterView != null
@@ -206,7 +206,7 @@ public sealed class GalaxyMapView : MonoBehaviour
             sourceRect.height
         );
         UILayout.SetSourceRect(
-            planetSystemClusters,
+            planetSectorClusters,
             sourceRect.x,
             sourceRect.y,
             sourceRect.width,
@@ -225,16 +225,16 @@ public sealed class GalaxyMapView : MonoBehaviour
         {
             foreach (GalaxyMapClusterRenderData cluster in clusters)
             {
-                visibleClusterKeys.Add(cluster.SystemInstanceId);
-                PlanetSystemClusterView clusterView = GetOrCreateClusterView(
-                    cluster.SystemInstanceId
+                visibleClusterKeys.Add(cluster.SectorInstanceId);
+                PlanetSectorClusterView clusterView = GetOrCreateClusterView(
+                    cluster.SectorInstanceId
                 );
                 clusterView.Render(cluster);
                 clusterView.gameObject.SetActive(true);
             }
         }
 
-        foreach (KeyValuePair<string, PlanetSystemClusterView> entry in clusterViews)
+        foreach (KeyValuePair<string, PlanetSectorClusterView> entry in clusterViews)
         {
             if (!visibleClusterKeys.Contains(entry.Key))
                 entry.Value.gameObject.SetActive(false);
@@ -246,12 +246,12 @@ public sealed class GalaxyMapView : MonoBehaviour
     /// </summary>
     /// <param name="key">The stable cluster identity.</param>
     /// <returns>The reusable cluster view.</returns>
-    private PlanetSystemClusterView GetOrCreateClusterView(string key)
+    private PlanetSectorClusterView GetOrCreateClusterView(string key)
     {
-        if (clusterViews.TryGetValue(key, out PlanetSystemClusterView clusterView))
+        if (clusterViews.TryGetValue(key, out PlanetSectorClusterView clusterView))
             return clusterView;
 
-        clusterView = Instantiate(planetSystemClusterPrefab, planetSystemClusters);
+        clusterView = Instantiate(planetSectorClusterPrefab, planetSectorClusters);
         clusterView.name = key;
         clusterView.HoverCleared += HandleClusterHoverCleared;
         clusterView.Hovered += HandleClusterHovered;
@@ -261,50 +261,50 @@ public sealed class GalaxyMapView : MonoBehaviour
     }
 
     /// <summary>
-    /// Forwards a child cluster hover entry as a semantic system event.
+    /// Forwards a child cluster hover entry as a semantic sector event.
     /// </summary>
     /// <param name="clusterView">The hovered cluster view.</param>
-    private void HandleClusterHovered(PlanetSystemClusterView clusterView)
+    private void HandleClusterHovered(PlanetSectorClusterView clusterView)
     {
-        if (!string.IsNullOrEmpty(clusterView?.SystemInstanceId))
-            SystemHovered?.Invoke(clusterView.SystemInstanceId);
+        if (!string.IsNullOrEmpty(clusterView?.SectorInstanceId))
+            SectorHovered?.Invoke(clusterView.SectorInstanceId);
     }
 
     /// <summary>
     /// Forwards a child cluster hover exit as a semantic map event.
     /// </summary>
     /// <param name="clusterView">The cluster view that lost hover.</param>
-    private void HandleClusterHoverCleared(PlanetSystemClusterView clusterView)
+    private void HandleClusterHoverCleared(PlanetSectorClusterView clusterView)
     {
-        SystemHoverCleared?.Invoke();
+        SectorHoverCleared?.Invoke();
     }
 
     /// <summary>
-    /// Converts a child cluster double-click to a semantic system-open request.
+    /// Converts a child cluster double-click to a semantic sector-open request.
     /// </summary>
     /// <param name="clusterView">The requested cluster view.</param>
     /// <param name="eventData">The originating pointer event.</param>
     private void HandleClusterOpenRequested(
-        PlanetSystemClusterView clusterView,
+        PlanetSectorClusterView clusterView,
         PointerEventData eventData
     )
     {
         if (
-            string.IsNullOrEmpty(clusterView?.SystemInstanceId)
+            string.IsNullOrEmpty(clusterView?.SectorInstanceId)
             || !TryGetSourcePosition(eventData, out int sourceX, out int sourceY)
         )
         {
             return;
         }
 
-        SystemOpenRequested?.Invoke(clusterView.SystemInstanceId, sourceX, sourceY);
+        SectorOpenRequested?.Invoke(clusterView.SectorInstanceId, sourceX, sourceY);
     }
 
     /// <summary>
     /// Releases subscriptions from one pooled cluster view.
     /// </summary>
     /// <param name="clusterView">The cluster view to release.</param>
-    private void UnbindClusterView(PlanetSystemClusterView clusterView)
+    private void UnbindClusterView(PlanetSectorClusterView clusterView)
     {
         if (clusterView == null)
             return;
@@ -323,11 +323,11 @@ public sealed class GalaxyMapView : MonoBehaviour
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing RawImage.");
-        if (planetSystemClusters == null)
-            throw new MissingReferenceException($"{name}/PlanetSystemClusters is missing.");
+        if (planetSectorClusters == null)
+            throw new MissingReferenceException($"{name}/PlanetSectorClusters is missing.");
         if (activeFilterLabel == null)
             throw new MissingReferenceException($"{name}/ActiveFilterLabel is missing.");
-        if (planetSystemClusterPrefab == null)
-            throw new MissingReferenceException($"{name}/PlanetSystemCluster prefab is missing.");
+        if (planetSectorClusterPrefab == null)
+            throw new MissingReferenceException($"{name}/PlanetSectorCluster prefab is missing.");
     }
 }

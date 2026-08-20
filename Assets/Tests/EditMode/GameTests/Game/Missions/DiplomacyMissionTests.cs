@@ -427,8 +427,8 @@ namespace Rebellion.Tests.Game.Missions
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            game.AttachNode(system, game.Galaxy);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(planetSector, game.Galaxy);
 
             planet = new Planet
             {
@@ -438,7 +438,7 @@ namespace Rebellion.Tests.Game.Missions
                 PopularSupport = new Dictionary<string, int> { { "empire", empireSupport } },
                 VisitingFactionIDs = new List<string> { "empire" },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             return game;
         }
 

@@ -35,7 +35,7 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Garrison requirement divisor on core systems.
+        /// Garrison requirement divisor on core sectors.
         /// Higher values mean fewer troops needed (2 = half garrison required).
         /// Alliance: 1 (normal), Empire: 2 (halved on core worlds).
         /// Must be >= 1.

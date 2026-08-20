@@ -148,10 +148,15 @@ namespace Rebellion.Tests.Systems
         public void Execute_CivilianBombardment_AppliesCoreSupportPenalties()
         {
             GameRoot game = CreateGame();
-            (Planet planet, PlanetSystem system) = CreatePlanet(game, "p1", "empire", energy: 10);
+            (Planet planet, PlanetSector planetSector) = CreatePlanet(
+                game,
+                "p1",
+                "empire",
+                energy: 10
+            );
             planet.PopularSupport["alliance"] = 30;
             planet.PopularSupport["empire"] = 70;
-            Planet secondPlanet = AddPlanet(game, system, "p2", "empire");
+            Planet secondPlanet = AddPlanet(game, planetSector, "p2", "empire");
             secondPlanet.PopularSupport["alliance"] = 30;
             secondPlanet.PopularSupport["empire"] = 70;
             Building mine = AddBuilding(game, planet, "mine", "empire", BuildingType.Mine);
@@ -220,15 +225,20 @@ namespace Rebellion.Tests.Systems
             string attackerId,
             string defenderId,
             int expectedTargetSupport,
-            int expectedSystemSupport
+            int expectedPlanetSupport
         )
         {
             GameRoot game = CreateGame();
-            (Planet planet, PlanetSystem system) = CreatePlanet(game, "p1", defenderId, energy: 10);
-            system.SystemType = PlanetSystemType.OuterRim;
+            (Planet planet, PlanetSector planetSector) = CreatePlanet(
+                game,
+                "p1",
+                defenderId,
+                energy: 10
+            );
+            planetSector.SectorType = PlanetSectorType.OuterRim;
             planet.PopularSupport[attackerId] = 30;
             planet.PopularSupport[defenderId] = 70;
-            Planet secondPlanet = AddPlanet(game, system, "p2", defenderId);
+            Planet secondPlanet = AddPlanet(game, planetSector, "p2", defenderId);
             secondPlanet.PopularSupport[attackerId] = 30;
             secondPlanet.PopularSupport[defenderId] = 70;
             AddBuilding(game, planet, "mine", defenderId, BuildingType.Mine);
@@ -238,7 +248,7 @@ namespace Rebellion.Tests.Systems
                 .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
 
             Assert.AreEqual(expectedTargetSupport, planet.GetPopularSupport(attackerId));
-            Assert.AreEqual(expectedSystemSupport, secondPlanet.GetPopularSupport(attackerId));
+            Assert.AreEqual(expectedPlanetSupport, secondPlanet.GetPopularSupport(attackerId));
         }
 
         [Test]
@@ -531,10 +541,15 @@ namespace Rebellion.Tests.Systems
         public void Execute_DestroySystemWithDeathStar_DestroysPlanetAndMinorPersonnel()
         {
             GameRoot game = CreateGame();
-            (Planet planet, PlanetSystem system) = CreatePlanet(game, "p1", "empire", energy: 10);
+            (Planet planet, PlanetSector planetSector) = CreatePlanet(
+                game,
+                "p1",
+                "empire",
+                energy: 10
+            );
             planet.PopularSupport["alliance"] = 30;
             planet.PopularSupport["empire"] = 70;
-            Planet secondPlanet = AddPlanet(game, system, "p2", "empire");
+            Planet secondPlanet = AddPlanet(game, planetSector, "p2", "empire");
             secondPlanet.PopularSupport["alliance"] = 30;
             secondPlanet.PopularSupport["empire"] = 70;
             Officer minor = AddOfficer(game, planet, "minor", "empire", isMain: false);
@@ -643,19 +658,24 @@ namespace Rebellion.Tests.Systems
         public void Execute_DestroySystem_PenalizesOuterRimSupportBelowThreshold()
         {
             GameRoot game = CreateGame();
-            (Planet planet, PlanetSystem system) = CreatePlanet(game, "p1", "empire", energy: 10);
-            system.SystemType = PlanetSystemType.OuterRim;
+            (Planet planet, PlanetSector planetSector) = CreatePlanet(
+                game,
+                "p1",
+                "empire",
+                energy: 10
+            );
+            planetSector.SectorType = PlanetSectorType.OuterRim;
             planet.PopularSupport["alliance"] = 30;
             planet.PopularSupport["empire"] = 70;
-            (Planet lowSupportPlanet, PlanetSystem affectedSystem) = CreatePlanet(
+            (Planet lowSupportPlanet, PlanetSector affectedSector) = CreatePlanet(
                 game,
                 "p2",
                 "alliance"
             );
-            affectedSystem.SystemType = PlanetSystemType.OuterRim;
+            affectedSector.SectorType = PlanetSectorType.OuterRim;
             lowSupportPlanet.PopularSupport["alliance"] = 89;
             lowSupportPlanet.PopularSupport["empire"] = 11;
-            Planet thresholdPlanet = AddPlanet(game, affectedSystem, "p3", "alliance");
+            Planet thresholdPlanet = AddPlanet(game, affectedSector, "p3", "alliance");
             thresholdPlanet.PopularSupport["alliance"] = 90;
             thresholdPlanet.PopularSupport["empire"] = 10;
             Fleet fleet = AddBombardmentFleet(
@@ -703,10 +723,15 @@ namespace Rebellion.Tests.Systems
         public void Execute_DestroyedGarrison_CanTransferPlanetBySupport()
         {
             GameRoot game = CreateGame();
-            (Planet planet, PlanetSystem system) = CreatePlanet(game, "p1", "empire", energy: 10);
+            (Planet planet, PlanetSector planetSector) = CreatePlanet(
+                game,
+                "p1",
+                "empire",
+                energy: 10
+            );
             planet.PopularSupport["alliance"] = 60;
             planet.PopularSupport["empire"] = 40;
-            Planet secondPlanet = AddPlanet(game, system, "p2", ownerId: null);
+            Planet secondPlanet = AddPlanet(game, planetSector, "p2", ownerId: null);
             Regiment regiment = AddRegiment(game, planet, "defender", "empire");
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
 
@@ -736,10 +761,15 @@ namespace Rebellion.Tests.Systems
         public void Execute_DestroyedGarrison_CanLeavePlanetNeutral()
         {
             GameRoot game = CreateGame();
-            (Planet planet, PlanetSystem system) = CreatePlanet(game, "p1", "empire", energy: 10);
+            (Planet planet, PlanetSector planetSector) = CreatePlanet(
+                game,
+                "p1",
+                "empire",
+                energy: 10
+            );
             planet.PopularSupport["alliance"] = 49;
             planet.PopularSupport["empire"] = 51;
-            Planet secondPlanet = AddPlanet(game, system, "p2", "empire");
+            Planet secondPlanet = AddPlanet(game, planetSector, "p2", "empire");
             secondPlanet.PopularSupport["alliance"] = 20;
             secondPlanet.PopularSupport["empire"] = 80;
             AddRegiment(game, planet, "defender", "empire");
@@ -881,7 +911,7 @@ namespace Rebellion.Tests.Systems
 
         private static Planet AddPlanet(
             GameRoot game,
-            PlanetSystem system,
+            PlanetSector planetSector,
             string id,
             string ownerId
         )
@@ -898,7 +928,7 @@ namespace Rebellion.Tests.Systems
                     { "alliance", 50 },
                 },
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             return planet;
         }
     }

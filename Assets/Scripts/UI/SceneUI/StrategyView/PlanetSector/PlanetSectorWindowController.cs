@@ -9,20 +9,20 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// Performs game-level window actions requested by the planet-system feature.
+/// Performs game-level window actions requested by the planet-sector feature.
 /// </summary>
-public interface IPlanetSystemWindowActions
+public interface IPlanetSectorWindowActions
 {
     /// <summary>
-    /// Rebuilds shared strategy state after a planet-system command changes the game.
+    /// Rebuilds shared strategy state after a planet-sector command changes the game.
     /// </summary>
-    void RefreshPlanetSystemState();
+    void RefreshPlanetSectorState();
 
     /// <summary>
     /// Opens the completed planetary combat result.
     /// </summary>
     /// <param name="result">The completed combat result.</param>
-    void OpenPlanetSystemBattleResult(GameResult result);
+    void OpenPlanetSectorBattleResult(GameResult result);
 
     /// <summary>
     /// Opens one planet icon window at a source-space position.
@@ -31,7 +31,7 @@ public interface IPlanetSystemWindowActions
     /// <param name="icon">The requested planet icon.</param>
     /// <param name="sourceX">The source-space horizontal position.</param>
     /// <param name="sourceY">The source-space vertical position.</param>
-    void OpenPlanetSystemPlanetWindow(
+    void OpenPlanetSectorPlanetWindow(
         GalaxyMapPlanet planet,
         PlanetIcon icon,
         int sourceX,
@@ -39,22 +39,22 @@ public interface IPlanetSystemWindowActions
     );
 
     /// <summary>
-    /// Opens Encyclopedia information for the active planet-system target.
+    /// Opens Encyclopedia information for the active planet-sector target.
     /// </summary>
     /// <param name="target">The resolved information target.</param>
-    void OpenPlanetSystemInfo(StrategyStatusTarget target);
+    void OpenPlanetSectorInfo(StrategyStatusTarget target);
 
     /// <summary>
-    /// Opens status information for the active planet-system target.
+    /// Opens status information for the active planet-sector target.
     /// </summary>
     /// <param name="target">The resolved status target.</param>
-    void OpenPlanetSystemStatus(StrategyStatusTarget target);
+    void OpenPlanetSectorStatus(StrategyStatusTarget target);
 }
 
 /// <summary>
-/// Owns planet-system window sessions, selection, targeting, and semantic command routing.
+/// Owns planet-sector window sessions, selection, targeting, and semantic command routing.
 /// </summary>
-public sealed class PlanetSystemWindowController
+public sealed class PlanetSectorWindowController
     : IStrategyContextMenuProvider,
         IContextMenuReceiver,
         ITargetingReceiver
@@ -66,39 +66,39 @@ public sealed class PlanetSystemWindowController
         SectorWindowPositions.Right,
     };
 
-    private readonly HashSet<PlanetSystemWindowView> boundViews =
-        new HashSet<PlanetSystemWindowView>();
+    private readonly HashSet<PlanetSectorWindowView> boundViews =
+        new HashSet<PlanetSectorWindowView>();
     private readonly Action<UIWindow, bool> closeWindow;
     private readonly Func<IReadOnlyList<GalaxyMapSector>> getSectors;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<int, Vector2Int> getWindowPosition;
     private readonly StrategyFleetCommandController fleetCommandController;
     private readonly Action markDirty;
-    private readonly PlanetSystemWindowProjector projector;
-    private readonly Dictionary<PlanetSystemWindowView, PlanetSystemWindowSession> sessions =
-        new Dictionary<PlanetSystemWindowView, PlanetSystemWindowSession>();
+    private readonly PlanetSectorWindowProjector projector;
+    private readonly Dictionary<PlanetSectorWindowView, PlanetSectorWindowSession> sessions =
+        new Dictionary<PlanetSectorWindowView, PlanetSectorWindowSession>();
     private readonly TargetingController targetingController;
     private readonly StrategyWindowLayerView windowLayer;
     private readonly UIWindowManager windowManager;
 
-    private IPlanetSystemWindowActions actions;
+    private IPlanetSectorWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
     private IStrategyConfirmationActions confirmationActions;
     private Action<UIWindow, PointerEventData> startItemDrag;
 
     /// <summary>
-    /// Creates a planet-system feature controller.
+    /// Creates a planet-sector feature controller.
     /// </summary>
     /// <param name="fleetCommandController">Executes shared fleet mutations.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="targetingController">Owns the active strategy targeting request.</param>
-    /// <param name="windowLayer">Provides the authored planet-system prefab and modeless window layer.</param>
+    /// <param name="windowLayer">Provides the authored planet-sector prefab and modeless window layer.</param>
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
     /// <param name="getSectors">Returns the current visible galaxy sectors.</param>
     /// <param name="getWindowPosition">Returns the authored position for a sector slot.</param>
     /// <param name="closeWindow">Closes a registered window through the screen lifecycle.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
-    public PlanetSystemWindowController(
+    public PlanetSectorWindowController(
         StrategyFleetCommandController fleetCommandController,
         Func<UIContext> getUIContext,
         TargetingController targetingController,
@@ -124,18 +124,18 @@ public sealed class PlanetSystemWindowController
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
-        projector = new PlanetSystemWindowProjector(getUIContext);
+        projector = new PlanetSectorWindowProjector(getUIContext);
     }
 
     /// <summary>
-    /// Supplies planet-system command and interaction actions.
+    /// Supplies planet-sector command and interaction actions.
     /// </summary>
-    /// <param name="windowActions">The feature-specific planet-system actions.</param>
+    /// <param name="windowActions">The feature-specific planet-sector actions.</param>
     /// <param name="windowCommandActions">The shared mission and movement actions.</param>
     /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
     /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
     public void Initialize(
-        IPlanetSystemWindowActions windowActions,
+        IPlanetSectorWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
         IStrategyConfirmationActions windowConfirmationActions,
         Action<UIWindow, PointerEventData> beginItemDrag
@@ -151,11 +151,11 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Binds one planet-system view to a window session exactly once.
+    /// Binds one planet-sector view to a window session exactly once.
     /// </summary>
-    /// <param name="view">The planet-system view to bind.</param>
+    /// <param name="view">The planet-sector view to bind.</param>
     /// <param name="window">The owning window shell.</param>
-    public void BindWindow(PlanetSystemWindowView view, UIWindow window)
+    public void BindWindow(PlanetSectorWindowView view, UIWindow window)
     {
         if (view == null)
             throw new ArgumentNullException(nameof(view));
@@ -163,17 +163,17 @@ public sealed class PlanetSystemWindowController
             throw new ArgumentNullException(nameof(window));
 
         EnsureInitialized();
-        if (sessions.TryGetValue(view, out PlanetSystemWindowSession existing))
+        if (sessions.TryGetValue(view, out PlanetSectorWindowSession existing))
         {
             if (!ReferenceEquals(existing.Window, window))
                 throw new InvalidOperationException(
-                    "A planet-system view cannot be rebound to a different window."
+                    "A planet-sector view cannot be rebound to a different window."
                 );
             return;
         }
 
         boundViews.Add(view);
-        sessions.Add(view, new PlanetSystemWindowSession(window));
+        sessions.Add(view, new PlanetSectorWindowSession(window));
         view.Clicked += HandlePlanetClicked;
         view.Destroyed += HandleViewDestroyed;
         view.HoverCleared += HandlePlanetHoverCleared;
@@ -183,15 +183,15 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Starts a controller-owned session for one planet-system window.
+    /// Starts a controller-owned session for one planet-sector window.
     /// </summary>
-    /// <param name="view">The planet-system view.</param>
+    /// <param name="view">The planet-sector view.</param>
     /// <param name="window">The owning window shell.</param>
     /// <param name="sector">The represented strategy sector.</param>
     /// <param name="sectorPosition">The authored sector-window position slot.</param>
     /// <returns>True when the session was initialized.</returns>
     public bool TryInitializeWindow(
-        PlanetSystemWindowView view,
+        PlanetSectorWindowView view,
         UIWindow window,
         GalaxyMapSector sector,
         int sectorPosition
@@ -206,21 +206,22 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Opens the sector window containing a planetary system.
+    /// Opens the sector window containing a planetary sector.
     /// </summary>
-    /// <param name="system">The planetary system to display.</param>
+    /// <param name="sector">The planetary sector to display.</param>
     /// <returns>True when a new sector window was opened.</returns>
-    public bool Open(PlanetSystem system)
+    public bool Open(PlanetSector sector)
     {
-        if (system == null)
+        if (sector == null)
             return false;
 
-        GalaxyMapSector sector = getSectors().FirstOrDefault(item => item.System == system);
-        return Open(sector);
+        GalaxyMapSector mapSector = getSectors()
+            .FirstOrDefault(item => item.PlanetSector == sector);
+        return Open(mapSector);
     }
 
     /// <summary>
-    /// Opens a sector in the next authored planet-system window slot.
+    /// Opens a sector in the next authored planet-sector window slot.
     /// </summary>
     /// <param name="sector">The sector to display.</param>
     /// <returns>True when a new sector window was opened.</returns>
@@ -234,19 +235,19 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Renders every registered planet-system window.
+    /// Renders every registered planet-sector window.
     /// </summary>
     public void RenderWindows()
     {
         foreach (UIWindow window in windowManager.Windows)
         {
-            if (windowManager.TryGetWindowView(window, out PlanetSystemWindowView view))
+            if (windowManager.TryGetWindowView(window, out PlanetSectorWindowView view))
                 RenderWindow(view, window);
         }
     }
 
     /// <summary>
-    /// Rebinds planet-system sessions to a refreshed galaxy snapshot.
+    /// Rebinds planet-sector sessions to a refreshed galaxy snapshot.
     /// </summary>
     /// <param name="sectors">The refreshed visible sectors.</param>
     public void ReconcileWindows(IReadOnlyList<GalaxyMapSector> sectors)
@@ -257,8 +258,8 @@ public sealed class PlanetSystemWindowController
         foreach (UIWindow window in windowManager.Windows)
         {
             if (
-                !windowManager.TryGetWindowView(window, out PlanetSystemWindowView view)
-                || !sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+                !windowManager.TryGetWindowView(window, out PlanetSectorWindowView view)
+                || !sessions.TryGetValue(view, out PlanetSectorWindowSession session)
             )
                 continue;
 
@@ -269,14 +270,14 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Moves a planet-system window to the next authored slot.
+    /// Moves a planet-sector window to the next authored slot.
     /// </summary>
-    /// <param name="window">The registered planet-system window to move.</param>
+    /// <param name="window">The registered planet-sector window to move.</param>
     public void Swap(UIWindow window)
     {
         if (
-            !windowManager.TryGetWindowView(window, out PlanetSystemWindowView view)
-            || !sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+            !windowManager.TryGetWindowView(window, out PlanetSectorWindowView view)
+            || !sessions.TryGetValue(view, out PlanetSectorWindowSession session)
         )
             return;
 
@@ -292,24 +293,24 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Finds the registered planet-system window representing a sector.
+    /// Finds the registered planet-sector window representing a sector.
     /// </summary>
     /// <param name="sector">The represented sector.</param>
     /// <returns>The matching registered window, or null.</returns>
     public UIWindow FindWindow(GalaxyMapSector sector)
     {
-        string systemId = sector?.System?.InstanceID;
-        if (string.IsNullOrEmpty(systemId))
+        string sectorId = sector?.PlanetSector?.InstanceID;
+        if (string.IsNullOrEmpty(sectorId))
             return null;
 
         foreach (UIWindow window in windowManager.Windows)
         {
             if (
-                windowManager.TryGetWindowView(window, out PlanetSystemWindowView view)
-                && sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+                windowManager.TryGetWindowView(window, out PlanetSectorWindowView view)
+                && sessions.TryGetValue(view, out PlanetSectorWindowSession session)
                 && string.Equals(
-                    session.Sector?.System?.InstanceID,
-                    systemId,
+                    session.Sector?.PlanetSector?.InstanceID,
+                    sectorId,
                     StringComparison.Ordinal
                 )
             )
@@ -320,52 +321,52 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Gets the strategy sector owned by one planet-system session.
+    /// Gets the strategy sector owned by one planet-sector session.
     /// </summary>
-    /// <param name="view">The planet-system view.</param>
+    /// <param name="view">The planet-sector view.</param>
     /// <returns>The represented sector, or null.</returns>
-    public GalaxyMapSector GetSector(PlanetSystemWindowView view)
+    public GalaxyMapSector GetSector(PlanetSectorWindowView view)
     {
-        return view != null && sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+        return view != null && sessions.TryGetValue(view, out PlanetSectorWindowSession session)
             ? session.Sector
             : null;
     }
 
     /// <summary>
-    /// Gets the authored position slot owned by one planet-system session.
+    /// Gets the authored position slot owned by one planet-sector session.
     /// </summary>
-    /// <param name="view">The planet-system view.</param>
+    /// <param name="view">The planet-sector view.</param>
     /// <returns>The position slot, or -1 when no session exists.</returns>
-    public int GetSectorPosition(PlanetSystemWindowView view)
+    public int GetSectorPosition(PlanetSectorWindowView view)
     {
-        return view != null && sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+        return view != null && sessions.TryGetValue(view, out PlanetSectorWindowSession session)
             ? session.SectorPosition
             : -1;
     }
 
     /// <summary>
-    /// Changes the authored position slot owned by one planet-system session.
+    /// Changes the authored position slot owned by one planet-sector session.
     /// </summary>
-    /// <param name="view">The planet-system view.</param>
+    /// <param name="view">The planet-sector view.</param>
     /// <param name="sectorPosition">The replacement position slot.</param>
-    public void SetSectorPosition(PlanetSystemWindowView view, int sectorPosition)
+    public void SetSectorPosition(PlanetSectorWindowView view, int sectorPosition)
     {
-        if (view != null && sessions.TryGetValue(view, out PlanetSystemWindowSession session))
+        if (view != null && sessions.TryGetValue(view, out PlanetSectorWindowSession session))
             session.SelectSectorPosition(sectorPosition);
     }
 
     /// <summary>
-    /// Projects and renders one planet-system window.
+    /// Projects and renders one planet-sector window.
     /// </summary>
-    /// <param name="view">The destination planet-system view.</param>
+    /// <param name="view">The destination planet-sector view.</param>
     /// <param name="window">The owning window shell.</param>
-    public void RenderWindow(PlanetSystemWindowView view, UIWindow window)
+    public void RenderWindow(PlanetSectorWindowView view, UIWindow window)
     {
         if (view == null)
             throw new ArgumentNullException(nameof(view));
         if (window == null)
             throw new ArgumentNullException(nameof(window));
-        PlanetSystemWindowSession session = GetSession(view);
+        PlanetSectorWindowSession session = GetSession(view);
         if (session.Sector == null)
             return;
 
@@ -381,12 +382,12 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Builds the context commands available at a planet-system pointer target.
+    /// Builds the context commands available at a planet-sector pointer target.
     /// </summary>
     /// <param name="context">The active context-menu invocation.</param>
     /// <param name="request">Receives the completed command request.</param>
     /// <param name="width">Receives the authored menu width.</param>
-    /// <returns>True when a planet-system context menu was produced.</returns>
+    /// <returns>True when a planet-sector context menu was produced.</returns>
     public bool TryCreateContextMenu(
         StrategyContextMenuProviderContext context,
         out ContextMenuRequest request,
@@ -397,19 +398,19 @@ public sealed class PlanetSystemWindowController
         width = 0;
         if (
             context?.Window == null
-            || !windowManager.TryGetWindowView(context.Window, out PlanetSystemWindowView view)
+            || !windowManager.TryGetWindowView(context.Window, out PlanetSectorWindowView view)
         )
             return false;
 
-        PlanetSystemWindowSession session = GetSession(view);
+        PlanetSectorWindowSession session = GetSession(view);
         CaptureContextTarget(view, session, context.EventData);
-        PlanetSystemWindowHit hit = session.GetContextHit();
+        PlanetSectorWindowHit hit = session.GetContextHit();
         Building mobileHeadquarters = GetMobileHeadquarters(hit);
         List<ISceneNode> items =
             mobileHeadquarters != null
                 ? new List<ISceneNode> { mobileHeadquarters }
                 : GetPlayerFleetItems(hit?.Planet);
-        List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
+        List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
             hit,
             items,
             GetUIContext().GetPlayerFactionInstanceID(),
@@ -433,7 +434,7 @@ public sealed class PlanetSystemWindowController
         if (commands.Count == 0)
             return false;
 
-        PlanetSystemContextMenuSource source = new PlanetSystemContextMenuSource(
+        PlanetSectorContextMenuSource source = new PlanetSectorContextMenuSource(
             context.Window,
             context.X,
             context.Y,
@@ -447,16 +448,16 @@ public sealed class PlanetSystemWindowController
             commands.Cast<IContextMenuCommand>().ToList(),
             this
         );
-        width = context.Layout.PlanetSystemMenuWidth;
+        width = context.Layout.PlanetSectorMenuWidth;
         return true;
     }
 
     /// <summary>
     /// Resolves the player's stationary mobile-HQ building for an HQ-planet hit.
     /// </summary>
-    /// <param name="hit">The planet-system hit being inspected.</param>
+    /// <param name="hit">The planet-sector hit being inspected.</param>
     /// <returns>The player's stationary mobile headquarters, or null when unavailable.</returns>
-    private Building GetMobileHeadquarters(PlanetSystemWindowHit hit)
+    private Building GetMobileHeadquarters(PlanetSectorWindowHit hit)
     {
         if (hit?.PlanetImage != true || hit.Planet?.IsHeadquarters != true)
             return null;
@@ -480,7 +481,7 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Routes one selected planet-system context command.
+    /// Routes one selected planet-sector context command.
     /// </summary>
     /// <param name="request">The completed context-menu request.</param>
     /// <param name="command">The selected context-menu command.</param>
@@ -490,7 +491,7 @@ public sealed class PlanetSystemWindowController
     )
     {
         if (
-            request?.Source is not PlanetSystemContextMenuSource source
+            request?.Source is not PlanetSectorContextMenuSource source
             || command is not StrategyMenuCommand strategyCommand
         )
             return;
@@ -502,14 +503,14 @@ public sealed class PlanetSystemWindowController
             case StrategyMenuAction.GeneralBombardment:
             case StrategyMenuAction.DestroySystem:
             case StrategyMenuAction.PlanetaryAssault:
-                if (windowManager.TryGetWindowView(source.Window, out PlanetSystemWindowView view))
+                if (windowManager.TryGetWindowView(source.Window, out PlanetSectorWindowView view))
                     TryExecutePlanetaryCombat(view, strategyCommand.Action);
                 break;
             case StrategyMenuAction.Encyclopedia:
-                actions.OpenPlanetSystemInfo(source.Target);
+                actions.OpenPlanetSectorInfo(source.Target);
                 break;
             case StrategyMenuAction.Status:
-                actions.OpenPlanetSystemStatus(source.Target);
+                actions.OpenPlanetSectorStatus(source.Target);
                 break;
             case StrategyMenuAction.Scrap:
                 confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
@@ -523,18 +524,18 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Handles context-menu cancellation without changing planet-system state.
+    /// Handles context-menu cancellation without changing planet-sector state.
     /// </summary>
     /// <param name="request">The canceled context-menu request.</param>
     public void OnContextMenuCancelled(ContextMenuRequest request) { }
 
     /// <summary>
-    /// Begins targeting for a planet-system context command.
+    /// Begins targeting for a planet-sector context command.
     /// </summary>
-    /// <param name="source">The immutable planet-system context selection.</param>
+    /// <param name="source">The immutable planet-sector context selection.</param>
     /// <param name="action">The selected context-menu action.</param>
     private void BeginContextTargeting(
-        PlanetSystemContextMenuSource source,
+        PlanetSectorContextMenuSource source,
         StrategyMenuAction action
     )
     {
@@ -559,7 +560,7 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Routes a completed planet-system context target.
+    /// Routes a completed planet-sector context target.
     /// </summary>
     /// <param name="request">The completed targeting request.</param>
     /// <param name="target">The selected strategy target.</param>
@@ -575,22 +576,22 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Handles cancellation without changing planet-system state.
+    /// Handles cancellation without changing planet-sector state.
     /// </summary>
     /// <param name="request">The cancelled targeting request.</param>
     public void OnTargetingCancelled(TargetingRequest request) { }
 
     /// <summary>
-    /// Gets the status target represented by a planet-system selection.
+    /// Gets the status target represented by a planet-sector selection.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
+    /// <param name="view">The source planet-sector view.</param>
     /// <returns>The selected status target, or null.</returns>
-    public StrategyStatusTarget GetStatusTarget(PlanetSystemWindowView view)
+    public StrategyStatusTarget GetStatusTarget(PlanetSectorWindowView view)
     {
-        if (!sessions.TryGetValue(view, out PlanetSystemWindowSession session))
+        if (!sessions.TryGetValue(view, out PlanetSectorWindowSession session))
             return null;
 
-        PlanetSystemWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
+        PlanetSectorWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
         if (hit?.Icon == PlanetIcon.Fleet)
         {
             List<ISceneNode> fleetItems = GetPlayerFleetItems(hit.Planet);
@@ -605,16 +606,16 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Gets the player-controlled fleet items represented by a planet-system selection.
+    /// Gets the player-controlled fleet items represented by a planet-sector selection.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
+    /// <param name="view">The source planet-sector view.</param>
     /// <returns>The selected fleet items.</returns>
-    public List<ISceneNode> GetContextItems(PlanetSystemWindowView view)
+    public List<ISceneNode> GetContextItems(PlanetSectorWindowView view)
     {
-        if (!sessions.TryGetValue(view, out PlanetSystemWindowSession session))
+        if (!sessions.TryGetValue(view, out PlanetSectorWindowSession session))
             return new List<ISceneNode>();
 
-        PlanetSystemWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
+        PlanetSectorWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
         return hit?.Icon == PlanetIcon.Fleet
             ? GetPlayerFleetItems(hit.Planet)
             : new List<ISceneNode>();
@@ -623,15 +624,15 @@ public sealed class PlanetSystemWindowController
     /// <summary>
     /// Executes planetary combat for the selected fleet overlay.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
+    /// <param name="view">The source planet-sector view.</param>
     /// <param name="action">The selected planetary combat action.</param>
     /// <returns>True when planetary combat was executed.</returns>
-    public bool TryExecutePlanetaryCombat(PlanetSystemWindowView view, StrategyMenuAction action)
+    public bool TryExecutePlanetaryCombat(PlanetSectorWindowView view, StrategyMenuAction action)
     {
-        if (!sessions.TryGetValue(view, out PlanetSystemWindowSession session))
+        if (!sessions.TryGetValue(view, out PlanetSectorWindowSession session))
             return false;
 
-        PlanetSystemWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
+        PlanetSectorWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
         List<ISceneNode> items =
             hit?.Icon == PlanetIcon.Fleet
                 ? GetPlayerFleetItems(hit.Planet)
@@ -644,41 +645,41 @@ public sealed class PlanetSystemWindowController
         if (result == null)
             return false;
 
-        actions.RefreshPlanetSystemState();
-        actions.OpenPlanetSystemBattleResult(result);
+        actions.RefreshPlanetSectorState();
+        actions.OpenPlanetSectorBattleResult(result);
         return true;
     }
 
     /// <summary>
-    /// Clears selection and context state for one planet-system window.
+    /// Clears selection and context state for one planet-sector window.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
-    public void ClearSelection(PlanetSystemWindowView view)
+    /// <param name="view">The source planet-sector view.</param>
+    public void ClearSelection(PlanetSectorWindowView view)
     {
-        if (sessions.TryGetValue(view, out PlanetSystemWindowSession session))
+        if (sessions.TryGetValue(view, out PlanetSectorWindowSession session))
             session.ClearSelection();
     }
 
     /// <summary>
-    /// Tries to create a fleet drag preview for one planet-system window.
+    /// Tries to create a fleet drag preview for one planet-sector window.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
+    /// <param name="view">The source planet-sector view.</param>
     /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
     /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
     /// <param name="preview">Receives the drag preview.</param>
     /// <returns>True when the current fleet selection produced a preview.</returns>
     public bool TryGetDragPreview(
-        PlanetSystemWindowView view,
+        PlanetSectorWindowView view,
         int sourceX,
         int sourceY,
         out DragPreview preview
     )
     {
         preview = null;
-        if (!sessions.TryGetValue(view, out PlanetSystemWindowSession session))
+        if (!sessions.TryGetValue(view, out PlanetSectorWindowSession session))
             return false;
 
-        PlanetSystemWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
+        PlanetSectorWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
         return hit?.Icon == PlanetIcon.Fleet
             && GetPlayerFleetItems(hit.Planet).Count > 0
             && view.TryGetFleetDragPreview(
@@ -692,14 +693,14 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Creates a targeting result from one semantic planet-system hit.
+    /// Creates a targeting result from one semantic planet-sector hit.
     /// </summary>
-    /// <param name="hit">The semantic planet-system hit.</param>
+    /// <param name="hit">The semantic planet-sector hit.</param>
     /// <param name="request">The active targeting request.</param>
     /// <param name="fleetTarget">The player-controlled fleet target.</param>
     /// <returns>The strategy mission target, or null.</returns>
     internal static StrategyMissionTarget CreateTargetForHit(
-        PlanetSystemWindowHit hit,
+        PlanetSectorWindowHit hit,
         TargetingRequest request,
         ISceneNode fleetTarget
     )
@@ -716,18 +717,18 @@ public sealed class PlanetSystemWindowController
     /// <summary>
     /// Captures the semantic planet target beneath a context pointer.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
-    /// <param name="session">The active planet-system session.</param>
+    /// <param name="view">The source planet-sector view.</param>
+    /// <param name="session">The active planet-sector session.</param>
     /// <param name="eventData">The pointer event.</param>
     private static void CaptureContextTarget(
-        PlanetSystemWindowView view,
-        PlanetSystemWindowSession session,
+        PlanetSectorWindowView view,
+        PlanetSectorWindowSession session,
         PointerEventData eventData
     )
     {
         if (
-            view.TryCreateElement(eventData, out PlanetSystemWindowElement element)
-            && session.ResolveHit(element) is PlanetSystemWindowHit hit
+            view.TryCreateElement(eventData, out PlanetSectorWindowElement element)
+            && session.ResolveHit(element) is PlanetSectorWindowHit hit
         )
         {
             session.StoreContextHit(hit);
@@ -741,16 +742,16 @@ public sealed class PlanetSystemWindowController
     /// <summary>
     /// Handles a semantic planet double click.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
+    /// <param name="view">The source planet-sector view.</param>
     /// <param name="element">The semantic presentation element.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandlePlanetClicked(
-        PlanetSystemWindowView view,
-        PlanetSystemWindowElement element,
+        PlanetSectorWindowView view,
+        PlanetSectorWindowElement element,
         PointerEventData eventData
     )
     {
-        PlanetSystemWindowHit hit = ResolveHit(view, element);
+        PlanetSectorWindowHit hit = ResolveHit(view, element);
         if (
             targetingController.IsTargeting
             || hit?.Icon == PlanetIcon.None
@@ -758,37 +759,37 @@ public sealed class PlanetSystemWindowController
         )
             return;
 
-        actions.OpenPlanetSystemPlanetWindow(hit.GalaxyMapPlanet, hit.Icon, x, y);
+        actions.OpenPlanetSectorPlanetWindow(hit.GalaxyMapPlanet, hit.Icon, x, y);
     }
 
     /// <summary>
-    /// Clears planet-system hover state.
+    /// Clears planet-sector hover state.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
-    private void HandlePlanetHoverCleared(PlanetSystemWindowView view)
+    /// <param name="view">The source planet-sector view.</param>
+    private void HandlePlanetHoverCleared(PlanetSectorWindowView view)
     {
         if (
-            sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+            sessions.TryGetValue(view, out PlanetSectorWindowSession session)
             && session.ClearHover()
         )
             markDirty();
     }
 
     /// <summary>
-    /// Updates planet-system hover state.
+    /// Updates planet-sector hover state.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
+    /// <param name="view">The source planet-sector view.</param>
     /// <param name="element">The semantic presentation element.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandlePlanetHovered(
-        PlanetSystemWindowView view,
-        PlanetSystemWindowElement element,
+        PlanetSectorWindowView view,
+        PlanetSectorWindowElement element,
         PointerEventData eventData
     )
     {
-        PlanetSystemWindowHit hit = ResolveHit(view, element);
+        PlanetSectorWindowHit hit = ResolveHit(view, element);
         if (
-            sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+            sessions.TryGetValue(view, out PlanetSectorWindowSession session)
             && session.SetHover(hit)
         )
             markDirty();
@@ -797,18 +798,18 @@ public sealed class PlanetSystemWindowController
     /// <summary>
     /// Updates selection and begins a fleet drag candidate when appropriate.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
+    /// <param name="view">The source planet-sector view.</param>
     /// <param name="element">The semantic presentation element.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandlePlanetPressed(
-        PlanetSystemWindowView view,
-        PlanetSystemWindowElement element,
+        PlanetSectorWindowView view,
+        PlanetSectorWindowElement element,
         PointerEventData eventData
     )
     {
-        PlanetSystemWindowHit hit = ResolveHit(view, element);
+        PlanetSectorWindowHit hit = ResolveHit(view, element);
         if (
-            !sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+            !sessions.TryGetValue(view, out PlanetSectorWindowSession session)
             || hit == null
             || eventData == null
         )
@@ -843,16 +844,16 @@ public sealed class PlanetSystemWindowController
     /// <summary>
     /// Tries to complete the active targeting request from a planet release or drop.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
+    /// <param name="view">The source planet-sector view.</param>
     /// <param name="element">The semantic presentation element.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandlePlanetReleased(
-        PlanetSystemWindowView view,
-        PlanetSystemWindowElement element,
+        PlanetSectorWindowView view,
+        PlanetSectorWindowElement element,
         PointerEventData eventData
     )
     {
-        PlanetSystemWindowHit hit = ResolveHit(view, element);
+        PlanetSectorWindowHit hit = ResolveHit(view, element);
         if (!targetingController.IsTargeting || hit == null)
             return;
 
@@ -866,10 +867,10 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Releases subscriptions and state for a destroyed planet-system view.
+    /// Releases subscriptions and state for a destroyed planet-sector view.
     /// </summary>
-    /// <param name="view">The destroyed planet-system view.</param>
-    private void HandleViewDestroyed(PlanetSystemWindowView view)
+    /// <param name="view">The destroyed planet-sector view.</param>
+    private void HandleViewDestroyed(PlanetSectorWindowView view)
     {
         if (ReferenceEquals(view, null) || !boundViews.Remove(view))
             return;
@@ -886,13 +887,13 @@ public sealed class PlanetSystemWindowController
     /// <summary>
     /// Converts a pointer event into source-space desktop coordinates.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
+    /// <param name="view">The source planet-sector view.</param>
     /// <param name="eventData">The pointer event.</param>
     /// <param name="x">Receives the horizontal desktop coordinate.</param>
     /// <param name="y">Receives the vertical desktop coordinate.</param>
     /// <returns>True when the source window resolved the pointer position.</returns>
     private bool TryGetDesktopPosition(
-        PlanetSystemWindowView view,
+        PlanetSectorWindowView view,
         PointerEventData eventData,
         out int x,
         out int y
@@ -901,22 +902,22 @@ public sealed class PlanetSystemWindowController
         x = 0;
         y = 0;
         return eventData != null
-            && sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+            && sessions.TryGetValue(view, out PlanetSectorWindowSession session)
             && session.Window.TryGetDesktopPosition(eventData, eventData.position, out x, out y);
     }
 
     /// <summary>
     /// Resolves a presentation element against one view's controller-owned session.
     /// </summary>
-    /// <param name="view">The source planet-system view.</param>
+    /// <param name="view">The source planet-sector view.</param>
     /// <param name="element">The selected presentation element.</param>
     /// <returns>The resolved strategy hit, or null.</returns>
-    private PlanetSystemWindowHit ResolveHit(
-        PlanetSystemWindowView view,
-        PlanetSystemWindowElement element
+    private PlanetSectorWindowHit ResolveHit(
+        PlanetSectorWindowView view,
+        PlanetSectorWindowElement element
     )
     {
-        return view != null && sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+        return view != null && sessions.TryGetValue(view, out PlanetSectorWindowSession session)
             ? session.ResolveHit(element)
             : null;
     }
@@ -978,17 +979,17 @@ public sealed class PlanetSystemWindowController
 
         Vector2Int position = getWindowPosition(target);
         UIWindow window = windowManager.CreateWindow(
-            windowLayer.PlanetSystemWindowPrefab,
+            windowLayer.PlanetSectorWindowPrefab,
             windowLayer.GetWindowParent(false),
-            $"PlanetSystemWindow-{sector.System.GetDisplayName()}",
+            $"PlanetSectorWindow-{sector.PlanetSector.GetDisplayName()}",
             position.x,
             position.y,
-            windowLayer.GetWindowSize(windowLayer.PlanetSystemWindowPrefab),
+            windowLayer.GetWindowSize(windowLayer.PlanetSectorWindowPrefab),
             false,
             false,
             false,
             true,
-            out PlanetSystemWindowView view
+            out PlanetSectorWindowView view
         );
         if (!TryInitializeWindow(view, window, sector, target))
         {
@@ -1000,7 +1001,7 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Finds the registered planet-system window occupying an authored slot.
+    /// Finds the registered planet-sector window occupying an authored slot.
     /// </summary>
     /// <param name="position">The authored sector position.</param>
     /// <returns>The matching registered window, or null.</returns>
@@ -1009,8 +1010,8 @@ public sealed class PlanetSystemWindowController
         foreach (UIWindow window in windowManager.Windows)
         {
             if (
-                windowManager.TryGetWindowView(window, out PlanetSystemWindowView view)
-                && sessions.TryGetValue(view, out PlanetSystemWindowSession session)
+                windowManager.TryGetWindowView(window, out PlanetSectorWindowView view)
+                && sessions.TryGetValue(view, out PlanetSectorWindowSession session)
                 && session.SectorPosition == position
             )
                 return window;
@@ -1059,10 +1060,10 @@ public sealed class PlanetSystemWindowController
         IReadOnlyList<GalaxyMapSector> sectors
     )
     {
-        string systemId = sector?.System?.InstanceID;
-        return systemId == null
+        string sectorId = sector?.PlanetSector?.InstanceID;
+        return sectorId == null
             ? null
-            : sectors.FirstOrDefault(item => item.System?.InstanceID == systemId);
+            : sectors.FirstOrDefault(item => item.PlanetSector?.InstanceID == sectorId);
     }
 
     /// <summary>
@@ -1076,18 +1077,18 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Gets the controller-owned session for an initialized planet-system view.
+    /// Gets the controller-owned session for an initialized planet-sector view.
     /// </summary>
-    /// <param name="view">The initialized planet-system view.</param>
+    /// <param name="view">The initialized planet-sector view.</param>
     /// <returns>The controller-owned session.</returns>
-    private PlanetSystemWindowSession GetSession(PlanetSystemWindowView view)
+    private PlanetSectorWindowSession GetSession(PlanetSectorWindowView view)
     {
         if (view == null)
             throw new ArgumentNullException(nameof(view));
-        if (!sessions.TryGetValue(view, out PlanetSystemWindowSession session))
+        if (!sessions.TryGetValue(view, out PlanetSectorWindowSession session))
         {
             throw new InvalidOperationException(
-                "The planet-system view has not been initialized by this controller."
+                "The planet-sector view has not been initialized by this controller."
             );
         }
 
@@ -1107,25 +1108,25 @@ public sealed class PlanetSystemWindowController
         )
         {
             throw new InvalidOperationException(
-                $"{nameof(PlanetSystemWindowController)} must be initialized before use."
+                $"{nameof(PlanetSectorWindowController)} must be initialized before use."
             );
         }
     }
 
     /// <summary>
-    /// Captures immutable command state for one open planet-system context menu.
+    /// Captures immutable command state for one open planet-sector context menu.
     /// </summary>
-    private sealed class PlanetSystemContextMenuSource : IStrategyContextMenuSource
+    private sealed class PlanetSectorContextMenuSource : IStrategyContextMenuSource
     {
         /// <summary>
-        /// Creates one planet-system context-menu source snapshot.
+        /// Creates one planet-sector context-menu source snapshot.
         /// </summary>
-        /// <param name="window">The source planet-system window.</param>
+        /// <param name="window">The source planet-sector window.</param>
         /// <param name="hotspotX">The menu hotspot horizontal coordinate.</param>
         /// <param name="hotspotY">The menu hotspot vertical coordinate.</param>
         /// <param name="items">The selected fleet items.</param>
         /// <param name="target">The selected status target.</param>
-        public PlanetSystemContextMenuSource(
+        public PlanetSectorContextMenuSource(
             UIWindow window,
             int hotspotX,
             int hotspotY,
@@ -1152,19 +1153,19 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Contains controller-owned state for one planet-system window.
+    /// Contains controller-owned state for one planet-sector window.
     /// </summary>
-    private sealed class PlanetSystemWindowSession
+    private sealed class PlanetSectorWindowSession
     {
         private PlanetIcon contextIcon;
         private bool contextPlanetImage;
         private string contextPlanetInstanceId;
 
         /// <summary>
-        /// Creates a planet-system session for one window shell.
+        /// Creates a planet-sector session for one window shell.
         /// </summary>
         /// <param name="window">The owning window shell.</param>
-        public PlanetSystemWindowSession(UIWindow window)
+        public PlanetSectorWindowSession(UIWindow window)
         {
             Window = window ?? throw new ArgumentNullException(nameof(window));
         }
@@ -1218,7 +1219,7 @@ public sealed class PlanetSystemWindowController
         /// Resolves the stored context identity against the current sector projection.
         /// </summary>
         /// <returns>The current context hit, or null.</returns>
-        public PlanetSystemWindowHit GetContextHit()
+        public PlanetSectorWindowHit GetContextHit()
         {
             return GetStoredHit(contextPlanetInstanceId, contextIcon, contextPlanetImage);
         }
@@ -1227,7 +1228,7 @@ public sealed class PlanetSystemWindowController
         /// Resolves the stored selection identity against the current sector projection.
         /// </summary>
         /// <returns>The current selected hit, or null.</returns>
-        public PlanetSystemWindowHit GetSelectedHit()
+        public PlanetSectorWindowHit GetSelectedHit()
         {
             return GetStoredHit(SelectedPlanetInstanceId, SelectedIcon, false);
         }
@@ -1237,7 +1238,7 @@ public sealed class PlanetSystemWindowController
         /// </summary>
         /// <param name="element">The selected presentation element.</param>
         /// <returns>The resolved semantic hit, or null.</returns>
-        public PlanetSystemWindowHit ResolveHit(PlanetSystemWindowElement element)
+        public PlanetSectorWindowHit ResolveHit(PlanetSectorWindowElement element)
         {
             if (
                 Sector?.Planets == null
@@ -1250,7 +1251,7 @@ public sealed class PlanetSystemWindowController
             GalaxyMapPlanet planet = Sector.Planets[element.PlanetIndex];
             return planet?.Planet == null
                 ? null
-                : new PlanetSystemWindowHit(
+                : new PlanetSectorWindowHit(
                     planet,
                     element.PlanetIndex,
                     element.Icon,
@@ -1262,7 +1263,7 @@ public sealed class PlanetSystemWindowController
         /// Stores the active context hit.
         /// </summary>
         /// <param name="hit">The semantic planet hit.</param>
-        public void StoreContextHit(PlanetSystemWindowHit hit)
+        public void StoreContextHit(PlanetSectorWindowHit hit)
         {
             contextPlanetInstanceId = hit?.Planet?.InstanceID;
             contextIcon = hit?.Icon ?? PlanetIcon.None;
@@ -1274,7 +1275,7 @@ public sealed class PlanetSystemWindowController
         /// </summary>
         /// <param name="hit">The semantic planet hit.</param>
         /// <returns>True when a selectable icon was stored.</returns>
-        public bool SelectHit(PlanetSystemWindowHit hit)
+        public bool SelectHit(PlanetSectorWindowHit hit)
         {
             if (hit?.Planet == null || hit.Icon == PlanetIcon.None)
                 return false;
@@ -1289,7 +1290,7 @@ public sealed class PlanetSystemWindowController
         /// </summary>
         /// <param name="hit">The semantic planet hit.</param>
         /// <returns>True when hover state changed.</returns>
-        public bool SetHover(PlanetSystemWindowHit hit)
+        public bool SetHover(PlanetSectorWindowHit hit)
         {
             string planetInstanceId = hit?.Planet?.InstanceID;
             PlanetIcon icon = hit?.Icon ?? PlanetIcon.None;
@@ -1368,7 +1369,7 @@ public sealed class PlanetSystemWindowController
         /// <param name="icon">The stored planet icon.</param>
         /// <param name="planetImage">Whether the planet image was hit.</param>
         /// <returns>The resolved semantic hit, or null.</returns>
-        private PlanetSystemWindowHit GetStoredHit(
+        private PlanetSectorWindowHit GetStoredHit(
             string planetInstanceId,
             PlanetIcon icon,
             bool planetImage
@@ -1377,7 +1378,7 @@ public sealed class PlanetSystemWindowController
             int planetIndex = FindPlanetIndex(planetInstanceId);
             return planetIndex < 0
                 ? null
-                : new PlanetSystemWindowHit(
+                : new PlanetSectorWindowHit(
                     Sector.Planets[planetIndex],
                     planetIndex,
                     icon,
@@ -1413,27 +1414,27 @@ public sealed class PlanetSystemWindowController
 }
 
 /// <summary>
-/// Identifies a visible planet-system element selected by pointer geometry.
+/// Identifies a visible planet-sector element selected by pointer geometry.
 /// </summary>
-public sealed class PlanetSystemWindowHit
+public sealed class PlanetSectorWindowHit
 {
     /// <summary>
-    /// Creates a semantic planet-system hit.
+    /// Creates a semantic planet-sector hit.
     /// </summary>
     /// <param name="galaxyMapPlanet">The represented strategy planet.</param>
     /// <param name="icon">The represented planet icon.</param>
     /// <param name="planetImage">Whether the planet image was hit.</param>
-    public PlanetSystemWindowHit(GalaxyMapPlanet galaxyMapPlanet, PlanetIcon icon, bool planetImage)
+    public PlanetSectorWindowHit(GalaxyMapPlanet galaxyMapPlanet, PlanetIcon icon, bool planetImage)
         : this(galaxyMapPlanet, -1, icon, planetImage) { }
 
     /// <summary>
-    /// Creates a semantic planet-system hit resolved from a presentation element.
+    /// Creates a semantic planet-sector hit resolved from a presentation element.
     /// </summary>
     /// <param name="galaxyMapPlanet">The represented strategy planet.</param>
     /// <param name="planetIndex">The planet's position in the represented sector.</param>
     /// <param name="icon">The represented planet icon.</param>
     /// <param name="planetImage">Whether the planet image was hit.</param>
-    internal PlanetSystemWindowHit(
+    internal PlanetSectorWindowHit(
         GalaxyMapPlanet galaxyMapPlanet,
         int planetIndex,
         PlanetIcon icon,
@@ -1446,8 +1447,8 @@ public sealed class PlanetSystemWindowHit
         PlanetImage = planetImage;
     }
 
-    public PlanetSystemWindowElement Element =>
-        new PlanetSystemWindowElement(PlanetIndex, Icon, PlanetImage);
+    public PlanetSectorWindowElement Element =>
+        new PlanetSectorWindowElement(PlanetIndex, Icon, PlanetImage);
 
     public GalaxyMapPlanet GalaxyMapPlanet { get; }
 

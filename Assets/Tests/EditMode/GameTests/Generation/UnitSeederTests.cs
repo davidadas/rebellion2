@@ -676,7 +676,7 @@ namespace Rebellion.Tests.Generation
         }
 
         private static GenerationContext BuildContext(
-            PlanetSystem[] systems,
+            PlanetSector[] systems,
             Faction[] factions,
             GameGenerationConfig config,
             GalaxyClassificationResult classification,
@@ -688,7 +688,7 @@ namespace Rebellion.Tests.Generation
         )
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Systems = systems;
+            ctx.Sectors = systems;
             ctx.Factions = factions;
             ctx.Config = config;
             ctx.Classification = classification;
@@ -724,12 +724,12 @@ namespace Rebellion.Tests.Generation
             return planet;
         }
 
-        private static PlanetSystem WrapSystem(Planet planet)
+        private static PlanetSector WrapSystem(Planet planet)
         {
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = $"sys_{planet.InstanceID}",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             system.AddChild(planet);
             return system;

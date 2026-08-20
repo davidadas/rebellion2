@@ -5,13 +5,12 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Galaxy
 {
     /// <summary>
-    /// Represents a galaxy map in the game world. A galaxy map is a collection of planet systems.
+    /// Represents a galaxy map in the game world. A galaxy map is a collection of planet sectors.
     /// </summary>
     public class GalaxyMap : ContainerNode
     {
-        // Child Nodes.
-        [PersistableMember(Name = "PlanetSystems")]
-        private List<PlanetSystem> _planetSystems = new List<PlanetSystem>();
+        [PersistableMember(Name = "PlanetSectors")]
+        private List<PlanetSector> _planetSectors = new List<PlanetSector>();
 
         /// <summary>
         /// Default constructor.
@@ -25,11 +24,11 @@ namespace Rebellion.Game.Galaxy
         protected override BaseSceneNode CreateNodeCopy() => new GalaxyMap();
 
         /// <summary>
-        /// Returns true if the child is a PlanetSystem.
+        /// Returns true if the child is a PlanetSector.
         /// </summary>
         /// <param name="child">The candidate child node.</param>
-        /// <returns>True if child is a PlanetSystem; otherwise false.</returns>
-        public override bool CanAcceptChild(ISceneNode child) => child is PlanetSystem;
+        /// <returns>True if child is a PlanetSector; otherwise false.</returns>
+        public override bool CanAcceptChild(ISceneNode child) => child is PlanetSector;
 
         /// <summary>
         /// Adds a child to the node.
@@ -37,9 +36,9 @@ namespace Rebellion.Game.Galaxy
         /// <param name="child">The child node to add.</param>
         public override void AddChild(ISceneNode child)
         {
-            if (child is PlanetSystem planetSystem)
+            if (child is PlanetSector planetSector)
             {
-                _planetSystems.Add(planetSystem);
+                _planetSectors.Add(planetSector);
             }
         }
 
@@ -49,9 +48,9 @@ namespace Rebellion.Game.Galaxy
         /// <param name="child">The child node to remove.</param>
         public override void RemoveChild(ISceneNode child)
         {
-            if (child is PlanetSystem planetSystem)
+            if (child is PlanetSector planetSector)
             {
-                _planetSystems.Remove(planetSystem);
+                _planetSectors.Remove(planetSector);
             }
         }
 
@@ -61,7 +60,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>An array of child nodes.</returns>
         protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return _planetSystems;
+            return _planetSectors;
         }
     }
 }

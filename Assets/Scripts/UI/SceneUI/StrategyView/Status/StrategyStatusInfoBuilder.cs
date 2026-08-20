@@ -174,7 +174,7 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow(
                 "Location:",
-                planet.GetParentOfType<PlanetSystem>()?.GetDisplayName() ?? planet.GetDisplayName()
+                planet.GetParentOfType<PlanetSector>()?.GetDisplayName() ?? planet.GetDisplayName()
             )
         );
         info.Rows.Add(
@@ -743,8 +743,8 @@ internal sealed class StrategyStatusInfoBuilder
                 return match;
         }
 
-        PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
-        return new GalaxyMapPlanet(system, planet, planet.GetPlanetIconPath());
+        PlanetSector parentSector = planet.GetParentOfType<PlanetSector>();
+        return new GalaxyMapPlanet(parentSector, planet, planet.GetPlanetIconPath());
     }
 
     /// <summary>

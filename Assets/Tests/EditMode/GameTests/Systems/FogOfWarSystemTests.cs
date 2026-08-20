@@ -12,7 +12,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class FogOfWarSystemTests
@@ -21,8 +21,8 @@ namespace Rebellion.Tests.Systems
         private FogOfWarSystem _fogSystem;
         private Faction _alliance;
         private Faction _empire;
-        private PlanetSystem _coreSystem;
-        private PlanetSystem _outerRimSystem;
+        private PlanetSector _coreSystem;
+        private PlanetSector _outerRim;
         private Planet _coruscant;
         private Planet _tatooine;
         private Planet _hoth;
@@ -39,25 +39,25 @@ namespace Rebellion.Tests.Systems
             _game.GetFactions().Add(_alliance);
             _game.GetFactions().Add(_empire);
 
-            _coreSystem = new PlanetSystem
+            _coreSystem = new PlanetSector
             {
                 InstanceID = "CORESYS",
                 DisplayName = "Coruscant System",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
                 PositionX = 0,
                 PositionY = 0,
             };
             _game.AttachNode(_coreSystem, _game.GetGalaxyMap());
 
-            _outerRimSystem = new PlanetSystem
+            _outerRim = new PlanetSector
             {
                 InstanceID = "OUTERRIM",
                 DisplayName = "Outer Rim System",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
                 PositionX = 100,
                 PositionY = 100,
             };
-            _game.AttachNode(_outerRimSystem, _game.GetGalaxyMap());
+            _game.AttachNode(_outerRim, _game.GetGalaxyMap());
 
             _coruscant = new Planet
             {
@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Systems
                 DisplayName = "Tatooine",
                 OwnerInstanceID = null,
             };
-            _game.AttachNode(_tatooine, _outerRimSystem);
+            _game.AttachNode(_tatooine, _outerRim);
 
             _hoth = new Planet
             {
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            _game.AttachNode(_hoth, _outerRimSystem);
+            _game.AttachNode(_hoth, _outerRim);
         }
 
         [Test]
@@ -91,17 +91,17 @@ namespace Rebellion.Tests.Systems
         {
             Assert.AreEqual(
                 2,
-                _game.Galaxy.GetChildren<PlanetSystem>().Count,
+                _game.Galaxy.GetChildren<PlanetSector>().Count,
                 "Setup should have added 2 systems to galaxy"
             );
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Assert.AreEqual(
                 2,
-                view.GetChildren<PlanetSystem>().Count,
+                view.GetChildren<PlanetSector>().Count,
                 "BuildFactionView should return galaxy with 2 systems"
             );
 
-            Planet viewTatooine = view.GetChildren<PlanetSystem>()
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "TATOOINE");
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -164,7 +164,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -190,10 +190,10 @@ namespace Rebellion.Tests.Systems
         {
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Assert.IsTrue(view.GetChildren<PlanetSystem>().Any(s => s.InstanceID == "CORESYS"));
-            Assert.IsTrue(view.GetChildren<PlanetSystem>().Any(s => s.InstanceID == "OUTERRIM"));
+            Assert.IsTrue(view.GetChildren<PlanetSector>().Any(s => s.InstanceID == "CORESYS"));
+            Assert.IsTrue(view.GetChildren<PlanetSector>().Any(s => s.InstanceID == "OUTERRIM"));
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -207,7 +207,7 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(system => system.InstanceID == _coreSystem.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
@@ -224,7 +224,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
@@ -241,7 +241,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
@@ -261,7 +261,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
@@ -279,7 +279,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -298,14 +298,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
 
             viewCoruscant.RemoveChildren<Officer>(_ => true);
 
-            SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
@@ -321,7 +321,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -330,7 +330,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_CoreSystemSnapshot_PreservesObservedPopularSupport()
+        public void BuildFactionView_CorePlanetSectorSnapshot_PreservesObservedPopularSupport()
         {
             _coruscant.PopularSupport["FNALL1"] = 50;
 
@@ -339,7 +339,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -356,7 +356,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -381,7 +381,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -404,11 +404,11 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -424,7 +424,7 @@ namespace Rebellion.Tests.Systems
                 "Fleet must appear at its destination"
             );
 
-            int totalOccurrences = view.GetChildren<PlanetSystem>()
+            int totalOccurrences = view.GetChildren<PlanetSector>()
                 .SelectMany(s => s.GetChildren<Planet>())
                 .Sum(p => p.GetChildren<Fleet>().Count(f => f.InstanceID == "FLEET1"));
             Assert.AreEqual(
@@ -450,7 +450,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -488,7 +488,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -531,7 +531,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -561,12 +561,12 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
 
-            Planet viewTatooine = view.GetChildren<PlanetSystem>()
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "TATOOINE");
@@ -580,11 +580,11 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void BuildFactionView_PlanetWithNoEntities_HandledCorrectly()
         {
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewTatooine = view.GetChildren<PlanetSystem>()
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "TATOOINE");
@@ -600,16 +600,16 @@ namespace Rebellion.Tests.Systems
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _tatooine);
 
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewTatooine = view.GetChildren<PlanetSystem>()
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "TATOOINE");
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
@@ -622,7 +622,7 @@ namespace Rebellion.Tests.Systems
         {
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
@@ -640,11 +640,11 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            List<Officer> allOfficers = view.GetChildren<PlanetSystem>()
+            List<Officer> allOfficers = view.GetChildren<PlanetSector>()
                 .SelectMany(s => s.GetChildren<Planet>())
                 .SelectMany(p => p.GetChildren<Officer>())
                 .ToList();
@@ -672,7 +672,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
-            PlanetSystem viewSystem = view.GetChildren<PlanetSystem>()
+            PlanetSector viewSystem = view.GetChildren<PlanetSector>()
                 .FirstOrDefault(s => s.InstanceID == "CORESYS");
             Assert.IsNotNull(viewSystem, "CORESYS should exist in view");
 
@@ -713,7 +713,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -739,7 +739,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -761,7 +761,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -778,8 +778,8 @@ namespace Rebellion.Tests.Systems
             Building queuedBuilding = AddQueuedBuilding(_hoth, _alliance, "OWN_BUILDING", 25);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
-                .First(system => system.InstanceID == _outerRimSystem.InstanceID)
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(system => system.InstanceID == _outerRim.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _hoth.InstanceID);
 
@@ -798,7 +798,7 @@ namespace Rebellion.Tests.Systems
             AddCapitalShip(fleet, _alliance, "OBSERVING_SHIP");
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(system => system.InstanceID == _coreSystem.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
@@ -821,7 +821,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -848,7 +848,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -882,7 +882,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -913,7 +913,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -940,7 +940,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -965,7 +965,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -1009,7 +1009,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -1028,12 +1028,12 @@ namespace Rebellion.Tests.Systems
             Fleet staleFleet = CreateFleet("FLEET_STALE", _alliance);
             _game.AttachNode(staleFleet, _hoth);
             AddCapitalShip(staleFleet, _alliance, "CS1");
-            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRimSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRim, 10);
             _game.MoveNode(staleFleet, _coruscant);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
@@ -1080,7 +1080,7 @@ namespace Rebellion.Tests.Systems
             AddCapitalShip(allianceFleet, _alliance, "ALLIANCE_SHIP");
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(system => system.InstanceID == _coreSystem.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
@@ -1159,7 +1159,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -1189,7 +1189,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -1212,7 +1212,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewTatooine = view.GetChildren<PlanetSystem>()
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "TATOOINE");
@@ -1239,7 +1239,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -1271,7 +1271,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
@@ -1297,7 +1297,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
@@ -1344,7 +1344,7 @@ namespace Rebellion.Tests.Systems
 
             Planet viewCoruscant = _fogSystem
                 .BuildFactionView(_alliance)
-                .GetChildren<PlanetSystem>()
+                .GetChildren<PlanetSector>()
                 .Single(system => system.InstanceID == _coreSystem.InstanceID)
                 .GetChildren<Planet>()
                 .Single(planet => planet.InstanceID == _coruscant.InstanceID);
@@ -1399,7 +1399,7 @@ namespace Rebellion.Tests.Systems
 
             Planet viewCoruscant = _fogSystem
                 .BuildFactionView(_alliance)
-                .GetChildren<PlanetSystem>()
+                .GetChildren<PlanetSector>()
                 .Single(system => system.InstanceID == _coreSystem.InstanceID)
                 .GetChildren<Planet>()
                 .Single(planet => planet.InstanceID == _coruscant.InstanceID);
@@ -1430,7 +1430,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
@@ -1461,11 +1461,11 @@ namespace Rebellion.Tests.Systems
                 empireFleet
             );
 
-            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRimSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRim, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view.GetChildren<PlanetSystem>()
+            Planet viewHoth = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "HOTH");
@@ -1492,7 +1492,7 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -1510,12 +1510,12 @@ namespace Rebellion.Tests.Systems
             MakeTatooineImperial();
             _tatooine.PopularSupport["FNALL1"] = 40;
 
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
             _tatooine.PopularSupport["FNALL1"] = 10;
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewTatooine = view.GetChildren<PlanetSystem>()
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "TATOOINE");
@@ -1549,7 +1549,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
@@ -1573,7 +1573,7 @@ namespace Rebellion.Tests.Systems
             vader.SetBaseRating(OfficerRating.Diplomacy, 99);
             _coruscant.RemoveChild(vader);
 
-            SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
@@ -1588,7 +1588,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual("VADER", snapshot.Officers[0].InstanceID);
@@ -1616,14 +1616,14 @@ namespace Rebellion.Tests.Systems
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
 
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
-            SystemSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(0, coruscantSnapshot.Officers.Count);
 
-            SystemSnapshot outerSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
+            PlanetSectorSnapshot outerSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
             PlanetSnapshot tatooineSnapshot = outerSnapshot.Planets["TATOOINE"];
 
             Assert.AreEqual(1, tatooineSnapshot.Officers.Count);
@@ -1643,13 +1643,13 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             _hoth.OwnerInstanceID = _empire.InstanceID; // Set owner so fleet can move here
             _game.MoveNode(fleet, _hoth);
-            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRimSystem, 30);
+            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRim, 30);
 
-            SystemSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(0, coruscantSnapshot.Officers.Count);
@@ -1665,7 +1665,7 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
 
-            SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
@@ -1681,17 +1681,17 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             _game.MoveNode(vader, _coruscant);
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 30);
 
-            SystemSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, coruscantSnapshot.Officers.Count);
 
-            SystemSnapshot outerSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
+            PlanetSectorSnapshot outerSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
             PlanetSnapshot tatooineSnapshot = outerSnapshot.Planets["TATOOINE"];
 
             Assert.AreEqual(0, tatooineSnapshot.Officers.Count);
@@ -1708,16 +1708,16 @@ namespace Rebellion.Tests.Systems
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
 
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
 
-            Planet viewTatooine = view.GetChildren<PlanetSystem>()
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "OUTERRIM")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "TATOOINE");
@@ -1731,10 +1731,10 @@ namespace Rebellion.Tests.Systems
         {
             Assert.DoesNotThrow(() =>
             {
-                _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 10);
+                _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
             });
 
-            SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
+            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["TATOOINE"];
 
             Assert.IsNotNull(snapshot);
@@ -1759,7 +1759,7 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(regiment, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
                 _coruscant.InstanceID
@@ -1789,21 +1789,21 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             Assert.AreEqual("TATOOINE", _alliance.Fog.EntityLastSeenAt["VADER"]);
         }
 
         [Test]
-        public void CaptureSnapshot_PlanetInPlanetSystem_MapsPlanetToSystem()
+        public void CaptureSnapshot_PlanetInPlanetSector_MapsPlanetToSector()
         {
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            Assert.AreEqual("CORESYS", _alliance.Fog.PlanetToSystem["CORUSCANT"]);
+            Assert.AreEqual("CORESYS", _alliance.Fog.PlanetToSector["CORUSCANT"]);
 
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
-            Assert.AreEqual("OUTERRIM", _alliance.Fog.PlanetToSystem["TATOOINE"]);
+            Assert.AreEqual("OUTERRIM", _alliance.Fog.PlanetToSector["TATOOINE"]);
         }
 
         [Test]
@@ -1815,7 +1815,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
             int originalTickCaptured = snapshot.TickCaptured;
 
@@ -1859,9 +1859,9 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
-            SystemSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(
@@ -1876,7 +1876,7 @@ namespace Rebellion.Tests.Systems
             );
             Assert.AreEqual(1, coruscantSnapshot.Fleets.Count, "Fleet should remain");
 
-            SystemSnapshot outerSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
+            PlanetSectorSnapshot outerSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
             PlanetSnapshot tatooineSnapshot = outerSnapshot.Planets["TATOOINE"];
             Assert.AreEqual(
                 1,
@@ -1941,7 +1941,7 @@ namespace Rebellion.Tests.Systems
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
             vader.DisplayName = "Vader observed elsewhere";
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             PlanetSnapshot coruscantSnapshot = _alliance
                 .Fog
@@ -1973,7 +1973,7 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(system => system.InstanceID == _coreSystem.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
@@ -2012,7 +2012,7 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(system => system.InstanceID == _coreSystem.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
@@ -2192,7 +2192,7 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_empire, _coruscant, _coreSystem, _game.CurrentTick);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -2223,7 +2223,7 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_empire, _coruscant, _coreSystem, _game.CurrentTick);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(s => s.InstanceID == "CORESYS")
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
@@ -2544,7 +2544,7 @@ namespace Rebellion.Tests.Systems
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(system => system.InstanceID == _coreSystem.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
@@ -2570,7 +2570,7 @@ namespace Rebellion.Tests.Systems
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(system => system.InstanceID == _coreSystem.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);
@@ -2663,7 +2663,7 @@ namespace Rebellion.Tests.Systems
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view.GetChildren<PlanetSystem>()
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
                 .First(system => system.InstanceID == _coreSystem.InstanceID)
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == _coruscant.InstanceID);

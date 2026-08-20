@@ -143,7 +143,7 @@ namespace Rebellion.Tests.Game.Events
             config.Jedi.RankLabelByMinimumForceRank[100] = (int)ForceRankLabel.ForceKnight;
             GameRoot game = new GameRoot(config);
             game.GetFactions().Add(new Faction { InstanceID = "faction" });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            PlanetSector system = new PlanetSector { InstanceID = "system" };
             planet = new Planet
             {
                 InstanceID = "planet",

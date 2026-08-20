@@ -6,7 +6,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 {
@@ -69,7 +69,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _window = _windowObject.GetComponent<UIWindow>();
             _window.Configure(1, 0, 0, 100, 100, false, true, false);
             _session = new FleetWindowSession(
-                new GalaxyMapPlanet(new GamePlanetSystem(), _planet, string.Empty),
+                new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty),
                 _window
             );
         }
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void Constructor_NullWindow_ThrowsArgumentNullException()
         {
             GalaxyMapPlanet planet = new GalaxyMapPlanet(
-                new GamePlanetSystem(),
+                new GamePlanetSector(),
                 _planet,
                 string.Empty
             );
@@ -114,7 +114,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Planet planet = new Planet { InstanceID = "empty" };
 
             FleetWindowSession session = new FleetWindowSession(
-                new GalaxyMapPlanet(new GamePlanetSystem(), planet, string.Empty),
+                new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty),
                 _window
             );
 
@@ -142,7 +142,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<System.ArgumentException>(() => _session.RebindPlanet(null));
             Assert.Throws<System.ArgumentException>(() =>
                 _session.RebindPlanet(
-                    new GalaxyMapPlanet(new GamePlanetSystem(), null, string.Empty)
+                    new GalaxyMapPlanet(new GamePlanetSector(), null, string.Empty)
                 )
             );
         }
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             replacementPlanet.AddTestChild(replacementFleet);
             AttachFleetGraph(replacementPlanet, replacementFleet);
             GalaxyMapPlanet replacementProjection = new GalaxyMapPlanet(
-                new GamePlanetSystem(),
+                new GamePlanetSector(),
                 replacementPlanet,
                 string.Empty
             );

@@ -31,9 +31,9 @@ namespace Rebellion.Generation
                 ctx.SpecialForces
             );
             UnitDeploymentSection config = ctx.Config.UnitDeployment;
-            Dictionary<string, Planet> planetsByTypeId = BuildPlanetMapByTypeID(ctx.Systems);
+            Dictionary<string, Planet> planetsByTypeId = BuildPlanetMapByTypeID(ctx.Sectors);
 
-            SeedLowSupportGarrisons(ctx.Systems, config, ctx.Config.GalaxyClassification, factory);
+            SeedLowSupportGarrisons(ctx.Sectors, config, ctx.Config.GalaxyClassification, factory);
             DeployFixedGarrisons(
                 config.FixedGarrisons,
                 planetsByTypeId,
@@ -54,11 +54,11 @@ namespace Rebellion.Generation
         /// <summary>
         /// Builds a planet lookup keyed by type ID.
         /// </summary>
-        /// <param name="systems">All planet systems to scan.</param>
+        /// <param name="sectors">All planet sectors to scan.</param>
         /// <returns>Planets keyed by type ID.</returns>
-        private Dictionary<string, Planet> BuildPlanetMapByTypeID(PlanetSystem[] systems)
+        private Dictionary<string, Planet> BuildPlanetMapByTypeID(PlanetSector[] sectors)
         {
-            return systems
+            return sectors
                 .SelectMany(s => s.GetChildren<Planet>())
                 .Where(p => p.TypeID != null)
                 .ToDictionary(p => p.TypeID);
@@ -68,12 +68,12 @@ namespace Rebellion.Generation
         /// Places garrison troops on colonized planets where owner support is below the
         /// uprising threshold. Troop type is determined per-faction from FactionSetup config.
         /// </summary>
-        /// <param name="systems">All planet systems to scan.</param>
+        /// <param name="sectors">All planet sectors to scan.</param>
         /// <param name="config">Unit deployment config containing the uprising threshold.</param>
         /// <param name="gcConfig">Galaxy classification config with per-faction garrison troop types.</param>
         /// <param name="factory">Unit factory for creating troop instances.</param>
         private void SeedLowSupportGarrisons(
-            PlanetSystem[] systems,
+            PlanetSector[] sectors,
             UnitDeploymentSection config,
             GalaxyClassificationSection gcConfig,
             UnitFactory factory
@@ -81,9 +81,9 @@ namespace Rebellion.Generation
         {
             Dictionary<string, string> garrisonTroopMap = BuildGarrisonTroopMap(gcConfig);
 
-            foreach (PlanetSystem system in systems)
+            foreach (PlanetSector sector in sectors)
             {
-                foreach (Planet planet in system.GetChildren<Planet>())
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (string.IsNullOrEmpty(planet.OwnerInstanceID) || !planet.IsColonized)
                         continue;
@@ -383,7 +383,7 @@ namespace Rebellion.Generation
                 if (deployBudget <= 0)
                     continue;
 
-                List<Planet> ownedCorePlanets = GetOwnedCorePlanets(ctx.Systems, faction);
+                List<Planet> ownedCorePlanets = GetOwnedCorePlanets(ctx.Sectors, faction);
 
                 if (ownedCorePlanets.Count == 0)
                     continue;
@@ -496,13 +496,13 @@ namespace Rebellion.Generation
         /// <summary>
         /// Returns owned, colonized core planets for a faction.
         /// </summary>
-        /// <param name="systems">All planet systems to scan.</param>
+        /// <param name="sectors">All planet sectors to scan.</param>
         /// <param name="faction">The faction whose planets are returned.</param>
         /// <returns>Owned, colonized core planets.</returns>
-        private List<Planet> GetOwnedCorePlanets(PlanetSystem[] systems, Faction faction)
+        private List<Planet> GetOwnedCorePlanets(PlanetSector[] sectors, Faction faction)
         {
-            return systems
-                .Where(s => s.SystemType == PlanetSystemType.CoreSystem)
+            return sectors
+                .Where(s => s.SectorType == PlanetSectorType.Core)
                 .SelectMany(s => s.GetChildren<Planet>())
                 .Where(p => p.OwnerInstanceID == faction.InstanceID && p.IsColonized)
                 .ToList();
@@ -535,8 +535,8 @@ namespace Rebellion.Generation
                 effectiveDifficulty,
                 isAI
             );
-            int maintenanceCapacity = CalculateMaintenanceCapacity(ctx.Systems, faction);
-            int maintenanceUsed = CalculateDeployedMaintenanceCost(ctx.Systems, faction.InstanceID);
+            int maintenanceCapacity = CalculateMaintenanceCapacity(ctx.Sectors, faction);
+            int maintenanceUsed = CalculateDeployedMaintenanceCost(ctx.Sectors, faction.InstanceID);
             int availableCapacity = Math.Max(0, maintenanceCapacity - maintenanceUsed);
 
             return availableCapacity * level.Percentage / 100;
@@ -585,16 +585,16 @@ namespace Rebellion.Generation
         /// <summary>
         /// Calculates a faction's starting maintenance capacity from owned resources.
         /// </summary>
-        /// <param name="systems">All planet systems to scan.</param>
+        /// <param name="sectors">All planet sectors to scan.</param>
         /// <param name="faction">The faction to calculate capacity for.</param>
         /// <returns>The starting maintenance capacity.</returns>
-        private int CalculateMaintenanceCapacity(PlanetSystem[] systems, Faction faction)
+        private int CalculateMaintenanceCapacity(PlanetSector[] sectors, Faction faction)
         {
             int resourceProcessingPointsPerFacility = faction
                 .Settings
                 .ResourceProcessingPointsPerFacility;
-            List<Planet> ownedPlanets = systems
-                .SelectMany(system => system.GetChildren<Planet>())
+            List<Planet> ownedPlanets = sectors
+                .SelectMany(sector => sector.GetChildren<Planet>())
                 .Where(planet => planet.OwnerInstanceID == faction.InstanceID && planet.IsColonized)
                 .ToList();
             int mines = ownedPlanets.Sum(planet => planet.GetRawMinedResources());
@@ -748,15 +748,15 @@ namespace Rebellion.Generation
         /// including ground units on planets and all units inside fleets.
         /// Buildings are excluded (they provide capacity, not consume it).
         /// </summary>
-        /// <param name="systems">All planet systems to scan.</param>
+        /// <param name="sectors">All planet sectors to scan.</param>
         /// <param name="factionId">The faction whose maintenance cost to calculate.</param>
         /// <returns>Total maintenance cost of all deployed units for the faction.</returns>
-        private int CalculateDeployedMaintenanceCost(PlanetSystem[] systems, string factionId)
+        private int CalculateDeployedMaintenanceCost(PlanetSector[] sectors, string factionId)
         {
             int total = 0;
-            foreach (PlanetSystem system in systems)
+            foreach (PlanetSector sector in sectors)
             {
-                foreach (Planet planet in system.GetChildren<Planet>())
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (planet.OwnerInstanceID != factionId)
                         continue;

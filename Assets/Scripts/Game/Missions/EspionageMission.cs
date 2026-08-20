@@ -165,50 +165,50 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider used to select bonus planets.</param>
-        /// <returns>A result identifying any additional systems revealed by the mission.</returns>
+        /// <returns>A result identifying any additional sectors revealed by the mission.</returns>
         protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
         {
             Planet planet = GetParent() as Planet;
             Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
-            PlanetSystem system = planet?.GetParentOfType<PlanetSystem>();
+            PlanetSector sector = planet?.GetParentOfType<PlanetSector>();
 
-            if (game == null || faction == null || planet == null || system == null)
+            if (game == null || faction == null || planet == null || sector == null)
                 return new List<GameResult>();
 
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordEspionageSnapshot(faction, planet, system, game.CurrentTick);
+            recorder.RecordEspionageSnapshot(faction, planet, sector, game.CurrentTick);
 
-            List<PlanetSystem> additionalSystems = new List<PlanetSystem>();
-            foreach (Planet bonusPlanet in SelectBonusPlanets(game, provider, planet, system))
+            List<PlanetSector> additionalSectors = new List<PlanetSector>();
+            foreach (Planet bonusPlanet in SelectBonusPlanets(game, provider, planet, sector))
             {
-                PlanetSystem bonusSystem = bonusPlanet.GetParentOfType<PlanetSystem>();
+                PlanetSector bonusSector = bonusPlanet.GetParentOfType<PlanetSector>();
                 recorder.RecordEspionageSnapshot(
                     faction,
                     bonusPlanet,
-                    bonusSystem,
+                    bonusSector,
                     game.CurrentTick
                 );
 
                 if (
-                    bonusSystem != null
-                    && additionalSystems.All(candidate =>
-                        candidate.InstanceID != bonusSystem.InstanceID
+                    bonusSector != null
+                    && additionalSectors.All(candidate =>
+                        candidate.InstanceID != bonusSector.InstanceID
                     )
                 )
-                    additionalSystems.Add(bonusSystem);
+                    additionalSectors.Add(bonusSector);
             }
 
-            if (additionalSystems.Count == 0)
+            if (additionalSectors.Count == 0)
                 return new List<GameResult>();
 
             return new List<GameResult>
             {
-                new SystemsRevealedResult
+                new PlanetSectorsRevealedResult
                 {
                     Tick = game.CurrentTick,
                     MissionInstanceID = InstanceID,
                     SourceEventInstanceID = SourceEventInstanceID,
-                    AdditionalSystems = additionalSystems,
+                    AdditionalSectors = additionalSectors,
                 },
             };
         }
@@ -220,15 +220,15 @@ namespace Rebellion.Game.Missions
             GameRoot game,
             IRandomNumberProvider provider,
             Planet targetPlanet,
-            PlanetSystem targetSystem
+            PlanetSector targetSector
         )
         {
-            if (targetSystem.SystemType != PlanetSystemType.CoreSystem)
+            if (targetSector.SectorType != PlanetSectorType.Core)
                 return Enumerable.Empty<Planet>();
 
             GameConfig.EspionageConfig config =
                 game.Config?.Espionage ?? new GameConfig.EspionageConfig();
-            GameConfig.RandomCountConfig countConfig = config.CoreSystemBonus;
+            GameConfig.RandomCountConfig countConfig = config.CoreSectorBonus;
             bool includeOuterRim = false;
 
             if (
@@ -246,11 +246,9 @@ namespace Rebellion.Game.Missions
             }
 
             List<Planet> candidates = game
-                .Galaxy.GetChildren<PlanetSystem>()
-                .Where(system =>
-                    includeOuterRim || system.SystemType == PlanetSystemType.CoreSystem
-                )
-                .SelectMany(system => system.GetChildren<Planet>())
+                .Galaxy.GetChildren<PlanetSector>()
+                .Where(sector => includeOuterRim || sector.SectorType == PlanetSectorType.Core)
+                .SelectMany(sector => sector.GetChildren<Planet>())
                 .Where(candidate => candidate != targetPlanet)
                 .Where(candidate => candidate.OwnerInstanceID == targetPlanet.OwnerInstanceID)
                 .ToList();

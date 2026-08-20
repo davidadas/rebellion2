@@ -117,6 +117,16 @@ public class FixedRNG : IRandomNumberProvider
 }
 
 /// <summary>
+/// Returns the highest value permitted by each random-number request.
+/// </summary>
+public sealed class MaximumRNG : IRandomNumberProvider
+{
+    public double NextDouble() => 0.99;
+
+    public int NextInt(int min, int max) => max > min ? max - 1 : min;
+}
+
+/// <summary>
 /// Returns a fixed sequence of doubles, then falls back to 0.5.
 /// Replaces MockRNG in SpaceCombatSystemTests and UprisingSystemTests.
 /// </summary>
@@ -288,7 +298,7 @@ public static class TestGameData
             config ?? new GameConfig(),
             new GameGenerationConfig(),
             Array.Empty<Faction>(),
-            Array.Empty<PlanetSystem>(),
+            Array.Empty<PlanetSector>(),
             Array.Empty<Building>(),
             Array.Empty<CapitalShip>(),
             Array.Empty<Starfighter>(),
@@ -312,11 +322,11 @@ public static class MapPositionTestHelper
         return planet;
     }
 
-    public static PlanetSystem WithMapPosition(this PlanetSystem system, int x, int y)
+    public static PlanetSector WithMapPosition(this PlanetSector planetSector, int x, int y)
     {
-        system.PositionX = x;
-        system.PositionY = y;
-        return system;
+        planetSector.PositionX = x;
+        planetSector.PositionY = y;
+        return planetSector;
     }
 }
 
@@ -337,13 +347,13 @@ public static class MissionSceneBuilder
         game.GetFactions().Add(empire);
         game.GetFactions().Add(rebels);
 
-        PlanetSystem system = new PlanetSystem
+        PlanetSector planetSector = new PlanetSector
         {
-            InstanceID = "sys1",
+            InstanceID = "sector1",
             PositionX = 0,
             PositionY = 0,
         };
-        game.AttachNode(system, game.Galaxy);
+        game.AttachNode(planetSector, game.Galaxy);
 
         Planet empirePlanet = new Planet
         {
@@ -354,7 +364,7 @@ public static class MissionSceneBuilder
             PositionY = 0,
             PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
         };
-        game.AttachNode(empirePlanet, system);
+        game.AttachNode(empirePlanet, planetSector);
 
         Planet enemyPlanet = new Planet
         {
@@ -366,7 +376,7 @@ public static class MissionSceneBuilder
             EnergyCapacity = 5,
             PopularSupport = new Dictionary<string, int> { { "rebels", 60 } },
         };
-        game.AttachNode(enemyPlanet, system);
+        game.AttachNode(enemyPlanet, planetSector);
 
         Officer officer = EntityFactory.CreateOfficer("o1", "empire");
         game.AttachNode(officer, empirePlanet);
@@ -550,7 +560,7 @@ public static class GenerationContextFactory
     {
         return new GenerationContext
         {
-            Systems = Array.Empty<PlanetSystem>(),
+            Sectors = Array.Empty<PlanetSector>(),
             Factions = Array.Empty<Faction>(),
             Buildings = Array.Empty<Building>(),
             CapitalShips = Array.Empty<CapitalShip>(),

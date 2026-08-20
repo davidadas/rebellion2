@@ -246,7 +246,7 @@ namespace Rebellion.Systems
                     .FirstOrDefault(faction => faction.InstanceID != previousOwnerId);
             results.AddRange(
                 ShiftBombardmentSupport(
-                    GetAffectedPlanets(planet.GetParentOfType<PlanetSystem>()),
+                    GetAffectedPlanets(planet.GetParentOfType<PlanetSector>()),
                     supportBeneficiary,
                     _game.Config.SupportShift.GarrisonRemovalSupportShift
                 )
@@ -304,7 +304,7 @@ namespace Rebellion.Systems
                         );
                 EnqueueSupportShifts(
                     pending,
-                    GetAffectedPlanets(planet.GetParentOfType<PlanetSystem>()),
+                    GetAffectedPlanets(planet.GetParentOfType<PlanetSector>()),
                     beneficiary,
                     _game.Config.SupportShift.ControlChangeSupportShift
                 );
@@ -518,13 +518,13 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Gets populated, intact planets affected by a system-level support shift.
+        /// Gets populated, intact planets affected by a sector-level support shift.
         /// </summary>
-        /// <param name="system">The planet system to inspect.</param>
+        /// <param name="sector">The planet sector to inspect.</param>
         /// <returns>The planets eligible for the support shift.</returns>
-        private static IEnumerable<Planet> GetAffectedPlanets(PlanetSystem system)
+        private static IEnumerable<Planet> GetAffectedPlanets(PlanetSector sector)
         {
-            return system
+            return sector
                     ?.GetChildren<Planet>()
                     .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
                 ?? Enumerable.Empty<Planet>();
@@ -615,11 +615,11 @@ namespace Rebellion.Systems
             Faction newOwner
         )
         {
-            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
             List<Faction> observers = _game
                 .GetFactions()
                 .Where(faction =>
-                    system?.SystemType == PlanetSystemType.CoreSystem
+                    sector?.SectorType == PlanetSectorType.Core
                     || (_fogOfWarSystem?.IsPlanetVisible(planet, faction) ?? false)
                 )
                 .ToList();
@@ -639,11 +639,11 @@ namespace Rebellion.Systems
         /// <param name="observers">The factions that observed the change.</param>
         private void CaptureOwnershipChange(Planet planet, IEnumerable<Faction> observers)
         {
-            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
-            if (_fogOfWarSystem == null || system == null)
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            if (_fogOfWarSystem == null || sector == null)
                 return;
 
-            _fogOfWarSystem.CaptureOwnershipChange(observers, planet, system, _game.CurrentTick);
+            _fogOfWarSystem.CaptureOwnershipChange(observers, planet, sector, _game.CurrentTick);
         }
 
         /// <summary>
@@ -656,11 +656,11 @@ namespace Rebellion.Systems
             if (_fogOfWarSystem == null || faction == null)
                 return;
 
-            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
-            if (system == null)
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            if (sector == null)
                 return;
 
-            _fogOfWarSystem.CaptureSnapshot(faction, planet, system, _game.CurrentTick);
+            _fogOfWarSystem.CaptureSnapshot(faction, planet, sector, _game.CurrentTick);
         }
 
         /// <summary>

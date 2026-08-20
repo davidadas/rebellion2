@@ -35,16 +35,16 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="faction">The faction receiving the snapshot.</param>
         /// <param name="planet">The planet being observed.</param>
-        /// <param name="system">The system containing the planet.</param>
+        /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the snapshot is captured.</param>
         public void CaptureSnapshot(
             Faction faction,
             Planet planet,
-            PlanetSystem system,
+            PlanetSector sector,
             int currentTick
         )
         {
-            _recorder.RecordPlanetSnapshot(faction, planet, system, currentTick);
+            _recorder.RecordPlanetSnapshot(faction, planet, sector, currentTick);
         }
 
         /// <summary>
@@ -70,17 +70,17 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="factions">The factions that observed the ownership change.</param>
         /// <param name="planet">The planet whose owner changed.</param>
-        /// <param name="system">The system containing the planet.</param>
+        /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the change was observed.</param>
         internal void CaptureOwnershipChange(
             IEnumerable<Faction> factions,
             Planet planet,
-            PlanetSystem system,
+            PlanetSector sector,
             int currentTick
         )
         {
             foreach (Faction faction in factions)
-                _recorder.RecordPlanetOwnershipSnapshot(faction, planet, system, currentTick);
+                _recorder.RecordPlanetOwnershipSnapshot(faction, planet, sector, currentTick);
         }
 
         /// <summary>
@@ -130,7 +130,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Builds a faction-specific galaxy view.
-        /// Creates new systems and planets. Owned visible entities remain live references;
+        /// Creates new sectors and planets. Owned visible entities remain live references;
         /// hidden and snapshotted entities are copied for display.
         /// </summary>
         /// <param name="faction">The faction to build a view for.</param>
@@ -139,21 +139,21 @@ namespace Rebellion.Systems
         {
             GalaxyMap factionView = new GalaxyMap();
 
-            foreach (PlanetSystem masterSystem in _game.Galaxy.GetChildren<PlanetSystem>())
+            foreach (PlanetSector masterSector in _game.Galaxy.GetChildren<PlanetSector>())
             {
-                PlanetSystem viewSystem = (PlanetSystem)masterSystem.CreateCopy();
-                viewSystem.SetPlanets(Enumerable.Empty<Planet>());
-                viewSystem.SetParent(factionView);
+                PlanetSector viewSector = (PlanetSector)masterSector.CreateCopy();
+                viewSector.SetPlanets(Enumerable.Empty<Planet>());
+                viewSector.SetParent(factionView);
 
                 faction.Fog.Snapshots.TryGetValue(
-                    masterSystem.InstanceID,
-                    out SystemSnapshot systemSnapshot
+                    masterSector.InstanceID,
+                    out PlanetSectorSnapshot sectorSnapshot
                 );
 
-                foreach (Planet masterPlanet in masterSystem.GetChildren<Planet>())
+                foreach (Planet masterPlanet in masterSector.GetChildren<Planet>())
                 {
                     PlanetSnapshot planetSnapshot = null;
-                    systemSnapshot?.Planets.TryGetValue(
+                    sectorSnapshot?.Planets.TryGetValue(
                         masterPlanet.InstanceID,
                         out planetSnapshot
                     );
@@ -195,11 +195,11 @@ namespace Rebellion.Systems
                     }
 
                     AttachDetachedChildrenToView(viewPlanet);
-                    viewPlanet.SetParent(viewSystem);
-                    viewSystem.AddChild(viewPlanet);
+                    viewPlanet.SetParent(viewSector);
+                    viewSector.AddChild(viewPlanet);
                 }
 
-                factionView.AddChild(viewSystem);
+                factionView.AddChild(viewSector);
             }
 
             return factionView;

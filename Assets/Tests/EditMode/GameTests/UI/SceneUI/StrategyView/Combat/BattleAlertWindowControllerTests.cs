@@ -12,7 +12,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 {
@@ -335,12 +335,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSystem system = new GamePlanetSystem
+            GamePlanetSector planetSector = new GamePlanetSector
             {
-                InstanceID = "system",
-                DisplayName = "Core System",
+                InstanceID = "sector",
+                DisplayName = "Core Sector",
             };
-            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planetSector, game.GetGalaxyMap());
             planet = new Planet
             {
                 InstanceID = "planet",
@@ -348,7 +348,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 OwnerInstanceID = _opponentFactionId,
                 IsColonized = true,
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(planet, planetSector);
             playerFleet = CreateFleet("player-fleet", _playerFactionId);
             opponentFleet = CreateFleet("opponent-fleet", _opponentFactionId);
             return game;
@@ -388,8 +388,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             public void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY) { }
 
-            public void OpenBattleResultSystem(
-                GamePlanetSystem system,
+            public void OpenBattleResultSector(
+                GamePlanetSector planetSector,
                 int sourceX,
                 int sourceY
             ) { }

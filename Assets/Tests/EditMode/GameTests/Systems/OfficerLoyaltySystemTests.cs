@@ -9,7 +9,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class OfficerLoyaltySystemTests
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.Systems
             config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Maximum = 5;
             GameRoot game = new GameRoot(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            PlanetSector system = new PlanetSector { InstanceID = "system" };
             game.AttachNode(system, game.Galaxy);
             planet = new Planet
             {

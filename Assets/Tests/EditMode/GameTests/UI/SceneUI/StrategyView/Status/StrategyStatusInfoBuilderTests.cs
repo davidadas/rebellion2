@@ -10,7 +10,7 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
@@ -21,7 +21,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         private const string _opponentId = "opponent";
 
         private GameRoot _game;
-        private GamePlanetSystem _system;
+        private GamePlanetSector _planetSector;
         private Planet _planet;
         private GalaxyMapPlanet _mapPlanet;
         private GalaxyMapSector _sector;
@@ -35,7 +35,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             _game.GetFactions().Add(new Faction { InstanceID = _opponentId });
             _game.Summary.PlayerFactionID = _ownerId;
 
-            _system = new GamePlanetSystem { InstanceID = "system", DisplayName = "Core System" };
+            _planetSector = new GamePlanetSector
+            {
+                InstanceID = "sector",
+                DisplayName = "Core Sector",
+            };
             _planet = new Planet
             {
                 InstanceID = "planet",
@@ -45,11 +49,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 EnergyCapacity = 12,
             };
             _planet.SetPopularSupport(_ownerId, 63);
-            _game.AttachNode(_system, _game.GetGalaxyMap());
-            _game.AttachNode(_planet, _system);
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(_planet, _planetSector);
 
-            _mapPlanet = new GalaxyMapPlanet(_system, _planet, "planet/icon");
-            _sector = new GalaxyMapSector(_system, new[] { _mapPlanet });
+            _mapPlanet = new GalaxyMapPlanet(_planetSector, _planet, "planet/icon");
+            _sector = new GalaxyMapSector(_planetSector, new[] { _mapPlanet });
             _builder = CreateBuilder(_game, _sector);
         }
 
@@ -108,7 +112,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "Location:|Core System",
+                    "Location:|Core Sector",
                     "Status:|Active",
                     "Popular Support:|63",
                     "Energy:|12",
@@ -136,8 +140,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 DisplayName = "Neutral World",
                 EnergyCapacity = 4,
             };
-            _game.AttachNode(neutralPlanet, _system);
-            GalaxyMapPlanet mapPlanet = new GalaxyMapPlanet(_system, neutralPlanet, string.Empty);
+            _game.AttachNode(neutralPlanet, _planetSector);
+            GalaxyMapPlanet mapPlanet = new GalaxyMapPlanet(
+                _planetSector,
+                neutralPlanet,
+                string.Empty
+            );
 
             StrategyStatusInfo info = _builder.Build(
                 new StrategyStatusTarget(mapPlanet, neutralPlanet)

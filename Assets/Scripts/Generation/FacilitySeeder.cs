@@ -19,7 +19,7 @@ namespace Rebellion.Generation
         public void Seed(GenerationContext ctx)
         {
             ctx.DeployedBuildings = SeedFacilities(
-                ctx.Systems,
+                ctx.Sectors,
                 ctx.Buildings,
                 ctx.Config,
                 ctx.Classification,
@@ -31,14 +31,14 @@ namespace Rebellion.Generation
         /// Seeds all eligible planets with facilities using weighted probability tables.
         /// HQ loadouts are placed after random seeding on their target planet.
         /// </summary>
-        /// <param name="systems">All planet systems in the galaxy.</param>
+        /// <param name="sectors">All planet sectors in the galaxy.</param>
         /// <param name="templates">Building templates to clone from.</param>
         /// <param name="rules">Generation rules containing facility tables and mine multipliers.</param>
         /// <param name="classification">Classification result used to resolve FACTION_HQ loadout entries.</param>
         /// <param name="rng">Random number provider.</param>
         /// <returns>All buildings placed during seeding.</returns>
         private List<Building> SeedFacilities(
-            PlanetSystem[] systems,
+            PlanetSector[] sectors,
             Building[] templates,
             GameGenerationConfig rules,
             GalaxyClassificationResult classification,
@@ -55,14 +55,14 @@ namespace Rebellion.Generation
             Dictionary<string, List<string>> loadoutsByPlanetId = ResolveHQLoadouts(
                 config.HQLoadouts,
                 classification,
-                systems
+                sectors
             );
 
-            foreach (PlanetSystem system in systems)
+            foreach (PlanetSector sector in sectors)
             {
-                bool isCore = system.SystemType == PlanetSystemType.CoreSystem;
+                bool isCore = sector.SectorType == PlanetSectorType.Core;
 
-                foreach (Planet planet in system.GetChildren<Planet>())
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (!isCore && !planet.IsColonized)
                         continue;
@@ -79,11 +79,11 @@ namespace Rebellion.Generation
                 }
             }
 
-            foreach (PlanetSystem system in systems)
+            foreach (PlanetSector sector in sectors)
             {
-                bool isCore = system.SystemType == PlanetSystemType.CoreSystem;
+                bool isCore = sector.SectorType == PlanetSectorType.Core;
 
-                foreach (Planet planet in system.GetChildren<Planet>())
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (!isCore && !planet.IsColonized)
                         continue;
@@ -102,7 +102,7 @@ namespace Rebellion.Generation
         /// Fills a planet's energy slots with facilities.
         /// </summary>
         /// <param name="planet">The planet to seed.</param>
-        /// <param name="isCore">Whether the planet is in a core system.</param>
+        /// <param name="isCore">Whether the planet is in a core sector.</param>
         /// <param name="config">Facility generation config (mine multipliers, mine type).</param>
         /// <param name="templateMap">Building templates keyed by TypeID.</param>
         /// <param name="facilityTable">Facility entries for non-mine facility rolls.</param>
@@ -240,20 +240,20 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="loadouts">HQ loadout entries from config, may be null.</param>
         /// <param name="classification">Classification result with faction HQ assignments.</param>
-        /// <param name="systems">All planet systems containing the target planets.</param>
+        /// <param name="sectors">All planet sectors containing the target planets.</param>
         /// <returns>Facility TypeIDs keyed by resolved planet InstanceID.</returns>
         private Dictionary<string, List<string>> ResolveHQLoadouts(
             List<HQFacilityLoadout> loadouts,
             GalaxyClassificationResult classification,
-            PlanetSystem[] systems
+            PlanetSector[] sectors
         )
         {
             Dictionary<string, List<string>> resolved = new Dictionary<string, List<string>>();
             if (loadouts == null)
                 return resolved;
 
-            Dictionary<string, Planet> planetsByTypeId = systems
-                .SelectMany(system => system.GetChildren<Planet>())
+            Dictionary<string, Planet> planetsByTypeId = sectors
+                .SelectMany(sector => sector.GetChildren<Planet>())
                 .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
                 .ToDictionary(planet => planet.TypeID);
 

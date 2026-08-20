@@ -7,9 +7,9 @@ using Rebellion.Game.Units;
 using UnityEngine;
 
 /// <summary>
-/// Projects planet-system game state into immutable presentation data.
+/// Projects planet-sector game state into immutable presentation data.
 /// </summary>
-internal sealed class PlanetSystemWindowProjector
+internal sealed class PlanetSectorWindowProjector
 {
     private static readonly Color32 _barBackgroundColor = new Color32(160, 160, 160, 255);
     private static readonly Color32 _energyAvailableColor = new Color32(64, 132, 255, 255);
@@ -21,25 +21,25 @@ internal sealed class PlanetSystemWindowProjector
     private readonly Func<UIContext> getUIContext;
 
     /// <summary>
-    /// Creates a planet-system presentation projector.
+    /// Creates a planet-sector presentation projector.
     /// </summary>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
-    public PlanetSystemWindowProjector(Func<UIContext> getUIContext)
+    public PlanetSectorWindowProjector(Func<UIContext> getUIContext)
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
     }
 
     /// <summary>
-    /// Creates the complete presentation for one planet-system window.
+    /// Creates the complete presentation for one planet-sector window.
     /// </summary>
-    /// <param name="sector">The represented galaxy-map sector.</param>
+    /// <param name="mapSector">The represented galaxy-map sector.</param>
     /// <param name="selectedPlanetInstanceId">The selected planet identifier.</param>
     /// <param name="selectedIcon">The selected planet icon.</param>
     /// <param name="hoveredPlanetInstanceId">The hovered planet identifier.</param>
     /// <param name="hoveredIcon">The hovered planet icon.</param>
-    /// <returns>The immutable planet-system presentation.</returns>
-    public PlanetSystemWindowRenderData CreateRenderData(
-        GalaxyMapSector sector,
+    /// <returns>The immutable planet-sector presentation.</returns>
+    public PlanetSectorWindowRenderData CreateRenderData(
+        GalaxyMapSector mapSector,
         string selectedPlanetInstanceId,
         PlanetIcon selectedIcon,
         string hoveredPlanetInstanceId,
@@ -47,9 +47,10 @@ internal sealed class PlanetSystemWindowProjector
     )
     {
         UIContext uiContext = GetUIContext();
-        PlanetSystem system = sector?.System;
-        IReadOnlyList<GalaxyMapPlanet> planets = sector?.Planets ?? Array.Empty<GalaxyMapPlanet>();
-        List<PlanetSystemPlanetRenderData> presentations = new List<PlanetSystemPlanetRenderData>(
+        PlanetSector sector = mapSector?.PlanetSector;
+        IReadOnlyList<GalaxyMapPlanet> planets =
+            mapSector?.Planets ?? Array.Empty<GalaxyMapPlanet>();
+        List<PlanetSectorPlanetRenderData> presentations = new List<PlanetSectorPlanetRenderData>(
             planets.Count
         );
         for (int planetIndex = 0; planetIndex < planets.Count; planetIndex++)
@@ -57,7 +58,7 @@ internal sealed class PlanetSystemWindowProjector
             presentations.Add(
                 CreatePlanetData(
                     uiContext,
-                    system,
+                    sector,
                     planets[planetIndex],
                     planetIndex,
                     selectedPlanetInstanceId,
@@ -68,14 +69,14 @@ internal sealed class PlanetSystemWindowProjector
             );
         }
 
-        return new PlanetSystemWindowRenderData(system?.GetDisplayName(), presentations);
+        return new PlanetSectorWindowRenderData(sector?.GetDisplayName(), presentations);
     }
 
     /// <summary>
     /// Creates one planet presentation.
     /// </summary>
     /// <param name="uiContext">The current strategy presentation context.</param>
-    /// <param name="system">The represented planet system.</param>
+    /// <param name="sector">The represented planet sector.</param>
     /// <param name="strategyPlanet">The represented strategy planet.</param>
     /// <param name="planetIndex">The planet's stable position in the rendered sector.</param>
     /// <param name="selectedPlanetInstanceId">The selected planet identifier.</param>
@@ -83,9 +84,9 @@ internal sealed class PlanetSystemWindowProjector
     /// <param name="hoveredPlanetInstanceId">The hovered planet identifier.</param>
     /// <param name="hoveredIcon">The hovered planet icon.</param>
     /// <returns>The immutable planet presentation.</returns>
-    private static PlanetSystemPlanetRenderData CreatePlanetData(
+    private static PlanetSectorPlanetRenderData CreatePlanetData(
         UIContext uiContext,
-        PlanetSystem system,
+        PlanetSector sector,
         GalaxyMapPlanet strategyPlanet,
         int planetIndex,
         string selectedPlanetInstanceId,
@@ -121,15 +122,15 @@ internal sealed class PlanetSystemWindowProjector
             ? null
             : GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, true);
 
-        return new PlanetSystemPlanetRenderData(
+        return new PlanetSectorPlanetRenderData(
             planetIndex,
-            CreatePlanetOffset(system, planet),
+            CreatePlanetOffset(sector, planet),
             uiContext.GetPlanetTexture(planet, strategyPlanet?.PlanetIconPath),
             showUprising
                 ? uiContext.GetTexture(
                     uiContext
                         .GetPlayerFactionTheme()
-                        ?.PlanetOverlayTheme?.PlanetSystemUprisingImagePath
+                        ?.PlanetOverlayTheme?.PlanetSectorUprisingImagePath
                 )
                 : null,
             unexplored || !HasFacilities(planet)
@@ -152,7 +153,7 @@ internal sealed class PlanetSystemWindowProjector
                 ? uiContext.GetTexture(
                     uiContext
                         .GetTheme(ownerFactionId)
-                        ?.PlanetOverlayTheme?.PlanetSystemHeadquartersImagePath
+                        ?.PlanetOverlayTheme?.PlanetSectorHeadquartersImagePath
                 )
                 : null,
             planet?.GetDisplayName(),
@@ -170,18 +171,18 @@ internal sealed class PlanetSystemWindowProjector
     }
 
     /// <summary>
-    /// Gets a planet's projected galaxy offset from its parent system.
+    /// Gets a planet's projected galaxy offset from its parent sector.
     /// </summary>
-    /// <param name="system">The represented planet system.</param>
+    /// <param name="sector">The represented planet sector.</param>
     /// <param name="planet">The represented planet.</param>
     /// <returns>The projected galaxy offset.</returns>
-    private static Vector2Int CreatePlanetOffset(PlanetSystem system, Planet planet)
+    private static Vector2Int CreatePlanetOffset(PlanetSector sector, Planet planet)
     {
-        System.Drawing.Point systemPosition = system?.GetPosition() ?? System.Drawing.Point.Empty;
+        System.Drawing.Point sectorPosition = sector?.GetPosition() ?? System.Drawing.Point.Empty;
         System.Drawing.Point planetPosition = planet?.GetPosition() ?? System.Drawing.Point.Empty;
         return new Vector2Int(
-            planetPosition.X - systemPosition.X,
-            planetPosition.Y - systemPosition.Y
+            planetPosition.X - sectorPosition.X,
+            planetPosition.Y - sectorPosition.Y
         );
     }
 
@@ -219,11 +220,11 @@ internal sealed class PlanetSystemWindowProjector
     /// </summary>
     /// <param name="planet">The represented planet.</param>
     /// <returns>The energy bar presentation.</returns>
-    private static PlanetSystemBarRenderData CreateEnergyBar(Planet planet)
+    private static PlanetSectorBarRenderData CreateEnergyBar(Planet planet)
     {
         if (planet == null || planet.EnergyCapacity <= 0)
         {
-            return new PlanetSystemBarRenderData(
+            return new PlanetSectorBarRenderData(
                 true,
                 0,
                 0,
@@ -234,7 +235,7 @@ internal sealed class PlanetSystemWindowProjector
             );
         }
 
-        return new PlanetSystemBarRenderData(
+        return new PlanetSectorBarRenderData(
             true,
             planet.EnergyCapacity,
             Mathf.Min(planet.GetChildren<Building>().Count, planet.EnergyCapacity),
@@ -250,11 +251,11 @@ internal sealed class PlanetSystemWindowProjector
     /// </summary>
     /// <param name="planet">The represented planet.</param>
     /// <returns>The raw-resource bar presentation.</returns>
-    private static PlanetSystemBarRenderData CreateRawResourceBar(Planet planet)
+    private static PlanetSectorBarRenderData CreateRawResourceBar(Planet planet)
     {
         if (planet == null || planet.NumRawResourceNodes <= 0)
         {
-            return new PlanetSystemBarRenderData(
+            return new PlanetSectorBarRenderData(
                 true,
                 0,
                 0,
@@ -265,7 +266,7 @@ internal sealed class PlanetSystemWindowProjector
             );
         }
 
-        return new PlanetSystemBarRenderData(
+        return new PlanetSectorBarRenderData(
             true,
             planet.NumRawResourceNodes,
             Mathf.Min(planet.GetRawMinedResources(), planet.NumRawResourceNodes),
@@ -283,7 +284,7 @@ internal sealed class PlanetSystemWindowProjector
     /// <param name="planet">The represented planet.</param>
     /// <param name="support">The player's popular support percentage.</param>
     /// <returns>The popular-support bar presentation.</returns>
-    private static PlanetSystemBarRenderData CreateSupportBar(
+    private static PlanetSectorBarRenderData CreateSupportBar(
         UIContext uiContext,
         Planet planet,
         int support
@@ -292,7 +293,7 @@ internal sealed class PlanetSystemWindowProjector
         if (planet?.IsPopulated() != true)
             return CreateHiddenBar();
 
-        return new PlanetSystemBarRenderData(
+        return new PlanetSectorBarRenderData(
             true,
             0,
             0,
@@ -307,9 +308,9 @@ internal sealed class PlanetSystemWindowProjector
     /// Creates a hidden bar presentation.
     /// </summary>
     /// <returns>The hidden bar presentation.</returns>
-    private static PlanetSystemBarRenderData CreateHiddenBar()
+    private static PlanetSectorBarRenderData CreateHiddenBar()
     {
-        return new PlanetSystemBarRenderData(
+        return new PlanetSectorBarRenderData(
             false,
             0,
             0,

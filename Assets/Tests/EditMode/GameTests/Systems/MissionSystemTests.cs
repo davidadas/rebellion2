@@ -14,7 +14,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class MissionSystemTests
@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
-            PlanetSystem planetSystem = new PlanetSystem
+            PlanetSector planetSystem = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
@@ -110,7 +110,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
 
-            PlanetSystem planetSystem = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSector planetSystem = new PlanetSector { InstanceID = "sys1" };
             game.AttachNode(planetSystem, game.Galaxy);
 
             Planet planet = new Planet
@@ -169,7 +169,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
@@ -318,7 +318,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(faction);
-            PlanetSystem planetSystem = new PlanetSystem { InstanceID = "system" };
+            PlanetSector planetSystem = new PlanetSector { InstanceID = "system" };
             game.AttachNode(planetSystem, game.Galaxy);
             Planet origin = new Planet
             {
@@ -1503,7 +1503,7 @@ namespace Rebellion.Tests.Systems
             );
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem systemB = new PlanetSystem
+            PlanetSector systemB = new PlanetSector
             {
                 InstanceID = "sys2",
                 PositionX = 100,
@@ -1623,7 +1623,7 @@ namespace Rebellion.Tests.Systems
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
@@ -1692,7 +1692,7 @@ namespace Rebellion.Tests.Systems
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
@@ -2397,7 +2397,7 @@ namespace Rebellion.Tests.Systems
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
@@ -2547,7 +2547,7 @@ namespace Rebellion.Tests.Systems
             Faction faction = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(faction);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
@@ -2703,7 +2703,7 @@ namespace Rebellion.Tests.Systems
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
@@ -2770,7 +2770,7 @@ namespace Rebellion.Tests.Systems
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,
@@ -2843,7 +2843,7 @@ namespace Rebellion.Tests.Systems
             game.GetFactions().Add(rebels);
             game.GetFactions().Add(empire);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "sys1",
                 PositionX = 0,

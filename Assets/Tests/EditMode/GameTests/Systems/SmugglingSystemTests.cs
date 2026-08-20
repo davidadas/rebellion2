@@ -9,7 +9,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class SmugglingSystemTests
@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Systems
             _controller = new Faction { InstanceID = "FACTION1" };
             _game.GetFactions().Add(_controller);
             _game.GetFactions().Add(new Faction { InstanceID = "FACTION2" });
-            PlanetSystem system = new PlanetSystem { InstanceID = "SYSTEM1" };
+            PlanetSector system = new PlanetSector { InstanceID = "SYSTEM1" };
             _game.AttachNode(system, _game.Galaxy);
             _planet = new Planet
             {

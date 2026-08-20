@@ -703,7 +703,7 @@ public static class HeadlessSimulationRunner
     {
         return planets
             .GroupBy(planet =>
-                planet.GetParentOfType<PlanetSystem>()?.InstanceID ?? planet.InstanceID
+                planet.GetParentOfType<PlanetSector>()?.InstanceID ?? planet.InstanceID
             )
             .Select(group =>
                 group.Sum(planet =>

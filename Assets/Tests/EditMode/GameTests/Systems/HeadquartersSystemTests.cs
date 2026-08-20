@@ -164,8 +164,8 @@ namespace Rebellion.Tests.Systems
             };
             game.GetFactions().Add(faction);
 
-            PlanetSystem planetSystem = new PlanetSystem { InstanceID = "system" };
-            game.AttachNode(planetSystem, game.GetGalaxyMap());
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet origin = new Planet
             {
                 InstanceID = "origin",
@@ -182,8 +182,8 @@ namespace Rebellion.Tests.Systems
                 EnergyCapacity = 2,
                 PositionX = 100,
             };
-            game.AttachNode(origin, planetSystem);
-            game.AttachNode(destination, planetSystem);
+            game.AttachNode(origin, planetSector);
+            game.AttachNode(destination, planetSector);
 
             Building headquarters = new Building
             {

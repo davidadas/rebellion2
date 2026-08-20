@@ -11,7 +11,7 @@ using Rebellion.Util.Common;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Maintains system smuggling and redirects stolen resource output to its beneficiary.
+    /// Maintains sector smuggling and redirects stolen resource output to its beneficiary.
     /// </summary>
     public sealed class SmugglingSystem
     {
@@ -32,7 +32,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Creates a smuggling system for the supplied game.
+        /// Creates a smuggling sector for the supplied game.
         /// </summary>
         /// <param name="game">The current game state.</param>
         public SmugglingSystem(GameRoot game)
@@ -82,8 +82,8 @@ namespace Rebellion.Systems
             foreach (
                 Planet planet in _game
                     .GetGalaxyMap()
-                    .GetChildren<PlanetSystem>()
-                    .SelectMany(system => system.GetChildren<Planet>())
+                    .GetChildren<PlanetSector>()
+                    .SelectMany(sector => sector.GetChildren<Planet>())
             )
             {
                 Faction controller = FindFaction(planet.OwnerInstanceID);
@@ -111,8 +111,8 @@ namespace Rebellion.Systems
             foreach (
                 Planet planet in _game
                     .GetGalaxyMap()
-                    .GetChildren<PlanetSystem>()
-                    .SelectMany(system => system.GetChildren<Planet>())
+                    .GetChildren<PlanetSector>()
+                    .SelectMany(sector => sector.GetChildren<Planet>())
                     .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {

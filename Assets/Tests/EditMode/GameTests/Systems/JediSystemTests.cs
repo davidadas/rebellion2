@@ -37,13 +37,13 @@ namespace Rebellion.Tests.Systems
             _game.GetFactions().Add(_alliance);
             _game.GetFactions().Add(_empire);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "TATOO",
                 PositionX = 0,
                 PositionY = 0,
             };
-            _game.AttachNode(system, _game.GetGalaxyMap());
+            _game.AttachNode(planetSector, _game.GetGalaxyMap());
 
             _tatooine = new Planet
             {
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            _game.AttachNode(_tatooine, system);
+            _game.AttachNode(_tatooine, planetSector);
         }
 
         [Test]
@@ -407,13 +407,13 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_HighRoll_DiscoveryFails()
         {
-            // Rank 101 + 0 - 100 = 1%. MaxRNG returns 0.99 -> roll = 99.0 >= 1%
+            // Rank 101 + 0 - 100 = 1%. MaximumRNG returns 0.99 -> roll = 99.0 >= 1%
             Officer luke = CreateJediTrainer("LUKE", forceValue: 101);
             luke.IsDiscoveringForceUser = true;
 
             Officer leia = CreateDormantJedi("LEIA");
 
-            _system = new JediSystem(_game, new MaxRNG());
+            _system = new JediSystem(_game, new MaximumRNG());
             List<ForceDiscoveryResult> results = _system
                 .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
@@ -572,15 +572,5 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(officer, _tatooine);
             return officer;
         }
-    }
-
-    /// <summary>
-    /// RNG that always returns max - 1 from NextInt, used for testing max-roll paths.
-    /// </summary>
-    internal class MaxRNG : IRandomNumberProvider
-    {
-        public double NextDouble() => 0.99;
-
-        public int NextInt(int min, int max) => max > min ? max - 1 : min;
     }
 }

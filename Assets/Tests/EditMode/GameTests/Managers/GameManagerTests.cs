@@ -121,7 +121,7 @@ namespace Rebellion.Tests.Managers
             Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
-            PlanetSystem system = new PlanetSystem { InstanceID = "core" };
+            PlanetSector system = new PlanetSector { InstanceID = "core" };
             Planet coruscant = new Planet
             {
                 InstanceID = "coruscant",
@@ -167,7 +167,7 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(owner);
             game.GetFactions().Add(opposition);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "SYSTEM" };
+            PlanetSector system = new PlanetSector { InstanceID = "SYSTEM" };
             game.AttachNode(system, game.GetGalaxyMap());
             Planet origin = new Planet
             {
@@ -245,7 +245,7 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "SYS1", DisplayName = "System" };
+            PlanetSector system = new PlanetSector { InstanceID = "SYS1", DisplayName = "System" };
             game.AttachNode(system, game.GetGalaxyMap());
 
             Planet planet = new Planet
@@ -304,7 +304,7 @@ namespace Rebellion.Tests.Managers
             manager.ProcessTick();
 
             GalaxyMap view = manager.GetFogOfWarSystem().BuildFactionView(alliance);
-            Planet viewedPlanet = view.GetChildren<PlanetSystem>()
+            Planet viewedPlanet = view.GetChildren<PlanetSector>()
                 .Single(s => s.InstanceID == "SYS1")
                 .GetChildren<Planet>()
                 .Single(p => p.InstanceID == "PLANET1");
@@ -323,7 +323,7 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "SYS1", DisplayName = "System" };
+            PlanetSector system = new PlanetSector { InstanceID = "SYS1", DisplayName = "System" };
             game.AttachNode(system, game.GetGalaxyMap());
             Planet origin = new Planet
             {
@@ -403,7 +403,7 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "SYS1", DisplayName = "System" };
+            PlanetSector system = new PlanetSector { InstanceID = "SYS1", DisplayName = "System" };
             game.AttachNode(system, game.GetGalaxyMap());
             Planet origin = new Planet
             {
@@ -495,7 +495,7 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "SYS1", DisplayName = "System" };
+            PlanetSector system = new PlanetSector { InstanceID = "SYS1", DisplayName = "System" };
             game.AttachNode(system, game.GetGalaxyMap());
             Planet planet = new Planet
             {
@@ -594,10 +594,10 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(owner);
             game.GetFactions().Add(opposition);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "SYSTEM",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             game.AttachNode(system, game.GetGalaxyMap());
             Planet planet = new Planet
@@ -690,10 +690,10 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(owner);
             game.GetFactions().Add(opposition);
 
-            PlanetSystem system = new PlanetSystem
+            PlanetSector system = new PlanetSector
             {
                 InstanceID = "SYSTEM",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             game.AttachNode(system, game.GetGalaxyMap());
 
@@ -761,7 +761,7 @@ namespace Rebellion.Tests.Managers
             game.GetFactions().Add(owner);
             game.GetFactions().Add(opposition);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "SYSTEM" };
+            PlanetSector system = new PlanetSector { InstanceID = "SYSTEM" };
             game.AttachNode(system, game.GetGalaxyMap());
             int ownershipThreshold = game.Config.SupportShift.OwnershipTransferThreshold;
             Planet planet = new Planet

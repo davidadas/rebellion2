@@ -19,12 +19,12 @@ public interface IBattleAlertWindowActions
     void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY);
 
     /// <summary>
-    /// Opens the system window for a completed battle.
+    /// Opens the sector window for a completed battle.
     /// </summary>
-    /// <param name="system">The battle's planetary system.</param>
+    /// <param name="sector">The battle's planetary sector.</param>
     /// <param name="sourceX">The source window's horizontal coordinate.</param>
     /// <param name="sourceY">The source window's vertical coordinate.</param>
-    void OpenBattleResultSystem(PlanetSystem system, int sourceX, int sourceY);
+    void OpenBattleResultSector(PlanetSector sector, int sourceX, int sourceY);
 
     /// <summary>
     /// Rebuilds the visible strategy snapshot after combat changes game state.
@@ -136,7 +136,7 @@ public sealed class BattleAlertWindowController
         view.ControlPressed += HandleControlPressed;
         view.Destroyed += HandleViewDestroyed;
         view.OpenFleetRequested += HandleOpenFleetRequested;
-        view.OpenSystemRequested += HandleOpenSystemRequested;
+        view.OpenSectorRequested += HandleOpenSectorRequested;
         view.PrimaryPanelRequested += HandlePrimaryPanelRequested;
         view.ResultCategoryRequested += HandleResultCategoryRequested;
     }
@@ -400,21 +400,21 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
-    /// Opens the completed battle's system window before closing the result window.
+    /// Opens the completed battle's sector window before closing the result window.
     /// </summary>
     /// <param name="view">The requesting battle-alert view.</param>
-    private void HandleOpenSystemRequested(BattleAlertWindowView view)
+    private void HandleOpenSectorRequested(BattleAlertWindowView view)
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
             Planet planet = session.Result.Planet;
-            if (planet?.GetParent() is not PlanetSystem system)
+            if (planet?.GetParent() is not PlanetSector sector)
             {
                 CloseWindow(view);
                 return;
             }
 
-            actions.OpenBattleResultSystem(system, session.Window.X, session.Window.Y);
+            actions.OpenBattleResultSector(sector, session.Window.X, session.Window.Y);
         }
 
         CloseWindow(view);
@@ -476,7 +476,7 @@ public sealed class BattleAlertWindowController
         view.ControlPressed -= HandleControlPressed;
         view.Destroyed -= HandleViewDestroyed;
         view.OpenFleetRequested -= HandleOpenFleetRequested;
-        view.OpenSystemRequested -= HandleOpenSystemRequested;
+        view.OpenSectorRequested -= HandleOpenSectorRequested;
         view.PrimaryPanelRequested -= HandlePrimaryPanelRequested;
         view.ResultCategoryRequested -= HandleResultCategoryRequested;
         sessions.Remove(view);

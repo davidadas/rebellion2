@@ -22,7 +22,7 @@ namespace Rebellion.Generation
         public GameConfig GameConfig { get; set; }
         public IRandomNumberProvider Rng { get; set; }
 
-        public PlanetSystem[] Systems { get; set; }
+        public PlanetSector[] Sectors { get; set; }
         public Faction[] Factions { get; set; }
         public Building[] Buildings { get; set; }
         public CapitalShip[] CapitalShips { get; set; }

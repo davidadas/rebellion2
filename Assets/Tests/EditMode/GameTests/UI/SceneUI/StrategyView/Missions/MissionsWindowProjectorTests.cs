@@ -11,7 +11,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
+using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
@@ -71,7 +71,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _mission.AddChild(CreateOfficer("agent", "Agent", true));
             _mission.AddDecoyParticipant(CreateOfficer("decoy", "Decoy", false));
             planet.AddChild(_mission);
-            _planet = new GalaxyMapPlanet(new GamePlanetSystem(), planet, string.Empty);
+            _planet = new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty);
             _visibleNodes = new Dictionary<string, ISceneNode> { [_target.InstanceID] = _target };
             _projector = new MissionsWindowProjector(
                 () => _uiContext,

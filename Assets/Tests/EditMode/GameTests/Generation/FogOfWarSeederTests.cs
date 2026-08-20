@@ -52,10 +52,10 @@ namespace Rebellion.Tests.Generation
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
 
-            PlanetSystem rim = new PlanetSystem
+            PlanetSector rim = new PlanetSector
             {
                 InstanceID = "rim_sys",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             rim.AddChild(
                 new Planet
@@ -86,10 +86,10 @@ namespace Rebellion.Tests.Generation
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
 
-            PlanetSystem rim = new PlanetSystem
+            PlanetSector rim = new PlanetSector
             {
                 InstanceID = "rim_sys",
-                SystemType = PlanetSystemType.OuterRim,
+                SectorType = PlanetSectorType.OuterRim,
             };
             rim.AddChild(
                 new Planet
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Generation
 
         private static (
             GameRoot game,
-            PlanetSystem coreSystem,
+            PlanetSector coreSystem,
             Planet empirePlanet,
             Faction empire,
             Faction alliance
@@ -153,10 +153,10 @@ namespace Rebellion.Tests.Generation
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
 
-            PlanetSystem coreSystem = new PlanetSystem
+            PlanetSector coreSystem = new PlanetSector
             {
                 InstanceID = "core_sys",
-                SystemType = PlanetSystemType.CoreSystem,
+                SectorType = PlanetSectorType.Core,
             };
             Planet empirePlanet = new Planet
             {

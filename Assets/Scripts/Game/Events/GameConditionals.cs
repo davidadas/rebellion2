@@ -606,7 +606,7 @@ namespace Rebellion.Game.Events
     public enum SceneAncestorType
     {
         Galaxy,
-        PlanetSystem,
+        PlanetSector,
         Planet,
         Fleet,
         Mission,
@@ -619,7 +619,7 @@ namespace Rebellion.Game.Events
             type switch
             {
                 SceneAncestorType.Galaxy => node.GetParentOfType<GalaxyMap>(),
-                SceneAncestorType.PlanetSystem => node.GetParentOfType<PlanetSystem>(),
+                SceneAncestorType.PlanetSector => node.GetParentOfType<PlanetSector>(),
                 SceneAncestorType.Planet => node.GetParentOfType<Planet>(),
                 SceneAncestorType.Fleet => node.GetParentOfType<Fleet>(),
                 SceneAncestorType.Mission => node.GetParentOfType<Mission>(),

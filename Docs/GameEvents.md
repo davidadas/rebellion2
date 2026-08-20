@@ -159,7 +159,7 @@ Comparisons are `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessT
 `ForceMaster`.
 
 `ShareParent` checks the exact immediate parent. `ShareAncestor` checks a shared nearest `Galaxy`,
-`PlanetSystem`, `Planet`, `Fleet`, `Mission`, or `CapitalShip` ancestor:
+`PlanetSector`, `Planet`, `Fleet`, `Mission`, or `CapitalShip` ancestor:
 
 ```xml
 <ShareAncestor Type="Planet">
@@ -182,7 +182,7 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
   <From>
     <SelectRandom Count="1">
       <From>
-        <SelectPlanets SystemType="CoreSystem"/>
+        <SelectPlanets SectorType="Core"/>
       </From>
     </SelectRandom>
   </From>
@@ -191,9 +191,9 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 
 | Selector | Filters or behavior |
 | --- | --- |
-| `SelectPlanets` | `InstanceID`, `OwnerFactionInstanceID`, `SystemType` |
-| `SelectPlanetSystems` | `InstanceID`, `SystemType` |
-| `SelectOfficers` | ID, planet, owner, capture state, and whether inactive officers are included |
+| `SelectPlanets` | `InstanceID`, `OwnerFactionInstanceID`, `SectorType` |
+| `SelectPlanetSectors` | `InstanceID`, `SectorType` |
+| `SelectOfficers` | ID, planet, owner, capture state, and whether retained officers are included |
 | `SelectSpecialForces`, `SelectFleets`, `SelectMissions` | ID, planet, and owner |
 | `SelectCapitalShips`, `SelectStarfighters`, `SelectRegiments` | ID, planet, owner, `TypeID`, and `ManufacturingStatus` |
 | `SelectBuildings` | The same filters plus `Category` |
@@ -201,11 +201,11 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 | `SelectRandom` | Samples its combined candidates by chance and count. |
 | `SelectFirst` | Returns the first valid destination candidate. |
 | `SelectBinding` | Returns the object or collection in a binding. |
-| `SelectNearestParent` | Maps candidates to their nearest parent of `Type`. |
-| `SelectPreviousLocation` | Returns a unit's recorded previous location. |
+| `SelectAncestors` | Maps candidates to their nearest ancestor of `Type`. |
+| `SelectPreviousLocation` | Returns a retained unit's recorded previous location. |
 | `SpawnUnits` | Creates `Count` detached units from a catalog `TypeID` for immediate use by `PlaceUnits`. |
 
-Planet location filters use `PlanetInstanceID` or `PlanetBinding`. System types are `CoreSystem` and
+Planet location filters use `PlanetInstanceID` or `PlanetBinding`. Sector types are `Core` and
 `OuterRim`. Manufacturing statuses are `Building` and `Complete`. Manufacturing types are `Ship`,
 `Building`, and `Troop`. Building categories are `Any`, `PlanetaryDefense`, and
 `ManufacturingFacility`.
@@ -232,7 +232,7 @@ Actions run from top to bottom. Later actions see changes and results produced b
 | `Random` | Chooses one weighted outcome whose optional `When` passes. |
 | `PerformSkillCheck` | Uses an officer rating and probability table, then runs `OnSuccess` or `OnFailure`. |
 | `SetEventVariable` | Applies `Set`, `Add`, `Minimum`, or `Maximum` to a saved integer. |
-| `RevealToFaction` | Reveals selected planets, systems, fleets, missions, units, buildings, or manufacturing orders. |
+| `RevealToFaction` | Reveals selected planets, sectors, fleets, missions, units, buildings, or manufacturing orders. |
 | `ChangePlanetStat` | Changes a planet stat by signed `Amount` or `PercentOfCurrent`. |
 | `ReducePlanetStats` | Applies probabilistic resource losses to selected planet stats. |
 | `RecordPlanetIncident` | Records `Uprising`, `Intelligence`, `Disaster`, or `Resource` from results already produced against `$target`. |
@@ -240,7 +240,7 @@ Actions run from top to bottom. Later actions see changes and results produced b
 | `ChangeOwner` | Transfers either selected planets or selected units to a faction. |
 | `PlaceUnits` | Immediately places selected units or newly spawned units at a valid destination. |
 | `SendUnits` | Sends units using normal movement and transit. |
-| `SetActive` | Activates or deactivates selected units without changing their location. |
+| `AddToVoid`, `RemoveFromVoid` | Retains units outside active play or releases that retention. |
 | `SetDisplayName`, `SetDisplayStatus`, `ClearDisplayStatus` | Changes display metadata for selected nodes. |
 | `SetCaptureStatus` | Captures or releases selected officers. |
 | `ChangeOfficerRating` | Changes an officer rating by a flat or percentage calculation. |
@@ -342,11 +342,16 @@ control rules; unit transfers preserve containment while updating faction owners
 ```
 
 `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `DestinationInstanceID` attributes or
-typed `Units` and `Destination` selectors. `SetActive` changes gameplay participation without
-changing scene location:
+typed `Units` and `Destination` selectors. `RemoveFromVoid` only releases retention; it does not
+choose a destination. Return a retained unit explicitly:
 
 ```xml
-<SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="true"/>
+<RemoveFromVoid UnitInstanceID="LUKE_SKYWALKER"/>
+<PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
+  <Destination>
+    <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
+  </Destination>
+</PlaceUnits>
 ```
 
 `SetOfficerImages` supports `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, and
@@ -402,7 +407,7 @@ records the incident, and sends a message:
     <From>
       <SelectRandom Count="1">
         <From>
-          <SelectPlanets SystemType="CoreSystem"/>
+          <SelectPlanets SectorType="Core"/>
         </From>
       </SelectRandom>
     </From>
@@ -473,7 +478,7 @@ A multi-stage chain uses stable event IDs and dependent schedules:
   <InstanceID>MOD_OFFICER_LEAVES</InstanceID>
   <Schedule><At Tick="300"/></Schedule>
   <Actions>
-    <SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="false"/>
+    <AddToVoid UnitInstanceID="LUKE_SKYWALKER"/>
     <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER" Status="Away on assignment"/>
   </Actions>
 </GameEvent>
@@ -482,7 +487,12 @@ A multi-stage chain uses stable event IDs and dependent schedules:
   <InstanceID>MOD_OFFICER_RETURNS</InstanceID>
   <Schedule><After EventInstanceID="MOD_OFFICER_LEAVES" DelayTicks="100"/></Schedule>
   <Actions>
-    <SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="true"/>
+    <RemoveFromVoid UnitInstanceID="LUKE_SKYWALKER"/>
+    <PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
+      <Destination>
+        <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
+      </Destination>
+    </PlaceUnits>
     <ClearDisplayStatus TargetInstanceID="LUKE_SKYWALKER"/>
   </Actions>
 </GameEvent>
@@ -514,5 +524,5 @@ If an event does not run:
 - Confirm the event has not reached `TriggerCount` or matched `Until`.
 
 Finally, save and reload after the event has run. Verify recurring schedules, activation counts,
-event variables, inactive units, display changes, and multi-stage chains still behave correctly.
+event variables, retained units, display changes, and multi-stage chains still behave correctly.
 Event IDs and variable keys are persisted, so changing them can invalidate existing event state.

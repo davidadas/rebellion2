@@ -131,9 +131,9 @@ namespace Rebellion.Tests.Game.Encyclopedia
         }
 
         [Test]
-        public void Build_WithPlanetSystem_AddsPlanetEntries()
+        public void Build_WithPlanetSector_AddsPlanetEntries()
         {
-            PlanetSystem system = new PlanetSystem();
+            PlanetSector system = new PlanetSector();
             system.AddChild(
                 new Planet
                 {
@@ -204,7 +204,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
         [Test]
         public void Build_WithNullStaticEntries_IgnoresNullEntries()
         {
-            PlanetSystem system = new PlanetSystem();
+            PlanetSector system = new PlanetSector();
             system.AddChildren(
                 new Planet[]
                 {
@@ -237,7 +237,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
 
         private static EncyclopediaCatalog BuildCatalog(
             EncyclopediaEntries authoredEntries,
-            IEnumerable<PlanetSystem> planetSystems = null,
+            IEnumerable<PlanetSector> planetSystems = null,
             IEnumerable<Building> buildings = null,
             IEnumerable<CapitalShip> capitalShips = null,
             IEnumerable<Starfighter> starfighters = null,

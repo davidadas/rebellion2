@@ -20,8 +20,13 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithNonMainRecruiter_DoesNotAddRecruitmentProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
-            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "p1", empire.InstanceID);
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "p1",
+                empire.InstanceID
+            );
             Officer officer = CreateRecruiter("officer", empire.InstanceID, isMain: false);
             game.AttachNode(officer, planet);
             AddRecruitableOfficer(game, empire.InstanceID);
@@ -40,8 +45,13 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithMainRecruiter_AddsRecruitmentProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
-            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "p1", empire.InstanceID);
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "p1",
+                empire.InstanceID
+            );
             Officer officer = CreateRecruiter("officer", empire.InstanceID, isMain: true);
             game.AttachNode(officer, planet);
             AddRecruitableOfficer(game, empire.InstanceID);

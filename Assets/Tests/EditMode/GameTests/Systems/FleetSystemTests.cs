@@ -9,7 +9,7 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class FleetSystemTests
@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Systems
         {
             _game = new GameRoot(TestConfig.Create());
             _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            PlanetSector system = new PlanetSector { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             _planet = new Planet
             {

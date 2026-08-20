@@ -10,7 +10,7 @@ namespace Rebellion.SceneGraph
     /// </summary>
     /// <remarks>
     /// This class is inherited by classes that manage a collection of child nodes. Examples
-    /// include Planets, PlanetSystems, CapitalShips, etc. Units without children should use
+    /// include Planets, PlanetSectors, CapitalShips, etc. Units without children should use
     /// the <see cref="LeafNode"/> class instead.
     /// </remarks>
     public abstract class ContainerNode : BaseSceneNode
