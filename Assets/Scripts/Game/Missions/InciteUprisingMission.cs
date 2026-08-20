@@ -107,7 +107,8 @@ namespace Rebellion.Game.Missions
             if (GetParent() is not Planet planet)
                 return false;
 
-            bool opposingFactionControlsPlanet = !string.IsNullOrEmpty(planet.OwnerInstanceID)
+            bool opposingFactionControlsPlanet =
+                !string.IsNullOrEmpty(planet.OwnerInstanceID)
                 && planet.OwnerInstanceID != OwnerInstanceID;
             bool missionFactionHasTroops = planet
                 .GetAllRegiments()

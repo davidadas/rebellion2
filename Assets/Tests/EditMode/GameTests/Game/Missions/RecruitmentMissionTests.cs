@@ -206,10 +206,7 @@ namespace Rebellion.Tests.Game.Missions
                 firstRating + 1,
                 firstRecruiter.GetBaseRating(OfficerRating.Leadership)
             );
-            Assert.AreEqual(
-                secondRating,
-                secondRecruiter.GetBaseRating(OfficerRating.Leadership)
-            );
+            Assert.AreEqual(secondRating, secondRecruiter.GetBaseRating(OfficerRating.Leadership));
             Assert.AreEqual(
                 MissionOutcome.Success,
                 results.OfType<MissionCompletedResult>().Single().Outcome

@@ -199,10 +199,7 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
-            Assert.Greater(
-                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
-                0
-            );
+            Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
         [TestCase(ResearchDiscipline.ShipDesign, ManufacturingType.Ship)]
@@ -268,10 +265,7 @@ namespace Rebellion.Tests.Game.Missions
 
             mission.Execute(_game, new FixedRNG(0.5));
 
-            Assert.Greater(
-                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
-                0
-            );
+            Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
             Assert.AreEqual(10, firstOfficer.ShipResearch);
             Assert.AreEqual(101, secondOfficer.ShipResearch);
         }

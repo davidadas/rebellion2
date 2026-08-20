@@ -128,9 +128,7 @@ namespace Rebellion.Game.Missions
             if (reason.HasValue)
                 return reason;
 
-            return IsMissionSatisfied(game)
-                ? null
-                : MissionCompletionReason.TargetUnavailable;
+            return IsMissionSatisfied(game) ? null : MissionCompletionReason.TargetUnavailable;
         }
 
         /// <summary>
