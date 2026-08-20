@@ -205,6 +205,42 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreateMission_DuplicatePrimaryParticipant_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Regiment target = CreateSabotageTarget(game, planet);
+            MissionContext context = CreateContext(
+                game,
+                MissionTypeIDs.Sabotage,
+                "empire",
+                officer,
+                planet,
+                selectedTarget: target
+            );
+            context.MainParticipants.Add(officer);
+
+            Assert.IsFalse(factory.TryCreateMission(context, out _));
+        }
+
+        [Test]
+        public void TryCreateMission_ParticipantUsedAsPrimaryAndDecoy_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Regiment target = CreateSabotageTarget(game, planet);
+            MissionContext context = CreateContext(
+                game,
+                MissionTypeIDs.Sabotage,
+                "empire",
+                officer,
+                planet,
+                selectedTarget: target
+            );
+            context.DecoyParticipants.Add(officer);
+
+            Assert.IsFalse(factory.TryCreateMission(context, out _));
+        }
+
+        [Test]
         public void TryCreateMission_ParticipantOnExistingMission_ReturnsFalse()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();

@@ -61,7 +61,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_EnemyDefenderPresent_CompletesWithoutFoil()
+        public void UpdateMission_EnemyDetectorSucceeds_FoilsReconnaissance()
         {
             (
                 GameRoot game,
@@ -71,13 +71,18 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            Officer defender = EntityFactory.CreateOfficer("defender", "rebels");
-            defender.SetBaseRating(OfficerRating.Espionage, 200);
-            game.AttachNode(defender, enemyPlanet);
+            Regiment detector = EntityFactory.CreateRegiment("detector", "rebels");
+            detector.DetectionRating = 100;
+            detector.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(detector, enemyPlanet);
 
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
             {
                 { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.RelativeEvasion = new Dictionary<int, int>
+            {
+                { -1000, 0 },
             };
             SpecialForces reconTeam = CreateReconTeam("empire");
             game.AttachNode(reconTeam, empirePlanet);
@@ -103,13 +108,13 @@ namespace Rebellion.Tests.Game.Missions
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(enemyPlanet.WasVisitedBy("empire"));
-            Assert.IsFalse(results.OfType<GameObjectDestroyedResult>().Any());
+            Assert.IsFalse(enemyPlanet.WasVisitedBy("empire"));
+            Assert.IsTrue(results.OfType<GameObjectDestroyedResult>().Any());
             Assert.AreEqual(
-                MissionOutcome.Success,
+                MissionOutcome.Foiled,
                 results.OfType<MissionCompletedResult>().Single().Outcome
             );
-            Assert.AreEqual(1, game.GetSceneNodesByType<SpecialForces>().Count);
+            Assert.AreEqual(0, game.GetSceneNodesByType<SpecialForces>().Count);
         }
 
         [Test]

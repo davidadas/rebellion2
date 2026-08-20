@@ -4,6 +4,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Missions
@@ -29,7 +30,6 @@ namespace Rebellion.Game.Missions
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Espionage;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -84,10 +84,7 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Espionage
-            )
-        {
-            DecoyParticipantRating = OfficerRating.Espionage;
-        }
+            ) { }
 
         /// <summary>
         /// Returns whether a primary participant can perform reconnaissance.
@@ -108,14 +105,6 @@ namespace Rebellion.Game.Missions
         {
             return GetParent() is Planet;
         }
-
-        /// <summary>
-        /// Reconnaissance is not interrupted by detection checks.
-        /// </summary>
-        /// <param name="defenseScore">Unused defense score.</param>
-        /// <param name="game">Current game state.</param>
-        /// <returns>Always zero.</returns>
-        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Resolves reconnaissance without a success roll.
@@ -139,7 +128,7 @@ namespace Rebellion.Game.Missions
                 return results;
             }
 
-            results.AddRange(OnSuccess(game, provider));
+            results.AddRange(OnSuccess(game, provider, MainParticipants.FirstOrDefault()));
             results.Add(
                 BuildCompletedResult(MissionOutcome.Success, MissionCompletionReason.Success, game)
             );
@@ -149,15 +138,21 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Reconnaissance does not award mission rating improvements.
         /// </summary>
-        protected override void ImproveMissionParticipantRatings() { }
+        /// <param name="participant">The participant whose reconnaissance attempt completed.</param>
+        internal override void ImproveMissionParticipantRating(IMissionParticipant participant) { }
 
         /// <summary>
         /// Marks the target as visited for the mission owner and records the observed planet state.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider.</param>
+        /// <param name="successfulParticipant">The participant assigned to the reconnaissance mission.</param>
         /// <returns>An empty result list.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        protected override List<GameResult> OnSuccess(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IMissionParticipant successfulParticipant
+        )
         {
             Planet planet = GetParent() as Planet;
             if (planet == null)

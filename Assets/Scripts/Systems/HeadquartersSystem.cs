@@ -133,7 +133,9 @@ namespace Rebellion.Systems
                     ?? Array.Empty<PlanetOwnershipChangedResult>()
             )
             {
-                UpdateFixedHeadquartersMarker(result);
+                HeadquartersCapturedResult captured = UpdateFixedHeadquartersMarker(result);
+                if (captured != null)
+                    reactions.Add(captured);
 
                 Faction defender = result?.PreviousOwner;
                 Faction attacker = result?.NewOwner;
@@ -179,11 +181,13 @@ namespace Rebellion.Systems
         /// The faction's headquarters location remains configured so recapture can restore it.
         /// </summary>
         /// <param name="result">The planetary ownership change to apply.</param>
-        private void UpdateFixedHeadquartersMarker(PlanetOwnershipChangedResult result)
+        private HeadquartersCapturedResult UpdateFixedHeadquartersMarker(
+            PlanetOwnershipChangedResult result
+        )
         {
             Planet planet = result?.Planet;
             if (planet == null)
-                return;
+                return null;
 
             Faction fixedHeadquartersFaction = _game
                 .GetFactions()
@@ -192,9 +196,23 @@ namespace Rebellion.Systems
                     && faction.HQInstanceID == planet.InstanceID
                 );
             if (fixedHeadquartersFaction == null)
-                return;
+                return null;
 
             planet.IsHeadquarters = result.NewOwner == fixedHeadquartersFaction;
+            if (
+                result.PreviousOwner != fixedHeadquartersFaction
+                || result.NewOwner == null
+                || result.NewOwner == fixedHeadquartersFaction
+            )
+                return null;
+
+            return new HeadquartersCapturedResult
+            {
+                Planet = planet,
+                Defender = fixedHeadquartersFaction,
+                Attacker = result.NewOwner,
+                Tick = _game.CurrentTick,
+            };
         }
     }
 }

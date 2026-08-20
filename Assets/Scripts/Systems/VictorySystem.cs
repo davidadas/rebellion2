@@ -13,7 +13,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages victory condition checking during each game tick.
     /// </summary>
-    public class VictorySystem : IGameResultHandler<HeadquartersDestroyedResult>
+    public class VictorySystem : IGameResultHandler<HeadquartersLostResult>
     {
         private readonly GameRoot _game;
         private bool _victoryDeclared;
@@ -52,16 +52,16 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies the configured victory condition after a mobile headquarters is destroyed.
+        /// Applies the configured victory condition after a faction loses its headquarters.
         /// </summary>
-        /// <param name="results">The headquarters destruction results.</param>
+        /// <param name="results">The headquarters loss results.</param>
         /// <returns>Any victories caused by the headquarters losses.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<HeadquartersDestroyedResult> results)
+        public List<GameResult> HandleResults(IReadOnlyList<HeadquartersLostResult> results)
         {
             if (_victoryDeclared)
                 return new List<GameResult>();
 
-            return (results ?? Array.Empty<HeadquartersDestroyedResult>())
+            return (results ?? Array.Empty<HeadquartersLostResult>())
                 .Where(result => result?.Attacker != null && result.Defender != null)
                 .Select(result => BuildHQVictory(result.Attacker, result.Defender))
                 .Where(result => result != null)

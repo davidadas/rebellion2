@@ -223,7 +223,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_FirstSuccessfulParticipantEndsAttemptSequence()
+        public void UpdateMission_MultipleParticipantsSucceed_AppliesEveryAttempt()
         {
             (
                 GameRoot game,
@@ -265,7 +265,7 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Failed,
                 results.OfType<MissionCompletedResult>().Single().Outcome
             );
-            Assert.AreEqual(11, empirePlanet.GetPopularSupport("empire"));
+            Assert.AreEqual(12, empirePlanet.GetPopularSupport("empire"));
         }
 
         [Test]
@@ -336,6 +336,39 @@ namespace Rebellion.Tests.Game.Missions
                 ),
                 "TryCreate should return null when target planet is not in uprising"
             );
+        }
+
+        [Test]
+        public void ShouldRepeatAfterCompletion_UprisingContinues_ReturnsTrue()
+        {
+            var (game, empirePlanet, _, officer, _) = MissionSceneBuilder.Build();
+            empirePlanet.BeginUprising();
+            Mission mission = CreateSubdueUprisingMission(
+                "empire",
+                empirePlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empirePlanet);
+
+            Assert.IsTrue(mission.ShouldRepeatAfterCompletion(game));
+        }
+
+        [Test]
+        public void ShouldRepeatAfterCompletion_UprisingEnded_ReturnsFalse()
+        {
+            var (game, empirePlanet, _, officer, _) = MissionSceneBuilder.Build();
+            empirePlanet.BeginUprising();
+            Mission mission = CreateSubdueUprisingMission(
+                "empire",
+                empirePlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empirePlanet);
+            empirePlanet.EndUprising();
+
+            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(game));
         }
 
         [Test]

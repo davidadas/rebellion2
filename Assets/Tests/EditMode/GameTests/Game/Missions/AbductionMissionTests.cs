@@ -42,6 +42,34 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_HostileOfficerInFleetOverFriendlyPlanet_ReturnsMission()
+        {
+            var (game, empirePlanet, _, officer, _) = MissionSceneBuilder.Build();
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", "rebels");
+            CapitalShip hostileShip = new CapitalShip
+            {
+                InstanceID = "hostile-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(hostileFleet, empirePlanet);
+            game.AttachNode(hostileShip, hostileFleet);
+            game.AttachNode(target, hostileShip);
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                empirePlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNotNull(mission);
+        }
+
+        [Test]
         public void TryCreate_NullTarget_ReturnsNull()
         {
             (
@@ -238,6 +266,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = true;
             game.AttachNode(target, enemyPlanet);
             MakeAbductionAlwaysSucceed(game);
 
@@ -272,6 +301,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = true;
             game.AttachNode(target, enemyPlanet);
 
             Mission mission = CreateAbductionMission(
@@ -294,6 +324,108 @@ namespace Rebellion.Tests.Game.Missions
                 .FirstOrDefault();
             Assert.IsNotNull(captured, "Should return OfficerCaptureStateResult on success");
             Assert.AreEqual("target", captured.TargetOfficer.InstanceID);
+            Assert.IsNotEmpty(
+                results.OfType<OfficerInjuredResult>(),
+                "A successful injury roll should injure the target before capture"
+            );
+        }
+
+        [Test]
+        public void Execute_MinorTargetDiesFromCaptureInjury_DoesNotCaptureTarget()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0));
+
+            Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.IsNotEmpty(results.OfType<OfficerKilledResult>());
+            Assert.IsEmpty(results.OfType<OfficerCaptureStateResult>());
+            Assert.IsFalse(target.IsCaptured);
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [Test]
+        public void Execute_TargetAvoidsCaptureInjury_IsCapturedWithoutInjury()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.SetBaseRating(OfficerRating.Combat, 100);
+            game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            List<GameResult> results = mission.Execute(
+                game,
+                new SequenceRNG(intValues: new[] { 50 }, doubleValues: new[] { 0.0 })
+            );
+
+            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.IsNotEmpty(results.OfType<OfficerCaptureStateResult>());
+            Assert.IsTrue(target.IsCaptured);
+        }
+
+        [Test]
+        public void Execute_MultipleSuccessfulParticipants_EachAttemptsCapture()
+        {
+            var (game, empirePlanet, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+            Officer secondOfficer = EntityFactory.CreateOfficer("officer2", "empire");
+            game.AttachNode(secondOfficer, empirePlanet);
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.SetBaseRating(OfficerRating.Combat, 100);
+            game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer, secondOfficer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            List<GameResult> results = mission.Execute(
+                game,
+                new SequenceRNG(intValues: new[] { 50, 50 }, doubleValues: new[] { 0.0, 0.0 })
+            );
+
+            Assert.AreEqual(2, results.OfType<OfficerCaptureStateResult>().Count());
+            Assert.IsTrue(target.IsCaptured);
         }
 
         [Test]
@@ -439,6 +571,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = true;
             game.AttachNode(target, enemyPlanet);
             MakeAbductionAlwaysSucceed(game);
 
@@ -503,6 +636,7 @@ namespace Rebellion.Tests.Game.Missions
             commando.MissionReturnLocationInstanceID = empirePlanet.InstanceID;
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = true;
             game.AttachNode(target, enemyPlanet);
             MakeAbductionAlwaysSucceed(game);
 
@@ -610,6 +744,50 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(OfficerRating.Espionage, deserialized.ParticipantRating);
             Assert.IsFalse(deserialized.HasInitiated);
             Assert.AreEqual(5, deserialized.MaxProgress);
+        }
+
+        [Test]
+        public void RollParticipantSuccess_SubtractsTargetCombatFromParticipantCombat()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+            officer.SetBaseRating(OfficerRating.Combat, 80);
+            target.SetBaseRating(OfficerRating.Combat, 60);
+            game.Config.ProbabilityTables.Mission.Abduction = new Dictionary<int, int>
+            {
+                { 0, 0 },
+                { 20, 100 },
+            };
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            bool advantageSucceeded = mission.RollParticipantSuccess(
+                officer,
+                new FixedRNG(0.5),
+                game
+            );
+            target.SetBaseRating(OfficerRating.Combat, 80);
+            bool equalCombatSucceeded = mission.RollParticipantSuccess(
+                officer,
+                new FixedRNG(0),
+                game
+            );
+
+            Assert.IsTrue(advantageSucceeded);
+            Assert.IsFalse(equalCombatSucceeded);
         }
 
         private static Mission CreateAbductionMission(

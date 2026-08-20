@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -13,9 +12,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
     [TestFixture]
     public class ConstructionWindowProjectorTests
     {
-        private const string _ownerId = "FNALL1";
+        private const string _ownerId = "owner";
 
         private ConstructionWindowProjector _projector;
+        private Dictionary<string, Texture2D> _textures;
         private UIContext _uiContext;
 
         [SetUp]
@@ -24,12 +24,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(new Faction { InstanceID = _ownerId });
             game.Summary.PlayerFactionID = _ownerId;
-            _uiContext = TestContent.CreateUIContext(
+            _textures = new Dictionary<string, Texture2D>
+            {
+                { "active-title", new Texture2D(1, 1) },
+                { "inactive-title", new Texture2D(1, 1) },
+            };
+            FactionThemes themes = new FactionThemes
+            {
+                new FactionTheme { FactionInstanceID = "DEFAULT" },
+                new FactionTheme
+                {
+                    FactionInstanceID = _ownerId,
+                    WindowTitleTheme = new WindowTitleTheme
+                    {
+                        ActiveImagePath = "active-title",
+                        InactiveImagePath = "inactive-title",
+                    },
+                },
+            };
+            _uiContext = new UIContext(
                 game,
-                TestContent.CreateThemeLibrary(),
-                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+                new FactionThemeLibrary(themes),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>()),
+                path => _textures.TryGetValue(path, out Texture2D texture) ? texture : null
             );
             _projector = new ConstructionWindowProjector(() => _uiContext);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            foreach (Texture2D texture in _textures.Values)
+                UnityEngine.Object.DestroyImmediate(texture);
         }
 
         [Test]
@@ -138,8 +164,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
             Assert.AreEqual(12, data.X);
             Assert.AreEqual(34, data.Y);
-            Assert.IsNotNull(data.TitleTexture);
-            Assert.AreSame(_uiContext.GetEntityTexture(second, true), data.SelectedTexture);
+            Assert.AreSame(_textures["active-title"], data.TitleTexture);
+            Assert.AreSame(_textures["second-status"], data.SelectedTexture);
             Assert.AreEqual("Second Ship", data.SelectedName);
             Assert.AreEqual(3, data.BuildCount);
             Assert.AreEqual("150", data.ConstructionCost);
@@ -152,10 +178,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsTrue(data.CanStart);
             Assert.AreEqual(2, data.DropdownItems.Count);
             Assert.AreEqual("First Ship", data.DropdownItems[0].Label);
-            Assert.AreSame(_uiContext.GetEntityTexture(first, true), data.DropdownItems[0].Texture);
+            Assert.AreSame(_textures["first-status"], data.DropdownItems[0].Texture);
             Assert.AreEqual(new Color32(128, 128, 128, 255), data.DropdownItems[0].LabelColor);
             Assert.AreEqual("Second Ship", data.DropdownItems[1].Label);
             Assert.AreEqual(new Color32(255, 255, 255, 255), data.DropdownItems[1].LabelColor);
+        }
+
+        [Test]
+        public void CreateRenderData_Starfighter_UsesBattleResultArtwork()
+        {
+            Starfighter starfighter = CreateStarfighter("fighter", "Fighter");
+
+            ConstructionWindowRenderData data = _projector.CreateRenderData(
+                0,
+                0,
+                _ownerId,
+                true,
+                new IManufacturable[] { starfighter },
+                0,
+                1,
+                Array.Empty<int>(),
+                Array.Empty<ConstructionBuildEstimate>(),
+                false
+            );
+
+            Assert.AreSame(_textures["fighter-status"], data.SelectedTexture);
+            Assert.AreSame(_textures["fighter-status"], data.DropdownItems[0].Texture);
+        }
+
+        [Test]
+        public void CreateRenderData_MissingStatusArtwork_UsesFullDisplayArtwork()
+        {
+            CapitalShip ship = CreateCapitalShip("ship", "Ship", 1, 1);
+            ship.BattleResultImagePath = "missing-status";
+
+            ConstructionWindowRenderData data = _projector.CreateRenderData(
+                0,
+                0,
+                _ownerId,
+                true,
+                new IManufacturable[] { ship },
+                0,
+                1,
+                Array.Empty<int>(),
+                Array.Empty<ConstructionBuildEstimate>(),
+                false
+            );
+
+            Assert.AreSame(_textures["ship-display"], data.SelectedTexture);
+            Assert.AreSame(_textures["ship-display"], data.DropdownItems[0].Texture);
         }
 
         [Test]
@@ -232,26 +303,52 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsFalse(data.CanStart);
         }
 
-        private static CapitalShip CreateCapitalShip(
+        private CapitalShip CreateCapitalShip(
             string instanceId,
             string displayName,
             int constructionCost,
             int maintenanceCost
         )
         {
-            CapitalShip definition = TestContent.Data.CapitalShips.First(ship =>
-                ship.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
-            );
+            AddTexture($"{instanceId}-display");
+            AddTexture($"{instanceId}-small");
+            AddTexture($"{instanceId}-status");
             return new CapitalShip
             {
                 InstanceID = instanceId,
-                TypeID = definition.TypeID,
+                TypeID = $"{instanceId}-type",
                 DisplayName = displayName,
                 OwnerInstanceID = _ownerId,
-                DisplayImagePath = definition.DisplayImagePath,
+                DisplayImagePath = $"{instanceId}-display",
+                SmallDisplayImagePath = $"{instanceId}-small",
+                BattleResultImagePath = $"{instanceId}-status",
                 ConstructionCost = constructionCost,
                 MaintenanceCost = maintenanceCost,
             };
+        }
+
+        private Starfighter CreateStarfighter(string instanceId, string displayName)
+        {
+            AddTexture($"{instanceId}-display");
+            AddTexture($"{instanceId}-small");
+            AddTexture($"{instanceId}-status");
+            return new Starfighter
+            {
+                InstanceID = instanceId,
+                TypeID = $"{instanceId}-type",
+                DisplayName = displayName,
+                OwnerInstanceID = _ownerId,
+                DisplayImagePath = $"{instanceId}-display",
+                SmallDisplayImagePath = $"{instanceId}-small",
+                BattleResultImagePath = $"{instanceId}-status",
+                ConstructionCost = 1,
+                MaintenanceCost = 1,
+            };
+        }
+
+        private void AddTexture(string path)
+        {
+            _textures.Add(path, new Texture2D(244, 100));
         }
     }
 }

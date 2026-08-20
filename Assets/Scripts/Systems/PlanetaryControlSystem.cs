@@ -348,6 +348,38 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Applies the original weak-support reduction to a shift on a core system.
+        /// </summary>
+        /// <param name="planet">The planet receiving the support shift.</param>
+        /// <param name="faction">The faction whose support is changing.</param>
+        /// <param name="shift">The unadjusted signed support shift.</param>
+        /// <param name="divisor">The configured weak-support divisor.</param>
+        /// <returns>The support shift after any core-system reduction.</returns>
+        internal static int ApplyCoreWeakSupportPenalty(
+            Planet planet,
+            Faction faction,
+            int shift,
+            int divisor
+        )
+        {
+            if (
+                shift == 0
+                || divisor <= 0
+                || planet?.GetParentOfType<PlanetSystem>()?.SystemType
+                    != PlanetSystemType.CoreSystem
+            )
+                return shift;
+
+            bool penaltyApplies = faction?.Settings?.WeakSupportPenaltyTrigger switch
+            {
+                SupportShiftCondition.Positive => shift > 0,
+                SupportShiftCondition.Negative => shift < 0,
+                _ => false,
+            };
+            return penaltyApplies ? shift / divisor : shift;
+        }
+
+        /// <summary>
         /// Transfers or clears planet ownership when the resolved controller changes.
         /// </summary>
         /// <param name="planet">The planet whose control is changing.</param>

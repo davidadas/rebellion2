@@ -648,6 +648,36 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results.OfType<PlanetUprisingEndedResult>());
         }
 
+        [Test]
+        public void TryExecuteMission_OfficersOutOfScoreOrder_AttemptsLowestScoreFirst()
+        {
+            CountingRNG rng = new CountingRNG();
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(rng: rng);
+            Officer highProbabilityOfficer = EntityFactory.CreateOfficer("high", "rebels");
+            highProbabilityOfficer.SetBaseRating(OfficerRating.Leadership, 100);
+            Officer lowProbabilityOfficer = EntityFactory.CreateOfficer("low", "rebels");
+            lowProbabilityOfficer.SetBaseRating(OfficerRating.Leadership, 0);
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -10, 0 },
+                { 90, 100 },
+            };
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.InciteUprising,
+                game,
+                "rebels",
+                planet,
+                new List<IMissionParticipant> { highProbabilityOfficer, lowProbabilityOfficer }
+            );
+            game.AttachNode(mission, planet);
+
+            bool handled = system.TryExecuteMission(mission, out List<GameResult> results);
+
+            Assert.IsTrue(handled);
+            Assert.AreEqual(2, rng.DoubleCallCount);
+            Assert.IsNotEmpty(results.OfType<MissionCompletedResult>());
+        }
+
         private (GameRoot game, Planet planet, UprisingSystem system) BuildScene(
             int ownerSupport = 10,
             int opposingSupport = 50,
@@ -750,6 +780,19 @@ namespace Rebellion.Tests.Systems
             mission.Initiate(100);
             game.AttachNode(officer, mission);
             return mission;
+        }
+
+        private sealed class CountingRNG : IRandomNumberProvider
+        {
+            public int DoubleCallCount { get; private set; }
+
+            public double NextDouble()
+            {
+                DoubleCallCount++;
+                return 0.5;
+            }
+
+            public int NextInt(int min, int max) => min;
         }
     }
 

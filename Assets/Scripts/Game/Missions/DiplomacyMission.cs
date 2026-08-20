@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Missions
@@ -101,33 +103,23 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Diplomacy missions are never foiled — they target own or neutral planets.
-        /// </summary>
-        /// <param name="defenseScore">The defense score, unused because diplomacy cannot be foiled.</param>
-        /// <param name="game">The current game state, unused because diplomacy cannot be foiled.</param>
-        /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
-
-        /// <summary>
-        /// Returns the participant's diplomacy success probability for the current target.
+        /// Returns the participant's raw diplomacy mission score for the current target.
         /// </summary>
         /// <param name="agent">The participant whose diplomacy rating is evaluated.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>The participant's diplomacy success probability.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
+        /// <returns>The participant's raw diplomacy mission score.</returns>
+        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
             if (!(GetParent() is Planet planet))
-                return base.GetAgentProbability(agent, game);
+                return base.GetAgentScore(agent, game);
 
             int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
             int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
                 game?.Config?.Uprising?.ResistanceRegimentTypeID
             );
-            int score =
-                uprisingResistanceRegimentCount
+            return uprisingResistanceRegimentCount
                 - opposingSupport
                 + agent.GetEffectiveRating(OfficerRating.Diplomacy);
-            return LookupSuccessProbability(game, score);
         }
 
         /// <summary>
@@ -135,39 +127,33 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for configured support rolls.</param>
+        /// <param name="successfulParticipant">The participant whose diplomacy attempt succeeded.</param>
         /// <returns>Always empty; ownership transfers are handled by the planetary control system.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        protected override List<GameResult> OnSuccess(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IMissionParticipant successfulParticipant
+        )
         {
             Planet planet = GetParent() as Planet;
             if (planet == null)
                 return new List<GameResult>();
 
             GameConfig.SupportShiftConfig config = game.Config.SupportShift;
-            int currentSupport = planet.GetPopularSupport(OwnerInstanceID);
-            int supportAfterExecuteBonus =
-                currentSupport
-                + GetFactionSuccessSupportBonus(game, config.DiplomacyCompletionSupportBonus);
             int supportShift = GetFactionSupportShift(planet, config, provider);
-            planet.SetPopularSupport(OwnerInstanceID, supportAfterExecuteBonus + supportShift);
+            Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
+            supportShift = PlanetaryControlSystem.ApplyCoreWeakSupportPenalty(
+                planet,
+                faction,
+                supportShift,
+                config.WeakSupportPenaltyDivisor
+            );
+            planet.SetPopularSupport(
+                OwnerInstanceID,
+                planet.GetPopularSupport(OwnerInstanceID) + supportShift
+            );
 
             return new List<GameResult>();
-        }
-
-        /// <summary>
-        /// Returns the fixed support bonus applied after a successful diplomacy roll.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="bonus">The configured support bonus.</param>
-        /// <returns>The support bonus signed for the mission faction.</returns>
-        private int GetFactionSuccessSupportBonus(GameRoot game, int bonus)
-        {
-            foreach (Faction faction in game.GetFactions())
-            {
-                if (faction.InstanceID == OwnerInstanceID)
-                    return faction.Settings.InvertSupportShift ? -bonus : bonus;
-            }
-
-            return bonus;
         }
 
         /// <summary>

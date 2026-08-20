@@ -295,15 +295,15 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_MobileHeadquartersDestroyed_ReturnsVictory()
+        public void HandleResults_HeadquartersCaptured_ReturnsVictory()
         {
             (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
                 BuildScene(rebelsCaptureEmpireHQ: false);
 
             List<GameResult> results = system.HandleResults(
-                new List<HeadquartersDestroyedResult>
+                new List<HeadquartersLostResult>
                 {
-                    new HeadquartersDestroyedResult
+                    new HeadquartersCapturedResult
                     {
                         Planet = empireHQ,
                         Defender = empire,

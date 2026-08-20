@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Systems
             Faction attacker = new Faction { InstanceID = "empire" };
             game.Factions.Add(attacker);
 
-            CreateSystem(game)
+            List<GameResult> results = CreateSystem(game)
                 .HandleResults(
                     new List<PlanetOwnershipChangedResult>
                     {
@@ -77,6 +77,11 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsFalse(origin.IsHeadquarters);
             Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
+            HeadquartersCapturedResult captured = results[0] as HeadquartersCapturedResult;
+            Assert.IsNotNull(captured);
+            Assert.AreSame(origin, captured.Planet);
+            Assert.AreSame(faction, captured.Defender);
+            Assert.AreSame(attacker, captured.Attacker);
         }
 
         [Test]
@@ -87,7 +92,7 @@ namespace Rebellion.Tests.Systems
             game.Factions.Add(attacker);
             origin.IsHeadquarters = false;
 
-            CreateSystem(game)
+            List<GameResult> results = CreateSystem(game)
                 .HandleResults(
                     new List<PlanetOwnershipChangedResult>
                     {
@@ -102,6 +107,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsTrue(origin.IsHeadquarters);
             Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
+            Assert.IsEmpty(results);
         }
 
         [Test]

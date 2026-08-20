@@ -1313,14 +1313,14 @@ public static class StrategyViewPrefabBuilder
         for (int index = 0; index < buttonImages.Count; index++)
             buttonPressVisuals.Add(buttonImages[index].GetComponent<RawImagePressVisual>());
 
-        RawImage selectedItem = CreateRawImage("SelectedItemImage", window.transform, null, 0, 22);
-        SetSourceRect(selectedItem.rectTransform, 0, 22, 210, 50);
+        RawImage selectedItem = CreateRawImage("SelectedItemImage", window.transform, null, 42, 28);
+        SetSourceRect(selectedItem.rectTransform, 42, 28, 122, 50);
         TextMeshProUGUI selectedName = CreateTextLabel("SelectedNameTextField", window.transform);
         selectedName.text = "Nebulon-B Frigate";
-        selectedName.color = Color.white;
-        selectedName.fontSize = 12;
+        selectedName.color = new Color32(128, 128, 128, 255);
+        selectedName.fontSize = 10;
         selectedName.alignment = TextAlignmentOptions.Top;
-        SetSourceRect(selectedName.rectTransform, 0, 72, 210, 18);
+        SetSourceRect(selectedName.rectTransform, 6, 72, 195, 13);
 
         TextMeshProUGUI buildCountLabel = CreateTextLabel(
             "BuildCountLabelTextField",
@@ -1498,22 +1498,22 @@ public static class StrategyViewPrefabBuilder
         Button cancelButtonComponent = CreateButton(cancelButton);
 
         RectTransform dropdown = CreateChildLayer("Dropdown", window.transform);
-        SetSourceRect(dropdown, 8, 111, 195, 142);
+        SetSourceRect(dropdown, 6, 85, 195, 130);
         Image dropdownFill = CreateImage("DropdownFrameFillImage", dropdown);
         dropdownFill.color = new Color32(12, 15, 18, 255);
-        SetSourceRect(dropdownFill.rectTransform, 1, 1, 193, 140);
+        SetSourceRect(dropdownFill.rectTransform, 1, 1, 193, 128);
         Image dropdownTop = CreateImage("DropdownFrameTopImage", dropdown);
         dropdownTop.color = Color.white;
         SetSourceRect(dropdownTop.rectTransform, 0, 0, 195, 1);
         Image dropdownBottom = CreateImage("DropdownFrameBottomImage", dropdown);
         dropdownBottom.color = Color.white;
-        SetSourceRect(dropdownBottom.rectTransform, 0, 141, 195, 1);
+        SetSourceRect(dropdownBottom.rectTransform, 0, 129, 195, 1);
         Image dropdownLeft = CreateImage("DropdownFrameLeftImage", dropdown);
         dropdownLeft.color = Color.white;
-        SetSourceRect(dropdownLeft.rectTransform, 0, 0, 1, 142);
+        SetSourceRect(dropdownLeft.rectTransform, 0, 0, 1, 130);
         Image dropdownRight = CreateImage("DropdownFrameRightImage", dropdown);
         dropdownRight.color = Color.white;
-        SetSourceRect(dropdownRight.rectTransform, 194, 0, 1, 142);
+        SetSourceRect(dropdownRight.rectTransform, 194, 0, 1, 130);
 
         string[] dropdownBackgroundNames =
         {
@@ -1531,25 +1531,25 @@ public static class StrategyViewPrefabBuilder
                 0,
                 i * 61
             );
-            SetSourceRect(dropdownBackground.rectTransform, 0, i * 61, 195, i == 2 ? 20 : 61);
+            SetSourceRect(dropdownBackground.rectTransform, 0, i * 61, 195, i == 2 ? 8 : 61);
             dropdownBackgrounds.Add(dropdownBackground);
         }
 
         ScrollAreaView dropdownScrollArea = CreateScrollAreaView(
             dropdown,
             "DropdownScrollArea",
+            2,
+            2,
+            191,
+            126,
             0,
             0,
-            195,
-            142,
-            0,
-            1,
-            180,
-            140,
-            182,
+            178,
+            126,
+            178,
             0,
             13,
-            142,
+            126,
             out RectTransform dropdownContent
         );
         ConfigureVerticalContent(dropdownContent);
@@ -1559,13 +1559,14 @@ public static class StrategyViewPrefabBuilder
         StrategyDropdownItemView dropdownItemRowTemplate = CreateStrategyDropdownItemTemplate(
             layoutTemplates,
             "DropdownItemRowTemplate",
-            new RectInt(0, 4, 180, 70),
-            new RectInt(0, 0, 180, 48),
-            new RectInt(0, 48, 180, 18),
+            new RectInt(0, 0, 195, 63),
+            new RectInt(36, 6, 122, 50),
+            new RectInt(0, 50, 195, 13),
             null,
             "Nebulon-B Frigate",
-            12,
-            TextAlignmentOptions.Top
+            10,
+            TextAlignmentOptions.Top,
+            true
         );
 
         AssignReference(view, "backgroundImage", background);
@@ -3039,7 +3040,8 @@ public static class StrategyViewPrefabBuilder
             null,
             "Espionage",
             13,
-            TextAlignmentOptions.Top
+            TextAlignmentOptions.Top,
+            false
         );
         RectTransform dropdownContentPaddingTemplate = CreateChildLayer(
             "DropdownContentPaddingTemplate",
@@ -3207,6 +3209,7 @@ public static class StrategyViewPrefabBuilder
     /// <param name="previewText">The preview label.</param>
     /// <param name="fontSize">The preview font size.</param>
     /// <param name="alignment">The preview text alignment.</param>
+    /// <param name="preserveImageRect">Whether rendering preserves the authored image rectangle.</param>
     /// <returns>The configured dropdown item template.</returns>
     private static StrategyDropdownItemView CreateStrategyDropdownItemTemplate(
         Transform parent,
@@ -3217,7 +3220,8 @@ public static class StrategyViewPrefabBuilder
         string previewImagePath,
         string previewText,
         float fontSize,
-        TextAlignmentOptions alignment
+        TextAlignmentOptions alignment,
+        bool preserveImageRect
     )
     {
         GameObject row = new GameObject(
@@ -3277,6 +3281,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "button", button);
         AssignReference(view, "itemImage", itemImage);
         AssignReference(view, "itemTextField", itemText);
+        AssignBool(view, "preserveAuthoredImageRect", preserveImageRect);
         AddTemplateLayoutElement(row.GetComponent<RectTransform>());
         row.SetActive(false);
         return view;
@@ -8293,6 +8298,20 @@ public static class StrategyViewPrefabBuilder
         SerializedObject serializedObject = new SerializedObject(target);
         SerializedProperty property = FindRequiredProperty(target, serializedObject, propertyName);
         property.floatValue = value;
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
+    /// Assigns one required serialized Boolean value.
+    /// </summary>
+    /// <param name="target">The serialized target.</param>
+    /// <param name="propertyName">The serialized property name.</param>
+    /// <param name="value">The value to assign.</param>
+    private static void AssignBool(Object target, string propertyName, bool value)
+    {
+        SerializedObject serializedObject = new SerializedObject(target);
+        SerializedProperty property = FindRequiredProperty(target, serializedObject, propertyName);
+        property.boolValue = value;
         serializedObject.ApplyModifiedPropertiesWithoutUndo();
     }
 

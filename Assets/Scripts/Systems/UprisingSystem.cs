@@ -146,16 +146,19 @@ namespace Rebellion.Systems
             List<GameResult> results = new List<GameResult>();
             bool objectiveAchieved = false;
 
-            foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
-            {
-                if (!mission.RollParticipantSuccess(participant, _provider, _game))
-                    continue;
+            mission.ResolveSuccessfulParticipants(
+                _provider,
+                _game,
+                participant =>
+                {
+                    if (objectiveAchieved && mission is SubdueUprisingMission)
+                        return;
 
-                objectiveAchieved = ResolveMissionAttempt(mission, results);
-                if (objectiveAchieved)
-                    mission.ImproveMissionParticipantRating(participant);
-                break;
-            }
+                    objectiveAchieved = ResolveMissionAttempt(mission, results);
+                    if (objectiveAchieved)
+                        mission.ImproveMissionParticipantRating(participant);
+                }
+            );
 
             MissionOutcome outcome = objectiveAchieved
                 ? MissionOutcome.Success
@@ -1154,18 +1157,12 @@ namespace Rebellion.Systems
             if (shift == 0)
                 return;
 
-            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
-            if (parentSystem != null && parentSystem.SystemType == PlanetSystemType.CoreSystem)
-            {
-                bool penaltyApplies = faction.Settings.WeakSupportPenaltyTrigger switch
-                {
-                    SupportShiftCondition.Positive => shift > 0,
-                    SupportShiftCondition.Negative => shift < 0,
-                    _ => false,
-                };
-                if (penaltyApplies)
-                    shift /= _game.Config.SupportShift.WeakSupportPenaltyDivisor;
-            }
+            shift = PlanetaryControlSystem.ApplyCoreWeakSupportPenalty(
+                planet,
+                faction,
+                shift,
+                _game.Config.SupportShift.WeakSupportPenaltyDivisor
+            );
 
             _planetaryControl.ShiftPopularSupport(planet, faction, shift);
         }

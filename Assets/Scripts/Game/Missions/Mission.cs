@@ -12,6 +12,35 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Missions
 {
     /// <summary>
+    /// Describes one hostile unit that can detect a mission or confront a detected participant.
+    /// </summary>
+    internal sealed class MissionDetector
+    {
+        /// <summary>
+        /// Creates a detector with its original detection context.
+        /// </summary>
+        /// <param name="unit">The detecting regiment, starfighter, or capital ship.</param>
+        /// <param name="commander">The matching local commander, when one is present.</param>
+        /// <param name="rating">The unit's authored detection rating.</param>
+        /// <param name="isFleetBased">Whether the detector belongs to a fleet.</param>
+        internal MissionDetector(ISceneNode unit, Officer commander, int rating, bool isFleetBased)
+        {
+            Unit = unit;
+            Commander = commander;
+            Rating = rating;
+            IsFleetBased = isFleetBased;
+        }
+
+        internal ISceneNode Unit { get; }
+
+        internal Officer Commander { get; }
+
+        internal int Rating { get; }
+
+        internal bool IsFleetBased { get; }
+    }
+
+    /// <summary>
     /// Base scene node for missions and their assigned participants.
     /// </summary>
     public abstract class Mission : ContainerNode
@@ -47,12 +76,12 @@ namespace Rebellion.Game.Missions
         public List<IMissionParticipant> DecoyParticipants { get; set; }
 
         [PersistableIgnore]
-        private HashSet<string> _participantInstanceIds = new HashSet<string>(
+        private HashSet<string> _mainParticipantInstanceIds = new HashSet<string>(
             StringComparer.Ordinal
         );
 
         [PersistableIgnore]
-        private bool _hasCapturedParticipantIds;
+        private bool _hasCapturedMainParticipantIds;
 
         // Mission configuration.
         public OfficerRating ParticipantRating { get; set; }
@@ -61,9 +90,6 @@ namespace Rebellion.Game.Missions
         // Mission progress.
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }
-
-        [PersistableIgnore]
-        public OfficerRating DecoyParticipantRating { get; set; }
 
         /// <summary>
         /// Parameterless constructor for deserialization.
@@ -144,11 +170,6 @@ namespace Rebellion.Game.Missions
         public virtual bool CanceledOnOwnershipChange => true;
 
         /// <summary>
-        /// Returns whether detected mission participants suffer capture, death, or destruction.
-        /// </summary>
-        internal virtual bool AppliesFoiledParticipantConsequences => true;
-
-        /// <summary>
         /// Returns whether successful participants stay at the mission location regardless of ownership.
         /// </summary>
         internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
@@ -159,7 +180,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <returns>The abort reason, or null when the mission may advance.</returns>
         public virtual MissionCompletionReason? GetAbortReason(GameRoot game) =>
-            MainParticipants.Count == 0 || HaveParticipantsChanged()
+            MainParticipants.Count == 0 || HaveMainParticipantsChanged()
                 ? MissionCompletionReason.Failure
                 : null;
 
@@ -187,7 +208,7 @@ namespace Rebellion.Game.Missions
         {
             CurrentProgress = 0;
             MaxProgress = maxProgress;
-            CaptureParticipantIDs();
+            CaptureMainParticipantIDs();
             HasInitiated = true;
         }
 
@@ -229,137 +250,115 @@ namespace Rebellion.Game.Missions
             GetAllParticipants().Any(participant => participant.Movement != null);
 
         /// <summary>
-        /// Captures the current mission participant IDs.
+        /// Captures the current required main-participant IDs.
         /// </summary>
-        private void CaptureParticipantIDs()
+        private void CaptureMainParticipantIDs()
         {
-            _participantInstanceIds = GetParticipantIDs();
-            _hasCapturedParticipantIds = true;
+            _mainParticipantInstanceIds = GetMainParticipantIDs();
+            _hasCapturedMainParticipantIds = true;
         }
 
         /// <summary>
-        /// Returns whether the mission participant list differs from mission start.
+        /// Returns whether the required main-participant list differs from mission start.
         /// </summary>
-        /// <returns>True if a participant was added or removed.</returns>
-        private bool HaveParticipantsChanged()
+        /// <returns>True if a main participant was added or removed.</returns>
+        private bool HaveMainParticipantsChanged()
         {
-            if (!_hasCapturedParticipantIds)
+            if (!_hasCapturedMainParticipantIds)
             {
-                CaptureParticipantIDs();
+                CaptureMainParticipantIDs();
                 return false;
             }
 
-            HashSet<string> currentParticipantIds = GetParticipantIDs();
-            if (currentParticipantIds.Count != _participantInstanceIds.Count)
+            HashSet<string> currentParticipantIds = GetMainParticipantIDs();
+            if (currentParticipantIds.Count != _mainParticipantInstanceIds.Count)
                 return true;
 
-            return currentParticipantIds.Any(id => !_participantInstanceIds.Contains(id));
+            return currentParticipantIds.Any(id => !_mainParticipantInstanceIds.Contains(id));
         }
 
         /// <summary>
-        /// Returns all current participant IDs.
+        /// Returns all current main-participant IDs.
         /// </summary>
-        /// <returns>The current participant ID set.</returns>
-        private HashSet<string> GetParticipantIDs() =>
-            GetAllParticipants()
+        /// <returns>The current main-participant ID set.</returns>
+        private HashSet<string> GetMainParticipantIDs() =>
+            MainParticipants
                 .Where(participant => !string.IsNullOrEmpty(participant.InstanceID))
                 .Select(participant => participant.InstanceID)
                 .ToHashSet(StringComparer.Ordinal);
 
         /// <summary>
-        /// Returns the participant's mission success probability.
+        /// Returns the participant's raw mission score before table lookup.
         /// </summary>
         /// <param name="agent">The participant whose rating is evaluated.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>The participant's success probability.</returns>
-        protected virtual double GetAgentProbability(IMissionParticipant agent, GameRoot game)
+        /// <returns>The participant's raw mission score, or null when it cannot be resolved.</returns>
+        protected virtual int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
-            int score = agent.GetEffectiveRating(ParticipantRating);
-            return LookupSuccessProbability(game, score);
+            return agent?.GetEffectiveRating(ParticipantRating);
         }
 
         /// <summary>
-        /// Returns the sum of defense ratings of all enemy regiments on the target planet.
+        /// Returns the participant's mission success probability.
         /// </summary>
-        /// <returns>Total defense rating, or 0 if no valid planet target.</returns>
-        protected internal double GetDefenseScore()
+        /// <param name="agent">The participant whose raw score is evaluated.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The configured success probability, or zero when no score can be resolved.</returns>
+        protected virtual double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
-            Planet planet = GetParent() as Planet;
-            if (planet == null)
-                return 0;
-
-            double score = 0;
-            foreach (ISceneNode child in planet.GetChildren())
-            {
-                if (child is Regiment regiment && regiment.OwnerInstanceID != OwnerInstanceID)
-                    score += regiment.DefenseRating;
-            }
-            return score;
+            int? score = GetAgentScore(agent, game);
+            return score.HasValue ? LookupSuccessProbability(game, score.Value) : 0;
         }
 
         /// <summary>
         /// Returns the decoy participant's success probability.
         /// </summary>
         /// <param name="decoy">The decoy participant to evaluate.</param>
+        /// <param name="detector">The detector being diverted.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>The decoy success probability.</returns>
-        protected double GetDecoyProbability(IMissionParticipant decoy, GameRoot game)
+        private double GetDecoyProbability(
+            IMissionParticipant decoy,
+            MissionDetector detector,
+            GameRoot game
+        )
         {
-            int bestDefenderEspionage = 0;
-            if (GetParent() is Planet planet)
-            {
-                foreach (Officer officer in planet.Officers)
-                {
-                    if (officer.OwnerInstanceID != OwnerInstanceID && !officer.IsCaptured)
-                    {
-                        int esp = officer.GetEffectiveRating(OfficerRating.Espionage);
-                        if (esp > bestDefenderEspionage)
-                            bestDefenderEspionage = esp;
-                    }
-                }
-            }
-
-            if (DecoyParticipantRating == OfficerRating.None)
-                throw new InvalidOperationException(
-                    $"{GetType().Name} cannot resolve a decoy check without a decoy participant rating."
-                );
-
-            int decoyEspionage = decoy.GetEffectiveRating(DecoyParticipantRating);
-            int targetDefense = (int)GetDefenseScore();
+            int decoyEspionage = decoy.GetEffectiveRating(OfficerRating.Espionage);
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
             int scaledDefender =
-                bestDefenderEspionage
+                (detector.Commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
                 * missionTables.DecoyDefenderScalingPercent
                 / _ratingPercentScale;
-            int score = decoyEspionage - targetDefense - scaledDefender;
-            return LookupProbability(missionTables.Decoy, score);
+            int score = decoyEspionage - detector.Rating - scaledDefender;
+            Dictionary<int, int> table = detector.IsFleetBased
+                ? missionTables.FleetDecoy
+                : missionTables.PlanetaryDecoy;
+            return LookupProbability(table, score);
         }
 
         /// <summary>
         /// Returns the probability that enemy forces detect the mission.
         /// </summary>
-        /// <param name="defenseScore">Sum of enemy regiment defense ratings on the target planet.</param>
+        /// <param name="detectorRating">The selected enemy detector's detection rating.</param>
+        /// <param name="defender">The commander paired with the selected detector, if present.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>The foil probability.</returns>
-        protected virtual double GetFoilProbability(double defenseScore, GameRoot game)
+        protected virtual double GetFoilProbability(
+            int detectorRating,
+            Officer defender,
+            GameRoot game
+        )
         {
-            if (GetParent() is Planet planet && planet.OwnerInstanceID == OwnerInstanceID)
-                return 0;
-
-            Officer defender = FindDefender();
-            if (defender == null)
-                return 0;
-
-            int defenderEspionage = defender.GetEffectiveRating(OfficerRating.Espionage);
+            int defenderEspionage = defender?.GetEffectiveRating(OfficerRating.Espionage) ?? 0;
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
             int scaledDefender =
                 defenderEspionage * missionTables.FoilDefenderScalingPercent / _ratingPercentScale;
-            int supportRating = GetSupportRating(game);
+            int specialForcesPenalty = MainParticipants.OfType<SpecialForces>().Count();
             int score =
-                GetAveragedRating(ParticipantRating)
+                GetAveragedRating(OfficerRating.Espionage)
                 - scaledDefender
-                - (int)defenseScore
-                - supportRating
+                - detectorRating
+                - specialForcesPenalty
                 - missionTables.FoilFlatScoreAdjustment;
             return LookupProbability(missionTables.Foil, score);
         }
@@ -423,28 +422,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Finds the first eligible enemy officer on the mission's target planet.
-        /// Returns null if no eligible defender exists.
-        /// </summary>
-        /// <returns>A defending officer, or null.</returns>
-        internal Officer FindDefender()
-        {
-            Planet planet = GetParent() as Planet;
-            if (planet == null)
-                return null;
-
-            HashSet<string> participantIds = GetParticipantIDs();
-            return planet
-                .GetAllOfficers()
-                .FirstOrDefault(o =>
-                    o.GetOwnerInstanceID() != OwnerInstanceID
-                    && !participantIds.Contains(o.InstanceID)
-                    && !o.IsCaptured
-                    && !o.IsKilled
-                );
-        }
-
-        /// <summary>
         /// Returns the average effective rating for the mission's main participants.
         /// </summary>
         /// <param name="rating">The rating to average.</param>
@@ -459,86 +436,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the best available defensive support rating for the mission location.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The support rating, or 0 when no support applies.</returns>
-        private int GetSupportRating(GameRoot game)
-        {
-            ISceneNode location = ResolveLocation(game);
-            string locationOwnerId = location?.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(locationOwnerId))
-                return 0;
-
-            Planet planet = ResolveSupportPlanet(location);
-            if (planet == null)
-                return 0;
-
-            return GetBestSupportRating(planet, locationOwnerId, GetContainerID(location));
-        }
-
-        /// <summary>
-        /// Returns the live mission location used by detection support checks.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The live location node, or the mission parent when no location node is found.</returns>
-        private ISceneNode ResolveLocation(GameRoot game)
-        {
-            return game?.GetSceneNodeByInstanceID<ISceneNode>(LocationInstanceID) ?? GetParent();
-        }
-
-        /// <summary>
-        /// Returns the planet whose children can provide support for the location.
-        /// </summary>
-        /// <param name="location">The mission location.</param>
-        /// <returns>The support planet, or null when none can be resolved.</returns>
-        private Planet ResolveSupportPlanet(ISceneNode location)
-        {
-            if (location is Planet planet)
-                return planet;
-
-            return location?.GetParentOfType<Planet>() ?? GetParent() as Planet;
-        }
-
-        /// <summary>
-        /// Returns the strongest support rating from candidates on the support planet.
-        /// </summary>
-        /// <param name="planet">The planet containing support candidates.</param>
-        /// <param name="locationOwnerId">The faction that owns the location.</param>
-        /// <param name="locationContainer">The location's containing node ID.</param>
-        /// <returns>The selected support rating.</returns>
-        private int GetBestSupportRating(
-            Planet planet,
-            string locationOwnerId,
-            string locationContainer
-        )
-        {
-            int sameContainerRating = 0;
-            int otherContainerRating = 0;
-
-            foreach (
-                IMissionParticipant candidate in planet.GetChildren<IMissionParticipant>(_ => true)
-            )
-            {
-                if (candidate.GetOwnerInstanceID() != locationOwnerId || !CanSupportFoil(candidate))
-                    continue;
-
-                int value = candidate.GetEffectiveRating(OfficerRating.Espionage);
-                if (GetContainerID(candidate) == locationContainer)
-                    sameContainerRating = Math.Max(sameContainerRating, value);
-                else
-                    otherContainerRating = Math.Max(otherContainerRating, value);
-            }
-
-            return sameContainerRating != 0 ? sameContainerRating : otherContainerRating;
-        }
-
-        /// <summary>
-        /// Returns whether a participant can contribute defensive support to a detection check.
+        /// Returns whether a participant can command a detector during a detection check.
         /// </summary>
         /// <param name="candidate">The support candidate.</param>
-        /// <returns>True when the candidate can support detection.</returns>
-        private static bool CanSupportFoil(IMissionParticipant candidate)
+        /// <returns>True when the candidate can command a detector.</returns>
+        private static bool IsEligibleDetectorCommander(IMissionParticipant candidate)
         {
             if (candidate is Officer officer)
             {
@@ -550,16 +452,6 @@ namespace Rebellion.Game.Missions
             }
 
             return candidate is SpecialForces specialForces && specialForces.IsMovable();
-        }
-
-        /// <summary>
-        /// Returns the container ID used to group target and support candidate locations.
-        /// </summary>
-        /// <param name="node">The node to inspect.</param>
-        /// <returns>The parent ID when present; otherwise the node ID or an empty string.</returns>
-        private static string GetContainerID(ISceneNode node)
-        {
-            return node?.GetParent()?.GetInstanceID() ?? node?.GetInstanceID() ?? string.Empty;
         }
 
         /// <summary>
@@ -577,19 +469,132 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether any main participant succeeds.
+        /// Resolves main participants using the original character-first attempt order.
+        /// Officer probabilities are calculated before any attempts and ordered from lowest to
+        /// highest. Special forces then attempt the mission in their selected order. Resolution
+        /// can stop after the first success for missions whose objective permits only one winner.
         /// </summary>
         /// <param name="provider">RNG provider for rolling against the success probability.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if at least one participant succeeds.</returns>
-        protected bool CheckMissionSuccess(IRandomNumberProvider provider, GameRoot game)
+        /// <param name="onParticipantSucceeded">Optional action applied immediately after each successful attempt.</param>
+        /// <param name="stopAfterFirstSuccess">Whether resolution stops after the first successful attempt.</param>
+        /// <returns>The participants whose attempts succeeded, in attempt order.</returns>
+        protected internal List<IMissionParticipant> ResolveSuccessfulParticipants(
+            IRandomNumberProvider provider,
+            GameRoot game,
+            Action<IMissionParticipant> onParticipantSucceeded = null,
+            bool stopAfterFirstSuccess = false
+        )
         {
-            foreach (IMissionParticipant participant in MainParticipants)
+            List<(Officer Participant, double Probability)> officerAttempts = MainParticipants
+                .OfType<Officer>()
+                .Select(officer =>
+                    (Participant: officer, Probability: GetAgentProbability(officer, game))
+                )
+                .OrderBy(attempt => attempt.Probability)
+                .ToList();
+            List<IMissionParticipant> successfulParticipants = new List<IMissionParticipant>();
+
+            foreach ((Officer participant, double probability) in officerAttempts)
             {
-                if (RollParticipantSuccess(participant, provider, game))
-                    return true;
+                if (!RollProbability(provider, probability))
+                    continue;
+
+                successfulParticipants.Add(participant);
+                onParticipantSucceeded?.Invoke(participant);
+                if (stopAfterFirstSuccess)
+                    return successfulParticipants;
             }
-            return false;
+
+            foreach (SpecialForces specialForces in MainParticipants.OfType<SpecialForces>())
+            {
+                if (!RollParticipantSuccess(specialForces, provider, game))
+                    continue;
+
+                successfulParticipants.Add(specialForces);
+                onParticipantSucceeded?.Invoke(specialForces);
+                if (stopAfterFirstSuccess)
+                    return successfulParticipants;
+            }
+
+            return successfulParticipants;
+        }
+
+        /// <summary>
+        /// Rolls the original post-injury death check, which applies only to minor personnel.
+        /// Main characters survive mission injuries regardless of the configured probability.
+        /// </summary>
+        /// <param name="officer">The injured officer.</param>
+        /// <param name="provider">RNG provider for the percentage roll.</param>
+        /// <param name="deathProbability">Configured probability that minor personnel die.</param>
+        /// <returns>True when the injured minor officer dies.</returns>
+        protected static bool RollPostInjuryDeath(
+            Officer officer,
+            IRandomNumberProvider provider,
+            int deathProbability
+        )
+        {
+            if (officer?.IsMain != false)
+                return false;
+
+            int clampedProbability = Math.Min(100, Math.Max(0, deathProbability));
+            return provider.NextInt(0, 100) < clampedProbability;
+        }
+
+        /// <summary>
+        /// Applies the injury and minor-character death checks used when capture is attempted.
+        /// </summary>
+        /// <param name="officer">The officer attempting to avoid capture.</param>
+        /// <param name="opponent">The entity responsible for the capture attempt.</param>
+        /// <param name="planet">The planet where the confrontation occurs.</param>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">RNG provider for injury and death rolls.</param>
+        /// <param name="results">The result collection receiving injury or death results.</param>
+        /// <returns>True when the injury kills the officer.</returns>
+        internal static bool ApplyCaptureEvasionInjury(
+            Officer officer,
+            IGameEntity opponent,
+            Planet planet,
+            GameRoot game,
+            IRandomNumberProvider provider,
+            List<GameResult> results
+        )
+        {
+            int injuryChance = Math.Max(
+                game.Config.DuelResolution.MinimumInjuryChance,
+                game.Config.DuelResolution.CaptureEvasionInjuryBaseChance
+                    - officer.GetEffectiveRating(OfficerRating.Combat)
+            );
+            if (provider.NextInt(0, 100) >= Math.Min(100, injuryChance))
+                return false;
+
+            int injury =
+                game.Config.DuelResolution.InjuryBase
+                + provider.NextInt(0, injuryChance + 1)
+                + provider.NextInt(0, game.Config.DuelResolution.InjurySecondaryRollMaximum + 1);
+            officer.ApplyInjury(injury, game.Config.Recovery.MaxInjuryPoints);
+            results.Add(
+                new OfficerInjuredResult
+                {
+                    Officer = officer,
+                    Severity = injury,
+                    Tick = game.CurrentTick,
+                }
+            );
+
+            if (!RollPostInjuryDeath(officer, provider, game.Config.Assassination.KillProbability))
+                return false;
+
+            results.Add(
+                new OfficerKilledResult
+                {
+                    TargetOfficer = officer,
+                    Assassin = opponent,
+                    Context = planet,
+                    Tick = game.CurrentTick,
+                }
+            );
+            return true;
         }
 
         /// <summary>
@@ -606,41 +611,216 @@ namespace Rebellion.Game.Missions
         )
         {
             double successThreshold = GetAgentProbability(participant, game);
-            double rolledValue = provider.NextDouble() * 100;
-            return IsSuccessfulProbabilityRoll(rolledValue, successThreshold);
+            return RollProbability(provider, successThreshold);
         }
 
         /// <summary>
-        /// Picks one random decoy participant and rolls their decoy probability.
-        /// Returns false if no decoys are assigned.
+        /// Rolls once against a previously calculated success probability.
         /// </summary>
+        /// <param name="provider">RNG provider for the percentage roll.</param>
+        /// <param name="successThreshold">Probability required for success.</param>
+        /// <returns>True when the roll succeeds.</returns>
+        private bool RollProbability(IRandomNumberProvider provider, double successThreshold)
+        {
+            return IsSuccessfulProbabilityRoll(provider.NextDouble() * 100, successThreshold);
+        }
+
+        /// <summary>
+        /// Rolls one selected decoy participant against one detector.
+        /// </summary>
+        /// <param name="decoy">The decoy participant making the attempt.</param>
         /// <param name="provider">RNG provider for selection and probability roll.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="detector">The detector the decoy is attempting to divert.</param>
         /// <returns>True if the selected decoy succeeds.</returns>
-        protected bool CheckDecoySuccessful(IRandomNumberProvider provider, GameRoot game)
+        private bool CheckDecoySuccessful(
+            IMissionParticipant decoy,
+            IRandomNumberProvider provider,
+            GameRoot game,
+            MissionDetector detector
+        )
         {
-            if (DecoyParticipants.Count == 0)
+            if (decoy == null || detector == null)
                 return false;
 
-            IMissionParticipant decoy = DecoyParticipants[
-                provider.NextInt(0, DecoyParticipants.Count)
-            ];
             return IsSuccessfulProbabilityRoll(
                 provider.NextDouble() * 100,
-                GetDecoyProbability(decoy, game)
+                GetDecoyProbability(decoy, detector, game)
             );
         }
 
         /// <summary>
-        /// Rolls the mission detection check.
+        /// Returns hostile detector units in the original foil traversal order.
+        /// </summary>
+        /// <returns>The ordered detector collection.</returns>
+        internal List<MissionDetector> GetDetectors()
+        {
+            if (GetParent() is not Planet planet)
+                return new List<MissionDetector>();
+
+            List<MissionDetector> detectors = new List<MissionDetector>();
+            foreach (
+                Starfighter starfighter in planet.GetChildren<Starfighter>(
+                    IsEligibleDetector,
+                    recurse: false
+                )
+            )
+                detectors.Add(CreateDetector(planet, starfighter));
+
+            foreach (
+                Regiment regiment in planet.GetChildren<Regiment>(
+                    IsEligibleDetector,
+                    recurse: false
+                )
+            )
+                detectors.Add(CreateDetector(planet, regiment));
+
+            foreach (Fleet fleet in planet.GetChildren<Fleet>(_ => true, recurse: false))
+            {
+                foreach (CapitalShip capitalShip in fleet.CapitalShips)
+                {
+                    if (IsEligibleDetector(capitalShip))
+                        detectors.Add(CreateDetector(planet, capitalShip));
+
+                    foreach (
+                        Starfighter starfighter in capitalShip.GetChildren<Starfighter>(
+                            IsEligibleDetector,
+                            recurse: false
+                        )
+                    )
+                        detectors.Add(CreateDetector(planet, starfighter));
+
+                    foreach (
+                        Regiment regiment in capitalShip.GetChildren<Regiment>(
+                            IsEligibleDetector,
+                            recurse: false
+                        )
+                    )
+                        detectors.Add(CreateDetector(planet, regiment));
+                }
+            }
+
+            return detectors;
+        }
+
+        /// <summary>
+        /// Creates a detector and resolves its matching local commander.
+        /// </summary>
+        /// <param name="planet">The mission planet.</param>
+        /// <param name="unit">The detecting unit.</param>
+        /// <returns>The resolved detector.</returns>
+        private static MissionDetector CreateDetector(Planet planet, ISceneNode unit)
+        {
+            return new MissionDetector(
+                unit,
+                FindDetectorCommander(planet, unit),
+                GetDetectorRating(unit),
+                unit.GetParentOfType<Fleet>() != null
+            );
+        }
+
+        /// <summary>
+        /// Selects one detector uniformly for a post-foil participant encounter.
+        /// </summary>
+        /// <param name="detectors">The remaining active detectors.</param>
+        /// <param name="provider">RNG provider used for selection.</param>
+        /// <returns>The selected detector, or null when none remain.</returns>
+        internal static MissionDetector SelectDetector(
+            IReadOnlyList<MissionDetector> detectors,
+            IRandomNumberProvider provider
+        )
+        {
+            if (detectors == null || detectors.Count == 0)
+                return null;
+
+            return detectors[provider.NextInt(0, detectors.Count)];
+        }
+
+        /// <summary>
+        /// Returns whether a scene object may attempt to detect this mission.
+        /// </summary>
+        /// <param name="candidate">The potential hostile detector.</param>
+        /// <returns>True for a completed, stationary hostile unit with a detection rating.</returns>
+        private bool IsEligibleDetector(ISceneNode candidate)
+        {
+            string candidateOwnerId = candidate?.GetOwnerInstanceID();
+            if (
+                string.IsNullOrEmpty(candidateOwnerId)
+                || candidateOwnerId == OwnerInstanceID
+                || candidate
+                    is not IManufacturable { ManufacturingStatus: ManufacturingStatus.Complete }
+                || candidate is IMovable movable && movable.GetTransitMovement() != null
+                || candidate.GetParentOfType<Fleet>()?.GetTransitMovement() != null
+            )
+                return false;
+
+            return candidate is Regiment or Starfighter or CapitalShip;
+        }
+
+        /// <summary>
+        /// Returns the authored detection rating for a detector unit.
+        /// </summary>
+        /// <param name="detector">The selected detector.</param>
+        /// <returns>The unit's detection rating.</returns>
+        private static int GetDetectorRating(ISceneNode detector) =>
+            detector switch
+            {
+                Regiment regiment => regiment.DetectionRating,
+                Starfighter starfighter => starfighter.DetectionRating,
+                CapitalShip capitalShip => capitalShip.DetectionRating,
+                _ => 0,
+            };
+
+        /// <summary>
+        /// Finds the commander type paired with the selected detector in its local container.
+        /// </summary>
+        /// <param name="planet">The mission planet.</param>
+        /// <param name="detector">The selected hostile detector.</param>
+        /// <returns>The matching commander, or null when none is assigned.</returns>
+        private static Officer FindDetectorCommander(Planet planet, ISceneNode detector)
+        {
+            OfficerRank requiredRank = detector switch
+            {
+                Starfighter => OfficerRank.Commander,
+                CapitalShip => OfficerRank.Admiral,
+                Regiment => OfficerRank.General,
+                _ => OfficerRank.None,
+            };
+            if (requiredRank == OfficerRank.None)
+                return null;
+
+            Fleet fleet = detector.GetParentOfType<Fleet>();
+            IEnumerable<Officer> candidates =
+                fleet != null
+                    ? fleet.GetChildren<Officer>(_ => true)
+                    : planet
+                        .GetChildren<Officer>(_ => true)
+                        .Where(officer => officer.GetParentOfType<Fleet>() == null);
+            string defenderOwnerId = detector.GetOwnerInstanceID();
+            return candidates.FirstOrDefault(officer =>
+                officer.GetOwnerInstanceID() == defenderOwnerId
+                && officer.CurrentRank == requiredRank
+                && IsEligibleDetectorCommander(officer)
+            );
+        }
+
+        /// <summary>
+        /// Rolls one detector's mission foil check.
         /// </summary>
         /// <param name="provider">RNG provider for the foil roll.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="detector">The detector making this attempt.</param>
         /// <returns>True if the mission is detected this tick.</returns>
-        internal bool RollFoilCheck(IRandomNumberProvider provider, GameRoot game)
+        internal bool RollFoilCheck(
+            IRandomNumberProvider provider,
+            GameRoot game,
+            MissionDetector detector
+        )
         {
-            double defenseScore = GetDefenseScore();
-            double foilProbability = GetFoilProbability(defenseScore, game);
+            if (detector == null)
+                return false;
+
+            double foilProbability = GetFoilProbability(detector.Rating, detector.Commander, game);
 
             if (foilProbability <= 0)
                 return false;
@@ -653,10 +833,17 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="provider">RNG provider for decoy rolls.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if a decoy prevents capture.</returns>
-        internal bool RollDecoyCheck(IRandomNumberProvider provider, GameRoot game)
+        /// <param name="decoy">The decoy selected for this attempt.</param>
+        /// <param name="detector">The detector being diverted.</param>
+        /// <returns>True if the decoy diverts the detector.</returns>
+        internal bool RollDecoyCheck(
+            IRandomNumberProvider provider,
+            GameRoot game,
+            IMissionParticipant decoy,
+            MissionDetector detector
+        )
         {
-            return CheckDecoySuccessful(provider, game);
+            return CheckDecoySuccessful(decoy, provider, game, detector);
         }
 
         /// <summary>
@@ -671,7 +858,11 @@ namespace Rebellion.Game.Missions
             MissionOutcome outcome;
             MissionCompletionReason completionReason;
 
-            if (CheckMissionSuccess(provider, game))
+            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
+                provider,
+                game
+            );
+            if (successfulParticipants.Count > 0)
             {
                 if (!IsMissionSatisfied(game))
                 {
@@ -683,8 +874,9 @@ namespace Rebellion.Game.Missions
                 {
                     outcome = MissionOutcome.Success;
                     completionReason = MissionCompletionReason.Success;
-                    results.AddRange(OnSuccess(game, provider));
-                    ImproveMissionParticipantRatings();
+                    results.AddRange(OnSuccess(game, provider, successfulParticipants[0]));
+                    foreach (IMissionParticipant participant in successfulParticipants)
+                        ImproveMissionParticipantRating(participant);
                 }
             }
             else
@@ -789,19 +981,10 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Improves eligible mission participants' base ratings.
-        /// </summary>
-        protected virtual void ImproveMissionParticipantRatings()
-        {
-            foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
-                ImproveMissionParticipantRating(participant);
-        }
-
-        /// <summary>
-        /// Improves an eligible officer's base rating for this mission.
+        /// Improves an eligible officer's base rating after that participant succeeds.
         /// </summary>
         /// <param name="participant">The successful mission participant.</param>
-        internal void ImproveMissionParticipantRating(IMissionParticipant participant)
+        internal virtual void ImproveMissionParticipantRating(IMissionParticipant participant)
         {
             if (participant is Officer officer && participant.CanImproveMissionRating)
                 officer.IncrementBaseRating(ParticipantRating);
@@ -819,10 +1002,12 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for any randomized effects.</param>
+        /// <param name="successfulParticipant">The participant whose objective roll succeeded.</param>
         /// <returns>Results produced by the success outcome; empty by default.</returns>
         protected virtual List<GameResult> OnSuccess(
             GameRoot game,
-            IRandomNumberProvider provider
+            IRandomNumberProvider provider,
+            IMissionParticipant successfulParticipant
         ) => new List<GameResult>();
 
         /// <summary>

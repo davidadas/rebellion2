@@ -97,6 +97,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
+        public void GetHeadquartersDestroyedCutscenePath_HeadquartersLost_ReturnsDefenderMovie()
+        {
+            Faction defender = new Faction { InstanceID = "defender" };
+            FactionThemeLibrary themes = new FactionThemeLibrary(
+                new FactionThemes
+                {
+                    new FactionTheme { FactionInstanceID = "DEFAULT" },
+                    new FactionTheme
+                    {
+                        FactionInstanceID = defender.InstanceID,
+                        HeadquartersDestroyedCutscenePath = "defender-headquarters-destroyed",
+                    },
+                }
+            );
+
+            string path = GameFlowController.GetHeadquartersDestroyedCutscenePath(
+                themes,
+                new HeadquartersCapturedResult { Defender = defender }
+            );
+
+            Assert.AreEqual("defender-headquarters-destroyed", path);
+        }
+
+        [Test]
         public void Update_NoActiveGame_DoesNotThrow()
         {
             Assert.DoesNotThrow(() => InvokePrivate("Update"));

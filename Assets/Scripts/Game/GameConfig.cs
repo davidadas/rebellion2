@@ -331,8 +331,6 @@ namespace Rebellion.Game
 
             public int BlockadeOpposeShift { get; set; }
 
-            public int DiplomacyCompletionSupportBonus { get; set; }
-
             public int DiplomacyOwnedPlanetSupportBase { get; set; }
 
             public int DiplomacyOwnedPlanetSupportRange { get; set; }
@@ -760,7 +758,9 @@ namespace Rebellion.Game
 
             public Dictionary<int, int> Assassination { get; set; } = new Dictionary<int, int>();
 
-            public Dictionary<int, int> Decoy { get; set; } = new Dictionary<int, int>();
+            public Dictionary<int, int> PlanetaryDecoy { get; set; } = new Dictionary<int, int>();
+
+            public Dictionary<int, int> FleetDecoy { get; set; } = new Dictionary<int, int>();
 
             public int DecoyDefenderScalingPercent { get; set; }
 
@@ -777,11 +777,11 @@ namespace Rebellion.Game
 
             public Dictionary<int, int> Foil { get; set; } = new Dictionary<int, int>();
 
-            public Dictionary<int, int> KillOrCapture { get; set; } = new Dictionary<int, int>();
+            public Dictionary<int, int> RelativeEvasion { get; set; } = new Dictionary<int, int>();
 
             public int DefaultSuccessProbability { get; set; } = 50;
 
-            public int DefaultKillOrCaptureProbability { get; set; } = 50;
+            public int DefaultRelativeEvasionProbability { get; set; } = 50;
 
             public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
 

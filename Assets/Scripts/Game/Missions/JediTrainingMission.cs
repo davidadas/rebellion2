@@ -189,10 +189,15 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Jedi training targets own planets and is never foiled.
         /// </summary>
-        /// <param name="defenseScore">The defense score, unused because training cannot be foiled.</param>
+        /// <param name="detectorRating">The detector rating, unused because training cannot be foiled.</param>
+        /// <param name="defender">The defender, unused because training cannot be foiled.</param>
         /// <param name="game">The current game state, unused because training cannot be foiled.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
+        protected override double GetFoilProbability(
+            int detectorRating,
+            Officer defender,
+            GameRoot game
+        ) => 0;
 
         /// <summary>
         /// Resolves one training attempt for each selected officer and completes the mission.
@@ -207,7 +212,11 @@ namespace Rebellion.Game.Missions
 
             if (trainer != null)
             {
-                foreach (Officer officer in MainParticipants.OfType<Officer>())
+                foreach (
+                    Officer officer in MainParticipants
+                        .OfType<Officer>()
+                        .OrderBy(officer => trainer.ForceRank - officer.ForceRank)
+                )
                 {
                     ForceTrainingResult trainingResult = TrainOfficer(
                         officer,

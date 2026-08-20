@@ -160,6 +160,63 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_MultipleRecruitersSucceed_FirstSuccessStopsFurtherAttempts()
+        {
+            (GameRoot game, Planet empirePlanet, Officer firstRecruiter) = BuildScene();
+            Officer secondRecruiter = EntityFactory.CreateOfficer("second-recruiter", "empire");
+            secondRecruiter.IsMain = true;
+            firstRecruiter.SetBaseRating(OfficerRating.Leadership, 100);
+            secondRecruiter.SetBaseRating(OfficerRating.Leadership, 100);
+            int firstRating = firstRecruiter.GetBaseRating(OfficerRating.Leadership);
+            int secondRating = secondRecruiter.GetBaseRating(OfficerRating.Leadership);
+
+            Officer firstTarget = EntityFactory.CreateOfficer("first-target", "rebels");
+            firstTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
+            Officer secondTarget = EntityFactory.CreateOfficer("second-target", "rebels");
+            secondTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
+            game.UnrecruitedOfficers.Add(firstTarget);
+            game.UnrecruitedOfficers.Add(secondTarget);
+            game.Config.ProbabilityTables.Mission.Recruitment = new Dictionary<int, int>
+            {
+                { 0, 100 },
+                { 100, 100 },
+            };
+
+            Mission mission = CreateRecruitmentMission(
+                game,
+                "empire",
+                empirePlanet,
+                new List<IMissionParticipant> { firstRecruiter, secondRecruiter },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empirePlanet);
+            mission.Initiate(0);
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = mission.Execute(
+                game,
+                new SequenceRNG(intValues: new[] { 0 }, doubleValues: new[] { 0.0, 0.0 })
+            );
+
+            Assert.AreEqual("first-target", ((RecruitmentMission)mission).TargetOfficerInstanceID);
+            Assert.AreEqual("empire", firstTarget.OwnerInstanceID);
+            Assert.IsTrue(game.UnrecruitedOfficers.Contains(secondTarget));
+            Assert.AreEqual(
+                firstRating + 1,
+                firstRecruiter.GetBaseRating(OfficerRating.Leadership)
+            );
+            Assert.AreEqual(
+                secondRating,
+                secondRecruiter.GetBaseRating(OfficerRating.Leadership)
+            );
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [Test]
         public void ShouldRepeatAfterCompletion_UnrecruitedOfficersAvailable_ReturnsTrue()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
@@ -189,27 +246,6 @@ namespace Rebellion.Tests.Game.Missions
             game.UnrecruitedOfficers.Clear();
 
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(game));
-        }
-
-        [Test]
-        public void GetFoilProbability_AnyInput_ReturnsZero()
-        {
-            (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
-
-            Mission mission = CreateMission(game, empirePlanet, officer);
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-
-            // Even a perfect defense score should not foil a recruitment mission
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
-
-            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
-            Assert.AreNotEqual(MissionOutcome.Foiled, completed.Outcome);
         }
 
         [Test]

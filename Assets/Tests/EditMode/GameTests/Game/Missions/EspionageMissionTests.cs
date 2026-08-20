@@ -248,6 +248,33 @@ namespace Rebellion.Tests.Game.Missions
             CollectionAssert.AreEquivalent(new[] { "enemy_planet" }, RevealedPlanetIDs(empire));
         }
 
+        [TestCase("empire")]
+        [TestCase(null)]
+        public void Execute_NonEnemyCoreTarget_DoesNotRevealBonusPlanets(string targetOwnerId)
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+            enemyPlanet.OwnerInstanceID = targetOwnerId;
+            enemyPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.CoreSystem;
+            AddSystem(game, "core2", "core_planet2", PlanetSystemType.CoreSystem);
+            game.Config.Espionage.CoreSystemBonus = new GameConfig.RandomCountConfig { Base = 10 };
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            CollectionAssert.AreEquivalent(new[] { "enemy_planet" }, RevealedPlanetIDs(empire));
+        }
+
         [Test]
         public void Execute_MobileHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
         {
@@ -421,7 +448,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_MultipleParticipants_ImprovesOnlySuccessfulOfficers()
+        public void Execute_MultipleOfficers_TriesNextOfficerWhenLowestScoreOfficerFails()
         {
             (
                 GameRoot game,
@@ -433,16 +460,14 @@ namespace Rebellion.Tests.Game.Missions
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
             officer.SetBaseRating(OfficerRating.Espionage, 0);
-            Officer successfulOfficer = EntityFactory.CreateOfficer("o2", "empire");
-            successfulOfficer.SetBaseRating(OfficerRating.Espionage, 100);
-            int failedRatingBefore = officer.GetBaseRating(OfficerRating.Espionage);
-            int successfulRatingBefore = successfulOfficer.GetBaseRating(OfficerRating.Espionage);
+            Officer strongerOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            strongerOfficer.SetBaseRating(OfficerRating.Espionage, 100);
 
             Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
-                new List<IMissionParticipant> { officer, successfulOfficer },
+                new List<IMissionParticipant> { strongerOfficer, officer },
                 new List<IMissionParticipant>()
             );
             game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
@@ -453,12 +478,59 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0));
+
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [Test]
+        public void Execute_MultipleOfficersSucceed_ImprovesEverySuccessfulOfficer()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+            officer.SetBaseRating(OfficerRating.Espionage, 50);
+            Officer strongerOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            strongerOfficer.SetBaseRating(OfficerRating.Espionage, 100);
+            int officerRatingBefore = officer.GetBaseRating(OfficerRating.Espionage);
+            int strongerRatingBefore = strongerOfficer.GetBaseRating(OfficerRating.Espionage);
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { strongerOfficer, officer },
+                new List<IMissionParticipant>()
+            );
+            game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
+            {
+                { 0, 0 },
+                { 50, 50 },
+                { 100, 100 },
+            };
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
             MissionSceneBuilder.RunToSuccess(mission, game);
 
-            Assert.AreEqual(failedRatingBefore, officer.GetBaseRating(OfficerRating.Espionage));
             Assert.AreEqual(
-                successfulRatingBefore + 1,
-                successfulOfficer.GetBaseRating(OfficerRating.Espionage)
+                officerRatingBefore + 1,
+                officer.GetBaseRating(OfficerRating.Espionage)
+            );
+            Assert.AreEqual(
+                strongerRatingBefore + 1,
+                strongerOfficer.GetBaseRating(OfficerRating.Espionage)
             );
         }
 
@@ -527,6 +599,28 @@ namespace Rebellion.Tests.Game.Missions
                 officer.GetBaseRating(OfficerRating.Espionage),
                 "Officer espionage rating should not improve on successful espionage against an owned planet"
             );
+        }
+
+        [Test]
+        public void Execute_NeutralPlanetTarget_DoesNotImproveOfficerEspionageRating()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+            enemyPlanet.OwnerInstanceID = null;
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+            int ratingBefore = officer.GetBaseRating(OfficerRating.Espionage);
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Assert.AreEqual(ratingBefore, officer.GetBaseRating(OfficerRating.Espionage));
         }
 
         [Test]
