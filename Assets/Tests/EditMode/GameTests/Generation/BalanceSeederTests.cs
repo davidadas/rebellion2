@@ -92,7 +92,7 @@ namespace Rebellion.Tests.Generation
 
         private static PlanetSector MakeSector(Planet planet)
         {
-            PlanetSector sector = new PlanetSector { InstanceID = $"sys_{planet.InstanceID}" };
+            PlanetSector sector = new PlanetSector { InstanceID = $"sector_{planet.InstanceID}" };
             sector.AddChild(planet);
             return sector;
         }

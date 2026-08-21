@@ -54,7 +54,7 @@ namespace Rebellion.Tests.Generation
 
             PlanetSector rim = new PlanetSector
             {
-                InstanceID = "rim_sys",
+                InstanceID = "rim_sector",
                 SectorType = PlanetSectorType.OuterRim,
             };
             rim.AddChild(
@@ -88,7 +88,7 @@ namespace Rebellion.Tests.Generation
 
             PlanetSector rim = new PlanetSector
             {
-                InstanceID = "rim_sys",
+                InstanceID = "rim_sector",
                 SectorType = PlanetSectorType.OuterRim,
             };
             rim.AddChild(
@@ -155,7 +155,7 @@ namespace Rebellion.Tests.Generation
 
             PlanetSector coreSector = new PlanetSector
             {
-                InstanceID = "core_sys",
+                InstanceID = "core_sector",
                 SectorType = PlanetSectorType.Core,
             };
             Planet empirePlanet = new Planet
