@@ -49,15 +49,15 @@ namespace Rebellion.Tests.Generation
             game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             Faction alliance = new Faction { InstanceID = "FNALL1" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector rim = new PlanetSector
             {
                 InstanceID = "rim_sector",
                 SectorType = PlanetSectorType.OuterRim,
             };
-            rim.Planets.Add(
+            rim.AddChild(
                 new Planet
                 {
                     InstanceID = "HOTH",
@@ -65,7 +65,8 @@ namespace Rebellion.Tests.Generation
                     IsColonized = true,
                 }
             );
-            game.Galaxy = new GalaxyMap { PlanetSectors = new List<PlanetSector> { rim } };
+            game.Galaxy = new GalaxyMap();
+            game.Galaxy.AddChild(rim);
 
             new FogOfWarSeeder().Seed(Wrap(game));
 
@@ -82,15 +83,15 @@ namespace Rebellion.Tests.Generation
             game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             Faction alliance = new Faction { InstanceID = "FNALL1" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector rim = new PlanetSector
             {
                 InstanceID = "rim_sector",
                 SectorType = PlanetSectorType.OuterRim,
             };
-            rim.Planets.Add(
+            rim.AddChild(
                 new Planet
                 {
                     InstanceID = "YAVIN",
@@ -99,7 +100,8 @@ namespace Rebellion.Tests.Generation
                     IsColonized = true,
                 }
             );
-            game.Galaxy = new GalaxyMap { PlanetSectors = new List<PlanetSector> { rim } };
+            game.Galaxy = new GalaxyMap();
+            game.Galaxy.AddChild(rim);
 
             GameGenerationConfig config = new GameGenerationConfig
             {
@@ -130,7 +132,7 @@ namespace Rebellion.Tests.Generation
                 "Empire should see Yavin because the override grants visibility."
             );
             Assert.IsTrue(
-                rim.Planets[0].WasVisitedBy("FNEMP1"),
+                rim.GetChildren<Planet>()[0].WasVisitedBy("FNEMP1"),
                 "Visibility overrides should mark the planet as known for the listed faction."
             );
         }
@@ -148,8 +150,8 @@ namespace Rebellion.Tests.Generation
 
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             Faction alliance = new Faction { InstanceID = "FNALL1" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector coreSector = new PlanetSector
             {
@@ -165,8 +167,9 @@ namespace Rebellion.Tests.Generation
                 EnergyCapacity = 9,
                 NumRawResourceNodes = 6,
             };
-            coreSector.Planets.Add(empirePlanet);
-            game.Galaxy = new GalaxyMap { PlanetSectors = new List<PlanetSector> { coreSector } };
+            coreSector.AddChild(empirePlanet);
+            game.Galaxy = new GalaxyMap();
+            game.Galaxy.AddChild(coreSector);
 
             return (game, coreSector, empirePlanet, empire, alliance);
         }

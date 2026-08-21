@@ -26,9 +26,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         {
             _dirtyCount = 0;
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Player" }
-            );
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
             game.Summary.PlayerFactionID = _playerFactionId;
             UIContext uiContext = TestContent.CreateUIContext(
                 game,

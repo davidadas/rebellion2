@@ -628,7 +628,8 @@ public sealed class BattleAlertWindowController
             return playerFactionId;
 
         return uiContext
-            ?.Game?.Factions?.FirstOrDefault(faction => !string.IsNullOrEmpty(faction.PlayerID))
+            ?.Game?.GetFactions()
+            ?.FirstOrDefault(faction => !string.IsNullOrEmpty(faction.PlayerID))
             ?.InstanceID;
     }
 

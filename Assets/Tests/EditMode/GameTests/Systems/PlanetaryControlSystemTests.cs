@@ -32,8 +32,8 @@ namespace Rebellion.Tests.Systems
 
             _rebels = new Faction { InstanceID = "rebels", DisplayName = "Rebels" };
             _empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            _game.Factions.Add(_rebels);
-            _game.Factions.Add(_empire);
+            _game.GetFactions().Add(_rebels);
+            _game.GetFactions().Add(_empire);
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -245,7 +245,7 @@ namespace Rebellion.Tests.Systems
                 _targetPlanet.InstanceID
             );
             _game.AttachNode(empireMission, _targetPlanet);
-            empireMission.MainParticipants.Add(officer);
+            empireMission.AddChild(officer);
 
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
 
@@ -851,7 +851,9 @@ namespace Rebellion.Tests.Systems
                 support: 61,
                 ownerInstanceId: null
             );
-            planet.Regiments.Add(EntityFactory.CreateRegiment("reg1", "empire"));
+            planet.OwnerInstanceID = "empire";
+            planet.AddChild(EntityFactory.CreateRegiment("reg1", "empire"));
+            planet.OwnerInstanceID = null;
 
             system.ProcessTick();
 
@@ -1003,8 +1005,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = new GameConfig();
             config.SupportShift.OwnershipTransferThreshold = 60;
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);
@@ -1032,7 +1034,7 @@ namespace Rebellion.Tests.Systems
         private Faction AddFaction(string instanceId)
         {
             Faction faction = new Faction { InstanceID = instanceId, DisplayName = instanceId };
-            _game.Factions.Add(faction);
+            _game.GetFactions().Add(faction);
             return faction;
         }
 

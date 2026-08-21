@@ -23,8 +23,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Marks an active officer as killed and retains the officer outside the active scene
-        /// graph so historical references remain resolvable.
+        /// Marks an officer as killed and disables it while preserving historical references.
         /// </summary>
         /// <param name="officer">The officer to kill and retain.</param>
         public void KillOfficer(Officer officer)
@@ -32,7 +31,7 @@ namespace Rebellion.Systems
             if (officer == null)
                 throw new ArgumentNullException(nameof(officer));
 
-            _game.AddToVoid(officer);
+            officer.IsEnabled = false;
             officer.IsKilled = true;
             officer.Movement = null;
         }
@@ -67,7 +66,7 @@ namespace Rebellion.Systems
 
             foreach (ISceneNode person in live)
             {
-                _game.AddToVoid(person);
+                person.IsEnabled = false;
                 if (person is Officer officer)
                     officer.IsRetired = true;
                 else if (person is SpecialForces specialForces)

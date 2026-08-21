@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Systems
             _game = new GameRoot(config);
 
             _faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
-            _game.Factions.Add(_faction);
+            _game.GetFactions().Add(_faction);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             _game.AttachNode(planetSector, _game.Galaxy);
@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Systems
             _system.ProcessTick();
             int after = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
 
-            Assert.AreEqual(1, after - before, "One core-system shipyard should add 1 capacity");
+            Assert.AreEqual(1, after - before, "One core-sector shipyard should add 1 capacity");
         }
 
         [Test]
@@ -219,7 +219,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_MultipleFactions_IndependentCapacity()
         {
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
-            _game.Factions.Add(empire);
+            _game.GetFactions().Add(empire);
 
             PlanetSector sector2 = new PlanetSector { InstanceID = "sector2" };
             _game.AttachNode(sector2, _game.Galaxy);

@@ -41,6 +41,17 @@ namespace Rebellion.SceneGraph
         public string OwnerInstanceID { get; set; }
 
         /// <summary>
+        /// Gets or sets whether this node participates in active gameplay.
+        /// </summary>
+        public bool IsEnabled { get; set; }
+
+        /// <summary>
+        /// Returns whether this node and every ancestor are enabled.
+        /// </summary>
+        /// <returns>True when the node is active in the scene hierarchy.</returns>
+        bool IsActive();
+
+        /// <summary>
         /// Sets the parent node of this scene node.
         /// </summary>
         /// <param name="newParent"></param>
@@ -98,20 +109,30 @@ namespace Rebellion.SceneGraph
         void RemoveChild(ISceneNode child);
 
         /// <summary>
-        /// Returns all direct children of this node.
+        /// Returns this node's direct children, or all descendants when recursion is enabled.
         /// </summary>
-        /// <returns>The children of this node.</returns>
-        IEnumerable<ISceneNode> GetChildren();
+        /// <param name="recursive">Whether to include children at every depth.</param>
+        /// <param name="includeDisabled">Whether disabled children may be returned.</param>
+        /// <returns>The matching children.</returns>
+        IReadOnlyList<ISceneNode> GetChildren(bool recursive = false, bool includeDisabled = false);
 
         /// <summary>
-        /// Returns children of type <typeparamref name="T"/> matching the given predicate, optionally recursing into descendants.
+        /// Returns children assignable to <typeparamref name="T"/> at the requested depth.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="predicate"></param>
-        /// <param name="recurse"></param>
+        /// <typeparam name="T">The child type to return.</typeparam>
+        /// <param name="recursive">Whether to include children at every depth.</param>
+        /// <param name="includeDisabled">Whether disabled children may be returned.</param>
         /// <returns>The matching children.</returns>
-        IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recurse = true)
+        IReadOnlyList<T> GetChildren<T>(bool recursive = false, bool includeDisabled = false)
             where T : class, ISceneNode;
+
+        /// <summary>
+        /// Creates a detached copy of this node and, when requested, its descendant hierarchy.
+        /// </summary>
+        /// <param name="recursive">Whether to copy descendants at every depth.</param>
+        /// <param name="includeDisabled">Whether disabled descendants may be copied.</param>
+        /// <returns>A detached copy of this node.</returns>
+        ISceneNode CreateCopy(bool recursive = false, bool includeDisabled = false);
 
         /// <summary>
         /// Visits this node and all descendants, invoking the given action on each.

@@ -6,7 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 {
@@ -38,13 +38,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 ManufacturingType.Building,
                 ((IManufacturable)template).GetResearchOrder()
             );
-            game.Factions.Add(owner);
-            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "sector" };
-            game.AttachNode(planetSector, game.GetGalaxyMap());
+            game.GetFactions().Add(owner);
+            GalaxyPlanetSector sector = new GalaxyPlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.GetGalaxyMap());
             Planet producer = CreatePlanet("producer", ownerId, 10);
             Planet destination = CreatePlanet("destination", ownerId, _destinationEnergyCapacity);
-            game.AttachNode(producer, planetSector);
-            game.AttachNode(destination, planetSector);
+            game.AttachNode(producer, sector);
+            game.AttachNode(destination, sector);
             game.AttachNode(CreateConstructionFacility(ownerId), producer);
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
@@ -68,7 +68,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
 
             Assert.IsTrue(started);
-            Assert.AreEqual(_destinationEnergyCapacity, destination.Buildings.Count);
+            Assert.AreEqual(_destinationEnergyCapacity, destination.GetChildren<Building>().Count);
             Assert.AreEqual(
                 _destinationEnergyCapacity,
                 producer.GetManufacturingQueue()[ManufacturingType.Building].Count
@@ -101,7 +101,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Faction owner = new Faction { InstanceID = ownerId };
             owner.SetHighestUnlockedOrder(ManufacturingType.Ship, unlockedOrder);
             owner.RebuildResearchCatalog(templates.ToArray());
-            game.Factions.Add(owner);
+            game.GetFactions().Add(owner);
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
             ManufacturingSystem manufacturing = new ManufacturingSystem(

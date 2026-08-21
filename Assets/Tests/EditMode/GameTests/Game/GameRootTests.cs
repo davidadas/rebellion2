@@ -39,7 +39,9 @@ namespace Rebellion.Tests.Game
 
             // Create factions.
             _faction1 = new Faction { InstanceID = "FACTION1", DisplayName = "Alliance" };
+            _faction1.Settings.ResourceProcessingPointsPerFacility = 50;
             _faction2 = new Faction { InstanceID = "FACTION2", DisplayName = "Empire" };
+            _faction2.Settings.ResourceProcessingPointsPerFacility = 50;
 
             // Create game objects.
             _galaxyMap = new GalaxyMap();
@@ -55,8 +57,8 @@ namespace Rebellion.Tests.Game
             // Initialize the _game.
             GameConfig config = new GameConfig();
             _game = new GameRoot(_summary, config);
-            _game.Factions.Add(_faction1);
-            _game.Factions.Add(_faction2);
+            _game.GetFactions().Add(_faction1);
+            _game.GetFactions().Add(_faction2);
         }
 
         [Test]
@@ -88,7 +90,7 @@ namespace Rebellion.Tests.Game
             );
             Assert.IsNotNull(_game.Galaxy, "Galaxy should be initialized");
             Assert.AreEqual(0, _game.CurrentTick, "Current tick should be initialized to 0");
-            Assert.IsEmpty(_game.EventPool, "Event pool should be empty initially");
+            Assert.IsEmpty(_game.GetEventPool(), "Event pool should be empty initially");
             Assert.IsEmpty(_game.EventRuntime.States, "Event states should be empty initially");
         }
 
@@ -378,15 +380,15 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void GetSceneNodesByType_RetainedOfficer_ExcludesOfficerFromActiveGalaxy()
+        public void GetSceneNodesByType_InactiveOfficer_ExcludesOfficerFromActiveGalaxy()
         {
             Officer officer = new Officer
             {
-                InstanceID = "RETAINED_OFFICER",
+                InstanceID = "INACTIVE_OFFICER",
                 OwnerInstanceID = _faction1.InstanceID,
             };
             _game.AttachNode(officer, _planet);
-            _game.AddToVoid(officer);
+            officer.IsEnabled = false;
 
             List<Officer> activeOfficers = _game.GetSceneNodesByType<Officer>();
 
@@ -432,8 +434,8 @@ namespace Rebellion.Tests.Game
             // Add events to pool.
             GameEvent event1 = new GameEvent { InstanceID = "EVENT1" };
             GameEvent event2 = new GameEvent { InstanceID = "EVENT2" };
-            _game.EventPool.Add(event1);
-            _game.EventPool.Add(event2);
+            _game.GetEventPool().Add(event1);
+            _game.GetEventPool().Add(event2);
 
             // Retrieve event pool and verify the count and contents.
             List<GameEvent> eventPool = _game.GetEventPool();
@@ -447,12 +449,12 @@ namespace Rebellion.Tests.Game
         {
             // Add event and then remove it.
             GameEvent event1 = new GameEvent { InstanceID = "EVENT1" };
-            _game.EventPool.Add(event1);
+            _game.GetEventPool().Add(event1);
             _game.RemoveEvent(event1);
 
             // Verify removal from the event pool.
             Assert.IsFalse(
-                _game.EventPool.Contains(event1),
+                _game.GetEventPool().Contains(event1),
                 "Event pool should not contain the removed event"
             );
         }
@@ -462,7 +464,7 @@ namespace Rebellion.Tests.Game
         {
             // Add event and retrieve it.
             GameEvent event1 = new GameEvent { InstanceID = "EVENT1" };
-            _game.EventPool.Add(event1);
+            _game.GetEventPool().Add(event1);
 
             // Retrieve event and verify.
             GameEvent retrievedEvent = _game.GetEventByInstanceID("EVENT1");
@@ -579,7 +581,7 @@ namespace Rebellion.Tests.Game
             };
             GameConfig config = TestContent.Data.GameConfig;
             GameRoot gameWithInvalidPlayer = new GameRoot(summaryWithInvalidPlayer, config);
-            gameWithInvalidPlayer.Factions.Add(_faction1);
+            gameWithInvalidPlayer.GetFactions().Add(_faction1);
 
             // Attempt to get player faction.
             Assert.Throws<InvalidOperationException>(
@@ -653,9 +655,9 @@ namespace Rebellion.Tests.Game
                 RecruitingFactionInstanceIDs = new List<string> { "FACTION2" },
             };
 
-            _game.UnrecruitedOfficers.Add(officer1);
-            _game.UnrecruitedOfficers.Add(officer2);
-            _game.UnrecruitedOfficers.Add(officer3);
+            _game.GetUnrecruitedOfficers().Add(officer1);
+            _game.GetUnrecruitedOfficers().Add(officer2);
+            _game.GetUnrecruitedOfficers().Add(officer3);
 
             // Get unrecruited officers for _faction1.
             List<Officer> faction1Officers = _game.GetUnrecruitedOfficers("FACTION1");
@@ -687,12 +689,12 @@ namespace Rebellion.Tests.Game
                 InstanceID = "OFFICER1",
                 RecruitingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
-            _game.UnrecruitedOfficers.Add(officer);
+            _game.GetUnrecruitedOfficers().Add(officer);
 
             // Verify officer is in the list.
             Assert.Contains(
                 officer,
-                _game.UnrecruitedOfficers,
+                _game.GetUnrecruitedOfficers(),
                 "Officer should be in unrecruited list"
             );
 
@@ -701,7 +703,7 @@ namespace Rebellion.Tests.Game
 
             // Verify officer is removed.
             Assert.IsFalse(
-                _game.UnrecruitedOfficers.Contains(officer),
+                _game.GetUnrecruitedOfficers().Contains(officer),
                 "Officer should be removed from unrecruited list"
             );
         }
@@ -759,30 +761,28 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void AddToVoid_OwnedOfficer_RetainsDetachedOfficer()
+        public void IsEnabled_False_DisablesOfficerWithoutDetachingIt()
         {
             Officer officer = new Officer
             {
-                InstanceID = "VOID_OFFICER",
+                InstanceID = "INACTIVE_OFFICER",
                 OwnerInstanceID = _faction1.InstanceID,
             };
             _game.AttachNode(officer, _planet);
 
-            _game.AddToVoid(officer);
+            officer.IsEnabled = false;
 
-            Assert.IsNull(officer.GetParent());
-            Assert.IsTrue(_game.IsInVoid(officer));
-            Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
-            Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
-            Assert.Contains(officer, _faction1.GetOwnedUnitsByType<Officer>().ToList());
-            Assert.Contains(
-                officer,
-                _game.GetSceneNodesByOwnerInstanceID<ISceneNode>(_faction1.InstanceID)
-            );
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsFalse(officer.IsActive());
+            Assert.IsNull(officer.LastParentInstanceID);
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
+            CollectionAssert.DoesNotContain(_planet.GetChildren<Officer>(), officer);
+            CollectionAssert.Contains(_planet.GetChildren<Officer>(includeDisabled: true), officer);
+            CollectionAssert.DoesNotContain(_faction1.GetOwnedUnitsByType<Officer>(), officer);
         }
 
         [Test]
-        public void RemoveFromVoid_RetainedOfficer_DetachesAndPreservesPreviousParent()
+        public void IsEnabled_True_EnablesOfficerAtExistingParent()
         {
             Officer officer = new Officer
             {
@@ -790,13 +790,14 @@ namespace Rebellion.Tests.Game
                 OwnerInstanceID = _faction1.InstanceID,
             };
             _game.AttachNode(officer, _planet);
-            _game.AddToVoid(officer);
+            officer.IsEnabled = false;
 
-            _game.RemoveFromVoid(officer);
+            officer.IsEnabled = true;
 
-            Assert.IsNull(officer.GetParent());
-            Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
-            Assert.IsFalse(_game.IsInVoid(officer));
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsNull(officer.LastParentInstanceID);
+            Assert.IsTrue(officer.IsActive());
+            CollectionAssert.Contains(_planet.GetChildren<Officer>(), officer);
         }
 
         [Test]
@@ -809,13 +810,13 @@ namespace Rebellion.Tests.Game
                 RecruitingFactionInstanceIDs = new List<string> { _faction1.InstanceID },
             };
             _game.AttachNode(officer, _planet);
-            _game.AddToVoid(officer);
+            officer.IsEnabled = false;
 
             _game.ChangeOwnership(officer, _faction2.InstanceID);
 
             Assert.AreEqual(_faction2.InstanceID, officer.OwnerInstanceID);
-            Assert.IsNull(officer.GetParent());
-            Assert.IsTrue(_game.IsInVoid(officer));
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsFalse(officer.IsActive());
         }
 
         [Test]
@@ -836,35 +837,42 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void RebuildSceneState_SerializedRetainedFleet_RestoresRetainedHierarchy()
+        public void RebuildSceneState_SerializedDisabledFleet_RestoresDisabledHierarchy()
         {
             Fleet fleet = new Fleet
             {
-                InstanceID = "RETAINED_FLEET",
+                InstanceID = "INACTIVE_FLEET",
                 OwnerInstanceID = _faction1.InstanceID,
             };
             CapitalShip ship = new CapitalShip
             {
-                InstanceID = "RETAINED_SHIP",
+                InstanceID = "INACTIVE_SHIP",
                 OwnerInstanceID = _faction1.InstanceID,
             };
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(_planet, _planetSector);
             _game.AttachNode(fleet, _planet);
             _game.AttachNode(ship, fleet);
-            _game.AddToVoid(fleet);
+            fleet.IsEnabled = false;
 
             string xml = SerializationHelper.Serialize(_game);
+            StringAssert.Contains("<IsEnabled>False</IsEnabled>", xml);
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
             restored.SetConfig(TestContent.Data.GameConfig);
             restored.RebuildSceneState();
 
-            Fleet restoredFleet = restored.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID);
-            CapitalShip restoredShip = restored.GetSceneNodeByInstanceID<CapitalShip>(
-                ship.InstanceID
+            Fleet restoredFleet = restored.GetSceneNodeByInstanceID<Fleet>(
+                fleet.InstanceID,
+                includeDisabled: true
             );
-            Assert.IsTrue(restored.IsInVoid(restoredFleet));
+            CapitalShip restoredShip = restored.GetSceneNodeByInstanceID<CapitalShip>(
+                ship.InstanceID,
+                includeDisabled: true
+            );
+            Assert.IsFalse(restoredFleet.IsActive());
             Assert.AreSame(restoredFleet, restoredShip.GetParent());
-            Assert.IsNull(restoredFleet.GetParent());
-            CollectionAssert.Contains(
+            Assert.IsInstanceOf<Planet>(restoredFleet.GetParent());
+            CollectionAssert.DoesNotContain(
                 restored
                     .GetFactionByOwnerInstanceID(_faction1.InstanceID)
                     .GetOwnedUnitsByType<Fleet>(),

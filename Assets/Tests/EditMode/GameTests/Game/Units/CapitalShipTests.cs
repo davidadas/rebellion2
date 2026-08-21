@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -43,7 +44,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.AddStarfighter(starfighter);
 
-            Assert.Contains(starfighter, _capitalShip.Starfighters);
+            Assert.Contains(starfighter, _capitalShip.GetChildren<Starfighter>().ToList());
         }
 
         [Test]
@@ -64,7 +65,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.AddRegiment(regiment);
 
-            Assert.Contains(regiment, _capitalShip.Regiments);
+            Assert.Contains(regiment, _capitalShip.GetChildren<Regiment>().ToList());
         }
 
         [Test]
@@ -86,7 +87,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.AddOfficer(officer);
 
-            Assert.Contains(officer, _capitalShip.Officers);
+            Assert.Contains(officer, _capitalShip.GetChildren<Officer>().ToList());
         }
 
         [Test]
@@ -104,7 +105,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.AddOfficer(officer);
 
-            Assert.Contains(officer, _capitalShip.Officers);
+            Assert.Contains(officer, _capitalShip.GetChildren<Officer>().ToList());
         }
 
         [Test]
@@ -114,7 +115,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.AddSpecialForces(specialForces);
 
-            Assert.Contains(specialForces, _capitalShip.SpecialForces);
+            Assert.Contains(specialForces, _capitalShip.GetChildren<SpecialForces>().ToList());
         }
 
         [Test]
@@ -165,7 +166,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.RemoveChild(starfighter);
 
-            Assert.IsFalse(_capitalShip.Starfighters.Contains(starfighter));
+            Assert.IsFalse(_capitalShip.GetChildren<Starfighter>().Contains(starfighter));
         }
 
         [Test]
@@ -176,7 +177,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.RemoveChild(regiment);
 
-            Assert.IsFalse(_capitalShip.Regiments.Contains(regiment));
+            Assert.IsFalse(_capitalShip.GetChildren<Regiment>().Contains(regiment));
         }
 
         [Test]
@@ -187,7 +188,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.RemoveChild(officer);
 
-            Assert.IsFalse(_capitalShip.Officers.Contains(officer));
+            Assert.IsFalse(_capitalShip.GetChildren<Officer>().Contains(officer));
         }
 
         [Test]
@@ -198,7 +199,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.RemoveChild(specialForces);
 
-            Assert.IsFalse(_capitalShip.SpecialForces.Contains(specialForces));
+            Assert.IsFalse(_capitalShip.GetChildren<SpecialForces>().Contains(specialForces));
         }
 
         [Test]
@@ -230,7 +231,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.AddChild(starfighter);
 
-            Assert.Contains(starfighter, _capitalShip.Starfighters);
+            Assert.Contains(starfighter, _capitalShip.GetChildren<Starfighter>().ToList());
         }
 
         [Test]
@@ -240,7 +241,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.AddChild(regiment);
 
-            Assert.Contains(regiment, _capitalShip.Regiments);
+            Assert.Contains(regiment, _capitalShip.GetChildren<Regiment>().ToList());
         }
 
         [Test]
@@ -250,7 +251,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.AddChild(officer);
 
-            Assert.Contains(officer, _capitalShip.Officers);
+            Assert.Contains(officer, _capitalShip.GetChildren<Officer>().ToList());
         }
 
         [Test]
@@ -260,7 +261,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.AddChild(specialForces);
 
-            Assert.Contains(specialForces, _capitalShip.SpecialForces);
+            Assert.Contains(specialForces, _capitalShip.GetChildren<SpecialForces>().ToList());
         }
 
         [Test]
@@ -279,7 +280,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.RemoveChild(starfighter);
 
-            Assert.IsFalse(_capitalShip.Starfighters.Contains(starfighter));
+            Assert.IsFalse(_capitalShip.GetChildren<Starfighter>().Contains(starfighter));
         }
 
         [Test]
@@ -290,7 +291,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.RemoveChild(regiment);
 
-            Assert.IsFalse(_capitalShip.Regiments.Contains(regiment));
+            Assert.IsFalse(_capitalShip.GetChildren<Regiment>().Contains(regiment));
         }
 
         [Test]
@@ -301,7 +302,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.RemoveChild(officer);
 
-            Assert.IsFalse(_capitalShip.Officers.Contains(officer));
+            Assert.IsFalse(_capitalShip.GetChildren<Officer>().Contains(officer));
         }
 
         [Test]
@@ -312,7 +313,7 @@ namespace Rebellion.Tests.Game.Units
 
             _capitalShip.RemoveChild(specialForces);
 
-            Assert.IsFalse(_capitalShip.SpecialForces.Contains(specialForces));
+            Assert.IsFalse(_capitalShip.GetChildren<SpecialForces>().Contains(specialForces));
         }
 
         [Test]
@@ -347,28 +348,28 @@ namespace Rebellion.Tests.Game.Units
                 "OwnerInstanceID should be correctly deserialized."
             );
             Assert.AreEqual(
-                _capitalShip.Officers.Count,
-                deserialized.Officers.Count,
+                _capitalShip.GetChildren<Officer>().Count,
+                deserialized.GetChildren<Officer>().Count,
                 "Officers should be correctly deserialized."
             );
             Assert.AreEqual(
-                _capitalShip.SpecialForces.Count,
-                deserialized.SpecialForces.Count,
+                _capitalShip.GetChildren<SpecialForces>().Count,
+                deserialized.GetChildren<SpecialForces>().Count,
                 "SpecialForces should be correctly deserialized."
             );
             Assert.AreEqual(
-                _capitalShip.Starfighters.Count,
-                deserialized.Starfighters.Count,
+                _capitalShip.GetChildren<Starfighter>().Count,
+                deserialized.GetChildren<Starfighter>().Count,
                 "Starfighters should be correctly deserialized."
             );
             Assert.AreEqual(
-                _capitalShip.Regiments.Count,
-                deserialized.Regiments.Count,
+                _capitalShip.GetChildren<Regiment>().Count,
+                deserialized.GetChildren<Regiment>().Count,
                 "Regiments should be correctly deserialized."
             );
             Assert.AreEqual(
-                _capitalShip.SpecialForces.Count,
-                deserialized.SpecialForces.Count,
+                _capitalShip.GetChildren<SpecialForces>().Count,
+                deserialized.GetChildren<SpecialForces>().Count,
                 "SpecialForces should be correctly deserialized."
             );
         }

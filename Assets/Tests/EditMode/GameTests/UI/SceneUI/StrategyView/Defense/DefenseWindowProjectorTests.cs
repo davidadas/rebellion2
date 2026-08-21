@@ -8,7 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 {
@@ -29,7 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _ownerId });
+            game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             game.Summary.PlayerFactionID = _ownerId;
             _uiContext = TestContent.CreateUIContext(
                 game,
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 DisplayName = "Corellia",
                 OwnerInstanceID = _ownerId,
             };
-            _mapPlanet = new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty);
+            _mapPlanet = new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty);
             _session = new DefenseWindowSession(_mapPlanet, _window);
             _projector = new DefenseWindowProjector(() => _uiContext);
         }
@@ -105,7 +105,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 CapturedOverlayImagePath = definition.CapturedOverlayImagePath,
                 IsCaptured = true,
             };
-            _planet.Officers.Add(officer);
+            _planet.AddTestChild(officer);
             _session.Reconcile();
             _session.SelectItem(0);
 
@@ -157,7 +157,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void Build_NonPlayerOwnedRegimentTab_ClearsGarrisonRequirement()
         {
             const string opposingOwnerId = "FNEMP1";
-            _uiContext.Game.Factions.Add(new Faction { InstanceID = opposingOwnerId });
+            _uiContext.Game.GetFactions().Add(new Faction { InstanceID = opposingOwnerId });
             _planet.OwnerInstanceID = opposingOwnerId;
             _session.SelectTab(DefenseWindowTab.Regiments);
 
@@ -181,7 +181,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 SmallDisplayImagePath = definition.SmallDisplayImagePath,
                 Movement = new MovementState(),
             };
-            _planet.Officers.Add(officer);
+            _planet.AddTestChild(officer);
             _session.Reconcile();
 
             DefenseWindowRenderData data = _projector.Build(_session, _window, false);
@@ -206,7 +206,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             starfighter.Movement = new MovementState();
             starfighter.CurrentSquadronSize = 4;
             starfighter.MaxSquadronSize = 12;
-            _planet.Starfighters.Add(starfighter);
+            _planet.AddTestChild(starfighter);
             _session.Reconcile();
             _session.SelectTab(DefenseWindowTab.Starfighters);
 
@@ -242,7 +242,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 CurrentSquadronSize = 6,
                 MaxSquadronSize = 12,
             };
-            _planet.Starfighters.Add(starfighter);
+            _planet.AddTestChild(starfighter);
             _session.Reconcile();
             _session.SelectTab(DefenseWindowTab.Starfighters);
 
@@ -272,7 +272,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 DefenseFacilityClass = DefenseFacilityClass.Shield,
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
-            _planet.Buildings.Add(shield);
+            _planet.AddTestChild(shield);
             _session.Reconcile();
             _session.SelectTab(DefenseWindowTab.Shields);
 

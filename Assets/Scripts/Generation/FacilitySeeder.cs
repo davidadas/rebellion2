@@ -62,7 +62,7 @@ namespace Rebellion.Generation
             {
                 bool isCore = sector.SectorType == PlanetSectorType.Core;
 
-                foreach (Planet planet in sector.Planets)
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (!isCore && !planet.IsColonized)
                         continue;
@@ -83,7 +83,7 @@ namespace Rebellion.Generation
             {
                 bool isCore = sector.SectorType == PlanetSectorType.Core;
 
-                foreach (Planet planet in sector.Planets)
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (!isCore && !planet.IsColonized)
                         continue;
@@ -118,7 +118,9 @@ namespace Rebellion.Generation
             List<Building> deployedBuildings
         )
         {
-            int mineCount = planet.Buildings.Count(b => b.BuildingType == BuildingType.Mine);
+            int mineCount = planet
+                .GetChildren<Building>()
+                .Count(b => b.BuildingType == BuildingType.Mine);
             int mineMultiplier = isCore ? config.CoreMineMultiplier : config.RimMineMultiplier;
 
             for (int slot = 0; slot < planet.EnergyCapacity; slot++)
@@ -251,7 +253,7 @@ namespace Rebellion.Generation
                 return resolved;
 
             Dictionary<string, Planet> planetsByTypeId = sectors
-                .SelectMany(sector => sector.Planets)
+                .SelectMany(sector => sector.GetChildren<Planet>())
                 .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
                 .ToDictionary(planet => planet.TypeID);
 
@@ -305,7 +307,7 @@ namespace Rebellion.Generation
         )
         {
             int validLoadoutCount = facilityTypeIDs.Count(id => templateMap.ContainsKey(id));
-            int requiredCapacity = planet.Buildings.Count + validLoadoutCount;
+            int requiredCapacity = planet.GetChildren<Building>().Count + validLoadoutCount;
             if (planet.EnergyCapacity < requiredCapacity)
                 planet.EnergyCapacity = requiredCapacity;
 
@@ -313,9 +315,9 @@ namespace Rebellion.Generation
                 templateMap.TryGetValue(id, out Building template)
                 && template.BuildingType == BuildingType.Mine
             );
-            int existingMineCount = planet.Buildings.Count(b =>
-                b.BuildingType == BuildingType.Mine
-            );
+            int existingMineCount = planet
+                .GetChildren<Building>()
+                .Count(b => b.BuildingType == BuildingType.Mine);
             int requiredMines = existingMineCount + loadoutMineCount;
             if (planet.NumRawResourceNodes < requiredMines)
                 planet.NumRawResourceNodes = requiredMines;

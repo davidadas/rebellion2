@@ -143,26 +143,34 @@ public static class GalacticInformationFilterEvaluator
             GalacticInformationFilterMode.IdleConstructionYards => Convert.ToInt32(
                 IsOwnedIdleManufacturingPlanet(planet, viewerFactionId, ManufacturingType.Building)
             ),
-            GalacticInformationFilterMode.Troopers => planet.Regiments.Count(IsActive),
-            GalacticInformationFilterMode.FighterSquadrons => planet.Starfighters.Count(IsActive),
+            GalacticInformationFilterMode.Troopers => planet
+                .GetChildren<Regiment>()
+                .Count(IsActive),
+            GalacticInformationFilterMode.FighterSquadrons => planet
+                .GetChildren<Starfighter>()
+                .Count(IsActive),
             GalacticInformationFilterMode.DeathStarShields => Convert.ToInt32(
-                planet.Buildings.Any(building =>
-                    building.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
-                    && IsActive(building)
-                )
+                planet
+                    .GetChildren<Building>()
+                    .Any(building =>
+                        building.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
+                        && IsActive(building)
+                    )
             ),
-            GalacticInformationFilterMode.PlanetaryShieldGenerators => planet.Buildings.Count(
-                building =>
+            GalacticInformationFilterMode.PlanetaryShieldGenerators => planet
+                .GetChildren<Building>()
+                .Count(building =>
                     building.DefenseFacilityClass == DefenseFacilityClass.Shield
                     && IsActive(building)
-            ),
-            GalacticInformationFilterMode.PlanetaryDefenseBatteries => planet.Buildings.Count(
-                building =>
+                ),
+            GalacticInformationFilterMode.PlanetaryDefenseBatteries => planet
+                .GetChildren<Building>()
+                .Count(building =>
                     (
                         building.DefenseFacilityClass == DefenseFacilityClass.KDY
                         || building.DefenseFacilityClass == DefenseFacilityClass.LNR
                     ) && IsActive(building)
-            ),
+                ),
             _ => 0,
         };
     }
@@ -193,7 +201,7 @@ public static class GalacticInformationFilterEvaluator
     private static Dictionary<string, int> CountFleets(Planet planet, bool enroute)
     {
         Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (Fleet fleet in planet.Fleets)
+        foreach (Fleet fleet in planet.GetChildren<Fleet>())
         {
             if ((fleet.Movement != null) != enroute)
                 continue;
@@ -214,7 +222,9 @@ public static class GalacticInformationFilterEvaluator
     {
         Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (
-            IMissionParticipant participant in planet.GetChildren<IMissionParticipant>(_ => true)
+            IMissionParticipant participant in planet.GetChildren<IMissionParticipant>(
+                recursive: true
+            )
         )
         {
             if (IsIdle(participant) != idle)

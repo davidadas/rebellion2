@@ -214,7 +214,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 new Message(MessageType.Advice, "Agent Advice"),
             };
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
@@ -276,7 +276,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             faction.Messages[MessageType.Fleet] = new List<Message> { fleetMessage };
             faction.Messages[MessageType.Mission] = new List<Message> { missionMessage };
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
             UIContext uiContext = TestContent.CreateUIContext(
                 game,

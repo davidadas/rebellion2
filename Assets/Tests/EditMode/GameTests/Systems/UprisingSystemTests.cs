@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Systems
                 ownerSupport: 10,
                 troopCount: 6
             );
-            game.DetachNode(planet.Regiments[0]);
+            game.DetachNode(planet.GetChildren<Regiment>()[0]);
 
             List<GameResult> firstResults = system.ProcessTick();
             List<GameResult> secondResults = system.ProcessTick();
@@ -225,7 +225,10 @@ namespace Rebellion.Tests.Systems
             system.ProcessTick();
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("enroute"));
-            Assert.AreEqual(1, planet.Regiments.Count(regiment => regiment.Movement == null));
+            Assert.AreEqual(
+                1,
+                planet.GetChildren<Regiment>().Count(regiment => regiment.Movement == null)
+            );
         }
 
         [Test]
@@ -366,7 +369,9 @@ namespace Rebellion.Tests.Systems
                 ownerSupport: 10,
                 troopCount: 1
             );
-            planet.Regiments[0].TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
+            planet.GetChildren<Regiment>()[0].TypeID = game.Config
+                .Uprising
+                .ResistanceRegimentTypeID;
             ScheduleIncident(planet, 1);
             game.CurrentTick = 1;
             planet.EnergyCapacity = 1;
@@ -416,7 +421,7 @@ namespace Rebellion.Tests.Systems
                 "rebels",
                 50
             );
-            mission.MainParticipants[0].Movement = new MovementState();
+            mission.GetMainParticipants()[0].Movement = new MovementState();
             ScheduleIncident(planet, 1);
             game.CurrentTick = 1;
             planet.EnergyCapacity = 1;
@@ -478,8 +483,8 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "empire",
                 Settings = new FactionSettings { GarrisonEfficiency = 2 },
             };
-            game.Factions.Add(empire);
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -535,8 +540,8 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "empire",
                 Settings = new FactionSettings { GarrisonEfficiency = 2 },
             };
-            game.Factions.Add(empire);
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -587,7 +592,7 @@ namespace Rebellion.Tests.Systems
                 ownerSupport: 10,
                 troopCount: 5
             );
-            Regiment departingRegiment = planet.Regiments[0];
+            Regiment departingRegiment = planet.GetChildren<Regiment>()[0];
             game.DetachNode(departingRegiment);
 
             List<GameResult> results = system.HandleResults(
@@ -609,7 +614,7 @@ namespace Rebellion.Tests.Systems
                 opposingSupport: 50,
                 troopCount: 4
             );
-            foreach (Regiment regiment in planet.Regiments.ToList())
+            foreach (Regiment regiment in planet.GetChildren<Regiment>().ToList())
                 game.DetachNode(regiment);
             game.ChangeOwnership(planet, "rebels");
             Regiment occupyingRegiment = EntityFactory.CreateRegiment("occupier", "rebels");
@@ -638,7 +643,7 @@ namespace Rebellion.Tests.Systems
             planet.BeginUprising();
             system.ProcessTick();
 
-            game.DetachNode(planet.Regiments[0]);
+            game.DetachNode(planet.GetChildren<Regiment>()[0]);
             system.ReconcileGarrison(planet);
             game.CurrentTick = 1;
             List<GameResult> results = system.ProcessTick();
@@ -694,8 +699,8 @@ namespace Rebellion.Tests.Systems
             config.Uprising.ClearUprisingMinTicks = 1;
             config.Uprising.ClearUprisingMaxTicks = 1;
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -816,7 +821,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction faction = new Faction { InstanceID = "empire" };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -853,7 +858,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "empire",
                 Settings = new FactionSettings { GarrisonEfficiency = 2 },
             };
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -891,7 +896,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "alliance",
                 Settings = new FactionSettings { GarrisonEfficiency = 1 },
             };
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -929,7 +934,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "empire",
                 Settings = new FactionSettings { GarrisonEfficiency = 2 },
             };
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
             PlanetSector planetSector = new PlanetSector
             {

@@ -165,10 +165,9 @@ namespace Rebellion.Tests.SceneGraph
             _rootNode.AddChild(_childNode1);
             _rootNode.AddChild(_childNode2);
 
-            IEnumerable<MockSceneNode> matchingChildren = _rootNode.GetChildren<MockSceneNode>(
-                child => child.OwnerInstanceID == "Owner1",
-                false
-            );
+            IEnumerable<MockSceneNode> matchingChildren = _rootNode
+                .GetChildren<MockSceneNode>()
+                .Where(child => child.OwnerInstanceID == "Owner1");
 
             Assert.AreEqual(1, matchingChildren.Count());
             Assert.AreEqual(_childNode1, matchingChildren.First());
@@ -195,8 +194,7 @@ namespace Rebellion.Tests.SceneGraph
             _childNode2.AddChild(grandchild2);
 
             IEnumerable<MockSceneNode> allDescendants = _rootNode.GetChildren<MockSceneNode>(
-                null,
-                true
+                recursive: true
             );
 
             Assert.AreEqual(4, allDescendants.Count());
@@ -231,10 +229,9 @@ namespace Rebellion.Tests.SceneGraph
             _childNode1.AddChild(grandchild1);
             _childNode2.AddChild(grandchild2);
 
-            IEnumerable<MockSceneNode> matchingDescendants = _rootNode.GetChildren<MockSceneNode>(
-                child => child.OwnerInstanceID == "Owner1",
-                true
-            );
+            IEnumerable<MockSceneNode> matchingDescendants = _rootNode
+                .GetChildren<MockSceneNode>(recursive: true)
+                .Where(child => child.OwnerInstanceID == "Owner1");
 
             Assert.AreEqual(2, matchingDescendants.Count());
             Assert.IsTrue(matchingDescendants.Contains(_childNode1));
@@ -262,6 +259,102 @@ namespace Rebellion.Tests.SceneGraph
             IEnumerable<ISceneNode> children = _rootNode.GetChildren();
 
             Assert.AreEqual(0, children.Count());
+        }
+
+        [Test]
+        public void CreateCopy_Default_CopiesOnlyDetachedNode()
+        {
+            _rootNode.OwnerInstanceID = "Owner1";
+            _rootNode.AddChild(_childNode1);
+
+            MockSceneNode copy = (MockSceneNode)_rootNode.CreateCopy();
+
+            Assert.AreNotSame(_rootNode, copy);
+            Assert.AreEqual(_rootNode.InstanceID, copy.InstanceID);
+            Assert.AreEqual("Owner1", copy.OwnerInstanceID);
+            Assert.IsNull(copy.GetParent());
+            Assert.IsNull(copy.GetLastParent());
+            Assert.IsEmpty(copy.GetChildren(includeDisabled: true));
+            Assert.AreEqual(1, _rootNode.GetChildren().Count);
+        }
+
+        [Test]
+        public void CreateCopy_NullEncyclopediaStats_PreservesNullStats()
+        {
+            _rootNode.EncyclopediaStats = null;
+
+            MockSceneNode copy = (MockSceneNode)_rootNode.CreateCopy();
+
+            Assert.IsNull(copy.EncyclopediaStats);
+        }
+
+        [Test]
+        public void CreateCopy_CreateNodeCopyReturnsDifferentType_ThrowsInvalidOperationException()
+        {
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _nodeA.CreateCopy()
+            );
+
+            StringAssert.Contains(nameof(MockSceneNodeA), exception.Message);
+        }
+
+        [Test]
+        public void CreateCopy_Recursive_CopiesHierarchyAndReconnectsParents()
+        {
+            MockSceneNode grandchild = new MockSceneNode
+            {
+                DisplayName = "Grandchild",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+            _childNode1.AddChild(grandchild);
+            grandchild.SetParent(_childNode1);
+
+            MockSceneNode copy = (MockSceneNode)_rootNode.CreateCopy(recursive: true);
+            MockSceneNode copiedChild = copy.GetChildren<MockSceneNode>().Single();
+            MockSceneNode copiedGrandchild = copiedChild.GetChildren<MockSceneNode>().Single();
+
+            Assert.AreNotSame(_childNode1, copiedChild);
+            Assert.AreSame(copy, copiedChild.GetParent());
+            Assert.AreSame(copiedChild, copiedGrandchild.GetParent());
+            Assert.AreEqual(copy.InstanceID, copiedChild.ParentInstanceID);
+            Assert.AreEqual(copiedChild.InstanceID, copiedGrandchild.ParentInstanceID);
+        }
+
+        [Test]
+        public void CreateCopy_RecursiveByDefault_ExcludesDisabledBranches()
+        {
+            MockSceneNode grandchild = new MockSceneNode
+            {
+                DisplayName = "Grandchild",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+            _childNode1.IsEnabled = false;
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+            _childNode1.AddChild(grandchild);
+            grandchild.SetParent(_childNode1);
+
+            MockSceneNode copy = (MockSceneNode)_rootNode.CreateCopy(recursive: true);
+
+            Assert.IsEmpty(copy.GetChildren(includeDisabled: true));
+        }
+
+        [Test]
+        public void CreateCopy_RecursiveIncludingDisabled_CopiesDisabledBranches()
+        {
+            _childNode1.IsEnabled = false;
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+
+            MockSceneNode copy = (MockSceneNode)
+                _rootNode.CreateCopy(recursive: true, includeDisabled: true);
+            MockSceneNode copiedChild = copy.GetChildren<MockSceneNode>(includeDisabled: true)
+                .Single();
+
+            Assert.IsFalse(copiedChild.IsEnabled);
+            Assert.AreSame(copy, copiedChild.GetParent());
         }
 
         [Test]
@@ -340,6 +433,10 @@ namespace Rebellion.Tests.SceneGraph
         {
             private readonly List<ISceneNode> _children = new List<ISceneNode>();
 
+            public MockSceneNode() { }
+
+            protected override BaseSceneNode CreateNodeCopy() => new MockSceneNode();
+
             public override bool CanAcceptChild(ISceneNode child) => true;
 
             public override void AddChild(ISceneNode child)
@@ -352,43 +449,7 @@ namespace Rebellion.Tests.SceneGraph
                 _children.Remove(child);
             }
 
-            public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recursive)
-            {
-                IEnumerable<T> direct = _children.OfType<T>();
-
-                if (predicate != null)
-                {
-                    direct = direct.Where(predicate);
-                }
-
-                if (!recursive)
-                {
-                    return direct;
-                }
-
-                List<T> result = new List<T>(direct);
-
-                foreach (ISceneNode child in _children)
-                {
-                    result.AddRange(child.GetChildren<T>(predicate, true));
-                }
-
-                return result;
-            }
-
-            public override IEnumerable<ISceneNode> GetChildren()
-            {
-                return _children;
-            }
-
-            public override void Traverse(Action<ISceneNode> action)
-            {
-                action(this);
-                foreach (ISceneNode child in _children)
-                {
-                    child.Traverse(action);
-                }
-            }
+            protected override IEnumerable<ISceneNode> EnumerateChildren() => _children;
         }
 
         private class MockSceneNodeA : MockSceneNode { }

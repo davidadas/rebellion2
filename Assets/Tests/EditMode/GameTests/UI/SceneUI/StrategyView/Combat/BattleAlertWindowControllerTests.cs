@@ -11,8 +11,8 @@ using Rebellion.Game.Units;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 {
@@ -332,10 +332,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         )
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionId });
-            game.Factions.Add(new Faction { InstanceID = _opponentFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSector planetSector = new GamePlanetSector
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
                 DisplayName = "Core Sector",
@@ -389,7 +389,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             public void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY) { }
 
             public void OpenBattleResultSector(
-                GamePlanetSector planetSector,
+                GalaxyPlanetSector planetSector,
                 int sourceX,
                 int sourceY
             ) { }

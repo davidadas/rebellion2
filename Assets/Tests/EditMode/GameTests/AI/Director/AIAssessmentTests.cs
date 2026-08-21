@@ -3,6 +3,7 @@ using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
 
@@ -134,6 +135,37 @@ namespace Rebellion.Tests.AI.Director
 
             fleet.Order.TargetPlanetId = "missing";
             Assert.IsNull(assessment.GetAttackTargetPlanet(fleet));
+        }
+
+        [Test]
+        public void GetFleetBombardmentStrength_GeneralAboardCapitalShip_AppliesLeadership()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out _);
+            game.Config.Combat.Bombardment.AttackerLeadershipDivisor = 10;
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "owned",
+                empire.InstanceID
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            CapitalShip capitalShip = AITestSceneBuilder.CreateCapitalShip(
+                "ship",
+                empire.InstanceID
+            );
+            capitalShip.Bombardment = 10;
+            Officer general = EntityFactory.CreateOfficer("general", empire.InstanceID);
+            general.CurrentRank = OfficerRank.General;
+            general.Ratings[OfficerRating.Leadership] = 20;
+            game.AttachNode(fleet, planet);
+            game.AttachNode(capitalShip, fleet);
+            game.AttachNode(general, capitalShip);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            int strength = assessment.GetFleetBombardmentStrength(fleet);
+
+            Assert.AreEqual(30, strength);
         }
     }
 }

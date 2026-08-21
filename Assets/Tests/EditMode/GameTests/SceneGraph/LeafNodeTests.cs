@@ -144,7 +144,9 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildrenGeneric_WithTypeFilter_ReturnsEmptyEnumerable()
         {
-            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(null, true);
+            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(
+                recursive: true
+            );
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());
@@ -153,10 +155,9 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildrenGeneric_WithPredicate_ReturnsEmptyEnumerable()
         {
-            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(
-                node => node.DisplayName == "Test",
-                true
-            );
+            IEnumerable<MockLeafNode> children = _leafNode
+                .GetChildren<MockLeafNode>(recursive: true)
+                .Where(node => node.DisplayName == "Test");
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());
@@ -165,7 +166,7 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildrenGeneric_WithNonRecursive_ReturnsEmptyEnumerable()
         {
-            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(null, false);
+            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>();
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());
@@ -174,7 +175,9 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildrenGeneric_WithDifferentType_ReturnsEmptyEnumerable()
         {
-            IEnumerable<MockLeafNodeA> children = _leafNode.GetChildren<MockLeafNodeA>(null, true);
+            IEnumerable<MockLeafNodeA> children = _leafNode.GetChildren<MockLeafNodeA>(
+                recursive: true
+            );
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());
@@ -183,10 +186,9 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetChildrenGeneric_WithComplexPredicate_ReturnsEmpty()
         {
-            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(
-                node => node.DisplayName.StartsWith("Test") && node.InstanceID != null,
-                true
-            );
+            IEnumerable<MockLeafNode> children = _leafNode
+                .GetChildren<MockLeafNode>(recursive: true)
+                .Where(node => node.DisplayName.StartsWith("Test") && node.InstanceID != null);
 
             Assert.IsNotNull(children);
             Assert.AreEqual(0, children.Count());
@@ -246,22 +248,36 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreSame(_leafNode, visitedNodes[0]);
         }
 
+        [Test]
+        public void CreateCopy_ReturnsSameConcreteLeafType()
+        {
+            ISceneNode copy = _leafNode.CreateCopy();
+
+            Assert.IsInstanceOf<MockLeafNode>(copy);
+        }
+
         // Mock implementation of LeafNode for testing purposes
         private class MockLeafNode : LeafNode
         {
             public MockLeafNode() { }
+
+            protected override BaseSceneNode CreateNodeCopy() => new MockLeafNode();
         }
 
         // Another mock implementation for type-specific tests
         private class MockLeafNodeA : LeafNode
         {
             public MockLeafNodeA() { }
+
+            protected override BaseSceneNode CreateNodeCopy() => new MockLeafNodeA();
         }
 
         // Mock container node to test parent relationships
         private class MockContainerNode : BaseSceneNode
         {
             private readonly List<ISceneNode> _children = new List<ISceneNode>();
+
+            protected override BaseSceneNode CreateNodeCopy() => new MockContainerNode();
 
             public override bool CanAcceptChild(ISceneNode child) => true;
 
@@ -275,43 +291,7 @@ namespace Rebellion.Tests.SceneGraph
                 _children.Remove(child);
             }
 
-            public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recursive)
-            {
-                IEnumerable<T> direct = _children.OfType<T>();
-
-                if (predicate != null)
-                {
-                    direct = direct.Where(predicate);
-                }
-
-                if (!recursive)
-                {
-                    return direct;
-                }
-
-                List<T> result = new List<T>(direct);
-
-                foreach (ISceneNode child in _children)
-                {
-                    result.AddRange(child.GetChildren<T>(predicate, true));
-                }
-
-                return result;
-            }
-
-            public override IEnumerable<ISceneNode> GetChildren()
-            {
-                return _children;
-            }
-
-            public override void Traverse(Action<ISceneNode> action)
-            {
-                action(this);
-                foreach (ISceneNode child in _children)
-                {
-                    child.Traverse(action);
-                }
-            }
+            protected override IEnumerable<ISceneNode> EnumerateChildren() => _children;
         }
     }
 } // namespace Rebellion.Tests.SceneGraph

@@ -7966,7 +7966,7 @@ public static class StrategyViewPrefabBuilder
         if (profiles == null || profiles.Count == 0)
         {
             throw new System.InvalidOperationException(
-                "GameGenerationConfig must define at least one system resource profile."
+                "GameGenerationConfig must define at least one planet resource profile."
             );
         }
 
@@ -7995,7 +7995,7 @@ public static class StrategyViewPrefabBuilder
         if (cellCount < 2)
         {
             throw new System.InvalidOperationException(
-                "System resource profiles must support at least two segmented bar cells."
+                "Planet resource profiles must support at least two segmented bar cells."
             );
         }
 

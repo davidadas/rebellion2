@@ -73,9 +73,9 @@ namespace Rebellion.Systems
 
             if (unit is Regiment regiment && RollEvacuationLoss())
             {
-                Faction faction = _game.Factions.FirstOrDefault(f =>
-                    f.InstanceID == unit.GetOwnerInstanceID()
-                );
+                Faction faction = _game
+                    .GetFactions()
+                    .FirstOrDefault(f => f.InstanceID == unit.GetOwnerInstanceID());
                 _game.DeleteNode(unit);
                 GameLogger.Log(
                     $"{unit.GetDisplayName()} destroyed running blockade at {originPlanet.GetDisplayName()}"
@@ -99,9 +99,9 @@ namespace Rebellion.Systems
         private HashSet<string> DetectBlockadedPlanets()
         {
             HashSet<string> blockaded = new HashSet<string>();
-            foreach (PlanetSector sector in _game.GetGalaxyMap().PlanetSectors)
+            foreach (PlanetSector sector in _game.GetGalaxyMap().GetChildren<PlanetSector>())
             {
-                foreach (Planet planet in sector.Planets)
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (planet.IsBlockaded())
                         blockaded.Add(planet.InstanceID);
@@ -130,11 +130,13 @@ namespace Rebellion.Systems
                     new BlockadeChangedResult
                     {
                         Planet = planet,
-                        BlockadingFleet = planet.Fleets.FirstOrDefault(f =>
-                            f.Movement == null
-                            && f.OwnerInstanceID != planet.OwnerInstanceID
-                            && f.HasOperationalCapitalShips()
-                        ),
+                        BlockadingFleet = planet
+                            .GetChildren<Fleet>()
+                            .FirstOrDefault(f =>
+                                f.Movement == null
+                                && f.OwnerInstanceID != planet.OwnerInstanceID
+                                && f.HasOperationalCapitalShips()
+                            ),
                         Blockaded = true,
                         Tick = _game.CurrentTick,
                     }

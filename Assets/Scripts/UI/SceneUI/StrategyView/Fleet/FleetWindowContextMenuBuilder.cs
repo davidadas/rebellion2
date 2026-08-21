@@ -17,7 +17,7 @@ internal static class FleetWindowContextMenuBuilder
     /// <param name="canCreateMission">Whether the selected personnel can start a mission.</param>
     /// <param name="canRetire">Whether the selected personnel can retire.</param>
     /// <param name="canBombard">Whether the selected fleet can bombard its current planet.</param>
-    /// <param name="canDestroySystem">Whether the selected fleet can destroy its current planet.</param>
+    /// <param name="canDestroyPlanet">Whether the selected fleet can destroy its current planet.</param>
     /// <param name="canAssault">Whether the selected fleet can assault its current planet.</param>
     /// <returns>The ordered context-menu commands.</returns>
     public static List<StrategyMenuCommand> Build(
@@ -27,7 +27,7 @@ internal static class FleetWindowContextMenuBuilder
         bool canCreateMission,
         bool canRetire,
         bool canBombard = false,
-        bool canDestroySystem = false,
+        bool canDestroyPlanet = false,
         bool canAssault = false
     )
     {
@@ -44,7 +44,7 @@ internal static class FleetWindowContextMenuBuilder
                 playerControlsItems,
                 canMove,
                 canBombard,
-                canDestroySystem,
+                canDestroyPlanet,
                 canAssault
             );
 
@@ -70,7 +70,7 @@ internal static class FleetWindowContextMenuBuilder
     /// <param name="playerControlsItems">Whether all selected items are player controlled.</param>
     /// <param name="canMove">Whether the complete selection can move.</param>
     /// <param name="canBombard">Whether the selected fleet can bombard its current planet.</param>
-    /// <param name="canDestroySystem">Whether the selected fleet can destroy its current planet.</param>
+    /// <param name="canDestroyPlanet">Whether the selected fleet can destroy its current planet.</param>
     /// <param name="canAssault">Whether the selected fleet can assault its current planet.</param>
     /// <returns>The ordered commands.</returns>
     private static List<StrategyMenuCommand> BuildFleetAndCapitalShipCommands(
@@ -80,7 +80,7 @@ internal static class FleetWindowContextMenuBuilder
         bool playerControlsItems,
         bool canMove,
         bool canBombard,
-        bool canDestroySystem,
+        bool canDestroyPlanet,
         bool canAssault
     )
     {
@@ -96,7 +96,7 @@ internal static class FleetWindowContextMenuBuilder
             commands.Add(
                 StrategyBombardmentMenuBuilder.Build(
                     playerControlsItems && canBombard,
-                    playerControlsItems && canDestroySystem
+                    playerControlsItems && canDestroyPlanet
                 )
             );
             commands.Add(

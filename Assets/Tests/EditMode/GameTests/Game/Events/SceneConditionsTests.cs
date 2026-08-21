@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void IsKilled_KilledOfficerInVoid_MatchesByRetainedIdentity()
+        public void IsKilled_InactiveKilledOfficer_MatchesByRegisteredIdentity()
         {
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
@@ -142,8 +142,8 @@ namespace Rebellion.Tests.Game.Events
             GameConfig config = new GameConfig();
             config.Jedi.RankLabelByMinimumForceRank[100] = (int)ForceRankLabel.ForceKnight;
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "faction" });
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
+            game.GetFactions().Add(new Faction { InstanceID = "faction" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             planet = new Planet
             {
                 InstanceID = "planet",
@@ -157,8 +157,8 @@ namespace Rebellion.Tests.Game.Events
                 OwnerInstanceID = "faction",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            game.AttachNode(planetSector, game.Galaxy);
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             return game;

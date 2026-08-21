@@ -14,6 +14,10 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "SubdueUprising";
 
+        /// <summary>Creates an empty subdue-uprising mission copy.</summary>
+        /// <returns>An empty subdue-uprising mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new SubdueUprisingMission();
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>

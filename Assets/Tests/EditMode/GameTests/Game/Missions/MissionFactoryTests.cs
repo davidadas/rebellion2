@@ -101,7 +101,8 @@ namespace Rebellion.Tests.Game.Missions
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
             Regiment target = CreateSabotageTarget(game, planet);
-            game.Factions.Find(f => f.InstanceID == "empire")
+            game.GetFactions()
+                .Find(f => f.InstanceID == "empire")
                 .DisallowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
 
             bool created = factory.TryCreateMission(
@@ -251,7 +252,7 @@ namespace Rebellion.Tests.Game.Missions
                 planet.InstanceID
             );
             game.AttachNode(existingMission, planet);
-            existingMission.MainParticipants.Add(officer);
+            existingMission.AddChild(officer);
             game.MoveNode(officer, existingMission);
 
             bool created = factory.TryCreateMission(
@@ -319,7 +320,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
             officer.IsMain = true;
-            game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
+            game.GetUnrecruitedOfficers().Add(CreateUnrecruitedOfficer("empire"));
 
             bool created = factory.TryCreateMission(
                 CreateContext(game, MissionTypeIDs.Recruitment, "empire", officer, planet),
@@ -445,7 +446,7 @@ namespace Rebellion.Tests.Game.Missions
             GameRoot game = new GameRoot(config);
 
             Faction empire = new Faction { InstanceID = "empire" };
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
             PlanetSector planetSector = new PlanetSector
             {

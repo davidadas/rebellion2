@@ -36,11 +36,11 @@ namespace Rebellion.Generation
             HashSet<(string PlanetID, string ViewerFactionID)> visibilityOverrides =
                 CollectStartingVisibilityOverrides(game, config);
 
-            foreach (PlanetSector sector in game.Galaxy.PlanetSectors)
+            foreach (PlanetSector sector in game.Galaxy.GetChildren<PlanetSector>())
             {
-                foreach (Faction faction in game.Factions)
+                foreach (Faction faction in game.GetFactions())
                 {
-                    foreach (Planet planet in sector.Planets)
+                    foreach (Planet planet in sector.GetChildren<Planet>())
                     {
                         if (IsForeignCorePlanet(sector, planet, faction))
                         {
@@ -84,7 +84,8 @@ namespace Rebellion.Generation
         {
             HashSet<(string, string)> overrides = new HashSet<(string, string)>();
             Dictionary<string, Planet> planetsByTypeId = game
-                .Galaxy.PlanetSectors.SelectMany(sector => sector.Planets)
+                .Galaxy.GetChildren<PlanetSector>()
+                .SelectMany(sector => sector.GetChildren<Planet>())
                 .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
                 .ToDictionary(planet => planet.TypeID);
 

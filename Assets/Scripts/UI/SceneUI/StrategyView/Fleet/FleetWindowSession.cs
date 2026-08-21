@@ -395,7 +395,7 @@ internal sealed class FleetWindowSession
     {
         return tab switch
         {
-            FleetWindowTab.CapitalShips => selectedFleet?.CapitalShips.Count > 0,
+            FleetWindowTab.CapitalShips => selectedFleet?.GetChildren<CapitalShip>().Count > 0,
             FleetWindowTab.Starfighters => selectedFleet?.GetStarfighters().Any() == true,
             FleetWindowTab.Regiments => selectedFleet?.GetRegiments().Any() == true,
             FleetWindowTab.Personnel => selectedFleet?.GetOfficers().Any() == true
@@ -499,7 +499,7 @@ internal sealed class FleetWindowSession
         switch (ActiveTab)
         {
             case FleetWindowTab.CapitalShips:
-                detailItems.AddRange(selectedFleet.CapitalShips);
+                detailItems.AddRange(selectedFleet.GetChildren<CapitalShip>());
                 break;
             case FleetWindowTab.Starfighters:
                 detailItems.AddRange(selectedFleet.GetStarfighters());
@@ -520,8 +520,8 @@ internal sealed class FleetWindowSession
     private void RefreshFleets()
     {
         fleets.Clear();
-        if (Planet?.Planet?.Fleets != null)
-            fleets.AddRange(Planet.Planet.Fleets);
+        if (Planet?.Planet?.GetChildren<Fleet>() != null)
+            fleets.AddRange(Planet.Planet.GetChildren<Fleet>());
     }
 
     /// <summary>

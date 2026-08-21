@@ -16,6 +16,36 @@ namespace Rebellion.Tests.Game.Missions
     public class MissionTests
     {
         [Test]
+        public void GetChildren_ParticipantAssignedBeforeMissionInitiates_ReturnsParticipant()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(officer, mission);
+
+            Assert.IsFalse(mission.HasInitiated);
+            CollectionAssert.AreEqual(new[] { officer }, mission.GetChildren().ToArray());
+
+            Mission copy = (Mission)mission.CreateCopy(recursive: true);
+            IMissionParticipant copiedParticipant = copy.GetMainParticipants().Single();
+
+            Assert.AreEqual(copy, copiedParticipant.GetParent());
+        }
+
+        [Test]
         public void GetAbortReason_MainParticipantRemoved_ReturnsFailure()
         {
             (
@@ -198,8 +228,8 @@ namespace Rebellion.Tests.Game.Missions
             int decoyRatingBefore = decoy.GetBaseRating(OfficerRating.Diplomacy);
 
             Mission mission = new StubMission("empire", enemyPlanet.InstanceID);
-            mission.MainParticipants.Add(officer);
-            mission.DecoyParticipants.Add(decoy);
+            mission.AddChild(officer);
+            mission.AddDecoyParticipant(decoy);
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
@@ -482,8 +512,8 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(loadedMission, loadedOfficer.GetParent());
             Assert.AreEqual(loadedMission, loadedDecoy.GetParent());
-            Assert.AreEqual(loadedOfficer, loadedMission.MainParticipants.Single());
-            Assert.AreEqual(loadedDecoy, loadedMission.DecoyParticipants.Single());
+            Assert.AreEqual(loadedOfficer, loadedMission.GetMainParticipants().Single());
+            Assert.AreEqual(loadedDecoy, loadedMission.GetDecoyParticipants().Single());
         }
 
         private static Mission CreateSabotageMission(

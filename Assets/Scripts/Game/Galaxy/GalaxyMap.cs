@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Galaxy
 {
@@ -8,13 +9,19 @@ namespace Rebellion.Game.Galaxy
     /// </summary>
     public class GalaxyMap : ContainerNode
     {
-        // Child Nodes.
-        public List<PlanetSector> PlanetSectors { get; set; } = new List<PlanetSector>();
+        [PersistableMember(Name = "PlanetSectors")]
+        private List<PlanetSector> _planetSectors = new List<PlanetSector>();
 
         /// <summary>
         /// Default constructor.
         /// </summary>
         public GalaxyMap() { }
+
+        /// <summary>
+        /// Creates an empty galaxy-map copy.
+        /// </summary>
+        /// <returns>An empty galaxy map.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new GalaxyMap();
 
         /// <summary>
         /// Returns true if the child is a PlanetSector.
@@ -31,7 +38,7 @@ namespace Rebellion.Game.Galaxy
         {
             if (child is PlanetSector planetSector)
             {
-                PlanetSectors.Add(planetSector);
+                _planetSectors.Add(planetSector);
             }
         }
 
@@ -43,7 +50,7 @@ namespace Rebellion.Game.Galaxy
         {
             if (child is PlanetSector planetSector)
             {
-                PlanetSectors.Remove(planetSector);
+                _planetSectors.Remove(planetSector);
             }
         }
 
@@ -51,9 +58,9 @@ namespace Rebellion.Game.Galaxy
         /// Retrieves the children of the node.
         /// </summary>
         /// <returns>An array of child nodes.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return PlanetSectors.ToArray();
+            return _planetSectors;
         }
     }
 }

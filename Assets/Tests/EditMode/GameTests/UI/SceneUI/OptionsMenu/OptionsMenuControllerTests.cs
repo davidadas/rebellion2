@@ -482,7 +482,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     ScenarioID = contentPack.Scenario.ID,
                     PlayerFactionID = contentPack.Scenario.DefaultPlayerFactionID,
                 },
-                Factions = new List<Faction>(),
                 Galaxy = new GalaxyMap(),
             };
         }

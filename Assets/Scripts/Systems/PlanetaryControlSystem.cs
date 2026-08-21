@@ -369,10 +369,10 @@ namespace Rebellion.Systems
             )
                 return shift;
 
-            bool penaltyApplies = faction?.Settings?.WeakSupportPenaltyTrigger switch
+            bool penaltyApplies = faction?.Settings?.SupportResistance switch
             {
-                SupportShiftCondition.Positive => shift > 0,
-                SupportShiftCondition.Negative => shift < 0,
+                SupportChange.Increase => shift > 0,
+                SupportChange.Decrease => shift < 0,
                 _ => false,
             };
             return penaltyApplies ? shift / divisor : shift;
@@ -555,7 +555,9 @@ namespace Rebellion.Systems
         /// <returns>The planets eligible for the support shift.</returns>
         private static IEnumerable<Planet> GetAffectedPlanets(PlanetSector sector)
         {
-            return sector?.Planets.Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
+            return sector
+                    ?.GetChildren<Planet>()
+                    .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
                 ?? Enumerable.Empty<Planet>();
         }
 
@@ -724,7 +726,7 @@ namespace Rebellion.Systems
         /// <param name="newOwner">The faction receiving ownership of the buildings.</param>
         private void TransferBuildings(Planet planet, Faction newOwner)
         {
-            foreach (Building building in planet.GetChildren<Building>(_ => true, recurse: false))
+            foreach (Building building in planet.GetChildren<Building>())
             {
                 _game.ChangeOwnership(building, newOwner.InstanceID);
             }
@@ -738,10 +740,9 @@ namespace Rebellion.Systems
         private void EvictEnemyUnits(Planet planet, string newOwnerID)
         {
             List<IMovable> enemies = planet
-                .GetChildren<IMovable>(
-                    m =>
-                        m.GetOwnerInstanceID() != newOwnerID && m is not Fleet && m is not Building,
-                    recurse: false
+                .GetChildren<IMovable>()
+                .Where(m =>
+                    m.GetOwnerInstanceID() != newOwnerID && m is not Fleet && m is not Building
                 )
                 .ToList();
 

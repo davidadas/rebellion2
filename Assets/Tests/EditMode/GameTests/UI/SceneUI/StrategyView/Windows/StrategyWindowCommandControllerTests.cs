@@ -12,7 +12,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.UI;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 {
@@ -317,7 +317,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             ConfirmOpenDialog();
 
-            Assert.IsTrue(_game.IsInVoid(_officer));
+            Assert.IsFalse(_officer.IsActive());
             Assert.AreSame(_sourceWindow, _clearedWindow);
             Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
@@ -330,10 +330,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         )
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionId });
-            game.Factions.Add(new Faction { InstanceID = _opponentFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSector planetSector = new GamePlanetSector
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
                 DisplayName = "Core Sector",

@@ -4,6 +4,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Missions
@@ -19,6 +20,10 @@ namespace Rebellion.Game.Missions
         /// Returns whether this mission should cancel when the target planet changes owner.
         /// </summary>
         public override bool CanceledOnOwnershipChange => false;
+
+        /// <summary>Creates an empty reconnaissance mission copy.</summary>
+        /// <returns>An empty reconnaissance mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new ReconnaissanceMission();
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -127,7 +132,7 @@ namespace Rebellion.Game.Missions
                 return results;
             }
 
-            results.AddRange(OnSuccess(game, provider, MainParticipants.FirstOrDefault()));
+            results.AddRange(OnSuccess(game, provider, GetMainParticipants().FirstOrDefault()));
             results.Add(
                 BuildCompletedResult(MissionOutcome.Success, MissionCompletionReason.Success, game)
             );

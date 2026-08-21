@@ -57,6 +57,35 @@ namespace Rebellion.Game.Units
         /// </summary>
         public SpecialForces() { }
 
+        /// <summary>Creates an empty special-forces copy.</summary>
+        protected override BaseSceneNode CreateNodeCopy() => new SpecialForces();
+
+        /// <summary>Copies special-forces state into an empty destination.</summary>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            SpecialForces copy = (SpecialForces)destination;
+            copy.ConstructionCost = ConstructionCost;
+            copy.MaintenanceCost = MaintenanceCost;
+            copy.BaseBuildSpeed = BaseBuildSpeed;
+            copy.ManufacturingFactionInstanceIDs =
+                ManufacturingFactionInstanceIDs == null
+                    ? null
+                    : new List<string>(ManufacturingFactionInstanceIDs);
+            copy.ResearchOrder = ResearchOrder;
+            copy.ResearchDifficulty = ResearchDifficulty;
+            copy.ProducerOwnerID = ProducerOwnerID;
+            copy.ProducerPlanetID = ProducerPlanetID;
+            copy.ManufacturingProgress = ManufacturingProgress;
+            copy.ManufacturingStatus = ManufacturingStatus;
+            copy.Movement = Movement?.CreateCopy();
+            copy.IsRetired = IsRetired;
+            copy.MissionReturnParentInstanceID = MissionReturnParentInstanceID;
+            copy.MissionReturnLocationInstanceID = MissionReturnLocationInstanceID;
+            copy.AllowedMissionTypeIDs = new List<string>(AllowedMissionTypeIDs);
+            copy.Ratings = new Dictionary<OfficerRating, int>(Ratings);
+        }
+
         /// <summary>
         /// Returns the manufacturing type for this unit.
         /// </summary>

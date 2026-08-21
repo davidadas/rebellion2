@@ -12,7 +12,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class FogOfWarSystemTests
@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Systems
         private Faction _alliance;
         private Faction _empire;
         private PlanetSector _coreSector;
-        private PlanetSector _outerRimSector;
+        private PlanetSector _outerRim;
         private Planet _coruscant;
         private Planet _tatooine;
         private Planet _hoth;
@@ -36,28 +36,28 @@ namespace Rebellion.Tests.Systems
 
             _alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
-            _game.Factions.Add(_alliance);
-            _game.Factions.Add(_empire);
+            _game.GetFactions().Add(_alliance);
+            _game.GetFactions().Add(_empire);
 
             _coreSector = new PlanetSector
             {
-                InstanceID = "CORESECTOR",
-                DisplayName = "Sesswenna",
+                InstanceID = "CORE_SECTOR",
+                DisplayName = "Core Sector",
                 SectorType = PlanetSectorType.Core,
                 PositionX = 0,
                 PositionY = 0,
             };
             _game.AttachNode(_coreSector, _game.GetGalaxyMap());
 
-            _outerRimSector = new PlanetSector
+            _outerRim = new PlanetSector
             {
                 InstanceID = "OUTERRIM",
-                DisplayName = "Orus",
+                DisplayName = "Outer Rim Sector",
                 SectorType = PlanetSectorType.OuterRim,
                 PositionX = 100,
                 PositionY = 100,
             };
-            _game.AttachNode(_outerRimSector, _game.GetGalaxyMap());
+            _game.AttachNode(_outerRim, _game.GetGalaxyMap());
 
             _coruscant = new Planet
             {
@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Systems
                 DisplayName = "Tatooine",
                 OwnerInstanceID = null,
             };
-            _game.AttachNode(_tatooine, _outerRimSector);
+            _game.AttachNode(_tatooine, _outerRim);
 
             _hoth = new Planet
             {
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            _game.AttachNode(_hoth, _outerRimSector);
+            _game.AttachNode(_hoth, _outerRim);
         }
 
         [Test]
@@ -91,23 +91,24 @@ namespace Rebellion.Tests.Systems
         {
             Assert.AreEqual(
                 2,
-                _game.Galaxy.PlanetSectors.Count,
+                _game.Galaxy.GetChildren<PlanetSector>().Count,
                 "Setup should have added 2 sectors to galaxy"
             );
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Assert.AreEqual(
                 2,
-                view.PlanetSectors.Count,
+                view.GetChildren<PlanetSector>().Count,
                 "BuildFactionView should return galaxy with 2 sectors"
             );
 
-            Planet viewTatooine = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "TATOOINE");
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "TATOOINE");
 
-            Assert.AreEqual(0, viewTatooine.Officers.Count);
-            Assert.AreEqual(0, viewTatooine.Fleets.Count);
-            Assert.AreEqual(0, viewTatooine.Regiments.Count);
+            Assert.AreEqual(0, viewTatooine.GetChildren<Officer>().Count);
+            Assert.AreEqual(0, viewTatooine.GetChildren<Fleet>().Count);
+            Assert.AreEqual(0, viewTatooine.GetChildren<Regiment>().Count);
         }
 
         [Test]
@@ -118,9 +119,10 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.IsNull(
                 viewCoruscant.OwnerInstanceID,
@@ -162,13 +164,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 1,
-                viewCoruscant.Fleets.Count(f => f.InstanceID == "FLEET1"),
+                viewCoruscant.GetChildren<Fleet>().Count(f => f.InstanceID == "FLEET1"),
                 "Own in-transit fleet must be visible heading to the planet"
             );
             Assert.IsNull(
@@ -187,14 +190,15 @@ namespace Rebellion.Tests.Systems
         {
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Assert.IsTrue(view.PlanetSectors.Any(s => s.InstanceID == "CORESECTOR"));
-            Assert.IsTrue(view.PlanetSectors.Any(s => s.InstanceID == "OUTERRIM"));
+            Assert.IsTrue(view.GetChildren<PlanetSector>().Any(s => s.InstanceID == "CORE_SECTOR"));
+            Assert.IsTrue(view.GetChildren<PlanetSector>().Any(s => s.InstanceID == "OUTERRIM"));
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(0, viewCoruscant.Officers.Count);
+            Assert.AreEqual(0, viewCoruscant.GetChildren<Officer>().Count);
         }
 
         [Test]
@@ -203,9 +207,10 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             Assert.IsTrue(viewCoruscant.WasVisitedBy(_alliance.InstanceID));
             Assert.IsFalse(viewCoruscant.IsUnexploredView);
@@ -219,12 +224,13 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
 
-            Assert.AreEqual(1, viewHoth.Officers.Count);
-            Assert.AreEqual("LEIA", viewHoth.Officers[0].InstanceID);
+            Assert.AreEqual(1, viewHoth.GetChildren<Officer>().Count);
+            Assert.AreEqual("LEIA", viewHoth.GetChildren<Officer>()[0].InstanceID);
         }
 
         [Test]
@@ -235,13 +241,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
 
-            viewHoth.Officers.Clear();
+            viewHoth.RemoveChildren<Officer>(_ => true);
 
-            Assert.AreEqual(1, _hoth.Officers.Count);
+            Assert.AreEqual(1, _hoth.GetChildren<Officer>().Count);
         }
 
         [Test]
@@ -249,16 +256,17 @@ namespace Rebellion.Tests.Systems
         {
             Building groundFacility = CreateBuilding("BLDG1", _alliance);
             Building orbitStation = CreateBuilding("BLDG2", _alliance);
-            _hoth.Buildings.Add(groundFacility);
-            _hoth.Buildings.Add(orbitStation);
+            _hoth.AddTestChild(groundFacility);
+            _hoth.AddTestChild(orbitStation);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
 
-            Assert.AreEqual(2, viewHoth.Buildings.Count);
+            Assert.AreEqual(2, viewHoth.GetChildren<Building>().Count);
         }
 
         [Test]
@@ -271,12 +279,13 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(1, viewCoruscant.Officers.Count);
-            Assert.AreEqual("VADER", viewCoruscant.Officers[0].InstanceID);
+            Assert.AreEqual(1, viewCoruscant.GetChildren<Officer>().Count);
+            Assert.AreEqual("VADER", viewCoruscant.GetChildren<Officer>()[0].InstanceID);
         }
 
         [Test]
@@ -289,13 +298,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            viewCoruscant.Officers.Clear();
+            viewCoruscant.RemoveChildren<Officer>(_ => true);
 
-            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESECTOR"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
@@ -305,17 +315,18 @@ namespace Rebellion.Tests.Systems
         public void BuildFactionView_SnapshotBuildings_Visible()
         {
             Building facility = CreateBuilding("BLDG1", _empire);
-            _coruscant.Buildings.Add(facility);
+            _coruscant.AddTestChild(facility);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(1, viewCoruscant.Buildings.Count);
+            Assert.AreEqual(1, viewCoruscant.GetChildren<Building>().Count);
         }
 
         [Test]
@@ -328,9 +339,10 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(50, viewCoruscant.PopularSupport["FNALL1"]);
         }
@@ -344,9 +356,10 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(5, viewCoruscant.NumRawResourceNodes);
         }
@@ -368,11 +381,12 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(1, viewCoruscant.Officers.Count);
+            Assert.AreEqual(1, viewCoruscant.GetChildren<Officer>().Count);
             Assert.AreEqual(5, viewCoruscant.NumRawResourceNodes);
         }
 
@@ -390,27 +404,29 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 0,
-                viewHoth.Fleets.Count(f => f.InstanceID == "FLEET1"),
+                viewHoth.GetChildren<Fleet>().Count(f => f.InstanceID == "FLEET1"),
                 "Fleet must not remain at the origin planet"
             );
             Assert.AreEqual(
                 1,
-                viewCoruscant.Fleets.Count(f => f.InstanceID == "FLEET1"),
+                viewCoruscant.GetChildren<Fleet>().Count(f => f.InstanceID == "FLEET1"),
                 "Fleet must appear at its destination"
             );
 
-            int totalOccurrences = view
-                .PlanetSectors.SelectMany(s => s.Planets)
-                .Sum(p => p.Fleets.Count(f => f.InstanceID == "FLEET1"));
+            int totalOccurrences = view.GetChildren<PlanetSector>()
+                .SelectMany(s => s.GetChildren<Planet>())
+                .Sum(p => p.GetChildren<Fleet>().Count(f => f.InstanceID == "FLEET1"));
             Assert.AreEqual(
                 1,
                 totalOccurrences,
@@ -434,13 +450,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 1,
-                viewCoruscant.Fleets.Count(f => f.InstanceID == "FLEET1"),
+                viewCoruscant.GetChildren<Fleet>().Count(f => f.InstanceID == "FLEET1"),
                 "Own in-transit fleet must be visible at its destination"
             );
             Assert.AreEqual(
@@ -471,13 +488,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 1,
-                viewCoruscant.Fleets.Count(f => f.InstanceID == "FLEET1"),
+                viewCoruscant.GetChildren<Fleet>().Count(f => f.InstanceID == "FLEET1"),
                 "Own arrived fleet must be visible"
             );
             Assert.AreEqual(
@@ -513,14 +531,19 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(1, viewCoruscant.Fleets.Count, "Only the live fleet should appear");
+            Assert.AreEqual(
+                1,
+                viewCoruscant.GetChildren<Fleet>().Count,
+                "Only the live fleet should appear"
+            );
             Assert.AreEqual(
                 "FLEET_B",
-                viewCoruscant.Fleets[0].InstanceID,
+                viewCoruscant.GetChildren<Fleet>()[0].InstanceID,
                 "Stale snapshot fleet must not bleed into live view"
             );
         }
@@ -538,33 +561,36 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Planet viewTatooine = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "TATOOINE");
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "TATOOINE");
 
-            Assert.AreEqual(1, viewCoruscant.Officers.Count);
-            Assert.AreEqual("VADER", viewCoruscant.Officers[0].InstanceID);
+            Assert.AreEqual(1, viewCoruscant.GetChildren<Officer>().Count);
+            Assert.AreEqual("VADER", viewCoruscant.GetChildren<Officer>()[0].InstanceID);
 
-            Assert.AreEqual(0, viewTatooine.Officers.Count);
+            Assert.AreEqual(0, viewTatooine.GetChildren<Officer>().Count);
         }
 
         [Test]
         public void BuildFactionView_PlanetWithNoEntities_HandledCorrectly()
         {
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewTatooine = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "TATOOINE");
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "TATOOINE");
 
-            Assert.AreEqual(0, viewTatooine.Officers.Count);
-            Assert.AreEqual(0, viewTatooine.Fleets.Count);
+            Assert.AreEqual(0, viewTatooine.GetChildren<Officer>().Count);
+            Assert.AreEqual(0, viewTatooine.GetChildren<Fleet>().Count);
         }
 
         [Test]
@@ -574,19 +600,21 @@ namespace Rebellion.Tests.Systems
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _tatooine);
 
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewTatooine = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "TATOOINE");
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "TATOOINE");
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
 
-            Assert.AreEqual(1, viewTatooine.Officers.Count);
+            Assert.AreEqual(1, viewTatooine.GetChildren<Officer>().Count);
         }
 
         [Test]
@@ -594,11 +622,12 @@ namespace Rebellion.Tests.Systems
         {
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
 
-            Assert.AreEqual(0, viewHoth.Officers.Count);
+            Assert.AreEqual(0, viewHoth.GetChildren<Officer>().Count);
         }
 
         [Test]
@@ -611,13 +640,13 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            List<Officer> allOfficers = view
-                .PlanetSectors.SelectMany(s => s.Planets)
-                .SelectMany(p => p.Officers)
+            List<Officer> allOfficers = view.GetChildren<PlanetSector>()
+                .SelectMany(s => s.GetChildren<Planet>())
+                .SelectMany(p => p.GetChildren<Officer>())
                 .ToList();
 
             int vaderCount = allOfficers.Count(o => o.InstanceID == "VADER");
@@ -643,27 +672,28 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
-            PlanetSector viewSector = view.PlanetSectors.FirstOrDefault(s =>
-                s.InstanceID == "CORESECTOR"
-            );
-            Assert.IsNotNull(viewSector, "CORESECTOR should exist in view");
+            PlanetSector viewSector = view.GetChildren<PlanetSector>()
+                .FirstOrDefault(s => s.InstanceID == "CORE_SECTOR");
+            Assert.IsNotNull(viewSector, "CORE_SECTOR should exist in view");
 
-            Planet viewPlanet = viewSector.Planets.FirstOrDefault(p => p.InstanceID == "CORUSCANT");
+            Planet viewPlanet = viewSector
+                .GetChildren<Planet>()
+                .FirstOrDefault(p => p.InstanceID == "CORUSCANT");
             Assert.IsNotNull(viewPlanet, "CORUSCANT should exist in view");
 
             Assert.AreEqual(
                 "VADER",
-                viewPlanet.Officers[0].InstanceID,
+                viewPlanet.GetChildren<Officer>()[0].InstanceID,
                 "Officer InstanceID should be preserved"
             );
             Assert.AreEqual(
                 "DEATHSTAR",
-                viewPlanet.Fleets[0].InstanceID,
+                viewPlanet.GetChildren<Fleet>()[0].InstanceID,
                 "Fleet InstanceID should be preserved"
             );
             Assert.AreEqual(
                 "STORMTROOPERS",
-                viewPlanet.Regiments[0].InstanceID,
+                viewPlanet.GetChildren<Regiment>()[0].InstanceID,
                 "Regiment InstanceID should be preserved"
             );
         }
@@ -683,12 +713,13 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.IsTrue(
-                viewCoruscant.Officers.Any(o => o.InstanceID == "LEIA"),
+                viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"),
                 "Captured friendly officer must appear as live data on a visible planet"
             );
         }
@@ -708,12 +739,13 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.IsTrue(
-                viewCoruscant.Officers.Any(o => o.InstanceID == "LEIA"),
+                viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"),
                 "Captured friendly officer must appear as live data even when planet is only known via snapshot"
             );
         }
@@ -729,12 +761,13 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.IsTrue(
-                viewCoruscant.Officers.Any(o => o.InstanceID == "LEIA"),
+                viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"),
                 "Captured friendly officer must appear as live data even on a completely unexplored planet"
             );
         }
@@ -745,9 +778,10 @@ namespace Rebellion.Tests.Systems
             Building queuedBuilding = AddQueuedBuilding(_hoth, _alliance, "OWN_BUILDING", 25);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewHoth = view
-                .PlanetSectors.First(sector => sector.InstanceID == _outerRimSector.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _hoth.InstanceID);
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _outerRim.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _hoth.InstanceID);
 
             Assert.AreSame(
                 queuedBuilding,
@@ -764,12 +798,15 @@ namespace Rebellion.Tests.Systems
             AddCapitalShip(fleet, _alliance, "OBSERVING_SHIP");
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             Assert.IsFalse(
-                viewCoruscant.Buildings.Any(building => building.InstanceID == "HIDDEN_BUILDING")
+                viewCoruscant
+                    .GetChildren<Building>()
+                    .Any(building => building.InstanceID == "HIDDEN_BUILDING")
             );
             Assert.IsEmpty(viewCoruscant.ManufacturingQueue);
         }
@@ -784,13 +821,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 0,
-                viewCoruscant.Missions.Count,
+                viewCoruscant.GetChildren<Mission>().Count,
                 "Enemy missions should not be visible on your own planet"
             );
         }
@@ -804,18 +842,26 @@ namespace Rebellion.Tests.Systems
             _coruscant.PopularSupport["FNALL1"] = 50;
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+            _game.MoveNode(vader, empireMission);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(
-                1,
-                viewCoruscant.Missions.Count,
-                "Own missions should be visible on your own planet"
-            );
+            Mission viewMission = viewCoruscant.GetChildren<Mission>().Single();
+            Officer viewParticipant = viewMission
+                .GetMainParticipants(includeDisabled: true)
+                .Cast<Officer>()
+                .Single();
+
+            Assert.AreNotSame(empireMission, viewMission);
+            Assert.AreNotSame(vader, viewParticipant);
+            Assert.AreEqual(vader.InstanceID, viewParticipant.InstanceID);
         }
 
         [Test]
@@ -836,18 +882,19 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 1,
-                viewCoruscant.Officers.Count,
+                viewCoruscant.GetChildren<Officer>().Count,
                 "Live officer (Vader) should be visible"
             );
             Assert.AreEqual(
                 1,
-                viewCoruscant.Missions.Count,
+                viewCoruscant.GetChildren<Mission>().Count,
                 "A mission revealed by espionage should remain visible with live planet intel"
             );
         }
@@ -866,13 +913,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 0,
-                viewCoruscant.Missions.Count,
+                viewCoruscant.GetChildren<Mission>().Count,
                 "Enemy missions should remain hidden even when a friendly fleet is present"
             );
         }
@@ -892,16 +940,17 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 1,
-                viewCoruscant.Officers.Count,
+                viewCoruscant.GetChildren<Officer>().Count,
                 "Enemy officer should be visible when you have live intel on the planet"
             );
-            Assert.AreEqual("PALPATINE", viewCoruscant.Officers[0].InstanceID);
+            Assert.AreEqual("PALPATINE", viewCoruscant.GetChildren<Officer>()[0].InstanceID);
         }
 
         [Test]
@@ -916,13 +965,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 0,
-                viewCoruscant.Officers.Count,
+                viewCoruscant.GetChildren<Officer>().Count,
                 "Officer added after snapshot should not appear in the view"
             );
         }
@@ -954,16 +1004,19 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(enqueued);
-            Assert.AreEqual(1, _coruscant.Buildings.Count);
+            Assert.AreEqual(1, _coruscant.GetChildren<Building>().Count);
             Assert.AreEqual(ManufacturingStatus.Building, queuedBuilding.ManufacturingStatus);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.IsFalse(viewCoruscant.Buildings.Any(b => b.InstanceID == "BLDG_AFTER"));
+            Assert.IsFalse(
+                viewCoruscant.GetChildren<Building>().Any(b => b.InstanceID == "BLDG_AFTER")
+            );
         }
 
         [Test]
@@ -975,16 +1028,21 @@ namespace Rebellion.Tests.Systems
             Fleet staleFleet = CreateFleet("FLEET_STALE", _alliance);
             _game.AttachNode(staleFleet, _hoth);
             AddCapitalShip(staleFleet, _alliance, "CS1");
-            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRimSector, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRim, 10);
             _game.MoveNode(staleFleet, _coruscant);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
 
-            Assert.AreEqual(0, viewHoth.Fleets.Count, "Stale own-faction fleet should not appear");
+            Assert.AreEqual(
+                0,
+                viewHoth.GetChildren<Fleet>().Count,
+                "Stale own-faction fleet should not appear"
+            );
         }
 
         [Test]
@@ -1022,36 +1080,39 @@ namespace Rebellion.Tests.Systems
             AddCapitalShip(allianceFleet, _alliance, "ALLIANCE_SHIP");
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             CollectionAssert.AreEqual(
                 new[] { allianceFleet.InstanceID },
-                viewCoruscant.Fleets.Select(fleet => fleet.InstanceID)
+                viewCoruscant.GetChildren<Fleet>().Select(fleet => fleet.InstanceID)
             );
             Assert.IsFalse(
-                viewCoruscant.Officers.Any(officer => officer.InstanceID == enemyOfficer.InstanceID)
+                viewCoruscant
+                    .GetChildren<Officer>()
+                    .Any(officer => officer.InstanceID == enemyOfficer.InstanceID)
             );
             Assert.IsFalse(
-                viewCoruscant.Regiments.Any(regiment =>
-                    regiment.InstanceID == enemyRegiment.InstanceID
-                )
+                viewCoruscant
+                    .GetChildren<Regiment>()
+                    .Any(regiment => regiment.InstanceID == enemyRegiment.InstanceID)
             );
             Assert.IsFalse(
-                viewCoruscant.SpecialForces.Any(specialForces =>
-                    specialForces.InstanceID == enemySpecialForces.InstanceID
-                )
+                viewCoruscant
+                    .GetChildren<SpecialForces>()
+                    .Any(specialForces => specialForces.InstanceID == enemySpecialForces.InstanceID)
             );
             Assert.IsFalse(
-                viewCoruscant.Starfighters.Any(starfighter =>
-                    starfighter.InstanceID == enemyStarfighter.InstanceID
-                )
+                viewCoruscant
+                    .GetChildren<Starfighter>()
+                    .Any(starfighter => starfighter.InstanceID == enemyStarfighter.InstanceID)
             );
             Assert.IsFalse(
-                viewCoruscant.Buildings.Any(building =>
-                    building.InstanceID == enemyBuilding.InstanceID
-                )
+                viewCoruscant
+                    .GetChildren<Building>()
+                    .Any(building => building.InstanceID == enemyBuilding.InstanceID)
             );
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
@@ -1098,16 +1159,21 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(1, viewCoruscant.Officers.Count, "Live alliance officer should appear");
-            Assert.AreEqual("LEIA", viewCoruscant.Officers[0].InstanceID);
-            Assert.IsEmpty(viewCoruscant.Fleets);
+            Assert.AreEqual(
+                1,
+                viewCoruscant.GetChildren<Officer>().Count,
+                "Live alliance officer should appear"
+            );
+            Assert.AreEqual("LEIA", viewCoruscant.GetChildren<Officer>()[0].InstanceID);
+            Assert.IsEmpty(viewCoruscant.GetChildren<Fleet>());
             Assert.AreEqual(
                 0,
-                viewCoruscant.Missions.Count,
+                viewCoruscant.GetChildren<Mission>().Count,
                 "An ordinary observation should not reveal enemy missions"
             );
         }
@@ -1123,16 +1189,17 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 1,
-                viewCoruscant.Missions.Count,
+                viewCoruscant.GetChildren<Mission>().Count,
                 "Own mission on enemy planet should be visible without a snapshot or fleet"
             );
-            Assert.AreEqual("M1", viewCoruscant.Missions[0].InstanceID);
+            Assert.AreEqual("M1", viewCoruscant.GetChildren<Mission>()[0].InstanceID);
         }
 
         [Test]
@@ -1145,16 +1212,17 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewTatooine = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "TATOOINE");
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "TATOOINE");
 
             Assert.AreEqual(
                 1,
-                viewTatooine.Missions.Count,
+                viewTatooine.GetChildren<Mission>().Count,
                 "Own mission on neutral planet should be visible without a snapshot or fleet"
             );
-            Assert.AreEqual("M1", viewTatooine.Missions[0].InstanceID);
+            Assert.AreEqual("M1", viewTatooine.GetChildren<Mission>()[0].InstanceID);
         }
 
         [Test]
@@ -1171,12 +1239,17 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(1, viewCoruscant.Fleets.Count, "Own fleet should be visible");
-            Assert.AreEqual("FLEET1", viewCoruscant.Fleets[0].InstanceID);
+            Assert.AreEqual(
+                1,
+                viewCoruscant.GetChildren<Fleet>().Count,
+                "Own fleet should be visible"
+            );
+            Assert.AreEqual("FLEET1", viewCoruscant.GetChildren<Fleet>()[0].InstanceID);
         }
 
         [Test]
@@ -1198,12 +1271,17 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
 
-            Assert.AreEqual(1, viewHoth.Fleets.Count, "Stationary enemy fleet should be visible");
-            Assert.AreEqual("EMPIRE_FLEET", viewHoth.Fleets[0].InstanceID);
+            Assert.AreEqual(
+                1,
+                viewHoth.GetChildren<Fleet>().Count,
+                "Stationary enemy fleet should be visible"
+            );
+            Assert.AreEqual("EMPIRE_FLEET", viewHoth.GetChildren<Fleet>()[0].InstanceID);
         }
 
         [Test]
@@ -1219,13 +1297,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
 
             Assert.AreEqual(
                 0,
-                viewHoth.Fleets.Count,
+                viewHoth.GetChildren<Fleet>().Count,
                 "In-transit enemy fleet should not appear in the view"
             );
         }
@@ -1265,14 +1344,16 @@ namespace Rebellion.Tests.Systems
 
             Planet viewCoruscant = _fogSystem
                 .BuildFactionView(_alliance)
-                .PlanetSectors.Single(sector => sector.InstanceID == _coreSector.InstanceID)
-                .Planets.Single(planet => planet.InstanceID == _coruscant.InstanceID);
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
 
-            Assert.IsEmpty(viewCoruscant.Officers);
-            Assert.IsEmpty(viewCoruscant.Regiments);
-            Assert.IsEmpty(viewCoruscant.SpecialForces);
-            Assert.IsEmpty(viewCoruscant.Starfighters);
-            Assert.IsEmpty(viewCoruscant.Buildings);
+            Assert.IsEmpty(viewCoruscant.GetChildren<Officer>());
+            Assert.IsEmpty(viewCoruscant.GetChildren<Regiment>());
+            Assert.IsEmpty(viewCoruscant.GetChildren<SpecialForces>());
+            Assert.IsEmpty(viewCoruscant.GetChildren<Starfighter>());
+            Assert.IsEmpty(viewCoruscant.GetChildren<Building>());
         }
 
         [Test]
@@ -1318,16 +1399,21 @@ namespace Rebellion.Tests.Systems
 
             Planet viewCoruscant = _fogSystem
                 .BuildFactionView(_alliance)
-                .PlanetSectors.Single(sector => sector.InstanceID == _coreSector.InstanceID)
-                .Planets.Single(planet => planet.InstanceID == _coruscant.InstanceID);
-            Fleet viewFleet = viewCoruscant.Fleets.Single(fleet =>
-                fleet.InstanceID == empireFleet.InstanceID
-            );
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
+            Fleet viewFleet = viewCoruscant
+                .GetChildren<Fleet>()
+                .Single(fleet => fleet.InstanceID == empireFleet.InstanceID);
 
-            Assert.AreEqual(stationaryShip.InstanceID, viewFleet.CapitalShips.Single().InstanceID);
-            Assert.IsEmpty(viewFleet.CapitalShips[0].Officers);
-            Assert.IsEmpty(viewFleet.CapitalShips[0].Regiments);
-            Assert.IsEmpty(viewFleet.CapitalShips[0].Starfighters);
+            Assert.AreEqual(
+                stationaryShip.InstanceID,
+                viewFleet.GetChildren<CapitalShip>().Single().InstanceID
+            );
+            Assert.IsEmpty(viewFleet.GetChildren<CapitalShip>()[0].GetChildren<Officer>());
+            Assert.IsEmpty(viewFleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>());
+            Assert.IsEmpty(viewFleet.GetChildren<CapitalShip>()[0].GetChildren<Starfighter>());
         }
 
         [Test]
@@ -1344,12 +1430,17 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
 
-            Assert.AreEqual(1, viewHoth.Fleets.Count, "Own in-transit fleet should be visible");
-            Assert.AreEqual("FLEET1", viewHoth.Fleets[0].InstanceID);
+            Assert.AreEqual(
+                1,
+                viewHoth.GetChildren<Fleet>().Count,
+                "Own in-transit fleet should be visible"
+            );
+            Assert.AreEqual("FLEET1", viewHoth.GetChildren<Fleet>()[0].InstanceID);
         }
 
         [Test]
@@ -1370,17 +1461,18 @@ namespace Rebellion.Tests.Systems
                 empireFleet
             );
 
-            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRimSector, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRim, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewHoth = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewHoth = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "HOTH");
 
             Assert.AreEqual(
                 1,
-                viewHoth.Fleets.Count,
+                viewHoth.GetChildren<Fleet>().Count,
                 "Orbiting enemy fleet already visible live should not be duplicated from snapshot"
             );
         }
@@ -1400,13 +1492,14 @@ namespace Rebellion.Tests.Systems
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
                 1,
-                viewCoruscant.Missions.Count,
+                viewCoruscant.GetChildren<Mission>().Count,
                 "Enemy missions captured by espionage should be surfaced"
             );
         }
@@ -1417,14 +1510,15 @@ namespace Rebellion.Tests.Systems
             MakeTatooineImperial();
             _tatooine.PopularSupport["FNALL1"] = 40;
 
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 10);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
             _tatooine.PopularSupport["FNALL1"] = 10;
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewTatooine = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "TATOOINE");
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "TATOOINE");
 
             Assert.AreEqual(40, viewTatooine.PopularSupport["FNALL1"]);
         }
@@ -1433,6 +1527,7 @@ namespace Rebellion.Tests.Systems
         public void CaptureSnapshot_PlanetWithAllEntities_CreatesAccurateSnapshot()
         {
             _coruscant.NumRawResourceNodes = 5;
+            _coruscant.EnergyCapacity = 1;
             Officer vader = CreateOfficer("VADER", _empire);
             Fleet imperialFleet = CreateFleet("FLEET1", _empire);
             CapitalShip destroyer = new CapitalShip
@@ -1449,12 +1544,12 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(imperialFleet, _coruscant);
             _game.AttachNode(destroyer, imperialFleet);
             _game.AttachNode(stormtroopers, _coruscant);
-            _coruscant.Buildings.Add(starport);
-            _coruscant.Starfighters.Add(tieFighter);
+            _coruscant.AddChild(starport);
+            _coruscant.AddChild(tieFighter);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESECTOR"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
@@ -1476,9 +1571,9 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             vader.SetBaseRating(OfficerRating.Diplomacy, 99);
-            _coruscant.Officers.Remove(vader);
+            _coruscant.RemoveChild(vader);
 
-            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESECTOR"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
@@ -1493,7 +1588,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESECTOR"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual("VADER", snapshot.Officers[0].InstanceID);
@@ -1521,9 +1616,9 @@ namespace Rebellion.Tests.Systems
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
 
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
-            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESECTOR"];
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(0, coruscantSnapshot.Officers.Count);
@@ -1548,13 +1643,13 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             _hoth.OwnerInstanceID = _empire.InstanceID; // Set owner so fleet can move here
             _game.MoveNode(fleet, _hoth);
-            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRimSector, 30);
+            _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRim, 30);
 
-            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESECTOR"];
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(0, coruscantSnapshot.Officers.Count);
@@ -1570,7 +1665,7 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
-            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESECTOR"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
@@ -1586,12 +1681,12 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             _game.MoveNode(vader, _coruscant);
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 30);
 
-            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESECTOR"];
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, coruscantSnapshot.Officers.Count);
@@ -1613,20 +1708,22 @@ namespace Rebellion.Tests.Systems
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
 
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
-            Planet viewTatooine = view
-                .PlanetSectors.First(s => s.InstanceID == "OUTERRIM")
-                .Planets.First(p => p.InstanceID == "TATOOINE");
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "TATOOINE");
 
-            Assert.AreEqual(0, viewCoruscant.Officers.Count);
-            Assert.AreEqual(1, viewTatooine.Officers.Count);
+            Assert.AreEqual(0, viewCoruscant.GetChildren<Officer>().Count);
+            Assert.AreEqual(1, viewTatooine.GetChildren<Officer>().Count);
         }
 
         [Test]
@@ -1634,7 +1731,7 @@ namespace Rebellion.Tests.Systems
         {
             Assert.DoesNotThrow(() =>
             {
-                _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 10);
+                _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
             });
 
             PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
@@ -1662,12 +1759,18 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(regiment, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
             ];
-            Assert.IsEmpty(oldSnapshot.Fleets.Single().CapitalShips.Single().Regiments);
+            Assert.IsEmpty(
+                oldSnapshot
+                    .Fleets.Single()
+                    .GetChildren<CapitalShip>()
+                    .Single()
+                    .GetChildren<Regiment>()
+            );
             Assert.AreEqual(
                 _tatooine.InstanceID,
                 _alliance.Fog.EntityLastSeenAt[regiment.InstanceID]
@@ -1686,7 +1789,7 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             Assert.AreEqual("TATOOINE", _alliance.Fog.EntityLastSeenAt["VADER"]);
         }
@@ -1696,9 +1799,9 @@ namespace Rebellion.Tests.Systems
         {
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            Assert.AreEqual("CORESECTOR", _alliance.Fog.PlanetToSector["CORUSCANT"]);
+            Assert.AreEqual("CORE_SECTOR", _alliance.Fog.PlanetToSector["CORUSCANT"]);
 
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             Assert.AreEqual("OUTERRIM", _alliance.Fog.PlanetToSector["TATOOINE"]);
         }
@@ -1712,7 +1815,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESECTOR"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
             int originalTickCaptured = snapshot.TickCaptured;
 
@@ -1756,9 +1859,9 @@ namespace Rebellion.Tests.Systems
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
-            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORESECTOR"];
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(
@@ -1799,7 +1902,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESECTOR"].Planets["CORUSCANT"];
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
 
             Assert.IsFalse(
                 snapshot.Officers.Any(o => o.InstanceID == "LEIA"),
@@ -1814,7 +1917,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESECTOR"].Planets["CORUSCANT"];
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
             Assert.IsFalse(snapshot.HasManufacturingIntelligence);
             Assert.IsEmpty(snapshot.ManufacturingQueueItems);
             Assert.IsFalse(
@@ -1830,22 +1933,25 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(vader, _coruscant);
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
-            empireMission.MainParticipants.Add(vader);
             _game.AttachNode(empireMission, _coruscant);
+            _game.MoveNode(vader, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
             vader.DisplayName = "Vader observed elsewhere";
-            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSector, 20);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
 
             PlanetSnapshot coruscantSnapshot = _alliance
                 .Fog
                 .Snapshots[_coreSector.InstanceID]
                 .Planets[_coruscant.InstanceID];
             Officer recordedParticipant =
-                coruscantSnapshot.Missions.Single().MainParticipants.Single() as Officer;
+                coruscantSnapshot
+                    .Missions.Single()
+                    .GetMainParticipants(includeDisabled: true)
+                    .Single() as Officer;
 
             Assert.IsEmpty(coruscantSnapshot.Officers);
             Assert.IsNotNull(recordedParticipant);
@@ -1867,12 +1973,13 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
-            Fleet viewFleet = viewCoruscant.Fleets.Single(fleet =>
-                fleet.InstanceID == empireFleet.InstanceID
-            );
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Fleet viewFleet = viewCoruscant
+                .GetChildren<Fleet>()
+                .Single(fleet => fleet.InstanceID == empireFleet.InstanceID);
             Assert.IsNotNull(viewFleet.Movement);
         }
 
@@ -1905,9 +2012,10 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
             List<IManufacturable> queue = viewCoruscant.ManufacturingQueue[
                 ManufacturingType.Building
             ];
@@ -1968,8 +2076,9 @@ namespace Rebellion.Tests.Systems
             ];
             CapitalShip preservedShip = snapshot
                 .Fleets.Single(snapshotFleet => snapshotFleet.InstanceID == fleet.InstanceID)
-                .CapitalShips.Single(ship => ship.InstanceID == knownShip.InstanceID);
-            Assert.IsEmpty(preservedShip.Regiments);
+                .GetChildren<CapitalShip>()
+                .Single(ship => ship.InstanceID == knownShip.InstanceID);
+            Assert.IsEmpty(preservedShip.GetChildren<Regiment>());
         }
 
         [Test]
@@ -1997,7 +2106,7 @@ namespace Rebellion.Tests.Systems
             Fleet preservedFleet = snapshot.Fleets.Single(snapshotFleet =>
                 snapshotFleet.InstanceID == fleet.InstanceID
             );
-            CapitalShip preservedShip = preservedFleet.CapitalShips.Single();
+            CapitalShip preservedShip = preservedFleet.GetChildren<CapitalShip>().Single();
             Assert.AreEqual(knownShip.InstanceID, preservedShip.InstanceID);
             Assert.AreEqual(25, preservedShip.ManufacturingProgress);
             Assert.AreEqual(
@@ -2083,12 +2192,13 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_empire, _coruscant, _coreSector, _game.CurrentTick);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.IsFalse(
-                viewCoruscant.Fleets.Any(f => f.InstanceID == "empty_fleet"),
+                viewCoruscant.GetChildren<Fleet>().Any(f => f.InstanceID == "empty_fleet"),
                 "Empty fleet should not appear in snapshot"
             );
         }
@@ -2113,12 +2223,13 @@ namespace Rebellion.Tests.Systems
             _fogSystem.CaptureSnapshot(_empire, _coruscant, _coreSector, _game.CurrentTick);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_empire);
-            Planet viewCoruscant = view
-                .PlanetSectors.First(s => s.InstanceID == "CORESECTOR")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
 
             Assert.IsTrue(
-                viewCoruscant.Fleets.Any(f => f.InstanceID == "armed_fleet"),
+                viewCoruscant.GetChildren<Fleet>().Any(f => f.InstanceID == "armed_fleet"),
                 "Fleet with capital ships should appear in snapshot"
             );
         }
@@ -2149,7 +2260,7 @@ namespace Rebellion.Tests.Systems
                 }
             );
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESECTOR"].Planets["CORUSCANT"];
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
             Assert.IsFalse(snapshot.Buildings.Any(b => b.InstanceID == "MINE1"));
         }
 
@@ -2265,7 +2376,7 @@ namespace Rebellion.Tests.Systems
                 }
             );
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESECTOR"].Planets["CORUSCANT"];
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
             Assert.AreEqual(42, snapshot.TickCaptured);
             Assert.AreEqual(PlanetIntelligenceCategory.None, snapshot.RevealedCategories);
             Assert.AreEqual("IMPERIAL_FACILITY", snapshot.Buildings.Single().InstanceID);
@@ -2295,13 +2406,13 @@ namespace Rebellion.Tests.Systems
             );
 
             Fleet knownFleet = _alliance
-                .Fog.Snapshots["CORESECTOR"]
+                .Fog.Snapshots["CORE_SECTOR"]
                 .Planets["CORUSCANT"]
                 .Fleets.Single();
-            CapitalShip knownShip = knownFleet.CapitalShips.Single();
+            CapitalShip knownShip = knownFleet.GetChildren<CapitalShip>().Single();
             Assert.AreEqual("IMPERIAL_FLEET", knownFleet.InstanceID);
             Assert.AreEqual("SELECTED_SHIP", knownShip.InstanceID);
-            Assert.IsEmpty(knownShip.Officers);
+            Assert.IsEmpty(knownShip.GetChildren<Officer>());
         }
 
         [Test]
@@ -2327,13 +2438,16 @@ namespace Rebellion.Tests.Systems
             );
 
             Fleet knownFleet = _alliance
-                .Fog.Snapshots["CORESECTOR"]
+                .Fog.Snapshots["CORE_SECTOR"]
                 .Planets["CORUSCANT"]
                 .Fleets.Single();
-            CapitalShip knownShip = knownFleet.CapitalShips.Single();
+            CapitalShip knownShip = knownFleet.GetChildren<CapitalShip>().Single();
             Assert.AreEqual("IMPERIAL_FLEET", knownFleet.InstanceID);
             Assert.AreEqual("STAR_DESTROYER", knownShip.InstanceID);
-            Assert.AreEqual("SELECTED_OFFICER", knownShip.Officers.Single().InstanceID);
+            Assert.AreEqual(
+                "SELECTED_OFFICER",
+                knownShip.GetChildren<Officer>().Single().InstanceID
+            );
         }
 
         [Test]
@@ -2354,7 +2468,7 @@ namespace Rebellion.Tests.Systems
                 }
             );
 
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESECTOR"].Planets["CORUSCANT"];
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
             Assert.IsTrue(snapshot.HasManufacturingIntelligence);
             Assert.AreEqual("SELECTED_ORDER", snapshot.ManufacturingQueueItems.Single().InstanceID);
             Assert.IsFalse(
@@ -2389,13 +2503,14 @@ namespace Rebellion.Tests.Systems
             );
 
             CapitalShip knownShip = _alliance
-                .Fog.Snapshots["CORESECTOR"]
+                .Fog.Snapshots["CORE_SECTOR"]
                 .Planets["CORUSCANT"]
                 .Fleets.Single()
-                .CapitalShips.Single();
+                .GetChildren<CapitalShip>()
+                .Single();
             Assert.AreEqual("STAR_DESTROYER", knownShip.InstanceID);
-            Assert.IsEmpty(knownShip.Officers);
-            Assert.IsEmpty(knownShip.Starfighters);
+            Assert.IsEmpty(knownShip.GetChildren<Officer>());
+            Assert.IsEmpty(knownShip.GetChildren<Starfighter>());
 
             new FogOfWarRecorder().RecordIntelligenceSnapshot(
                 _alliance,
@@ -2404,7 +2519,7 @@ namespace Rebellion.Tests.Systems
                 43,
                 PlanetIntelligenceCategory.Starfighters
             );
-            PlanetSnapshot updatedSnapshot = _alliance.Fog.Snapshots["CORESECTOR"].Planets[
+            PlanetSnapshot updatedSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets[
                 "CORUSCANT"
             ];
             Assert.AreEqual("TIE_SQUADRON", updatedSnapshot.Starfighters.Single().InstanceID);
@@ -2412,8 +2527,10 @@ namespace Rebellion.Tests.Systems
                 "TIE_SQUADRON",
                 updatedSnapshot
                     .Fleets.Single()
-                    .CapitalShips.Single()
-                    .Starfighters.Single()
+                    .GetChildren<CapitalShip>()
+                    .Single()
+                    .GetChildren<Starfighter>()
+                    .Single()
                     .InstanceID
             );
         }
@@ -2427,12 +2544,15 @@ namespace Rebellion.Tests.Systems
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
             Assert.IsTrue(
-                viewCoruscant.Buildings.Any(building => building.InstanceID == "REVEALED_BUILDING")
+                viewCoruscant
+                    .GetChildren<Building>()
+                    .Any(building => building.InstanceID == "REVEALED_BUILDING")
             );
             Assert.AreEqual(
                 "REVEALED_BUILDING",
@@ -2450,12 +2570,16 @@ namespace Rebellion.Tests.Systems
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
-            Assert.AreEqual(1, viewCoruscant.Missions.Count);
-            Assert.AreEqual(empireMission.InstanceID, viewCoruscant.Missions[0].InstanceID);
+            Assert.AreEqual(1, viewCoruscant.GetChildren<Mission>().Count);
+            Assert.AreEqual(
+                empireMission.InstanceID,
+                viewCoruscant.GetChildren<Mission>()[0].InstanceID
+            );
         }
 
         [Test]
@@ -2470,14 +2594,15 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(tarkin, _coruscant);
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
-            empireMission.MainParticipants.Add(vader);
-            empireMission.DecoyParticipants.Add(tarkin);
             _game.AttachNode(empireMission, _coruscant);
+            _game.MoveNode(vader, empireMission);
+            empireMission.AddDecoyParticipant(tarkin);
+            _game.MoveNode(tarkin, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            empireMission.MainParticipants.Clear();
-            empireMission.DecoyParticipants.Clear();
+            _game.MoveNode(vader, _coruscant);
+            _game.MoveNode(tarkin, _coruscant);
             vader.DisplayName = "Changed live officer";
             vader.DisplayImagePath = "officers/changed";
             tarkin.DisplayName = "Changed live decoy";
@@ -2486,8 +2611,10 @@ namespace Rebellion.Tests.Systems
                 .Fog.Snapshots[_coreSector.InstanceID]
                 .Planets[_coruscant.InstanceID]
                 .Missions.Single();
-            Officer recordedParticipant = recordedMission.MainParticipants.Single() as Officer;
-            Officer recordedDecoy = recordedMission.DecoyParticipants.Single() as Officer;
+            Officer recordedParticipant =
+                recordedMission.GetMainParticipants(includeDisabled: true).Single() as Officer;
+            Officer recordedDecoy =
+                recordedMission.GetDecoyParticipants(includeDisabled: true).Single() as Officer;
 
             Assert.IsNotNull(recordedParticipant);
             Assert.AreNotSame(vader, recordedParticipant);
@@ -2498,6 +2625,30 @@ namespace Rebellion.Tests.Systems
             Assert.AreNotSame(tarkin, recordedDecoy);
             Assert.AreEqual(tarkin.InstanceID, recordedDecoy.InstanceID);
             Assert.AreEqual("Grand Moff Tarkin", recordedDecoy.DisplayName);
+        }
+
+        [Test]
+        public void RecordEspionageSnapshot_DisabledMissionParticipant_PreservesParticipant()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+            Mission empireMission = CreateMission("M1", _empire, _coruscant);
+            _game.AttachNode(empireMission, _coruscant);
+            _game.MoveNode(vader, empireMission);
+            vader.IsEnabled = false;
+
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            Mission recordedMission = _alliance
+                .Fog.Snapshots[_coreSector.InstanceID]
+                .Planets[_coruscant.InstanceID]
+                .Missions.Single();
+            Officer recordedParticipant =
+                recordedMission.GetMainParticipants(includeDisabled: true).Single() as Officer;
+
+            Assert.IsNotNull(recordedParticipant);
+            Assert.AreEqual(vader.InstanceID, recordedParticipant.InstanceID);
+            Assert.IsFalse(recordedParticipant.IsEnabled);
         }
 
         [Test]
@@ -2512,13 +2663,17 @@ namespace Rebellion.Tests.Systems
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-            Planet viewCoruscant = view
-                .PlanetSectors.First(sector => sector.InstanceID == _coreSector.InstanceID)
-                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
 
-            Assert.AreEqual(1, viewCoruscant.Fleets.Count);
-            Assert.AreEqual(empireFleet.InstanceID, viewCoruscant.Fleets[0].InstanceID);
-            Assert.IsNotNull(viewCoruscant.Fleets[0].Movement);
+            Assert.AreEqual(1, viewCoruscant.GetChildren<Fleet>().Count);
+            Assert.AreEqual(
+                empireFleet.InstanceID,
+                viewCoruscant.GetChildren<Fleet>()[0].InstanceID
+            );
+            Assert.IsNotNull(viewCoruscant.GetChildren<Fleet>()[0].Movement);
         }
 
         [Test]
@@ -2530,8 +2685,8 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(vader, _coruscant);
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
-            empireMission.MainParticipants.Add(vader);
             _game.AttachNode(empireMission, _coruscant);
+            _game.MoveNode(vader, empireMission);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
@@ -2541,7 +2696,8 @@ namespace Rebellion.Tests.Systems
             string xml = SerializationHelper.Serialize(snapshot);
             PlanetSnapshot restored = SerializationHelper.Deserialize<PlanetSnapshot>(xml);
             Officer restoredParticipant =
-                restored.Missions.Single().MainParticipants.Single() as Officer;
+                restored.Missions.Single().GetMainParticipants(includeDisabled: true).Single()
+                as Officer;
 
             Assert.IsNotNull(restoredParticipant);
             Assert.AreEqual(vader.InstanceID, restoredParticipant.InstanceID);
@@ -2558,7 +2714,7 @@ namespace Rebellion.Tests.Systems
             building.ProducerOwnerID = faction.InstanceID;
             building.ProducerPlanetID = planet.InstanceID;
             building.ManufacturingProgress = progress;
-            planet.EnergyCapacity = planet.Buildings.Count + 1;
+            planet.EnergyCapacity = planet.GetChildren<Building>().Count + 1;
             _game.AttachNode(building, planet);
             planet.AddToManufacturingQueue(building);
             return building;

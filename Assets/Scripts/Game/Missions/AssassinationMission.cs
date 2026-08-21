@@ -19,6 +19,18 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string TargetOfficerInstanceID { get; set; }
 
+        /// <summary>Creates an empty assassination mission copy.</summary>
+        /// <returns>An empty assassination mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new AssassinationMission();
+
+        /// <summary>Copies assassination-specific state into an empty destination.</summary>
+        /// <param name="destination">The destination mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            ((AssassinationMission)destination).TargetOfficerInstanceID = TargetOfficerInstanceID;
+        }
+
         /// <summary>
         /// Returns whether this mission should cancel when the target planet changes owner.
         /// </summary>

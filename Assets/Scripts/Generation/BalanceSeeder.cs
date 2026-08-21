@@ -1,5 +1,6 @@
 using System;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Generation
 {
@@ -28,7 +29,7 @@ namespace Rebellion.Generation
         {
             foreach (PlanetSector sector in sectors)
             {
-                foreach (Planet planet in sector.Planets)
+                foreach (Planet planet in sector.GetChildren<Planet>())
                     ApplyPlanetSupportAdjustments(planet, balance);
             }
         }
@@ -84,7 +85,7 @@ namespace Rebellion.Generation
         private static int GetMilitaryPresence(Planet planet)
         {
             return planet.GetRegimentCount()
-                + planet.GetFleets().Count
+                + planet.GetChildren<Fleet>().Count
                 + planet.GetStarfighterCount();
         }
     }

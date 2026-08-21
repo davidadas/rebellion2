@@ -60,7 +60,7 @@ namespace Rebellion.Tests.Systems
         {
             (GameRoot game, Faction faction, Planet origin, _, _) = CreateGame(isMobile: false);
             Faction attacker = new Faction { InstanceID = "empire" };
-            game.Factions.Add(attacker);
+            game.GetFactions().Add(attacker);
 
             List<GameResult> results = CreateSystem(game)
                 .HandleResults(
@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Systems
         {
             (GameRoot game, Faction faction, Planet origin, _, _) = CreateGame(isMobile: false);
             Faction attacker = new Faction { InstanceID = "empire" };
-            game.Factions.Add(attacker);
+            game.GetFactions().Add(attacker);
             origin.IsHeadquarters = false;
 
             List<GameResult> results = CreateSystem(game)
@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Systems
                 isMobile: true
             );
             Faction attacker = new Faction { InstanceID = "empire" };
-            game.Factions.Add(attacker);
+            game.GetFactions().Add(attacker);
 
             List<GameResult> results = CreateSystem(game)
                 .HandleResults(
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.Systems
                     },
                 },
             };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.GetGalaxyMap());

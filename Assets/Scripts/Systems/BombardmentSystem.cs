@@ -17,7 +17,7 @@ namespace Rebellion.Systems
         Military,
         Civilian,
         General,
-        DestroySystem,
+        DestroyPlanet,
     }
 
     public enum BombardmentTargetType
@@ -46,12 +46,12 @@ namespace Rebellion.Systems
         public event Action<IReadOnlyList<GameResult>> ResultsProduced;
 
         /// <summary>
-        /// Creates the bombardment system.
+        /// Creates the bombardment sector.
         /// </summary>
         /// <param name="game">Active game state.</param>
         /// <param name="provider">Random-number provider used by bombardment resolution.</param>
-        /// <param name="movement">Movement system used for surviving passenger evacuation.</param>
-        /// <param name="ownership">Planetary control system used for support and ownership changes.</param>
+        /// <param name="movement">Movement sector used for surviving passenger evacuation.</param>
+        /// <param name="ownership">Planetary control sector used for support and ownership changes.</param>
         /// <param name="personnelSystem">Personnel lifecycle service.</param>
         public BombardmentSystem(
             GameRoot game,
@@ -140,7 +140,7 @@ namespace Rebellion.Systems
             try
             {
                 bool destroysPlanet =
-                    type == BombardmentType.DestroySystem
+                    type == BombardmentType.DestroyPlanet
                     && HasPlanetDestroyingShip(attackingFleets);
                 if (destroysPlanet)
                     DestroyPlanet(targetPlanet, result);
@@ -225,7 +225,7 @@ namespace Rebellion.Systems
             if (!CanBombard(fleets, targetPlanet))
                 return false;
 
-            return type == BombardmentType.DestroySystem
+            return type == BombardmentType.DestroyPlanet
                 ? HasPlanetDestroyingShip(fleets)
                 : CalculateBombardmentStrength(fleets) > 0;
         }
@@ -297,7 +297,7 @@ namespace Rebellion.Systems
             foreach (Fleet fleet in attackers)
                 fleet.IsInCombat = isInCombat;
 
-            foreach (Fleet fleet in planet.Fleets)
+            foreach (Fleet fleet in planet.GetChildren<Fleet>())
                 fleet.IsInCombat = isInCombat;
         }
 
@@ -321,15 +321,19 @@ namespace Rebellion.Systems
                 int multiplier = leadership / divisor + 1;
                 int fleetStrength = 0;
 
-                foreach (CapitalShip ship in fleet.CapitalShips.Where(IsActiveBombardmentUnit))
+                foreach (
+                    CapitalShip ship in fleet
+                        .GetChildren<CapitalShip>()
+                        .Where(IsActiveBombardmentUnit)
+                )
                 {
                     fleetStrength += ScaleByCondition(
                         ship.Bombardment,
                         ship.CurrentHullStrength,
                         ship.MaxHullStrength
                     );
-                    fleetStrength += ship
-                        .Starfighters.Where(IsActiveBombardmentUnit)
+                    fleetStrength += ship.GetChildren<Starfighter>()
+                        .Where(IsActiveBombardmentUnit)
                         .Sum(fighter =>
                             ScaleByCondition(
                                 fighter.Bombardment,
@@ -428,12 +432,13 @@ namespace Rebellion.Systems
                     continue;
 
                 result.DestroyedCapitalShips.Add(ship);
-                List<IMovable> units = ship
-                    .Officers.Cast<IMovable>()
+                List<IMovable> units = ship.GetChildren<Officer>()
+                    .Cast<IMovable>()
                     .Concat(
-                        ship.Starfighters.Where(starfighter =>
-                            starfighter.ManufacturingStatus == ManufacturingStatus.Complete
-                        )
+                        ship.GetChildren<Starfighter>()
+                            .Where(starfighter =>
+                                starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                            )
                     )
                     .ToList();
                 _movement.RelocateUnits(units);
@@ -526,7 +531,7 @@ namespace Rebellion.Systems
                 type
                 is BombardmentType.Military
                     or BombardmentType.General
-                    or BombardmentType.DestroySystem
+                    or BombardmentType.DestroyPlanet
             )
             {
                 targets.AddRange(BuildMilitaryTargets(planet, defenderId));
@@ -536,13 +541,13 @@ namespace Rebellion.Systems
                 type
                 is BombardmentType.Civilian
                     or BombardmentType.General
-                    or BombardmentType.DestroySystem
+                    or BombardmentType.DestroyPlanet
             )
             {
                 targets.AddRange(BuildCivilianTargets(planet));
             }
 
-            if (type is BombardmentType.General or BombardmentType.DestroySystem)
+            if (type is BombardmentType.General or BombardmentType.DestroyPlanet)
                 AddEnergyTargets(planet, targets);
 
             return targets;
@@ -792,7 +797,7 @@ namespace Rebellion.Systems
             {
                 if (
                     !RollBombardmentPercent(
-                        _game.Config.Combat.Bombardment.DestroySystemPersonnelInjuryPercent
+                        _game.Config.Combat.Bombardment.DestroyPlanetPersonnelInjuryPercent
                     )
                 )
                     continue;
@@ -809,7 +814,7 @@ namespace Rebellion.Systems
 
                 if (
                     !RollBombardmentPercent(
-                        _game.Config.Combat.Bombardment.DestroySystemMinorPersonnelDeathPercent
+                        _game.Config.Combat.Bombardment.DestroyPlanetMinorPersonnelDeathPercent
                     )
                 )
                     continue;
@@ -846,7 +851,7 @@ namespace Rebellion.Systems
             if (sector == null)
                 return results;
 
-            int shift = GetCivilianSectorPenalty(sector, attacker);
+            int shift = GetCivilianBombardmentSectorPenalty(sector, attacker);
             results.AddRange(
                 _ownership.ShiftBombardmentSupport(GetAffectedPlanets(sector), attacker, shift)
             );
@@ -881,7 +886,7 @@ namespace Rebellion.Systems
         /// <param name="sector">Planet sector where the destruction occurred.</param>
         /// <param name="attacker">Faction responsible for the bombardment.</param>
         /// <returns>The applicable popular-support shift.</returns>
-        private int GetCivilianSectorPenalty(PlanetSector sector, Faction attacker)
+        private int GetCivilianBombardmentSectorPenalty(PlanetSector sector, Faction attacker)
         {
             bool empire = attacker.Settings.InvertSupportShift;
             if (sector.SectorType == PlanetSectorType.Core)
@@ -913,7 +918,7 @@ namespace Rebellion.Systems
                 _ownership.ShiftBombardmentSupport(
                     corePlanets,
                     attacker,
-                    _game.Config.Combat.Bombardment.DestroySystemCoreSupportPenalty
+                    _game.Config.Combat.Bombardment.DestroyPlanetCoreSupportPenalty
                 )
             );
 
@@ -923,14 +928,14 @@ namespace Rebellion.Systems
                 .SelectMany(GetAffectedPlanets)
                 .Where(planet =>
                     planet.GetPopularSupport(attacker.InstanceID)
-                    < _game.Config.Combat.Bombardment.DestroySystemOuterRimSupportThreshold
+                    < _game.Config.Combat.Bombardment.DestroyPlanetOuterRimSupportThreshold
                 )
                 .ToList();
             results.AddRange(
                 _ownership.ShiftBombardmentSupport(
                     outerRimPlanets,
                     attacker,
-                    _game.Config.Combat.Bombardment.DestroySystemOuterRimSupportPenalty
+                    _game.Config.Combat.Bombardment.DestroyPlanetOuterRimSupportPenalty
                 )
             );
             return results;
@@ -1042,7 +1047,8 @@ namespace Rebellion.Systems
         private static List<Planet> GetAffectedPlanets(PlanetSector sector)
         {
             return sector
-                .Planets.Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
+                .GetChildren<Planet>()
+                .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
                 .ToList();
         }
 
@@ -1054,7 +1060,7 @@ namespace Rebellion.Systems
         private static List<CapitalShip> GetActiveCapitalShips(IEnumerable<Fleet> fleets)
         {
             return fleets
-                .SelectMany(fleet => fleet.CapitalShips)
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                 .Where(IsActiveBombardmentUnit)
                 .ToList();
         }

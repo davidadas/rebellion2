@@ -460,11 +460,11 @@ namespace Rebellion.Game
             public int CivilianCoreEmpireSupportPenalty { get; set; }
             public int CivilianOuterRimAllianceSupportPenalty { get; set; }
             public int CivilianOuterRimEmpireSupportPenalty { get; set; }
-            public int DestroySystemPersonnelInjuryPercent { get; set; }
-            public int DestroySystemMinorPersonnelDeathPercent { get; set; }
-            public int DestroySystemCoreSupportPenalty { get; set; }
-            public int DestroySystemOuterRimSupportPenalty { get; set; }
-            public int DestroySystemOuterRimSupportThreshold { get; set; }
+            public int DestroyPlanetPersonnelInjuryPercent { get; set; }
+            public int DestroyPlanetMinorPersonnelDeathPercent { get; set; }
+            public int DestroyPlanetCoreSupportPenalty { get; set; }
+            public int DestroyPlanetOuterRimSupportPenalty { get; set; }
+            public int DestroyPlanetOuterRimSupportThreshold { get; set; }
         }
 
         /// <summary>

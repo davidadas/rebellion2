@@ -182,8 +182,8 @@ namespace Rebellion.Tests.Systems
                 EscapeLoyaltyShift = -10,
             };
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSector planetSector = new PlanetSector
             {

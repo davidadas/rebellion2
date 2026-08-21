@@ -20,7 +20,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -71,7 +71,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
 
             Fleet fleet = new Fleet
             {
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.Systems
             config.Messages.RetentionTicks = 300;
             GameRoot game = new GameRoot(config) { CurrentTick = 401 };
             Faction faction = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
             Message expired = new Message(MessageType.Conflict, "Expired") { CreatedTick = 100 };
             Message retained = new Message(MessageType.Conflict, "Retained") { CreatedTick = 101 };
             faction.AddMessage(expired);
@@ -122,7 +122,7 @@ namespace Rebellion.Tests.Systems
             config.Messages.RetentionTicks = 300;
             GameRoot game = new GameRoot(config) { CurrentTick = 401 };
             Faction faction = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
             Message expired = new Message(MessageType.Conflict, "Expired") { CreatedTick = 100 };
             Message retained = new Message(MessageType.Conflict, "Retained") { CreatedTick = 101 };
             faction.AddMessage(expired);

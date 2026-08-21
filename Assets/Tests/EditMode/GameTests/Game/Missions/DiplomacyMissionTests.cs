@@ -136,8 +136,8 @@ namespace Rebellion.Tests.Game.Missions
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             planet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
-            game.GetFactionByOwnerInstanceID("empire").Settings.WeakSupportPenaltyTrigger =
-                SupportShiftCondition.Positive;
+            game.GetFactionByOwnerInstanceID("empire").Settings.SupportResistance =
+                SupportChange.Increase;
             Mission mission = CreateAndAttachMission(game, planet);
             game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 6;
@@ -423,8 +423,8 @@ namespace Rebellion.Tests.Game.Missions
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSector planetSector = new PlanetSector
             {

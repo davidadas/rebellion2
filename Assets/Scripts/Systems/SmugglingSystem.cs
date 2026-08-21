@@ -11,7 +11,7 @@ using Rebellion.Util.Common;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Maintains system smuggling and redirects stolen resource output to its beneficiary.
+    /// Maintains sector smuggling and redirects stolen resource output to its beneficiary.
     /// </summary>
     public sealed class SmugglingSystem
     {
@@ -32,7 +32,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Creates a smuggling system for the supplied game.
+        /// Creates a smuggling sector for the supplied game.
         /// </summary>
         /// <param name="game">The current game state.</param>
         public SmugglingSystem(GameRoot game)
@@ -82,7 +82,8 @@ namespace Rebellion.Systems
             foreach (
                 Planet planet in _game
                     .GetGalaxyMap()
-                    .PlanetSectors.SelectMany(sector => sector.Planets)
+                    .GetChildren<PlanetSector>()
+                    .SelectMany(sector => sector.GetChildren<Planet>())
             )
             {
                 Faction controller = FindFaction(planet.OwnerInstanceID);
@@ -110,7 +111,8 @@ namespace Rebellion.Systems
             foreach (
                 Planet planet in _game
                     .GetGalaxyMap()
-                    .PlanetSectors.SelectMany(sector => sector.Planets)
+                    .GetChildren<PlanetSector>()
+                    .SelectMany(sector => sector.GetChildren<Planet>())
                     .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
@@ -295,13 +297,14 @@ namespace Rebellion.Systems
             GameConfig.SmugglingConfig config = _game.Config.Smuggling;
             int support = planet.GetPopularSupport(controller.InstanceID);
             Fleet[] fleets = planet
-                .Fleets.Where(fleet =>
+                .GetChildren<Fleet>()
+                .Where(fleet =>
                     fleet.OwnerInstanceID == controller.InstanceID && fleet.Movement == null
                 )
                 .ToArray();
             if (
                 fleets
-                    .SelectMany(fleet => fleet.CapitalShips)
+                    .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                     .Any(ship => IsOperational(ship) && ship.CanDestroyPlanets)
             )
                 return 0;
@@ -332,7 +335,8 @@ namespace Rebellion.Systems
             string controllerInstanceID
         ) =>
             planet
-                .Starfighters.Concat(fleets.SelectMany(fleet => fleet.GetStarfighters()))
+                .GetChildren<Starfighter>()
+                .Concat(fleets.SelectMany(fleet => fleet.GetStarfighters()))
                 .Where(starfighter =>
                     starfighter.OwnerInstanceID == controllerInstanceID
                     && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
@@ -349,7 +353,8 @@ namespace Rebellion.Systems
             string controllerInstanceID
         ) =>
             planet
-                .Regiments.Concat(fleets.SelectMany(fleet => fleet.GetRegiments()))
+                .GetChildren<Regiment>()
+                .Concat(fleets.SelectMany(fleet => fleet.GetRegiments()))
                 .Where(regiment =>
                     regiment.OwnerInstanceID == controllerInstanceID
                     && regiment.ManufacturingStatus == ManufacturingStatus.Complete

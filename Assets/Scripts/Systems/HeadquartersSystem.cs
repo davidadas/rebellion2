@@ -150,7 +150,7 @@ namespace Rebellion.Systems
                     continue;
 
                 Building headquarters = planet
-                    .GetChildren<Building>(_ => true, recurse: false)
+                    .GetChildren<Building>()
                     .SingleOrDefault(building =>
                         building.BuildingType == BuildingType.Headquarters
                     );

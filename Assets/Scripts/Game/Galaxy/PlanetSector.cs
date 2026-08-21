@@ -38,13 +38,44 @@ namespace Rebellion.Game.Galaxy
         public int PositionX { get; set; }
         public int PositionY { get; set; }
 
-        // Child Nodes.
-        public List<Planet> Planets { get; set; } = new List<Planet>();
+        [PersistableMember(Name = "Planets")]
+        private List<Planet> _planets = new List<Planet>();
 
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public PlanetSector() { }
+
+        /// <summary>
+        /// Creates an empty planet-sector copy.
+        /// </summary>
+        /// <returns>An empty planet sector.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new PlanetSector();
+
+        /// <summary>
+        /// Copies planet-sector state into an empty destination.
+        /// </summary>
+        /// <param name="destination">The destination node.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            PlanetSector copy = (PlanetSector)destination;
+            copy.SectorDataId = SectorDataId;
+            copy.Visibility = Visibility;
+            copy.SectorType = SectorType;
+            copy.Importance = Importance;
+            copy.PositionX = PositionX;
+            copy.PositionY = PositionY;
+        }
+
+        /// <summary>
+        /// Replaces the sector's planet collection while constructing a detached projection.
+        /// </summary>
+        /// <param name="planets">The planets to retain in the projection.</param>
+        internal void SetPlanets(IEnumerable<Planet> planets)
+        {
+            _planets = planets == null ? new List<Planet>() : new List<Planet>(planets);
+        }
 
         /// <summary>
         /// Returns the galactic region containing the planet sector.
@@ -79,7 +110,7 @@ namespace Rebellion.Game.Galaxy
         {
             if (child is Planet planet)
             {
-                Planets.Add(planet);
+                _planets.Add(planet);
             }
         }
 
@@ -91,7 +122,7 @@ namespace Rebellion.Game.Galaxy
         {
             if (child is Planet planet)
             {
-                Planets.Remove(planet);
+                _planets.Remove(planet);
             }
         }
 
@@ -99,9 +130,9 @@ namespace Rebellion.Game.Galaxy
         /// Returns the planets in the planet sector.
         /// </summary>
         /// <returns>The planets in the planet sector.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return Planets.ToArray();
+            return _planets;
         }
     }
 }

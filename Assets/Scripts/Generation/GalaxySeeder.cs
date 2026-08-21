@@ -157,7 +157,7 @@ namespace Rebellion.Generation
 
             foreach (PlanetSector sector in sectors)
             {
-                foreach (Planet planet in sector.Planets)
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (
                         !string.IsNullOrEmpty(planet.TypeID)

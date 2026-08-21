@@ -59,7 +59,7 @@ namespace Rebellion.Generation
         private Dictionary<string, Planet> BuildPlanetMapByTypeID(PlanetSector[] sectors)
         {
             return sectors
-                .SelectMany(s => s.Planets)
+                .SelectMany(s => s.GetChildren<Planet>())
                 .Where(p => p.TypeID != null)
                 .ToDictionary(p => p.TypeID);
         }
@@ -83,7 +83,7 @@ namespace Rebellion.Generation
 
             foreach (PlanetSector sector in sectors)
             {
-                foreach (Planet planet in sector.Planets)
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (string.IsNullOrEmpty(planet.OwnerInstanceID) || !planet.IsColonized)
                         continue;
@@ -503,7 +503,7 @@ namespace Rebellion.Generation
         {
             return sectors
                 .Where(s => s.SectorType == PlanetSectorType.Core)
-                .SelectMany(s => s.Planets)
+                .SelectMany(s => s.GetChildren<Planet>())
                 .Where(p => p.OwnerInstanceID == faction.InstanceID && p.IsColonized)
                 .ToList();
         }
@@ -594,7 +594,7 @@ namespace Rebellion.Generation
                 .Settings
                 .ResourceProcessingPointsPerFacility;
             List<Planet> ownedPlanets = sectors
-                .SelectMany(sector => sector.Planets)
+                .SelectMany(sector => sector.GetChildren<Planet>())
                 .Where(planet => planet.OwnerInstanceID == faction.InstanceID && planet.IsColonized)
                 .ToList();
             int mines = ownedPlanets.Sum(planet => planet.GetRawMinedResources());
@@ -689,7 +689,7 @@ namespace Rebellion.Generation
             AttachUnitsToShip(capitalShips[0], starfighters, regiments);
 
             Fleet existingFleet = planet
-                .GetFleets()
+                .GetChildren<Fleet>()
                 .FirstOrDefault(f => f.OwnerInstanceID == faction.InstanceID);
 
             if (existingFleet != null)
@@ -756,7 +756,7 @@ namespace Rebellion.Generation
             int total = 0;
             foreach (PlanetSector sector in sectors)
             {
-                foreach (Planet planet in sector.Planets)
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     if (planet.OwnerInstanceID != factionId)
                         continue;
@@ -766,7 +766,7 @@ namespace Rebellion.Generation
                         total += GetPlanetChildMaintenanceCost(child);
                     }
 
-                    foreach (Fleet fleet in planet.GetFleets())
+                    foreach (Fleet fleet in planet.GetChildren<Fleet>())
                     {
                         if (fleet.OwnerInstanceID != factionId)
                             continue;

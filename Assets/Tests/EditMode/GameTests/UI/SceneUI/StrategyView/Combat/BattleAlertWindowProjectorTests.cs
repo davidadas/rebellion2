@@ -8,8 +8,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using UnityEngine;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 {
@@ -521,7 +521,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 GameFleet OpponentFleet
             ) scene = CreateScene();
             Officer officer = CreateOfficer("officer", _playerFactionId, "Field Officer");
-            scene.PlayerFleet.CapitalShips[0].Officers.Add(officer);
+            scene.PlayerFleet.GetChildren<CapitalShip>()[0].AddChild(officer);
             SpaceCombatResult result = CreateResult(
                 scene.Planet,
                 scene.PlayerFleet,
@@ -646,14 +646,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         ) CreateScene(bool includeFleets = true)
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" }
-            );
-            game.Factions.Add(
-                new Faction { InstanceID = _opponentFactionId, DisplayName = "Imperial" }
-            );
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _opponentFactionId, DisplayName = "Imperial" });
             game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "sector" };
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet planet = new Planet
             {

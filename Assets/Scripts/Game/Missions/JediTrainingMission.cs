@@ -21,12 +21,24 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string TrainerInstanceID { get; set; }
 
+        /// <summary>Creates an empty Jedi-training mission copy.</summary>
+        /// <returns>An empty Jedi-training mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new JediTrainingMission();
+
+        /// <summary>Copies Jedi-training-specific state into an empty destination.</summary>
+        /// <param name="destination">The destination mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            ((JediTrainingMission)destination).TrainerInstanceID = TrainerInstanceID;
+        }
+
         /// <summary>
         /// Gets the selected trainer from the mission's current participants.
         /// </summary>
         [PersistableIgnore]
         public Officer Trainer =>
-            MainParticipants
+            GetMainParticipants()
                 .OfType<Officer>()
                 .FirstOrDefault(officer => officer.InstanceID == TrainerInstanceID);
 
@@ -177,11 +189,11 @@ namespace Rebellion.Game.Missions
             if (!CanLeadTraining(trainer, game))
                 return MissionCompletionReason.Failure;
 
-            int officerCount = MainParticipants.OfType<Officer>().Count();
+            int officerCount = GetMainParticipants().OfType<Officer>().Count();
             return
-                officerCount == MainParticipants.Count
+                officerCount == GetMainParticipants().Count
                 && officerCount >= 2
-                && MainParticipants.OfType<Officer>().All(CanParticipate)
+                && GetMainParticipants().OfType<Officer>().All(CanParticipate)
                 ? null
                 : MissionCompletionReason.Failure;
         }
@@ -213,7 +225,7 @@ namespace Rebellion.Game.Missions
             if (trainer != null)
             {
                 foreach (
-                    Officer officer in MainParticipants
+                    Officer officer in GetMainParticipants()
                         .OfType<Officer>()
                         .OrderBy(officer => trainer.ForceRank - officer.ForceRank)
                 )

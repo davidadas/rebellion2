@@ -14,8 +14,8 @@ using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
@@ -37,7 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
-        private GamePlanetSector _planetSector;
+        private GalaxyPlanetSector _planetSector;
         private TargetingController _targetingController;
         private UIContext _uiContext;
         private StrategyWindowLayerView _windowLayer;
@@ -460,15 +460,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionId });
-            game.Factions.Add(new Faction { InstanceID = _opposingFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             return game;
         }
 
         private GalaxyMapSector CreateSector()
         {
-            _planetSector = new GamePlanetSector
+            _planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
                 DisplayName = "Core Sector",
@@ -495,7 +495,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         private GalaxyMapSector CreateFreshSector()
         {
-            GamePlanetSector planetSector = new GamePlanetSector
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector
             {
                 InstanceID = _planetSector.InstanceID,
                 DisplayName = "Fresh Sector",
@@ -597,7 +597,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         private static PlanetSectorWindowHit CreateHit(PlanetIcon icon, bool planetImage)
         {
-            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector();
             Planet planet = new Planet();
             GalaxyMapPlanet galaxyMapPlanet = new GalaxyMapPlanet(
                 planetSector,

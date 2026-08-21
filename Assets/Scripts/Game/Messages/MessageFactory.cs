@@ -2505,7 +2505,7 @@ namespace Rebellion.Game.Messages
             )
             {
                 IManufacturable unit = (IManufacturable)result.GameObject;
-                ISceneNode node = unit as ISceneNode;
+                ISceneNode node = unit;
                 Planet destination = node?.GetParentOfType<Planet>();
                 Faction faction = GetDeploymentFaction(game, unit.GetOwnerInstanceID());
                 MessageDeliveryRequest message = unit is Building building

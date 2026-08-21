@@ -61,11 +61,11 @@ namespace Rebellion.Systems
             foreach (
                 MissionCompletedResult result in results.Where(result =>
                     result.Outcome == MissionOutcome.Success
-                    && result.Mission?.MainParticipants != null
+                    && result.Mission?.GetMainParticipants() != null
                 )
             )
             {
-                forceResults.AddRange(ApplyForceGrowth(result.Mission.MainParticipants));
+                forceResults.AddRange(ApplyForceGrowth(result.Mission.GetMainParticipants()));
             }
 
             return forceResults;
@@ -76,7 +76,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="participants">The mission participants to update.</param>
         /// <returns>Any force experience results generated.</returns>
-        public List<GameResult> ApplyForceGrowth(List<IMissionParticipant> participants)
+        public List<GameResult> ApplyForceGrowth(IReadOnlyList<IMissionParticipant> participants)
         {
             List<GameResult> results = new List<GameResult>();
             int growth = _game.Config.Jedi.ForceGrowthPerMission;
@@ -194,7 +194,7 @@ namespace Rebellion.Systems
             if (planet == null)
                 return;
 
-            foreach (Officer candidate in planet.GetChildren<Officer>(_ => true, recurse: true))
+            foreach (Officer candidate in planet.GetChildren<Officer>(recursive: true))
             {
                 if (CanDiscoverForceUser(scanner, candidate))
                     DiscoverForceUser(scanner, candidate, results);

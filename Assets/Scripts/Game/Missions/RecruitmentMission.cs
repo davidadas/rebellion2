@@ -22,6 +22,18 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string TargetOfficerInstanceID { get; set; }
 
+        /// <summary>Creates an empty recruitment mission copy.</summary>
+        /// <returns>An empty recruitment mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new RecruitmentMission();
+
+        /// <summary>Copies recruitment-specific state into an empty destination.</summary>
+        /// <param name="destination">The destination mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            ((RecruitmentMission)destination).TargetOfficerInstanceID = TargetOfficerInstanceID;
+        }
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>

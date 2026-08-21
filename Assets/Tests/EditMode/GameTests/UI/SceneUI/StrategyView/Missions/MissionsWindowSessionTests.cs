@@ -1,11 +1,12 @@
 using System;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
@@ -32,9 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _firstMission = CreateMission("first-mission", "First Mission");
             _secondMission = CreateMission("second-mission", "Second Mission");
             _planet = new Planet { InstanceID = "planet", DisplayName = "Corellia" };
-            _planet.Missions.Add(_firstMission);
-            _planet.Missions.Add(_secondMission);
-            _galaxyMapPlanet = new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty);
+            _planet.AddChild(_firstMission);
+            _planet.AddChild(_secondMission);
+            _galaxyMapPlanet = new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty);
         }
 
         [TearDown]
@@ -62,7 +63,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, session.SelectedMissionIndex);
             Assert.AreSame(_firstMission, session.SelectedMission);
             Assert.AreEqual(MissionParticipantRole.Agent, session.ActiveRole);
-            Assert.AreSame(_firstMission.MainParticipants, session.ActiveParticipants);
+            CollectionAssert.AreEqual(
+                _firstMission.GetMainParticipants(),
+                session.ActiveParticipants
+            );
             Assert.AreEqual(-1, session.ContextParticipantIndex);
             Assert.IsNull(session.ContextParticipant);
         }
@@ -70,7 +74,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         [Test]
         public void Constructor_EmptyMissionList_ReturnsNoSelection()
         {
-            _planet.Missions.Clear();
+            _planet.RemoveChildren<Mission>(_ => true);
 
             MissionsWindowSession session = CreateSession();
 
@@ -120,7 +124,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsTrue(selected);
             Assert.AreSame(_secondMission, session.SelectedMission);
             Assert.AreEqual(MissionParticipantRole.Decoy, session.ActiveRole);
-            Assert.AreSame(_secondMission.DecoyParticipants, session.ActiveParticipants);
+            CollectionAssert.AreEqual(
+                _secondMission.GetDecoyParticipants(),
+                session.ActiveParticipants
+            );
         }
 
         [Test]
@@ -145,10 +152,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             MissionsWindowSession session = CreateSession();
 
             session.CaptureParticipant(0);
-            _firstMission.MainParticipants.Insert(
-                0,
+            IMissionParticipant existingParticipant = _firstMission.GetMainParticipants()[0];
+            _firstMission.RemoveChild(existingParticipant);
+            _firstMission.AddChild(
                 new Officer { InstanceID = "inserted", DisplayName = "Inserted" }
             );
+            _firstMission.AddChild(existingParticipant);
 
             Assert.AreEqual(1, session.ContextParticipantIndex);
             Assert.AreEqual("first-agent", session.ContextParticipant.InstanceID);
@@ -173,7 +182,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             MissionsWindowSession session = CreateSession();
             session.SelectMission(1);
-            _planet.Missions.Reverse();
+            Mission[] missions = _planet.GetChildren<Mission>().ToArray();
+            _planet.RemoveChildren<Mission>(_ => true);
+            Array.Reverse(missions);
+            _planet.AddChildren(missions);
 
             session.ReconcileSelection();
 
@@ -186,7 +198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             MissionsWindowSession session = CreateSession();
             session.SelectMission(1);
-            _planet.Missions.Remove(_secondMission);
+            _planet.RemoveChild(_secondMission);
 
             session.ReconcileSelection();
 
@@ -200,11 +212,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             MissionsWindowSession session = CreateSession();
             session.SelectMission(1);
             Planet refreshedPlanet = new Planet { InstanceID = "planet" };
-            refreshedPlanet.Missions.Add(CreateMission("first-mission", "First Mission"));
+            refreshedPlanet.AddChild(CreateMission("first-mission", "First Mission"));
             TestMission refreshedSelection = CreateMission("second-mission", "Second Mission");
-            refreshedPlanet.Missions.Add(refreshedSelection);
+            refreshedPlanet.AddChild(refreshedSelection);
             GalaxyMapPlanet refreshed = new GalaxyMapPlanet(
-                new GamePlanetSector(),
+                new GalaxyPlanetSector(),
                 refreshedPlanet,
                 string.Empty
             );
@@ -225,10 +237,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 ConfigKey = MissionTypeIDs.Diplomacy,
                 DisplayName = displayName,
             };
-            mission.MainParticipants.Add(
-                new Officer { InstanceID = instanceId.Replace("mission", "agent") }
-            );
-            mission.DecoyParticipants.Add(
+            mission.AddChild(new Officer { InstanceID = instanceId.Replace("mission", "agent") });
+            mission.AddDecoyParticipant(
                 new Officer { InstanceID = instanceId.Replace("mission", "decoy") }
             );
             return mission;
@@ -241,6 +251,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
         private sealed class TestMission : Mission
         {
+            /// <summary>Creates an empty test mission copy.</summary>
+            /// <returns>An empty test mission.</returns>
+            protected override Rebellion.SceneGraph.BaseSceneNode CreateNodeCopy() =>
+                new TestMission();
+
             public override bool ShouldRepeatAfterCompletion(GameRoot game)
             {
                 return false;

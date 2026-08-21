@@ -6,8 +6,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 {
@@ -33,8 +33,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             _beta = CreatePlanet("beta", "beta", _opponentFactionId, _opponentFactionId);
             _neutral = CreatePlanet("neutral", "Neutral", null, _playerFactionId);
             _unexplored = CreatePlanet("unexplored", "Unknown", null);
-            GamePlanetSector firstSector = new GamePlanetSector();
-            GamePlanetSector secondSector = new GamePlanetSector();
+            GalaxyPlanetSector firstSector = new GalaxyPlanetSector();
+            GalaxyPlanetSector secondSector = new GalaxyPlanetSector();
             _alphaMapPlanet = new GalaxyMapPlanet(firstSector, _alpha, string.Empty);
             _betaMapPlanet = new GalaxyMapPlanet(secondSector, _beta, string.Empty);
             GalaxyMapPlanet neutralMapPlanet = new GalaxyMapPlanet(
@@ -87,9 +87,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         [Test]
         public void GetRows_TroopsWithoutConfiguredColumns_ThrowsInvalidOperationException()
         {
-            _alpha.Regiments.Add(
-                CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId)
-            );
+            _alpha.AddTestChild(CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId));
             FinderWindowRowBuilder builder = CreateBuilder(_ => null, _ => new[] { "commando" });
 
             Assert.Throws<System.InvalidOperationException>(() =>
@@ -113,9 +111,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         [Test]
         public void GetRows_TroopsWithDuplicateColumns_ThrowsInvalidOperationException()
         {
-            _alpha.Regiments.Add(
-                CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId)
-            );
+            _alpha.AddTestChild(CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId));
             FinderWindowRowBuilder builder = CreateBuilder(
                 _ => new[] { "armor", "armor" },
                 _ => new[] { "commando" }
@@ -133,9 +129,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         [Test]
         public void GetRows_TroopsWithUnmappedUnitType_ThrowsInvalidOperationException()
         {
-            _alpha.Regiments.Add(
-                CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId)
-            );
+            _alpha.AddTestChild(CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId));
             FinderWindowRowBuilder builder = CreateBuilder(
                 _ => new[] { "infantry" },
                 _ => new[] { "commando" }
@@ -216,8 +210,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         {
             GameFleet zeta = CreateFleet("zeta", "Zeta Fleet", _playerFactionId);
             GameFleet escort = CreateFleet("escort", "Escort Fleet", _opponentFactionId);
-            _alpha.Fleets.Add(zeta);
-            _beta.Fleets.Add(escort);
+            _alpha.AddTestChild(zeta);
+            _beta.AddTestChild(escort);
 
             List<FinderWindowRow> rows = _builder.GetRows(
                 FinderMode.Fleets,
@@ -238,8 +232,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         public void GetRows_FactionFleets_ReturnsOnlyMatchingOwner()
         {
             GameFleet playerFleet = CreateFleet("player-fleet", "Player Fleet", _playerFactionId);
-            _alpha.Fleets.Add(playerFleet);
-            _beta.Fleets.Add(CreateFleet("opponent-fleet", "Opponent Fleet", _opponentFactionId));
+            _alpha.AddTestChild(playerFleet);
+            _beta.AddTestChild(CreateFleet("opponent-fleet", "Opponent Fleet", _opponentFactionId));
 
             List<FinderWindowRow> rows = _builder.GetRows(
                 FinderMode.Fleets,
@@ -257,7 +251,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             CapitalShip cruiser = CreateCapitalShip("cruiser", "Cruiser", _playerFactionId);
             CapitalShip assault = CreateCapitalShip("assault", "Assault Ship", _playerFactionId);
             GameFleet fleet = CreateFleet("fleet", "Fleet", _playerFactionId, cruiser, assault);
-            _alpha.Fleets.Add(fleet);
+            _alpha.AddTestChild(fleet);
 
             List<FinderWindowRow> rows = _builder.GetRows(
                 FinderMode.Fleets,
@@ -277,16 +271,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         [Test]
         public void GetRows_TroopsOnPlanet_AggregatesCountsInAuthoredColumnOrder()
         {
-            _alpha.Regiments.Add(
-                CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId)
-            );
-            _alpha.Regiments.Add(
+            _alpha.AddTestChild(CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId));
+            _alpha.AddTestChild(
                 CreateRegiment("planet-infantry-1", "infantry", "Infantry", _playerFactionId)
             );
-            _alpha.Regiments.Add(
+            _alpha.AddTestChild(
                 CreateRegiment("planet-infantry-2", "infantry", "infantry", _playerFactionId)
             );
-            _alpha.Regiments.Add(
+            _alpha.AddTestChild(
                 CreateRegiment("foreign", "foreign", "Foreign", _opponentFactionId)
             );
             List<FinderWindowRow> rows = _builder.GetRows(
@@ -304,14 +296,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         public void GetRows_TroopsInFleet_AggregatesCountsInAuthoredColumnOrder()
         {
             CapitalShip transport = CreateCapitalShip("transport", "Transport", _playerFactionId);
-            transport.Regiments.Add(
+            transport.AddTestChild(
                 CreateRegiment("fleet-armor", "armor", "Armor", _playerFactionId)
             );
-            transport.Regiments.Add(
+            transport.AddTestChild(
                 CreateRegiment("fleet-commando", "commando", "Commando", _playerFactionId)
             );
             GameFleet fleet = CreateFleet("fleet", "Fleet Base", _playerFactionId, transport);
-            _alpha.Fleets.Add(fleet);
+            _alpha.AddTestChild(fleet);
 
             List<FinderWindowRow> rows = _builder.GetRows(
                 FinderMode.Troops,
@@ -351,10 +343,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             {
                 InstanceID = "mission",
                 OwnerInstanceID = _playerFactionId,
-                MainParticipants = new List<IMissionParticipant> { missionOfficer },
             };
-            _alpha.Missions.Add(mission);
-            _alpha.Officers.Add(missionOfficer);
+            mission.AddChild(missionOfficer);
+            _alpha.AddTestChild(mission);
+            _alpha.AddTestChild(missionOfficer);
             Officer fleetOfficer = new Officer
             {
                 InstanceID = "fleet-officer",
@@ -364,9 +356,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 Movement = new MovementState(),
             };
             CapitalShip ship = CreateCapitalShip("ship", "Ship", _playerFactionId);
-            ship.Officers.Add(fleetOfficer);
+            ship.AddTestChild(fleetOfficer);
             GameFleet fleet = CreateFleet("fleet", "Fleet Alpha", _playerFactionId, ship);
-            _alpha.Fleets.Add(fleet);
+            _alpha.AddTestChild(fleet);
             Officer planetOfficer = new Officer
             {
                 InstanceID = "planet-officer",
@@ -375,8 +367,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 CurrentRank = OfficerRank.General,
                 InjuryPoints = 1,
             };
-            _alpha.Officers.Add(planetOfficer);
-            _alpha.Officers.Add(
+            _alpha.AddTestChild(planetOfficer);
+            _alpha.AddTestChild(
                 new Officer
                 {
                     InstanceID = "foreign-officer",
@@ -436,19 +428,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 "Mission Spy",
                 _playerFactionId
             );
-            _alpha.Missions.Add(
-                new DiplomacyMission
-                {
-                    InstanceID = "mission",
-                    MainParticipants = new List<IMissionParticipant> { missionUnit },
-                }
-            );
+            DiplomacyMission mission = new DiplomacyMission { InstanceID = "mission" };
+            mission.AddChild(missionUnit);
+            _alpha.AddTestChild(mission);
             CapitalShip ship = CreateCapitalShip("ship", "Ship", _playerFactionId);
-            ship.SpecialForces.Add(
+            ship.AddTestChild(
                 CreateSpecialForces("fleet-commando", "Fleet Commando", _playerFactionId)
             );
-            _alpha.Fleets.Add(CreateFleet("fleet", "Fleet", _playerFactionId, ship));
-            _alpha.SpecialForces.Add(
+            _alpha.AddTestChild(CreateFleet("fleet", "Fleet", _playerFactionId, ship));
+            _alpha.AddTestChild(
                 CreateSpecialForces("planet-commando", "Planet Commando", _playerFactionId)
             );
 
@@ -471,26 +459,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         [Test]
         public void GetRows_SpecialForces_AggregatesPlanetMissionAndFleetUnits()
         {
-            _alpha.SpecialForces.Add(
+            _alpha.AddTestChild(
                 CreateSpecialForces("planet-commando-1", "Commando", _playerFactionId)
             );
-            _alpha.SpecialForces.Add(
+            _alpha.AddTestChild(
                 CreateSpecialForces("planet-commando-2", "commando", _playerFactionId)
             );
             SpecialForces missionUnit = CreateSpecialForces("mission-spy", "Spy", _playerFactionId);
-            _alpha.Missions.Add(
-                new DiplomacyMission
-                {
-                    InstanceID = "mission",
-                    MainParticipants = new List<IMissionParticipant> { missionUnit },
-                }
-            );
+            DiplomacyMission mission = new DiplomacyMission { InstanceID = "mission" };
+            mission.AddChild(missionUnit);
+            _alpha.AddTestChild(mission);
             CapitalShip ship = CreateCapitalShip("ship", "Ship", _playerFactionId);
-            ship.SpecialForces.Add(
-                CreateSpecialForces("fleet-commando", "Commando", _playerFactionId)
-            );
-            _alpha.Fleets.Add(CreateFleet("fleet", "Fleet", _playerFactionId, ship));
-            _alpha.SpecialForces.Add(CreateSpecialForces("foreign", "Foreign", _opponentFactionId));
+            ship.AddTestChild(CreateSpecialForces("fleet-commando", "Commando", _playerFactionId));
+            _alpha.AddTestChild(CreateFleet("fleet", "Fleet", _playerFactionId, ship));
+            _alpha.AddTestChild(CreateSpecialForces("foreign", "Foreign", _opponentFactionId));
 
             List<FinderWindowRow> rows = _builder.GetRows(
                 FinderMode.Personnel,
@@ -591,7 +573,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             System.Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds
         )
         {
-            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector();
             return new FinderWindowRowBuilder(
                 new[]
                 {

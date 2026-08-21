@@ -423,7 +423,7 @@ public sealed class PlanetSectorWindowController
             fleetCommandController.CanExecutePlanetaryCombat(
                 items,
                 hit?.Planet,
-                StrategyMenuAction.DestroySystem
+                StrategyMenuAction.DestroyPlanet
             ),
             fleetCommandController.CanExecutePlanetaryCombat(
                 items,
@@ -472,14 +472,12 @@ public sealed class PlanetSectorWindowController
             return null;
 
         return hit
-            .Planet.GetChildren<Building>(
-                building =>
-                    building.BuildingType == BuildingType.Headquarters
-                    && building.OwnerInstanceID == playerFactionId
-                    && building.Movement == null,
-                recurse: false
-            )
-            .SingleOrDefault();
+            .Planet.GetChildren<Building>()
+            .SingleOrDefault(building =>
+                building.BuildingType == BuildingType.Headquarters
+                && building.OwnerInstanceID == playerFactionId
+                && building.Movement == null
+            );
     }
 
     /// <summary>
@@ -503,7 +501,7 @@ public sealed class PlanetSectorWindowController
             case StrategyMenuAction.BombardMilitaryFacilities:
             case StrategyMenuAction.BombardCivilianFacilities:
             case StrategyMenuAction.GeneralBombardment:
-            case StrategyMenuAction.DestroySystem:
+            case StrategyMenuAction.DestroyPlanet:
             case StrategyMenuAction.PlanetaryAssault:
                 if (windowManager.TryGetWindowView(source.Window, out PlanetSectorWindowView view))
                     TryExecutePlanetaryCombat(view, strategyCommand.Action);
@@ -932,9 +930,11 @@ public sealed class PlanetSectorWindowController
     private Fleet GetPlayerFleetTarget(Planet planet)
     {
         string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
-        return planet?.Fleets.FirstOrDefault(fleet =>
-            StrategyContextMenuAvailability.PlayerControlsItem(fleet, playerFactionId)
-        );
+        return planet
+            ?.GetChildren<Fleet>()
+            .FirstOrDefault(fleet =>
+                StrategyContextMenuAvailability.PlayerControlsItem(fleet, playerFactionId)
+            );
     }
 
     /// <summary>
@@ -946,7 +946,8 @@ public sealed class PlanetSectorWindowController
     {
         string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
         return planet
-                ?.Fleets.Cast<ISceneNode>()
+                ?.GetChildren<Fleet>()
+                .Cast<ISceneNode>()
                 .Where(fleet =>
                     StrategyContextMenuAvailability.PlayerControlsItem(fleet, playerFactionId)
                 )

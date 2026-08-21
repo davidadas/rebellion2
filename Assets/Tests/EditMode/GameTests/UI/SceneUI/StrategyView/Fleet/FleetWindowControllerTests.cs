@@ -12,8 +12,8 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 {
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
             _planet = CreatePlanet(_game);
             _fleet = CreateFleet("fleet", "First Fleet", out _officer);
-            _planet.Planet.Fleets.Add(_fleet);
+            _planet.Planet.AddChild(_fleet);
             AttachFleetGraph(_planet.Planet, _fleet);
             _gameManager = TestContent.CreateGameManager(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
@@ -202,7 +202,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void WindowDrop_WithoutSelectedFleet_SelectsRepresentedPlanet()
         {
-            _planet.Planet.Fleets.Clear();
+            _planet.Planet.RemoveChildren<Rebellion.Game.Units.Fleet>(_ => true);
             FleetWindowView view = OpenWindow(out UIWindow window);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             _controller.RenderWindow(view, window, true);
@@ -226,7 +226,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             _controller.RenderWindow(view, window, true);
 
-            _planet.Planet.Fleets.Clear();
+            foreach (GameFleet fleet in _planet.Planet.GetChildren<GameFleet>().ToList())
+                _game.DeleteNode(fleet);
             _controller.RenderWindow(view, window, true);
 
             Assert.AreEqual(-1, _controller.GetSelectedFleetIndex(view));
@@ -258,7 +259,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void FleetRowPress_UnselectedFleetLabel_StartsDragOnFirstGesture()
         {
             GameFleet secondFleet = CreateFleet("second-fleet", "Second Fleet", out _);
-            _planet.Planet.Fleets.Add(secondFleet);
+            _planet.Planet.AddChild(secondFleet);
             AttachFleetGraph(_planet.Planet, secondFleet);
             UIWindow draggedWindow = null;
             PointerEventData draggedEvent = null;
@@ -320,11 +321,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             {
                 InstanceID = _planet.Planet.InstanceID,
                 DisplayName = "Fresh Planet",
-                Fleets = { freshFleet },
             };
+            freshPlanetNode.AddChild(freshFleet);
             AttachFleetGraph(freshPlanetNode, freshFleet);
             GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
-                new GamePlanetSector { InstanceID = "fresh-sector" },
+                new GalaxyPlanetSector { InstanceID = "fresh-sector" },
                 freshPlanetNode,
                 _playerFactionId
             );
@@ -366,10 +367,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void ContextMenu_BombardmentLeaf_ExecutesAndRoutesBattleResult()
         {
             _planet.Planet.OwnerInstanceID = _opposingFactionId;
-            _fleet.CapitalShips[0].Bombardment = 1;
-            _planet.Planet.Fleets.Remove(_fleet);
+            _fleet.GetChildren<CapitalShip>()[0].Bombardment = 1;
+            _planet.Planet.RemoveChild(_fleet);
             _fleet.SetParent(null);
-            _planet.Planet.Fleets.Add(_fleet);
+            _planet.Planet.AddChild(_fleet);
             _fleet.SetParent(_planet.Planet);
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
@@ -440,15 +441,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _playerFactionId });
-            game.Factions.Add(new Faction { InstanceID = _opposingFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
+            game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             return game;
         }
 
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
-            GamePlanetSector planetSector = new GamePlanetSector
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
                 DisplayName = "Core Sector",
@@ -482,7 +483,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 DisplayName = "Fleet Officer",
                 OwnerInstanceID = _playerFactionId,
             };
-            ship.Officers.Add(officer);
+            ship.AddChild(officer);
             return new GameFleet(_playerFactionId, displayName, new List<CapitalShip> { ship })
             {
                 InstanceID = instanceId,
@@ -492,7 +493,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);
-            foreach (CapitalShip ship in fleet.CapitalShips)
+            foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
             {
                 ship.SetParent(fleet);
                 foreach (ISceneNode child in ship.GetChildren())

@@ -9,7 +9,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class SmugglingSystemTests
@@ -24,10 +24,10 @@ namespace Rebellion.Tests.Systems
         {
             _game = new GameRoot(TestContent.Data.GameConfig) { Random = new StubRNG() };
             _controller = new Faction { InstanceID = "FACTION1" };
-            _game.Factions.Add(_controller);
-            _game.Factions.Add(new Faction { InstanceID = "FACTION2" });
-            PlanetSector planetSector = new PlanetSector { InstanceID = "SECTOR1" };
-            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.GetFactions().Add(_controller);
+            _game.GetFactions().Add(new Faction { InstanceID = "FACTION2" });
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR1" };
+            _game.AttachNode(sector, _game.Galaxy);
             _planet = new Planet
             {
                 InstanceID = "PLANET1",
@@ -35,7 +35,7 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { _controller.InstanceID, 100 } },
             };
-            _game.AttachNode(_planet, planetSector);
+            _game.AttachNode(_planet, sector);
             _system = new SmugglingSystem(_game);
         }
 
