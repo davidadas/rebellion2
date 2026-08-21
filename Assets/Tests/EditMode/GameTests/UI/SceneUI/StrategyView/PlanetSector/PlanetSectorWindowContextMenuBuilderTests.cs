@@ -4,8 +4,8 @@ using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 {
@@ -146,7 +146,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 fleets,
                 _playerFactionId,
                 canBombard: true,
-                canDestroySystem: false,
+                canDestroyPlanet: false,
                 canAssault: true
             );
 
@@ -163,7 +163,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                     StrategyMenuAction.BombardMilitaryFacilities,
                     StrategyMenuAction.BombardCivilianFacilities,
                     StrategyMenuAction.GeneralBombardment,
-                    StrategyMenuAction.DestroySystem,
+                    StrategyMenuAction.DestroyPlanet,
                 },
                 commands[2].SubmenuCommands.Select(command => command.Action)
             );
@@ -187,7 +187,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 fleets,
                 _playerFactionId,
                 canBombard: true,
-                canDestroySystem: true,
+                canDestroyPlanet: true,
                 canAssault: true
             );
 
@@ -213,7 +213,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 fleets,
                 _playerFactionId,
                 canBombard: true,
-                canDestroySystem: false,
+                canDestroyPlanet: false,
                 canAssault: true
             );
 
@@ -227,7 +227,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         private static PlanetSectorWindowHit CreateHit(PlanetIcon icon, bool planetImage)
         {
-            GamePlanetSector planetSector = new GamePlanetSector();
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector();
             GalaxyMapPlanet planet = new GalaxyMapPlanet(planetSector, new Planet(), string.Empty);
             return new PlanetSectorWindowHit(planet, icon, planetImage);
         }

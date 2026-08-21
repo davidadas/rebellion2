@@ -10,8 +10,8 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
@@ -35,12 +35,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" }
-            );
-            game.Factions.Add(
-                new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" }
-            );
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
             game.Summary.PlayerFactionID = _playerFactionId;
             _uiContext = TestContent.CreateUIContext(
                 game,
@@ -70,10 +68,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 OwnerInstanceID = _playerFactionId,
                 LocationInstanceID = _target.InstanceID,
             };
-            _mission.MainParticipants.Add(CreateOfficer("agent", "Agent", true));
-            _mission.DecoyParticipants.Add(CreateOfficer("decoy", "Decoy", false));
-            planet.Missions.Add(_mission);
-            _planet = new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty);
+            _mission.AddChild(CreateOfficer("agent", "Agent", true));
+            _mission.AddDecoyParticipant(CreateOfficer("decoy", "Decoy", false));
+            planet.AddChild(_mission);
+            _planet = new GalaxyMapPlanet(new GalaxyPlanetSector(), planet, string.Empty);
             _visibleNodes = new Dictionary<string, ISceneNode> { [_target.InstanceID] = _target };
             _projector = new MissionsWindowProjector(
                 () => _uiContext,
@@ -204,7 +202,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         [Test]
         public void Build_ParticipantCarriedByMovingFleet_UsesTransitPresentation()
         {
-            Officer participant = (Officer)_mission.MainParticipants[0];
+            Officer participant = (Officer)_mission.GetMainParticipants()[0];
             participant.Movement = null;
             CapitalShip ship = new CapitalShip();
             GameFleet fleet = new GameFleet { Movement = new MovementState() };
@@ -223,7 +221,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         [Test]
         public void Build_NoMissions_ReturnsEmptySelectionPresentation()
         {
-            _planet.Planet.Missions.Clear();
+            _planet.Planet.RemoveChildren<Mission>(_ => true);
             MissionsWindowSession session = new MissionsWindowSession(_planet, _window);
 
             MissionsWindowRenderData data = _projector.Build(session, _window, true);
@@ -258,13 +256,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 OwnerInstanceID = _playerFactionId,
                 LocationInstanceID = _planet.Planet.InstanceID,
                 TargetOfficerInstanceID = _target.InstanceID,
-                MainParticipants = new List<IMissionParticipant>
-                {
-                    CreateOfficer("recruiter", "Recruiter", false),
-                },
             };
-            _planet.Planet.Missions.Clear();
-            _planet.Planet.Missions.Add(mission);
+            mission.AddChild(CreateOfficer("recruiter", "Recruiter", false));
+            _planet.Planet.RemoveChildren<Mission>(_ => true);
+            _planet.Planet.AddChild(mission);
             _visibleNodes[_planet.Planet.InstanceID] = _planet.Planet;
             MissionsWindowSession session = new MissionsWindowSession(_planet, _window);
 
@@ -288,6 +283,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
         private sealed class TestMission : Mission
         {
+            /// <summary>Creates an empty test mission copy.</summary>
+            /// <returns>An empty test mission.</returns>
+            protected override BaseSceneNode CreateNodeCopy() => new TestMission();
+
             public override bool ShouldRepeatAfterCompletion(GameRoot game)
             {
                 return false;

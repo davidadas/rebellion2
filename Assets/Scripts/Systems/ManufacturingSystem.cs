@@ -237,9 +237,9 @@ namespace Rebellion.Systems
                 return true;
 
             ISceneNode candidate = CreateManufacturingCandidate(ownerInstanceId, template);
-            IEnumerable<CapitalShip> carriers = fleet.CapitalShips.Where(
-                IsManufacturingCarrierAvailable
-            );
+            IEnumerable<CapitalShip> carriers = fleet
+                .GetChildren<CapitalShip>()
+                .Where(IsManufacturingCarrierAvailable);
             if (candidate is Starfighter)
                 return carriers.Sum(ship => ship.GetExcessStarfighterCapacity()) >= count;
 
@@ -527,13 +527,13 @@ namespace Rebellion.Systems
             if (item is Starfighter or Regiment && !IsManufacturingCarrierAvailable(destination))
                 return false;
 
-            if (!destination.CanAcceptChild((ISceneNode)item))
+            if (!destination.CanAcceptChild(item))
                 return false;
 
             if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
                 return false;
 
-            _game.AttachNode((ISceneNode)item, destination);
+            _game.AttachNode(item, destination);
 
             _pendingResults.Add(
                 new ManufacturingDeployedResult
@@ -729,7 +729,8 @@ namespace Rebellion.Systems
         )
         {
             List<ManufacturingType> types = planet
-                .Buildings.Where(facility =>
+                .GetChildren<Building>()
+                .Where(facility =>
                     facility.ManufacturingStatus == ManufacturingStatus.Complete
                     && facility.Movement == null
                     && facility.ProcessRate > 0
@@ -774,7 +775,8 @@ namespace Rebellion.Systems
         )
         {
             List<Building> productionFacilities = planet
-                .Buildings.Where(facility =>
+                .GetChildren<Building>()
+                .Where(facility =>
                     facility.ProductionType == type
                     && facility.ManufacturingStatus == ManufacturingStatus.Complete
                     && facility.Movement == null

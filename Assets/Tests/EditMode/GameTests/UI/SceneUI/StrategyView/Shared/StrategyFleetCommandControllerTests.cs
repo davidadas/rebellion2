@@ -8,8 +8,8 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 {
@@ -27,10 +27,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create());
-            _game.Factions.Add(new Faction { InstanceID = _playerFactionId });
-            _game.Factions.Add(new Faction { InstanceID = _opposingFactionId });
+            _game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
+            _game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             _game.Summary.PlayerFactionID = _playerFactionId;
-            GamePlanetSector planetSector = new GamePlanetSector { InstanceID = "sector" };
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "sector" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _planet = new Planet
             {
@@ -69,9 +69,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             bool created = controller.TryCreateFleetFromCapitalShips(new ISceneNode[] { ship });
 
             Assert.IsTrue(created);
-            Assert.AreEqual(1, _planet.Fleets.Count);
-            Assert.AreNotSame(sourceFleet, _planet.Fleets[0]);
-            Assert.AreSame(_planet.Fleets[0], ship.GetParent());
+            Assert.AreEqual(1, _planet.GetChildren<GameFleet>().Count);
+            Assert.AreNotSame(sourceFleet, _planet.GetChildren<GameFleet>()[0]);
+            Assert.AreSame(_planet.GetChildren<GameFleet>()[0], ship.GetParent());
         }
 
         [Test]
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(BombardmentType.Civilian, bombardment.Type);
             Assert.AreEqual(1, bombardment.AttackingUnits.Count);
             Assert.AreEqual(
-                fleet.CapitalShips[0].InstanceID,
+                fleet.GetChildren<CapitalShip>()[0].InstanceID,
                 bombardment.AttackingUnits[0].Unit.InstanceID
             );
         }

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace Rebellion.SceneGraph
@@ -12,7 +11,7 @@ namespace Rebellion.SceneGraph
     /// officers, starfighters, and other entities that do not have children. For nodes
     /// that have children, see the <see cref="ContainerNode"/> class.
     /// </remarks>
-    public class LeafNode : BaseSceneNode
+    public abstract class LeafNode : BaseSceneNode
     {
         /// <summary>
         /// Default constructor.
@@ -45,33 +44,12 @@ namespace Rebellion.SceneGraph
         }
 
         /// <summary>
-        /// Returns no children. Leaf nodes cannot have children.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="predicate"></param>
-        /// <param name="recurse"></param>
-        /// <returns>An empty sequence.</returns>
-        public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recurse = true)
-        {
-            yield break;
-        }
-
-        /// <summary>
-        /// Retrieves the children of the node. For leaf nodes, this operation returns an empty collection.
+        /// Enumerates no children because leaf nodes cannot contain other scene nodes.
         /// </summary>
         /// <returns>An empty collection of children.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
             yield break;
-        }
-
-        /// <summary>
-        /// Visits this leaf node by invoking the given action on it.
-        /// </summary>
-        /// <param name="action"></param>
-        public override void Traverse(System.Action<ISceneNode> action)
-        {
-            action(this);
         }
     }
 }

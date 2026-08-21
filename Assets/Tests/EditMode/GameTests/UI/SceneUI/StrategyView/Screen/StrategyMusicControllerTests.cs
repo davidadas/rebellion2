@@ -27,8 +27,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             GameRoot game = new GameRoot(TestConfig.Create());
             _playerFaction = new Faction { InstanceID = "player" };
             _opponentFaction = new Faction { InstanceID = "opponent" };
-            game.Factions.Add(_playerFaction);
-            game.Factions.Add(_opponentFaction);
+            game.GetFactions().Add(_playerFaction);
+            game.GetFactions().Add(_opponentFaction);
             game.Summary.PlayerFactionID = _playerFaction.InstanceID;
 
             _theme = new StrategyMusicTheme

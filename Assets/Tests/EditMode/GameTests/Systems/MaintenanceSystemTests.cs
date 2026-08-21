@@ -11,7 +11,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class MaintenanceSystemTests
@@ -45,16 +45,12 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
             game.AttachNode(CreateMine("mine1", "empire"), planet);
             game.AttachNode(CreateRefinery("ref1", "empire"), planet);
 
@@ -82,17 +78,13 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             planet.NumRawResourceNodes = 0;
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
 
             Regiment regiment1 = new Regiment
             {
@@ -148,17 +140,13 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             planet.NumRawResourceNodes = 0;
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
 
             Regiment regiment1 = new Regiment
             {
@@ -203,17 +191,13 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             planet.NumRawResourceNodes = 0;
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
 
             for (int i = 0; i < 3; i++)
             {
@@ -253,17 +237,13 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             planet.NumRawResourceNodes = 0;
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
 
             Regiment regiment = new Regiment
             {
@@ -297,17 +277,13 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             planet.NumRawResourceNodes = 0;
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
 
             Regiment regiment = new Regiment
             {
@@ -340,17 +316,13 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             planet.NumRawResourceNodes = 0;
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
             game.AttachNode(fleet, planet);
@@ -397,17 +369,13 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             planet.NumRawResourceNodes = 0;
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
 
             Building defense = new Building
             {
@@ -440,17 +408,13 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             planet.NumRawResourceNodes = 0;
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
 
             Building mine = CreateMine("mine1", "empire");
             Regiment regiment = new Regiment
@@ -485,16 +449,12 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
             game.AttachNode(CreateMine("mine1", "empire"), planet);
             game.AttachNode(CreateMine("mine2", "empire"), planet);
             game.AttachNode(CreateRefinery("ref1", "empire"), planet);
@@ -510,16 +470,12 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
             empire.Settings.RefinementMultiplier = 1;
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
             game.AttachNode(CreateMine("mine1", "empire"), planet);
             game.AttachNode(CreateRefinery("ref1", "empire"), planet);
 
@@ -531,17 +487,13 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "s1",
-                DisplayName = "Sector",
-            };
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
             Planet minePlanet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
             Planet refineryPlanet = CreatePlanet("p2", "Kessel", empire.InstanceID);
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(minePlanet, planetSector);
-            game.AttachNode(refineryPlanet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(minePlanet, sector);
+            game.AttachNode(refineryPlanet, sector);
             game.AttachNode(CreateMine("mine1", empire.InstanceID), minePlanet);
             game.AttachNode(CreateRefinery("ref1", empire.InstanceID), refineryPlanet);
 
@@ -556,8 +508,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             game.Config.Production.ScrapRefundDivisor = 7;
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
-            PlanetSector planetSector = new PlanetSector { InstanceID = "s1" };
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "s1" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             Regiment regiment = new Regiment
             {
@@ -566,8 +518,8 @@ namespace Rebellion.Tests.Systems
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 ConstructionCost = 7,
             };
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
             game.AttachNode(regiment, planet);
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
                 game,
@@ -594,8 +546,8 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
-            PlanetSector planetSector = new PlanetSector { InstanceID = "s1" };
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "s1" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             Regiment regiment = new Regiment
             {
@@ -604,8 +556,8 @@ namespace Rebellion.Tests.Systems
                 ManufacturingStatus = ManufacturingStatus.Building,
                 ConstructionCost = 7,
             };
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
             game.AttachNode(regiment, planet);
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
                 game,
@@ -632,8 +584,8 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
-            game.Factions.Add(empire);
-            PlanetSector planetSector = new PlanetSector { InstanceID = "s1" };
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "s1" };
             Planet planet = CreatePlanet("p1", "Coruscant", "empire");
             Regiment regiment = new Regiment
             {
@@ -641,8 +593,8 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
             game.AttachNode(regiment, planet);
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
                 game,
@@ -670,7 +622,9 @@ namespace Rebellion.Tests.Systems
 
         private Faction CreateFaction(string id, string name)
         {
-            return new Faction { InstanceID = id, DisplayName = name };
+            Faction faction = new Faction { InstanceID = id, DisplayName = name };
+            faction.Settings.ResourceProcessingPointsPerFacility = 50;
+            return faction;
         }
 
         private Planet CreatePlanet(string id, string name, string ownerId)

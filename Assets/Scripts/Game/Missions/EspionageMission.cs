@@ -27,6 +27,10 @@ namespace Rebellion.Game.Missions
         /// </summary>
         internal override bool AppliesFoiledParticipantConsequences => false;
 
+        /// <summary>Creates an empty espionage mission copy.</summary>
+        /// <returns>An empty espionage mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new EspionageMission();
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
@@ -106,7 +110,7 @@ namespace Rebellion.Game.Missions
             List<GameResult> results = new List<GameResult>();
             List<IMissionParticipant> successfulParticipants = new List<IMissionParticipant>();
 
-            foreach (IMissionParticipant participant in MainParticipants)
+            foreach (IMissionParticipant participant in GetMainParticipants())
             {
                 double successThreshold = GetAgentProbability(participant, game);
                 double rolledValue = provider.NextDouble() * 100;
@@ -242,10 +246,9 @@ namespace Rebellion.Game.Missions
             }
 
             List<Planet> candidates = game
-                .Galaxy.PlanetSectors.Where(sector =>
-                    includeOuterRim || sector.SectorType == PlanetSectorType.Core
-                )
-                .SelectMany(sector => sector.Planets)
+                .Galaxy.GetChildren<PlanetSector>()
+                .Where(sector => includeOuterRim || sector.SectorType == PlanetSectorType.Core)
+                .SelectMany(sector => sector.GetChildren<Planet>())
                 .Where(candidate => candidate != targetPlanet)
                 .Where(candidate => candidate.OwnerInstanceID == targetPlanet.OwnerInstanceID)
                 .ToList();

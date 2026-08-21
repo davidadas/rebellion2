@@ -87,7 +87,7 @@ namespace Rebellion.Systems
             List<IManufacturable> liveItems = new List<IManufacturable>(items.Count);
             foreach (IManufacturable item in items)
             {
-                ISceneNode selectedNode = item as ISceneNode;
+                ISceneNode selectedNode = item;
                 ISceneNode liveNode = _game.GetSceneNodeByInstanceID<ISceneNode>(
                     selectedNode?.InstanceID
                 );
@@ -266,7 +266,7 @@ namespace Rebellion.Systems
         /// <param name="results">The result collection receiving a garrison change.</param>
         private void Scrap(IManufacturable item, List<GameResult> results)
         {
-            ISceneNode node = item as ISceneNode;
+            ISceneNode node = item;
             Planet garrisonPlanet =
                 item is Regiment regiment
                 && regiment.ManufacturingStatus == ManufacturingStatus.Complete

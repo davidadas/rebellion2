@@ -32,7 +32,11 @@ namespace Rebellion.Tests.Game.Galaxy
             Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
             _planet.AddChild(fleet);
 
-            Assert.Contains(fleet, _planet.Fleets, "Fleet should be added to the _planet.");
+            Assert.Contains(
+                fleet,
+                _planet.GetChildren<Fleet>().ToList(),
+                "Fleet should be added to the _planet."
+            );
         }
 
         [Test]
@@ -86,7 +90,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planet.AddChild(building);
 
-            Assert.Contains(building, _planet.Buildings);
+            Assert.Contains(building, _planet.GetChildren<Building>().ToList());
         }
 
         [Test]
@@ -111,7 +115,11 @@ namespace Rebellion.Tests.Game.Galaxy
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
             _planet.AddChild(officer);
 
-            Assert.Contains(officer, _planet.Officers, "Officer should be added to the _planet.");
+            Assert.Contains(
+                officer,
+                _planet.GetChildren<Officer>().ToList(),
+                "Officer should be added to the _planet."
+            );
         }
 
         [Test]
@@ -134,7 +142,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             Assert.Contains(
                 officer,
-                _planet.Officers,
+                _planet.GetChildren<Officer>().ToList(),
                 "Captured enemy officer should be accepted."
             );
         }
@@ -157,7 +165,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planet.AddChild(regiment);
 
-            Assert.Contains(regiment, _planet.Regiments);
+            Assert.Contains(regiment, _planet.GetChildren<Regiment>().ToList());
         }
 
         [Test]
@@ -168,7 +176,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planet.AddChild(regiment);
 
-            Assert.Contains(regiment, _planet.Regiments);
+            Assert.Contains(regiment, _planet.GetChildren<Regiment>().ToList());
         }
 
         [Test]
@@ -188,7 +196,7 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet.RemoveChild(fleet);
 
             Assert.IsFalse(
-                _planet.Fleets.Contains(fleet),
+                _planet.GetChildren<Fleet>().Contains(fleet),
                 "Fleet should be removed from the _planet."
             );
         }
@@ -201,7 +209,7 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet.RemoveChild(officer);
 
             Assert.IsFalse(
-                _planet.Officers.Contains(officer),
+                _planet.GetChildren<Officer>().Contains(officer),
                 "Officer should be removed from the _planet."
             );
         }
@@ -340,8 +348,8 @@ namespace Rebellion.Tests.Game.Galaxy
                 "Deserialized planet should retain popular support."
             );
             Assert.AreEqual(
-                _planet.Fleets.Count,
-                deserialized.Fleets.Count,
+                _planet.GetChildren<Fleet>().Count,
+                deserialized.GetChildren<Fleet>().Count,
                 "Deserialized planet should retain fleets."
             );
         }
@@ -614,6 +622,18 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void GetAvailableEnergy_InactiveBuilding_ReturnsFullCapacity()
+        {
+            _planet.EnergyCapacity = 5;
+            Building building = new Building { OwnerInstanceID = "FNALL1", IsEnabled = false };
+            _planet.AddChild(building);
+
+            int availableEnergy = _planet.GetAvailableEnergy();
+
+            Assert.AreEqual(5, availableEnergy);
+        }
+
+        [Test]
         public void GetAvailableEnergy_NoBuildings_ReturnsFullCapacity()
         {
             int availableEnergy = _planet.GetAvailableEnergy();
@@ -725,7 +745,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             Assert.Contains(
                 starfighter,
-                _planet.Starfighters,
+                _planet.GetChildren<Starfighter>().ToList(),
                 "Starfighter should be added to the _planet."
             );
         }
@@ -767,7 +787,7 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet.RemoveChild(starfighter);
 
             Assert.IsFalse(
-                _planet.Starfighters.Contains(starfighter),
+                _planet.GetChildren<Starfighter>().Contains(starfighter),
                 "Starfighter should be removed from the _planet."
             );
         }
@@ -823,6 +843,16 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void IsBlockaded_InactiveEnemyFleet_ReturnsFalse()
+        {
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
+            enemyFleet.IsEnabled = false;
+            _planet.AddChild(enemyFleet);
+
+            Assert.IsFalse(_planet.IsBlockaded());
+        }
+
+        [Test]
         public void IsBlockaded_EnemyFleetInTransit_ReturnsFalse()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
@@ -838,7 +868,10 @@ namespace Rebellion.Tests.Game.Galaxy
         public void IsBlockaded_EnemyCapitalShipInTransit_ReturnsFalse()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
-            enemyFleet.CapitalShips.Single().Movement = new MovementState { TransitTicks = 10 };
+            enemyFleet.GetChildren<CapitalShip>().Single().Movement = new MovementState
+            {
+                TransitTicks = 10,
+            };
             _planet.AddChild(enemyFleet);
 
             Assert.IsFalse(_planet.IsBlockaded());
@@ -900,22 +933,22 @@ namespace Rebellion.Tests.Game.Galaxy
         public void GetBlockadeModifier_ActiveShipsAndFighters_ReducesProduction()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
-            CapitalShip activeShip = enemyFleet.CapitalShips.Single();
-            activeShip.Starfighters.Add(
+            CapitalShip activeShip = enemyFleet.GetChildren<CapitalShip>().Single();
+            activeShip.AddTestChild(
                 new Starfighter
                 {
                     OwnerInstanceID = "ENEMY",
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 }
             );
-            activeShip.Starfighters.Add(
+            activeShip.AddTestChild(
                 new Starfighter
                 {
                     OwnerInstanceID = "ENEMY",
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 }
             );
-            activeShip.Starfighters.Add(
+            activeShip.AddTestChild(
                 new Starfighter
                 {
                     OwnerInstanceID = "ENEMY",

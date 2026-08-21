@@ -4,7 +4,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
@@ -170,7 +170,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
         private static GalaxyMapPlanet CreateMapPlanet(Planet planet)
         {
-            return new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty);
+            return new GalaxyMapPlanet(new GalaxyPlanetSector(), planet, string.Empty);
         }
     }
 }

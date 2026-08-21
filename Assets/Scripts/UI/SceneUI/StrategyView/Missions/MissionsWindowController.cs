@@ -269,7 +269,7 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
         Mission selectedMission = missions[missionIndex];
         MissionParticipantRole role =
             participant != null
-            && ContainsParticipant(selectedMission.DecoyParticipants, participant)
+            && ContainsParticipant(selectedMission.GetDecoyParticipants(), participant)
                 ? MissionParticipantRole.Decoy
                 : MissionParticipantRole.Agent;
         session.SelectTarget(missionIndex, role);
@@ -413,8 +413,8 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
     /// <returns>True when the mission contains the participant.</returns>
     private static bool ContainsParticipant(Mission mission, IMissionParticipant participant)
     {
-        return ContainsParticipant(mission?.MainParticipants, participant)
-            || ContainsParticipant(mission?.DecoyParticipants, participant);
+        return ContainsParticipant(mission?.GetMainParticipants(), participant)
+            || ContainsParticipant(mission?.GetDecoyParticipants(), participant);
     }
 
     /// <summary>
@@ -731,7 +731,7 @@ internal sealed class MissionsWindowSession
     /// </summary>
     public int ContextParticipantIndex => FindParticipantIndex(contextParticipantInstanceId);
 
-    public IReadOnlyList<Mission> Missions => Planet.Planet.Missions;
+    public IReadOnlyList<Mission> Missions => Planet.Planet.GetChildren<Mission>();
 
     /// <summary>
     /// Gets the currently selected mission, or null.
@@ -748,8 +748,8 @@ internal sealed class MissionsWindowSession
 
             return ActiveRole switch
             {
-                MissionParticipantRole.Agent => mission.MainParticipants,
-                MissionParticipantRole.Decoy => mission.DecoyParticipants,
+                MissionParticipantRole.Agent => mission.GetMainParticipants(),
+                MissionParticipantRole.Decoy => mission.GetDecoyParticipants(),
                 _ => throw new InvalidOperationException(
                     $"Unsupported mission participant role: {ActiveRole}."
                 ),
@@ -763,7 +763,7 @@ internal sealed class MissionsWindowSession
         {
             IReadOnlyList<IMissionParticipant> participants = ActiveParticipants;
             return ContextParticipantIndex >= 0 && ContextParticipantIndex < participants.Count
-                ? participants[ContextParticipantIndex] as ISceneNode
+                ? participants[ContextParticipantIndex]
                 : null;
         }
     }

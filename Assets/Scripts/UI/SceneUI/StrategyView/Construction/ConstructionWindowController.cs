@@ -310,7 +310,7 @@ public sealed class ConstructionWindowController
         )
             return;
 
-        ISceneNode item = session.SelectedItem as ISceneNode;
+        ISceneNode item = session.SelectedItem;
         switch (strategyCommand.Action)
         {
             case StrategyMenuAction.Encyclopedia when item != null:

@@ -312,9 +312,9 @@ namespace Rebellion.Tests.Generation
                 )
             );
 
-            List<Fleet> fleets = planet.GetFleets();
+            List<Fleet> fleets = planet.GetChildren<Fleet>().ToList();
             Assert.AreEqual(1, fleets.Count, "Expected one fleet on the configured planet type.");
-            Assert.AreEqual(2, fleets[0].CapitalShips.Count);
+            Assert.AreEqual(2, fleets[0].GetChildren<CapitalShip>().Count);
         }
 
         [Test]
@@ -355,9 +355,9 @@ namespace Rebellion.Tests.Generation
                 )
             );
 
-            Assert.AreEqual(0, yavin.GetFleets().Count);
-            Assert.AreEqual(1, hq.GetFleets().Count);
-            Assert.AreEqual(2, hq.GetFleets()[0].CapitalShips.Count);
+            Assert.AreEqual(0, yavin.GetChildren<Fleet>().Count);
+            Assert.AreEqual(1, hq.GetChildren<Fleet>().Count);
+            Assert.AreEqual(2, hq.GetChildren<Fleet>()[0].GetChildren<CapitalShip>().Count);
         }
 
         [Test]
@@ -398,12 +398,16 @@ namespace Rebellion.Tests.Generation
                 )
             );
 
-            Fleet fleet = yavin.GetFleets()[0];
-            CapitalShip corvette = fleet.CapitalShips.First(s => s.TypeID == "ALCS006");
-            CapitalShip transport = fleet.CapitalShips.First(s => s.TypeID == "ALCS003");
-            Assert.AreEqual(0, corvette.Regiments.Count);
-            Assert.AreEqual(2, transport.Regiments.Count);
-            Assert.IsTrue(transport.Regiments.All(r => r.TypeID == "REAL001"));
+            Fleet fleet = yavin.GetChildren<Fleet>()[0];
+            CapitalShip corvette = fleet
+                .GetChildren<CapitalShip>()
+                .First(s => s.TypeID == "ALCS006");
+            CapitalShip transport = fleet
+                .GetChildren<CapitalShip>()
+                .First(s => s.TypeID == "ALCS003");
+            Assert.AreEqual(0, corvette.GetChildren<Regiment>().Count);
+            Assert.AreEqual(2, transport.GetChildren<Regiment>().Count);
+            Assert.IsTrue(transport.GetChildren<Regiment>().All(r => r.TypeID == "REAL001"));
         }
 
         [Test]
@@ -489,8 +493,8 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(context);
 
-            Assert.AreEqual(1, planet.Regiments.Count(r => r.TypeID == "FIRST"));
-            Assert.AreEqual(0, planet.Regiments.Count(r => r.TypeID == "SECOND"));
+            Assert.AreEqual(1, planet.GetChildren<Regiment>().Count(r => r.TypeID == "FIRST"));
+            Assert.AreEqual(0, planet.GetChildren<Regiment>().Count(r => r.TypeID == "SECOND"));
         }
 
         [Test]
@@ -659,7 +663,7 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(context);
 
-            List<SpecialForces> specialForces = planet.SpecialForces;
+            List<SpecialForces> specialForces = planet.GetChildren<SpecialForces>().ToList();
             Assert.AreEqual(4, specialForces.Count);
             Assert.IsTrue(
                 specialForces.All(unit =>
@@ -672,7 +676,7 @@ namespace Rebellion.Tests.Generation
         }
 
         private static GenerationContext BuildContext(
-            PlanetSector[] planetSectors,
+            PlanetSector[] sectors,
             Faction[] factions,
             GameGenerationConfig config,
             GalaxyClassificationResult classification,
@@ -684,7 +688,7 @@ namespace Rebellion.Tests.Generation
         )
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
-            ctx.Sectors = planetSectors;
+            ctx.Sectors = sectors;
             ctx.Factions = factions;
             ctx.Config = config;
             ctx.Classification = classification;
@@ -722,13 +726,13 @@ namespace Rebellion.Tests.Generation
 
         private static PlanetSector WrapSector(Planet planet)
         {
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = $"sector_{planet.InstanceID}",
                 SectorType = PlanetSectorType.Core,
             };
-            planetSector.Planets.Add(planet);
-            return planetSector;
+            sector.AddChild(planet);
+            return sector;
         }
 
         private static GameGenerationConfig CreateFixedFleetTargetConfig()

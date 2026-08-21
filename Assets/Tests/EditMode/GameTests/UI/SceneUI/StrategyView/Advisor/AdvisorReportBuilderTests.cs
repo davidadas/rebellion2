@@ -200,7 +200,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
                 OwnerInstanceID = faction.InstanceID,
             };
             Officer officer = new Officer { InstanceID = "officer", IsCaptured = true };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
             game.NodesByInstanceID[headquarters.InstanceID] = headquarters;
             game.NodesByInstanceID[officer.InstanceID] = officer;
             AdvisorReportWindowTheme theme = new AdvisorReportWindowTheme

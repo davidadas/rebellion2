@@ -4,7 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using UnityEngine;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 {
@@ -32,7 +32,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 DisplayName = "Corellia",
                 NumRawResourceNodes = 4,
             };
-            _mapPlanet = new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty);
+            _mapPlanet = new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty);
             _session = new FacilityWindowSession(window, _mapPlanet);
         }
 
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void Constructor_PlanetProjectionWithoutPlanet_ThrowsArgumentException()
         {
             GalaxyMapPlanet projection = new GalaxyMapPlanet(
-                new GamePlanetSector(),
+                new GalaxyPlanetSector(),
                 null,
                 string.Empty
             );
@@ -65,12 +65,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         [Test]
         public void Reconcile_MixedFacilities_OrdersInventoryAndCalculatesDisplayCounts()
         {
-            _planet.Buildings.Add(CreateBuilding("z-shipyard", "Zeta", BuildingType.Shipyard));
-            _planet.Buildings.Add(CreateBuilding("a-shipyard", "Alpha", BuildingType.Shipyard));
-            _planet.Buildings.Add(
+            _planet.AddTestChild(CreateBuilding("z-shipyard", "Zeta", BuildingType.Shipyard));
+            _planet.AddTestChild(CreateBuilding("a-shipyard", "Alpha", BuildingType.Shipyard));
+            _planet.AddTestChild(
                 CreateBuilding("training", "Training", BuildingType.TrainingFacility)
             );
-            _planet.Buildings.Add(CreateBuilding("mine", "Mine", BuildingType.Mine));
+            _planet.AddTestChild(CreateBuilding("mine", "Mine", BuildingType.Mine));
 
             _session.Reconcile();
 
@@ -89,12 +89,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void Reconcile_RemovedContextBuilding_ClearsSelectionAndContext()
         {
             Building building = CreateBuilding("shipyard", "Shipyard", BuildingType.Shipyard);
-            _planet.Buildings.Add(building);
+            _planet.AddTestChild(building);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Shipyards);
             _session.SelectBuildingForContext(0);
 
-            _planet.Buildings.Clear();
+            _planet.RemoveChildren<Building>(_ => true);
             _session.Reconcile();
 
             Assert.IsEmpty(_session.SelectedBuildingIds);
@@ -178,8 +178,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             Building alpha = CreateBuilding("alpha", "Alpha", BuildingType.Shipyard);
             Building zeta = CreateBuilding("zeta", "Zeta", BuildingType.Shipyard);
-            _planet.Buildings.Add(zeta);
-            _planet.Buildings.Add(alpha);
+            _planet.AddTestChild(zeta);
+            _planet.AddTestChild(alpha);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Shipyards);
 
@@ -195,7 +195,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void SelectBuilding_InvalidIndex_PreservesSelection()
         {
             Building building = CreateBuilding("shipyard", "Shipyard", BuildingType.Shipyard);
-            _planet.Buildings.Add(building);
+            _planet.AddTestChild(building);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Shipyards);
             _session.SelectBuilding(0);
@@ -210,7 +210,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void SelectBuilding_KnownBuilding_NavigatesToInventoryTab()
         {
             Building refinery = CreateBuilding("refinery", "Refinery", BuildingType.Refinery);
-            _planet.Buildings.Add(refinery);
+            _planet.AddTestChild(refinery);
             _session.Reconcile();
 
             bool selected = _session.SelectBuilding(FacilityWindowTab.Refineries, refinery);
@@ -225,7 +225,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void SelectBuilding_BuildingOutsideTab_ReturnsFalse()
         {
             Building refinery = CreateBuilding("refinery", "Refinery", BuildingType.Refinery);
-            _planet.Buildings.Add(refinery);
+            _planet.AddTestChild(refinery);
             _session.Reconcile();
 
             bool selected = _session.SelectBuilding(FacilityWindowTab.Shipyards, refinery);
@@ -240,8 +240,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             Building alpha = CreateBuilding("alpha", "Alpha", BuildingType.Shipyard);
             Building beta = CreateBuilding("beta", "Beta", BuildingType.Shipyard);
-            _planet.Buildings.Add(alpha);
-            _planet.Buildings.Add(beta);
+            _planet.AddTestChild(alpha);
+            _planet.AddTestChild(beta);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Shipyards);
             _session.SelectBuilding(0);
@@ -257,7 +257,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void RebindPlanet_ReplacementBuildingWithSameID_PreservesSelection()
         {
             Building original = CreateBuilding("shipyard", "Original", BuildingType.Shipyard);
-            _planet.Buildings.Add(original);
+            _planet.AddTestChild(original);
             _session.Reconcile();
             _session.SelectBuilding(FacilityWindowTab.Shipyards, original);
             Building replacement = CreateBuilding(
@@ -265,13 +265,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 "Replacement",
                 BuildingType.Shipyard
             );
-            Planet refreshedPlanet = new Planet
-            {
-                InstanceID = _planet.InstanceID,
-                Buildings = { replacement },
-            };
+            Planet refreshedPlanet = new Planet { InstanceID = _planet.InstanceID };
+            refreshedPlanet.AddTestChild(replacement);
             GalaxyMapPlanet refreshedProjection = new GalaxyMapPlanet(
-                new GamePlanetSector(),
+                new GalaxyPlanetSector(),
                 refreshedPlanet,
                 string.Empty
             );
@@ -319,7 +316,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void ClearContext_SelectedBuilding_PreservesSelection()
         {
             Building building = CreateBuilding("shipyard", "Shipyard", BuildingType.Shipyard);
-            _planet.Buildings.Add(building);
+            _planet.AddTestChild(building);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Shipyards);
             _session.SelectBuildingForContext(0);
@@ -335,7 +332,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void ClearSelection_SelectedBuilding_ClearsSelectionAndContext()
         {
             Building building = CreateBuilding("shipyard", "Shipyard", BuildingType.Shipyard);
-            _planet.Buildings.Add(building);
+            _planet.AddTestChild(building);
             _session.Reconcile();
             _session.SetActiveTab(FacilityWindowTab.Shipyards);
             _session.SelectBuildingForContext(0);

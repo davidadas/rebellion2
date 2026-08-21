@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Movement;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
 {
@@ -61,10 +62,17 @@ namespace Rebellion.Game.Units
         public List<CapitalShipRole> Roles = new List<CapitalShipRole>();
 
         // Unit Info.
-        public List<Officer> Officers = new List<Officer>();
-        public List<Regiment> Regiments = new List<Regiment>();
-        public List<SpecialForces> SpecialForces = new List<SpecialForces>();
-        public List<Starfighter> Starfighters = new List<Starfighter>();
+        [PersistableMember(Name = "Officers")]
+        private List<Officer> _officers = new List<Officer>();
+
+        [PersistableMember(Name = "Regiments")]
+        private List<Regiment> _regiments = new List<Regiment>();
+
+        [PersistableMember(Name = "SpecialForces")]
+        private List<SpecialForces> _specialForces = new List<SpecialForces>();
+
+        [PersistableMember(Name = "Starfighters")]
+        private List<Starfighter> _starfighters = new List<Starfighter>();
 
         // Weapon Info.
         public Dictionary<PrimaryWeaponType, int[]> PrimaryWeapons = new Dictionary<
@@ -107,6 +115,81 @@ namespace Rebellion.Game.Units
         /// </summary>
         public CapitalShip() { }
 
+        /// <summary>Creates an empty capital-ship copy.</summary>
+        protected override BaseSceneNode CreateNodeCopy() => new CapitalShip();
+
+        /// <summary>Copies capital-ship state into an empty destination.</summary>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            CapitalShip copy = (CapitalShip)destination;
+            copy.BattleResultImagePath = BattleResultImagePath;
+            copy.BattleResultInTransitImagePath = BattleResultInTransitImagePath;
+            copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;
+            copy.ProducerOwnerID = ProducerOwnerID;
+            copy.ProducerPlanetID = ProducerPlanetID;
+            copy.ConstructionCost = ConstructionCost;
+            copy.MaintenanceCost = MaintenanceCost;
+            copy.BaseBuildSpeed = BaseBuildSpeed;
+            copy.ManufacturingFactionInstanceIDs =
+                ManufacturingFactionInstanceIDs == null
+                    ? null
+                    : new List<string>(ManufacturingFactionInstanceIDs);
+            copy.ResearchOrder = ResearchOrder;
+            copy.ResearchDifficulty = ResearchDifficulty;
+            copy.MaxHullStrength = MaxHullStrength;
+            copy.CurrentHullStrength = CurrentHullStrength;
+            copy.DamageControl = DamageControl;
+            copy.MaxShieldStrength = MaxShieldStrength;
+            copy.ShieldRechargeRate = ShieldRechargeRate;
+            copy.Hyperdrive = Hyperdrive;
+            copy.SublightSpeed = SublightSpeed;
+            copy.Maneuverability = Maneuverability;
+            copy.StarfighterCapacity = StarfighterCapacity;
+            copy.RegimentCapacity = RegimentCapacity;
+            copy.Roles = new List<CapitalShipRole>(Roles);
+            copy.PrimaryWeapons = PrimaryWeapons.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value?.ToArray()
+            );
+            copy.WeaponRecharge = WeaponRecharge;
+            copy.Bombardment = Bombardment;
+            copy.ManufacturingProgress = ManufacturingProgress;
+            copy.ManufacturingStatus = ManufacturingStatus;
+            copy.RefinedMaterialProgress = RefinedMaterialProgress;
+            copy.ProductionCapacity = ProductionCapacity;
+            copy.ProductionCapacityUsed = ProductionCapacityUsed;
+            copy.KdyPool = KdyPool;
+            copy.LnrPool = LnrPool;
+            copy.Movement = Movement?.CreateCopy();
+            copy.TractorBeamPower = TractorBeamPower;
+            copy.TractorBeamnRange = TractorBeamnRange;
+            copy.HasGravityWell = HasGravityWell;
+            copy.CanDestroyPlanets = CanDestroyPlanets;
+            copy.DetectionRating = DetectionRating;
+            copy.InitialParentInstanceID = InitialParentInstanceID;
+        }
+
+        /// <summary>
+        /// Replaces the ship's child collections while constructing a detached projection.
+        /// </summary>
+        /// <param name="officers">The officers to retain in the projection.</param>
+        /// <param name="regiments">The regiments to retain in the projection.</param>
+        /// <param name="specialForces">The special-forces units to retain in the projection.</param>
+        /// <param name="starfighters">The starfighters to retain in the projection.</param>
+        internal void SetChildren(
+            IEnumerable<Officer> officers,
+            IEnumerable<Regiment> regiments,
+            IEnumerable<SpecialForces> specialForces,
+            IEnumerable<Starfighter> starfighters
+        )
+        {
+            _officers = officers?.ToList() ?? new List<Officer>();
+            _regiments = regiments?.ToList() ?? new List<Regiment>();
+            _specialForces = specialForces?.ToList() ?? new List<SpecialForces>();
+            _starfighters = starfighters?.ToList() ?? new List<Starfighter>();
+        }
+
         /// <summary>
         /// Returns the maximum number of starfighters this ship can carry.
         /// </summary>
@@ -122,7 +205,7 @@ namespace Rebellion.Game.Units
         /// <returns>The count of starfighters currently on board.</returns>
         public int GetCurrentStarfighterCount()
         {
-            return Starfighters.Count;
+            return _starfighters.Count;
         }
 
         /// <summary>
@@ -213,7 +296,7 @@ namespace Rebellion.Game.Units
         /// <returns>The count of regiments currently on board.</returns>
         public int GetCurrentRegimentCount()
         {
-            return Regiments.Count;
+            return _regiments.Count;
         }
 
         /// <summary>
@@ -222,7 +305,7 @@ namespace Rebellion.Game.Units
         /// <returns>Remaining starfighter berths (capacity minus current count). Zero if full.</returns>
         public int GetExcessStarfighterCapacity()
         {
-            return StarfighterCapacity - Starfighters.Count;
+            return StarfighterCapacity - _starfighters.Count;
         }
 
         /// <summary>
@@ -231,7 +314,7 @@ namespace Rebellion.Game.Units
         /// <returns>Remaining regiment berths (capacity minus current count). Zero if full.</returns>
         public int GetExcessRegimentCapacity()
         {
-            return RegimentCapacity - Regiments.Count;
+            return RegimentCapacity - _regiments.Count;
         }
 
         /// <summary>
@@ -241,13 +324,13 @@ namespace Rebellion.Game.Units
         /// <exception cref="InvalidOperationException">Thrown when adding the starfighter would exceed the capacity.</exception>
         public void AddStarfighter(Starfighter starfighter)
         {
-            if (Starfighters.Count >= StarfighterCapacity)
+            if (_starfighters.Count >= StarfighterCapacity)
             {
                 throw new InvalidOperationException(
                     $"Adding starfighters to \"{this.GetDisplayName()}\" would exceed its capacity."
                 );
             }
-            Starfighters.Add(starfighter);
+            _starfighters.Add(starfighter);
         }
 
         /// <summary>
@@ -257,13 +340,13 @@ namespace Rebellion.Game.Units
         /// <exception cref="InvalidOperationException">Thrown when adding the regiment would exceed the capacity limit.</exception>
         public void AddRegiment(Regiment regiment)
         {
-            if (Regiments.Count >= RegimentCapacity)
+            if (_regiments.Count >= RegimentCapacity)
             {
                 throw new InvalidOperationException(
                     $"Adding regiments to \"{this.GetDisplayName()}\" would exceed its capacity."
                 );
             }
-            Regiments.Add(regiment);
+            _regiments.Add(regiment);
         }
 
         /// <summary>
@@ -278,7 +361,7 @@ namespace Rebellion.Game.Units
                 throw new SceneAccessException(officer, this);
             }
 
-            Officers.Add(officer);
+            _officers.Add(officer);
         }
 
         /// <summary>
@@ -292,7 +375,7 @@ namespace Rebellion.Game.Units
                 throw new SceneAccessException(specialForces, this);
             }
 
-            SpecialForces.Add(specialForces);
+            _specialForces.Add(specialForces);
         }
 
         /// <summary>
@@ -373,19 +456,19 @@ namespace Rebellion.Game.Units
         {
             if (child is Starfighter starfighter)
             {
-                Starfighters.Remove(starfighter);
+                _starfighters.Remove(starfighter);
             }
             else if (child is Regiment regiment)
             {
-                Regiments.Remove(regiment);
+                _regiments.Remove(regiment);
             }
             else if (child is Officer officer)
             {
-                Officers.Remove(officer);
+                _officers.Remove(officer);
             }
             else if (child is SpecialForces specialForces)
             {
-                SpecialForces.Remove(specialForces);
+                _specialForces.Remove(specialForces);
             }
         }
 
@@ -426,13 +509,13 @@ namespace Rebellion.Game.Units
         /// Returns the ship's carried units and officers.
         /// </summary>
         /// <returns>The children carried by this ship.</returns>
-        public override IEnumerable<ISceneNode> GetChildren()
+        protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return Officers
+            return _officers
                 .Cast<ISceneNode>()
-                .Concat(Starfighters.Cast<ISceneNode>())
-                .Concat(Regiments.Cast<ISceneNode>())
-                .Concat(SpecialForces.Cast<ISceneNode>());
+                .Concat(_starfighters)
+                .Concat(_regiments)
+                .Concat(_specialForces);
         }
     }
 }

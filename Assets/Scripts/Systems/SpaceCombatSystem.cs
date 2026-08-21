@@ -392,13 +392,12 @@ namespace Rebellion.Systems
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 List<Fleet> fleets = planet
-                    .GetChildren<Fleet>(
-                        fleet =>
-                            !fleet.IsInCombat
-                            && !excludedFleetIds.Contains(fleet.GetInstanceID())
-                            && fleet.Movement == null
-                            && HasActiveSpaceUnits(fleet),
-                        recurse: false
+                    .GetChildren<Fleet>()
+                    .Where(fleet =>
+                        !fleet.IsInCombat
+                        && !excludedFleetIds.Contains(fleet.GetInstanceID())
+                        && fleet.Movement == null
+                        && HasActiveSpaceUnits(fleet)
                     )
                     .ToList();
 
@@ -1130,7 +1129,7 @@ namespace Rebellion.Systems
             if (fleet == null)
                 return Enumerable.Empty<CapitalShip>();
 
-            return fleet.CapitalShips.Where(IsActiveCapitalShip);
+            return fleet.GetChildren<CapitalShip>().Where(IsActiveCapitalShip);
         }
 
         /// <summary>
@@ -1144,7 +1143,7 @@ namespace Rebellion.Systems
                 return Enumerable.Empty<Starfighter>();
 
             return GetActiveCapitalShips(fleet)
-                .SelectMany(ship => ship.Starfighters)
+                .SelectMany(ship => ship.GetChildren<Starfighter>())
                 .Where(IsActiveStarfighter);
         }
 
@@ -1162,12 +1161,14 @@ namespace Rebellion.Systems
             if (planet == null)
                 return Enumerable.Empty<Starfighter>();
 
-            return planet.Starfighters.Where(fighter =>
-                (
-                    string.IsNullOrEmpty(ownerInstanceId)
-                    || fighter.GetOwnerInstanceID() == ownerInstanceId
-                ) && IsActiveStarfighter(fighter)
-            );
+            return planet
+                .GetChildren<Starfighter>()
+                .Where(fighter =>
+                    (
+                        string.IsNullOrEmpty(ownerInstanceId)
+                        || fighter.GetOwnerInstanceID() == ownerInstanceId
+                    ) && IsActiveStarfighter(fighter)
+                );
         }
 
         /// <summary>
@@ -1432,7 +1433,7 @@ namespace Rebellion.Systems
             }
 
             List<FighterSnap> fighters = ships
-                .SelectMany(ship => ship.Ship.Starfighters)
+                .SelectMany(ship => ship.Ship.GetChildren<Starfighter>())
                 .Concat(GetActivePlanetStarfighters(planet, ownerInstanceId))
                 .Where(IsActiveStarfighter)
                 .Select(fighter => new FighterSnap
@@ -1844,7 +1845,7 @@ namespace Rebellion.Systems
                 .SelectMany(ship =>
                     new[] { ship.Ship }
                         .Cast<ISceneNode>()
-                        .Concat(ship.Ship.GetChildren<ISceneNode>(_ => true))
+                        .Concat(ship.Ship.GetChildren<ISceneNode>(recursive: true))
                 )
                 .Concat(fighters.Select(fighter => fighter.Fighter))
                 .Where(unit => unit != null)
@@ -1964,9 +1965,9 @@ namespace Rebellion.Systems
             List<GameResult> events = ApplyShipDamage(result.ShipDamage);
             ApplyFighterSquadronLosses(result.FighterLosses);
 
-            if (result.AttackerFleet?.CapitalShips.Count == 0)
+            if (result.AttackerFleet?.GetChildren<CapitalShip>().Count == 0)
                 RemoveFleetFromScene(result.AttackerFleet);
-            if (result.DefenderFleet?.CapitalShips.Count == 0)
+            if (result.DefenderFleet?.GetChildren<CapitalShip>().Count == 0)
                 RemoveFleetFromScene(result.DefenderFleet);
 
             return events;
@@ -2001,12 +2002,13 @@ namespace Rebellion.Systems
 
                 if (damage.HullAfter <= 0)
                 {
-                    List<IMovable> units = ship
-                        .Officers.Cast<IMovable>()
+                    List<IMovable> units = ship.GetChildren<Officer>()
+                        .Cast<IMovable>()
                         .Concat(
-                            ship.Starfighters.Where(starfighter =>
-                                starfighter.ManufacturingStatus == ManufacturingStatus.Complete
-                            )
+                            ship.GetChildren<Starfighter>()
+                                .Where(starfighter =>
+                                    starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                                )
                         )
                         .ToList();
                     _movement.RelocateUnits(units);

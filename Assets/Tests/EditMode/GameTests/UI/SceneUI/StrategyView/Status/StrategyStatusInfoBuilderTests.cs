@@ -9,8 +9,8 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
@@ -21,7 +21,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         private const string _opponentId = "opponent";
 
         private GameRoot _game;
-        private GamePlanetSector _planetSector;
+        private GalaxyPlanetSector _planetSector;
         private Planet _planet;
         private GalaxyMapPlanet _mapPlanet;
         private GalaxyMapSector _sector;
@@ -31,11 +31,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create()) { CurrentTick = 100 };
-            _game.Factions.Add(new Faction { InstanceID = _ownerId });
-            _game.Factions.Add(new Faction { InstanceID = _opponentId });
+            _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
+            _game.GetFactions().Add(new Faction { InstanceID = _opponentId });
             _game.Summary.PlayerFactionID = _ownerId;
 
-            _planetSector = new GamePlanetSector
+            _planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
                 DisplayName = "Core Sector",
@@ -513,7 +513,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 OwnerInstanceID = _ownerId,
             };
             _game.AttachNode(officer, _planet);
-            _game.AddToVoid(officer);
+            officer.IsEnabled = false;
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 
@@ -530,7 +530,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 OwnerInstanceID = _ownerId,
             };
             _game.AttachNode(officer, _planet);
-            _game.AddToVoid(officer);
+            officer.IsEnabled = false;
             officer.DisplayStatus = "Training";
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
@@ -828,16 +828,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 OwnerInstanceID = _ownerId,
                 LocationInstanceID = _planet.InstanceID,
                 SabotageTargetInstanceID = targetBuilding.InstanceID,
-                MainParticipants = new List<IMissionParticipant>
+            };
+            mission.AddChildren(
+                new IMissionParticipant[]
                 {
                     new Officer
                     {
                         Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
                     },
                     new SpecialForces(),
-                },
-                DecoyParticipants = new List<IMissionParticipant> { new Officer() },
-            };
+                }
+            );
+            mission.AddDecoyParticipant(new Officer());
             _game.AttachNode(mission, _planet);
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, mission));

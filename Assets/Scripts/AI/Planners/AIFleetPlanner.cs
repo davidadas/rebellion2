@@ -186,7 +186,8 @@ namespace Rebellion.AI.Planners
 
             foreach (
                 CapitalShip capitalShip in sourceFleet
-                    .CapitalShips.Where(capitalShip =>
+                    .GetChildren<CapitalShip>()
+                    .Where(capitalShip =>
                         CanTransferCapitalShipToAttackFleet(
                             context,
                             sourceFleet,
@@ -366,7 +367,8 @@ namespace Rebellion.AI.Planners
 
             if (
                 sourceFleet
-                    .CapitalShips.Where(ship => ship != capitalShip)
+                    .GetChildren<CapitalShip>()
+                    .Where(ship => ship != capitalShip)
                     .Count(ship =>
                         ship.ManufacturingStatus == ManufacturingStatus.Complete
                         && ship.Movement == null
@@ -581,7 +583,8 @@ namespace Rebellion.AI.Planners
                 return 0;
 
             int committedCapitalCombat = fleet
-                .CapitalShips.Where(IsPresentOrUnderConstruction)
+                .GetChildren<CapitalShip>()
+                .Where(IsPresentOrUnderConstruction)
                 .Sum(ship => ship.GetPrimaryWeaponStrength());
             return System.Math.Max(fleet.GetCombatValue(), committedCapitalCombat);
         }

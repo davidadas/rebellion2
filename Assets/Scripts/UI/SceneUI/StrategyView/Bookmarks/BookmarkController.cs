@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
 
@@ -280,14 +281,16 @@ public sealed class BookmarkController
     /// <returns>True when at least one supported facility exists.</returns>
     private static bool HasFacilities(Planet planet)
     {
-        return planet?.Buildings?.Any(building =>
-                building.GetBuildingType()
-                    is BuildingType.Mine
-                        or BuildingType.Refinery
-                        or BuildingType.Shipyard
-                        or BuildingType.TrainingFacility
-                        or BuildingType.ConstructionFacility
-            ) == true;
+        return planet
+                ?.GetChildren<Building>()
+                ?.Any(building =>
+                    building.GetBuildingType()
+                        is BuildingType.Mine
+                            or BuildingType.Refinery
+                            or BuildingType.Shipyard
+                            or BuildingType.TrainingFacility
+                            or BuildingType.ConstructionFacility
+                ) == true;
     }
 
     /// <summary>
@@ -299,11 +302,13 @@ public sealed class BookmarkController
     {
         return planet != null
             && (
-                planet.Buildings.Count(building =>
-                    building.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon
-                ) > 0
-                || planet.Regiments.Count > 0
-                || planet.Starfighters.Count > 0
+                planet
+                    .GetChildren<Building>()
+                    .Count(building =>
+                        building.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon
+                    ) > 0
+                || planet.GetChildren<Regiment>().Count > 0
+                || planet.GetChildren<Starfighter>().Count > 0
             );
     }
 
@@ -315,7 +320,8 @@ public sealed class BookmarkController
     private static List<string> GetFleetOwnerFactionIDs(Planet planet)
     {
         return planet
-                ?.Fleets?.Select(fleet => fleet.OwnerInstanceID)
+                ?.GetChildren<Fleet>()
+                ?.Select(fleet => fleet.OwnerInstanceID)
                 .Where(factionId => !string.IsNullOrEmpty(factionId))
                 .Distinct(StringComparer.Ordinal)
                 .ToList()
@@ -330,7 +336,8 @@ public sealed class BookmarkController
     private static List<string> GetMissionOwnerFactionIDs(Planet planet)
     {
         return planet
-                ?.Missions?.Select(mission => mission.OwnerInstanceID)
+                ?.GetChildren<Mission>()
+                ?.Select(mission => mission.OwnerInstanceID)
                 .Where(factionId => !string.IsNullOrEmpty(factionId))
                 .Distinct(StringComparer.Ordinal)
                 .ToList()

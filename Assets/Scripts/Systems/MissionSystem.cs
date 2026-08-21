@@ -373,7 +373,7 @@ namespace Rebellion.Systems
 
             foreach (IMissionParticipant participant in participants)
             {
-                ISceneNode node = participant as ISceneNode;
+                ISceneNode node = participant;
                 IMissionParticipant resolvedParticipant =
                     ResolveSceneNode(node) as IMissionParticipant;
                 if (resolvedParticipant == null)
@@ -649,7 +649,7 @@ namespace Rebellion.Systems
                 .Except(localParticipants)
                 .ToList();
 
-            MoveCapturedParticipants(mission, missionPlanet);
+            MoveNonReturningParticipantsToPlanet(mission, missionPlanet);
             List<IMovable> strandedUnits = _movementManager.CompleteMissionAtLocation(
                 localParticipants,
                 missionPlanet
@@ -716,17 +716,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Moves captured mission participants to the mission planet before teardown.
+        /// Moves retained participants that cannot return from the mission to its planet.
         /// </summary>
         /// <param name="mission">The mission being torn down.</param>
         /// <param name="missionPlanet">The planet that hosts the mission.</param>
-        private void MoveCapturedParticipants(Mission mission, Planet missionPlanet)
+        private void MoveNonReturningParticipantsToPlanet(Mission mission, Planet missionPlanet)
         {
             if (missionPlanet == null)
                 return;
 
-            foreach (Officer officer in GetCapturedMissionParticipants(mission))
-                _movementManager.RequestMove(officer, missionPlanet);
+            foreach (
+                IMissionParticipant participant in mission
+                    .GetAllParticipants(includeDisabled: true)
+                    .Where(participant => !IsFreeParticipant(participant))
+            )
+            {
+                if (participant.GetParent() == mission && missionPlanet.CanAcceptChild(participant))
+                    _game.MoveNode(participant, missionPlanet);
+            }
         }
 
         /// <summary>
@@ -758,16 +765,6 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns mission officers that were captured during the mission.
-        /// </summary>
-        /// <param name="mission">The mission being torn down.</param>
-        /// <returns>The captured mission officers.</returns>
-        private static IEnumerable<Officer> GetCapturedMissionParticipants(Mission mission)
-        {
-            return mission.GetAllParticipants().OfType<Officer>().Where(IsCapturedParticipant);
-        }
-
-        /// <summary>
         /// Returns whether a movable participant can be relocated after mission teardown.
         /// </summary>
         /// <param name="participant">The participant to inspect.</param>
@@ -775,16 +772,6 @@ namespace Rebellion.Systems
         private static bool IsFreeParticipant(IMovable participant)
         {
             return participant is not Officer officer || (!officer.IsKilled && !officer.IsCaptured);
-        }
-
-        /// <summary>
-        /// Returns whether an officer was captured during mission resolution.
-        /// </summary>
-        /// <param name="officer">The officer to inspect.</param>
-        /// <returns>True when the officer is captured.</returns>
-        private static bool IsCapturedParticipant(Officer officer)
-        {
-            return officer.IsCaptured;
         }
 
         /// <summary>
@@ -807,7 +794,7 @@ namespace Rebellion.Systems
             int defenderCombat = GetFoilDefenderCombatSkill(mission);
             Planet planet = mission.GetParent() as Planet;
 
-            foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
+            foreach (IMissionParticipant participant in mission.GetMainParticipants().ToList())
                 ResolveFoiledParticipant(participant, defenderCombat, planet, results);
 
             return true;

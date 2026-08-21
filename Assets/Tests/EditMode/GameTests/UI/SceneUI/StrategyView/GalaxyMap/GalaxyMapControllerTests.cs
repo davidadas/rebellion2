@@ -8,7 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
@@ -29,9 +29,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Player" }
-            );
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
             game.Summary.PlayerFactionID = _playerFactionId;
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
@@ -180,7 +179,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
         private static GalaxyMapSector CreateSector()
         {
-            GamePlanetSector planetSector = new GamePlanetSector
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
                 DisplayName = "Corellian",
@@ -242,13 +241,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
         private sealed class TestActions : IGalaxyMapActions
         {
-            public GamePlanetSector OpenedSector { get; private set; }
+            public GalaxyPlanetSector OpenedSector { get; private set; }
             public int OpenedX { get; private set; } = -1;
             public int OpenedY { get; private set; } = -1;
             public int RenderRequestCount { get; private set; }
 
             public void OpenPlanetSectorWindow(
-                GamePlanetSector planetSector,
+                GalaxyPlanetSector planetSector,
                 int sourceX,
                 int sourceY
             )

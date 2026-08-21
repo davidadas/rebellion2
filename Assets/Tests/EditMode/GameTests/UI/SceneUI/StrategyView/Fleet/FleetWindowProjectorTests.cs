@@ -9,8 +9,8 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 {
@@ -37,7 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void SetUp()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _ownerId, DisplayName = "Alliance" });
+            game.GetFactions().Add(new Faction { InstanceID = _ownerId, DisplayName = "Alliance" });
             game.Summary.PlayerFactionID = _ownerId;
             _uiContext = TestContent.CreateUIContext(
                 game,
@@ -61,15 +61,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 InstanceID = "second-fleet",
                 Movement = new MovementState(),
             };
-            _planet.Fleets.Add(_fleet);
-            _planet.Fleets.Add(_secondFleet);
+            _planet.AddChild(_fleet);
+            _planet.AddChild(_secondFleet);
             AttachFleetGraph(_planet, _fleet);
             AttachFleetGraph(_planet, _secondFleet);
             _windowObject = new GameObject("FleetWindow", typeof(RectTransform), typeof(UIWindow));
             _window = _windowObject.GetComponent<UIWindow>();
             _window.Configure(1, 18, 29, 410, 300, false, true, true);
             _session = new FleetWindowSession(
-                new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty),
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty),
                 _window
             );
             _projector = new FleetWindowProjector(() => _uiContext);
@@ -298,7 +298,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 OwnerInstanceID = _ownerId,
             };
             FleetWindowSession session = new FleetWindowSession(
-                new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty),
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), planet, string.Empty),
                 _window
             );
 
@@ -382,10 +382,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 InTransitSmallImagePath = specialForcesDefinition.InTransitSmallImagePath,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            _capitalShip.Starfighters.Add(_starfighter);
-            _capitalShip.Regiments.Add(_regiment);
-            _capitalShip.Officers.Add(_officer);
-            _capitalShip.SpecialForces.Add(_specialForces);
+            _capitalShip.AddChild(_starfighter);
+            _capitalShip.AddChild(_regiment);
+            _capitalShip.AddChild(_officer);
+            _capitalShip.AddChild(_specialForces);
             return new GameFleet(
                 _ownerId,
                 "First Fleet",
@@ -425,7 +425,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);
-            foreach (CapitalShip ship in fleet.CapitalShips)
+            foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
             {
                 ship.SetParent(fleet);
                 foreach (ISceneNode child in ship.GetChildren())

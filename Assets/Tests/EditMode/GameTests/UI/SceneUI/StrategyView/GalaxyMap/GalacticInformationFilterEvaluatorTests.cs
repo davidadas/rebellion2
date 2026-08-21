@@ -21,8 +21,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create());
-            _game.Factions.Add(new Faction { InstanceID = _playerFactionId });
-            _game.Factions.Add(new Faction { InstanceID = _opponentFactionId });
+            _game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
+            _game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
         }
 
         [Test]
@@ -128,7 +128,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         )
         {
             Planet planet = CreatePlanet(_playerFactionId);
-            planet.Buildings.Add(CreateProductionFacility(type));
+            planet.AddTestChild(CreateProductionFacility(type));
 
             GalacticInformationMarker marker = GalacticInformationFilterEvaluator.Evaluate(
                 _game,
@@ -144,9 +144,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void Evaluate_IdleManufacturing_ForeignOwnerOrQueuedWorkReturnsLowestMarker()
         {
             Planet foreignPlanet = CreatePlanet(_opponentFactionId);
-            foreignPlanet.Buildings.Add(CreateProductionFacility(ManufacturingType.Ship));
+            foreignPlanet.AddTestChild(CreateProductionFacility(ManufacturingType.Ship));
             Planet busyPlanet = CreatePlanet(_playerFactionId);
-            busyPlanet.Buildings.Add(CreateProductionFacility(ManufacturingType.Ship));
+            busyPlanet.AddTestChild(CreateProductionFacility(ManufacturingType.Ship));
             busyPlanet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable>
             {
                 new CapitalShip(),
@@ -176,13 +176,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void Evaluate_ActiveUnits_ExcludesBuildingAndMovingEntities()
         {
             Planet planet = CreatePlanet(_playerFactionId);
-            planet.Regiments.Add(
+            planet.AddTestChild(
                 new Regiment { ManufacturingStatus = ManufacturingStatus.Complete }
             );
-            planet.Regiments.Add(
+            planet.AddTestChild(
                 new Regiment { ManufacturingStatus = ManufacturingStatus.Building }
             );
-            planet.Regiments.Add(
+            planet.AddTestChild(
                 new Regiment
                 {
                     ManufacturingStatus = ManufacturingStatus.Complete,
@@ -207,8 +207,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void Evaluate_IdleFleets_BothFactionsReturnsHighestMixedMarker()
         {
             Planet planet = CreatePlanet(_playerFactionId);
-            planet.Fleets.Add(CreateFleet(_playerFactionId, false));
-            planet.Fleets.Add(CreateFleet(_opponentFactionId, false));
+            planet.AddTestChild(CreateFleet(_playerFactionId, false));
+            planet.AddTestChild(CreateFleet(_opponentFactionId, false));
 
             GalacticInformationMarker marker = GalacticInformationFilterEvaluator.Evaluate(
                 _game,
@@ -226,9 +226,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void Evaluate_FleetsEnroute_OpposingFleetsReturnsOpponentIntensity()
         {
             Planet planet = CreatePlanet(_playerFactionId);
-            planet.Fleets.Add(CreateFleet(_opponentFactionId, true));
-            planet.Fleets.Add(CreateFleet(_opponentFactionId, true));
-            planet.Fleets.Add(CreateFleet(_playerFactionId, false));
+            planet.AddTestChild(CreateFleet(_opponentFactionId, true));
+            planet.AddTestChild(CreateFleet(_opponentFactionId, true));
+            planet.AddTestChild(CreateFleet(_playerFactionId, false));
 
             GalacticInformationMarker marker = GalacticInformationFilterEvaluator.Evaluate(
                 _game,
@@ -263,27 +263,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void Evaluate_IdlePersonnel_ExcludesUnavailablePersonnelAndIncompleteForces()
         {
             Planet planet = CreatePlanet(_playerFactionId);
-            planet.Officers.Add(new Officer { OwnerInstanceID = _playerFactionId });
-            planet.Officers.Add(
+            planet.AddTestChild(new Officer { OwnerInstanceID = _playerFactionId });
+            planet.AddTestChild(
                 new Officer { OwnerInstanceID = _playerFactionId, IsCaptured = true }
             );
-            planet.Officers.Add(
+            planet.AddTestChild(
                 new Officer { OwnerInstanceID = _playerFactionId, InjuryPoints = 1 }
             );
-            planet.Officers.Add(
+            planet.AddTestChild(
                 new Officer { OwnerInstanceID = _playerFactionId, IsKilled = true }
             );
-            planet.Officers.Add(
+            planet.AddTestChild(
                 new Officer { OwnerInstanceID = _playerFactionId, Movement = new MovementState() }
             );
-            planet.SpecialForces.Add(
+            planet.AddTestChild(
                 new SpecialForces
                 {
                     OwnerInstanceID = _playerFactionId,
                     ManufacturingStatus = ManufacturingStatus.Building,
                 }
             );
-            planet.SpecialForces.Add(
+            planet.AddTestChild(
                 new SpecialForces
                 {
                     OwnerInstanceID = _playerFactionId,
@@ -306,10 +306,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void Evaluate_ActivePersonnel_CountsNonIdleOpposingPersonnel()
         {
             Planet planet = CreatePlanet(_playerFactionId);
-            planet.Officers.Add(
+            planet.AddTestChild(
                 new Officer { OwnerInstanceID = _opponentFactionId, Movement = new MovementState() }
             );
-            planet.Officers.Add(
+            planet.AddTestChild(
                 new Officer { OwnerInstanceID = _opponentFactionId, IsCaptured = true }
             );
 
@@ -336,9 +336,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
             CapitalShip ship = new CapitalShip { OwnerInstanceID = _playerFactionId };
             Officer officer = new Officer { OwnerInstanceID = _playerFactionId };
-            planet.Fleets.Add(fleet);
-            fleet.CapitalShips.Add(ship);
-            ship.Officers.Add(officer);
+            planet.AddTestChild(fleet);
+            fleet.AddTestChild(ship);
+            ship.AddTestChild(officer);
             fleet.SetParent(planet);
             ship.SetParent(fleet);
             officer.SetParent(ship);
@@ -392,40 +392,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                     planet.NumRawResourceNodes = 1;
                     break;
                 case GalacticInformationFilterMode.Mines:
-                    planet.Buildings.Add(CreateBuilding(BuildingType.Mine));
+                    planet.AddTestChild(CreateBuilding(BuildingType.Mine));
                     break;
                 case GalacticInformationFilterMode.Refineries:
-                    planet.Buildings.Add(CreateBuilding(BuildingType.Refinery));
+                    planet.AddTestChild(CreateBuilding(BuildingType.Refinery));
                     break;
                 case GalacticInformationFilterMode.Shipyards:
-                    planet.Buildings.Add(CreateProductionFacility(ManufacturingType.Ship));
+                    planet.AddTestChild(CreateProductionFacility(ManufacturingType.Ship));
                     break;
                 case GalacticInformationFilterMode.TrainingFacilities:
-                    planet.Buildings.Add(CreateProductionFacility(ManufacturingType.Troop));
+                    planet.AddTestChild(CreateProductionFacility(ManufacturingType.Troop));
                     break;
                 case GalacticInformationFilterMode.ConstructionYards:
-                    planet.Buildings.Add(CreateProductionFacility(ManufacturingType.Building));
+                    planet.AddTestChild(CreateProductionFacility(ManufacturingType.Building));
                     break;
                 case GalacticInformationFilterMode.Troopers:
-                    planet.Regiments.Add(
+                    planet.AddTestChild(
                         new Regiment { ManufacturingStatus = ManufacturingStatus.Complete }
                     );
                     break;
                 case GalacticInformationFilterMode.FighterSquadrons:
-                    planet.Starfighters.Add(
+                    planet.AddTestChild(
                         new Starfighter { ManufacturingStatus = ManufacturingStatus.Complete }
                     );
                     break;
                 case GalacticInformationFilterMode.DeathStarShields:
-                    planet.Buildings.Add(
+                    planet.AddTestChild(
                         CreateDefenseBuilding(DefenseFacilityClass.DeathStarShield)
                     );
                     break;
                 case GalacticInformationFilterMode.PlanetaryShieldGenerators:
-                    planet.Buildings.Add(CreateDefenseBuilding(DefenseFacilityClass.Shield));
+                    planet.AddTestChild(CreateDefenseBuilding(DefenseFacilityClass.Shield));
                     break;
                 case GalacticInformationFilterMode.PlanetaryDefenseBatteries:
-                    planet.Buildings.Add(CreateDefenseBuilding(DefenseFacilityClass.KDY));
+                    planet.AddTestChild(CreateDefenseBuilding(DefenseFacilityClass.KDY));
                     break;
             }
         }

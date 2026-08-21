@@ -89,7 +89,7 @@ public enum StrategyMenuAction
     PlanetaryBombardment,
     Encyclopedia,
     Abort,
-    DestroySystem,
+    DestroyPlanet,
     Rename,
     CreateFleet,
     BombardMilitaryFacilities,
@@ -180,8 +180,8 @@ public static class StrategyMenuActionExtensions
             case StrategyMenuAction.GeneralBombardment:
                 type = BombardmentType.General;
                 return true;
-            case StrategyMenuAction.DestroySystem:
-                type = BombardmentType.DestroySystem;
+            case StrategyMenuAction.DestroyPlanet:
+                type = BombardmentType.DestroyPlanet;
                 return true;
             default:
                 type = default;
@@ -199,14 +199,14 @@ internal static class StrategyBombardmentMenuBuilder
     /// Creates the bombardment parent and its four target-profile commands.
     /// </summary>
     /// <param name="canBombard">Whether ordinary bombardment profiles can execute.</param>
-    /// <param name="canDestroySystem">Whether the selected fleets can destroy the system.</param>
+    /// <param name="canDestroyPlanet">Whether the selected fleets can destroy the planet.</param>
     /// <returns>The complete bombardment submenu.</returns>
-    public static StrategyMenuCommand Build(bool canBombard, bool canDestroySystem)
+    public static StrategyMenuCommand Build(bool canBombard, bool canDestroyPlanet)
     {
         return new StrategyMenuCommand(
             StrategyMenuAction.PlanetaryBombardment,
             "Planetary Bombardment",
-            canBombard || canDestroySystem,
+            canBombard || canDestroyPlanet,
             submenuCommands: new List<StrategyMenuCommand>
             {
                 new StrategyMenuCommand(
@@ -225,9 +225,9 @@ internal static class StrategyBombardmentMenuBuilder
                     canBombard
                 ),
                 new StrategyMenuCommand(
-                    StrategyMenuAction.DestroySystem,
-                    "Destroy System",
-                    canDestroySystem
+                    StrategyMenuAction.DestroyPlanet,
+                    "Destroy Planet",
+                    canDestroyPlanet
                 ),
             }
         );

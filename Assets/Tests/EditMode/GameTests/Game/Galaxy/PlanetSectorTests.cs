@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
@@ -35,7 +36,7 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             _planetSector.AddChild(_planet1);
 
-            Assert.Contains(_planet1, _planetSector.Planets);
+            Assert.IsTrue(_planetSector.GetChildren<Planet>().Contains(_planet1));
         }
 
         [Test]
@@ -49,11 +50,11 @@ namespace Rebellion.Tests.Game.Galaxy
             _planetSector.AddChild(planet3);
             _planetSector.AddChild(planet4);
 
-            Assert.AreEqual(4, _planetSector.Planets.Count);
-            Assert.Contains(_planet1, _planetSector.Planets);
-            Assert.Contains(_planet2, _planetSector.Planets);
-            Assert.Contains(planet3, _planetSector.Planets);
-            Assert.Contains(planet4, _planetSector.Planets);
+            Assert.AreEqual(4, _planetSector.GetChildren<Planet>().Count);
+            Assert.IsTrue(_planetSector.GetChildren<Planet>().Contains(_planet1));
+            Assert.IsTrue(_planetSector.GetChildren<Planet>().Contains(_planet2));
+            Assert.IsTrue(_planetSector.GetChildren<Planet>().Contains(planet3));
+            Assert.IsTrue(_planetSector.GetChildren<Planet>().Contains(planet4));
         }
 
         [Test]
@@ -62,7 +63,7 @@ namespace Rebellion.Tests.Game.Galaxy
             _planetSector.AddChild(_planet1);
             _planetSector.AddChild(_planet1);
 
-            Assert.AreEqual(2, _planetSector.Planets.Count);
+            Assert.AreEqual(2, _planetSector.GetChildren<Planet>().Count);
         }
 
         [Test]
@@ -72,7 +73,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planetSector.RemoveChild(_planet1);
 
-            Assert.IsFalse(_planetSector.Planets.Contains(_planet1));
+            Assert.IsFalse(_planetSector.GetChildren<Planet>().Contains(_planet1));
         }
 
         [Test]
@@ -83,9 +84,9 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _planetSector.RemoveChild(_planet1);
 
-            Assert.AreEqual(1, _planetSector.Planets.Count);
-            Assert.IsFalse(_planetSector.Planets.Contains(_planet1));
-            Assert.IsTrue(_planetSector.Planets.Contains(_planet2));
+            Assert.AreEqual(1, _planetSector.GetChildren<Planet>().Count);
+            Assert.IsFalse(_planetSector.GetChildren<Planet>().Contains(_planet1));
+            Assert.IsTrue(_planetSector.GetChildren<Planet>().Contains(_planet2));
         }
 
         [Test]
@@ -143,8 +144,8 @@ namespace Rebellion.Tests.Game.Galaxy
                 "Importance should be correctly deserialized."
             );
             Assert.AreEqual(
-                _planetSector.Planets.Count,
-                deserialized.Planets.Count,
+                _planetSector.GetChildren<Planet>().Count,
+                deserialized.GetChildren<Planet>().Count,
                 "Planets count should be correctly deserialized."
             );
         }

@@ -346,7 +346,10 @@ namespace Rebellion.Game.Events
 
         public override bool IsMet(GameConditionContext context)
         {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
+                OfficerInstanceID,
+                includeDisabled: true
+            );
             return officer != null && Evaluate(officer);
         }
 
@@ -523,7 +526,8 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context) =>
             context
                 .Activation?.GetTarget<Planet>()
-                ?.Buildings.Any(building =>
+                ?.GetChildren<Building>()
+                .Any(building =>
                     building.BuildingType == Type
                     && building.ManufacturingStatus == ManufacturingStatus.Complete
                 ) == true;

@@ -165,8 +165,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private static UIContext CreateContext()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = _attackerId });
-            game.Factions.Add(new Faction { InstanceID = _defenderId });
+            game.GetFactions().Add(new Faction { InstanceID = _attackerId });
+            game.GetFactions().Add(new Faction { InstanceID = _defenderId });
             FactionThemes themes = new FactionThemes
             {
                 new FactionTheme { FactionInstanceID = "DEFAULT" },

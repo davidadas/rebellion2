@@ -119,7 +119,7 @@ namespace Rebellion.Systems
         private void RemoveExpiredMessages()
         {
             int retentionTicks = _game.Config.Messages.RetentionTicks;
-            foreach (Faction faction in _game.Factions)
+            foreach (Faction faction in _game.GetFactions())
             {
                 if (faction?.Messages == null)
                     continue;

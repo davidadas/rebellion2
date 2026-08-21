@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
@@ -18,6 +19,73 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
+
+/// <summary>
+/// Provides scene construction helpers for tests that exercise consumers rather than placement rules.
+/// </summary>
+public static class SceneTestExtensions
+{
+    /// <summary>
+    /// Adds a child directly to a detached test or projection node without invoking placement validation.
+    /// </summary>
+    public static void AddTestChild(this ISceneNode parent, ISceneNode child)
+    {
+        switch (parent)
+        {
+            case Planet planet:
+                planet.SetChildren(
+                    AppendWhen<Fleet>(planet.GetChildren<Fleet>(includeDisabled: true), child),
+                    AppendWhen<Officer>(planet.GetChildren<Officer>(includeDisabled: true), child),
+                    AppendWhen<Regiment>(
+                        planet.GetChildren<Regiment>(includeDisabled: true),
+                        child
+                    ),
+                    AppendWhen<SpecialForces>(
+                        planet.GetChildren<SpecialForces>(includeDisabled: true),
+                        child
+                    ),
+                    AppendWhen<Starfighter>(
+                        planet.GetChildren<Starfighter>(includeDisabled: true),
+                        child
+                    ),
+                    AppendWhen<Mission>(planet.GetChildren<Mission>(includeDisabled: true), child),
+                    AppendWhen<Building>(planet.GetChildren<Building>(includeDisabled: true), child)
+                );
+                return;
+            case CapitalShip ship:
+                ship.SetChildren(
+                    AppendWhen<Officer>(ship.GetChildren<Officer>(includeDisabled: true), child),
+                    AppendWhen<Regiment>(ship.GetChildren<Regiment>(includeDisabled: true), child),
+                    AppendWhen<SpecialForces>(
+                        ship.GetChildren<SpecialForces>(includeDisabled: true),
+                        child
+                    ),
+                    AppendWhen<Starfighter>(
+                        ship.GetChildren<Starfighter>(includeDisabled: true),
+                        child
+                    )
+                );
+                return;
+            case Fleet fleet when child is CapitalShip capitalShip:
+                fleet.SetCapitalShips(
+                    fleet.GetChildren<CapitalShip>(includeDisabled: true).Append(capitalShip)
+                );
+                return;
+            default:
+                parent.AddChild(child);
+                return;
+        }
+    }
+
+    /// <summary>
+    /// Appends a child when it matches the requested collection type.
+    /// </summary>
+    private static IEnumerable<T> AppendWhen<T>(IEnumerable<T> existing, ISceneNode child)
+        where T : class, ISceneNode
+    {
+        return child is T typedChild ? existing.Append(typedChild) : existing;
+    }
+}
 
 /// <summary>
 /// Always returns the minimum value — use when tests need every action to succeed.
@@ -49,6 +117,16 @@ public class FixedRNG : IRandomNumberProvider
 }
 
 /// <summary>
+/// Returns the highest value permitted by each random-number request.
+/// </summary>
+public sealed class MaximumRNG : IRandomNumberProvider
+{
+    public double NextDouble() => 0.99;
+
+    public int NextInt(int min, int max) => max > min ? max - 1 : min;
+}
+
+/// <summary>
 /// Returns a fixed sequence of doubles, then falls back to 0.5.
 /// Replaces MockRNG in SpaceCombatSystemTests and UprisingSystemTests.
 /// </summary>
@@ -74,15 +152,15 @@ public class QueueRNG : IRandomNumberProvider
 /// </summary>
 public class StubMission : Mission
 {
+    /// <summary>Creates an empty stub mission copy.</summary>
+    /// <returns>An empty stub mission.</returns>
+    protected override BaseSceneNode CreateNodeCopy() => new StubMission();
+
     /// <summary>
     /// Default constructor — sets empty participant lists.
     /// Use when the mission only needs to exist as a parent node, not in the scene graph.
     /// </summary>
-    public StubMission()
-    {
-        MainParticipants = new List<IMissionParticipant>();
-        DecoyParticipants = new List<IMissionParticipant>();
-    }
+    public StubMission() { }
 
     /// <summary>
     /// Full constructor — use when the mission is attached to a planet in the scene graph.
@@ -266,8 +344,8 @@ public static class MissionSceneBuilder
 
         Faction empire = new Faction { InstanceID = "empire" };
         Faction rebels = new Faction { InstanceID = "rebels" };
-        game.Factions.Add(empire);
-        game.Factions.Add(rebels);
+        game.GetFactions().Add(empire);
+        game.GetFactions().Add(rebels);
 
         PlanetSector planetSector = new PlanetSector
         {

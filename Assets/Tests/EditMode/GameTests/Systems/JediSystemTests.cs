@@ -34,8 +34,8 @@ namespace Rebellion.Tests.Systems
 
             _alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
-            _game.Factions.Add(_alliance);
-            _game.Factions.Add(_empire);
+            _game.GetFactions().Add(_alliance);
+            _game.GetFactions().Add(_empire);
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -407,13 +407,13 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_HighRoll_DiscoveryFails()
         {
-            // Rank 101 + 0 - 100 = 1%. MaxRNG returns 0.99 -> roll = 99.0 >= 1%
+            // Rank 101 + 0 - 100 = 1%. MaximumRNG returns 0.99 -> roll = 99.0 >= 1%
             Officer luke = CreateJediTrainer("LUKE", forceValue: 101);
             luke.IsDiscoveringForceUser = true;
 
             Officer leia = CreateDormantJedi("LEIA");
 
-            _system = new JediSystem(_game, new MaxRNG());
+            _system = new JediSystem(_game, new MaximumRNG());
             List<ForceDiscoveryResult> results = _system
                 .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
@@ -515,7 +515,7 @@ namespace Rebellion.Tests.Systems
                 ForceValue = 10,
             };
             Mission mission = new DiplomacyMission();
-            mission.MainParticipants.Add(luke);
+            mission.AddChild(luke);
 
             List<GameResult> results = _system.HandleResults(
                 new MissionCompletedResult[]
@@ -572,15 +572,5 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(officer, _tatooine);
             return officer;
         }
-    }
-
-    /// <summary>
-    /// RNG that always returns max - 1 from NextInt, used for testing max-roll paths.
-    /// </summary>
-    internal class MaxRNG : IRandomNumberProvider
-    {
-        public double NextDouble() => 0.99;
-
-        public int NextInt(int min, int max) => max > min ? max - 1 : min;
     }
 }

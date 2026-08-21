@@ -144,10 +144,10 @@ namespace Rebellion.Game.Encyclopedia
 
             foreach (PlanetSector planetSector in planetSectors)
             {
-                if (planetSector?.Planets == null)
+                if (planetSector?.GetChildren<Planet>() == null)
                     continue;
 
-                foreach (Planet planet in planetSector.Planets)
+                foreach (Planet planet in planetSector.GetChildren<Planet>())
                 {
                     EncyclopediaEntry entry = CreateEntry(planet, EncyclopediaEntryCategory.System);
                     if (entry != null)

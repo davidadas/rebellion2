@@ -19,6 +19,18 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string SabotageTargetInstanceID { get; set; }
 
+        /// <summary>Creates an empty sabotage mission copy.</summary>
+        /// <returns>An empty sabotage mission.</returns>
+        protected override BaseSceneNode CreateNodeCopy() => new SabotageMission();
+
+        /// <summary>Copies sabotage-specific state into an empty destination.</summary>
+        /// <param name="destination">The destination mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            ((SabotageMission)destination).SabotageTargetInstanceID = SabotageTargetInstanceID;
+        }
+
         /// <summary>
         /// Returns whether this mission should cancel when the target planet changes owner.
         /// </summary>
@@ -191,7 +203,7 @@ namespace Rebellion.Game.Missions
                 && regiment.Movement == null;
             Fleet targetFleet = target is CapitalShip ? target.GetParentOfType<Fleet>() : null;
             game.DetachNode(target);
-            if (targetFleet?.CapitalShips.Count == 0)
+            if (targetFleet?.GetChildren<CapitalShip>().Count == 0)
                 game.DetachNode(targetFleet);
 
             List<GameResult> results = new List<GameResult>
@@ -199,7 +211,7 @@ namespace Rebellion.Game.Missions
                 new GameObjectSabotagedResult
                 {
                     SabotagedObject = target,
-                    Saboteur = MainParticipants.Count > 0 ? MainParticipants[0] : null,
+                    Saboteur = GetMainParticipants().Count > 0 ? GetMainParticipants()[0] : null,
                     Context = planet,
                     Tick = game.CurrentTick,
                 },

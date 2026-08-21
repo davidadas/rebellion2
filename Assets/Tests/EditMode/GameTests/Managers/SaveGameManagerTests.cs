@@ -17,8 +17,6 @@ namespace Rebellion.Tests.Managers
     {
         private const string _defaultSaveFileName = "SaveGameManagerTest";
 
-        // Empty factions list - tests that need factions create them locally
-        private List<Faction> _factions = new List<Faction>();
         private string _saveDirectoryPath;
         private string _saveFileName;
         private SaveGameManager _saveGameManager;
@@ -57,12 +55,7 @@ namespace Rebellion.Tests.Managers
             };
 
             // Save the file to disk for testing.
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
             _saveGameManager.SaveGameData(game, _saveFileName);
 
             // Check if the file was created.
@@ -77,7 +70,6 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary(),
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
                 CurrentTick = 10,
             };
@@ -97,12 +89,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void SaveGameData_OverlongDisplayName_TruncatesStoredName()
         {
-            GameRoot game = new GameRoot
-            {
-                Summary = new GameSummary(),
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
             string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
 
             _saveGameManager.SaveGameData(game, _saveFileName, overlongName);
@@ -126,12 +113,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNEMP1",
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
@@ -152,12 +134,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
@@ -177,12 +154,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
@@ -206,7 +178,6 @@ namespace Rebellion.Tests.Managers
             {
                 Summary = summary,
                 Metadata = new GameMetadata { SaveVersion = GameMetadata.CurrentSaveVersion + 99 },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -219,12 +190,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void ProcessAutosaveTick_ExceedsRetention_PrunesOldestRestorePoints()
         {
-            GameRoot game = new GameRoot
-            {
-                Summary = new GameSummary(),
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
             UserGameplaySettings settings = new UserGameplaySettings();
             settings.SetAutosavesToKeep(2);
             for (int tick = 100; tick <= 400; tick += 100)
@@ -258,13 +224,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void ProcessAutosaveTick_OnlyWritesAtConfiguredTickCadence()
         {
-            GameRoot game = new GameRoot
-            {
-                Summary = new GameSummary(),
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-                CurrentTick = 99,
-            };
+            GameRoot game = new GameRoot { Summary = new GameSummary(), CurrentTick = 99 };
             UserGameplaySettings settings = new UserGameplaySettings();
 
             Assert.IsFalse(_saveGameManager.ProcessAutosaveTick(game, settings));
@@ -336,7 +296,6 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -352,7 +311,6 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -381,12 +339,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void SetSaveDisplayName_OverlongName_TruncatesMetadataName()
         {
-            GameRoot game = new GameRoot
-            {
-                Summary = new GameSummary(),
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
             _saveGameManager.SaveGameData(game, _saveFileName, "Initial Name");
             string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
 
@@ -408,7 +361,6 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
             _saveGameManager.SaveSlotGameData(game, 1, "Recovered Slot");
@@ -428,7 +380,6 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
             _saveGameManager.SaveGameData(game, "simulation_seed_1");
@@ -442,7 +393,6 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
             _saveGameManager.SaveSlotGameData(game, 2, "Recovered Slot");
@@ -510,7 +460,8 @@ namespace Rebellion.Tests.Managers
             List<PlanetSector> planetSectors = new List<PlanetSector> { planetSector };
 
             // Create galaxy map.
-            GalaxyMap galaxy = new GalaxyMap { PlanetSectors = planetSectors };
+            GalaxyMap galaxy = new GalaxyMap();
+            galaxy.AddChildren(planetSectors);
 
             // Generate the game summary.
             GameSummary summary = new GameSummary
@@ -523,12 +474,7 @@ namespace Rebellion.Tests.Managers
             };
 
             // Create the game.
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = new List<Faction>(),
-                Galaxy = galaxy,
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = galaxy };
 
             // Create planets.
             Planet planet = new Planet { DisplayName = "Planet" };
@@ -553,11 +499,11 @@ namespace Rebellion.Tests.Managers
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             // // Verify the scene graph is reconstituted.
-            PlanetSector loadedPlanetSector = loadedGame.Galaxy.PlanetSectors[0];
-            Planet loadedPlanet = loadedPlanetSector.Planets[0];
-            Fleet loadedFleet = loadedPlanet.Fleets[0];
-            CapitalShip loadedCapitalShip = loadedFleet.CapitalShips[0];
-            Officer loadedOfficer = loadedCapitalShip.Officers[0];
+            PlanetSector loadedPlanetSector = loadedGame.Galaxy.GetChildren<PlanetSector>()[0];
+            Planet loadedPlanet = loadedPlanetSector.GetChildren<Planet>()[0];
+            Fleet loadedFleet = loadedPlanet.GetChildren<Fleet>()[0];
+            CapitalShip loadedCapitalShip = loadedFleet.GetChildren<CapitalShip>()[0];
+            Officer loadedOfficer = loadedCapitalShip.GetChildren<Officer>()[0];
 
             Assert.AreEqual(planetSector.InstanceID, loadedPlanet.GetParent().InstanceID);
             Assert.AreEqual(fleet.InstanceID, loadedCapitalShip.GetParent().InstanceID);
@@ -576,12 +522,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
             _saveGameManager.SaveGameData(game, _saveFileName);
 
             string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
@@ -610,12 +551,7 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
             _saveGameManager.SaveGameData(game, _saveFileName);
 
             string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
@@ -649,7 +585,6 @@ namespace Rebellion.Tests.Managers
                 Summary = summary,
                 CurrentTick = 150,
                 GameSpeed = TickSpeed.Fast,
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -682,22 +617,17 @@ namespace Rebellion.Tests.Managers
             };
             GameEvent event2 = new GameEvent { InstanceID = "EVENT2" };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                EventPool = new List<GameEvent> { event1, event2 },
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetEventPool().AddRange(new[] { event1, event2 });
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(2, loadedGame.EventPool.Count);
-            Assert.AreEqual("EVENT1", loadedGame.EventPool[0].InstanceID);
-            Assert.AreEqual("EVENT2", loadedGame.EventPool[1].InstanceID);
-            Assert.AreEqual(300, loadedGame.EventPool[0].Schedule.Random.MinimumTicks);
-            Assert.AreEqual(400, loadedGame.EventPool[0].Schedule.Random.MaximumTicks);
+            Assert.AreEqual(2, loadedGame.GetEventPool().Count);
+            Assert.AreEqual("EVENT1", loadedGame.GetEventPool()[0].InstanceID);
+            Assert.AreEqual("EVENT2", loadedGame.GetEventPool()[1].InstanceID);
+            Assert.AreEqual(300, loadedGame.GetEventPool()[0].Schedule.Random.MinimumTicks);
+            Assert.AreEqual(400, loadedGame.GetEventPool()[0].Schedule.Random.MaximumTicks);
         }
 
         [Test]
@@ -724,7 +654,6 @@ namespace Rebellion.Tests.Managers
                         ["EVENT3"] = new GameEventState { IsExhausted = true },
                     },
                 },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -759,7 +688,6 @@ namespace Rebellion.Tests.Managers
                         },
                     },
                 },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -787,7 +715,6 @@ namespace Rebellion.Tests.Managers
                         { "luke.heritage.revealed", 1 },
                     },
                 },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -816,19 +743,15 @@ namespace Rebellion.Tests.Managers
 
             Faction faction1 = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = new List<Faction> { faction1 },
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(faction1);
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(1, loadedGame.Factions.Count);
-            Assert.AreEqual("FNALL1", loadedGame.Factions[0].InstanceID);
-            Assert.AreEqual("Alliance", loadedGame.Factions[0].DisplayName);
+            Assert.AreEqual(1, loadedGame.GetFactions().Count);
+            Assert.AreEqual("FNALL1", loadedGame.GetFactions()[0].InstanceID);
+            Assert.AreEqual("Alliance", loadedGame.GetFactions()[0].DisplayName);
         }
 
         [Test]
@@ -855,7 +778,6 @@ namespace Rebellion.Tests.Managers
             {
                 Summary = summary,
                 Metadata = metadata,
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -882,12 +804,7 @@ namespace Rebellion.Tests.Managers
                 StartingResearchLevel = 3,
             };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
@@ -921,24 +838,21 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = summary,
-                Factions = new List<Faction>(),
-                EventPool = new List<GameEvent>(),
                 EventRuntime = new GameEventRuntimeState(),
-                UnrecruitedOfficers = new List<Officer>(),
                 Galaxy = new GalaxyMap(),
             };
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.IsNotNull(loadedGame.Factions);
-            Assert.AreEqual(0, loadedGame.Factions.Count);
-            Assert.IsNotNull(loadedGame.EventPool);
-            Assert.AreEqual(0, loadedGame.EventPool.Count);
+            Assert.IsNotNull(loadedGame.GetFactions());
+            Assert.AreEqual(0, loadedGame.GetFactions().Count);
+            Assert.IsNotNull(loadedGame.GetEventPool());
+            Assert.AreEqual(0, loadedGame.GetEventPool().Count);
             Assert.IsNotNull(loadedGame.EventRuntime.States);
             Assert.AreEqual(0, loadedGame.EventRuntime.States.Count);
-            Assert.IsNotNull(loadedGame.UnrecruitedOfficers);
-            Assert.AreEqual(0, loadedGame.UnrecruitedOfficers.Count);
+            Assert.IsNotNull(loadedGame.GetUnrecruitedOfficers());
+            Assert.AreEqual(0, loadedGame.GetUnrecruitedOfficers().Count);
         }
 
         [Test]
@@ -959,21 +873,16 @@ namespace Rebellion.Tests.Managers
                 events.Add(new GameEvent { InstanceID = $"EVENT{i}" });
             }
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                EventPool = events,
-                Factions = _factions,
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetEventPool().AddRange(events);
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(10, loadedGame.EventPool.Count);
+            Assert.AreEqual(10, loadedGame.GetEventPool().Count);
             for (int i = 0; i < 10; i++)
             {
-                Assert.AreEqual($"EVENT{i}", loadedGame.EventPool[i].InstanceID);
+                Assert.AreEqual($"EVENT{i}", loadedGame.GetEventPool()[i].InstanceID);
             }
         }
 
@@ -1000,7 +909,6 @@ namespace Rebellion.Tests.Managers
             {
                 Summary = summary,
                 EventRuntime = new GameEventRuntimeState { States = eventStates },
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -1041,7 +949,6 @@ namespace Rebellion.Tests.Managers
                 {
                     Summary = summary,
                     GameSpeed = speed,
-                    Factions = _factions,
                     Galaxy = new GalaxyMap(),
                 };
 
@@ -1072,7 +979,6 @@ namespace Rebellion.Tests.Managers
             {
                 Summary = summary,
                 CurrentTick = 999999,
-                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
@@ -1130,17 +1036,13 @@ namespace Rebellion.Tests.Managers
 
             alliance.Fog.PlanetToSector["CORUSCANT"] = "SECTOR1";
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = new List<Faction> { alliance },
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(alliance);
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
+            Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
             Assert.IsNotNull(loadedAlliance);
 
             Assert.AreEqual(1, loadedAlliance.Fog.Snapshots.Count);
@@ -1185,17 +1087,13 @@ namespace Rebellion.Tests.Managers
 
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = new List<Faction> { alliance },
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(alliance);
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
+            Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
             Assert.IsNotNull(loadedAlliance);
             Assert.IsNotNull(loadedAlliance.Fog);
             Assert.AreEqual(0, loadedAlliance.Fog.Snapshots.Count);
@@ -1233,17 +1131,13 @@ namespace Rebellion.Tests.Managers
             alliance.Fog.EntityLastSeenAt["REG1"] = "PLANET1";
             alliance.Fog.PlanetToSector["PLANET1"] = "SECTOR1";
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = new List<Faction> { alliance },
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(alliance);
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
+            Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
             PlanetSnapshot loadedSnapshot = loadedAlliance.Fog.Snapshots["SECTOR1"].Planets[
                 "PLANET1"
             ];
@@ -1300,17 +1194,13 @@ namespace Rebellion.Tests.Managers
             alliance.Fog.PlanetToSector["PLANET2"] = "SECTOR2";
             alliance.Fog.PlanetToSector["PLANET3"] = "SECTOR2";
 
-            GameRoot game = new GameRoot
-            {
-                Summary = summary,
-                Factions = new List<Faction> { alliance },
-                Galaxy = new GalaxyMap(),
-            };
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(alliance);
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
+            Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
 
             Assert.AreEqual(2, loadedAlliance.Fog.Snapshots.Count);
             Assert.AreEqual(1, loadedAlliance.Fog.Snapshots["SECTOR1"].Planets.Count);

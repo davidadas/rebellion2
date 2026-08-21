@@ -424,8 +424,8 @@ namespace Rebellion.Tests.Game.Missions
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);

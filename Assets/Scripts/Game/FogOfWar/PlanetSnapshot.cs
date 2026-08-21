@@ -10,14 +10,14 @@ namespace Rebellion.Game.FogOfWar
     public enum PlanetIntelligenceCategory
     {
         None = 0,
-        System = 1 << 0,
+        Planet = 1 << 0,
         CapitalShips = 1 << 1,
         Starfighters = 1 << 2,
         GroundForces = 1 << 3,
         Buildings = 1 << 4,
         Officers = 1 << 5,
         Missions = 1 << 6,
-        All = System | CapitalShips | Starfighters | GroundForces | Buildings | Officers | Missions,
+        All = Planet | CapitalShips | Starfighters | GroundForces | Buildings | Officers | Missions,
     }
 
     /// <summary>

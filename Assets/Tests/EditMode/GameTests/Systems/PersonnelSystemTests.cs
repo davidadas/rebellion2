@@ -8,7 +8,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class PersonnelSystemTests
@@ -23,16 +23,16 @@ namespace Rebellion.Tests.Systems
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create());
-            _game.Factions.Add(new Faction { InstanceID = _ownerId });
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
-            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
             _planet = new Planet
             {
                 InstanceID = "planet",
                 OwnerInstanceID = _ownerId,
                 IsColonized = true,
             };
-            _game.AttachNode(_planet, planetSector);
+            _game.AttachNode(_planet, sector);
             _personnelSystem = new PersonnelSystem(_game);
         }
 
@@ -57,12 +57,11 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsTrue(officer.IsKilled);
             Assert.IsNull(officer.Movement);
-            Assert.IsNull(officer.GetParent());
-            Assert.IsTrue(_game.IsInVoid(officer));
-            Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
-            Assert.Contains(
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsFalse(officer.IsActive());
+            Assert.AreSame(
                 officer,
-                _game.GetFactionByOwnerInstanceID(_ownerId).GetOwnedUnitsByType<Officer>()
+                _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID, includeDisabled: true)
             );
             CollectionAssert.DoesNotContain(_game.GetSceneNodesByType<Officer>(), officer);
         }
@@ -135,10 +134,10 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(retired);
-            Assert.IsNull(officer.GetParent());
-            Assert.IsNull(specialForces.GetParent());
-            Assert.IsTrue(_game.IsInVoid(officer));
-            Assert.IsTrue(_game.IsInVoid(specialForces));
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.AreSame(_planet, specialForces.GetParent());
+            Assert.IsFalse(officer.IsActive());
+            Assert.IsFalse(specialForces.IsActive());
             Assert.IsTrue(officer.IsRetired);
             Assert.IsTrue(specialForces.IsRetired);
         }

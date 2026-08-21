@@ -226,7 +226,7 @@ namespace Rebellion.Systems
             foreach (Fleet fleet in attackers)
                 fleet.IsInCombat = isInCombat;
 
-            foreach (Fleet fleet in planet.Fleets)
+            foreach (Fleet fleet in planet.GetChildren<Fleet>())
                 fleet.IsInCombat = isInCombat;
         }
 
@@ -502,10 +502,11 @@ namespace Rebellion.Systems
         private static List<AssaultTroop> SnapshotAttackers(IEnumerable<Fleet> fleets)
         {
             return fleets
-                .SelectMany(fleet => fleet.CapitalShips)
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                 .Where(IsActiveAssaultUnit)
                 .SelectMany(ship =>
-                    ship.Regiments.Where(IsActiveAssaultUnit)
+                    ship.GetChildren<Regiment>()
+                        .Where(IsActiveAssaultUnit)
                         .Select(regiment => new AssaultTroop { Regiment = regiment, Ship = ship })
                 )
                 .ToList();

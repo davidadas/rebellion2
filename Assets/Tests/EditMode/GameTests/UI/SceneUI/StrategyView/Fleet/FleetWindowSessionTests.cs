@@ -5,8 +5,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
-using GamePlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 {
@@ -54,21 +54,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 DisplayName = "Special Forces",
                 OwnerInstanceID = "owner",
             };
-            _capitalShip.Starfighters.Add(_starfighter);
-            _capitalShip.Regiments.Add(_regiment);
-            _capitalShip.Officers.Add(_officer);
-            _capitalShip.SpecialForces.Add(_specialForces);
+            _capitalShip.AddTestChild(_starfighter);
+            _capitalShip.AddTestChild(_regiment);
+            _capitalShip.AddTestChild(_officer);
+            _capitalShip.AddTestChild(_specialForces);
             _fleet = CreateFleet("fleet", "Fleet", _capitalShip);
             _secondCapitalShip = CreateCapitalShip("second-ship", "Second Ship");
             _secondFleet = CreateFleet("second-fleet", "Second Fleet", _secondCapitalShip);
-            _planet = new Planet { InstanceID = "planet", Fleets = { _fleet, _secondFleet } };
+            _planet = new Planet { InstanceID = "planet" };
+            _planet.AddChildren(new[] { _fleet, _secondFleet });
             AttachFleetGraph(_planet, _fleet);
             AttachFleetGraph(_planet, _secondFleet);
             _windowObject = new GameObject("FleetWindow", typeof(RectTransform), typeof(UIWindow));
             _window = _windowObject.GetComponent<UIWindow>();
             _window.Configure(1, 0, 0, 100, 100, false, true, false);
             _session = new FleetWindowSession(
-                new GalaxyMapPlanet(new GamePlanetSector(), _planet, string.Empty),
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty),
                 _window
             );
         }
@@ -99,7 +100,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void Constructor_NullWindow_ThrowsArgumentNullException()
         {
             GalaxyMapPlanet planet = new GalaxyMapPlanet(
-                new GamePlanetSector(),
+                new GalaxyPlanetSector(),
                 _planet,
                 string.Empty
             );
@@ -113,7 +114,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Planet planet = new Planet { InstanceID = "empty" };
 
             FleetWindowSession session = new FleetWindowSession(
-                new GalaxyMapPlanet(new GamePlanetSector(), planet, string.Empty),
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), planet, string.Empty),
                 _window
             );
 
@@ -141,7 +142,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<System.ArgumentException>(() => _session.RebindPlanet(null));
             Assert.Throws<System.ArgumentException>(() =>
                 _session.RebindPlanet(
-                    new GalaxyMapPlanet(new GamePlanetSector(), null, string.Empty)
+                    new GalaxyMapPlanet(new GalaxyPlanetSector(), null, string.Empty)
                 )
             );
         }
@@ -156,14 +157,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 "Replacement Fleet",
                 replacementShip
             );
-            Planet replacementPlanet = new Planet
-            {
-                InstanceID = "planet",
-                Fleets = { replacementFleet },
-            };
+            Planet replacementPlanet = new Planet { InstanceID = "planet" };
+            replacementPlanet.AddTestChild(replacementFleet);
             AttachFleetGraph(replacementPlanet, replacementFleet);
             GalaxyMapPlanet replacementProjection = new GalaxyMapPlanet(
-                new GamePlanetSector(),
+                new GalaxyPlanetSector(),
                 replacementPlanet,
                 string.Empty
             );
@@ -182,7 +180,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void Reconcile_SelectedFleetRemoved_SelectsNearestRemainingFleet()
         {
             _session.SelectItem(_secondFleet);
-            _planet.Fleets.Remove(_secondFleet);
+            _planet.RemoveChild(_secondFleet);
 
             _session.Reconcile();
 
@@ -196,7 +194,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             _session.CaptureContext(_capitalShip);
             _session.BeginRename(_capitalShip);
-            _planet.Fleets.Clear();
+            _planet.RemoveChildren<Rebellion.Game.Units.Fleet>(_ => true);
 
             _session.Reconcile();
 
@@ -323,7 +321,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void PrepareDragSelection_UnselectedDetail_SelectsItemAndAllowsDrag()
         {
             CapitalShip additionalShip = CreateCapitalShip("additional-ship", "Additional Ship");
-            _fleet.CapitalShips.Add(additionalShip);
+            _fleet.AddTestChild(additionalShip);
             additionalShip.SetParent(_fleet);
             _session.Reconcile();
 
@@ -492,7 +490,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);
-            foreach (CapitalShip ship in fleet.CapitalShips)
+            foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
             {
                 ship.SetParent(fleet);
                 foreach (ISceneNode child in ship.GetChildren())

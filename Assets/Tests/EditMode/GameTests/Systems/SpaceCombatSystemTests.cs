@@ -27,8 +27,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -37,8 +37,8 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-            CapitalShip empireShip = empireFleet.CapitalShips[0];
-            CapitalShip allianceShip = allianceFleet.CapitalShips[0];
+            CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>()[0];
+            CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
             empireShip.DisplayName = "Empire Ship";
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
@@ -74,8 +74,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -131,7 +131,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(planet, planetSector);
 
             Fleet fleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
-            int initialHull = fleet.CapitalShips[0].CurrentHullStrength;
+            int initialHull = fleet.GetChildren<CapitalShip>()[0].CurrentHullStrength;
 
             QueueRNG rng = new QueueRNG();
             SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(detected, "No combat should be detected");
             Assert.AreEqual(
                 initialHull,
-                fleet.CapitalShips[0].CurrentHullStrength,
+                fleet.GetChildren<CapitalShip>()[0].CurrentHullStrength,
                 "No combat should occur"
             );
         }
@@ -189,7 +189,7 @@ namespace Rebellion.Tests.Systems
                 100,
                 shieldRechargeRate: 0
             );
-            allianceFleet.CapitalShips[0].HasGravityWell = true;
+            allianceFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
 
@@ -205,7 +205,7 @@ namespace Rebellion.Tests.Systems
             (Planet planet, _) = CreatePlanet(game, "p1", owner: "alliance");
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1, 0);
-            CapitalShip empireCarrier = empireFleet.CapitalShips[0];
+            CapitalShip empireCarrier = empireFleet.GetChildren<CapitalShip>()[0];
             empireCarrier.StarfighterCapacity = 1;
             Starfighter inTransitFighter = new Starfighter
             {
@@ -235,7 +235,7 @@ namespace Rebellion.Tests.Systems
                 0,
                 100
             );
-            allianceFleet.CapitalShips[0].HasGravityWell = true;
+            allianceFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
 
@@ -249,7 +249,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
-            game.Factions.Add(empire);
+            game.GetFactions().Add(empire);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -264,8 +264,8 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.AreEqual(100, fleet1.CapitalShips[0].CurrentHullStrength);
-            Assert.AreEqual(100, fleet2.CapitalShips[0].CurrentHullStrength);
+            Assert.AreEqual(100, fleet1.GetChildren<CapitalShip>()[0].CurrentHullStrength);
+            Assert.AreEqual(100, fleet2.GetChildren<CapitalShip>()[0].CurrentHullStrength);
         }
 
         [Test]
@@ -274,8 +274,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -285,9 +285,9 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet1 = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet empireFleet2 = CreateFleet(game, "f2", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f3", "alliance", planet, 1, 100, 10);
-            CapitalShip empireShip1 = empireFleet1.CapitalShips[0];
-            CapitalShip empireShip2 = empireFleet2.CapitalShips[0];
-            CapitalShip allianceShip = allianceFleet.CapitalShips[0];
+            CapitalShip empireShip1 = empireFleet1.GetChildren<CapitalShip>()[0];
+            CapitalShip empireShip2 = empireFleet2.GetChildren<CapitalShip>()[0];
+            CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
@@ -300,7 +300,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(HasDamageFor(results, empireShip2), "Second fleet does not fight");
             Assert.AreEqual(
                 100,
-                empireFleet2.CapitalShips[0].CurrentHullStrength,
+                empireFleet2.GetChildren<CapitalShip>()[0].CurrentHullStrength,
                 "Second fleet does not fight"
             );
         }
@@ -311,8 +311,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -340,8 +340,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -369,8 +369,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -418,8 +418,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -428,7 +428,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-            CapitalShip empireShip = empireFleet.CapitalShips[0];
+            CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>()[0];
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
@@ -447,8 +447,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -465,7 +465,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(
                 0,
-                allianceFleet.CapitalShips.Count,
+                allianceFleet.GetChildren<CapitalShip>().Count,
                 "Destroyed ship removed from fleet"
             );
         }
@@ -476,8 +476,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -542,8 +542,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -560,7 +560,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(allianceFleet.InstanceID));
             bool foundFleet = false;
-            foreach (Fleet fleet in planet.GetChildren<Fleet>(null, recurse: false))
+            foreach (Fleet fleet in planet.GetChildren<Fleet>())
             {
                 if (fleet == allianceFleet)
                 {
@@ -577,8 +577,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -588,8 +588,8 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 0);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 0);
 
-            empireFleet.CapitalShips[0].PrimaryWeapons.Clear();
-            allianceFleet.CapitalShips[0].PrimaryWeapons.Clear();
+            empireFleet.GetChildren<CapitalShip>()[0].PrimaryWeapons.Clear();
+            allianceFleet.GetChildren<CapitalShip>()[0].PrimaryWeapons.Clear();
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
@@ -598,12 +598,12 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(
                 100,
-                empireFleet.CapitalShips[0].CurrentHullStrength,
+                empireFleet.GetChildren<CapitalShip>()[0].CurrentHullStrength,
                 "No damage without weapons"
             );
             Assert.AreEqual(
                 100,
-                allianceFleet.CapitalShips[0].CurrentHullStrength,
+                allianceFleet.GetChildren<CapitalShip>()[0].CurrentHullStrength,
                 "No damage without weapons"
             );
             Assert.IsFalse(
@@ -618,8 +618,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -628,8 +628,8 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
-            CapitalShip empireShip = empireFleet.CapitalShips[0];
-            CapitalShip allianceShip = allianceFleet.CapitalShips[0];
+            CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>()[0];
+            CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
@@ -646,8 +646,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -674,7 +674,7 @@ namespace Rebellion.Tests.Systems
                 100,
                 shieldRechargeRate: 0
             );
-            CapitalShip defenderShip = defender.CapitalShips[0];
+            CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.MaxShieldStrength = 100;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
@@ -691,8 +691,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -719,7 +719,7 @@ namespace Rebellion.Tests.Systems
                 100,
                 shieldRechargeRate: 15
             );
-            CapitalShip defenderShip = defender.CapitalShips[0];
+            CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.MaxShieldStrength = 0;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
@@ -736,8 +736,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -764,7 +764,7 @@ namespace Rebellion.Tests.Systems
                 0,
                 shieldRechargeRate: 40
             );
-            CapitalShip defenderShip = defender.CapitalShips[0];
+            CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.MaxShieldStrength = 50;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
@@ -781,8 +781,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -809,7 +809,7 @@ namespace Rebellion.Tests.Systems
                 0,
                 shieldRechargeRate: 10
             );
-            CapitalShip defenderShip = defender.CapitalShips[0];
+            CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.MaxShieldStrength = 50;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
@@ -829,8 +829,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -857,8 +857,8 @@ namespace Rebellion.Tests.Systems
                 1,
                 shieldRechargeRate: 4
             );
-            attacker.CapitalShips[0].MaxShieldStrength = 100;
-            defender.CapitalShips[0].MaxShieldStrength = 100;
+            attacker.GetChildren<CapitalShip>()[0].MaxShieldStrength = 100;
+            defender.GetChildren<CapitalShip>()[0].MaxShieldStrength = 100;
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
 
             TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
@@ -875,8 +875,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -903,7 +903,7 @@ namespace Rebellion.Tests.Systems
                 0,
                 shieldRechargeRate: 8
             );
-            CapitalShip defenderShip = defender.CapitalShips[0];
+            CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.CurrentHullStrength = 50;
             defenderShip.MaxShieldStrength = 100;
 
@@ -922,8 +922,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -950,7 +950,7 @@ namespace Rebellion.Tests.Systems
                 0,
                 shieldRechargeRate: 4
             );
-            CapitalShip defenderShip = defender.CapitalShips[0];
+            CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.CurrentHullStrength = 50;
             defenderShip.MaxShieldStrength = 100;
 
@@ -967,8 +967,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -986,7 +986,7 @@ namespace Rebellion.Tests.Systems
                 0,
                 shieldRechargeRate: 120
             );
-            CapitalShip defenderShip = defender.CapitalShips[0];
+            CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.MaxShieldStrength = 200;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
@@ -1003,8 +1003,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1031,7 +1031,7 @@ namespace Rebellion.Tests.Systems
             Fleet target = game.GetSceneNodeByInstanceID<Fleet>("f2");
             Assert.IsNotNull(target, "Target fleet should still exist");
             Assert.Less(
-                target.CapitalShips[0].CurrentHullStrength,
+                target.GetChildren<CapitalShip>()[0].CurrentHullStrength,
                 1000,
                 "Fighters should damage capital ships"
             );
@@ -1072,8 +1072,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1099,8 +1099,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1136,8 +1136,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
             Faction alliance = new Faction { InstanceID = "alliance", PlayerID = null };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);
@@ -1199,14 +1199,14 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-            empireFleet.CapitalShips[0].Movement = new MovementState
+            empireFleet.GetChildren<CapitalShip>()[0].Movement = new MovementState
             {
                 TransitTicks = 5,
                 TicksElapsed = 1,
                 OriginPosition = planet.GetPosition(),
                 CurrentPosition = planet.GetPosition(),
             };
-            allianceFleet.CapitalShips[0].Movement = new MovementState
+            allianceFleet.GetChildren<CapitalShip>()[0].Movement = new MovementState
             {
                 TransitTicks = 5,
                 TicksElapsed = 1,
@@ -1229,8 +1229,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             CreatePlanet(game, "empireHome", owner: "empire");
             CreatePlanet(game, "allianceHome", owner: "alliance");
@@ -1311,7 +1311,7 @@ namespace Rebellion.Tests.Systems
                 100,
                 shieldRechargeRate: 0
             );
-            allianceFleet.CapitalShips[0].HasGravityWell = true;
+            allianceFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
 
@@ -1332,8 +1332,8 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 0);
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
-            empireFleet.CapitalShips[0].PrimaryWeapons.Clear();
-            allianceFleet.CapitalShips[0].PrimaryWeapons.Clear();
+            empireFleet.GetChildren<CapitalShip>()[0].PrimaryWeapons.Clear();
+            allianceFleet.GetChildren<CapitalShip>()[0].PrimaryWeapons.Clear();
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
 
@@ -1350,8 +1350,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1384,7 +1384,8 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_PlayerFleetAgainstPlanetaryStarfighters_ReturnsPendingDecision()
         {
             GameRoot game = CreateGame();
-            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
             Fleet fleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             Starfighter defender = new Starfighter
@@ -1417,7 +1418,8 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_UnfinishedPlanetaryStarfighters_DoNotTriggerCombat()
         {
             GameRoot game = CreateGame();
-            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
             Fleet fleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             Starfighter defender = new Starfighter
@@ -1445,8 +1447,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1454,7 +1456,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(planet, planetSector);
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
-            allianceFleet.CapitalShips[0].HasGravityWell = true;
+            allianceFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
 
@@ -1478,7 +1480,8 @@ namespace Rebellion.Tests.Systems
         public void ResolvePending_PlanetaryStarfighters_ParticipateInCombat()
         {
             GameRoot game = CreateGame();
-            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
             Fleet fleet = CreateFleet(
                 game,
@@ -1518,8 +1521,8 @@ namespace Rebellion.Tests.Systems
         public void ResolvePending_CorellianCorvetteAgainstPlanetaryTie_DestroysTie()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = "FNALL1", PlayerID = "player1" });
-            game.Factions.Add(new Faction { InstanceID = "FNEMP1" });
+            game.GetFactions().Add(new Faction { InstanceID = "FNALL1", PlayerID = "player1" });
+            game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "FNEMP1");
             Fleet fleet = new Fleet { InstanceID = "alliance-fleet", OwnerInstanceID = "FNALL1" };
             game.AttachNode(fleet, planet);
@@ -1561,8 +1564,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1585,7 +1588,8 @@ namespace Rebellion.Tests.Systems
         public void ResolvePendingRetreat_PlayerFleet_MovesToFriendlyPlanet()
         {
             GameRoot game = CreateGame();
-            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
             (Planet combatPlanet, _) = CreatePlanet(game, "combat");
             (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
             empireHome.PositionX = 100;
@@ -1626,8 +1630,8 @@ namespace Rebellion.Tests.Systems
         public void EvacuateOfficers_ShipDestroyedWithSurvivingShip_OfficerMovedToSurvivingShip()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "alliance" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "alliance" });
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);
@@ -1654,9 +1658,9 @@ namespace Rebellion.Tests.Systems
                 ShieldRechargeRate = 0,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            allianceFleet.CapitalShips.Add(weakShip);
+            allianceFleet.AddChild(weakShip);
             weakShip.SetParent(allianceFleet);
-            allianceFleet.CapitalShips.Add(strongShip);
+            allianceFleet.AddChild(strongShip);
             strongShip.SetParent(allianceFleet);
             game.AttachNode(allianceFleet, planet);
 
@@ -1680,7 +1684,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.Contains(
                 officer,
-                strongShip.Officers,
+                strongShip.GetChildren<Officer>().ToList(),
                 "Officer should be evacuated to the surviving ship"
             );
         }
@@ -1689,8 +1693,8 @@ namespace Rebellion.Tests.Systems
         public void EvacuateOfficers_LastShipDestroyed_OfficerEvacuatedToNearestFriendlyPlanet()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "alliance" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "alliance" });
 
             PlanetSector sector1 = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(sector1, game.Galaxy);
@@ -1718,7 +1722,7 @@ namespace Rebellion.Tests.Systems
                 ShieldRechargeRate = 0,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            allianceFleet.CapitalShips.Add(ship);
+            allianceFleet.AddChild(ship);
             ship.SetParent(allianceFleet);
             game.AttachNode(allianceFleet, combatPlanet);
 
@@ -1741,7 +1745,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.Contains(
                 officer,
-                alliancePlanet.Officers,
+                alliancePlanet.GetChildren<Officer>().ToList(),
                 "Officer should be evacuated to the nearest friendly planet"
             );
         }
@@ -1818,8 +1822,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1850,7 +1854,7 @@ namespace Rebellion.Tests.Systems
         private bool HasOpposingReadyFleets(Planet planet)
         {
             return planet
-                    .GetFleets()
+                    .GetChildren<Fleet>()
                     .Where(fleet => fleet.Movement == null)
                     .Select(fleet => fleet.GetOwnerInstanceID())
                     .Where(ownerInstanceId => !string.IsNullOrEmpty(ownerInstanceId))
@@ -1895,7 +1899,7 @@ namespace Rebellion.Tests.Systems
                     };
                 }
 
-                fleet.CapitalShips.Add(ship);
+                fleet.AddChild(ship);
                 ship.SetParent(fleet);
             }
 
@@ -1906,7 +1910,7 @@ namespace Rebellion.Tests.Systems
         private static bool HasHostileFleets(Planet planet)
         {
             List<string> owners = planet
-                .GetFleets()
+                .GetChildren<Fleet>()
                 .Where(fleet => fleet.Movement == null)
                 .Select(fleet => fleet.GetOwnerInstanceID())
                 .Where(owner => !string.IsNullOrEmpty(owner))
@@ -1938,7 +1942,7 @@ namespace Rebellion.Tests.Systems
             );
 
             // Add fighters to first ship
-            if (fleet.CapitalShips.Count > 0)
+            if (fleet.GetChildren<CapitalShip>().Count > 0)
             {
                 Starfighter fighter = new Starfighter
                 {
@@ -1951,8 +1955,8 @@ namespace Rebellion.Tests.Systems
                     Torpedoes = 2,
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 };
-                fleet.CapitalShips[0].StarfighterCapacity = 1;
-                game.AttachNode(fighter, fleet.CapitalShips[0]);
+                fleet.GetChildren<CapitalShip>()[0].StarfighterCapacity = 1;
+                game.AttachNode(fighter, fleet.GetChildren<CapitalShip>()[0]);
             }
 
             return fleet;

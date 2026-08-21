@@ -14,7 +14,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class MissionSystemTests
@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -81,7 +81,6 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(officer);
             game.AttachNode(officer, mission);
 
             while (!mission.IsComplete())
@@ -168,15 +167,15 @@ namespace Rebellion.Tests.Systems
             // A missing recorded return location must not be replaced with another friendly planet.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(sector, game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -186,7 +185,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(planet, sector);
 
             Planet homePlanet = new Planet
             {
@@ -197,7 +196,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = 100,
                 PositionY = 0,
             };
-            game.AttachNode(homePlanet, planetSector);
+            game.AttachNode(homePlanet, sector);
 
             Officer officer = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
             MovementSystem movement = new MovementSystem(
@@ -208,7 +207,7 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(officer);
+            mission.AddChild(officer);
             officer.SetParent(mission);
 
             MissionSystem missionSystem = TestSystems.CreateMissionSystem(
@@ -257,7 +256,7 @@ namespace Rebellion.Tests.Systems
             ) = BuildConcurrentMissionsScene();
 
             Planet planet = inciteMission.GetParentOfType<Planet>();
-            IMissionParticipant participant = inciteMission.MainParticipants.Single();
+            IMissionParticipant participant = inciteMission.GetMainParticipants().Single();
             int leadershipBefore = participant.GetEffectiveRating(OfficerRating.Leadership);
             missionSystem.UpdateMission(diplomacyMission);
             List<GameResult> results = missionSystem.UpdateMission(inciteMission);
@@ -299,7 +298,7 @@ namespace Rebellion.Tests.Systems
                 Mission inciteMission,
                 MissionSystem missionSystem
             ) = BuildConcurrentMissionsScene(ownerSupport: 60, hasGarrison: false);
-            Officer participant = (Officer)inciteMission.MainParticipants.Single();
+            Officer participant = (Officer)inciteMission.GetMainParticipants().Single();
             int leadershipBefore = participant.GetBaseRating(OfficerRating.Leadership);
 
             List<GameResult> results = missionSystem.UpdateMission(inciteMission);
@@ -318,7 +317,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "empire" };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet origin = new Planet
@@ -391,8 +390,8 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(officer);
-            mission.MainParticipants.Add(traveler);
+            mission.AddChild(officer);
+            mission.AddChild(traveler);
             officer.SetParent(mission);
             traveler.SetParent(mission);
             mission.Initiate(0);
@@ -422,10 +421,8 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
-            mission.MainParticipants.Add(traveler);
             game.MoveNode(spy, mission);
-            traveler.SetParent(mission);
+            game.AttachNode(traveler, mission);
             mission.Initiate(0);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -474,7 +471,6 @@ namespace Rebellion.Tests.Systems
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 10 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
             mission.Initiate(1);
 
@@ -505,7 +501,7 @@ namespace Rebellion.Tests.Systems
 
             spy.SetBaseRating(OfficerRating.Diplomacy, 200);
             defender.SetBaseRating(OfficerRating.Espionage, 10);
-            planet.Regiments.Single().DefenseRating = 10;
+            planet.GetChildren<Regiment>().Single().DefenseRating = 10;
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 35;
@@ -513,7 +509,6 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 0 }, { 50, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -540,7 +535,7 @@ namespace Rebellion.Tests.Systems
 
             spy.SetBaseRating(OfficerRating.Diplomacy, 100);
             defender.SetBaseRating(OfficerRating.Espionage, 0);
-            planet.Regiments.Single().DefenseRating = 0;
+            planet.GetChildren<Regiment>().Single().DefenseRating = 0;
 
             SpecialForces support = new SpecialForces
             {
@@ -557,7 +552,6 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 }, { 2, 0 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -586,7 +580,6 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -668,7 +661,6 @@ namespace Rebellion.Tests.Systems
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
             mission.Initiate(0);
 
@@ -700,7 +692,6 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -734,7 +725,6 @@ namespace Rebellion.Tests.Systems
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 0 } });
             mission.SetExecutionTick(5);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -746,8 +736,16 @@ namespace Rebellion.Tests.Systems
             List<GameResult> results = system.UpdateMission(mission);
 
             Assert.IsTrue(spy.IsKilled, "Officer should be killed when capture probability is 0");
-            Assert.IsTrue(game.IsInVoid(spy), "Killed officer should be retained in void");
-            Assert.AreSame(spy, game.GetSceneNodeByInstanceID<Officer>(spy.InstanceID));
+            Assert.IsFalse(spy.IsActive(), "Killed officer should be inactive");
+            Assert.AreSame(
+                planet,
+                spy.GetParent(),
+                "Killed officer should remain retained at the mission planet"
+            );
+            Assert.AreSame(
+                spy,
+                game.GetSceneNodeByInstanceID<Officer>(spy.InstanceID, includeDisabled: true)
+            );
             Assert.IsTrue(
                 results.Any(r => r is OfficerKilledResult),
                 "Should produce OfficerKilledResult"
@@ -789,7 +787,6 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int>());
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -817,7 +814,7 @@ namespace Rebellion.Tests.Systems
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
+            game.MoveNode(spy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
                 game,
@@ -843,7 +840,6 @@ namespace Rebellion.Tests.Systems
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 0 } });
             mission.SetExecutionTick(5);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
             game.MoveNode(spy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -879,9 +875,8 @@ namespace Rebellion.Tests.Systems
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
-            mission.DecoyParticipants.Add(decoy);
             game.MoveNode(spy, mission);
+            mission.AddDecoyParticipant(decoy);
             game.AttachNode(decoy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -922,9 +917,8 @@ namespace Rebellion.Tests.Systems
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
-            mission.DecoyParticipants.Add(decoy);
             game.MoveNode(spy, mission);
+            mission.AddDecoyParticipant(decoy);
             game.AttachNode(decoy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -967,9 +961,8 @@ namespace Rebellion.Tests.Systems
             SetDecoyTable(game, new Dictionary<int, int> { { -200, 0 }, { 200, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
-            mission.DecoyParticipants.Add(decoy);
             game.MoveNode(spy, mission);
+            mission.AddDecoyParticipant(decoy);
             game.AttachNode(decoy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
@@ -1007,10 +1000,9 @@ namespace Rebellion.Tests.Systems
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
-            mission.DecoyParticipants.Add(weakDecoy);
-            mission.DecoyParticipants.Add(strongDecoy);
             game.MoveNode(spy, mission);
+            mission.AddDecoyParticipant(weakDecoy);
+            mission.AddDecoyParticipant(strongDecoy);
             game.AttachNode(weakDecoy, mission);
             game.AttachNode(strongDecoy, mission);
 
@@ -1040,10 +1032,8 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(spy);
-            mission.MainParticipants.Add(secondSpy);
             game.MoveNode(spy, mission);
-            secondSpy.SetParent(mission);
+            game.AttachNode(secondSpy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
                 game,
@@ -1077,7 +1067,7 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(sf);
+            mission.AddChild(sf);
             sf.SetParent(mission);
             string missionInstanceId = mission.InstanceID;
 
@@ -1344,7 +1334,7 @@ namespace Rebellion.Tests.Systems
         {
             (GameRoot game, Planet missionPlanet, Officer officer, MovementSystem movement) =
                 BuildScene(factionOwnsPlanet: true);
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             Planet rebelPlanet = new Planet
             {
@@ -1377,7 +1367,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_OfficerKilledResult_RetainsKilledOfficerInVoid()
+        public void UpdateMission_OfficerKilledResult_DisablesAndRetainsKilledOfficer()
         {
             (GameRoot game, Planet planet, Officer participant, MovementSystem movement) =
                 BuildScene(factionOwnsPlanet: true);
@@ -1397,8 +1387,11 @@ namespace Rebellion.Tests.Systems
             system.UpdateMission(mission);
 
             Assert.IsTrue(target.IsKilled);
-            Assert.IsTrue(game.IsInVoid(target));
-            Assert.AreSame(target, game.GetSceneNodeByInstanceID<Officer>(target.InstanceID));
+            Assert.IsFalse(target.IsActive());
+            Assert.AreSame(
+                target,
+                game.GetSceneNodeByInstanceID<Officer>(target.InstanceID, includeDisabled: true)
+            );
         }
 
         [Test]
@@ -1508,15 +1501,15 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planetA, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSectorB = new PlanetSector
+            PlanetSector sectorB = new PlanetSector
             {
                 InstanceID = "sector2",
                 PositionX = 100,
                 PositionY = 0,
             };
-            game.AttachNode(planetSectorB, game.Galaxy);
+            game.AttachNode(sectorB, game.Galaxy);
             Planet planetB = new Planet
             {
                 InstanceID = "p2",
@@ -1526,7 +1519,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
             };
-            game.AttachNode(planetB, planetSectorB);
+            game.AttachNode(planetB, sectorB);
 
             Fleet fleet = new Fleet { InstanceID = "fleet1", OwnerInstanceID = "empire" };
             CapitalShip ship = new CapitalShip
@@ -1575,7 +1568,7 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             StubMission mission = CreateMission(game, planet, officer);
             officer.MissionReturnParentInstanceID = planet.InstanceID;
             officer.MissionReturnLocationInstanceID = planet.InstanceID;
@@ -1627,16 +1620,16 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(sector, game.Galaxy);
 
             Planet empirePlanet = new Planet
             {
@@ -1646,7 +1639,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(empirePlanet, planetSector);
+            game.AttachNode(empirePlanet, sector);
 
             Planet targetPlanet = new Planet
             {
@@ -1656,7 +1649,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = 100,
                 PositionY = 0,
             };
-            game.AttachNode(targetPlanet, planetSector);
+            game.AttachNode(targetPlanet, sector);
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, empirePlanet);
@@ -1696,16 +1689,16 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(sector, game.Galaxy);
 
             Planet empirePlanet = new Planet
             {
@@ -1715,7 +1708,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(empirePlanet, planetSector);
+            game.AttachNode(empirePlanet, sector);
 
             Planet targetPlanet = new Planet
             {
@@ -1725,7 +1718,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = 100,
                 PositionY = 0,
             };
-            game.AttachNode(targetPlanet, planetSector);
+            game.AttachNode(targetPlanet, sector);
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, empirePlanet);
@@ -1790,8 +1783,8 @@ namespace Rebellion.Tests.Systems
             firstTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
             Officer secondTarget = EntityFactory.CreateOfficer("target2", "rebels");
             secondTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(firstTarget);
-            game.UnrecruitedOfficers.Add(secondTarget);
+            game.GetUnrecruitedOfficers().Add(firstTarget);
+            game.GetUnrecruitedOfficers().Add(secondTarget);
 
             Mission firstMission = MissionTestFactory.TryCreate(
                 MissionTypeIDs.Recruitment,
@@ -1846,7 +1839,7 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(sf);
+            mission.AddChild(sf);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -1880,8 +1873,8 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(officer);
-            mission.DecoyParticipants.Add(decoy);
+            mission.AddChild(officer);
+            mission.AddDecoyParticipant(decoy);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -2035,7 +2028,7 @@ namespace Rebellion.Tests.Systems
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
-            Assert.AreEqual(participant, mission.MainParticipants.Single());
+            Assert.AreEqual(participant, mission.GetMainParticipants().Single());
         }
 
         [Test]
@@ -2293,7 +2286,7 @@ namespace Rebellion.Tests.Systems
             officer.TroopResearch = 1;
             officer.FacilityResearch = 1;
             AddResearchFacilities(game, planet);
-            game.Factions.Single().DisallowedMissionTypeIDs.Add(MissionTypeIDs.Research);
+            game.GetFactions().Single().DisallowedMissionTypeIDs.Add(MissionTypeIDs.Research);
             MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
@@ -2315,13 +2308,14 @@ namespace Rebellion.Tests.Systems
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
             participant.IsMain = true;
-            game.UnrecruitedOfficers.Add(
-                new Officer
-                {
-                    InstanceID = "unrecruited",
-                    RecruitingFactionInstanceIDs = new List<string> { "empire" },
-                }
-            );
+            game.GetUnrecruitedOfficers()
+                .Add(
+                    new Officer
+                    {
+                        InstanceID = "unrecruited",
+                        RecruitingFactionInstanceIDs = new List<string> { "empire" },
+                    }
+                );
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
                 CreateRequest(null, participant, targetPlanet)
@@ -2400,16 +2394,16 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(sector, game.Galaxy);
 
             Planet origin = new Planet
             {
@@ -2427,8 +2421,8 @@ namespace Rebellion.Tests.Systems
                 PositionX = 100,
                 PositionY = 0,
             };
-            game.AttachNode(origin, planetSector);
-            game.AttachNode(target, planetSector);
+            game.AttachNode(origin, sector);
+            game.AttachNode(target, sector);
 
             SpecialForces specialForces = new SpecialForces
             {
@@ -2517,7 +2511,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void CanCreateMission_RetainedOfficer_ReturnsFalse()
+        public void CanCreateMission_InactiveOfficer_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -2527,7 +2521,7 @@ namespace Rebellion.Tests.Systems
                 Officer target,
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
-            game.AddToVoid(participant);
+            participant.IsEnabled = false;
 
             bool canCreate = missions.CanCreateMission(
                 CreateRequest(
@@ -2551,15 +2545,15 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction faction = new Faction { InstanceID = "empire" };
-            game.Factions.Add(faction);
+            game.GetFactions().Add(faction);
 
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(sector, game.Galaxy);
 
             Planet planet = new Planet
             {
@@ -2571,7 +2565,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
             };
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(planet, sector);
 
             Officer officer = new Officer
             {
@@ -2598,7 +2592,7 @@ namespace Rebellion.Tests.Systems
         {
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.MainParticipants.Add(officer);
+            mission.AddChild(officer);
             return mission;
         }
 
@@ -2706,16 +2700,16 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(sector, game.Galaxy);
 
             Planet homePlanet = new Planet
             {
@@ -2726,7 +2720,7 @@ namespace Rebellion.Tests.Systems
                 PositionX = -100,
                 PositionY = 0,
             };
-            game.AttachNode(homePlanet, planetSector);
+            game.AttachNode(homePlanet, sector);
 
             Planet planet = new Planet
             {
@@ -2737,7 +2731,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
             };
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(planet, sector);
 
             Officer spy = EntityFactory.CreateOfficer("spy", "empire");
             spy.MissionReturnParentInstanceID = homePlanet.InstanceID;
@@ -2773,16 +2767,16 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(new Faction { InstanceID = "empire" });
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(sector, game.Galaxy);
 
             Planet origin = new Planet
             {
@@ -2801,8 +2795,8 @@ namespace Rebellion.Tests.Systems
                 PositionX = 100,
                 PositionY = 0,
             };
-            game.AttachNode(origin, planetSector);
-            game.AttachNode(targetPlanet, planetSector);
+            game.AttachNode(origin, sector);
+            game.AttachNode(targetPlanet, sector);
 
             Officer participant = EntityFactory.CreateOfficer("participant", "empire");
             game.AttachNode(participant, origin);
@@ -2846,16 +2840,16 @@ namespace Rebellion.Tests.Systems
 
             Faction rebels = new Faction { InstanceID = "rebels" };
             Faction empire = new Faction { InstanceID = "empire" };
-            game.Factions.Add(rebels);
-            game.Factions.Add(empire);
+            game.GetFactions().Add(rebels);
+            game.GetFactions().Add(empire);
 
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(sector, game.Galaxy);
 
             Planet rebelsPlanet = new Planet
             {
@@ -2867,7 +2861,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "rebels", ownerSupport } },
             };
-            game.AttachNode(rebelsPlanet, planetSector);
+            game.AttachNode(rebelsPlanet, sector);
 
             if (hasGarrison)
             {
@@ -2885,7 +2879,7 @@ namespace Rebellion.Tests.Systems
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", 60 } },
             };
-            game.AttachNode(empirePlanet, planetSector);
+            game.AttachNode(empirePlanet, sector);
 
             Officer rebelsOfficer = EntityFactory.CreateOfficer("rebels_o1", "rebels");
             game.AttachNode(rebelsOfficer, rebelsPlanet);
@@ -2954,6 +2948,11 @@ namespace Rebellion.Tests.Systems
         private sealed class OfficerKillingMission : Mission
         {
             private readonly Officer _target;
+
+            /// <summary>Creates an empty officer-killing mission copy.</summary>
+            /// <returns>An empty officer-killing mission.</returns>
+            protected override BaseSceneNode CreateNodeCopy() =>
+                new OfficerKillingMission(null, null, null, null);
 
             public OfficerKillingMission(
                 string ownerInstanceId,

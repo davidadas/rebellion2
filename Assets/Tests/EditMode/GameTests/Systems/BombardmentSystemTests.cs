@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 0);
-            CapitalShip ship = fleet.CapitalShips[0];
+            CapitalShip ship = fleet.GetChildren<CapitalShip>()[0];
             ship.StarfighterCapacity = 1;
             game.AttachNode(
                 new Starfighter
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("empire", result.DefenderOwnerInstanceID);
             CollectionAssert.Contains(
                 result.AttackingUnits.Select(unit => unit.Unit.GetInstanceID()),
-                fleet.CapitalShips[0].GetInstanceID()
+                fleet.GetChildren<CapitalShip>()[0].GetInstanceID()
             );
             CollectionAssert.Contains(
                 result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
@@ -129,10 +129,11 @@ namespace Rebellion.Tests.Systems
                 mine.GetInstanceID()
             );
             Assert.AreNotSame(
-                fleet.CapitalShips[0],
+                fleet.GetChildren<CapitalShip>()[0],
                 result
                     .AttackingUnits.Single(unit =>
-                        unit.Unit.GetInstanceID() == fleet.CapitalShips[0].GetInstanceID()
+                        unit.Unit.GetInstanceID()
+                        == fleet.GetChildren<CapitalShip>()[0].GetInstanceID()
                     )
                     .Unit
             );
@@ -336,7 +337,7 @@ namespace Rebellion.Tests.Systems
                 bombardment: 10,
                 currentHull: 50
             );
-            CapitalShip ship = fleet.CapitalShips[0];
+            CapitalShip ship = fleet.GetChildren<CapitalShip>()[0];
             ship.StarfighterCapacity = 1;
             Starfighter fighter = new Starfighter
             {
@@ -400,7 +401,7 @@ namespace Rebellion.Tests.Systems
             general.CurrentRank = OfficerRank.General;
             general.SetBaseRating(OfficerRating.Leadership, 40);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
-            CapitalShip ship = fleet.CapitalShips[0];
+            CapitalShip ship = fleet.GetChildren<CapitalShip>()[0];
             ship.MaxShieldStrength = 100;
 
             BombardmentResult result = MakeBombardment(
@@ -432,7 +433,7 @@ namespace Rebellion.Tests.Systems
             );
             lnr.WeaponPower = 100;
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
-            CapitalShip destroyedShip = fleet.CapitalShips[0];
+            CapitalShip destroyedShip = fleet.GetChildren<CapitalShip>()[0];
             CapitalShip survivingShip = new CapitalShip
             {
                 InstanceID = "survivor",
@@ -537,7 +538,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Execute_DestroySystemWithDeathStar_DestroysPlanetAndMinorPersonnel()
+        public void Execute_DestroyPlanetWithDeathStar_DestroysPlanetAndMinorPersonnel()
         {
             GameRoot game = CreateGame();
             (Planet planet, PlanetSector planetSector) = CreatePlanet(
@@ -563,20 +564,23 @@ namespace Rebellion.Tests.Systems
                 bombardment: 0,
                 typeId: "CSEM015"
             );
-            fleet.CapitalShips[0].CanDestroyPlanets = true;
+            fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
 
             BombardmentResult result = MakeBombardment(
                     game,
                     new SequenceRNG(intValues: new[] { 0, 0 })
                 )
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroySystem);
+                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
 
             Assert.IsTrue(result.PlanetDestroyed);
             Assert.IsTrue(planet.IsDestroyed);
             Assert.IsTrue(minor.IsKilled);
-            Assert.IsNull(minor.GetParent());
-            Assert.IsTrue(game.IsInVoid(minor));
-            Assert.AreSame(minor, game.GetSceneNodeByInstanceID<Officer>(minor.InstanceID));
+            Assert.AreSame(planet, minor.GetParent());
+            Assert.IsFalse(minor.IsActive());
+            Assert.AreSame(
+                minor,
+                game.GetSceneNodeByInstanceID<Officer>(minor.InstanceID, includeDisabled: true)
+            );
             Assert.IsFalse(main.IsKilled);
             Assert.AreEqual(2, killedMinor.InjuryPoints);
             Assert.AreEqual(planet, killedMinor.GetParent());
@@ -587,7 +591,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Execute_DestroySystemMinorPersonnelSurvivesDeathRoll_RemainsInjured()
+        public void Execute_DestroyPlanetMinorPersonnelSurvivesDeathRoll_RemainsInjured()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
@@ -599,13 +603,13 @@ namespace Rebellion.Tests.Systems
                 bombardment: 0,
                 typeId: "planet-destroyer"
             );
-            fleet.CapitalShips[0].CanDestroyPlanets = true;
+            fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
 
             BombardmentResult result = MakeBombardment(
                     game,
                     new SequenceRNG(intValues: new[] { 0, 99 })
                 )
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroySystem);
+                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
 
             Assert.AreEqual(1, minor.InjuryPoints);
             Assert.IsFalse(minor.IsKilled);
@@ -615,7 +619,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Execute_DestroySystem_DefenseFireCannotPreventDestruction()
+        public void Execute_DestroyPlanet_DefenseFireCannotPreventDestruction()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
@@ -635,14 +639,14 @@ namespace Rebellion.Tests.Systems
                 bombardment: 0,
                 typeId: "CSEM015"
             );
-            CapitalShip deathStar = fleet.CapitalShips[0];
+            CapitalShip deathStar = fleet.GetChildren<CapitalShip>()[0];
             deathStar.CanDestroyPlanets = true;
 
             BombardmentResult result = MakeBombardment(
                     game,
                     new SequenceRNG(intValues: new[] { 0 })
                 )
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroySystem);
+                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
 
             Assert.IsTrue(result.PlanetDestroyed);
             Assert.IsTrue(planet.IsDestroyed);
@@ -651,7 +655,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Execute_DestroySystem_PenalizesOuterRimSupportBelowThreshold()
+        public void Execute_DestroyPlanet_PenalizesOuterRimSupportBelowThreshold()
         {
             GameRoot game = CreateGame();
             (Planet planet, PlanetSector planetSector) = CreatePlanet(
@@ -681,17 +685,17 @@ namespace Rebellion.Tests.Systems
                 bombardment: 0,
                 typeId: "CSEM015"
             );
-            fleet.CapitalShips[0].CanDestroyPlanets = true;
+            fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
 
             MakeBombardment(game, new SequenceRNG())
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroySystem);
+                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
 
             Assert.AreEqual(87, lowSupportPlanet.GetPopularSupport("alliance"));
             Assert.AreEqual(90, thresholdPlanet.GetPopularSupport("alliance"));
         }
 
         [Test]
-        public void Execute_DestroySystemWithoutDeathStar_DoesNotBombard()
+        public void Execute_DestroyPlanetWithoutDeathStar_DoesNotBombard()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 1);
@@ -704,11 +708,11 @@ namespace Rebellion.Tests.Systems
             BombardmentResult result = system.Execute(
                 new List<Fleet> { fleet },
                 planet,
-                BombardmentType.DestroySystem
+                BombardmentType.DestroyPlanet
             );
 
             Assert.IsFalse(
-                system.CanExecute(new List<Fleet> { fleet }, planet, BombardmentType.DestroySystem)
+                system.CanExecute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet)
             );
             Assert.IsFalse(result.PlanetDestroyed);
             Assert.Zero(result.EnergyCapacityDamage);

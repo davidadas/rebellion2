@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
@@ -27,7 +28,7 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             _galaxyMap.AddChild(_planetSector1);
 
-            Assert.Contains(_planetSector1, _galaxyMap.PlanetSectors);
+            Assert.Contains(_planetSector1, _galaxyMap.GetChildren<PlanetSector>().ToList());
         }
 
         [Test]
@@ -39,10 +40,10 @@ namespace Rebellion.Tests.Game.Galaxy
             _galaxyMap.AddChild(_planetSector2);
             _galaxyMap.AddChild(planetSector3);
 
-            Assert.AreEqual(3, _galaxyMap.PlanetSectors.Count);
-            Assert.Contains(_planetSector1, _galaxyMap.PlanetSectors);
-            Assert.Contains(_planetSector2, _galaxyMap.PlanetSectors);
-            Assert.Contains(planetSector3, _galaxyMap.PlanetSectors);
+            Assert.AreEqual(3, _galaxyMap.GetChildren<PlanetSector>().Count);
+            Assert.Contains(_planetSector1, _galaxyMap.GetChildren<PlanetSector>().ToList());
+            Assert.Contains(_planetSector2, _galaxyMap.GetChildren<PlanetSector>().ToList());
+            Assert.Contains(planetSector3, _galaxyMap.GetChildren<PlanetSector>().ToList());
         }
 
         [Test]
@@ -58,7 +59,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _galaxyMap.AddChild(nonPlanetSector);
 
-            Assert.AreEqual(0, _galaxyMap.PlanetSectors.Count);
+            Assert.AreEqual(0, _galaxyMap.GetChildren<PlanetSector>().Count);
         }
 
         [Test]
@@ -67,7 +68,7 @@ namespace Rebellion.Tests.Game.Galaxy
             _galaxyMap.AddChild(_planetSector1);
             _galaxyMap.AddChild(_planetSector1);
 
-            Assert.AreEqual(2, _galaxyMap.PlanetSectors.Count);
+            Assert.AreEqual(2, _galaxyMap.GetChildren<PlanetSector>().Count);
         }
 
         [Test]
@@ -77,20 +78,20 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _galaxyMap.RemoveChild(_planetSector1);
 
-            Assert.IsFalse(_galaxyMap.PlanetSectors.Contains(_planetSector1));
+            Assert.IsFalse(_galaxyMap.GetChildren<PlanetSector>().Contains(_planetSector1));
         }
 
         [Test]
-        public void RemoveChild_WithMultiplePlanetSectors_RemovesCorrectSectors()
+        public void RemoveChild_WithMultiplePlanetSectors_RemovesCorrectSector()
         {
             _galaxyMap.AddChild(_planetSector1);
             _galaxyMap.AddChild(_planetSector2);
 
             _galaxyMap.RemoveChild(_planetSector1);
 
-            Assert.AreEqual(1, _galaxyMap.PlanetSectors.Count);
-            Assert.IsFalse(_galaxyMap.PlanetSectors.Contains(_planetSector1));
-            Assert.Contains(_planetSector2, _galaxyMap.PlanetSectors);
+            Assert.AreEqual(1, _galaxyMap.GetChildren<PlanetSector>().Count);
+            Assert.IsFalse(_galaxyMap.GetChildren<PlanetSector>().Contains(_planetSector1));
+            Assert.Contains(_planetSector2, _galaxyMap.GetChildren<PlanetSector>().ToList());
         }
 
         [Test]
@@ -102,7 +103,7 @@ namespace Rebellion.Tests.Game.Galaxy
             _galaxyMap.RemoveChild(_planetSector1);
             _galaxyMap.RemoveChild(_planetSector2);
 
-            Assert.AreEqual(0, _galaxyMap.PlanetSectors.Count);
+            Assert.AreEqual(0, _galaxyMap.GetChildren<PlanetSector>().Count);
         }
 
         [Test]
@@ -118,7 +119,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             _galaxyMap.RemoveChild(_planetSector2);
 
-            Assert.AreEqual(1, _galaxyMap.PlanetSectors.Count);
+            Assert.AreEqual(1, _galaxyMap.GetChildren<PlanetSector>().Count);
         }
 
         [Test]
@@ -151,8 +152,8 @@ namespace Rebellion.Tests.Game.Galaxy
                 "InstanceID should be correctly deserialized."
             );
             Assert.AreEqual(
-                _galaxyMap.PlanetSectors.Count,
-                deserialized.PlanetSectors.Count,
+                _galaxyMap.GetChildren<PlanetSector>().Count,
+                deserialized.GetChildren<PlanetSector>().Count,
                 "PlanetSectors count should be correctly deserialized."
             );
         }
@@ -162,26 +163,26 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             GalaxyMap newMap = new GalaxyMap();
 
-            Assert.IsNotNull(newMap.PlanetSectors);
-            Assert.AreEqual(0, newMap.PlanetSectors.Count);
+            Assert.IsNotNull(newMap.GetChildren<PlanetSector>());
+            Assert.AreEqual(0, newMap.GetChildren<PlanetSector>().Count);
         }
 
         [Test]
         public void PlanetSectors_AfterAddingAndRemoving_MaintainsCorrectCount()
         {
-            Assert.AreEqual(0, _galaxyMap.PlanetSectors.Count);
+            Assert.AreEqual(0, _galaxyMap.GetChildren<PlanetSector>().Count);
 
             _galaxyMap.AddChild(_planetSector1);
-            Assert.AreEqual(1, _galaxyMap.PlanetSectors.Count);
+            Assert.AreEqual(1, _galaxyMap.GetChildren<PlanetSector>().Count);
 
             _galaxyMap.AddChild(_planetSector2);
-            Assert.AreEqual(2, _galaxyMap.PlanetSectors.Count);
+            Assert.AreEqual(2, _galaxyMap.GetChildren<PlanetSector>().Count);
 
             _galaxyMap.RemoveChild(_planetSector1);
-            Assert.AreEqual(1, _galaxyMap.PlanetSectors.Count);
+            Assert.AreEqual(1, _galaxyMap.GetChildren<PlanetSector>().Count);
 
             _galaxyMap.RemoveChild(_planetSector2);
-            Assert.AreEqual(0, _galaxyMap.PlanetSectors.Count);
+            Assert.AreEqual(0, _galaxyMap.GetChildren<PlanetSector>().Count);
         }
     }
 } // namespace Rebellion.Tests.Game.Galaxy

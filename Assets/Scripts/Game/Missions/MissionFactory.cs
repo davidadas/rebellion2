@@ -152,9 +152,9 @@ namespace Rebellion.Game.Missions
             if (resolvedContext.MainParticipants.Count == 0)
                 return false;
 
-            Faction faction = _game.Factions.Find(f =>
-                f.InstanceID == resolvedContext.OwnerInstanceId
-            );
+            Faction faction = _game
+                .GetFactions()
+                .Find(f => f.InstanceID == resolvedContext.OwnerInstanceId);
             if (faction == null)
                 return false;
 
@@ -172,7 +172,7 @@ namespace Rebellion.Game.Missions
             {
                 if (
                     missionParticipant?.GetOwnerInstanceID() != resolvedContext.OwnerInstanceId
-                    || _game.IsInVoid(missionParticipant)
+                    || !missionParticipant.IsActive()
                     || missionParticipant.IsOnMission()
                     || !missionParticipant.IsMovable()
                     || missionParticipant.CanPerformMission(resolvedContext.MissionTypeID) != true

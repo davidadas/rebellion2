@@ -102,26 +102,24 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SelectOfficers_IncludeRetainedAtRecordedPlanet_ReturnsVoidOfficer()
+        public void SelectOfficers_IncludeInactiveAtCurrentPlanet_ReturnsOfficer()
         {
-            GameRoot game = BuildGame(out Planet origin);
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
-            game.ChangeOwnership(origin, "rebels");
-            Officer han = EntityFactory.CreateOfficer("han", "rebels");
-            han.IsCaptured = true;
-            game.AttachNode(han, origin);
-            game.AddToVoid(han);
+            GameRoot game = BuildGame(out Planet planet);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            officer.IsCaptured = true;
+            game.AttachNode(officer, planet);
+            officer.IsEnabled = false;
             SelectOfficers selector = new SelectOfficers
             {
-                PlanetInstanceID = origin.InstanceID,
-                OwnerFactionInstanceID = "rebels",
+                PlanetInstanceID = planet.InstanceID,
+                OwnerFactionInstanceID = "faction",
                 IsCaptured = true,
-                IncludeRetained = true,
+                IncludeInactive = true,
             };
 
             List<ISceneNode> selected = selector.Select(game, new FixedRNG(0), null).ToList();
 
-            CollectionAssert.AreEqual(new ISceneNode[] { han }, selected);
+            CollectionAssert.AreEqual(new ISceneNode[] { officer }, selected);
         }
 
         [Test]
@@ -145,49 +143,11 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(canonical, selected);
         }
 
-        [Test]
-        public void SelectBinding_DetachedRegisteredNode_ReturnsCanonicalNode()
-        {
-            GameRoot game = BuildGame(out Planet origin);
-            Officer officer = EntityFactory.CreateOfficer("han", "faction");
-            game.AttachNode(officer, origin);
-            game.AddToVoid(officer);
-            game.RemoveFromVoid(officer);
-            GameEventExecutionContext context = new GameEventExecutionContext(
-                new GameEvent(),
-                null,
-                null
-            );
-            context.Bind("officer", officer);
-
-            ISceneNode selected = new SelectBinding { Binding = "$officer" }
-                .Select(game, new FixedRNG(0), context)
-                .Single();
-
-            Assert.AreSame(officer, selected);
-        }
-
-        [Test]
-        public void SelectCapitalShips_ChildOfVoidUnit_ExcludesRetainedSubtree()
-        {
-            GameRoot game = BuildGame(out Planet planet);
-            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "faction" };
-            CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "faction" };
-            game.AttachNode(fleet, planet);
-            game.AttachNode(ship, fleet);
-            game.AddToVoid(fleet);
-            SelectCapitalShips selector = new SelectCapitalShips { InstanceID = ship.InstanceID };
-
-            List<ISceneNode> selected = selector.Select(game, new FixedRNG(0), null).ToList();
-
-            Assert.IsEmpty(selected);
-        }
-
         private static GameRoot BuildGame(out Planet planet)
         {
             GameRoot game = new GameRoot(new GameConfig());
-            game.Factions.Add(new Faction { InstanceID = "faction" });
-            PlanetSector planetSector = new PlanetSector
+            game.GetFactions().Add(new Faction { InstanceID = "faction" });
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "core-sector",
                 SectorType = PlanetSectorType.Core,
@@ -198,8 +158,8 @@ namespace Rebellion.Tests.Game.Events
                 OwnerInstanceID = "faction",
                 IsColonized = true,
             };
-            game.AttachNode(planetSector, game.Galaxy);
-            game.AttachNode(planet, planetSector);
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
             return game;
         }
     }

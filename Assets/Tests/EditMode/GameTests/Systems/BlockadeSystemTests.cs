@@ -9,7 +9,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     /// <summary>
     /// Tests for BlockadeSystem.
@@ -94,11 +94,11 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "s1" };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1" };
             Planet planet = new Planet { InstanceID = "p1", OwnerInstanceID = "empire" };
-            game.Factions.Add(empire);
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.GetFactions().Add(empire);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
 
             BlockadeSystem manager = new BlockadeSystem(game, new StubRNG());
             List<GameResult> results = manager.ProcessTick();
@@ -134,8 +134,8 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
 
             PlanetSector sector1 = new PlanetSector { InstanceID = "s1" };
             PlanetSector sector2 = new PlanetSector { InstanceID = "s2" };
@@ -180,8 +180,8 @@ namespace Rebellion.Tests.Systems
             config.Blockade.EvacuationLossPercent = 25;
             GameRoot game = new GameRoot(config);
 
-            // MaxRNG returns 99 from NextInt(0,100) -> 99 >= 25 -> survives
-            BlockadeSystem system = new BlockadeSystem(game, new MaxRNG());
+            // MaximumRNG returns 99 from NextInt(0,100) -> 99 >= 25 -> survives
+            BlockadeSystem system = new BlockadeSystem(game, new MaximumRNG());
 
             Assert.IsFalse(system.RollEvacuationLoss());
         }
@@ -205,7 +205,7 @@ namespace Rebellion.Tests.Systems
             config.Blockade.EvacuationLossPercent = 100;
             GameRoot game = new GameRoot(config);
 
-            BlockadeSystem system = new BlockadeSystem(game, new MaxRNG());
+            BlockadeSystem system = new BlockadeSystem(game, new MaximumRNG());
 
             Assert.IsTrue(system.RollEvacuationLoss());
         }
@@ -215,10 +215,10 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
             Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "s1",
-                DisplayName = "Orus",
+                DisplayName = "Test Sector",
             };
             Planet planet = new Planet
             {
@@ -233,10 +233,10 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "alliance",
             };
 
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
-            game.AttachNode(planetSector, game.GetGalaxyMap());
-            game.AttachNode(planet, planetSector);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
             game.AttachNode(hostileFleet, planet);
             AttachOperationalCapitalShip(game, hostileFleet, "hostile-ship");
 

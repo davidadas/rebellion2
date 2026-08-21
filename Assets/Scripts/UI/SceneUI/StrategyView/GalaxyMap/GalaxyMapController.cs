@@ -112,11 +112,12 @@ public sealed class GalaxyMapController
         if (playerFaction != null)
         {
             visibleGalaxyMap = gameManager.GetFogOfWarSystem().BuildFactionView(playerFaction);
-            IReadOnlyList<PlanetSector> visibleSectors = visibleGalaxyMap?.PlanetSectors;
+            IReadOnlyList<PlanetSector> visibleSectors =
+                visibleGalaxyMap?.GetChildren<PlanetSector>();
             foreach (PlanetSector sector in visibleSectors ?? Array.Empty<PlanetSector>())
             {
                 List<GalaxyMapPlanet> planets = new List<GalaxyMapPlanet>();
-                foreach (Planet planet in sector.Planets)
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     planets.Add(new GalaxyMapPlanet(sector, planet, planet.GetPlanetIconPath()));
                 }

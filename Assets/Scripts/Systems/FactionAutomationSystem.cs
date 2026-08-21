@@ -233,12 +233,14 @@ namespace Rebellion.Systems
         /// <returns>True when a manufacturing facility is present.</returns>
         private static bool HasManufacturingFacilities(Planet planet)
         {
-            return planet.Buildings.Any(building =>
-                building.BuildingType
-                    is BuildingType.ConstructionFacility
-                        or BuildingType.Shipyard
-                        or BuildingType.TrainingFacility
-            );
+            return planet
+                .GetChildren<Building>()
+                .Any(building =>
+                    building.BuildingType
+                        is BuildingType.ConstructionFacility
+                            or BuildingType.Shipyard
+                            or BuildingType.TrainingFacility
+                );
         }
 
         /// <summary>

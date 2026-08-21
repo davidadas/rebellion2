@@ -8,7 +8,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Systems
 {
@@ -116,11 +115,13 @@ namespace Rebellion.Systems
                 return true;
 
             if (
-                planet.Fleets.Any(f =>
-                    f.OwnerInstanceID == faction.InstanceID
-                    && f.Movement == null
-                    && f.HasOperationalCapitalShips()
-                )
+                planet
+                    .GetChildren<Fleet>()
+                    .Any(f =>
+                        f.OwnerInstanceID == faction.InstanceID
+                        && f.Movement == null
+                        && f.HasOperationalCapitalShips()
+                    )
             )
                 return true;
 
@@ -138,11 +139,10 @@ namespace Rebellion.Systems
         {
             GalaxyMap factionView = new GalaxyMap();
 
-            foreach (PlanetSector masterSector in _game.Galaxy.PlanetSectors)
+            foreach (PlanetSector masterSector in _game.Galaxy.GetChildren<PlanetSector>())
             {
-                PlanetSector viewSector = masterSector.GetShallowCopy(CloneMode.Full);
-                viewSector.Planets = new List<Planet>();
-                ClearParentReferences(viewSector);
+                PlanetSector viewSector = (PlanetSector)masterSector.CreateCopy();
+                viewSector.SetPlanets(Enumerable.Empty<Planet>());
                 viewSector.SetParent(factionView);
 
                 faction.Fog.Snapshots.TryGetValue(
@@ -150,7 +150,7 @@ namespace Rebellion.Systems
                     out PlanetSectorSnapshot sectorSnapshot
                 );
 
-                foreach (Planet masterPlanet in masterSector.Planets)
+                foreach (Planet masterPlanet in masterSector.GetChildren<Planet>())
                 {
                     PlanetSnapshot planetSnapshot = null;
                     sectorSnapshot?.Planets.TryGetValue(
@@ -183,23 +183,23 @@ namespace Rebellion.Systems
                     AddObservedMissions(viewPlanet, planetSnapshot);
 
                     foreach (
-                        Mission mission in masterPlanet.Missions.Where(mission =>
-                            mission.GetOwnerInstanceID() == faction.InstanceID
-                        )
+                        Mission mission in masterPlanet
+                            .GetChildren<Mission>()
+                            .Where(mission => mission.GetOwnerInstanceID() == faction.InstanceID)
                     )
                     {
-                        Mission viewMission = mission.GetShallowCopy(CloneMode.Full);
-                        ClearParentReferences(viewMission);
+                        Mission viewMission = (Mission)
+                            mission.CreateCopy(recursive: true, includeDisabled: true);
                         viewMission.SetParent(viewPlanet);
-                        viewPlanet.Missions.Add(viewMission);
+                        viewPlanet.AddChild(viewMission);
                     }
 
                     AttachDetachedChildrenToView(viewPlanet);
                     viewPlanet.SetParent(viewSector);
-                    viewSector.Planets.Add(viewPlanet);
+                    viewSector.AddChild(viewPlanet);
                 }
 
-                factionView.PlanetSectors.Add(viewSector);
+                factionView.AddChild(viewSector);
             }
 
             return factionView;
@@ -219,7 +219,7 @@ namespace Rebellion.Systems
             {
                 Mission viewMission = FogOfWarRecorder.CopyEntityForSnapshot(mission);
                 viewMission.SetParent(viewPlanet);
-                viewPlanet.Missions.Add(viewMission);
+                viewPlanet.AddChild(viewMission);
             }
         }
 
@@ -278,43 +278,60 @@ namespace Rebellion.Systems
         )
         {
             string factionId = faction.InstanceID;
+            viewPlanet.SetChildren(
+                MergeMissingByInstanceID(
+                    viewPlanet.GetChildren<Fleet>(includeDisabled: true),
+                    masterPlanet
+                        .GetChildren<Fleet>()
+                        .Where(fleet =>
+                            fleet.OwnerInstanceID == factionId
+                            && fleet.GetChildren<CapitalShip>().Count > 0
+                        )
+                ),
+                MergeMissingByInstanceID(
+                    viewPlanet.GetChildren<Officer>(includeDisabled: true),
+                    masterPlanet
+                        .GetChildren<Officer>()
+                        .Where(officer =>
+                            officer.OwnerInstanceID == factionId && !officer.IsCaptured
+                        )
+                ),
+                MergeMissingByInstanceID(
+                    viewPlanet.GetChildren<Regiment>(includeDisabled: true),
+                    masterPlanet
+                        .GetChildren<Regiment>()
+                        .Where(unit => unit.OwnerInstanceID == factionId)
+                ),
+                MergeMissingByInstanceID(
+                    viewPlanet.GetChildren<SpecialForces>(includeDisabled: true),
+                    masterPlanet
+                        .GetChildren<SpecialForces>()
+                        .Where(unit => unit.OwnerInstanceID == factionId)
+                ),
+                MergeMissingByInstanceID(
+                    viewPlanet.GetChildren<Starfighter>(includeDisabled: true),
+                    masterPlanet
+                        .GetChildren<Starfighter>()
+                        .Where(unit => unit.OwnerInstanceID == factionId)
+                ),
+                viewPlanet.GetChildren<Mission>(includeDisabled: true),
+                viewPlanet.GetChildren<Building>(includeDisabled: true)
+            );
+        }
 
-            foreach (Fleet fleet in masterPlanet.Fleets)
-                if (
-                    fleet.OwnerInstanceID == factionId
-                    && fleet.CapitalShips.Count > 0
-                    && viewPlanet.Fleets.All(f => f.InstanceID != fleet.InstanceID)
-                )
-                    viewPlanet.Fleets.Add(fleet);
-
-            foreach (Regiment regiment in masterPlanet.Regiments)
-                if (
-                    regiment.OwnerInstanceID == factionId
-                    && viewPlanet.Regiments.All(r => r.InstanceID != regiment.InstanceID)
-                )
-                    viewPlanet.Regiments.Add(regiment);
-
-            foreach (SpecialForces specialForces in masterPlanet.SpecialForces)
-                if (
-                    specialForces.OwnerInstanceID == factionId
-                    && viewPlanet.SpecialForces.All(s => s.InstanceID != specialForces.InstanceID)
-                )
-                    viewPlanet.SpecialForces.Add(specialForces);
-
-            foreach (Starfighter starfighter in masterPlanet.Starfighters)
-                if (
-                    starfighter.OwnerInstanceID == factionId
-                    && viewPlanet.Starfighters.All(s => s.InstanceID != starfighter.InstanceID)
-                )
-                    viewPlanet.Starfighters.Add(starfighter);
-
-            foreach (Officer officer in masterPlanet.Officers)
-                if (
-                    officer.OwnerInstanceID == factionId
-                    && !officer.IsCaptured
-                    && viewPlanet.Officers.All(o => o.InstanceID != officer.InstanceID)
-                )
-                    viewPlanet.Officers.Add(officer);
+        /// <summary>
+        /// Appends nodes whose instance IDs are not already represented in a projected collection.
+        /// </summary>
+        private static IEnumerable<T> MergeMissingByInstanceID<T>(
+            IEnumerable<T> existing,
+            IEnumerable<T> additions
+        )
+            where T : ISceneNode
+        {
+            List<T> merged = existing.ToList();
+            HashSet<string> instanceIds = merged.Select(node => node.InstanceID).ToHashSet();
+            merged.AddRange(additions.Where(node => instanceIds.Add(node.InstanceID)));
+            return merged;
         }
 
         /// <summary>
@@ -359,19 +376,20 @@ namespace Rebellion.Systems
         /// <returns>A blank planet view with empty entity lists.</returns>
         private Planet BlankPlanetView(Planet masterPlanet)
         {
-            Planet viewPlanet = masterPlanet.GetShallowCopy(CloneMode.Full);
-            viewPlanet.Officers = new List<Officer>();
-            viewPlanet.Fleets = new List<Fleet>();
-            viewPlanet.Regiments = new List<Regiment>();
-            viewPlanet.SpecialForces = new List<SpecialForces>();
-            viewPlanet.Buildings = new List<Building>();
-            viewPlanet.Starfighters = new List<Starfighter>();
-            viewPlanet.Missions = new List<Mission>();
+            Planet viewPlanet = (Planet)masterPlanet.CreateCopy();
+            viewPlanet.SetChildren(
+                Enumerable.Empty<Fleet>(),
+                Enumerable.Empty<Officer>(),
+                Enumerable.Empty<Regiment>(),
+                Enumerable.Empty<SpecialForces>(),
+                Enumerable.Empty<Starfighter>(),
+                Enumerable.Empty<Mission>(),
+                Enumerable.Empty<Building>()
+            );
             viewPlanet.ManufacturingQueue =
                 new Dictionary<ManufacturingType, List<IManufacturable>>();
             viewPlanet.VisitingFactionIDs = new List<string>();
             viewPlanet.PopularSupport = new Dictionary<string, int>();
-            ClearParentReferences(viewPlanet);
             return viewPlanet;
         }
 
@@ -394,58 +412,55 @@ namespace Rebellion.Systems
             viewPlanet.PopularSupport = new Dictionary<string, int>(masterPlanet.PopularSupport);
             viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
 
-            viewPlanet.Officers.AddRange(
-                masterPlanet
-                    .Officers.Where(officer =>
-                        FogOfWarRecorder.IsObservableAtPlanet(officer, faction.InstanceID)
-                    )
-                    .Select(officer =>
-                        IsOwnedBy(officer, faction) && !officer.IsCaptured
-                            ? officer
-                            : FogOfWarRecorder.CopyOfficerForSnapshot(officer)
-                    )
-            );
-            viewPlanet.Fleets.AddRange(
-                masterPlanet
-                    .Fleets.Where(f =>
-                        f.CapitalShips.Count > 0
-                        && FogOfWarRecorder.IsObservableAtPlanet(f, faction.InstanceID)
-                    )
-                    .Select(f =>
-                        IsOwnedBy(f, faction)
-                            ? f
-                            : FogOfWarRecorder.CopyObservedFleetForSnapshot(f, faction.InstanceID)
-                    )
-                    .Where(fleet => fleet != null)
-            );
-            viewPlanet.Regiments.AddRange(
-                masterPlanet
-                    .Regiments.Where(regiment =>
-                        IsVisibleWithoutManufacturingIntelligence(regiment, faction)
-                    )
-                    .Select(regiment => ViewUnit(regiment, faction))
-            );
-            viewPlanet.SpecialForces.AddRange(
-                masterPlanet
-                    .SpecialForces.Where(specialForces =>
-                        IsVisibleWithoutManufacturingIntelligence(specialForces, faction)
-                    )
-                    .Select(specialForces => ViewUnit(specialForces, faction))
-            );
-            viewPlanet.Starfighters.AddRange(
-                masterPlanet
-                    .Starfighters.Where(starfighter =>
-                        IsVisibleWithoutManufacturingIntelligence(starfighter, faction)
-                    )
-                    .Select(starfighter => ViewUnit(starfighter, faction))
-            );
+            IEnumerable<Officer> officers = masterPlanet
+                .GetChildren<Officer>()
+                .Where(officer =>
+                    FogOfWarRecorder.IsObservableAtPlanet(officer, faction.InstanceID)
+                )
+                .Select(officer =>
+                    IsOwnedBy(officer, faction) && !officer.IsCaptured
+                        ? officer
+                        : FogOfWarRecorder.CopyOfficerForSnapshot(officer)
+                );
+            IEnumerable<Fleet> fleets = masterPlanet
+                .GetChildren<Fleet>()
+                .Where(fleet =>
+                    fleet.GetChildren<CapitalShip>().Count > 0
+                    && FogOfWarRecorder.IsObservableAtPlanet(fleet, faction.InstanceID)
+                )
+                .Select(fleet =>
+                    IsOwnedBy(fleet, faction)
+                        ? fleet
+                        : FogOfWarRecorder.CopyObservedFleetForSnapshot(fleet, faction.InstanceID)
+                )
+                .Where(fleet => fleet != null);
+            IEnumerable<Regiment> regiments = masterPlanet
+                .GetChildren<Regiment>()
+                .Where(regiment => IsVisibleWithoutManufacturingIntelligence(regiment, faction))
+                .Select(regiment => ViewUnit(regiment, faction));
+            IEnumerable<SpecialForces> specialForces = masterPlanet
+                .GetChildren<SpecialForces>()
+                .Where(unit => IsVisibleWithoutManufacturingIntelligence(unit, faction))
+                .Select(unit => ViewUnit(unit, faction));
+            IEnumerable<Starfighter> starfighters = masterPlanet
+                .GetChildren<Starfighter>()
+                .Where(starfighter =>
+                    IsVisibleWithoutManufacturingIntelligence(starfighter, faction)
+                )
+                .Select(starfighter => ViewUnit(starfighter, faction));
+            IEnumerable<Building> buildings = masterPlanet
+                .GetChildren<Building>()
+                .Where(building => IsVisibleWithoutManufacturingIntelligence(building, faction))
+                .Select(building => ViewUnit(building, faction));
 
-            viewPlanet.Buildings.AddRange(
-                masterPlanet
-                    .Buildings.Where(building =>
-                        IsVisibleWithoutManufacturingIntelligence(building, faction)
-                    )
-                    .Select(building => ViewUnit(building, faction))
+            viewPlanet.SetChildren(
+                fleets,
+                officers,
+                regiments,
+                specialForces,
+                starfighters,
+                viewPlanet.GetChildren<Mission>(includeDisabled: true),
+                buildings
             );
 
             if (masterPlanet.OwnerInstanceID == faction.InstanceID)
@@ -483,27 +498,21 @@ namespace Rebellion.Systems
 
             viewPlanet.PopularSupport = new Dictionary<string, int>(planetSnapshot.PopularSupport);
 
-            viewPlanet.Officers.AddRange(
-                planetSnapshot.Officers.Select(FogOfWarRecorder.CopyOfficerForSnapshot)
-            );
-            viewPlanet.Officers.AddRange(
-                masterPlanet
-                    .Officers.Where(o => o.IsCaptured && o.OwnerInstanceID == faction.InstanceID)
-                    .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
-            );
-            viewPlanet.Fleets.AddRange(
-                planetSnapshot.Fleets.Select(FogOfWarRecorder.CopyFleetForSnapshot)
-            );
-            viewPlanet.Regiments.AddRange(
-                planetSnapshot.Regiments.Select(FogOfWarRecorder.CopyEntityForSnapshot)
-            );
-            viewPlanet.SpecialForces.AddRange(
-                planetSnapshot.SpecialForces.Select(FogOfWarRecorder.CopyEntityForSnapshot)
-            );
-            viewPlanet.Starfighters.AddRange(
-                planetSnapshot.Starfighters.Select(FogOfWarRecorder.CopyEntityForSnapshot)
-            );
-            viewPlanet.Buildings.AddRange(
+            IEnumerable<Officer> officers = planetSnapshot
+                .Officers.Select(FogOfWarRecorder.CopyOfficerForSnapshot)
+                .Concat(
+                    masterPlanet
+                        .GetChildren<Officer>()
+                        .Where(o => o.IsCaptured && o.OwnerInstanceID == faction.InstanceID)
+                        .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
+                );
+            viewPlanet.SetChildren(
+                planetSnapshot.Fleets.Select(FogOfWarRecorder.CopyFleetForSnapshot),
+                officers,
+                planetSnapshot.Regiments.Select(FogOfWarRecorder.CopyEntityForSnapshot),
+                planetSnapshot.SpecialForces.Select(FogOfWarRecorder.CopyEntityForSnapshot),
+                planetSnapshot.Starfighters.Select(FogOfWarRecorder.CopyEntityForSnapshot),
+                viewPlanet.GetChildren<Mission>(includeDisabled: true),
                 planetSnapshot.Buildings.Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             ApplyManufacturingQueue(viewPlanet, planetSnapshot);
@@ -544,7 +553,9 @@ namespace Rebellion.Systems
             foreach (
                 Fleet fleet in snapshot.Fleets.Where(fleet =>
                     fleet.Movement != null
-                    && viewPlanet.Fleets.All(current => current.InstanceID != fleet.InstanceID)
+                    && viewPlanet
+                        .GetChildren<Fleet>(includeDisabled: true)
+                        .All(current => current.InstanceID != fleet.InstanceID)
                 )
             )
             {
@@ -555,7 +566,7 @@ namespace Rebellion.Systems
                     includeInTransit: true
                 );
                 if (fleetCopy != null)
-                    viewPlanet.Fleets.Add(fleetCopy);
+                    viewPlanet.AddChild(fleetCopy);
             }
         }
 
@@ -588,16 +599,10 @@ namespace Rebellion.Systems
             if (snapshot?.HasManufacturingIntelligence != true)
                 return;
 
-            FogOfWarRecorder.MergeManufacturingEntities(viewPlanet.Regiments, snapshot.Regiments);
-            FogOfWarRecorder.MergeManufacturingEntities(
-                viewPlanet.SpecialForces,
-                snapshot.SpecialForces
-            );
-            FogOfWarRecorder.MergeManufacturingEntities(viewPlanet.Buildings, snapshot.Buildings);
-            FogOfWarRecorder.MergeManufacturingEntities(
-                viewPlanet.Starfighters,
-                snapshot.Starfighters
-            );
+            FogOfWarRecorder.MergeManufacturingEntities(viewPlanet, snapshot.Regiments);
+            FogOfWarRecorder.MergeManufacturingEntities(viewPlanet, snapshot.SpecialForces);
+            FogOfWarRecorder.MergeManufacturingEntities(viewPlanet, snapshot.Buildings);
+            FogOfWarRecorder.MergeManufacturingEntities(viewPlanet, snapshot.Starfighters);
             ApplyManufacturingQueue(viewPlanet, snapshot);
         }
 
@@ -633,32 +638,27 @@ namespace Rebellion.Systems
             {
                 InstanceID = masterPlanet.InstanceID,
                 DisplayName = masterPlanet.DisplayName,
-                SystemDataId = masterPlanet.SystemDataId,
+                PlanetDataId = masterPlanet.PlanetDataId,
                 PositionX = masterPlanet.PositionX,
                 PositionY = masterPlanet.PositionY,
                 PlanetIconPath = masterPlanet.PlanetIconPath,
                 IsUnexploredView = true,
             };
 
-            viewPlanet.Officers.AddRange(
+            viewPlanet.SetChildren(
+                Enumerable.Empty<Fleet>(),
                 masterPlanet
-                    .Officers.Where(o => o.IsCaptured && o.OwnerInstanceID == faction.InstanceID)
-                    .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
+                    .GetChildren<Officer>()
+                    .Where(o => o.IsCaptured && o.OwnerInstanceID == faction.InstanceID)
+                    .Select(FogOfWarRecorder.CopyOfficerForSnapshot),
+                Enumerable.Empty<Regiment>(),
+                Enumerable.Empty<SpecialForces>(),
+                Enumerable.Empty<Starfighter>(),
+                Enumerable.Empty<Mission>(),
+                Enumerable.Empty<Building>()
             );
 
             return viewPlanet;
-        }
-
-        /// <summary>
-        /// Removes live scene-graph parent references from a copied view node.
-        /// </summary>
-        /// <param name="node">The copied node to detach.</param>
-        private static void ClearParentReferences(ISceneNode node)
-        {
-            node.ParentInstanceID = null;
-            node.LastParentInstanceID = null;
-            node.ParentNode = null;
-            node.LastParentNode = null;
         }
     }
 }

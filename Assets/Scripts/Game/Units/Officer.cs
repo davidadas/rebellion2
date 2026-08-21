@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
@@ -19,6 +20,16 @@ namespace Rebellion.Game.Units
         public string SmallDisplayImagePath { get; set; }
         public string MessageImagePath { get; set; }
         public string EncyclopediaImagePath { get; set; }
+
+        /// <summary>Creates an independent copy of this image set.</summary>
+        public OfficerImageSet CreateCopy() =>
+            new OfficerImageSet
+            {
+                DisplayImagePath = DisplayImagePath,
+                SmallDisplayImagePath = SmallDisplayImagePath,
+                MessageImagePath = MessageImagePath,
+                EncyclopediaImagePath = EncyclopediaImagePath,
+            };
 
         public void MergeFrom(OfficerImageSet authored)
         {
@@ -92,6 +103,20 @@ namespace Rebellion.Game.Units
         {
             IReadOnlyList<string> paths = GetMutablePaths(type);
             return paths ?? Array.Empty<string>();
+        }
+
+        /// <summary>Creates an independent copy of this voice set.</summary>
+        public OfficerVoiceSet CreateCopy()
+        {
+            OfficerVoiceSet copy = new OfficerVoiceSet();
+            foreach (OfficerVoiceLineType type in Enum.GetValues(typeof(OfficerVoiceLineType)))
+            {
+                List<string> paths = GetMutablePaths(type);
+                List<string> destination = copy.GetMutablePaths(type);
+                if (paths != null && destination != null)
+                    destination.AddRange(paths);
+            }
+            return copy;
         }
 
         /// <summary>
@@ -306,6 +331,62 @@ namespace Rebellion.Game.Units
         /// Default constructor used for deserialization.
         /// </summary>
         public Officer() { }
+
+        /// <summary>Creates an empty officer copy.</summary>
+        protected override BaseSceneNode CreateNodeCopy() => new Officer();
+
+        /// <summary>Copies officer state into an empty destination.</summary>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            Officer copy = (Officer)destination;
+            copy.ShipResearch = ShipResearch;
+            copy.TroopResearch = TroopResearch;
+            copy.FacilityResearch = FacilityResearch;
+            copy.IsMain = IsMain;
+            copy.IsRecruitable = IsRecruitable;
+            copy.RecruitingFactionInstanceIDs = new List<string>(RecruitingFactionInstanceIDs);
+            copy.IsCaptured = IsCaptured;
+            copy.CaptorInstanceID = CaptorInstanceID;
+            copy.CanEscape = CanEscape;
+            copy.IsKilled = IsKilled;
+            copy.CanBetray = CanBetray;
+            copy.IsTraitor = IsTraitor;
+            copy.Loyalty = Loyalty;
+            copy.InjuryPoints = InjuryPoints;
+            copy.CanHeal = CanHeal;
+            copy.FastHeal = FastHeal;
+            copy.JediProbability = JediProbability;
+            copy.JediLevel = JediLevel;
+            copy.JediLevelVariance = JediLevelVariance;
+            copy.IsJediTrainer = IsJediTrainer;
+            copy.GrowsForceOnMission = GrowsForceOnMission;
+            copy.IsKnownJedi = IsKnownJedi;
+            copy.IsForceSensitive = IsForceSensitive;
+            copy.IsForceEligible = IsForceEligible;
+            copy.ForceValue = ForceValue;
+            copy.ForceTrainingAdjustment = ForceTrainingAdjustment;
+            copy.IsDiscoveringForceUser = IsDiscoveringForceUser;
+            copy.AllowedRanks = AllowedRanks?.ToArray();
+            copy.CurrentRank = CurrentRank;
+            copy.InitialParentTypeID = InitialParentTypeID;
+            copy.InitialParentInstanceID = InitialParentInstanceID;
+            copy.DiplomacyVariance = DiplomacyVariance;
+            copy.EspionageVariance = EspionageVariance;
+            copy.CombatVariance = CombatVariance;
+            copy.LeadershipVariance = LeadershipVariance;
+            copy.LoyaltyVariance = LoyaltyVariance;
+            copy.FacilityResearchVariance = FacilityResearchVariance;
+            copy.TroopResearchVariance = TroopResearchVariance;
+            copy.ShipResearchVariance = ShipResearchVariance;
+            copy.Movement = Movement?.CreateCopy();
+            copy.IsRetired = IsRetired;
+            copy.MissionReturnParentInstanceID = MissionReturnParentInstanceID;
+            copy.MissionReturnLocationInstanceID = MissionReturnLocationInstanceID;
+            copy.VoiceSet = VoiceSet?.CreateCopy();
+            copy.ImageSet = ImageSet?.CreateCopy();
+            copy.Ratings = new Dictionary<OfficerRating, int>(Ratings);
+        }
 
         /// <summary>
         /// Returns the officer's stored value for the specified rating.

@@ -262,7 +262,7 @@ namespace Rebellion.Tests.Systems
                     },
                 },
             };
-            game.Factions.Add(thirdFaction);
+            game.GetFactions().Add(thirdFaction);
             Planet thirdHeadquartersPlanet = new Planet
             {
                 InstanceID = thirdFaction.HQInstanceID,
@@ -336,8 +336,8 @@ namespace Rebellion.Tests.Systems
 
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
-            game.Factions.Add(empire);
-            game.Factions.Add(rebels);
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(rebels);
 
             PlanetSector planetSector = new PlanetSector
             {

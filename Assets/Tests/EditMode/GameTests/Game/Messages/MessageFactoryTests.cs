@@ -1349,10 +1349,10 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
             };
             game.AttachNode(mission, target);
-            PlanetSector corellian = new PlanetSector { DisplayName = "Corellian" };
-            PlanetSector sluis = new PlanetSector { DisplayName = "Sluis" };
-            game.AttachNode(corellian, game.Galaxy);
-            game.AttachNode(sluis, game.Galaxy);
+            PlanetSector corellia = new PlanetSector { DisplayName = "Corellia" };
+            PlanetSector sullust = new PlanetSector { DisplayName = "Sullust" };
+            game.AttachNode(corellia, game.Galaxy);
+            game.AttachNode(sullust, game.Galaxy);
             MessageDefinition definition = Definition(
                 MessageResultType.MissionReport,
                 MessageType.Mission,
@@ -1371,7 +1371,7 @@ namespace Rebellion.Tests.Game.Messages
                     new PlanetSectorsRevealedResult
                     {
                         MissionInstanceID = mission.InstanceID,
-                        AdditionalSectors = new List<PlanetSector> { corellian, sluis },
+                        AdditionalSectors = new List<PlanetSector> { corellia, sullust },
                     },
                     new MissionCompletedResult
                     {
@@ -1386,7 +1386,7 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(
-                "Successful.  Additional sectors:\n     Corellian\n     Sluis",
+                "Successful.  Additional sectors:\n     Corellia\n     Sullust",
                 message.Body
             );
         }
@@ -1955,8 +1955,8 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Jedi Training",
                 OwnerInstanceID = alliance.InstanceID,
                 TrainerInstanceID = trainer.InstanceID,
-                MainParticipants = new List<IMissionParticipant> { student, trainer },
             };
+            mission.AddChildren(new IMissionParticipant[] { student, trainer });
             game.AttachNode(mission, target);
 
             Message message = FirstMessageFor(
@@ -2828,7 +2828,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_SabotageResultsAtSameSystem_UseOneCombinedReport()
+        public void CreateMessages_SabotageResultsAtSameSector_UseOneCombinedReport()
         {
             (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
             Building shield = new Building
@@ -4205,13 +4205,9 @@ namespace Rebellion.Tests.Game.Messages
         {
             GameRoot game = new GameRoot(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
-            game.Factions.Add(alliance);
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "CORE",
-                DisplayName = "Core",
-            };
-            game.AttachNode(planetSector, game.Galaxy);
+            game.GetFactions().Add(alliance);
+            PlanetSector sector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
+            game.AttachNode(sector, game.Galaxy);
             Planet origin = new Planet
             {
                 InstanceID = "CORUSCANT",
@@ -4228,8 +4224,8 @@ namespace Rebellion.Tests.Game.Messages
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            game.AttachNode(origin, planetSector);
-            game.AttachNode(destination, planetSector);
+            game.AttachNode(origin, sector);
+            game.AttachNode(destination, sector);
 
             return (game, alliance, origin, destination);
         }
@@ -4245,14 +4241,10 @@ namespace Rebellion.Tests.Game.Messages
             GameRoot game = new GameRoot(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
-            game.Factions.Add(alliance);
-            game.Factions.Add(empire);
-            PlanetSector planetSector = new PlanetSector
-            {
-                InstanceID = "CORE",
-                DisplayName = "Core",
-            };
-            game.AttachNode(planetSector, game.Galaxy);
+            game.GetFactions().Add(alliance);
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
+            game.AttachNode(sector, game.Galaxy);
             Planet origin = new Planet
             {
                 InstanceID = "CORUSCANT",
@@ -4269,8 +4261,8 @@ namespace Rebellion.Tests.Game.Messages
                 IsColonized = true,
                 EnergyCapacity = 10,
             };
-            game.AttachNode(origin, planetSector);
-            game.AttachNode(target, planetSector);
+            game.AttachNode(origin, sector);
+            game.AttachNode(target, sector);
 
             return (game, alliance, empire, origin, target);
         }

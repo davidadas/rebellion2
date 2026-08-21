@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
@@ -24,6 +26,11 @@ namespace Rebellion.SceneGraph
         [CloneIgnore]
         [PersistableIgnore]
         public ISceneNode LastParentNode { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether this node participates in active gameplay.
+        /// </summary>
+        public bool IsEnabled { get; set; } = true;
 
         // Owner Info.
         private string _ownerInstanceId;
@@ -79,6 +86,26 @@ namespace Rebellion.SceneGraph
         public ISceneNode GetLastParent()
         {
             return LastParentNode;
+        }
+
+        /// <summary>
+        /// Returns whether this node and every ancestor are enabled.
+        /// </summary>
+        /// <returns>True when the node is active in the scene hierarchy.</returns>
+        public bool IsActive()
+        {
+            ISceneNode node = this;
+            HashSet<ISceneNode> visitedNodes = new HashSet<ISceneNode>();
+            while (node != null)
+            {
+                if (!visitedNodes.Add(node))
+                    throw new InvalidOperationException("Cycle detected in scene graph.");
+                if (!node.IsEnabled)
+                    return false;
+                node = node.GetParent();
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -151,25 +178,184 @@ namespace Rebellion.SceneGraph
         public abstract void RemoveChild(ISceneNode child);
 
         /// <summary>
-        /// Called to retrieve all children of the scene node.
+        /// Enumerates the raw direct children stored by this node.
         /// </summary>
-        /// <returns>An enumerable collection of children.</returns>
-        public abstract IEnumerable<ISceneNode> GetChildren();
+        /// <returns>The raw direct children.</returns>
+        protected abstract IEnumerable<ISceneNode> EnumerateChildren();
 
         /// <summary>
-        /// Called to retrieve all children of the scene node that match the specified type.
+        /// Returns a read-only snapshot of this node's children at the requested depth.
         /// </summary>
-        /// <typeparam name="T">The type of scene node to retrieve.</typeparam>
-        /// <param name="predicate">The predicate to filter the children.</param>
-        /// <param name="recurse">Whether to recursively search for children.</param>
-        /// <returns>An enumerable collection of children.</returns>
-        public abstract IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recurse = true)
-            where T : class, ISceneNode;
+        /// <param name="recursive">Whether to include children at every depth.</param>
+        /// <param name="includeDisabled">Whether disabled children may be returned.</param>
+        /// <returns>The matching children.</returns>
+        public IReadOnlyList<ISceneNode> GetChildren(
+            bool recursive = false,
+            bool includeDisabled = false
+        )
+        {
+            IEnumerable<ISceneNode> children = EnumerateChildren();
+            IReadOnlyList<ISceneNode> directChildren = (
+                includeDisabled ? children : children.Where(child => child.IsActive())
+            )
+                .ToList()
+                .AsReadOnly();
+
+            if (!recursive)
+                return directChildren;
+
+            List<ISceneNode> descendants = new List<ISceneNode>();
+            HashSet<ISceneNode> currentPath = new HashSet<ISceneNode> { this };
+
+            void Collect(ISceneNode node)
+            {
+                foreach (
+                    ISceneNode child in node.GetChildren(
+                        recursive: false,
+                        includeDisabled: includeDisabled
+                    )
+                )
+                {
+                    if (!currentPath.Add(child))
+                        throw new InvalidOperationException("Cycle detected in scene graph.");
+                    descendants.Add(child);
+                    Collect(child);
+                    currentPath.Remove(child);
+                }
+            }
+
+            Collect(this);
+            return descendants.AsReadOnly();
+        }
+
+        /// <summary>
+        /// Returns a read-only snapshot of children assignable to <typeparamref name="T"/> at the requested depth.
+        /// </summary>
+        /// <typeparam name="T">The child type to return.</typeparam>
+        /// <param name="recursive">Whether to include children at every depth.</param>
+        /// <param name="includeDisabled">Whether disabled children may be returned.</param>
+        /// <returns>The matching children.</returns>
+        public IReadOnlyList<T> GetChildren<T>(bool recursive = false, bool includeDisabled = false)
+            where T : class, ISceneNode
+        {
+            return GetChildren(recursive, includeDisabled).OfType<T>().ToList().AsReadOnly();
+        }
+
+        /// <summary>
+        /// Creates a detached copy of this node and, when requested, its descendant hierarchy.
+        /// </summary>
+        /// <param name="recursive">Whether to copy descendants at every depth.</param>
+        /// <param name="includeDisabled">Whether disabled descendants may be copied.</param>
+        /// <returns>A detached copy of this node.</returns>
+        public ISceneNode CreateCopy(bool recursive = false, bool includeDisabled = false)
+        {
+            BaseSceneNode copy = CreateNodeCopy();
+            if (copy == null || copy.GetType() != GetType())
+            {
+                throw new InvalidOperationException(
+                    $"{GetType().Name}.{nameof(CreateNodeCopy)} must return a non-null {GetType().Name}."
+                );
+            }
+
+            CopyStateTo(copy);
+            if (recursive)
+                CopyChildrenTo(copy, includeDisabled);
+            return copy;
+        }
+
+        /// <summary>
+        /// Creates an empty copy with the same concrete scene-node type.
+        /// </summary>
+        /// <returns>An empty node of the same concrete type.</returns>
+        protected abstract BaseSceneNode CreateNodeCopy();
+
+        /// <summary>
+        /// Copies the state shared by every scene node into a detached destination.
+        /// </summary>
+        /// <param name="copy">The destination node.</param>
+        protected virtual void CopyStateTo(BaseSceneNode copy)
+        {
+            copy.InstanceID = InstanceID;
+            copy.TypeID = TypeID;
+            copy.DisplayName = DisplayName;
+            copy.DisplayStatus = DisplayStatus;
+            copy.DisplayImagePath = DisplayImagePath;
+            copy.SmallDisplayImagePath = SmallDisplayImagePath;
+            copy.MessageImagePath = MessageImagePath;
+            copy.InTransitImagePath = InTransitImagePath;
+            copy.InTransitSmallImagePath = InTransitSmallImagePath;
+            copy.DamagedImagePath = DamagedImagePath;
+            copy.DamagedSmallImagePath = DamagedSmallImagePath;
+            copy.CapturedOverlayImagePath = CapturedOverlayImagePath;
+            copy.InjuredImagePath = InjuredImagePath;
+            copy.Description = Description;
+            copy.EncyclopediaImagePath = EncyclopediaImagePath;
+            copy.EncyclopediaDescription = EncyclopediaDescription;
+            copy.EncyclopediaStats = EncyclopediaStats?.ConvertAll(stat => new EncyclopediaEntryStat
+            {
+                Label = stat.Label,
+                Value = stat.Value,
+            });
+            copy.OwnerInstanceID = OwnerInstanceID;
+            copy.IsEnabled = IsEnabled;
+        }
+
+        /// <summary>
+        /// Copies eligible direct children and attaches them to their copied parent.
+        /// </summary>
+        /// <param name="copy">The destination parent.</param>
+        /// <param name="includeDisabled">Whether disabled branches should be copied.</param>
+        private void CopyChildrenTo(BaseSceneNode copy, bool includeDisabled)
+        {
+            foreach (ISceneNode child in EnumerateChildren())
+            {
+                if (!includeDisabled && !child.IsActive())
+                    continue;
+
+                ISceneNode childCopy = child.CreateCopy(
+                    recursive: true,
+                    includeDisabled: includeDisabled
+                );
+                AttachCopiedChild(copy, child, childCopy);
+            }
+        }
+
+        /// <summary>
+        /// Attaches a copied child while preserving any relationship metadata owned by the parent.
+        /// </summary>
+        /// <param name="destination">The copied parent receiving the child.</param>
+        /// <param name="sourceChild">The source child whose relationship is being copied.</param>
+        /// <param name="copiedChild">The detached copied child.</param>
+        protected virtual void AttachCopiedChild(
+            BaseSceneNode destination,
+            ISceneNode sourceChild,
+            ISceneNode copiedChild
+        )
+        {
+            destination.AddChild(copiedChild);
+            copiedChild.SetParent(destination);
+        }
+
+        /// <summary>
+        /// Visits this node and all descendants, including disabled branches.
+        /// </summary>
+        /// <param name="action">The action to perform on each node.</param>
+        internal void TraverseIncludingDisabled(Action<ISceneNode> action)
+        {
+            action(this);
+            foreach (ISceneNode child in GetChildren(includeDisabled: true))
+                ((BaseSceneNode)child).TraverseIncludingDisabled(action);
+        }
 
         /// <summary>
         /// Called to traverse this scene node and all of its children.
         /// </summary>
         /// <param name="action">The action to perform on each scene node.</param>
-        public abstract void Traverse(Action<ISceneNode> action);
+        public void Traverse(Action<ISceneNode> action)
+        {
+            action(this);
+            foreach (ISceneNode child in GetChildren())
+                child.Traverse(action);
+        }
     }
 }

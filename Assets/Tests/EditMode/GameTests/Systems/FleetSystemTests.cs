@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -8,7 +9,7 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Sectors
 {
     [TestFixture]
     public class FleetSystemTests
@@ -23,16 +24,16 @@ namespace Rebellion.Tests.Systems
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create());
-            _game.Factions.Add(new Faction { InstanceID = _ownerId });
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
-            _game.AttachNode(planetSector, _game.Galaxy);
+            _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
             _planet = new Planet
             {
                 InstanceID = "planet",
                 OwnerInstanceID = _ownerId,
                 IsColonized = true,
             };
-            _game.AttachNode(_planet, planetSector);
+            _game.AttachNode(_planet, sector);
             _fleetSystem = new FleetSystem(_game);
         }
 
@@ -65,7 +66,7 @@ namespace Rebellion.Tests.Systems
             Fleet fleet = _fleetSystem.CreateAtPlanet(_planet, string.Empty);
 
             Assert.IsNull(fleet);
-            Assert.IsEmpty(_planet.GetFleets());
+            Assert.IsEmpty(_planet.GetChildren<Fleet>());
         }
 
         [Test]
@@ -85,7 +86,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(sourceFleet, remainingShip.GetParent());
             CollectionAssert.AreEquivalent(
                 new[] { sourceFleet, createdFleet },
-                _planet.GetFleets()
+                _planet.GetChildren<Fleet>().ToList()
             );
         }
 
@@ -102,7 +103,10 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(createdFleet);
             Assert.AreSame(createdFleet, ship.GetParent());
             Assert.IsNull(sourceFleet.GetParent());
-            CollectionAssert.AreEqual(new[] { createdFleet }, _planet.GetFleets());
+            CollectionAssert.AreEqual(
+                new[] { createdFleet },
+                _planet.GetChildren<Fleet>().ToList()
+            );
         }
 
         [Test]
@@ -134,7 +138,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNull(createdFleet);
             Assert.AreSame(sourceFleet, ship.GetParent());
-            CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetFleets());
+            CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetChildren<Fleet>().ToList());
         }
 
         [Test]
@@ -150,7 +154,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNull(createdFleet);
             Assert.AreSame(sourceFleet, ship.GetParent());
-            CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetFleets());
+            CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetChildren<Fleet>().ToList());
         }
 
         [Test]

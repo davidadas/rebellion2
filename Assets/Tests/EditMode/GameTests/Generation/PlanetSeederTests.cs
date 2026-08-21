@@ -123,12 +123,12 @@ namespace Rebellion.Tests.Generation
                 IsColonized = true,
                 OwnerInstanceID = "FNEMP1",
             };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -138,13 +138,7 @@ namespace Rebellion.Tests.Generation
             };
             classification.StartingPlanetLoyalty[planet] = 100;
 
-            Configure(
-                new[] { planetSector },
-                classification,
-                CreateRules(),
-                _factionIds,
-                new StubRNG()
-            );
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, new StubRNG());
 
             Assert.AreEqual(0, planet.PopularSupport["FNALL1"]);
             Assert.AreEqual(100, planet.PopularSupport["FNEMP1"]);
@@ -160,23 +154,17 @@ namespace Rebellion.Tests.Generation
                 IsColonized = true,
                 OwnerInstanceID = "FNALL1",
             };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.OuterRim,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.StartingPlanetLoyalty[planet] = 100;
 
-            Configure(
-                new[] { planetSector },
-                classification,
-                CreateRules(),
-                _factionIds,
-                new StubRNG()
-            );
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, new StubRNG());
 
             Assert.AreEqual(100, planet.PopularSupport["FNALL1"]);
             Assert.AreEqual(0, planet.PopularSupport["FNEMP1"]);
@@ -191,22 +179,16 @@ namespace Rebellion.Tests.Generation
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
             };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.OuterRim,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-            Configure(
-                new[] { planetSector },
-                classification,
-                CreateRules(),
-                _factionIds,
-                new StubRNG()
-            );
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, new StubRNG());
 
             Assert.AreEqual(100, planet.PopularSupport["FNALL1"]);
             Assert.AreEqual(0, planet.PopularSupport["FNEMP1"]);
@@ -216,22 +198,16 @@ namespace Rebellion.Tests.Generation
         public void Seed_UnownedRim_Gets50_50()
         {
             Planet planet = new Planet { InstanceID = "RIM_PLANET", IsColonized = true };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.OuterRim,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-            Configure(
-                new[] { planetSector },
-                classification,
-                CreateRules(),
-                _factionIds,
-                new StubRNG()
-            );
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, new StubRNG());
 
             Assert.AreEqual(50, planet.PopularSupport["FNALL1"]);
             Assert.AreEqual(50, planet.PopularSupport["FNEMP1"]);
@@ -242,12 +218,12 @@ namespace Rebellion.Tests.Generation
         {
             // StubRNG returns min (0), so support = 60 + 0 = 60
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -256,13 +232,7 @@ namespace Rebellion.Tests.Generation
                 Strength = BucketStrength.Strong,
             };
 
-            Configure(
-                new[] { planetSector },
-                classification,
-                CreateRules(),
-                _factionIds,
-                new StubRNG()
-            );
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, new StubRNG());
 
             Assert.AreEqual(60, planet.PopularSupport["FNALL1"]);
             Assert.AreEqual(40, planet.PopularSupport["FNEMP1"]);
@@ -274,12 +244,12 @@ namespace Rebellion.Tests.Generation
             // StubRNG returns min (0), so support = 60 + 0 = 60 for Empire
             // Alliance gets remainder = 40
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -288,13 +258,7 @@ namespace Rebellion.Tests.Generation
                 Strength = BucketStrength.Strong,
             };
 
-            Configure(
-                new[] { planetSector },
-                classification,
-                CreateRules(),
-                _factionIds,
-                new StubRNG()
-            );
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, new StubRNG());
 
             Assert.AreEqual(40, planet.PopularSupport["FNALL1"]);
             Assert.AreEqual(60, planet.PopularSupport["FNEMP1"]);
@@ -305,12 +269,12 @@ namespace Rebellion.Tests.Generation
         {
             // StubRNG returns min (0), so support = 41 + 0 = 41
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -319,13 +283,7 @@ namespace Rebellion.Tests.Generation
                 Strength = BucketStrength.Neutral,
             };
 
-            Configure(
-                new[] { planetSector },
-                classification,
-                CreateRules(),
-                _factionIds,
-                new StubRNG()
-            );
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, new StubRNG());
 
             Assert.AreEqual(41, planet.PopularSupport["FNALL1"]);
             Assert.AreEqual(59, planet.PopularSupport["FNEMP1"]);
@@ -335,12 +293,12 @@ namespace Rebellion.Tests.Generation
         public void Seed_CorePlanet_SetsEnergyInRange()
         {
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -349,13 +307,7 @@ namespace Rebellion.Tests.Generation
                 Strength = BucketStrength.Neutral,
             };
 
-            Configure(
-                new[] { planetSector },
-                classification,
-                CreateRules(),
-                _factionIds,
-                new StubRNG()
-            );
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, new StubRNG());
 
             // Core energy: base=10, random1=4, StubRNG returns min -> 10 + 0 = 10
             Assert.AreEqual(10, planet.EnergyCapacity);
@@ -377,12 +329,12 @@ namespace Rebellion.Tests.Generation
             );
 
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -391,7 +343,7 @@ namespace Rebellion.Tests.Generation
                 Strength = BucketStrength.Neutral,
             };
 
-            Configure(new[] { planetSector }, classification, CreateRules(), _factionIds, rng);
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, rng);
 
             Assert.AreEqual(10, planet.EnergyCapacity);
             Assert.LessOrEqual(planet.NumRawResourceNodes, planet.EnergyCapacity);
@@ -401,12 +353,12 @@ namespace Rebellion.Tests.Generation
         public void Seed_CorePlanet_IsAlwaysColonized()
         {
             Planet planet = new Planet { InstanceID = "CORE1", IsColonized = false };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.BucketMap[planet] = new PlanetBucket
@@ -415,13 +367,7 @@ namespace Rebellion.Tests.Generation
                 Strength = BucketStrength.Neutral,
             };
 
-            Configure(
-                new[] { planetSector },
-                classification,
-                CreateRules(),
-                _factionIds,
-                new StubRNG()
-            );
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, new StubRNG());
 
             Assert.IsTrue(planet.IsColonized);
         }
@@ -431,22 +377,16 @@ namespace Rebellion.Tests.Generation
         {
             // StubRNG returns min (0) for NextInt, so roll=0 < 31 -> colonized
             Planet planet = new Planet { InstanceID = "RIM1", IsColonized = false };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.OuterRim,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-            Configure(
-                new[] { planetSector },
-                classification,
-                CreateRules(),
-                _factionIds,
-                new StubRNG()
-            );
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, new StubRNG());
 
             Assert.IsTrue(planet.IsColonized);
         }
@@ -466,16 +406,16 @@ namespace Rebellion.Tests.Generation
             );
 
             Planet planet = new Planet { InstanceID = "RIM1", IsColonized = false };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.OuterRim,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-            Configure(new[] { planetSector }, classification, CreateRules(), _factionIds, rng);
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, rng);
 
             Assert.IsFalse(planet.IsColonized);
         }
@@ -486,16 +426,16 @@ namespace Rebellion.Tests.Generation
             SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 0, 50 });
 
             Planet planet = new Planet { InstanceID = "RIM1", IsColonized = false };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.OuterRim,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-            Configure(new[] { planetSector }, classification, CreateRules(), _factionIds, rng);
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, rng);
 
             Assert.IsEmpty(planet.PopularSupport);
             Assert.IsFalse(planet.IsPopulated());
@@ -508,16 +448,16 @@ namespace Rebellion.Tests.Generation
             SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 0, 99 });
 
             Planet planet = new Planet { InstanceID = "RIM1", IsColonized = true };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.OuterRim,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-            Configure(new[] { planetSector }, classification, CreateRules(), _factionIds, rng);
+            Configure(new[] { sector }, classification, CreateRules(), _factionIds, rng);
 
             Assert.IsTrue(planet.IsColonized);
         }
@@ -526,12 +466,12 @@ namespace Rebellion.Tests.Generation
         public void Seed_AbundantAvailability_SelectsMatchingResourceProfile()
         {
             Planet planet = new Planet { InstanceID = "p1" };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GameGenerationConfig config = new GameGenerationConfig
             {
@@ -573,7 +513,7 @@ namespace Rebellion.Tests.Generation
 
             GenerationContext ctx = new GenerationContext
             {
-                Sectors = new[] { planetSector },
+                Sectors = new[] { sector },
                 Classification = new GalaxyClassificationResult(),
                 Config = config,
                 Summary = new GameSummary
@@ -592,12 +532,12 @@ namespace Rebellion.Tests.Generation
         public void Seed_AvailabilityHasNoProfile_FallsBackToNormalProfile()
         {
             Planet planet = new Planet { InstanceID = "p1" };
-            PlanetSector planetSector = new PlanetSector
+            PlanetSector sector = new PlanetSector
             {
                 InstanceID = "sector1",
                 SectorType = PlanetSectorType.Core,
             };
-            planetSector.Planets.Add(planet);
+            sector.AddChild(planet);
 
             GameGenerationConfig config = new GameGenerationConfig
             {
@@ -626,7 +566,7 @@ namespace Rebellion.Tests.Generation
 
             GenerationContext ctx = new GenerationContext
             {
-                Sectors = new[] { planetSector },
+                Sectors = new[] { sector },
                 Classification = new GalaxyClassificationResult(),
                 Config = config,
                 Summary = new GameSummary
@@ -642,7 +582,7 @@ namespace Rebellion.Tests.Generation
         }
 
         private static void Configure(
-            PlanetSector[] planetSectors,
+            PlanetSector[] sectors,
             GalaxyClassificationResult classification,
             GameGenerationConfig config,
             string[] factionIds,
@@ -651,7 +591,7 @@ namespace Rebellion.Tests.Generation
         {
             GenerationContext ctx = new GenerationContext
             {
-                Sectors = planetSectors,
+                Sectors = sectors,
                 Classification = classification,
                 Config = config,
                 Summary = new GameSummary { StartingFactionIDs = factionIds },

@@ -49,7 +49,7 @@ namespace Rebellion.Generation
             {
                 bool isCore = sector.SectorType == PlanetSectorType.Core;
 
-                foreach (Planet planet in sector.Planets)
+                foreach (Planet planet in sector.GetChildren<Planet>())
                 {
                     RollPlanetResources(planet, isCore, res, rng);
                     ResolveColonization(planet, isCore, res.RimColonizationPct, rng);
