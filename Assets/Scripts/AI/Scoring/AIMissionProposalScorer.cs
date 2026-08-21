@@ -37,7 +37,7 @@ namespace Rebellion.AI.Scoring
                 MissionTypeIDs.Recruitment => ScoreRecruitment(context, missionProposal),
                 MissionTypeIDs.Diplomacy => ScoreDiplomacy(context, missionProposal),
                 MissionTypeIDs.Research => ScoreResearch(missionProposal),
-                MissionTypeIDs.Sabotage => ScorePrimaryRating(missionProposal),
+                MissionTypeIDs.Sabotage => ScoreSabotage(missionProposal),
                 MissionTypeIDs.Abduction => ScoreTargetedOfficerMission(missionProposal),
                 MissionTypeIDs.Assassination => ScoreTargetedOfficerMission(missionProposal),
                 MissionTypeIDs.Espionage => ScorePrimaryRating(missionProposal),
@@ -104,6 +104,18 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
+        /// Returns the sabotage proposal score from averaged espionage and combat ratings.
+        /// </summary>
+        /// <param name="proposal">The sabotage proposal to score.</param>
+        /// <returns>The participant's original-game sabotage score.</returns>
+        private double ScoreSabotage(AIMissionProposal proposal)
+        {
+            int espionage = GetParticipantRating(proposal.Participant, OfficerRating.Espionage);
+            int combat = GetParticipantRating(proposal.Participant, OfficerRating.Combat);
+            return (espionage + combat) / 2;
+        }
+
+        /// <summary>
         /// Returns the targeted-officer proposal score.
         /// </summary>
         /// <param name="proposal">The mission proposal to score.</param>
@@ -129,7 +141,6 @@ namespace Rebellion.AI.Scoring
                 MissionTypeIDs.Abduction => OfficerRating.Combat,
                 MissionTypeIDs.Assassination => OfficerRating.Combat,
                 MissionTypeIDs.Espionage => OfficerRating.Espionage,
-                MissionTypeIDs.Sabotage => OfficerRating.Combat,
                 MissionTypeIDs.InciteUprising => OfficerRating.Leadership,
                 MissionTypeIDs.Rescue => OfficerRating.Combat,
                 MissionTypeIDs.Research => OfficerRating.None,

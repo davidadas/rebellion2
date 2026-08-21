@@ -176,8 +176,11 @@ public class StubMission : Mission
             OfficerRating.Diplomacy
         ) { }
 
-    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider) =>
-        new List<GameResult>();
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider,
+        IMissionParticipant successfulParticipant
+    ) => new List<GameResult>();
 
     public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
 }

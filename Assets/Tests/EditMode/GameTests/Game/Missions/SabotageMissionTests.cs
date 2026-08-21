@@ -391,6 +391,120 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void RollParticipantSuccess_UsesAverageOfEspionageAndCombat()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = EntityFactory.CreateRegiment("target", "rebels");
+            target.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(target, enemyPlanet);
+            officer.SetBaseRating(OfficerRating.Espionage, 20);
+            officer.SetBaseRating(OfficerRating.Combat, 80);
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
+            {
+                { 0, 0 },
+                { 50, 100 },
+                { 60, 0 },
+            };
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            bool succeeded = mission.RollParticipantSuccess(officer, new FixedRNG(0.5), game);
+
+            Assert.IsTrue(succeeded);
+        }
+
+        [Test]
+        public void RollParticipantSuccess_PlanetDestroyingShipUsesAveragedScore()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            CapitalShip deathStar = new CapitalShip
+            {
+                InstanceID = "death-star",
+                CanDestroyPlanets = true,
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(deathStar, fleet);
+            officer.SetBaseRating(OfficerRating.Espionage, 20);
+            officer.SetBaseRating(OfficerRating.Combat, 80);
+            game.Config.ProbabilityTables.Mission.DeathStarSabotage = new Dictionary<int, int>
+            {
+                { 0, 0 },
+                { 50, 100 },
+                { 60, 0 },
+            };
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                deathStar
+            );
+
+            bool succeeded = mission.RollParticipantSuccess(officer, new FixedRNG(0.5), game);
+
+            Assert.IsTrue(succeeded);
+        }
+
+        [Test]
+        public void Execute_SuccessfulOfficer_ImprovesEspionageAndCombatRatings()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = EntityFactory.CreateRegiment("target", "rebels");
+            target.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(target, enemyPlanet);
+            officer.SetBaseRating(OfficerRating.Espionage, 20);
+            officer.SetBaseRating(OfficerRating.Combat, 80);
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
+            {
+                { 50, 100 },
+            };
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.5));
+
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreEqual(21, officer.GetBaseRating(OfficerRating.Espionage));
+            Assert.AreEqual(81, officer.GetBaseRating(OfficerRating.Combat));
+        }
+
+        [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
             Mission mission = new SabotageMission

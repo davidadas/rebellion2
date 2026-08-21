@@ -147,16 +147,16 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_IndependentParticipantRolls_TrainsOnlySuccessfulParticipant()
+        public void Execute_ClosestRankedStudentAttemptsFirst_TrainsOnlySuccessfulParticipant()
         {
-            Officer secondStudent = CreateJedi("student2", 30);
+            Officer secondStudent = CreateJedi("student2", 100);
             JediTrainingMission mission = CreateMission(
                 new List<IMissionParticipant> { _trainer, _student, secondStudent }
             );
 
             List<GameResult> results = mission.Execute(
                 _game,
-                new SequenceRNG(intValues: new[] { 0, 0, 20, 99 })
+                new SequenceRNG(intValues: new[] { 0, 99, 0, 20 })
             );
 
             ForceTrainingResult training = results.OfType<ForceTrainingResult>().Single();

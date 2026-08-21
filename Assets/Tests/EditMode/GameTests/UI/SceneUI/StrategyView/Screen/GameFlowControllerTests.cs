@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using UnityEngine;
@@ -94,6 +96,75 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
 
             Assert.AreEqual("alliance-defeat", path);
+        }
+
+        [Test]
+        public void GetHeadquartersDestroyedCutscenePath_HeadquartersLost_ReturnsDefenderMovie()
+        {
+            Faction defender = new Faction { InstanceID = "defender" };
+            FactionThemeLibrary themes = new FactionThemeLibrary(
+                new FactionThemes
+                {
+                    new FactionTheme { FactionInstanceID = "DEFAULT" },
+                    new FactionTheme
+                    {
+                        FactionInstanceID = defender.InstanceID,
+                        HeadquartersDestroyedCutscenePath = "defender-headquarters-destroyed",
+                    },
+                }
+            );
+
+            string path = GameFlowController.GetHeadquartersDestroyedCutscenePath(
+                themes,
+                new HeadquartersCapturedResult { Defender = defender }
+            );
+
+            Assert.AreEqual("defender-headquarters-destroyed", path);
+        }
+
+        [Test]
+        public void GetHeadquartersDestroyedCutscenePath_MissingDefenderTheme_ReturnsNull()
+        {
+            FactionThemeLibrary themes = CreateDefaultOnlyThemeLibrary();
+
+            string path = GameFlowController.GetHeadquartersDestroyedCutscenePath(
+                themes,
+                new HeadquartersCapturedResult
+                {
+                    Defender = new Faction { InstanceID = "missing-faction" },
+                }
+            );
+
+            Assert.IsNull(path);
+        }
+
+        [Test]
+        public void HandleVictoryDeclared_MissingPlayerTheme_StillSchedulesCampaignFinish()
+        {
+            GameConfig config = new GameConfig();
+            config.Smuggling.LossPercentByMinimumSupport[0] = 0;
+            GameRoot game = new GameRoot(config);
+            Faction player = new Faction { InstanceID = "missing-player-theme" };
+            Faction opponent = new Faction { InstanceID = "opponent" };
+            game.GetFactions().Add(player);
+            game.GetFactions().Add(opponent);
+            game.Summary.PlayerFactionID = player.InstanceID;
+            GameManager manager = new GameManager(game, TestGameData.Create(config));
+            SetField("activeGameManager", manager);
+            SetField("themeLibrary", CreateDefaultOnlyThemeLibrary());
+            SetField("cutscenePlaying", true);
+
+            Assert.DoesNotThrow(() =>
+                InvokePrivate(
+                    "HandleVictoryDeclared",
+                    new VictoryResult { Winner = player, Loser = opponent }
+                )
+            );
+
+            Assert.AreEqual(TickSpeed.Paused, game.GetGameSpeed());
+            Assert.IsTrue(GetField<bool>("campaignEnding"));
+            Assert.IsTrue(GetField<bool>("finishCampaignAfterCutscenes"));
+            Assert.IsEmpty(GetField<Queue<string>>("cutsceneQueue"));
         }
 
         [Test]
@@ -207,6 +278,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                     BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic
                 )
                 .Invoke(_controller, arguments);
+        }
+
+        private static FactionThemeLibrary CreateDefaultOnlyThemeLibrary()
+        {
+            return new FactionThemeLibrary(
+                new FactionThemes { new FactionTheme { FactionInstanceID = "DEFAULT" } }
+            );
         }
     }
 }

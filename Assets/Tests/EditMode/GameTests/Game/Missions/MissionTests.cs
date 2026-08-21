@@ -121,7 +121,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void GetAbortReason_DecoyParticipantRemoved_ReturnsFailure()
+        public void GetAbortReason_DecoyParticipantRemoved_ReturnsNull()
         {
             (
                 GameRoot game,
@@ -147,11 +147,7 @@ namespace Rebellion.Tests.Game.Missions
 
             mission.RemoveChild(decoy);
 
-            Assert.AreEqual(
-                MissionCompletionReason.Failure,
-                mission.GetAbortReason(game),
-                "Mission should be canceled when any participant is removed"
-            );
+            Assert.IsNull(mission.GetAbortReason(game));
         }
 
         [Test]
@@ -217,7 +213,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessfulMission_ImprovesMissionRating()
+        public void Execute_SuccessfulMission_ImprovesOnlySuccessfulParticipantRating()
         {
             (
                 GameRoot game,
@@ -228,9 +224,12 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             int ratingBefore = officer.GetBaseRating(OfficerRating.Diplomacy);
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            int decoyRatingBefore = decoy.GetBaseRating(OfficerRating.Diplomacy);
 
             Mission mission = new StubMission("empire", enemyPlanet.InstanceID);
             mission.AddChild(officer);
+            mission.AddDecoyParticipant(decoy);
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
@@ -242,6 +241,11 @@ namespace Rebellion.Tests.Game.Missions
                 ratingBefore + 1,
                 officer.GetBaseRating(OfficerRating.Diplomacy),
                 "Officer mission rating should improve by 1 on mission success"
+            );
+            Assert.AreEqual(
+                decoyRatingBefore,
+                decoy.GetBaseRating(OfficerRating.Diplomacy),
+                "Decoy rating should not improve from the objective roll"
             );
         }
 
@@ -278,6 +282,139 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Failed,
                 completed.Outcome,
                 "Execute should only return Success or Failed, never Foiled"
+            );
+        }
+
+        [Test]
+        public void Execute_OfficerAttemptFails_SpecialForcesCanSucceed()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+            officer.SetBaseRating(OfficerRating.Espionage, 0);
+            officer.SetBaseRating(OfficerRating.Combat, 0);
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "empire",
+            };
+            specialForces.SetBaseRating(OfficerRating.Espionage, 100);
+            specialForces.SetBaseRating(OfficerRating.Combat, 100);
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
+            {
+                { 0, 0 },
+                { 100, 100 },
+            };
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer, specialForces },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.5));
+
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreSame(
+                specialForces,
+                results.OfType<GameObjectSabotagedResult>().Single().Saboteur
+            );
+        }
+
+        [Test]
+        public void Execute_MultipleOfficers_TriesStrongerOfficerAfterWeakestFails()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer weakOfficer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+            weakOfficer.SetBaseRating(OfficerRating.Espionage, 0);
+            weakOfficer.SetBaseRating(OfficerRating.Combat, 0);
+            Officer strongOfficer = EntityFactory.CreateOfficer("strong-officer", "empire");
+            strongOfficer.SetBaseRating(OfficerRating.Espionage, 100);
+            strongOfficer.SetBaseRating(OfficerRating.Combat, 100);
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
+            {
+                { 0, 0 },
+                { 100, 100 },
+            };
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { strongOfficer, weakOfficer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0));
+
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreSame(
+                strongOfficer,
+                results.OfType<GameObjectSabotagedResult>().Single().Saboteur
+            );
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(target.InstanceID));
+        }
+
+        [Test]
+        public void Execute_OfficersOnSameProbabilityPlateau_PreservesSelectionOrder()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer lowScoreOfficer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+            lowScoreOfficer.SetBaseRating(OfficerRating.Espionage, 20);
+            lowScoreOfficer.SetBaseRating(OfficerRating.Combat, 20);
+            Officer highScoreOfficer = EntityFactory.CreateOfficer("high-score", "empire");
+            highScoreOfficer.SetBaseRating(OfficerRating.Espionage, 30);
+            highScoreOfficer.SetBaseRating(OfficerRating.Combat, 30);
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
+            {
+                { 0, 50 },
+                { 100, 100 },
+            };
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { highScoreOfficer, lowScoreOfficer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0));
+
+            Assert.AreSame(
+                highScoreOfficer,
+                results.OfType<GameObjectSabotagedResult>().Single().Saboteur
             );
         }
 
@@ -336,25 +473,6 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             Assert.IsFalse(mission.CanAcceptChild(building));
-        }
-
-        [Test]
-        public void Serialize_RoundTrip_RestoresDecoyParticipantRating()
-        {
-            Mission mission = new SabotageMission
-            {
-                InstanceID = "MISSION1",
-                OwnerInstanceID = "FACTION1",
-                ConfigKey = MissionTypeIDs.Sabotage,
-                DisplayName = MissionTypeIDs.Sabotage,
-                LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Combat,
-            };
-
-            string xml = SerializationHelper.Serialize(mission);
-            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
-
-            Assert.AreEqual(OfficerRating.Espionage, deserialized.DecoyParticipantRating);
         }
 
         [Test]

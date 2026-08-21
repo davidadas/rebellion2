@@ -117,5 +117,30 @@ namespace Rebellion.Tests.AI.Scoring
 
             Assert.Greater(weakTargetScore, strongTargetScore);
         }
+
+        [Test]
+        public void Score_SabotageProposal_ReturnsAveragedEspionageAndCombat()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet enemyPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "enemy",
+                rebels.InstanceID
+            );
+            Officer actor = EntityFactory.CreateOfficer("actor", empire.InstanceID);
+            actor.Ratings[OfficerRating.Espionage] = 20;
+            actor.Ratings[OfficerRating.Combat] = 80;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double score = scorer.Score(
+                context,
+                new AIMissionProposal(actor, MissionTypeIDs.Sabotage, enemyPlanet)
+            );
+
+            Assert.AreEqual(50, score);
+        }
     }
 }

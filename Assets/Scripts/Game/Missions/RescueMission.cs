@@ -45,7 +45,6 @@ namespace Rebellion.Game.Missions
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Combat;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -73,7 +72,6 @@ namespace Rebellion.Game.Missions
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -150,8 +148,13 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider (unused for rescue).</param>
+        /// <param name="successfulParticipant">The participant whose rescue attempt succeeded.</param>
         /// <returns>An OfficerCaptureStateResult and an OfficerRescuedResult, or an empty list if the target was already removed.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        protected override List<GameResult> OnSuccess(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IMissionParticipant successfulParticipant
+        )
         {
             Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             if (target == null)

@@ -90,6 +90,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void Render_SelectionArtworkAndDropdown_UseOriginalSourceGeometry()
+        {
+            _view.Render(
+                CreateRenderData(
+                    new[] { new StrategyDropdownItemRenderData(_texture, "First", Color.white) },
+                    true,
+                    true
+                )
+            );
+
+            RawImage selectedImage = FindComponent<RawImage>("SelectedItemImage");
+            RectTransform dropdown = FindObject("Dropdown").transform as RectTransform;
+            ScrollAreaView scrollArea = _viewObject.GetComponentInChildren<ScrollAreaView>(true);
+            StrategyDropdownItemView row = _viewObject
+                .GetComponentsInChildren<StrategyDropdownItemView>(true)
+                .Single(item => item.name == "DropdownItemRow0");
+            RawImage rowImage = row.GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "ItemImage");
+
+            Assert.AreEqual(
+                new RectInt(42, 28, 122, 50),
+                UILayout.GetSourceRect(selectedImage.rectTransform)
+            );
+            Assert.AreEqual(new RectInt(6, 85, 195, 130), UILayout.GetSourceRect(dropdown));
+            Assert.AreEqual(
+                new RectInt(2, 2, 191, 126),
+                UILayout.GetSourceRect(scrollArea.transform as RectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(0, 0, 195, 63),
+                UILayout.GetSourceRect(row.transform as RectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(36, 6, 122, 50),
+                UILayout.GetSourceRect(rowImage.rectTransform)
+            );
+        }
+
+        [Test]
         public void Render_EmptySelectionAfterOpenDropdown_HidesSelectionAndCachedRows()
         {
             _view.Render(

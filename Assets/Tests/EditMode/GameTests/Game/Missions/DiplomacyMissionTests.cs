@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Game.Missions
                 "Mission should not emit ownership change; PlanetaryControlSystem handles transfers"
             );
             Assert.AreEqual(
-                62,
+                61,
                 planet.GetPopularSupport("empire"),
                 "Support should still increment"
             );
@@ -72,7 +72,7 @@ namespace Rebellion.Tests.Game.Missions
             ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
             Assert.AreEqual(
-                63,
+                62,
                 planet.GetPopularSupport("empire"),
                 "Support should still increment"
             );
@@ -97,13 +97,12 @@ namespace Rebellion.Tests.Game.Missions
             {
                 { 0, 70 },
             };
-            game.Config.SupportShift.DiplomacyCompletionSupportBonus = 1;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
 
             ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
-            Assert.AreEqual(52, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(51, planet.GetPopularSupport("empire"));
         }
 
         [Test]
@@ -111,13 +110,12 @@ namespace Rebellion.Tests.Game.Missions
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             Mission mission = CreateAndAttachMission(game, planet);
-            game.Config.SupportShift.DiplomacyCompletionSupportBonus = 3;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 5;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 10;
 
             ExecuteDiplomacySuccess(mission, game, new SequenceRNG(new[] { 7 }));
 
-            Assert.AreEqual(65, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(62, planet.GetPopularSupport("empire"));
         }
 
         [Test]
@@ -125,28 +123,29 @@ namespace Rebellion.Tests.Game.Missions
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
             Mission mission = CreateAndAttachMission(game, planet);
-            game.Config.SupportShift.DiplomacyCompletionSupportBonus = 3;
             game.Config.SupportShift.DiplomacyNeutralPlanetSupportBase = 2;
             game.Config.SupportShift.DiplomacyNeutralPlanetSupportRange = 4;
 
             ExecuteDiplomacySuccess(mission, game, new SequenceRNG(new[] { 4 }));
 
-            Assert.AreEqual(59, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(56, planet.GetPopularSupport("empire"));
         }
 
         [Test]
-        public void Execute_InvertSupportShift_SubtractsCompletionBonus()
+        public void Execute_CoreSectorWeakSupport_AppliesConfiguredDivisor()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
-            game.GetFactionByOwnerInstanceID("empire").Settings.InvertSupportShift = true;
+            planet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            game.GetFactionByOwnerInstanceID("empire").Settings.SupportResistance =
+                SupportChange.Increase;
             Mission mission = CreateAndAttachMission(game, planet);
-            game.Config.SupportShift.DiplomacyCompletionSupportBonus = 1;
-            game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
+            game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 6;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
 
             ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
-            Assert.AreEqual(50, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(53, planet.GetPopularSupport("empire"));
         }
 
         [Test]
@@ -427,7 +426,11 @@ namespace Rebellion.Tests.Game.Missions
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
+            PlanetSector planetSector = new PlanetSector
+            {
+                InstanceID = "sector1",
+                SectorType = PlanetSectorType.OuterRim,
+            };
             game.AttachNode(planetSector, game.Galaxy);
 
             planet = new Planet

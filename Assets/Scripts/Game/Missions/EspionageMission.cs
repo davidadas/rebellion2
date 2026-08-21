@@ -4,7 +4,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -40,7 +39,6 @@ namespace Rebellion.Game.Missions
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Espionage;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -63,10 +61,7 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Espionage
-            )
-        {
-            DecoyParticipantRating = OfficerRating.Espionage;
-        }
+            ) { }
 
         /// <summary>
         /// Returns a new EspionageMission if the target is a visited planet, or null.
@@ -100,64 +95,24 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Executes the espionage attempt and snapshots the target planet on success.
+        /// Improves the successful officer's espionage rating when operating against another faction.
         /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider for success rolls.</param>
-        /// <returns>All results produced by the outcome, with a MissionCompletedResult appended.</returns>
-        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        /// <param name="participant">The participant whose espionage attempt succeeded.</param>
+        internal override void ImproveMissionParticipantRating(IMissionParticipant participant)
         {
-            List<GameResult> results = new List<GameResult>();
-            List<IMissionParticipant> successfulParticipants = new List<IMissionParticipant>();
-
-            foreach (IMissionParticipant participant in GetMainParticipants())
-            {
-                double successThreshold = GetAgentProbability(participant, game);
-                double rolledValue = provider.NextDouble() * 100;
-                if (IsSuccessfulProbabilityRoll(rolledValue, successThreshold))
-                    successfulParticipants.Add(participant);
-            }
-
-            MissionOutcome outcome;
-            if (successfulParticipants.Count > 0 && IsMissionSatisfied(game))
-            {
-                outcome = MissionOutcome.Success;
-                results.AddRange(OnSuccess(game, provider));
-                ImproveSuccessfulParticipants(successfulParticipants);
-            }
-            else
-            {
-                outcome = MissionOutcome.Failed;
-                results.AddRange(OnFailed(game, provider));
-            }
-
-            results.Add(BuildCompletedResult(outcome, game));
-            return results;
-        }
-
-        /// <summary>
-        /// Improves ratings for participants that succeeded in the espionage attempt.
-        /// </summary>
-        /// <param name="participants">Participants whose success rolls passed.</param>
-        private void ImproveSuccessfulParticipants(List<IMissionParticipant> participants)
-        {
-            if (!CanImproveRatingsAgainstTarget())
-                return;
-
-            foreach (IMissionParticipant participant in participants)
-            {
-                if (participant is Officer officer && participant.CanImproveMissionRating)
-                    officer.IncrementBaseRating(ParticipantRating);
-            }
+            if (CanImproveRatingsAgainstTarget())
+                base.ImproveMissionParticipantRating(participant);
         }
 
         /// <summary>
         /// Returns whether this mission target allows participant rating improvement.
         /// </summary>
-        /// <returns>True when the target planet is not owned by the mission faction.</returns>
+        /// <returns>True when the target planet is owned by another faction.</returns>
         private bool CanImproveRatingsAgainstTarget()
         {
-            return GetParent() is Planet planet && planet.GetOwnerInstanceID() != OwnerInstanceID;
+            return GetParent() is Planet planet
+                && !string.IsNullOrEmpty(planet.GetOwnerInstanceID())
+                && planet.GetOwnerInstanceID() != OwnerInstanceID;
         }
 
         /// <summary>
@@ -165,8 +120,13 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider used to select bonus planets.</param>
+        /// <param name="successfulParticipant">The participant whose espionage attempt succeeded.</param>
         /// <returns>A result identifying any additional sectors revealed by the mission.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        protected override List<GameResult> OnSuccess(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IMissionParticipant successfulParticipant
+        )
         {
             Planet planet = GetParent() as Planet;
             Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
@@ -179,6 +139,9 @@ namespace Rebellion.Game.Missions
             recorder.RecordEspionageSnapshot(faction, planet, sector, game.CurrentTick);
 
             List<PlanetSector> additionalSectors = new List<PlanetSector>();
+            if (!IsOpposingFactionPlanet(game, planet))
+                return new List<GameResult>();
+
             foreach (Planet bonusPlanet in SelectBonusPlanets(game, provider, planet, sector))
             {
                 PlanetSector bonusSector = bonusPlanet.GetParentOfType<PlanetSector>();
@@ -211,6 +174,20 @@ namespace Rebellion.Game.Missions
                     AdditionalSectors = additionalSectors,
                 },
             };
+        }
+
+        /// <summary>
+        /// Returns whether the target belongs to a faction other than the mission owner.
+        /// Neutral and owner-controlled planets still produce their direct intelligence snapshot,
+        /// but do not grant the original game's additional-system bonus.
+        /// </summary>
+        private bool IsOpposingFactionPlanet(GameRoot game, Planet targetPlanet)
+        {
+            if (string.IsNullOrEmpty(targetPlanet?.OwnerInstanceID))
+                return false;
+
+            return targetPlanet.OwnerInstanceID != OwnerInstanceID
+                && game.GetFactionByOwnerInstanceID(targetPlanet.OwnerInstanceID) != null;
         }
 
         /// <summary>

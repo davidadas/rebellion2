@@ -60,6 +60,17 @@ namespace Rebellion.Tests.Game.Missions
             _game.AttachNode(
                 new Building
                 {
+                    InstanceID = "training",
+                    OwnerInstanceID = "empire",
+                    ProductionType = ManufacturingType.Troop,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _planet
+            );
+            _game.AttachNode(
+                new Building
+                {
                     InstanceID = "construction",
                     OwnerInstanceID = "empire",
                     ProductionType = ManufacturingType.Building,
@@ -177,7 +188,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_WithoutResearchFacility_ReportsNoResearchFacilities()
+        public void Execute_AfterResearchFacilityDestroyed_ContinuesResearch()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
             Mission mission = CreateMission(officer);
@@ -187,11 +198,35 @@ namespace Rebellion.Tests.Game.Missions
             List<GameResult> results = mission.Execute(_game, new FixedRNG(0.0));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
-            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
-            Assert.AreEqual(
-                MissionCompletionReason.NoResearchFacilities,
-                completed.CompletionReason
+            Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
+            Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
+        }
+
+        [TestCase(ResearchDiscipline.ShipDesign, ManufacturingType.Ship)]
+        [TestCase(ResearchDiscipline.TroopTraining, ManufacturingType.Troop)]
+        [TestCase(ResearchDiscipline.FacilityDesign, ManufacturingType.Building)]
+        public void TryCreate_WithOnlyOtherFacilityTypes_ReturnsNull(
+            ResearchDiscipline discipline,
+            ManufacturingType requiredFacilityType
+        )
+        {
+            Officer officer = CreateOfficer(shipSkill: 100, troopSkill: 100, facilitySkill: 100);
+            Building requiredFacility = _planet
+                .GetProductionFacilities(requiredFacilityType)
+                .Single();
+            _game.DetachNode(requiredFacility);
+
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Research,
+                _game,
+                "empire",
+                _planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                discipline: discipline
             );
+
+            Assert.IsNull(mission);
         }
 
         [Test]
@@ -206,7 +241,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SecondParticipantOnlyCouldSucceed_DoesNotAwardCapacity()
+        public void Execute_SecondParticipantSucceeds_AwardsResearchCapacity()
         {
             Officer firstOfficer = CreateOfficer(shipSkill: 10);
             Officer secondOfficer = new Officer
@@ -230,12 +265,9 @@ namespace Rebellion.Tests.Game.Missions
 
             mission.Execute(_game, new FixedRNG(0.5));
 
-            Assert.AreEqual(
-                0,
-                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
-            );
+            Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
             Assert.AreEqual(10, firstOfficer.ShipResearch);
-            Assert.AreEqual(100, secondOfficer.ShipResearch);
+            Assert.AreEqual(101, secondOfficer.ShipResearch);
         }
 
         [Test]
