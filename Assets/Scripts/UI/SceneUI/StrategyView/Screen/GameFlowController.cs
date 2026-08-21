@@ -6,6 +6,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Generation;
+using Rebellion.Util.Common;
 using UnityEngine;
 
 /// <summary>
@@ -291,8 +292,15 @@ public sealed class GameFlowController : MonoBehaviour
         campaignEnding = true;
         activeGameManager.SetGameSpeed(TickSpeed.Paused);
 
-        FactionTheme theme = themeLibrary.GetTheme(playerFaction.InstanceID);
-        string cutscenePath = GetCampaignEndingCutscenePath(theme, playerFaction, result);
+        string cutscenePath = null;
+        if (
+            TryGetOptionalCutsceneTheme(
+                themeLibrary,
+                playerFaction.InstanceID,
+                out FactionTheme theme
+            )
+        )
+            cutscenePath = GetCampaignEndingCutscenePath(theme, playerFaction, result);
         if (!string.IsNullOrWhiteSpace(cutscenePath))
             cutsceneQueue.Enqueue(cutscenePath);
         finishCampaignAfterCutscenes = true;
@@ -310,7 +318,37 @@ public sealed class GameFlowController : MonoBehaviour
         if (themes == null || result?.Defender == null)
             return null;
 
-        return themes.GetTheme(result.Defender.InstanceID).HeadquartersDestroyedCutscenePath;
+        return TryGetOptionalCutsceneTheme(
+            themes,
+            result.Defender.InstanceID,
+            out FactionTheme theme
+        )
+            ? theme.HeadquartersDestroyedCutscenePath
+            : null;
+    }
+
+    /// <summary>
+    /// Resolves an optional cutscene theme without allowing missing presentation data to interrupt
+    /// headquarters or campaign-completion result handling.
+    /// </summary>
+    /// <param name="themes">The available faction themes.</param>
+    /// <param name="factionInstanceId">The faction whose optional movie is being selected.</param>
+    /// <param name="theme">The resolved faction theme, when configured.</param>
+    /// <returns>True when the faction has a configured theme; otherwise false.</returns>
+    private static bool TryGetOptionalCutsceneTheme(
+        FactionThemeLibrary themes,
+        string factionInstanceId,
+        out FactionTheme theme
+    )
+    {
+        if (themes?.TryGetTheme(factionInstanceId, out theme) == true)
+            return true;
+
+        theme = null;
+        GameLogger.Warning(
+            $"Skipping optional campaign cutscene because faction '{factionInstanceId}' has no theme."
+        );
+        return false;
     }
 
     /// <summary>

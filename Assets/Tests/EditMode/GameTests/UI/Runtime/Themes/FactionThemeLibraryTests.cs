@@ -40,6 +40,19 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
+        public void TryGetTheme_UnknownFaction_ReturnsFalse()
+        {
+            FactionThemeLibrary library = new FactionThemeLibrary(
+                new FactionThemes { new FactionTheme { FactionInstanceID = "DEFAULT" } }
+            );
+
+            bool found = library.TryGetTheme("missing-faction", out FactionTheme theme);
+
+            Assert.IsFalse(found);
+            Assert.IsNull(theme);
+        }
+
+        [Test]
         public void GetTheme_StrategyMusicContainsFactionTrackMappingsAndCadence()
         {
             StrategyMusicTheme allianceMusic = _library.GetTheme("FNALL1").StrategyMusic;

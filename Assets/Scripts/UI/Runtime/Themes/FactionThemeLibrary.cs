@@ -79,15 +79,30 @@ public sealed class FactionThemeLibrary
     /// </returns>
     public FactionTheme GetTheme(string factionInstanceId)
     {
-        if (string.IsNullOrEmpty(factionInstanceId))
-            return defaultTheme;
-
-        if (themesByFactionId.TryGetValue(factionInstanceId, out FactionTheme theme))
+        if (TryGetTheme(factionInstanceId, out FactionTheme theme))
             return theme;
 
         throw new KeyNotFoundException(
             $"No faction theme is configured for faction '{factionInstanceId}'."
         );
+    }
+
+    /// <summary>
+    /// Attempts to return the default theme for an empty identifier or the exact configured
+    /// faction theme without throwing when the faction has no theme.
+    /// </summary>
+    /// <param name="factionInstanceId">The faction InstanceID. May be null or empty.</param>
+    /// <param name="theme">The resolved theme, or null when no matching theme exists.</param>
+    /// <returns>True when a theme was resolved; otherwise false.</returns>
+    public bool TryGetTheme(string factionInstanceId, out FactionTheme theme)
+    {
+        if (string.IsNullOrEmpty(factionInstanceId))
+        {
+            theme = defaultTheme;
+            return true;
+        }
+
+        return themesByFactionId.TryGetValue(factionInstanceId, out theme);
     }
 
     /// <summary>
