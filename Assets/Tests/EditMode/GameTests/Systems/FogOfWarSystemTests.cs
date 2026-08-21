@@ -594,7 +594,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void BuildFactionView_SystemWithMultiplePlanets_MixedVisibilityHandledCorrectly()
+        public void BuildFactionView_SectorWithMultiplePlanets_MixedVisibilityHandledCorrectly()
         {
             MakeTatooineImperial();
             Officer vader = CreateOfficer("VADER", _empire);
