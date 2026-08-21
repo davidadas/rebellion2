@@ -238,7 +238,10 @@ namespace Rebellion.Game.Events
             IRandomNumberProvider provider = context.Random;
             ISceneNode subject = !string.IsNullOrWhiteSpace(SubjectBinding)
                 ? context.Activation?.GetBindingReference<ISceneNode>(SubjectBinding)
-                : game.GetSceneNodeByInstanceID<ISceneNode>(SubjectInstanceID);
+                : game.GetSceneNodeByInstanceID<ISceneNode>(
+                    SubjectInstanceID,
+                    includeDisabled: true
+                );
             ISceneNode relatedSubject = game.GetSceneNodeByInstanceID<ISceneNode>(
                 RelatedSubjectInstanceID
             );

@@ -699,7 +699,7 @@ namespace Rebellion.AI.Director
                 {
                     int divisor = _context.Game.Config.Combat.Bombardment.AttackerLeadershipDivisor;
                     Officer commander = fleet
-                        .GetChildren<Officer>()
+                        .GetOfficers()
                         .FirstOrDefault(officer => officer.CurrentRank == OfficerRank.General);
                     int personnel = commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
                     int personnelMultiplier = personnel / divisor + 1;

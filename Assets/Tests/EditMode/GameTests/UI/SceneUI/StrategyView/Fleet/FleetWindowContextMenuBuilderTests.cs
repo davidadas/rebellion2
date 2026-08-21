@@ -89,7 +89,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     "Target Military Facilities",
                     "Target Civilian Facilities",
                     "General Bombardment",
-                    "Destroy System",
+                    "Destroy Planet",
                 },
                 commands[2].SubmenuCommands.Select(command => command.Text)
             );

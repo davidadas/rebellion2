@@ -653,6 +653,30 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void SendMessage_InactiveSubject_EmitsResolvedResult()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            game.AttachNode(luke, rebelPlanet);
+            luke.IsEnabled = false;
+            SendMessageAction action = new SendMessageAction
+            {
+                SubjectInstanceID = luke.InstanceID,
+                Subject = "Rescue failed",
+                Body = "Luke remains captured.",
+            };
+
+            MessageDeliveryRequest result = action
+                .ExecuteRequests(game)
+                .OfType<MessageDeliveryRequest>()
+                .Single();
+
+            Assert.AreEqual("rebels", result.Recipient.InstanceID);
+            Assert.AreSame(luke, result.SubjectNode);
+            Assert.AreSame(rebelPlanet, result.Location);
+        }
+
+        [Test]
         public void SendMessage_ConditionalBodies_ComposesFromOfficerState()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);

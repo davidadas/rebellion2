@@ -209,16 +209,18 @@ namespace Rebellion.Game.Galaxy
             if (string.IsNullOrEmpty(OwnerInstanceID))
                 return false;
 
-            bool hasHostile = _fleets.Any(f =>
-                f.Movement == null
-                && f.OwnerInstanceID != OwnerInstanceID
-                && f.HasOperationalCapitalShips()
-            );
-            bool hasDefender = _fleets.Any(f =>
-                f.Movement == null
-                && f.OwnerInstanceID == OwnerInstanceID
-                && f.HasOperationalCapitalShips()
-            );
+            bool hasHostile = GetChildren<Fleet>()
+                .Any(f =>
+                    f.Movement == null
+                    && f.OwnerInstanceID != OwnerInstanceID
+                    && f.HasOperationalCapitalShips()
+                );
+            bool hasDefender = GetChildren<Fleet>()
+                .Any(f =>
+                    f.Movement == null
+                    && f.OwnerInstanceID == OwnerInstanceID
+                    && f.HasOperationalCapitalShips()
+                );
 
             return hasHostile && !hasDefender;
         }
@@ -323,7 +325,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>Number of energy units in use.</returns>
         public int GetEnergyUsed()
         {
-            return _buildings.Count;
+            return GetChildren<Building>().Count;
         }
 
         /// <summary>

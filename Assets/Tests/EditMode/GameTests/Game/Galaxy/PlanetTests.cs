@@ -622,6 +622,18 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void GetAvailableEnergy_InactiveBuilding_ReturnsFullCapacity()
+        {
+            _planet.EnergyCapacity = 5;
+            Building building = new Building { OwnerInstanceID = "FNALL1", IsEnabled = false };
+            _planet.AddChild(building);
+
+            int availableEnergy = _planet.GetAvailableEnergy();
+
+            Assert.AreEqual(5, availableEnergy);
+        }
+
+        [Test]
         public void GetAvailableEnergy_NoBuildings_ReturnsFullCapacity()
         {
             int availableEnergy = _planet.GetAvailableEnergy();
@@ -828,6 +840,16 @@ namespace Rebellion.Tests.Game.Galaxy
                 isBlockaded,
                 "Planet should be blockaded when an enemy operational capital ship is present."
             );
+        }
+
+        [Test]
+        public void IsBlockaded_InactiveEnemyFleet_ReturnsFalse()
+        {
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
+            enemyFleet.IsEnabled = false;
+            _planet.AddChild(enemyFleet);
+
+            Assert.IsFalse(_planet.IsBlockaded());
         }
 
         [Test]

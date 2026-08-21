@@ -619,13 +619,11 @@ namespace Rebellion.AI.Planners
 
             if (typeof(T) == typeof(Starfighter))
                 return fleet
-                    .GetChildren<Starfighter>()
+                    .GetStarfighters()
                     .Count(starfighter => starfighter.GetTypeID() == typeId);
 
             if (typeof(T) == typeof(Regiment))
-                return fleet
-                    .GetChildren<Regiment>()
-                    .Count(regiment => regiment.GetTypeID() == typeId);
+                return fleet.GetRegiments().Count(regiment => regiment.GetTypeID() == typeId);
 
             if (typeof(T) == typeof(CapitalShip))
                 return fleet

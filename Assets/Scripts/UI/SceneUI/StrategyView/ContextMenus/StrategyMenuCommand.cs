@@ -226,7 +226,7 @@ internal static class StrategyBombardmentMenuBuilder
                 ),
                 new StrategyMenuCommand(
                     StrategyMenuAction.DestroyPlanet,
-                    "Destroy System",
+                    "Destroy Planet",
                     canDestroyPlanet
                 ),
             }
