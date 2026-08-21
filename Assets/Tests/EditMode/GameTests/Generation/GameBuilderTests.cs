@@ -431,12 +431,12 @@ namespace Rebellion.Tests.Generation
                         Assert.IsTrue(
                             faction.Fog.Snapshots.TryGetValue(
                                 sector.InstanceID,
-                                out PlanetSectorSnapshot systemSnapshot
+                                out PlanetSectorSnapshot sectorSnapshot
                             ),
                             $"Faction '{faction.GetDisplayName()}' should have an initial snapshot for core sector '{sector.GetDisplayName()}'"
                         );
                         Assert.IsTrue(
-                            systemSnapshot.Planets.TryGetValue(
+                            sectorSnapshot.Planets.TryGetValue(
                                 planet.InstanceID,
                                 out PlanetSnapshot snapshot
                             ),

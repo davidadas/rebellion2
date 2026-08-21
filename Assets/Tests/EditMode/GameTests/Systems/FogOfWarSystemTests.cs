@@ -305,8 +305,8 @@ namespace Rebellion.Tests.Sectors
 
             viewCoruscant.RemoveChildren<Officer>(_ => true);
 
-            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
-            PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
         }
@@ -1549,8 +1549,8 @@ namespace Rebellion.Tests.Sectors
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
-            PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
             Assert.AreEqual(1, snapshot.Fleets.Count);
@@ -1573,8 +1573,8 @@ namespace Rebellion.Tests.Sectors
             vader.SetBaseRating(OfficerRating.Diplomacy, 99);
             _coruscant.RemoveChild(vader);
 
-            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
-            PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
             Assert.AreEqual(50, snapshot.Officers[0].GetBaseRating(OfficerRating.Diplomacy));
@@ -1588,8 +1588,8 @@ namespace Rebellion.Tests.Sectors
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
-            PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual("VADER", snapshot.Officers[0].InstanceID);
             Assert.AreNotSame(vader, snapshot.Officers[0]);
@@ -1665,8 +1665,8 @@ namespace Rebellion.Tests.Sectors
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
 
-            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
-            PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
         }
@@ -1734,8 +1734,8 @@ namespace Rebellion.Tests.Sectors
                 _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
             });
 
-            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
-            PlanetSnapshot snapshot = systemSnapshot.Planets["TATOOINE"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["TATOOINE"];
 
             Assert.IsNotNull(snapshot);
         }
@@ -1815,8 +1815,8 @@ namespace Rebellion.Tests.Sectors
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            PlanetSectorSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
-            PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORESYS"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
             int originalTickCaptured = snapshot.TickCaptured;
 
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);

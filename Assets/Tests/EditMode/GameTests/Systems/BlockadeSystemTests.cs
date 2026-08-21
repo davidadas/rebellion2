@@ -137,17 +137,17 @@ namespace Rebellion.Tests.Sectors
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
 
-            PlanetSector sys1 = new PlanetSector { InstanceID = "s1" };
-            PlanetSector sys2 = new PlanetSector { InstanceID = "s2" };
+            PlanetSector sector1 = new PlanetSector { InstanceID = "s1" };
+            PlanetSector sector2 = new PlanetSector { InstanceID = "s2" };
             Planet blockaded = new Planet { InstanceID = "p1", OwnerInstanceID = "empire" };
             Planet safe = new Planet { InstanceID = "p2", OwnerInstanceID = "empire" };
             Fleet hostile = new Fleet { InstanceID = "f1", OwnerInstanceID = "alliance" };
             Fleet defender = new Fleet { InstanceID = "f2", OwnerInstanceID = "empire" };
 
-            game.AttachNode(sys1, game.GetGalaxyMap());
-            game.AttachNode(sys2, game.GetGalaxyMap());
-            game.AttachNode(blockaded, sys1);
-            game.AttachNode(safe, sys2);
+            game.AttachNode(sector1, game.GetGalaxyMap());
+            game.AttachNode(sector2, game.GetGalaxyMap());
+            game.AttachNode(blockaded, sector1);
+            game.AttachNode(safe, sector2);
             game.AttachNode(hostile, blockaded);
             game.AttachNode(defender, safe);
             AttachOperationalCapitalShip(game, hostile, "hostile-ship");

@@ -32,7 +32,7 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void AddChild_WithMultiplePlanetSectors_AddsAllSystems()
+        public void AddChild_WithMultiplePlanetSectors_AddsAllSectors()
         {
             PlanetSector planetSector3 = new PlanetSector { InstanceID = "SECTOR3" };
 
@@ -82,7 +82,7 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void RemoveChild_WithMultiplePlanetSectors_RemovesCorrectSystems()
+        public void RemoveChild_WithMultiplePlanetSectors_RemovesCorrectSector()
         {
             _galaxyMap.AddChild(_planetSector1);
             _galaxyMap.AddChild(_planetSector2);
@@ -95,7 +95,7 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void RemoveChild_RemovingAllSystems_ResultsInEmptyList()
+        public void RemoveChild_RemovingAllSectors_ResultsInEmptyList()
         {
             _galaxyMap.AddChild(_planetSector1);
             _galaxyMap.AddChild(_planetSector2);
@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void RemoveChild_WithSystemNotInList_DoesNotChangeCount()
+        public void RemoveChild_WithSectorNotInList_DoesNotChangeCount()
         {
             _galaxyMap.AddChild(_planetSector1);
 
