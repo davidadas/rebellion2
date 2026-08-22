@@ -80,7 +80,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_BuildingOnEnemyPlanet_RemovesBuilding()
+        public void ResolveObjective_BuildingOnEnemyPlanet_RemovesBuilding()
         {
             (
                 GameRoot game,
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_BuildingOnEnemyPlanet_ReturnsBuildingSabotagedResult()
+        public void ResolveObjective_BuildingOnEnemyPlanet_ReturnsBuildingSabotagedResult()
         {
             (
                 GameRoot game,
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             Assert.IsTrue(
                 results.OfType<GameObjectSabotagedResult>().Any(),
@@ -159,7 +159,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_BuildingOnEnemyPlanet_SetsSaboteurOnResult()
+        public void ResolveObjective_BuildingOnEnemyPlanet_SetsSaboteurOnResult()
         {
             (
                 GameRoot game,
@@ -190,7 +190,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             GameObjectSabotagedResult sabotaged = results
                 .OfType<GameObjectSabotagedResult>()
@@ -203,7 +203,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SurfaceRegiment_ReturnsGarrisonChange()
+        public void ResolveObjective_SurfaceRegiment_ReturnsGarrisonChange()
         {
             (
                 GameRoot game,
@@ -233,7 +233,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.AreSame(
@@ -243,7 +243,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_BuildingRemovedBeforeExecution_ReturnsFailed()
+        public void UpdateMission_BuildingRemovedBeforeExecution_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -274,9 +274,14 @@ namespace Rebellion.Tests.Game.Missions
 
             game.DetachNode(building);
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -287,7 +292,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SpecificBuildingTarget_RemovesSelectedBuilding()
+        public void ResolveObjective_SpecificBuildingTarget_RemovesSelectedBuilding()
         {
             (
                 GameRoot game,
@@ -326,7 +331,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             Assert.AreEqual(enemyPlanet.InstanceID, mission.LocationInstanceID);
             Assert.AreEqual(
@@ -342,7 +347,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_PlanetDestroyingShip_UsesDedicatedSuccessTable()
+        public void ResolveObjective_PlanetDestroyingShip_UsesDedicatedSuccessTable()
         {
             (
                 GameRoot game,
@@ -378,7 +383,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.5));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.5));
 
             Assert.AreEqual(
                 MissionOutcome.Success,
@@ -466,7 +471,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessfulOfficer_ImprovesEspionageAndCombatRatings()
+        public void ResolveObjective_SuccessfulOfficer_ImprovesEspionageAndCombatRatings()
         {
             (
                 GameRoot game,
@@ -494,7 +499,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.5));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.5));
 
             Assert.AreEqual(
                 MissionOutcome.Success,

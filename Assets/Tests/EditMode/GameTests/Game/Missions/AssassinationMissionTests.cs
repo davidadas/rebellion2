@@ -200,7 +200,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_FirstHitSurvivedAndSecondHitKills_CreditsSecondAssassin()
+        public void ResolveObjective_FirstHitSurvivedAndSecondHitKills_CreditsSecondAssassin()
         {
             (
                 GameRoot game,
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(
+            List<GameResult> results = mission.ResolveObjective(
                 game,
                 new SequenceRNG(
                     intValues: new[] { 0, 0, 99, 0, 0, 0 },
@@ -312,7 +312,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SpecialForcesSucceedsAndKillCheckPasses_CreditsSpecialForces()
+        public void ResolveObjective_SpecialForcesSucceedsAndKillCheckPasses_CreditsSpecialForces()
         {
             (
                 GameRoot game,
@@ -352,7 +352,7 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             Assert.IsTrue(
                 results.Any(r => r is OfficerInjuredResult),
@@ -373,7 +373,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessKillCheckFails_TargetSurvivesWithInjury()
+        public void ResolveObjective_SuccessKillCheckFails_TargetSurvivesWithInjury()
         {
             (
                 GameRoot game,
@@ -405,7 +405,7 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(
+            List<GameResult> results = mission.ResolveObjective(
                 game,
                 new SequenceRNG(intValues: new[] { 0, 0, 99 }, doubleValues: new[] { 0.0 })
             );
@@ -432,7 +432,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_MainCharacterHit_TargetSurvivesAndMissionFails()
+        public void ResolveObjective_MainCharacterHit_TargetSurvivesAndMissionFails()
         {
             (
                 GameRoot game,
@@ -458,7 +458,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, enemyPlanet);
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0));
 
             Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
             Assert.IsEmpty(results.OfType<OfficerKilledResult>());
@@ -469,7 +469,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_MinorCharacterKilled_ImprovesSuccessfulAssassinCombat()
+        public void ResolveObjective_MinorCharacterKilled_ImprovesSuccessfulAssassinCombat()
         {
             (
                 GameRoot game,
@@ -495,7 +495,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, enemyPlanet);
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0));
 
             Assert.IsNotEmpty(results.OfType<OfficerKilledResult>());
             Assert.AreEqual(
@@ -506,7 +506,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetAlreadyKilled_ReturnsFailed()
+        public void UpdateMission_TargetAlreadyKilled_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -533,9 +533,14 @@ namespace Rebellion.Tests.Game.Missions
             // Target is killed after mission creation but before execution
             target.IsKilled = true;
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -546,7 +551,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetMovedToDifferentPlanet_DoesNotRollOrImproveParticipant()
+        public void UpdateMission_TargetMovedToDifferentPlanet_DoesNotRollOrImproveParticipant()
         {
             (
                 GameRoot game,
@@ -586,9 +591,14 @@ namespace Rebellion.Tests.Game.Missions
             // Target moves to a different planet before mission executes
             game.MoveNode(target, anotherEnemyPlanet);
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new ThrowingRNG());
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -597,7 +607,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetRemovedFromScene_ReturnsFailed()
+        public void ResolveObjective_TargetRemovedFromScene_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -625,7 +635,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(

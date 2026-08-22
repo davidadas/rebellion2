@@ -151,12 +151,11 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for success and candidate-selection rolls.</param>
         /// <returns>The recruitment result followed by the terminal mission result.</returns>
-        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
         {
-            MissionCompletionReason? invalidationReason = GetMissionInvalidationReason(game);
-            if (invalidationReason.HasValue)
-                return BuildInvalidatedResults(game, provider, invalidationReason.Value);
-
             RecruitedOfficerInstanceID = null;
             List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
                 provider,

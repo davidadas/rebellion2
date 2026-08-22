@@ -405,7 +405,7 @@ public static class MissionSceneBuilder
     {
         while (!mission.IsComplete())
             mission.IncrementProgress();
-        mission.Execute(game, new FixedRNG(0.0));
+        mission.ResolveObjective(game, new FixedRNG(0.0));
     }
 }
 

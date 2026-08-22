@@ -13,11 +13,10 @@ using Rebellion.Util.Common;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Manages the lifecycle of missions each tick.
-    /// Mission creation and scene graph attachment are delegated to MissionFactory.
-    /// Participant movement and mission initiation are orchestrated here.
+    /// Orchestrates mission creation, participant travel, and external execution services.
+    /// Each mission owns its post-arrival lifecycle.
     /// </summary>
-    public class MissionSystem
+    public class MissionSystem : IMissionExecutionRuntime
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -242,6 +241,30 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Adds the originating mission to interruption results before returning them to the pipeline.
+        /// </summary>
+        /// <param name="mission">The mission producing the results.</param>
+        /// <param name="source">The results to stamp.</param>
+        /// <param name="destination">The collection receiving stamped results.</param>
+        private static void AddMissionResults(
+            Mission mission,
+            IEnumerable<GameResult> source,
+            ICollection<GameResult> destination
+        )
+        {
+            if (source == null)
+                return;
+
+            foreach (GameResult result in source.Where(result => result != null))
+            {
+                result.MissionInstanceID = mission.InstanceID;
+                if (string.IsNullOrEmpty(result.SourceEventInstanceID))
+                    result.SourceEventInstanceID = mission.SourceEventInstanceID;
+                destination.Add(result);
+            }
+        }
+
+        /// <summary>
         /// Resolves mission participants while preserving the caller's observed target state.
         /// </summary>
         /// <param name="request">The mission start request to resolve.</param>
@@ -348,7 +371,10 @@ namespace Rebellion.Systems
             if (mission == null || mission.GetParent() == null)
                 return new List<GameResult>();
 
-            List<GameResult> results = AdvanceMission(mission);
+            if (mission.IsWaitingForParticipants())
+                return new List<GameResult>();
+
+            List<GameResult> results = mission.Execute(_game, _provider, this);
             foreach (GameResult result in results)
                 result.MissionInstanceID = mission.InstanceID;
 
@@ -356,76 +382,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Advances a single mission through one lifecycle step.
+        /// Resolves this tick's mission detection through the mission system's external services.
         /// </summary>
-        /// <param name="mission">The mission to advance.</param>
-        /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
-        private List<GameResult> AdvanceMission(Mission mission)
+        /// <param name="mission">The mission executing its lifecycle.</param>
+        /// <param name="results">The result collection receiving detection consequences.</param>
+        /// <returns>True when detection foils the mission.</returns>
+        bool IMissionExecutionRuntime.ResolveDetection(Mission mission, List<GameResult> results)
         {
-            List<GameResult> results = new List<GameResult>();
-
-            if (mission.IsWaitingForParticipants())
-                return results;
-
-            MissionCompletionReason? abortReason = mission.GetAbortReason(_game);
-            if (abortReason.HasValue)
-            {
-                AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
-                results.Add(
-                    BuildTerminatingMissionResult(
-                        mission,
-                        MissionOutcome.Failed,
-                        abortReason.Value,
-                        mission.GetAllParticipants()
-                    )
-                );
-                TearDownMission(mission, null, results);
-                return results;
-            }
-
-            results.AddRange(ResolveDetectionInterruption(mission));
-            if (FinishMissionIfCompleted(mission, results))
-                return results;
-
-            mission.IncrementProgress();
-            if (!mission.IsComplete())
-                return results;
-
-            results.AddRange(ExecuteMission(mission));
-            FinishMissionIfCompleted(mission, results);
-            return results;
+            bool missionFoiled = ResolveDetection(mission, results);
+            ApplyOfficerDeaths(results);
+            return missionFoiled;
         }
 
         /// <summary>
-        /// Adds the originating mission to interruption results before returning them to the pipeline.
+        /// Resolves betrayal or the objective for a mission that completed its progress.
         /// </summary>
-        /// <param name="mission">The mission producing the results.</param>
-        /// <param name="source">The results to stamp.</param>
-        /// <param name="destination">The collection receiving stamped results.</param>
-        private static void AddMissionResults(
-            Mission mission,
-            IEnumerable<GameResult> source,
-            List<GameResult> destination
-        )
-        {
-            if (source == null)
-                return;
-
-            foreach (GameResult result in source.Where(result => result != null))
-            {
-                result.MissionInstanceID = mission.InstanceID;
-                if (string.IsNullOrEmpty(result.SourceEventInstanceID))
-                    result.SourceEventInstanceID = mission.SourceEventInstanceID;
-                destination.Add(result);
-            }
-        }
-
-        /// <summary>
-        /// Executes a completed mission through its appropriate resolution system.
-        /// </summary>
-        /// <param name="mission">The mission ready to execute.</param>
+        /// <param name="mission">The mission resolving its completed objective.</param>
         /// <returns>The results produced by mission resolution.</returns>
-        private List<GameResult> ExecuteMission(Mission mission)
+        List<GameResult> IMissionExecutionRuntime.ResolveCompletedObjective(Mission mission)
         {
             List<GameResult> results;
             if (
@@ -440,7 +414,7 @@ namespace Rebellion.Systems
             }
             else if (!_uprisingSystem.TryExecuteMission(mission, out results))
             {
-                results = mission.Execute(_game, _provider);
+                results = mission.ResolveObjective(_game, _provider);
             }
 
             ApplyOfficerDeaths(results);
@@ -464,81 +438,23 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves mission detection before a mission advances progress.
-        /// </summary>
-        /// <param name="mission">The mission to inspect.</param>
-        /// <returns>Detection results, including a mission completion result when detection ends the mission.</returns>
-        private List<GameResult> ResolveDetectionInterruption(Mission mission)
-        {
-            List<GameResult> results = new List<GameResult>();
-            List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
-            bool missionFoiled = ResolveDetection(mission, results);
-            ApplyOfficerDeaths(results);
-
-            if (!missionFoiled)
-                return results;
-
-            AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
-            results.Add(
-                BuildTerminatingMissionResult(
-                    mission,
-                    MissionOutcome.Foiled,
-                    MissionCompletionReason.Foiled,
-                    participantsBeforeDetection
-                )
-            );
-            return results;
-        }
-
-        /// <summary>
-        /// Returns the mission completion result for a terminal mission state.
-        /// </summary>
-        /// <param name="mission">The mission being terminated.</param>
-        /// <param name="outcome">The mission outcome to report.</param>
-        /// <param name="completionReason">The mission completion reason to report.</param>
-        /// <param name="participants">Participants captured before teardown side effects.</param>
-        /// <returns>A non-continuing mission completion result.</returns>
-        private MissionCompletedResult BuildTerminatingMissionResult(
-            Mission mission,
-            MissionOutcome outcome,
-            MissionCompletionReason completionReason,
-            List<IMissionParticipant> participants
-        )
-        {
-            MissionCompletedResult result = mission.BuildCompletedResult(
-                outcome,
-                completionReason,
-                _game,
-                participants
-            );
-            result.CanContinue = false;
-            return result;
-        }
-
-        /// <summary>
-        /// Repeats or tears down a mission when the results include a completion result.
+        /// Repeats or tears down a mission after its lifecycle reaches a terminal state.
         /// </summary>
         /// <param name="mission">The mission to finish.</param>
+        /// <param name="completedResult">The terminal result, or null for an invalid mission.</param>
         /// <param name="results">Results produced by this mission tick.</param>
-        /// <returns>True if the mission completed this tick.</returns>
-        private bool FinishMissionIfCompleted(Mission mission, List<GameResult> results)
+        void IMissionExecutionRuntime.FinishMission(
+            Mission mission,
+            MissionCompletedResult completedResult,
+            List<GameResult> results
+        )
         {
-            MissionCompletedResult completedResult = results
-                .OfType<MissionCompletedResult>()
-                .LastOrDefault();
             if (completedResult == null)
-                return false;
-
-            if (completedResult.CanContinue)
-            {
+                TearDownMission(mission, null, results);
+            else if (completedResult.CanContinue)
                 BeginMission(mission);
-            }
             else
-            {
                 TearDownMission(mission, completedResult, results);
-            }
-
-            return true;
         }
 
         /// <summary>

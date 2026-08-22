@@ -17,7 +17,7 @@ namespace Rebellion.Tests.Game.Missions
     public class EspionageMissionTests
     {
         [Test]
-        public void Execute_EnemyPlanetTarget_CapturesSnapshotForFaction()
+        public void ResolveObjective_EnemyPlanetTarget_CapturesSnapshotForFaction()
         {
             (
                 GameRoot game,
@@ -54,7 +54,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_EnemyPlanetTarget_CapturesCurrentPlanetContents()
+        public void ResolveObjective_EnemyPlanetTarget_CapturesCurrentPlanetContents()
         {
             (
                 GameRoot game,
@@ -90,7 +90,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_EnemyPlanetTarget_RevealsEnemyMissions()
+        public void ResolveObjective_EnemyPlanetTarget_RevealsEnemyMissions()
         {
             (
                 GameRoot game,
@@ -127,7 +127,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CoreTarget_RevealsSameAllegianceCorePlanets()
+        public void ResolveObjective_CoreTarget_RevealsSameAllegianceCorePlanets()
         {
             (
                 GameRoot game,
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CoreTarget_ReportsEveryAdditionalSectorRevealed()
+        public void ResolveObjective_CoreTarget_ReportsEveryAdditionalSectorRevealed()
         {
             (
                 GameRoot game,
@@ -202,7 +202,7 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             PlanetSectorsRevealedResult intelligence = results
                 .OfType<PlanetSectorsRevealedResult>()
@@ -215,7 +215,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_OuterRimTarget_DoesNotRevealBonusPlanets()
+        public void ResolveObjective_OuterRimTarget_DoesNotRevealBonusPlanets()
         {
             (
                 GameRoot game,
@@ -247,7 +247,9 @@ namespace Rebellion.Tests.Game.Missions
 
         [TestCase("empire")]
         [TestCase(null)]
-        public void Execute_NonEnemyCoreTarget_DoesNotRevealBonusPlanets(string targetOwnerId)
+        public void ResolveObjective_NonEnemyCoreTarget_DoesNotRevealBonusPlanets(
+            string targetOwnerId
+        )
         {
             var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
             enemyPlanet.OwnerInstanceID = targetOwnerId;
@@ -273,7 +275,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_MobileHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
+        public void ResolveObjective_MobileHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
         {
             (
                 GameRoot game,
@@ -315,7 +317,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CapitalTarget_CanRevealCoreAndOuterRimPlanets()
+        public void ResolveObjective_CapitalTarget_CanRevealCoreAndOuterRimPlanets()
         {
             (
                 GameRoot game,
@@ -348,7 +350,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_WithoutFogSystem_DoesNotThrow()
+        public void ResolveObjective_WithoutFogSystem_DoesNotThrow()
         {
             (
                 GameRoot game,
@@ -374,7 +376,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_PlanetBecameOwnedByMissionFaction_StillSucceeds()
+        public void ResolveObjective_PlanetBecameOwnedByMissionFaction_StillSucceeds()
         {
             (
                 GameRoot game,
@@ -401,7 +403,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -412,7 +414,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_ForeignPlanetTarget_ImprovesSuccessfulOfficerEspionageRating()
+        public void ResolveObjective_ForeignPlanetTarget_ImprovesSuccessfulOfficerEspionageRating()
         {
             (
                 GameRoot game,
@@ -445,7 +447,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_MultipleOfficers_TriesNextOfficerWhenLowestScoreOfficerFails()
+        public void ResolveObjective_MultipleOfficers_TriesNextOfficerWhenLowestScoreOfficerFails()
         {
             (
                 GameRoot game,
@@ -477,7 +479,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0));
 
             Assert.AreEqual(
                 MissionOutcome.Success,
@@ -486,7 +488,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_MultipleOfficersSucceed_ImprovesEverySuccessfulOfficer()
+        public void ResolveObjective_MultipleOfficersSucceed_ImprovesEverySuccessfulOfficer()
         {
             (
                 GameRoot game,
@@ -532,7 +534,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_DecoyParticipant_DoesNotImproveOfficerEspionageRating()
+        public void ResolveObjective_DecoyParticipant_DoesNotImproveOfficerEspionageRating()
         {
             (
                 GameRoot game,
@@ -566,7 +568,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_OwnPlanetTarget_DoesNotImproveOfficerEspionageRating()
+        public void ResolveObjective_OwnPlanetTarget_DoesNotImproveOfficerEspionageRating()
         {
             (
                 GameRoot game,
@@ -599,7 +601,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_NeutralPlanetTarget_DoesNotImproveOfficerEspionageRating()
+        public void ResolveObjective_NeutralPlanetTarget_DoesNotImproveOfficerEspionageRating()
         {
             var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
             enemyPlanet.OwnerInstanceID = null;

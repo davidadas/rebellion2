@@ -192,15 +192,16 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for chance rolls and reward rolls.</param>
         /// <returns>Transition results, with a MissionCompletedResult appended.</returns>
-        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
-            MissionCompletionReason? abortReason = GetAbortReason(game);
-            MissionCompletionReason completionReason =
-                abortReason ?? MissionCompletionReason.TargetUnavailable;
+            MissionCompletionReason completionReason = MissionCompletionReason.TargetUnavailable;
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
-            if (faction != null && !abortReason.HasValue)
+            if (faction != null)
             {
                 int earnedPoints = AccumulatePointsFromParticipants(game.Config.Research, provider);
                 if (earnedPoints > 0)

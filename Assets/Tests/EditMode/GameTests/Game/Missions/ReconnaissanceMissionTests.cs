@@ -18,7 +18,7 @@ namespace Rebellion.Tests.Game.Missions
     public class ReconnaissanceMissionTests
     {
         [Test]
-        public void Execute_UnvisitedPlanet_CapturesSnapshotWithoutSuccessRoll()
+        public void ResolveObjective_UnvisitedPlanet_CapturesSnapshotWithoutSuccessRoll()
         {
             (
                 GameRoot game,
@@ -41,7 +41,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            List<GameResult> results = mission.Execute(game, new ThrowingRNG());
+            List<GameResult> results = mission.ResolveObjective(game, new ThrowingRNG());
 
             Assert.IsTrue(enemyPlanet.WasVisitedBy("empire"));
             Assert.AreEqual(

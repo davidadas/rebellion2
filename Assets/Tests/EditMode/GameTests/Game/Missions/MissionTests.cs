@@ -180,7 +180,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessOutcome_IncludesMissionCompletedResultWithMissionInstanceID()
+        public void ResolveObjective_SuccessOutcome_IncludesMissionCompletedResultWithMissionInstanceID()
         {
             (
                 GameRoot game,
@@ -203,14 +203,14 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
 
             Assert.AreEqual(mission.InstanceID, completed.MissionInstanceID);
         }
 
         [Test]
-        public void Execute_FailOutcome_AlwaysIncludesMissionCompletedResult()
+        public void ResolveObjective_FailOutcome_AlwaysIncludesMissionCompletedResult()
         {
             (
                 GameRoot game,
@@ -233,7 +233,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.99));
 
             Assert.IsTrue(
                 results.OfType<MissionCompletedResult>().Any(),
@@ -242,7 +242,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessfulMission_ImprovesOnlySuccessfulParticipantRating()
+        public void ResolveObjective_SuccessfulMission_ImprovesOnlySuccessfulParticipantRating()
         {
             (
                 GameRoot game,
@@ -264,7 +264,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            mission.Execute(game, new FixedRNG(0.0));
+            mission.ResolveObjective(game, new FixedRNG(0.0));
 
             Assert.AreEqual(
                 ratingBefore + 1,
@@ -279,7 +279,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_FailedSuccessRoll_ReturnsFailed()
+        public void ResolveObjective_FailedSuccessRoll_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -304,7 +304,7 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.99));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -315,7 +315,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_OfficerAttemptFails_SpecialForcesCanSucceed()
+        public void ResolveObjective_OfficerAttemptFails_SpecialForcesCanSucceed()
         {
             (
                 GameRoot game,
@@ -350,7 +350,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.5));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.5));
 
             Assert.AreEqual(
                 MissionOutcome.Success,
@@ -363,7 +363,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_MultipleOfficers_TriesStrongerOfficerAfterWeakestFails()
+        public void ResolveObjective_MultipleOfficers_TriesStrongerOfficerAfterWeakestFails()
         {
             (
                 GameRoot game,
@@ -394,7 +394,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0));
 
             Assert.AreEqual(
                 MissionOutcome.Success,
@@ -408,7 +408,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_OfficersOnSameProbabilityPlateau_PreservesSelectionOrder()
+        public void ResolveObjective_OfficersOnSameProbabilityPlateau_PreservesSelectionOrder()
         {
             (
                 GameRoot game,
@@ -439,7 +439,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0));
 
             Assert.AreSame(
                 highScoreOfficer,

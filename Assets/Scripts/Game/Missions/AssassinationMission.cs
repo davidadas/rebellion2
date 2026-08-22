@@ -152,12 +152,11 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for all probability rolls.</param>
         /// <returns>The hit effects followed by the terminal mission result.</returns>
-        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
         {
-            MissionCompletionReason? invalidationReason = GetMissionInvalidationReason(game);
-            if (invalidationReason.HasValue)
-                return BuildInvalidatedResults(game, provider, invalidationReason.Value);
-
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
             MissionCompletionReason completionReason = MissionCompletionReason.Failure;

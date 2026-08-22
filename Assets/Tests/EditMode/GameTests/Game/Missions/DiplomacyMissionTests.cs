@@ -16,7 +16,7 @@ namespace Rebellion.Tests.Game.Missions
     public class DiplomacyMissionTests
     {
         [Test]
-        public void Execute_SupportBelowThreshold_NoOwnershipChange()
+        public void ResolveObjective_SupportBelowThreshold_NoOwnershipChange()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             Mission mission = CreateAndAttachMission(game, planet);
@@ -31,7 +31,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SupportCrossesThreshold_NoOwnershipChangeEmitted()
+        public void ResolveObjective_SupportCrossesThreshold_NoOwnershipChangeEmitted()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 60, planetOwner: null);
             Mission mission = CreateAndAttachMission(game, planet);
@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_PlanetAlreadyOwned_NoOwnershipChangeEmitted()
+        public void ResolveObjective_PlanetAlreadyOwned_NoOwnershipChangeEmitted()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
             Mission mission = CreateAndAttachMission(game, planet);
@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_PlanetAlreadyOwned_IncrementsSupportWithoutChangingOwner()
+        public void ResolveObjective_PlanetAlreadyOwned_IncrementsSupportWithoutChangingOwner()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
             Mission mission = CreateAndAttachMission(game, planet);
@@ -80,7 +80,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessProbability_DoesNotAffectSupportGain()
+        public void ResolveObjective_SuccessProbability_DoesNotAffectSupportGain()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -106,7 +106,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_OwnedPlanet_UsesDiplomacySupportConfig()
+        public void ResolveObjective_OwnedPlanet_UsesDiplomacySupportConfig()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             Mission mission = CreateAndAttachMission(game, planet);
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_NeutralPlanet_UsesNeutralDiplomacySupportConfig()
+        public void ResolveObjective_NeutralPlanet_UsesNeutralDiplomacySupportConfig()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
             Mission mission = CreateAndAttachMission(game, planet);
@@ -132,7 +132,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CoreSectorWeakSupport_AppliesConfiguredDivisor()
+        public void ResolveObjective_CoreSectorWeakSupport_AppliesConfiguredDivisor()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             planet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessProbability_UsesResistanceTroopCountMinusOpposingSupportPlusDiplomacyRating()
+        public void ResolveObjective_SuccessProbability_UsesResistanceTroopCountMinusOpposingSupportPlusDiplomacyRating()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 80, planetOwner: "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -181,14 +181,14 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.99));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
         }
 
         [Test]
-        public void Execute_SupportAlreadyAtMax_ReturnsSuccess()
+        public void ResolveObjective_SupportAlreadyAtMax_ReturnsSuccess()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
 
@@ -208,7 +208,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -471,7 +471,7 @@ namespace Rebellion.Tests.Game.Missions
                 { -10000, 100 },
             };
             mission.Initiate(0);
-            return mission.Execute(game, rng);
+            return mission.ResolveObjective(game, rng);
         }
     }
 }

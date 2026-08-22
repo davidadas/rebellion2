@@ -101,18 +101,12 @@ namespace Rebellion.Game.Missions
         /// <param name="game">Current game state.</param>
         /// <param name="provider">RNG provider.</param>
         /// <returns>All results produced by the mission.</returns>
-        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
         {
             List<GameResult> results = new List<GameResult>();
-
-            MissionCompletionReason? invalidationReason = GetMissionInvalidationReason(game);
-            if (invalidationReason.HasValue)
-            {
-                results.Add(
-                    BuildCompletedResult(MissionOutcome.Failed, invalidationReason.Value, game)
-                );
-                return results;
-            }
 
             results.AddRange(OnSuccess(game, provider, GetMainParticipants().FirstOrDefault()));
             results.Add(

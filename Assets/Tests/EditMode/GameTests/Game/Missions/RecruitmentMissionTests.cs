@@ -16,7 +16,7 @@ namespace Rebellion.Tests.Game.Missions
     public class RecruitmentMissionTests
     {
         [Test]
-        public void Execute_AvailableCandidate_TransfersOfficerToFaction()
+        public void ResolveObjective_AvailableCandidate_TransfersOfficerToFaction()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -31,7 +31,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_AvailableCandidate_AttachesOfficerToPlanet()
+        public void ResolveObjective_AvailableCandidate_AttachesOfficerToPlanet()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -46,7 +46,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_AvailableCandidate_RemovesOfficerFromUnrecruitedPool()
+        public void ResolveObjective_AvailableCandidate_RemovesOfficerFromUnrecruitedPool()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -61,7 +61,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CreatedBeforePoolChanges_RecruitsCurrentAvailableOfficer()
+        public void ResolveObjective_CreatedBeforePoolChanges_RecruitsCurrentAvailableOfficer()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -78,7 +78,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
@@ -90,7 +90,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_NoCandidatesRemain_DoesNotRollOrImproveRecruiter()
+        public void UpdateMission_NoCandidatesRemain_DoesNotRollOrImproveRecruiter()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -104,9 +104,15 @@ namespace Rebellion.Tests.Game.Missions
             // The candidate pool empties before the mission executes.
             game.GetUnrecruitedOfficers().Remove(target);
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new ThrowingRNG());
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -116,7 +122,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessProbability_UsesOpposingSupportAndLeadershipRating()
+        public void ResolveObjective_SuccessProbability_UsesOpposingSupportAndLeadershipRating()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -135,14 +141,14 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.99));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
         }
 
         [Test]
-        public void Execute_SecondSuccess_SelectsNextOfficerFromCurrentPool()
+        public void ResolveObjective_SecondSuccess_SelectsNextOfficerFromCurrentPool()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -167,7 +173,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_MultipleRecruitersSucceed_FirstSuccessStopsFurtherAttempts()
+        public void ResolveObjective_MultipleRecruitersSucceed_FirstSuccessStopsFurtherAttempts()
         {
             (GameRoot game, Planet empirePlanet, Officer firstRecruiter) = BuildScene();
             Officer secondRecruiter = EntityFactory.CreateOfficer("second-recruiter", "empire");
@@ -201,7 +207,7 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(
+            List<GameResult> results = mission.ResolveObjective(
                 game,
                 new SequenceRNG(intValues: new[] { 0 }, doubleValues: new[] { 0.0, 0.0 })
             );

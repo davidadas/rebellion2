@@ -217,7 +217,10 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">The random number provider used for training rolls.</param>
         /// <returns>The training progress results followed by the mission completion result.</returns>
-        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
         {
             List<GameResult> results = new List<GameResult>();
             Officer trainer = Trainer;

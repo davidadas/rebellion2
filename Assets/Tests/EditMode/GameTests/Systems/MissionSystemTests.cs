@@ -2314,7 +2314,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void Execute_WithSpecialForcesParticipant_AppearsInParticipants()
+        public void UpdateMission_WithSpecialForcesParticipant_AppearsInParticipants()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -2329,12 +2329,13 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.AddChild(sf);
+            game.AttachNode(sf, mission);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new StubRNG());
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+            List<GameResult> results = system.UpdateMission(mission);
             MissionCompletedResult completedResult = results
                 .OfType<MissionCompletedResult>()
                 .First();
@@ -2346,7 +2347,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void Execute_WithDecoyParticipant_DecoyAppearsInParticipants()
+        public void UpdateMission_WithDecoyParticipant_DecoyAppearsInParticipants()
         {
             // Both main and decoy participants should appear in MissionCompletedResult.Participants.
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
@@ -2363,13 +2364,15 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.AddChild(officer);
+            game.MoveNode(officer, mission);
             mission.AddDecoyParticipant(decoy);
+            game.AttachNode(decoy, mission);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new StubRNG());
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+            List<GameResult> results = system.UpdateMission(mission);
             MissionCompletedResult completedResult = results
                 .OfType<MissionCompletedResult>()
                 .First();
