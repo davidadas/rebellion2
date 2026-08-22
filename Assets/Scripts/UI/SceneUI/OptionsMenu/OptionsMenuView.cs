@@ -214,6 +214,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             _rowActiveSpriteAddress,
             border
         );
+        VerifyContentReferences();
     }
 
     /// <summary>
@@ -970,8 +971,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
         if (_headerTextField == null || _pageTitleTextField == null)
             throw new MissingReferenceException($"{name} is missing a title field.");
-        if (_rowIdleSprite == null || _rowActiveSprite == null)
-            throw new MissingReferenceException($"{name} is missing a row sprite.");
         if (
             string.IsNullOrWhiteSpace(_rowIdleSpriteAddress)
             || string.IsNullOrWhiteSpace(_rowActiveSpriteAddress)
@@ -1030,5 +1029,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _bindingKeyBadgeTemplate.gameObject.SetActive(false);
         _bindingKeyTemplate.gameObject.SetActive(false);
         _bindingRestoreTemplate.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Verifies sprites restored after instantiation from external content.
+    /// </summary>
+    private void VerifyContentReferences()
+    {
+        if (_rowIdleSprite == null || _rowActiveSprite == null)
+            throw new MissingReferenceException($"{name} is missing a row sprite.");
     }
 }
