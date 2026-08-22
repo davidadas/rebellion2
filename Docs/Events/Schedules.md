@@ -11,6 +11,19 @@ Schedules activate events from campaign time. A `Schedule` contains exactly one 
 | [`AfterAll`](#afterall-and-afterany) | Every listed event must have executed. |
 | [`AfterAny`](#afterall-and-afterany) | At least one listed event must have executed. |
 
+## Element reference
+
+| Element | Attributes | Child elements | Rules |
+| --- | --- | --- | --- |
+| `Schedule` | None | Exactly one of `At`, `Every`, `Random`, `After`, `AfterAll`, or `AfterAny` | Cannot appear with `Triggers`. |
+| `At` | `Tick` — required non-negative integer | None | One-time; requires `TriggerCount="1"`. |
+| `Every` | `Ticks` — required positive integer; `InitialDelayTicks` — optional non-negative integer, default `0` | None | Repeats after successful activations. |
+| `Random` | `MinimumTicks` — required positive integer; `MaximumTicks` — required integer greater than or equal to the minimum | None | Rolls a new inclusive delay after successful activations. |
+| `After` | `EventInstanceID`, `DelayTicks` — required; delay must be non-negative | None | One-time; referenced event must exist. |
+| `AfterAll` | `DelayTicks` — required non-negative integer | `Events` containing one or more `Event` elements | One-time; every dependency must execute. |
+| `AfterAny` | `DelayTicks` — required non-negative integer | `Events` containing one or more `Event` elements | One-time; the first completed dependency is sufficient. |
+| `Event` | `EventInstanceID` — required | None | IDs in one dependency list must be unique. |
+
 ## At
 
 `At` becomes eligible on an absolute campaign tick. It is a one-time schedule and therefore requires `TriggerCount="1"`.
@@ -98,4 +111,4 @@ Use [`Until`](Conditions.md#stopping-an-event-with-until) when game state, rathe
 
 ---
 
-<p align="center"><a href="README.md">Event guide</a> · <a href="Triggers.md">Triggers →</a></p>
+<p align="center"><a href="Index.md">← Event guide</a> · <a href="Triggers.md">Triggers →</a></p>

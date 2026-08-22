@@ -106,4 +106,4 @@ A multi-stage chain uses stable event IDs and dependent schedules:
 
 ---
 
-<p align="center"><a href="Actions.md">← Actions</a> · <a href="README.md">Event guide</a> · <a href="Testing.md">Testing →</a></p>
+<p align="center"><a href="Actions.md">← Actions</a> · <a href="Index.md">Event guide</a> · <a href="Testing.md">Testing →</a></p>

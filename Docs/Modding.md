@@ -114,7 +114,7 @@ pack.
 ### Game events
 
 Game events define scheduled and result-triggered narrative behavior without a code rebuild. See
-[Creating game events](Events/README.md) for lifecycle, scheduling, targeting, conditions,
+[Creating game events](Events/Index.md) for lifecycle, scheduling, targeting, conditions,
 actions, schema validation, and complete examples.
 
 ### Preloaded assets

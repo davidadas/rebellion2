@@ -14,21 +14,30 @@ Selectors return typed collections of scene nodes. They are reused by targets, c
 </Target>
 ```
 
-| Selector | Filters or behavior |
-| --- | --- |
-| `SelectPlanets` | `InstanceID`, `OwnerFactionInstanceID`, `SectorType` |
-| `SelectPlanetSectors` | `InstanceID`, `SectorType` |
-| `SelectOfficers` | ID, planet, owner, capture state, and whether inactive officers are included |
-| `SelectSpecialForces`, `SelectFleets`, `SelectMissions` | ID, planet, and owner |
-| `SelectCapitalShips`, `SelectStarfighters`, `SelectRegiments` | ID, planet, owner, `TypeID`, and `ManufacturingStatus` |
-| `SelectBuildings` | The same filters plus `Category` |
-| `SelectManufacturingOrders` | Planet, owner, and `ManufacturingType` |
-| `SelectRandom` | Samples its combined candidates by chance and count. |
-| `SelectFirst` | Returns the first valid destination candidate. |
-| `SelectBinding` | Returns the object or collection in a binding. |
-| `SelectNearestParent` | Maps candidates to their nearest parent of `Type`. The selected node itself is not considered. |
-| `SelectPreviousLocation` | Returns a unit's recorded previous scene location. |
-| `SpawnUnits` | Creates `Count` detached units from a catalog `TypeID` for immediate use by `PlaceUnits`. |
+## Selector reference
+
+Direct-selector filters are optional unless marked required. Omitting every filter selects every active object of that direct selector's type.
+
+| Element | Attributes | Child elements | Result |
+| --- | --- | --- | --- |
+| `Target` | None | Required `From` containing exactly one selector | Exactly one scene node, exposed as `$target`; zero or multiple results fail. |
+| `SelectPlanets` | `InstanceID`, `OwnerFactionInstanceID`, `SectorType` | None | Matching planets. |
+| `SelectPlanetSectors` | `InstanceID`, `SectorType` | None | Matching planet sectors. |
+| `SelectOfficers` | `InstanceID`, `PlanetInstanceID` or `PlanetBinding`, `OwnerFactionInstanceID`, `IsCaptured`, `IncludeInactive` | None | Matching officers. `IncludeInactive` defaults to `false`. |
+| `SelectSpecialForces` | `InstanceID`, `PlanetInstanceID` or `PlanetBinding`, `OwnerFactionInstanceID` | None | Matching special forces. |
+| `SelectFleets` | Same location and ownership filters | None | Matching fleets. |
+| `SelectMissions` | Same location and ownership filters | None | Matching missions. |
+| `SelectCapitalShips` | Location and ownership filters plus `TypeID`, `ManufacturingStatus` | None | Matching capital ships. |
+| `SelectStarfighters` | Location and ownership filters plus `TypeID`, `ManufacturingStatus` | None | Matching starfighters. |
+| `SelectRegiments` | Location and ownership filters plus `TypeID`, `ManufacturingStatus` | None | Matching regiments. |
+| `SelectBuildings` | Location and ownership filters plus `TypeID`, `ManufacturingStatus`, `Category` | None | Matching buildings. |
+| `SelectManufacturingOrders` | `PlanetInstanceID` or `PlanetBinding`, `OwnerFactionInstanceID`, `ManufacturingType` | None | Matching queued manufacturing items. |
+| `SelectRandom` | `ChancePercent` (default `100`), either `Count` or `MinimumCount`/`MaximumCount` | Required `From` selector collection | A random subset of the combined candidates. |
+| `SelectFirst` | None | Required ordered `From` selector collection | The first distinct candidate. In a destination, placement checks candidates in order. |
+| `SelectBinding` | `Binding` — required | None | The scene node or scene-node collection stored in the binding. |
+| `SelectNearestParent` | `Type` — required | Required `From` selector collection | Each candidate's nearest parent of `Type`; never the candidate itself. |
+| `SelectPreviousLocation` | Exactly one of `UnitInstanceID` or `UnitBinding` | None | The unit's registered `LastParentInstanceID`, when it still resolves. |
+| `SpawnUnits` | `TypeID`, `OwnerFactionInstanceID` — required; `Count` — optional, default `1` | None | Newly created detached units. Valid only inside `PlaceUnits/Units`. |
 
 ## Combining selectors
 
@@ -105,4 +114,4 @@ Planet location filters use `PlanetInstanceID` or `PlanetBinding`. Sector types 
 
 ---
 
-<p align="center"><a href="Conditions.md">← Conditions</a> · <a href="README.md">Event guide</a> · <a href="Actions.md">Actions →</a></p>
+<p align="center"><a href="Conditions.md">← Conditions</a> · <a href="Index.md">Event guide</a> · <a href="Actions.md">Actions →</a></p>

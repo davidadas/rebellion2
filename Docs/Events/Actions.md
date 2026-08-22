@@ -60,6 +60,40 @@ Every action belongs inside an event's `Actions` collection:
 
 - [`SetDisplayName`, `SetDisplayStatus`, and `ClearDisplayStatus`](#display-metadata)
 
+## Action reference
+
+The table lists the complete top-level property shape for every action. “Required” means the property must be authored; mutually exclusive choices are called out explicitly. Selector collections are detailed in [Targets and Selectors](Targets.md).
+
+| Element | Attributes | Child elements |
+| --- | --- | --- |
+| `Actions` | None | Zero or more supported action elements, executed in authored order. |
+| `If` | None | Required `Conditions` and `Actions`; optional `Else`. |
+| `Random` | None | Required `Outcomes` containing one or more `Outcome`. Each outcome requires positive `Weight`, optional `When`, and required `Actions`. |
+| `PerformSkillCheck` | `OfficerInstanceID`, `Rating`, `ProbabilityTable` — required; `RatingMultiplier` — optional, default `1` | Optional `OnSuccess` and `OnFailure` action collections. |
+| `SetEventVariable` | None | `Key` and `Operand` — required; `Operation` — optional, default `Set`. |
+| `RevealToFaction` | `FactionInstanceID` — required | Required `Subjects` selector collection. |
+| `SendMessage` | Optional `RecipientFactionInstanceID`, `RecipientUnitInstanceID`, `SubjectInstanceID`, `SubjectBinding`, `RelatedSubjectInstanceID`, `LocationInstanceID`, `LocationBinding`, `Type` (default `Advice`) | Optional `Subject`, `Body`, `ConditionalBodies`, `BackgroundImage`, `OverlayImage`, `BackgroundAudio`, `OfficerVoice`, `AdvisorNotification`. Recipient resolution must ultimately identify one faction. |
+| `ChangePlanetStat` | `Stat` — required; optional `PlanetInstanceID` or `PlanetBinding` | Exactly one of `Amount` or `PercentOfCurrent`; optional `Planets` selectors. Falls back to `$target`. |
+| `ReducePlanetStats` | `LossProbabilityPerResource`, `MinimumTotalLoss` — required | Required `Stats` containing one or more `Stat Name="…"`. Requires a planet `$target`. |
+| `RecordPlanetIncident` | `Type` — required | None. Requires a planet `$target` and earlier changes in the same activation. |
+| `DestroyUnits` | None | Required `Units` selector collection. |
+| `ChangeOwner` | `FactionInstanceID` — required | Exactly one of `Planets` or `Units`, containing matching selectors. |
+| `PlaceUnits` | Optional `UnitInstanceID`, `DestinationInstanceID` | Optional `Units` and `Destination`; at least one unit source and one destination must resolve. `Units` may include `SpawnUnits`. |
+| `SendUnits` | Optional `UnitInstanceID`, `DestinationInstanceID` | Optional `Units` and `Destination`; at least one existing unit and one destination must resolve. |
+| `SetActive` | `IsActive` — required; optional `UnitInstanceID` | Optional `Units` selectors. A direct unit ID may also be supplied as an element. |
+| `SetCaptureStatus` | `IsCaptured` — required; optional `OfficerInstanceID`, `CaptorFactionInstanceID`, `CanEscape` (default `true`) | Optional `Officers` selectors. Capturing requires a captor; releasing forbids one. |
+| `ChangeOfficerRating` | `Rating` — required; optional `OfficerInstanceID`, `ReferenceOfficerInstanceID`, `MinimumAmount` | Exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, `PercentOfPositiveGap`; optional `Officers` selectors. |
+| `IncreaseOfficerForce` | Optional `OfficerInstanceID`, `ReferenceOfficerInstanceID`, `MinimumAmount` | Exactly one positive `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap`; optional `Officers` selectors. |
+| `SetForceSensitive` | `OfficerInstanceID` — required | None. |
+| `SetForceEligible` | `OfficerInstanceID` — required | None. |
+| `ApplyOfficerInjury` | `OfficerInstanceID` — required | Required `MinimumInjury` and `MaximumInjury`. |
+| `TriggerDuel` | `FirstOfficerInstanceID`, `SecondOfficerInstanceID` — required | Optional `ImagePath`, `AudioPath`. |
+| `SetOfficerImages` | `OfficerInstanceID` — required | Optional `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, `EncyclopediaImagePath`. At least one should be supplied. |
+| `SetOfficerVoiceSet` | `OfficerInstanceID` — required | Optional voice-category collections; each contains one or more `Path` elements. |
+| `SetDisplayName` | Optional `TargetInstanceID`; `Name` — required for this action | Optional `Targets` selectors. |
+| `SetDisplayStatus` | Optional `TargetInstanceID`; `Status` — required for this action | Optional `Targets` selectors. |
+| `ClearDisplayStatus` | Optional `TargetInstanceID` | Optional `Targets` selectors. |
+
 ## Flow and event state
 
 ### If
@@ -420,4 +454,4 @@ These actions accept one direct `TargetInstanceID` or a `Targets` selector colle
 
 ---
 
-<p align="center"><a href="Targets.md">← Targets</a> · <a href="README.md">Event guide</a> · <a href="Examples.md">Examples →</a></p>
+<p align="center"><a href="Targets.md">← Targets</a> · <a href="Index.md">Event guide</a> · <a href="Examples.md">Examples →</a></p>

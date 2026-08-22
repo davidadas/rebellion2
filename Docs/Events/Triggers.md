@@ -19,6 +19,13 @@ An event uses `Triggers` instead of `Schedule`. Multiple triggers on the same ev
 
 `Event` chooses a supported result contract. Each `Bind` reads one public argument from that result and stores it under the authored alias in `As`.
 
+| Element | Attributes | Child elements | Rules |
+| --- | --- | --- | --- |
+| `Triggers` | None | One or more `Trigger` elements | Cannot appear with `Schedule`. Trigger routes are alternatives. |
+| `Trigger` | `Event` — required trigger ID | Optional `Bindings` | The trigger ID must appear in the catalog below. |
+| `Bindings` | None | One or more `Bind` elements when present | Every trigger route on the event must expose the same aliases and compatible types. |
+| `Bind` | `Argument` — required contract argument; `As` — required alias | None | `As` must be unique, cannot be `target`, and is referenced as `$alias`. |
+
 ## Using bindings
 
 Binding references begin with `$`. A binding can be consumed by conditions, selectors, targets, and actions that accept that value type.
@@ -148,4 +155,4 @@ Overlapping result types are rejected, so one simulation result cannot activate 
 
 ---
 
-<p align="center"><a href="Schedules.md">← Schedules</a> · <a href="README.md">Event guide</a> · <a href="Conditions.md">Conditions →</a></p>
+<p align="center"><a href="Schedules.md">← Schedules</a> · <a href="Index.md">Event guide</a> · <a href="Conditions.md">Conditions →</a></p>
