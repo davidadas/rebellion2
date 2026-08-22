@@ -148,7 +148,7 @@ namespace Rebellion.Game.Events
             }
         }
 
-        private static readonly Dictionary<string, ITriggerContract> Contracts = BuildContracts();
+        private static readonly Dictionary<string, ITriggerContract> Contracts = CreateContracts();
 
         internal static Type GetResultType(string eventID) => GetContract(eventID).ResultType;
 
@@ -199,50 +199,23 @@ namespace Rebellion.Game.Events
             return contract;
         }
 
-        private static Dictionary<string, ITriggerContract> BuildContracts()
+        /// <summary>Creates the complete set of supported game-event trigger contracts.</summary>
+        private static Dictionary<string, ITriggerContract> CreateContracts()
         {
             Dictionary<string, ITriggerContract> contracts = new(StringComparer.Ordinal);
-            Register<DuelResult>(contracts, "core:duel.completed")
-                .Argument("Officer", result => result.EncounteredOfficer)
-                .Argument("OfficerInstanceID", result => result.EncounteredOfficer?.InstanceID)
-                .Argument("Opponent", result => result.OpposingOfficer)
-                .Argument("OpponentInstanceID", result => result.OpposingOfficer?.InstanceID)
-                .Argument("Location", result => result.Location)
-                .Argument("OfficerCaptured", result => result.EncounteredOfficerCaptured)
-                .Argument("OfficerInjury", result => result.EncounteredOfficerInjury)
-                .Argument("OpponentInjury", result => result.OpposingOfficerInjury)
-                .Argument("ImagePath", result => result.ImagePath)
-                .Argument("AudioPath", result => result.AudioPath)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<ForceDiscoveryResult>(contracts, "core:force.discovered")
-                .Argument("Officer", result => result.Officer)
-                .Argument("Discoverer", result => result.Discoverer)
-                .Argument("ForceRank", result => result.ForceRank)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<MissionCompletedResult>(contracts, "core:mission.completed")
-                .Argument("Mission", result => result.Mission)
-                .Argument("Outcome", result => result.Outcome)
-                .Argument("CompletionReason", result => result.CompletionReason)
-                .Argument("Participants", result => result.Participants)
-                .Argument("Location", result => result.Location)
-                .Argument("ReturnDestination", result => result.ReturnDestination)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<OfficerCaptureStateResult>(contracts, "core:officer.capture-changed")
-                .Argument("Officer", result => result.TargetOfficer ?? result.CapturedOfficer)
-                .Argument(
-                    "OfficerInstanceID",
-                    result => (result.TargetOfficer ?? result.CapturedOfficer)?.InstanceID
-                )
-                .Argument("LinkedOfficer", result => result.LinkedOfficer)
-                .Argument("Context", result => result.Context)
-                .Argument("IsCaptured", result => result.IsCaptured)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<UnitArrivedResult>(contracts, "core:unit.arrived")
-                .Argument("Unit", result => result.Unit)
-                .Argument("UnitInstanceID", result => result.Unit?.InstanceID)
-                .Argument("Destination", result => result.Destination)
-                .Argument("DestinationInstanceID", result => result.Destination?.InstanceID)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            RegisterPlanetTriggers(contracts);
+            RegisterFactionTriggers(contracts);
+            RegisterMissionTriggers(contracts);
+            RegisterOfficerTriggers(contracts);
+            RegisterUnitLifecycleTriggers(contracts);
+            RegisterCombatTriggers(contracts);
+            RegisterManufacturingTriggers(contracts);
+            return contracts;
+        }
+
+        /// <summary>Registers planet result contracts exposed to authored events.</summary>
+        private static void RegisterPlanetTriggers(IDictionary<string, ITriggerContract> contracts)
+        {
             Register<PlanetOwnershipChangedResult>(contracts, "core:planet.owner-changed")
                 .Argument("Planet", result => result.Planet)
                 .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
@@ -252,109 +225,6 @@ namespace Rebellion.Game.Events
                 .Argument("NewOwnerInstanceID", result => result.NewOwner?.InstanceID)
                 .Argument("Reason", result => result.Reason)
                 .Argument("ObserverFactionInstanceIDs", result => result.ObserverFactionInstanceIDs)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<UnitOwnershipChangedResult>(contracts, "core:unit.owner-changed")
-                .Argument("Unit", result => result.Unit)
-                .Argument("UnitInstanceID", result => result.Unit?.InstanceID)
-                .Argument("PreviousOwner", result => result.PreviousOwner)
-                .Argument("PreviousOwnerInstanceID", result => result.PreviousOwner?.InstanceID)
-                .Argument("NewOwner", result => result.NewOwner)
-                .Argument("NewOwnerInstanceID", result => result.NewOwner?.InstanceID)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<GameObjectCreatedResult>(contracts, "core:unit.created")
-                .Argument("Unit", result => result.GameObject)
-                .Argument("UnitInstanceID", result => result.GameObject?.InstanceID)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<GameObjectDestroyedResult>(contracts, "core:unit.destroyed")
-                .Argument("Unit", result => result.DestroyedObject)
-                .Argument("UnitInstanceID", result => result.DestroyedObject?.InstanceID)
-                .Argument("DestroyedBy", result => result.DestroyedBy)
-                .Argument("Context", result => result.Context)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<OfficerKilledResult>(contracts, "core:officer.killed")
-                .Argument("Officer", result => result.TargetOfficer)
-                .Argument("OfficerInstanceID", result => result.TargetOfficer?.InstanceID)
-                .Argument("Assassin", result => result.Assassin)
-                .Argument("Context", result => result.Context)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<OfficerInjuredResult>(contracts, "core:officer.injured")
-                .Argument("Officer", result => result.Officer)
-                .Argument("OfficerInstanceID", result => result.Officer?.InstanceID)
-                .Argument("Severity", result => result.Severity)
-                .Argument("Detail", result => result.Detail)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<OfficerRecruitedResult>(contracts, "core:officer.recruited")
-                .Argument("Officer", result => result.Officer)
-                .Argument("OfficerInstanceID", result => result.Officer?.InstanceID)
-                .Argument("Faction", result => result.Faction)
-                .Argument("FactionInstanceID", result => result.Faction?.InstanceID)
-                .Argument("Planet", result => result.Planet)
-                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<SpaceCombatResult>(contracts, "core:combat.completed")
-                .Argument("AttackerFleet", result => result.AttackerFleet)
-                .Argument("DefenderFleet", result => result.DefenderFleet)
-                .Argument("AttackerFactionInstanceID", result => result.AttackerOwnerInstanceID)
-                .Argument("DefenderFactionInstanceID", result => result.DefenderOwnerInstanceID)
-                .Argument("Planet", result => result.Planet)
-                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
-                .Argument("Winner", result => result.Winner)
-                .Argument("AttackerOutcome", result => result.AttackerOutcome)
-                .Argument("DefenderOutcome", result => result.DefenderOutcome)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<BombardmentResult>(contracts, "core:bombardment.completed")
-                .Argument("Planet", result => result.Planet)
-                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
-                .Argument("AttackingFaction", result => result.AttackingFaction)
-                .Argument("AttackerFactionInstanceID", result => result.AttackerOwnerInstanceID)
-                .Argument("DefenderFactionInstanceID", result => result.DefenderOwnerInstanceID)
-                .Argument("Type", result => result.Type)
-                .Argument("SuccessfulStrikes", result => result.SuccessfulStrikes)
-                .Argument("HeadquartersDestroyed", result => result.HeadquartersDestroyed)
-                .Argument("PlanetDestroyed", result => result.PlanetDestroyed)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<PlanetaryAssaultResult>(contracts, "core:planetary-assault.completed")
-                .Argument("Planet", result => result.Planet)
-                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
-                .Argument("AttackingFaction", result => result.AttackingFaction)
-                .Argument("AttackerFactionInstanceID", result => result.AttackerOwnerInstanceID)
-                .Argument("DefenderFactionInstanceID", result => result.DefenderOwnerInstanceID)
-                .Argument("Success", result => result.Success)
-                .Argument("BlockedByShields", result => result.BlockedByShields)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<ManufacturingDeployedResult>(contracts, "core:manufacturing.completed")
-                .Argument("Faction", result => result.Faction)
-                .Argument("FactionInstanceID", result => result.Faction?.InstanceID)
-                .Argument("Unit", result => result.DeployedObject)
-                .Argument("UnitInstanceID", result => result.DeployedObject?.InstanceID)
-                .Argument("Location", result => result.Location)
-                .Argument("LocationInstanceID", result => result.Location?.InstanceID)
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<ResearchOrderedResult>(contracts, "core:research.completed")
-                .Argument("Faction", result => result.Faction)
-                .Argument("FactionInstanceID", result => result.Faction?.InstanceID)
-                .Argument("Discipline", result => result.Discipline)
-                .Argument("ResearchOrder", result => result.ResearchOrder)
-                .Argument("Technology", result => result.Technology)
-                .Argument(
-                    "TechnologyTypeID",
-                    result => result.Technology?.Manufacturable?.GetTypeID()
-                )
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<PlanetUprisingStartedResult>(contracts, "core:uprising.started")
-                .Argument("Planet", result => result.Planet)
-                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
-                .Argument("InstigatorFaction", result => result.InstigatorFaction)
-                .Argument(
-                    "InstigatorFactionInstanceID",
-                    result => result.InstigatorFaction?.InstanceID
-                )
-                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            Register<PlanetUprisingEndedResult>(contracts, "core:uprising.ended")
-                .Argument("Planet", result => result.Planet)
-                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
-                .Argument("Faction", result => result.Faction)
-                .Argument("FactionInstanceID", result => result.Faction?.InstanceID)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<PlanetStatChangedResult>(contracts, "core:planet.stat-changed")
                 .Argument("Planet", result => result.Planet)
@@ -382,9 +252,24 @@ namespace Rebellion.Game.Events
                 .Argument("BlockadingFleetInstanceID", result => result.BlockadingFleet?.InstanceID)
                 .Argument("IsBlockaded", result => result.Blockaded)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<PlanetUprisingStartedResult>(contracts, "core:uprising.started")
+                .Argument("Planet", result => result.Planet)
+                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
+                .Argument("InstigatorFaction", result => result.InstigatorFaction)
+                .Argument(
+                    "InstigatorFactionInstanceID",
+                    result => result.InstigatorFaction?.InstanceID
+                )
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<PlanetNearUprisingResult>(contracts, "core:uprising.nearing")
                 .Argument("Planet", result => result.Planet)
                 .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<PlanetUprisingEndedResult>(contracts, "core:uprising.ended")
+                .Argument("Planet", result => result.Planet)
+                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
+                .Argument("Faction", result => result.Faction)
+                .Argument("FactionInstanceID", result => result.Faction?.InstanceID)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<HeadquartersDestroyedResult>(contracts, "core:headquarters.destroyed")
                 .Argument("Headquarters", result => result.Headquarters)
@@ -410,6 +295,11 @@ namespace Rebellion.Game.Events
                 .Argument("NewValue", result => result.NewValue)
                 .Argument("DestroyedObjects", result => result.DestroyedObjects)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+        }
+
+        /// <summary>Registers faction result contracts exposed to authored events.</summary>
+        private static void RegisterFactionTriggers(IDictionary<string, ITriggerContract> contracts)
+        {
             Register<IntelligenceRevealedResult>(contracts, "core:intelligence.revealed")
                 .Argument("RecipientFaction", result => result.Recipient)
                 .Argument("RecipientFactionInstanceID", result => result.Recipient?.InstanceID)
@@ -421,6 +311,17 @@ namespace Rebellion.Game.Events
                 .Argument("Planet", result => result.Planet)
                 .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
                 .Argument("Amount", result => result.Amount)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<ResearchOrderedResult>(contracts, "core:research.completed")
+                .Argument("Faction", result => result.Faction)
+                .Argument("FactionInstanceID", result => result.Faction?.InstanceID)
+                .Argument("Discipline", result => result.Discipline)
+                .Argument("ResearchOrder", result => result.ResearchOrder)
+                .Argument("Technology", result => result.Technology)
+                .Argument(
+                    "TechnologyTypeID",
+                    result => result.Technology?.Manufacturable?.GetTypeID()
+                )
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<ResearchExhaustedResult>(contracts, "core:research.exhausted")
                 .Argument("Faction", result => result.Faction)
@@ -441,8 +342,61 @@ namespace Rebellion.Game.Events
                 .Argument("GameMode", result => result.GameMode)
                 .Argument("Description", result => result.Description)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+        }
+
+        /// <summary>Registers mission result contracts exposed to authored events.</summary>
+        private static void RegisterMissionTriggers(IDictionary<string, ITriggerContract> contracts)
+        {
+            Register<MissionCompletedResult>(contracts, "core:mission.completed")
+                .Argument("Mission", result => result.Mission)
+                .Argument("Outcome", result => result.Outcome)
+                .Argument("CompletionReason", result => result.CompletionReason)
+                .Argument("Participants", result => result.Participants)
+                .Argument("Location", result => result.Location)
+                .Argument("ReturnDestination", result => result.ReturnDestination)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<PlanetSectorsRevealedResult>(contracts, "core:planet-sectors.revealed")
                 .Argument("PlanetSectors", result => result.AdditionalSectors)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+        }
+
+        /// <summary>Registers officer result contracts exposed to authored events.</summary>
+        private static void RegisterOfficerTriggers(IDictionary<string, ITriggerContract> contracts)
+        {
+            Register<ForceDiscoveryResult>(contracts, "core:force.discovered")
+                .Argument("Officer", result => result.Officer)
+                .Argument("Discoverer", result => result.Discoverer)
+                .Argument("ForceRank", result => result.ForceRank)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<OfficerRecruitedResult>(contracts, "core:officer.recruited")
+                .Argument("Officer", result => result.Officer)
+                .Argument("OfficerInstanceID", result => result.Officer?.InstanceID)
+                .Argument("Faction", result => result.Faction)
+                .Argument("FactionInstanceID", result => result.Faction?.InstanceID)
+                .Argument("Planet", result => result.Planet)
+                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<OfficerCaptureStateResult>(contracts, "core:officer.capture-changed")
+                .Argument("Officer", result => result.TargetOfficer ?? result.CapturedOfficer)
+                .Argument(
+                    "OfficerInstanceID",
+                    result => (result.TargetOfficer ?? result.CapturedOfficer)?.InstanceID
+                )
+                .Argument("LinkedOfficer", result => result.LinkedOfficer)
+                .Argument("Context", result => result.Context)
+                .Argument("IsCaptured", result => result.IsCaptured)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<OfficerKilledResult>(contracts, "core:officer.killed")
+                .Argument("Officer", result => result.TargetOfficer)
+                .Argument("OfficerInstanceID", result => result.TargetOfficer?.InstanceID)
+                .Argument("Assassin", result => result.Assassin)
+                .Argument("Context", result => result.Context)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<OfficerInjuredResult>(contracts, "core:officer.injured")
+                .Argument("Officer", result => result.Officer)
+                .Argument("OfficerInstanceID", result => result.Officer?.InstanceID)
+                .Argument("Severity", result => result.Severity)
+                .Argument("Detail", result => result.Detail)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<OfficerRescuedResult>(contracts, "core:officer.rescued")
                 .Argument("Officer", result => result.Officer)
@@ -485,6 +439,25 @@ namespace Rebellion.Game.Events
                 .Argument("CurrentForceRank", result => result.CurrentForceRank)
                 .Argument("Detail", result => result.Detail)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+        }
+
+        /// <summary>Registers unit-lifecycle result contracts exposed to authored events.</summary>
+        private static void RegisterUnitLifecycleTriggers(
+            IDictionary<string, ITriggerContract> contracts
+        )
+        {
+            Register<UnitOwnershipChangedResult>(contracts, "core:unit.owner-changed")
+                .Argument("Unit", result => result.Unit)
+                .Argument("UnitInstanceID", result => result.Unit?.InstanceID)
+                .Argument("PreviousOwner", result => result.PreviousOwner)
+                .Argument("PreviousOwnerInstanceID", result => result.PreviousOwner?.InstanceID)
+                .Argument("NewOwner", result => result.NewOwner)
+                .Argument("NewOwnerInstanceID", result => result.NewOwner?.InstanceID)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<GameObjectCreatedResult>(contracts, "core:unit.created")
+                .Argument("Unit", result => result.GameObject)
+                .Argument("UnitInstanceID", result => result.GameObject?.InstanceID)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<GameObjectDeployedResult>(contracts, "core:unit.deployed")
                 .Argument("Unit", result => result.GameObject)
                 .Argument("UnitInstanceID", result => result.GameObject?.InstanceID)
@@ -493,10 +466,22 @@ namespace Rebellion.Game.Events
                 .Argument("Unit", result => result.GameObject)
                 .Argument("UnitInstanceID", result => result.GameObject?.InstanceID)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<UnitArrivedResult>(contracts, "core:unit.arrived")
+                .Argument("Unit", result => result.Unit)
+                .Argument("UnitInstanceID", result => result.Unit?.InstanceID)
+                .Argument("Destination", result => result.Destination)
+                .Argument("DestinationInstanceID", result => result.Destination?.InstanceID)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<GameObjectDamagedResult>(contracts, "core:unit.damaged")
                 .Argument("Unit", result => result.GameObject)
                 .Argument("UnitInstanceID", result => result.GameObject?.InstanceID)
                 .Argument("Damage", result => result.DamageValue)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<GameObjectDestroyedResult>(contracts, "core:unit.destroyed")
+                .Argument("Unit", result => result.DestroyedObject)
+                .Argument("UnitInstanceID", result => result.DestroyedObject?.InstanceID)
+                .Argument("DestroyedBy", result => result.DestroyedBy)
+                .Argument("Context", result => result.Context)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<GameObjectDestroyedOnArrivalResult>(
                     contracts,
@@ -519,6 +504,54 @@ namespace Rebellion.Game.Events
                 .Argument("Saboteur", result => result.Saboteur)
                 .Argument("Context", result => result.Context)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+        }
+
+        /// <summary>Registers combat result contracts exposed to authored events.</summary>
+        private static void RegisterCombatTriggers(IDictionary<string, ITriggerContract> contracts)
+        {
+            Register<DuelResult>(contracts, "core:duel.completed")
+                .Argument("Officer", result => result.EncounteredOfficer)
+                .Argument("OfficerInstanceID", result => result.EncounteredOfficer?.InstanceID)
+                .Argument("Opponent", result => result.OpposingOfficer)
+                .Argument("OpponentInstanceID", result => result.OpposingOfficer?.InstanceID)
+                .Argument("Location", result => result.Location)
+                .Argument("OfficerCaptured", result => result.EncounteredOfficerCaptured)
+                .Argument("OfficerInjury", result => result.EncounteredOfficerInjury)
+                .Argument("OpponentInjury", result => result.OpposingOfficerInjury)
+                .Argument("ImagePath", result => result.ImagePath)
+                .Argument("AudioPath", result => result.AudioPath)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<SpaceCombatResult>(contracts, "core:combat.completed")
+                .Argument("AttackerFleet", result => result.AttackerFleet)
+                .Argument("DefenderFleet", result => result.DefenderFleet)
+                .Argument("AttackerFactionInstanceID", result => result.AttackerOwnerInstanceID)
+                .Argument("DefenderFactionInstanceID", result => result.DefenderOwnerInstanceID)
+                .Argument("Planet", result => result.Planet)
+                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
+                .Argument("Winner", result => result.Winner)
+                .Argument("AttackerOutcome", result => result.AttackerOutcome)
+                .Argument("DefenderOutcome", result => result.DefenderOutcome)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<BombardmentResult>(contracts, "core:bombardment.completed")
+                .Argument("Planet", result => result.Planet)
+                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
+                .Argument("AttackingFaction", result => result.AttackingFaction)
+                .Argument("AttackerFactionInstanceID", result => result.AttackerOwnerInstanceID)
+                .Argument("DefenderFactionInstanceID", result => result.DefenderOwnerInstanceID)
+                .Argument("Type", result => result.Type)
+                .Argument("SuccessfulStrikes", result => result.SuccessfulStrikes)
+                .Argument("HeadquartersDestroyed", result => result.HeadquartersDestroyed)
+                .Argument("PlanetDestroyed", result => result.PlanetDestroyed)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+            Register<PlanetaryAssaultResult>(contracts, "core:planetary-assault.completed")
+                .Argument("Planet", result => result.Planet)
+                .Argument("PlanetInstanceID", result => result.Planet?.InstanceID)
+                .Argument("AttackingFaction", result => result.AttackingFaction)
+                .Argument("AttackerFactionInstanceID", result => result.AttackerOwnerInstanceID)
+                .Argument("DefenderFactionInstanceID", result => result.DefenderOwnerInstanceID)
+                .Argument("Success", result => result.Success)
+                .Argument("BlockedByShields", result => result.BlockedByShields)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<EvacuationLossesResult>(contracts, "core:evacuation.completed")
                 .Argument("Faction", result => result.Faction)
                 .Argument("FactionInstanceID", result => result.Faction?.InstanceID)
@@ -528,6 +561,21 @@ namespace Rebellion.Game.Events
                 .Argument("LostStarfighters", result => result.LostStarfighters)
                 .Argument("LostRegiments", result => result.LostRegiments)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
+        }
+
+        /// <summary>Registers manufacturing result contracts exposed to authored events.</summary>
+        private static void RegisterManufacturingTriggers(
+            IDictionary<string, ITriggerContract> contracts
+        )
+        {
+            Register<ManufacturingDeployedResult>(contracts, "core:manufacturing.completed")
+                .Argument("Faction", result => result.Faction)
+                .Argument("FactionInstanceID", result => result.Faction?.InstanceID)
+                .Argument("Unit", result => result.DeployedObject)
+                .Argument("UnitInstanceID", result => result.DeployedObject?.InstanceID)
+                .Argument("Location", result => result.Location)
+                .Argument("LocationInstanceID", result => result.Location?.InstanceID)
+                .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
             Register<ManufacturingIdleResult>(contracts, "core:manufacturing.idle")
                 .Argument("Planet", result => result.ProductionPlanet)
                 .Argument("PlanetInstanceID", result => result.ProductionPlanet?.InstanceID)
@@ -535,7 +583,6 @@ namespace Rebellion.Game.Events
                 .Argument("FactionInstanceID", result => result.Faction?.InstanceID)
                 .Argument("ManufacturingType", result => result.ManufacturingType)
                 .Argument("SourceEventInstanceID", result => result.SourceEventInstanceID);
-            return contracts;
         }
 
         private static TriggerContract<TResult> Register<TResult>(

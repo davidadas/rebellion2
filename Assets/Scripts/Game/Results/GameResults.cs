@@ -63,7 +63,7 @@ namespace Rebellion.Game.Results
 
     #endregion
 
-    #region System / Planet
+    #region Planet
 
     /// <summary>
     /// A numeric attribute of a planet changed for a faction (energy, loyalty, raw materials, etc.).
@@ -97,18 +97,6 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
         public Fleet BlockadingFleet { get; set; }
         public bool Blockaded { get; set; }
-    }
-
-    /// <summary>
-    /// A Force discovery state changed — either an officer began scanning for Force users,
-    /// or a hidden Force user was discovered by a scanner.
-    /// </summary>
-    public class ForceDiscoveryResult : GameResult
-    {
-        public ForceEventType EventType { get; set; }
-        public Officer Officer { get; set; }
-        public Officer Discoverer { get; set; }
-        public int ForceRank { get; set; }
     }
 
     /// <summary>
@@ -150,16 +138,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Ownership of one unit changed hands.
-    /// </summary>
-    public sealed class UnitOwnershipChangedResult : GameResult
-    {
-        public ISceneNode Unit { get; set; }
-        public Faction PreviousOwner { get; set; }
-        public Faction NewOwner { get; set; }
-    }
-
-    /// <summary>
     /// A mobile headquarters was destroyed when its planet fell to an enemy faction.
     /// </summary>
     public class HeadquartersDestroyedResult : GameResult
@@ -192,6 +170,10 @@ namespace Rebellion.Game.Results
         public List<IGameEntity> DestroyedObjects { get; set; } = new List<IGameEntity>();
     }
 
+    #endregion
+
+    #region Faction
+
     /// <summary>
     /// Current observations about selected game objects were supplied to a faction.
     /// </summary>
@@ -200,10 +182,6 @@ namespace Rebellion.Game.Results
         public Faction Recipient { get; set; }
         public List<ISceneNode> Observations { get; set; } = new List<ISceneNode>();
     }
-
-    #endregion
-
-    #region Faction / Side
 
     /// <summary>
     /// A faction requires maintenance at a system.
@@ -239,16 +217,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A recruitment mission completed (successfully or not).
-    /// </summary>
-    public class OfficerRecruitedResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public Faction Faction { get; set; }
-        public Planet Planet { get; set; }
-    }
-
-    /// <summary>
     /// A side has no remaining officers available for recruitment.
     /// </summary>
     public class RecruitmentExhaustedResult : GameResult
@@ -270,7 +238,7 @@ namespace Rebellion.Game.Results
 
     #endregion
 
-    #region Mission / Role
+    #region Mission
 
     /// <summary>
     /// A mission completed with a recorded outcome.
@@ -301,6 +269,28 @@ namespace Rebellion.Game.Results
     #endregion
 
     #region Officer
+
+    /// <summary>
+    /// A Force discovery state changed — either an officer began scanning for Force users,
+    /// or a hidden Force user was discovered by a scanner.
+    /// </summary>
+    public class ForceDiscoveryResult : GameResult
+    {
+        public ForceEventType EventType { get; set; }
+        public Officer Officer { get; set; }
+        public Officer Discoverer { get; set; }
+        public int ForceRank { get; set; }
+    }
+
+    /// <summary>
+    /// A recruitment mission completed (successfully or not).
+    /// </summary>
+    public class OfficerRecruitedResult : GameResult
+    {
+        public Officer Officer { get; set; }
+        public Faction Faction { get; set; }
+        public Planet Planet { get; set; }
+    }
 
     /// <summary>
     /// A character's capture state changed (captured or released).
@@ -366,21 +356,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Records the complete outcome of a linked-officer encounter.
-    /// </summary>
-    public class DuelResult : GameResult
-    {
-        public Officer EncounteredOfficer { get; set; }
-        public Officer OpposingOfficer { get; set; }
-        public Planet Location { get; set; }
-        public bool EncounteredOfficerCaptured { get; set; }
-        public int EncounteredOfficerInjury { get; set; }
-        public int OpposingOfficerInjury { get; set; }
-        public string ImagePath { get; set; }
-        public string AudioPath { get; set; }
-    }
-
-    /// <summary>
     /// A traitor was discovered.
     /// </summary>
     public class TraitorDiscoveredResult : GameResult
@@ -427,7 +402,17 @@ namespace Rebellion.Game.Results
 
     #endregion
 
-    #region GameObject Lifecycle
+    #region Unit Lifecycle
+
+    /// <summary>
+    /// Ownership of one unit changed hands.
+    /// </summary>
+    public sealed class UnitOwnershipChangedResult : GameResult
+    {
+        public ISceneNode Unit { get; set; }
+        public Faction PreviousOwner { get; set; }
+        public Faction NewOwner { get; set; }
+    }
 
     /// <summary>
     /// A game object was created.
@@ -523,7 +508,22 @@ namespace Rebellion.Game.Results
 
     #endregion
 
-    #region Fleet / Combat
+    #region Combat
+
+    /// <summary>
+    /// Records the complete outcome of a linked-officer encounter.
+    /// </summary>
+    public class DuelResult : GameResult
+    {
+        public Officer EncounteredOfficer { get; set; }
+        public Officer OpposingOfficer { get; set; }
+        public Planet Location { get; set; }
+        public bool EncounteredOfficerCaptured { get; set; }
+        public int EncounteredOfficerInjury { get; set; }
+        public int OpposingOfficerInjury { get; set; }
+        public string ImagePath { get; set; }
+        public string AudioPath { get; set; }
+    }
 
     /// <summary>
     /// A fighter squadron took casualties during combat.
