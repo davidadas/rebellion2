@@ -78,25 +78,15 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The abort reason, or null when the mission may advance.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 
             return GetParent() is Planet p && p.IsInUprising
                 ? null
                 : MissionCompletionReason.Failure;
-        }
-
-        /// <summary>
-        /// Returns false if the uprising has ended on the target planet before execution.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the planet is still in uprising.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
-        {
-            return GetParent() is Planet p && p.IsInUprising;
         }
 
         /// <summary>
@@ -140,7 +130,7 @@ namespace Rebellion.Game.Missions
         /// <returns>True while the owned target planet remains in uprising.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
-            return IsMissionSatisfied(game)
+            return !GetMissionInvalidationReason(game).HasValue
                 && GetParent() is Planet planet
                 && planet.GetOwnerInstanceID() == OwnerInstanceID;
         }

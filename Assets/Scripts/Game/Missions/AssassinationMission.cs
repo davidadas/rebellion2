@@ -32,11 +32,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
-
-        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public AssassinationMission()
@@ -85,7 +80,7 @@ namespace Rebellion.Game.Missions
             if (!(ctx.Location is Planet planet))
                 return null;
 
-            Officer target = ctx.TargetOfficer;
+            Officer target = ctx.SelectedTarget as Officer;
             Planet targetPlanet = target?.GetParentOfType<Planet>();
             if (
                 target == null
@@ -111,24 +106,13 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 
             return HasValidTarget(game) ? null : MissionCompletionReason.TargetUnavailable;
-        }
-
-        /// <summary>
-        /// Returns false if the target officer has already been killed or has moved
-        /// away from the mission's planet before execution.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the target is still alive and on the mission planet.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
-        {
-            return HasValidTarget(game);
         }
 
         /// <summary>
@@ -168,43 +152,33 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for all probability rolls.</param>
         /// <returns>The hit effects followed by the terminal mission result.</returns>
-        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
             MissionCompletionReason completionReason = MissionCompletionReason.Failure;
 
-            bool targetAvailable = IsMissionSatisfied(game);
             bool targetKilled = false;
             List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
                 provider,
                 game,
                 participant =>
                 {
-                    if (!targetAvailable)
-                        return;
                     if (targetKilled)
-                    {
-                        ImproveMissionParticipantRating(participant);
-                        return;
-                    }
+                        return true;
 
                     List<GameResult> attemptResults = OnSuccess(game, provider, participant);
                     results.AddRange(attemptResults);
                     if (attemptResults.Exists(result => result is OfficerKilledResult))
-                    {
                         targetKilled = true;
-                        ImproveMissionParticipantRating(participant);
-                    }
+                    return targetKilled;
                 }
             );
             if (successfulParticipants.Count == 0)
             {
-                results.AddRange(OnFailed(game, provider));
-            }
-            else if (!targetAvailable)
-            {
-                completionReason = MissionCompletionReason.TargetUnavailable;
                 results.AddRange(OnFailed(game, provider));
             }
             else if (targetKilled)

@@ -16,7 +16,7 @@ namespace Rebellion.Tests.Game.Missions
     public class RecruitmentMissionTests
     {
         [Test]
-        public void Execute_TargetInUnrecruitedPool_TransfersOfficerToFaction()
+        public void ResolveObjective_AvailableCandidate_TransfersOfficerToFaction()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -31,7 +31,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetInUnrecruitedPool_AttachesOfficerToPlanet()
+        public void ResolveObjective_AvailableCandidate_AttachesOfficerToPlanet()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -46,7 +46,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetInUnrecruitedPool_RemovesOfficerFromUnrecruitedPool()
+        public void ResolveObjective_AvailableCandidate_RemovesOfficerFromUnrecruitedPool()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -61,7 +61,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CreatedBeforePoolChanges_RecruitsCurrentAvailableOfficer()
+        public void ResolveObjective_CreatedBeforePoolChanges_RecruitsCurrentAvailableOfficer()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -78,16 +78,19 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
             Assert.AreEqual("empire", replacementTarget.OwnerInstanceID);
-            Assert.AreEqual("replacement", ((RecruitmentMission)mission).TargetOfficerInstanceID);
+            Assert.AreEqual(
+                "replacement",
+                ((RecruitmentMission)mission).RecruitedOfficerInstanceID
+            );
         }
 
         [Test]
-        public void Execute_TargetRemovedFromPool_ReturnsFailed()
+        public void UpdateMission_NoCandidatesRemain_DoesNotRollOrImproveRecruiter()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -96,20 +99,30 @@ namespace Rebellion.Tests.Game.Missions
             game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
+            int originalLeadership = officer.GetBaseRating(OfficerRating.Leadership);
 
-            // Officer leaves the unrecruited pool before the mission executes
+            // The candidate pool empties before the mission executes.
             game.GetUnrecruitedOfficers().Remove(target);
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.IsFalse(completed.CanContinue);
+            Assert.AreEqual(originalLeadership, officer.GetBaseRating(OfficerRating.Leadership));
         }
 
         [Test]
-        public void Execute_SuccessProbability_UsesOpposingSupportAndLeadershipRating()
+        public void ResolveObjective_SuccessProbability_UsesOpposingSupportAndLeadershipRating()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -128,14 +141,14 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.99));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
         }
 
         [Test]
-        public void Execute_SecondSuccess_SelectsNextOfficerFromCurrentPool()
+        public void ResolveObjective_SecondSuccess_SelectsNextOfficerFromCurrentPool()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -156,11 +169,11 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("empire", secondTarget.OwnerInstanceID);
             Assert.IsFalse(game.GetUnrecruitedOfficers().Contains(firstTarget));
             Assert.IsFalse(game.GetUnrecruitedOfficers().Contains(secondTarget));
-            Assert.AreEqual("second", ((RecruitmentMission)mission).TargetOfficerInstanceID);
+            Assert.AreEqual("second", ((RecruitmentMission)mission).RecruitedOfficerInstanceID);
         }
 
         [Test]
-        public void Execute_MultipleRecruitersSucceed_FirstSuccessStopsFurtherAttempts()
+        public void ResolveObjective_MultipleRecruitersSucceed_FirstSuccessStopsFurtherAttempts()
         {
             (GameRoot game, Planet empirePlanet, Officer firstRecruiter) = BuildScene();
             Officer secondRecruiter = EntityFactory.CreateOfficer("second-recruiter", "empire");
@@ -194,12 +207,15 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(
+            List<GameResult> results = mission.ResolveObjective(
                 game,
                 new SequenceRNG(intValues: new[] { 0 }, doubleValues: new[] { 0.0, 0.0 })
             );
 
-            Assert.AreEqual("first-target", ((RecruitmentMission)mission).TargetOfficerInstanceID);
+            Assert.AreEqual(
+                "first-target",
+                ((RecruitmentMission)mission).RecruitedOfficerInstanceID
+            );
             Assert.AreEqual("empire", firstTarget.OwnerInstanceID);
             Assert.IsTrue(game.GetUnrecruitedOfficers().Contains(secondTarget));
             Assert.AreEqual(
@@ -290,11 +306,11 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_NoValidTarget_ReturnsNull()
+        public void TryCreate_NoAvailableCandidates_ReturnsNull()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
-            // No unrecruited officers — TryCreate has no valid target
+            // No unrecruited officers are available at the target planet.
             Mission mission = CreateRecruitmentMission(
                 game,
                 "empire",
@@ -305,7 +321,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.IsNull(
                 mission,
-                "TryCreate should return null when no unrecruited officers exist"
+                "TryCreate should return null when no recruitment candidates exist"
             );
         }
 
@@ -320,7 +336,7 @@ namespace Rebellion.Tests.Game.Missions
                 DisplayName = "Recruitment",
                 LocationInstanceID = "PLANET1",
                 ParticipantRating = OfficerRating.Diplomacy,
-                TargetOfficerInstanceID = "OFFICER4",
+                RecruitedOfficerInstanceID = "OFFICER4",
             };
 
             string xml = SerializationHelper.Serialize(mission);
@@ -328,7 +344,10 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Recruitment", deserialized.ConfigKey);
-            Assert.AreEqual("OFFICER4", ((RecruitmentMission)deserialized).TargetOfficerInstanceID);
+            Assert.AreEqual(
+                "OFFICER4",
+                ((RecruitmentMission)deserialized).RecruitedOfficerInstanceID
+            );
             Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
         }
 

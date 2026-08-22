@@ -14,11 +14,6 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "InciteUprising";
 
-        /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
-
         /// <summary>Creates an empty incite-uprising mission copy.</summary>
         /// <returns>An empty incite-uprising mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new InciteUprisingMission();

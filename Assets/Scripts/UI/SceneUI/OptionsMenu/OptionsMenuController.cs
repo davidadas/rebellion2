@@ -755,7 +755,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Steps the selected resolution and applies it immediately.
+    /// Steps the staged resolution selection.
     /// </summary>
     /// <param name="delta">The step direction.</param>
     private void HandleResolutionStep(int delta)
@@ -765,7 +765,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Steps the display mode and applies it immediately.
+    /// Steps the staged display-mode selection.
     /// </summary>
     /// <param name="delta">The step direction.</param>
     private void HandleFullScreenStep(int delta)

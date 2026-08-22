@@ -120,36 +120,36 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_PositiveResearchSkillAndMinimumRoll_AwardsResearchCapacity()
+        public void ResolveObjective_PositiveResearchSkillAndMinimumRoll_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 75);
             Mission mission = CreateMission(officer, ResearchDiscipline.ShipDesign);
 
-            mission.Execute(_game, new FixedRNG(0.0));
+            mission.ResolveObjective(_game, new FixedRNG(0.0));
 
             Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
         [Test]
-        public void Execute_Success_AwardsResearchCapacity()
+        public void ResolveObjective_Success_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
             Mission mission = CreateMission(officer);
 
             int before = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
-            mission.Execute(_game, new FixedRNG(0.0));
+            mission.ResolveObjective(_game, new FixedRNG(0.0));
             int after = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
 
             Assert.Greater(after, before, "Successful research mission should award capacity");
         }
 
         [Test]
-        public void Execute_Success_IncrementsMatchingResearchSkill()
+        public void ResolveObjective_Success_IncrementsMatchingResearchSkill()
         {
             Officer officer = CreateOfficer(shipSkill: 50);
             Mission mission = CreateMission(officer);
 
-            mission.Execute(_game, new FixedRNG(0.0));
+            mission.ResolveObjective(_game, new FixedRNG(0.0));
 
             Assert.AreEqual(
                 51,
@@ -159,12 +159,12 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_Failure_NoCapacityAwarded()
+        public void ResolveObjective_Failure_NoCapacityAwarded()
         {
             Officer officer = CreateOfficer(shipSkill: 10);
             Mission mission = CreateMission(officer);
 
-            mission.Execute(_game, new FixedRNG(0.99));
+            mission.ResolveObjective(_game, new FixedRNG(0.99));
 
             Assert.AreEqual(
                 0,
@@ -173,12 +173,12 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_RollEqualsResearchChance_DoesNotAwardCapacity()
+        public void ResolveObjective_RollEqualsResearchChance_DoesNotAwardCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 50);
             Mission mission = CreateMission(officer);
 
-            mission.Execute(_game, new FixedRNG(0.5));
+            mission.ResolveObjective(_game, new FixedRNG(0.5));
 
             Assert.AreEqual(
                 0,
@@ -188,14 +188,14 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_AfterResearchFacilityDestroyed_ContinuesResearch()
+        public void ResolveObjective_AfterResearchFacilityDestroyed_ContinuesResearch()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
             Mission mission = CreateMission(officer);
             foreach (Building building in _planet.GetAllBuildings().ToList())
                 _game.DetachNode(building);
 
-            List<GameResult> results = mission.Execute(_game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(_game, new FixedRNG(0.0));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
@@ -230,18 +230,18 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_Failure_SkillUnchanged()
+        public void ResolveObjective_Failure_SkillUnchanged()
         {
             Officer officer = CreateOfficer(shipSkill: 10);
             Mission mission = CreateMission(officer);
 
-            mission.Execute(_game, new FixedRNG(0.99));
+            mission.ResolveObjective(_game, new FixedRNG(0.99));
 
             Assert.AreEqual(10, officer.ShipResearch, "Skill should not change on failure");
         }
 
         [Test]
-        public void Execute_SecondParticipantSucceeds_AwardsResearchCapacity()
+        public void ResolveObjective_SecondParticipantSucceeds_AwardsResearchCapacity()
         {
             Officer firstOfficer = CreateOfficer(shipSkill: 10);
             Officer secondOfficer = new Officer
@@ -263,7 +263,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             _game.AttachNode(mission, _planet);
 
-            mission.Execute(_game, new FixedRNG(0.5));
+            mission.ResolveObjective(_game, new FixedRNG(0.5));
 
             Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
             Assert.AreEqual(10, firstOfficer.ShipResearch);
@@ -271,12 +271,12 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TroopTrainingDiscipline_AwardsTroopCapacity()
+        public void ResolveObjective_TroopTrainingDiscipline_AwardsTroopCapacity()
         {
             Officer officer = CreateOfficer(troopSkill: 100);
             Mission mission = CreateMission(officer, ResearchDiscipline.TroopTraining);
 
-            mission.Execute(_game, new FixedRNG(0.0));
+            mission.ResolveObjective(_game, new FixedRNG(0.0));
 
             Assert.Greater(
                 _faction.GetResearchCapacityRemaining(ResearchDiscipline.TroopTraining),
@@ -289,24 +289,24 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_MaxSkillOfficer_AwardsResearchCapacity()
+        public void ResolveObjective_MaxSkillOfficer_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
             Mission mission = CreateMission(officer);
 
-            mission.Execute(_game, new FixedRNG(0.99));
+            mission.ResolveObjective(_game, new FixedRNG(0.99));
 
             Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
         [Test]
-        public void Execute_Success_DoesNotIncrementLeadership()
+        public void ResolveObjective_Success_DoesNotIncrementLeadership()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
             int leadershipBefore = officer.GetBaseRating(OfficerRating.Leadership);
             Mission mission = CreateMission(officer);
 
-            mission.Execute(_game, new FixedRNG(0.0));
+            mission.ResolveObjective(_game, new FixedRNG(0.0));
 
             Assert.AreEqual(
                 leadershipBefore,
@@ -341,7 +341,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 100);
             Mission mission = CreateMission(officer);
 
-            mission.Execute(_game, new FixedRNG(0.0));
+            mission.ResolveObjective(_game, new FixedRNG(0.0));
 
             Assert.IsTrue(
                 mission.ShouldRepeatAfterCompletion(_game),
@@ -355,7 +355,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             Mission mission = CreateMission(officer);
 
-            mission.Execute(_game, new FixedRNG(0.99));
+            mission.ResolveObjective(_game, new FixedRNG(0.99));
 
             Assert.IsTrue(
                 mission.ShouldRepeatAfterCompletion(_game),

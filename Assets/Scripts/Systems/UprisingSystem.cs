@@ -149,14 +149,13 @@ namespace Rebellion.Systems
             mission.ResolveSuccessfulParticipants(
                 _provider,
                 _game,
-                participant =>
+                _ =>
                 {
                     if (objectiveAchieved && mission is SubdueUprisingMission)
-                        return;
+                        return false;
 
                     objectiveAchieved = ResolveMissionAttempt(mission, results);
-                    if (objectiveAchieved)
-                        mission.ImproveMissionParticipantRating(participant);
+                    return objectiveAchieved;
                 }
             );
 

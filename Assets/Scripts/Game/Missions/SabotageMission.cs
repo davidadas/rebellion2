@@ -33,11 +33,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
-
-        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public SabotageMission()
@@ -117,23 +112,13 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 
             return HasValidTarget(game) ? null : MissionCompletionReason.TargetUnavailable;
-        }
-
-        /// <summary>
-        /// Returns false if the selected target can no longer be sabotaged before execution.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the selected target is still eligible.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
-        {
-            return HasValidTarget(game);
         }
 
         /// <summary>

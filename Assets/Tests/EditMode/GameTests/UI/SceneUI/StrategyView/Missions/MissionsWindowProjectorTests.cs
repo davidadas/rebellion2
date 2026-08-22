@@ -255,7 +255,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 DisplayName = "Recruitment Mission",
                 OwnerInstanceID = _playerFactionId,
                 LocationInstanceID = _planet.Planet.InstanceID,
-                TargetOfficerInstanceID = _target.InstanceID,
+                RecruitedOfficerInstanceID = _target.InstanceID,
             };
             mission.AddChild(CreateOfficer("recruiter", "Recruiter", false));
             _planet.Planet.RemoveChildren<Mission>(_ => true);

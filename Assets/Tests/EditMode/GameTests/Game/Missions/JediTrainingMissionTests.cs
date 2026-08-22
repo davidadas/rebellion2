@@ -147,14 +147,14 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_ClosestRankedStudentAttemptsFirst_TrainsOnlySuccessfulParticipant()
+        public void ResolveObjective_ClosestRankedStudentAttemptsFirst_TrainsOnlySuccessfulParticipant()
         {
             Officer secondStudent = CreateJedi("student2", 100);
             JediTrainingMission mission = CreateMission(
                 new List<IMissionParticipant> { _trainer, _student, secondStudent }
             );
 
-            List<GameResult> results = mission.Execute(
+            List<GameResult> results = mission.ResolveObjective(
                 _game,
                 new SequenceRNG(intValues: new[] { 0, 99, 0, 20 })
             );
@@ -171,11 +171,11 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_PassedTrainingRollWithZeroProgress_ReturnsFailedReport()
+        public void ResolveObjective_PassedTrainingRollWithZeroProgress_ReturnsFailedReport()
         {
             JediTrainingMission mission = CreateMission();
 
-            List<GameResult> results = mission.Execute(
+            List<GameResult> results = mission.ResolveObjective(
                 _game,
                 new SequenceRNG(intValues: new[] { 0, 0, 0 })
             );
@@ -189,11 +189,11 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_FailedTrainingRoll_ReturnsFailedReport()
+        public void ResolveObjective_FailedTrainingRoll_ReturnsFailedReport()
         {
             JediTrainingMission mission = CreateMission();
 
-            List<GameResult> results = mission.Execute(
+            List<GameResult> results = mission.ResolveObjective(
                 _game,
                 new SequenceRNG(intValues: new[] { 0, 99 })
             );
@@ -206,13 +206,13 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TrainingProgress_DoesNotImproveDiplomacyRating()
+        public void ResolveObjective_TrainingProgress_DoesNotImproveDiplomacyRating()
         {
             int trainerDiplomacy = _trainer.GetBaseRating(OfficerRating.Diplomacy);
             int studentDiplomacy = _student.GetBaseRating(OfficerRating.Diplomacy);
             JediTrainingMission mission = CreateMission();
 
-            mission.Execute(_game, new SequenceRNG(intValues: new[] { 0, 0, 20 }));
+            mission.ResolveObjective(_game, new SequenceRNG(intValues: new[] { 0, 0, 20 }));
 
             Assert.AreEqual(trainerDiplomacy, _trainer.GetBaseRating(OfficerRating.Diplomacy));
             Assert.AreEqual(studentDiplomacy, _student.GetBaseRating(OfficerRating.Diplomacy));

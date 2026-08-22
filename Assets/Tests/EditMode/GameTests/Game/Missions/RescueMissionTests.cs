@@ -231,7 +231,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CapturedOfficerOnTargetPlanet_FreesOfficer()
+        public void ResolveObjective_CapturedOfficerOnTargetPlanet_FreesOfficer()
         {
             (
                 GameRoot game,
@@ -262,7 +262,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CapturedOfficerOnTargetPlanet_ReturnsOfficerRescuedResult()
+        public void ResolveObjective_CapturedOfficerOnTargetPlanet_ReturnsOfficerRescuedResult()
         {
             (
                 GameRoot game,
@@ -289,7 +289,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             OfficerRescuedResult rescueResult = results
                 .OfType<OfficerRescuedResult>()
@@ -299,7 +299,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_CapturedOfficerOnTargetPlanet_EmitsCaptureStateReleased()
+        public void ResolveObjective_CapturedOfficerOnTargetPlanet_EmitsCaptureStateReleased()
         {
             (
                 GameRoot game,
@@ -326,7 +326,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             OfficerCaptureStateResult captureState = results
                 .OfType<OfficerCaptureStateResult>()
@@ -337,7 +337,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_OfficerNotCaptured_ReturnsFailed()
+        public void UpdateMission_OfficerNotCaptured_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -366,9 +366,14 @@ namespace Rebellion.Tests.Game.Missions
             // Officer is freed after mission creation but before execution
             captive.IsCaptured = false;
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -379,7 +384,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetOfficerAlreadyFreed_ReturnsFailed()
+        public void UpdateMission_TargetOfficerAlreadyFreed_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -407,9 +412,14 @@ namespace Rebellion.Tests.Game.Missions
             // Captive is freed before mission executes
             captive.IsCaptured = false;
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -420,7 +430,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetMovedToDifferentPlanet_ReturnsFailed()
+        public void UpdateMission_TargetMovedToDifferentPlanet_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -448,9 +458,14 @@ namespace Rebellion.Tests.Game.Missions
             // Captive is moved to a different planet before mission executes
             game.MoveNode(captive, empirePlanet);
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -461,7 +476,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetRemovedFromScene_ReturnsFailed()
+        public void UpdateMission_TargetRemovedFromScene_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -489,9 +504,14 @@ namespace Rebellion.Tests.Game.Missions
             // Captive removed from scene before mission executes
             game.DetachNode(captive);
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(

@@ -687,14 +687,25 @@ namespace Rebellion.Tests.Managers
 
             Assert.AreEqual(0, game.CurrentTick);
             Assert.IsTrue(planet.IsInUprising);
-            Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
-            Assert.AreSame(planet, diplomat.GetParent());
-            Assert.IsNull(diplomat.Movement);
+            Mission diplomacyMission = game.GetSceneNodesByType<Mission>().Single();
+            Assert.AreSame(diplomacyMission, diplomat.GetParent());
+            Assert.IsNotNull(diplomat.Movement);
             Assert.IsTrue(
                 owner
                     .Messages[MessageType.PopularSupport]
                     .Any(message => message.ResultType == MessageResultType.UprisingStarted)
             );
+
+            diplomat.Movement = null;
+            List<GameResult> missionResults = manager.MissionSystem.ProcessTick();
+
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                missionResults.OfType<MissionCompletedResult>().Single().CompletionReason
+            );
+            Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
+            Assert.AreSame(planet, diplomat.GetParent());
+            Assert.IsNull(diplomat.Movement);
         }
 
         [Test]

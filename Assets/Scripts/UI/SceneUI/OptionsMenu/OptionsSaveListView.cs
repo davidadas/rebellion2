@@ -122,6 +122,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             _rowActiveSpriteAddress,
             border
         );
+        VerifyContentReferences();
     }
 
     /// <summary>
@@ -618,8 +619,6 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             throw new MissingReferenceException(
                 $"{name} rename field has no masked text viewport."
             );
-        if (_rowIdleSprite == null || _rowActiveSprite == null)
-            throw new MissingReferenceException($"{name} is missing a row sprite.");
         if (
             string.IsNullOrWhiteSpace(_rowIdleSpriteAddress)
             || string.IsNullOrWhiteSpace(_rowActiveSpriteAddress)
@@ -632,5 +631,14 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _metaTemplate.gameObject.SetActive(false);
         _deleteTemplate.gameObject.SetActive(false);
         _renameField.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Verifies sprites restored after instantiation from external content.
+    /// </summary>
+    private void VerifyContentReferences()
+    {
+        if (_rowIdleSprite == null || _rowActiveSprite == null)
+            throw new MissingReferenceException($"{name} is missing a row sprite.");
     }
 }

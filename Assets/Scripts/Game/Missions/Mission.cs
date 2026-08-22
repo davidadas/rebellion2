@@ -12,6 +12,39 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Missions
 {
     /// <summary>
+    /// Provides the external operations needed while a mission executes its post-arrival lifecycle.
+    /// </summary>
+    internal interface IMissionExecutionRuntime
+    {
+        /// <summary>
+        /// Resolves this tick's detection attempt.
+        /// </summary>
+        /// <param name="mission">The mission executing its lifecycle.</param>
+        /// <param name="results">The result collection receiving detection consequences.</param>
+        /// <returns>True when detection foils the mission.</returns>
+        bool ResolveDetection(Mission mission, List<GameResult> results);
+
+        /// <summary>
+        /// Resolves betrayal or the completed mission objective.
+        /// </summary>
+        /// <param name="mission">The mission whose progress is complete.</param>
+        /// <returns>The results produced by objective resolution.</returns>
+        List<GameResult> ResolveCompletedObjective(Mission mission);
+
+        /// <summary>
+        /// Applies repeat or teardown infrastructure after mission completion.
+        /// </summary>
+        /// <param name="mission">The mission that reached a terminal state.</param>
+        /// <param name="completedResult">The terminal result, or null for an invalid mission.</param>
+        /// <param name="results">The result collection receiving teardown consequences.</param>
+        void FinishMission(
+            Mission mission,
+            MissionCompletedResult completedResult,
+            List<GameResult> results
+        );
+    }
+
+    /// <summary>
     /// Describes one hostile unit that can detect a mission or confront a detected participant.
     /// </summary>
     internal sealed class MissionDetector
@@ -61,7 +94,6 @@ namespace Rebellion.Game.Missions
         }
 
         public string LocationInstanceID { get; set; }
-        public string OriginInstanceID { get; set; }
 
         /// <summary>
         /// Gets or sets the content event that authored this mission, when applicable.
@@ -127,8 +159,14 @@ namespace Rebellion.Game.Missions
             OwnerInstanceID = ownerInstanceId;
             LocationInstanceID = locationInstanceId;
 
-            _mainParticipants = mainParticipants ?? new List<IMissionParticipant>();
-            _decoyParticipants = decoyParticipants ?? new List<IMissionParticipant>();
+            _mainParticipants =
+                mainParticipants != null
+                    ? new List<IMissionParticipant>(mainParticipants)
+                    : new List<IMissionParticipant>();
+            _decoyParticipants =
+                decoyParticipants != null
+                    ? new List<IMissionParticipant>(decoyParticipants)
+                    : new List<IMissionParticipant>();
             ParticipantRating = participantRating;
         }
 
@@ -142,7 +180,6 @@ namespace Rebellion.Game.Missions
             Mission copy = (Mission)destination;
             copy.ConfigKey = ConfigKey;
             copy.LocationInstanceID = LocationInstanceID;
-            copy.OriginInstanceID = OriginInstanceID;
             copy.SourceEventInstanceID = SourceEventInstanceID;
             copy._mainParticipantInstanceIds = new HashSet<string>(
                 _mainParticipantInstanceIds,
@@ -216,11 +253,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether this mission is canceled when target ownership changes.
-        /// </summary>
-        public virtual bool CanceledOnOwnershipChange => true;
-
-        /// <summary>
         /// Returns whether detected mission participants suffer capture, death, or destruction.
         /// </summary>
         internal virtual bool AppliesFoiledParticipantConsequences => true;
@@ -235,10 +267,13 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The abort reason, or null when the mission may advance.</returns>
-        public virtual MissionCompletionReason? GetAbortReason(GameRoot game) =>
-            _mainParticipants.Count == 0 || HaveMainParticipantsChanged()
-                ? MissionCompletionReason.Failure
-                : null;
+        public MissionCompletionReason? GetAbortReason(GameRoot game)
+        {
+            if (_mainParticipants.Count == 0 || HaveMainParticipantsChanged())
+                return MissionCompletionReason.Failure;
+
+            return GetMissionInvalidationReason(game);
+        }
 
         /// <summary>
         /// Returns whether the mission should repeat after completing one execution.
@@ -248,8 +283,8 @@ namespace Rebellion.Game.Missions
         public abstract bool ShouldRepeatAfterCompletion(GameRoot game);
 
         /// <summary>
-        /// Produces mission-specific state changes when the mission ends before normal execution.
-        /// The mission system remains responsible for participant teardown and terminal results.
+        /// Produces mission-specific state changes when the mission ends before objective resolution.
+        /// The execution runtime remains responsible for participant teardown.
         /// </summary>
         internal virtual List<GameResult> ResolveInterruption(
             GameRoot game,
@@ -557,13 +592,16 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="provider">RNG provider for rolling against the success probability.</param>
         /// <param name="game">The current game state.</param>
-        /// <param name="onParticipantSucceeded">Optional action applied immediately after each successful attempt.</param>
+        /// <param name="resolveSuccessfulAttempt">
+        /// Optional mission-specific resolution applied immediately after each successful roll.
+        /// Return true when that attempt earned the mission's normal participant improvement.
+        /// </param>
         /// <param name="stopAfterFirstSuccess">Whether resolution stops after the first successful attempt.</param>
         /// <returns>The participants whose attempts succeeded, in attempt order.</returns>
         protected internal List<IMissionParticipant> ResolveSuccessfulParticipants(
             IRandomNumberProvider provider,
             GameRoot game,
-            Action<IMissionParticipant> onParticipantSucceeded = null,
+            Func<IMissionParticipant, bool> resolveSuccessfulAttempt = null,
             bool stopAfterFirstSuccess = false
         )
         {
@@ -582,7 +620,8 @@ namespace Rebellion.Game.Missions
                     continue;
 
                 successfulParticipants.Add(participant);
-                onParticipantSucceeded?.Invoke(participant);
+                if (resolveSuccessfulAttempt?.Invoke(participant) == true)
+                    ImproveMissionParticipantRating(participant);
                 if (stopAfterFirstSuccess)
                     return successfulParticipants;
             }
@@ -593,7 +632,8 @@ namespace Rebellion.Game.Missions
                     continue;
 
                 successfulParticipants.Add(specialForces);
-                onParticipantSucceeded?.Invoke(specialForces);
+                if (resolveSuccessfulAttempt?.Invoke(specialForces) == true)
+                    ImproveMissionParticipantRating(specialForces);
                 if (stopAfterFirstSuccess)
                     return successfulParticipants;
             }
@@ -920,12 +960,74 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Executes the mission and returns all generated results.
+        /// Executes one post-arrival lifecycle step for this mission.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for all probability rolls.</param>
-        /// <returns>All results produced by the outcome, with a MissionCompletedResult appended last.</returns>
-        internal virtual List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        /// <param name="runtime">External mission operations supplied by the mission system.</param>
+        /// <returns>All results produced by validation, detection, or objective resolution.</returns>
+        internal List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IMissionExecutionRuntime runtime
+        )
+        {
+            List<GameResult> results = new List<GameResult>();
+            MissionCompletionReason? abortReason = GetAbortReason(game);
+            if (abortReason.HasValue)
+            {
+                AddMissionResults(ResolveInterruption(game, provider), results);
+                results.Add(
+                    BuildTerminatingResult(
+                        MissionOutcome.Failed,
+                        abortReason.Value,
+                        game,
+                        GetAllParticipants()
+                    )
+                );
+                runtime.FinishMission(this, null, results);
+                return results;
+            }
+
+            List<IMissionParticipant> participantsBeforeDetection = GetAllParticipants();
+            if (runtime.ResolveDetection(this, results))
+            {
+                AddMissionResults(ResolveInterruption(game, provider), results);
+                MissionCompletedResult completed = BuildTerminatingResult(
+                    MissionOutcome.Foiled,
+                    MissionCompletionReason.Foiled,
+                    game,
+                    participantsBeforeDetection
+                );
+                results.Add(completed);
+                runtime.FinishMission(this, completed, results);
+                return results;
+            }
+
+            IncrementProgress();
+            if (!IsComplete())
+                return results;
+
+            results.AddRange(runtime.ResolveCompletedObjective(this));
+            MissionCompletedResult completedResult = results
+                .OfType<MissionCompletedResult>()
+                .LastOrDefault();
+            if (completedResult != null)
+                runtime.FinishMission(this, completedResult, results);
+
+            return results;
+        }
+
+        /// <summary>
+        /// Resolves the completed mission objective and returns its terminal results.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">RNG provider for all probability rolls.</param>
+        /// <returns>All objective results, with a MissionCompletedResult appended last.</returns>
+        internal virtual List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome;
@@ -937,20 +1039,10 @@ namespace Rebellion.Game.Missions
             );
             if (successfulParticipants.Count > 0)
             {
-                if (!IsMissionSatisfied(game))
-                {
-                    outcome = MissionOutcome.Failed;
-                    completionReason = MissionCompletionReason.TargetUnavailable;
-                    results.AddRange(OnFailed(game, provider));
-                }
-                else
-                {
-                    outcome = MissionOutcome.Success;
-                    completionReason = MissionCompletionReason.Success;
-                    results.AddRange(OnSuccess(game, provider, successfulParticipants[0]));
-                    foreach (IMissionParticipant participant in successfulParticipants)
-                        ImproveMissionParticipantRating(participant);
-                }
+                outcome = MissionOutcome.Success;
+                completionReason = MissionCompletionReason.Success;
+                results.AddRange(OnSuccess(game, provider, successfulParticipants[0]));
+                ImproveMissionParticipants(successfulParticipants);
             }
             else
             {
@@ -961,6 +1053,28 @@ namespace Rebellion.Game.Missions
 
             results.Add(BuildCompletedResult(outcome, completionReason, game));
             return results;
+        }
+
+        /// <summary>
+        /// Adds mission-origin metadata to interruption results before appending them.
+        /// </summary>
+        /// <param name="source">The results produced by the interruption.</param>
+        /// <param name="destination">The lifecycle result collection.</param>
+        private void AddMissionResults(
+            IEnumerable<GameResult> source,
+            ICollection<GameResult> destination
+        )
+        {
+            if (source == null)
+                return;
+
+            foreach (GameResult result in source.Where(result => result != null))
+            {
+                result.MissionInstanceID = InstanceID;
+                if (string.IsNullOrEmpty(result.SourceEventInstanceID))
+                    result.SourceEventInstanceID = SourceEventInstanceID;
+                destination.Add(result);
+            }
         }
 
         /// <summary>
@@ -1039,6 +1153,31 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Builds a terminal mission result that cannot repeat.
+        /// </summary>
+        /// <param name="outcome">The terminal mission outcome.</param>
+        /// <param name="completionReason">The reason the mission terminated.</param>
+        /// <param name="game">The current game state.</param>
+        /// <param name="participants">The participants captured before terminal side effects.</param>
+        /// <returns>A non-continuing mission completion result.</returns>
+        private MissionCompletedResult BuildTerminatingResult(
+            MissionOutcome outcome,
+            MissionCompletionReason completionReason,
+            GameRoot game,
+            List<IMissionParticipant> participants
+        )
+        {
+            MissionCompletedResult result = BuildCompletedResult(
+                outcome,
+                completionReason,
+                game,
+                participants
+            );
+            result.CanContinue = false;
+            return result;
+        }
+
+        /// <summary>
         /// Returns the default completion reason for a mission outcome.
         /// </summary>
         /// <param name="outcome">The mission outcome.</param>
@@ -1064,11 +1203,28 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether the mission can still complete successfully.
+        /// Applies this mission's configured improvement to each eligible successful participant.
+        /// </summary>
+        /// <param name="participants">The successful participants to improve.</param>
+        private void ImproveMissionParticipants(IEnumerable<IMissionParticipant> participants)
+        {
+            foreach (IMissionParticipant participant in participants)
+                ImproveMissionParticipantRating(participant);
+        }
+
+        /// <summary>
+        /// Returns why the mission's current objective state prevents it from advancing.
+        /// The shared implementation requires every mission to remain attached to a live planet;
+        /// subclasses extend this with mission-specific rules.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission target conditions are still valid; false to force a Failed outcome.</returns>
-        protected virtual bool IsMissionSatisfied(GameRoot game) => true;
+        /// <returns>The invalidation reason, or null while the mission may advance.</returns>
+        protected virtual MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
+        {
+            return GetParent() is Planet { IsDestroyed: false }
+                ? null
+                : MissionCompletionReason.TargetUnavailable;
+        }
 
         /// <summary>
         /// Applies successful mission effects.

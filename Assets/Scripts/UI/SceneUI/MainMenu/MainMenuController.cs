@@ -308,9 +308,17 @@ public sealed class MainMenuController : MonoBehaviour
             return;
 
         view.RenderOptionsOverlay(true);
-        optionsMenuController.Open(tab);
-        optionsMenuController.RenderWindows();
-        optionsDirty = false;
+        try
+        {
+            optionsMenuController.Open(tab);
+            optionsMenuController.RenderWindows();
+            optionsDirty = false;
+        }
+        catch
+        {
+            view.RenderOptionsOverlay(false);
+            throw;
+        }
     }
 
     /// <summary>

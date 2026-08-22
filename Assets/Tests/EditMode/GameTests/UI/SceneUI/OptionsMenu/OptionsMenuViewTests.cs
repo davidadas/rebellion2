@@ -130,6 +130,35 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies Awake permits content-backed sprites to be restored after instantiation.
+        /// </summary>
+        [Test]
+        public void Awake_ContentNotInitialized_DoesNotThrow()
+        {
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                OptionsMenuView view = root.GetComponent<OptionsMenuView>();
+                OptionsSaveListView saveListView = root.GetComponentInChildren<OptionsSaveListView>(
+                    true
+                );
+                SetField(view, "_rowIdleSprite", null);
+                SetField(view, "_rowActiveSprite", null);
+                SetField(saveListView, "_rowIdleSprite", null);
+                SetField(saveListView, "_rowActiveSprite", null);
+
+                Assert.DoesNotThrow(() =>
+                    UIComponentTestHelper.InvokeLifecycle(saveListView, "Awake")
+                );
+                Assert.DoesNotThrow(() => UIComponentTestHelper.InvokeLifecycle(view, "Awake"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        /// <summary>
         /// Verifies entering Save/Load starts at the top without pinning later renders there.
         /// </summary>
         [Test]
@@ -729,6 +758,14 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 typeof(OptionsMenuView)
                     .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(_view);
+        }
+
+        private static void SetField(object target, string fieldName, object value)
+        {
+            target
+                .GetType()
+                .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(target, value);
         }
 
         /// <summary>

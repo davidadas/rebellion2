@@ -47,7 +47,9 @@ public static class MainMenuPrefabBuilder
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
     private const string _cloudTextureAddress = "Application/MainMenu/UI/clouds";
+    private const string _cloudShaderName = "Custom/PlanetClouds";
     private const string _atmosphereShaderName = "Custom/AtmosphereRim";
+    private const string _planetDayNightShaderName = "Custom/PlanetDayNightShade";
     private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
@@ -55,7 +57,12 @@ public static class MainMenuPrefabBuilder
     private const string _rigName = "PlanetRig";
     private const string _backdropName = "SpaceBackdrop";
     private const string _foregroundName = "Cockpit";
-    private const float _cloudSpinDegreesPerSecond = 0.25f; // cloud drift; planet turns at half this
+    private const float _cloudSpinDegreesPerSecond = 1f / 3f;
+    private static readonly Vector3 _planetSunDirection = new Vector3(
+        0.80f,
+        0.46f,
+        -0.38f
+    ).normalized;
     private static readonly Vector3 _planetRigOrigin = new Vector3(12000f, 12000f, 12000f);
 
     // Spinning 3D icon rigs.
@@ -2065,7 +2072,7 @@ public static class MainMenuPrefabBuilder
         clouds.layer = planetLayer;
         clouds
             .AddComponent<RuntimeMaterialBinding>()
-            .Configure("Unlit/Transparent", _cloudTextureAddress);
+            .Configure(_cloudShaderName, _cloudTextureAddress);
 
         // Atmosphere: a static shell just outside the clouds with a Fresnel rim glow, so the limb
         // reads as a lit atmosphere. Built from a primitive with the custom rim shader assigned here.
@@ -2077,11 +2084,21 @@ public static class MainMenuPrefabBuilder
         atmosphere.layer = planetLayer;
         atmosphere.AddComponent<RuntimeMaterialBinding>().Configure(_atmosphereShaderName);
 
+        // A final multiply shell reproduces the prototype's world-space day/night terminator over
+        // the complete composited globe, including the asynchronously loaded surface and clouds.
+        GameObject dayNightShade = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        dayNightShade.name = "DayNightShade";
+        UnityEngine.Object.DestroyImmediate(dayNightShade.GetComponent<Collider>());
+        dayNightShade.transform.SetParent(rig.transform, false);
+        dayNightShade.transform.localScale = Vector3.one * 2.040f;
+        dayNightShade.layer = planetLayer;
+        dayNightShade.AddComponent<RuntimeMaterialBinding>().Configure(_planetDayNightShaderName);
+
         // Dedicated sun for the planet, masked to their layer so it never touches the icons.
         // Gives the rocky surface real directional shading; the emission only lifts the night side.
         GameObject sunObject = new GameObject("PlanetSun", typeof(Light));
         sunObject.transform.SetParent(rig.transform, false);
-        sunObject.transform.localRotation = Quaternion.Euler(45.63f, 122.25f, 0f);
+        sunObject.transform.localRotation = Quaternion.LookRotation(-_planetSunDirection);
         Light sun = sunObject.GetComponent<Light>();
         sun.type = LightType.Directional;
         sun.intensity = 0.6f;

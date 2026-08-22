@@ -17,11 +17,6 @@ namespace Rebellion.Game.Missions
         public const string MissionTypeID = "Espionage";
 
         /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
-
-        /// <summary>
         /// Returns whether detected participants receive the standard foiled-mission consequences.
         /// </summary>
         internal override bool AppliesFoiledParticipantConsequences => false;
@@ -82,16 +77,6 @@ namespace Rebellion.Game.Missions
                 ctx.MainParticipants,
                 ctx.DecoyParticipants
             );
-        }
-
-        /// <summary>
-        /// Returns true as long as the mission is still attached to a planet.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission parent is a planet.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
-        {
-            return GetParent() is Planet;
         }
 
         /// <summary>

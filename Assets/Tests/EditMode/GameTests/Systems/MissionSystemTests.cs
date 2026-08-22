@@ -246,7 +246,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DiploBeforeIncite_DiploCanceledAfterUprisingFires()
+        public void UpdateMission_DiploBeforeIncite_DiploAbortsOnNextLifecycleStep()
         {
             (
                 GameRoot game,
@@ -264,16 +264,24 @@ namespace Rebellion.Tests.Sectors
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Last();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
-            Assert.IsNull(diplomacyMission.GetParent());
+            Assert.AreEqual(planet, diplomacyMission.GetParent());
             Assert.IsTrue(planet.IsInUprising);
             Assert.AreEqual(
                 leadershipBefore,
                 participant.GetEffectiveRating(OfficerRating.Leadership)
             );
+
+            List<GameResult> diplomacyResults = missionSystem.UpdateMission(diplomacyMission);
+
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                diplomacyResults.OfType<MissionCompletedResult>().Single().CompletionReason
+            );
+            Assert.IsNull(diplomacyMission.GetParent());
         }
 
         [Test]
-        public void UpdateMission_InciteBeforeDiplo_DiploCanceledImmediately()
+        public void UpdateMission_InciteBeforeDiplo_DiploAbortsWhenAdvanced()
         {
             (
                 GameRoot game,
@@ -285,8 +293,15 @@ namespace Rebellion.Tests.Sectors
             List<GameResult> results = missionSystem.UpdateMission(inciteMission);
 
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
+            Assert.IsNotNull(diplomacyMission.GetParent());
+
+            List<GameResult> diplomacyResults = missionSystem.UpdateMission(diplomacyMission);
+
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                diplomacyResults.OfType<MissionCompletedResult>().Single().CompletionReason
+            );
             Assert.IsNull(diplomacyMission.GetParent());
-            Assert.IsEmpty(missionSystem.UpdateMission(diplomacyMission));
         }
 
         [Test]
@@ -1706,7 +1721,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void HandleResults_TravellingMissionWithUnavailableTarget_DoesNotResolveBeforeArrival()
+        public void UpdateMission_TargetPlanetDestroyedDuringTravel_WaitsForArrivalThenFails()
         {
             (
                 GameRoot game,
@@ -1716,27 +1731,32 @@ namespace Rebellion.Tests.Sectors
                 Officer target,
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
-            Planet viewPlanet = new Planet { InstanceID = targetPlanet.InstanceID };
-            Officer viewTarget = EntityFactory.CreateOfficer(target.InstanceID, "rebels");
-            viewTarget.SetParent(viewPlanet);
-            game.DetachNode(target);
             missions.InitiateMission(
                 CreateRequest(
                     MissionTypeIDs.Assassination,
                     participant,
-                    viewPlanet,
-                    selectedTarget: viewTarget
+                    targetPlanet,
+                    selectedTarget: target
                 )
             );
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            targetPlanet.IsDestroyed = true;
 
-            List<GameResult> results = missions.HandleResults(
-                new[] { new PlanetUprisingStartedResult { Planet = targetPlanet } }
-            );
+            List<GameResult> travellingResults = missions.UpdateMission(mission);
 
             Assert.IsTrue(participant.Movement != null);
-            Assert.IsEmpty(results);
+            Assert.IsEmpty(travellingResults);
             Assert.AreEqual(mission, game.GetSceneNodesByType<Mission>().Single());
+
+            participant.Movement = null;
+            List<GameResult> arrivalResults = missions.UpdateMission(mission);
+
+            MissionCompletedResult completed = arrivalResults
+                .OfType<MissionCompletedResult>()
+                .Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
         }
 
         [Test]
@@ -1916,7 +1936,6 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = CreateMission(game, planet, officer);
 
-            mission.OriginInstanceID = ship.InstanceID;
             officer.MissionReturnParentInstanceID = ship.InstanceID;
             officer.MissionReturnLocationInstanceID = planet.InstanceID;
             game.DetachNode(officer);
@@ -2007,7 +2026,6 @@ namespace Rebellion.Tests.Sectors
             game.AttachNode(officer, ship);
 
             StubMission mission = CreateMission(game, planetA, officer);
-            mission.OriginInstanceID = ship.InstanceID;
             officer.MissionReturnParentInstanceID = ship.InstanceID;
             officer.MissionReturnLocationInstanceID = planetA.InstanceID;
             game.DetachNode(officer);
@@ -2296,7 +2314,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void Execute_WithSpecialForcesParticipant_AppearsInParticipants()
+        public void UpdateMission_WithSpecialForcesParticipant_AppearsInParticipants()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -2311,12 +2329,13 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.AddChild(sf);
+            game.AttachNode(sf, mission);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new StubRNG());
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+            List<GameResult> results = system.UpdateMission(mission);
             MissionCompletedResult completedResult = results
                 .OfType<MissionCompletedResult>()
                 .First();
@@ -2328,7 +2347,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void Execute_WithDecoyParticipant_DecoyAppearsInParticipants()
+        public void UpdateMission_WithDecoyParticipant_DecoyAppearsInParticipants()
         {
             // Both main and decoy participants should appear in MissionCompletedResult.Participants.
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
@@ -2345,13 +2364,15 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.AddChild(officer);
+            game.MoveNode(officer, mission);
             mission.AddDecoyParticipant(decoy);
+            game.AttachNode(decoy, mission);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new StubRNG());
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+            List<GameResult> results = system.UpdateMission(mission);
             MissionCompletedResult completedResult = results
                 .OfType<MissionCompletedResult>()
                 .First();
@@ -2369,7 +2390,6 @@ namespace Rebellion.Tests.Sectors
                 factionOwnsPlanet: true
             );
             StubMission mission = CreateMission(game, planet, officer);
-            mission.OriginInstanceID = planet.InstanceID;
             game.MoveNode(officer, mission);
             mission.Initiate(1);
             MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
@@ -3172,9 +3192,8 @@ namespace Rebellion.Tests.Sectors
             {
                 MissionTypeID = missionTypeId,
                 Location = target,
-                TargetOfficer = targetOfficer,
                 Discipline = discipline,
-                SelectedTarget = selectedTarget,
+                SelectedTarget = targetOfficer ?? selectedTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
             };
