@@ -405,21 +405,21 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetActive_Attributes_DeserializeState()
+        public void SetNodeActive_Attributes_DeserializeState()
         {
-            SetActiveAction action = (SetActiveAction)
+            SetNodeActiveAction action = (SetNodeActiveAction)
                 SerializationHelper.Deserialize<GameAction>(
-                    "<SetActive UnitInstanceID=\"LUKE_SKYWALKER\" IsActive=\"false\"/>"
+                    "<SetNodeActive InstanceID=\"LUKE_SKYWALKER\" IsActive=\"false\"/>"
                 );
 
-            Assert.AreEqual("LUKE_SKYWALKER", action.UnitInstanceID);
+            Assert.AreEqual("LUKE_SKYWALKER", action.InstanceID);
             Assert.IsFalse(action.IsActive);
         }
 
         [Test]
-        public void SetActive_InactiveOfficerSelector_RoundTripsSelector()
+        public void SetNodeActive_InactiveOfficerSelector_RoundTripsSelector()
         {
-            SetActiveAction action = new SetActiveAction
+            SetNodeActiveAction action = new SetNodeActiveAction
             {
                 IsActive = true,
                 Selectors = new List<GameEventSelector>
@@ -434,7 +434,7 @@ namespace Rebellion.Tests.Game.Events
             };
 
             string xml = SerializationHelper.Serialize<GameAction>(action);
-            SetActiveAction restored = (SetActiveAction)
+            SetNodeActiveAction restored = (SetNodeActiveAction)
                 SerializationHelper.Deserialize<GameAction>(xml);
 
             SelectOfficers selector = restored.Selectors.OfType<SelectOfficers>().Single();
@@ -445,13 +445,13 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetActive_False_DisablesOfficerWithoutDetachingIt()
+        public void SetNodeActive_False_DisablesOfficerWithoutDetachingIt()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
             game.AttachNode(officer, rebelPlanet);
 
-            new SetActiveAction { UnitInstanceID = officer.InstanceID, IsActive = false }.Execute(
+            new SetNodeActiveAction { InstanceID = officer.InstanceID, IsActive = false }.Execute(
                 game
             );
 
@@ -460,16 +460,16 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetActive_True_EnablesOfficerAtExistingParent()
+        public void SetNodeActive_True_EnablesOfficerAtExistingParent()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
             game.AttachNode(officer, rebelPlanet);
             officer.IsEnabled = false;
 
-            List<GameResult> results = new SetActiveAction
+            List<GameResult> results = new SetNodeActiveAction
             {
-                UnitInstanceID = officer.InstanceID,
+                InstanceID = officer.InstanceID,
                 IsActive = true,
             }.Execute(game);
 
@@ -479,14 +479,26 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetActive_InactiveOfficerSelector_EnablesMatchingOfficer()
+        public void SetNodeActive_Planet_DisablesNonMovableNode()
+        {
+            GameRoot game = BuildGame(out _, out Planet planet);
+
+            new SetNodeActiveAction { InstanceID = planet.InstanceID, IsActive = false }.Execute(
+                game
+            );
+
+            Assert.IsFalse(planet.IsActive());
+        }
+
+        [Test]
+        public void SetNodeActive_InactiveOfficerSelector_EnablesMatchingOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
             officer.IsCaptured = true;
             game.AttachNode(officer, rebelPlanet);
             officer.IsEnabled = false;
-            SetActiveAction action = new SetActiveAction
+            SetNodeActiveAction action = new SetNodeActiveAction
             {
                 IsActive = true,
                 Selectors = new List<GameEventSelector>

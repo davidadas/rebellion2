@@ -1869,35 +1869,44 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Sets whether one or more units participate in active gameplay.
+    /// Sets whether one or more scene nodes participate in active gameplay.
     /// </summary>
-    [PersistableObject(Name = "SetActive")]
-    public sealed class SetActiveAction : GameAction
+    [PersistableObject(Name = "SetNodeActive")]
+    public sealed class SetNodeActiveAction : GameAction
     {
         [PersistableAttribute]
-        public string UnitInstanceID { get; set; }
+        public string InstanceID { get; set; }
 
         [PersistableAttribute]
         public bool IsActive { get; set; }
 
-        [PersistableMember(Name = "Units")]
+        [PersistableMember(Name = "Nodes")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <summary>
-        /// Applies the authored local active state to every selected unit.
+        /// Applies the authored local active state to every selected scene node.
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
-            List<IMovable> units = UnitActionTargets.ResolveUnits(
-                UnitInstanceID,
-                Selectors,
-                context,
-                "SetActive",
-                includeDisabled: true
+            IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
+                selector.Select(context.Game, context.Random, context.Activation)
             );
+            ISceneNode explicitNode = string.IsNullOrWhiteSpace(InstanceID)
+                ? null
+                : context.Game.GetSceneNodeByInstanceID<ISceneNode>(
+                    InstanceID,
+                    includeDisabled: true
+                );
+            if (explicitNode != null)
+                selected = new[] { explicitNode }.Concat(selected);
+            List<ISceneNode> nodes = selected.Distinct().ToList();
+            if (nodes.Count == 0)
+                throw new InvalidOperationException(
+                    "SetNodeActive requires a resolvable node or selector."
+                );
 
-            foreach (IMovable unit in units)
-                unit.IsEnabled = IsActive;
+            foreach (ISceneNode node in nodes)
+                node.IsEnabled = IsActive;
             return;
         }
     }
