@@ -127,7 +127,7 @@ namespace Rebellion.Tests.Game.Events
                                         {
                                             Path = "Story/dialogue",
                                         },
-                                        TriggerAdvisorNotification = new AdvisorNotification
+                                        AdvisorNotification = new AdvisorNotification
                                         {
                                             Preset = AdvisorNotificationPreset.SubjectReport,
                                             Protocol = new AdvisorAnimation
@@ -160,11 +160,8 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("LUKE", message.SubjectInstanceID);
             Assert.AreEqual("VADER", message.RelatedSubjectInstanceID);
             Assert.AreEqual("Story/dialogue", message.BackgroundAudio.Path);
-            Assert.AreEqual(
-                "Story/advisor",
-                message.TriggerAdvisorNotification.Protocol.AnimationPath
-            );
-            Assert.AreEqual(3, message.TriggerAdvisorNotification.Protocol.FrameCount);
+            Assert.AreEqual("Story/advisor", message.AdvisorNotification.Protocol.AnimationPath);
+            Assert.AreEqual(3, message.AdvisorNotification.Protocol.FrameCount);
             Assert.AreEqual(
                 "LUKE_SKYWALKER",
                 ((SetNodeActiveAction)restored.Actions[1]).InstanceID

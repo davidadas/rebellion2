@@ -225,7 +225,7 @@ namespace Rebellion.Game.Events
         public MessageImage OverlayImage { get; set; }
         public MessageAudio BackgroundAudio { get; set; }
         public MessageOfficerVoice OfficerVoice { get; set; }
-        public AdvisorNotification TriggerAdvisorNotification { get; set; }
+        public AdvisorNotification AdvisorNotification { get; set; }
 
         /// <summary>
         /// Resolves the authored references and emits presentation-neutral narrative data.
@@ -289,7 +289,7 @@ namespace Rebellion.Game.Events
                     OverlayImagePath = OverlayImage?.Path ?? (subject as Officer)?.MessageImagePath,
                     BackgroundAudioPath = backgroundAudioPath,
                     OfficerVoicePath = OfficerVoice?.ResolvePath(subject as Officer, provider),
-                    AdvisorNotification = TriggerAdvisorNotification,
+                    AdvisorNotification = this.AdvisorNotification,
                     Tick = game.CurrentTick,
                 }
             );
