@@ -79,14 +79,14 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void IsCapturedBy_UncapturedOfficerWithStaleCaptor_DoesNotMatch()
+        public void IsCaptured_WithCaptor_UncapturedOfficerWithStaleCaptorDoesNotMatch()
         {
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             officer.IsCaptured = false;
             officer.CaptorInstanceID = "captor";
             game.AttachNode(officer, planet);
-            IsCapturedByConditional condition = new IsCapturedByConditional
+            IsCapturedConditional condition = new IsCapturedConditional
             {
                 OfficerInstanceID = officer.InstanceID,
                 CaptorFactionInstanceID = "captor",
@@ -95,6 +95,27 @@ namespace Rebellion.Tests.Game.Events
             bool isMet = condition.IsMet(game);
 
             Assert.IsFalse(isMet);
+        }
+
+        [Test]
+        public void IsCaptured_OptionalCaptor_QualifiesCapturedOfficerWhenProvided()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "captor";
+            game.AttachNode(officer, planet);
+
+            Assert.IsTrue(
+                new IsCapturedConditional { OfficerInstanceID = officer.InstanceID }.IsMet(game)
+            );
+            Assert.IsFalse(
+                new IsCapturedConditional
+                {
+                    OfficerInstanceID = officer.InstanceID,
+                    CaptorFactionInstanceID = "other",
+                }.IsMet(game)
+            );
         }
 
         [Test]

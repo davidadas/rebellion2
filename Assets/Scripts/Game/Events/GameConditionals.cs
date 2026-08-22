@@ -363,7 +363,15 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "IsCaptured")]
     public sealed class IsCapturedConditional : OfficerBooleanConditional
     {
-        protected override bool Evaluate(Officer officer) => officer.IsCaptured;
+        [PersistableAttribute]
+        public string CaptorFactionInstanceID { get; set; }
+
+        protected override bool Evaluate(Officer officer) =>
+            officer.IsCaptured
+            && (
+                string.IsNullOrWhiteSpace(CaptorFactionInstanceID)
+                || officer.CaptorInstanceID == CaptorFactionInstanceID
+            );
     }
 
     [PersistableObject(Name = "IsKilled")]
@@ -382,27 +390,6 @@ namespace Rebellion.Game.Events
     public sealed class IsForceEligibleConditional : OfficerBooleanConditional
     {
         protected override bool Evaluate(Officer officer) => officer.IsForceEligible;
-    }
-
-    /// <summary>
-    /// Tests which faction currently holds a captured officer.
-    /// </summary>
-    [PersistableObject(Name = "IsCapturedBy")]
-    public sealed class IsCapturedByConditional : GameConditional
-    {
-        [PersistableAttribute]
-        public string OfficerInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public string CaptorFactionInstanceID { get; set; }
-
-        /// <summary>Returns whether the officer is captured by the configured faction.</summary>
-        public override bool IsMet(GameConditionContext context)
-        {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
-            return officer?.IsCaptured == true
-                && officer.CaptorInstanceID == CaptorFactionInstanceID;
-        }
     }
 
     /// <summary>
