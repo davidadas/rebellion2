@@ -69,16 +69,43 @@ A complete event uses the following high-level shape. Most events only need some
 </GameEvent>
 ```
 
-| Domain | Purpose |
-| --- | --- |
-| `InstanceID` | Stable identity used by runtime state, saves, and dependent events. |
-| `TriggerCount` | Optional maximum number of successful activations. Omission means unlimited. |
-| [`Schedule`](Schedules.md) | Activates the event according to campaign time or another event. |
-| [`Triggers`](Triggers.md) | Activates the event in response to gameplay results and exposes result data. |
-| [`Until`](Conditions.md#stopping-an-event-with-until) | Permanently exhausts an event when its stop conditions pass. |
-| [`Target`](Targets.md) | Selects exactly one scene node and binds it as `$target`. |
-| [`Conditionals`](Conditions.md) | Gates an activation against current game state and bindings. |
-| [`Actions`](Actions.md) | Performs game changes in authored order. |
+### InstanceID
+
+Required stable identity used by runtime state, saves, and dependent events.
+
+### TriggerCount
+
+Optional maximum number of successful activations. Omission means unlimited.
+
+### Schedule
+
+Optionally activates the event according to campaign time or another event. See
+[Schedules](Schedules.md).
+
+### Triggers
+
+Optionally activates the event in response to gameplay results and exposes result data. See
+[Triggers and bindings](Triggers.md). An event cannot combine `Triggers` with `Schedule`.
+
+### Until
+
+Optionally exhausts the event permanently when its stop conditions pass. `Until` uses the same
+condition language as `Conditionals`. See [Conditions](Conditions.md#until).
+
+### Target
+
+Optionally selects exactly one scene node and binds it as `$target`. See
+[Targets and selectors](Targets.md).
+
+### Conditionals
+
+Optional XML collection containing the conditions that gate an activation against current game
+state and bindings. The collection is named `Conditionals`; the individual elements are called
+conditions. See [Conditions](Conditions.md).
+
+### Actions
+
+Required collection of game changes performed in authored order. See [Actions](Actions.md).
 
 ## Guide
 

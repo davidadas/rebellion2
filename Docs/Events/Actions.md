@@ -18,87 +18,15 @@ Every action belongs inside an event's `Actions` collection:
 </Actions>
 ```
 
-## Action index
-
-**Flow and event state**
-
-- [`If`](#if) — choose between two action lists.
-- [`Random`](#random) — choose one weighted eligible outcome.
-- [`PerformSkillCheck`](#performskillcheck) — branch using an officer rating and probability table.
-- [`SetEventVariable`](#seteventvariable) — store or update a persistent integer.
-
-**Information and messages**
-
-- [`RevealToFaction`](#revealtofaction) — provide current observations to a faction.
-- [`SendMessage`](#sendmessage) — deliver an authored strategy message.
-
-**Planets and resources**
-
-- [`ChangePlanetStat`](#changeplanetstat) — apply a fixed or percentage adjustment.
-- [`ReducePlanetStats`](#reduceplanetstats) — roll losses across selected planet statistics.
-- [`RecordPlanetIncident`](#recordplanetincident) — summarize changes already produced by this activation.
-
-**Units and ownership**
-
-- [`DestroyUnits`](#destroyunits) — permanently delete selected units.
-- [`ChangeOwner`](#changeowner) — transfer selected planets or units.
-- [`PlaceUnits`](#placeunits) — place existing or newly spawned units immediately.
-- [`SendUnits`](#sendunits) — move existing units through normal transit.
-- [`SetActive`](#setactive) — include or exclude units from active gameplay.
-
-**Officers**
-
-- [`SetCaptureStatus`](#setcapturestatus)
-- [`ChangeOfficerRating`](#changeofficerrating)
-- [`IncreaseOfficerForce`](#increaseofficerforce)
-- [`SetForceSensitive` and `SetForceEligible`](#setforcesensitive-and-setforceeligible)
-- [`ApplyOfficerInjury`](#applyofficerinjury)
-- [`TriggerDuel`](#triggerduel)
-- [`SetOfficerImages` and `SetOfficerVoiceSet`](#setofficerimages-and-setofficervoiceset)
-
-**Display metadata**
-
-- [`SetDisplayName`, `SetDisplayStatus`, and `ClearDisplayStatus`](#display-metadata)
-
-## Action reference
-
-The table lists the complete top-level property shape for every action. “Required” means the property must be authored; mutually exclusive choices are called out explicitly. Selector collections are detailed in [Targets and Selectors](Targets.md).
-
-| Element | Attributes | Child elements |
-| --- | --- | --- |
-| `Actions` | None | Zero or more supported action elements, executed in authored order. |
-| `If` | None | Required `Conditions` and `Actions`; optional `Else`. |
-| `Random` | None | Required `Outcomes` containing one or more `Outcome`. Each outcome requires positive `Weight`, optional `When`, and required `Actions`. |
-| `PerformSkillCheck` | `OfficerInstanceID`, `Rating`, `ProbabilityTable` — required; `RatingMultiplier` — optional, default `1` | Optional `OnSuccess` and `OnFailure` action collections. |
-| `SetEventVariable` | None | `Key` and `Operand` — required; `Operation` — optional, default `Set`. |
-| `RevealToFaction` | `FactionInstanceID` — required | Required `Subjects` selector collection. |
-| `SendMessage` | Optional `RecipientFactionInstanceID`, `RecipientUnitInstanceID`, `SubjectInstanceID`, `SubjectBinding`, `RelatedSubjectInstanceID`, `LocationInstanceID`, `LocationBinding`, `Type` (default `Advice`) | Optional `Subject`, `Body`, `ConditionalBodies`, `BackgroundImage`, `OverlayImage`, `BackgroundAudio`, `OfficerVoice`, `AdvisorNotification`. Recipient resolution must ultimately identify one faction. |
-| `ChangePlanetStat` | `Stat` — required; optional `PlanetInstanceID` or `PlanetBinding` | Exactly one of `Amount` or `PercentOfCurrent`; optional `Planets` selectors. Falls back to `$target`. |
-| `ReducePlanetStats` | `LossProbabilityPerResource`, `MinimumTotalLoss` — required | Required `Stats` containing one or more `Stat Name="…"`. Requires a planet `$target`. |
-| `RecordPlanetIncident` | `Type` — required | None. Requires a planet `$target` and earlier changes in the same activation. |
-| `DestroyUnits` | None | Required `Units` selector collection. |
-| `ChangeOwner` | `FactionInstanceID` — required | Exactly one of `Planets` or `Units`, containing matching selectors. |
-| `PlaceUnits` | Optional `UnitInstanceID`, `DestinationInstanceID` | Optional `Units` and `Destination`; at least one unit source and one destination must resolve. `Units` may include `SpawnUnits`. |
-| `SendUnits` | Optional `UnitInstanceID`, `DestinationInstanceID` | Optional `Units` and `Destination`; at least one existing unit and one destination must resolve. |
-| `SetActive` | `IsActive` — required; optional `UnitInstanceID` | Optional `Units` selectors. A direct unit ID may also be supplied as an element. |
-| `SetCaptureStatus` | `IsCaptured` — required; optional `OfficerInstanceID`, `CaptorFactionInstanceID`, `CanEscape` (default `true`) | Optional `Officers` selectors. Capturing requires a captor; releasing forbids one. |
-| `ChangeOfficerRating` | `Rating` — required; optional `OfficerInstanceID`, `ReferenceOfficerInstanceID`, `MinimumAmount` | Exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, `PercentOfPositiveGap`; optional `Officers` selectors. |
-| `IncreaseOfficerForce` | Optional `OfficerInstanceID`, `ReferenceOfficerInstanceID`, `MinimumAmount` | Exactly one positive `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap`; optional `Officers` selectors. |
-| `SetForceSensitive` | `OfficerInstanceID` — required | None. |
-| `SetForceEligible` | `OfficerInstanceID` — required | None. |
-| `ApplyOfficerInjury` | `OfficerInstanceID` — required | Required `MinimumInjury` and `MaximumInjury`. |
-| `TriggerDuel` | `FirstOfficerInstanceID`, `SecondOfficerInstanceID` — required | Optional `ImagePath`, `AudioPath`. |
-| `SetOfficerImages` | `OfficerInstanceID` — required | Optional `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, `EncyclopediaImagePath`. At least one should be supplied. |
-| `SetOfficerVoiceSet` | `OfficerInstanceID` — required | Optional voice-category collections; each contains one or more `Path` elements. |
-| `SetDisplayName` | Optional `TargetInstanceID`; `Name` — required for this action | Optional `Targets` selectors. |
-| `SetDisplayStatus` | Optional `TargetInstanceID`; `Status` — required for this action | Optional `Targets` selectors. |
-| `ClearDisplayStatus` | Optional `TargetInstanceID` | Optional `Targets` selectors. |
-
 ## Flow and event state
 
 ### If
 
 `If` evaluates its nested conditions when execution reaches it. It runs `Actions` when every condition passes and otherwise runs the optional `Else` list.
+
+- `Conditions` — required condition collection.
+- `Actions` — required action collection executed when the conditions pass.
+- `Else` — optional action collection executed when the conditions fail.
 
 ```xml
 <If>
@@ -120,6 +48,11 @@ The table lists the complete top-level property shape for every action. “Requi
 ### Random
 
 `Random` first removes outcomes whose `When` conditions fail, then selects one remaining outcome by `Weight`. Weights are relative: weights `30` and `70` produce a 30/70 split.
+
+- `Outcomes` — required child containing one or more `Outcome` elements.
+- `Weight` — required positive attribute on each `Outcome`.
+- `When` — optional conditions for making an outcome eligible.
+- `Actions` — required actions for each outcome.
 
 ```xml
 <Random>
@@ -146,6 +79,13 @@ The table lists the complete top-level property shape for every action. “Requi
 ### PerformSkillCheck
 
 `PerformSkillCheck` looks up the named mission probability table using the officer's effective rating multiplied by `RatingMultiplier`. It executes exactly one of `OnSuccess` or `OnFailure`; it does not emit a separate skill-check result.
+
+- `OfficerInstanceID` — required officer ID.
+- `Rating` — required officer rating.
+- `ProbabilityTable` — required probability-table name.
+- `RatingMultiplier` — optional multiplier; defaults to `1`.
+- `OnSuccess` — optional actions run after a successful check.
+- `OnFailure` — optional actions run after a failed check.
 
 ```xml
 <PerformSkillCheck OfficerInstanceID="HAN_SOLO"
@@ -174,6 +114,10 @@ Officer ratings are `Diplomacy`, `Espionage`, `Combat`, `Leadership`, `ShipResea
 
 Event variables are saved integers shared by all events. Operations are `Set`, `Add`, `Minimum`, and `Maximum`.
 
+- `Key` — required variable key.
+- `Operand` — required integer input.
+- `Operation` — optional `Set`, `Add`, `Minimum`, or `Maximum`; defaults to `Set`.
+
 ```xml
 <SetEventVariable>
   <Key>naboo.attacks</Key>
@@ -190,6 +134,9 @@ Use [`EvaluateEventVariable`](Conditions.md) to read the value from a condition.
 
 `RevealToFaction` records current observations of every selected subject for one recipient faction. The selectors determine whether the faction learns about planets, fleets, missions, units, buildings, or manufacturing.
 
+- `FactionInstanceID` — required recipient faction.
+- `Subjects` — required selector collection containing the objects to reveal.
+
 ```xml
 <RevealToFaction FactionInstanceID="FNALL1">
   <Subjects>
@@ -205,6 +152,17 @@ Use [`EvaluateEventVariable`](Conditions.md) to read the value from a condition.
 ### SendMessage
 
 `SendMessage` delivers a normal strategy message. The recipient can be explicit or inferred from a recipient unit or subject. Subject and location may use instance IDs or trigger bindings.
+
+- `RecipientFactionInstanceID` — optional explicit recipient faction.
+- `RecipientUnitInstanceID` — optional unit from which to infer the recipient.
+- `SubjectInstanceID` or `SubjectBinding` — optional, mutually exclusive message subject.
+- `RelatedSubjectInstanceID` — optional secondary subject.
+- `LocationInstanceID` or `LocationBinding` — optional, mutually exclusive location.
+- `Type` — optional message type; defaults to `Advice`.
+- `Subject`, `Body`, and `ConditionalBodies` — optional authored text.
+- `BackgroundImage`, `OverlayImage`, `BackgroundAudio`, `OfficerVoice`, and
+  `AdvisorNotification` — optional presentation.
+- Recipient resolution must identify exactly one faction.
 
 ```xml
 <SendMessage RecipientFactionInstanceID="FNALL1"
@@ -231,6 +189,12 @@ Message types are `PopularSupport`, `Fleet`, `Mission`, `Resource`, `Manufacturi
 
 Choose exactly one adjustment mode: signed `Amount` or signed `PercentOfCurrent`. The action can address a planet by instance ID, binding, top-level `$target`, or selectors.
 
+- `Stat` — required planet stat.
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive planet source.
+- `Planets` — optional planet selector collection.
+- Exactly one of `Amount` or `PercentOfCurrent` is required.
+- When no planet source is supplied, the action uses `$target`.
+
 ```xml
 <ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
   <Amount>5</Amount>
@@ -242,6 +206,11 @@ Supported stats are `RawResourceNodes` and `EnergyCapacity`. Values cannot fall 
 ### ReducePlanetStats
 
 This action requires a planet top-level target. It independently rolls `LossProbabilityPerResource` once for every current point in the selected stats, then enforces `MinimumTotalLoss`.
+
+- `LossProbabilityPerResource` — required probability applied to each existing point.
+- `MinimumTotalLoss` — required minimum combined loss.
+- `Stats` — required child containing one or more `Stat` elements.
+- `Name` — required planet-stat attribute on each `Stat`.
 
 ```xml
 <ReducePlanetStats LossProbabilityPerResource="0.05" MinimumTotalLoss="1">
@@ -255,6 +224,8 @@ This action requires a planet top-level target. It independently rolls `LossProb
 ### RecordPlanetIncident
 
 This action requires a planet top-level target. It records an incident from planet-stat changes and destroyed units already produced earlier in the same activation. It records nothing when those earlier actions made no change.
+
+- `Type` — required `Uprising`, `Intelligence`, `Disaster`, or `Resource` incident type.
 
 ```xml
 <Actions>
@@ -279,6 +250,8 @@ Incident types are `Uprising`, `Intelligence`, `Disaster`, and `Resource`.
 
 `DestroyUnits` permanently deletes every selected unit. Selecting a parent and its child does not double-delete the child.
 
+- `Units` — required unit selector collection.
+
 ```xml
 <DestroyUnits>
   <Units>
@@ -296,6 +269,9 @@ Incident types are `Uprising`, `Intelligence`, `Disaster`, and `Resource`.
 
 Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use planetary-control rules; unit transfers retain valid containment while ownership indexes are updated.
 
+- `FactionInstanceID` — required new owner.
+- Exactly one of `Planets` or `Units` is required, containing matching selectors.
+
 ```xml
 <ChangeOwner FactionInstanceID="FNALL1">
   <Units>
@@ -308,6 +284,12 @@ Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use 
 ### PlaceUnits
 
 `PlaceUnits` bypasses transit and requests immediate placement at one valid destination. It accepts existing-unit selectors and any number of `SpawnUnits` sources. Each spawned unit receives a new runtime instance ID and starts complete and stationary.
+
+- `UnitInstanceID` — optional direct unit source.
+- `Units` — optional selectors and `SpawnUnits` sources.
+- `DestinationInstanceID` — optional direct destination.
+- `Destination` — optional destination selector.
+- At least one unit and one destination must resolve.
 
 ```xml
 <PlaceUnits DestinationInstanceID="NABOO">
@@ -325,6 +307,12 @@ Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use 
 
 `SendUnits` moves active, already-placed units through normal validation and transit. It cannot spawn units.
 
+- `UnitInstanceID` — optional direct unit source.
+- `Units` — optional existing-unit selector collection.
+- `DestinationInstanceID` — optional direct destination.
+- `Destination` — optional destination selector.
+- At least one unit and one destination must resolve.
+
 ```xml
 <SendUnits UnitInstanceID="DARTH_VADER" DestinationInstanceID="YAVIN"/>
 ```
@@ -334,6 +322,10 @@ Both `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `Destinatio
 ### SetActive
 
 `SetActive` controls whether retained units participate in gameplay. Inactive units remain attached to the scene graph and save normally, but ordinary gameplay queries ignore them. Set `IsActive="true"` before placing or sending a returning unit.
+
+- `IsActive` — required state.
+- `UnitInstanceID` — optional direct unit ID, accepted as an attribute or child element.
+- `Units` — optional unit selector collection.
 
 ```xml
 <SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="false"/>
@@ -352,6 +344,12 @@ Both `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `Destinatio
 
 Capturing requires `CaptorFactionInstanceID`. Releasing must omit it. `CanEscape` defaults to `true`.
 
+- `IsCaptured` — required state.
+- `OfficerInstanceID` — optional direct officer ID.
+- `Officers` — optional officer selector collection.
+- `CaptorFactionInstanceID` — required when capturing and forbidden when releasing.
+- `CanEscape` — optional escape state; defaults to `true`.
+
 ```xml
 <SetCaptureStatus OfficerInstanceID="HAN_SOLO"
                   IsCaptured="true"
@@ -363,6 +361,14 @@ Capturing requires `CaptorFactionInstanceID`. Releasing must omit it. `CanEscape
 
 Choose exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap`. Percentage-of-gap changes also require `ReferenceOfficerInstanceID`.
 
+- `Rating` — required officer rating.
+- `OfficerInstanceID` — optional direct officer ID.
+- `Officers` — optional officer selector collection.
+- `ReferenceOfficerInstanceID` — required by `PercentOfPositiveGap`.
+- `MinimumAmount` — optional lower bound on the calculated change.
+- Exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` is
+  required.
+
 ```xml
 <ChangeOfficerRating OfficerInstanceID="LUKE_SKYWALKER" Rating="Combat">
   <Amount>5</Amount>
@@ -373,6 +379,13 @@ Choose exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `Per
 
 This uses the same calculation modes as `ChangeOfficerRating`, but every configured and calculated change must increase Force progression.
 
+- `OfficerInstanceID` — optional direct officer ID.
+- `Officers` — optional officer selector collection.
+- `ReferenceOfficerInstanceID` — required by `PercentOfPositiveGap`.
+- `MinimumAmount` — optional positive lower bound.
+- Exactly one positive `Amount`, `PercentOfStored`, `PercentOfEffective`, or
+  `PercentOfPositiveGap` is required.
+
 ```xml
 <IncreaseOfficerForce OfficerInstanceID="LUKE_SKYWALKER"
                       ReferenceOfficerInstanceID="DARTH_VADER"
@@ -381,18 +394,34 @@ This uses the same calculation modes as `ChangeOfficerRating`, but every configu
 </IncreaseOfficerForce>
 ```
 
-### SetForceSensitive and SetForceEligible
+### SetForceSensitive
 
-Force sensitivity is latent potential. Force eligibility means that potential has been discovered and initialized. Eligibility requires sensitivity, so use both actions when revealing a previously unknown candidate.
+Marks an officer as having latent Force potential.
+
+- `OfficerInstanceID` — required officer ID.
 
 ```xml
 <SetForceSensitive OfficerInstanceID="LEIA_ORGANA"/>
+```
+
+### SetForceEligible
+
+Marks a Force-sensitive officer's potential as discovered and initializes Force progression.
+Eligibility requires sensitivity, so use both actions when revealing a previously unknown candidate.
+
+- `OfficerInstanceID` — required officer ID.
+
+```xml
 <SetForceEligible OfficerInstanceID="LEIA_ORGANA"/>
 ```
 
 ### ApplyOfficerInjury
 
 The action rolls an inclusive injury value and records the standard officer-injured result.
+
+- `OfficerInstanceID` — required officer ID.
+- `MinimumInjury` — required minimum injury.
+- `MaximumInjury` — required maximum injury and cannot be lower than the minimum.
 
 ```xml
 <ApplyOfficerInjury OfficerInstanceID="LUKE_SKYWALKER">
@@ -404,6 +433,11 @@ The action rolls an inclusive injury value and records the standard officer-inju
 ### TriggerDuel
 
 `TriggerDuel` requests normal duel resolution between two active officers. `ImagePath` and `AudioPath` optionally override the presentation used for this duel.
+
+- `FirstOfficerInstanceID` — required first officer.
+- `SecondOfficerInstanceID` — required second officer.
+- `ImagePath` — optional presentation-image override.
+- `AudioPath` — optional presentation-audio override.
 
 When activated by `core:mission.completed`, exactly one configured officer must have participated in the completed mission. That participant becomes the encountered officer; the other becomes the opposing officer.
 
@@ -417,9 +451,13 @@ When activated by `core:mission.completed`, exactly one configured officer must 
 
 The duel produces `core:duel.completed`. A later event can [trigger from that result and bind its outcome details](Triggers.md).
 
-### SetOfficerImages and SetOfficerVoiceSet
+### SetOfficerImages
 
 Image paths are merged into the officer's active image set, so omitted paths remain unchanged.
+
+- `OfficerInstanceID` — required officer ID.
+- `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, and
+  `EncyclopediaImagePath` — optional paths; supply at least one.
 
 ```xml
 <SetOfficerImages OfficerInstanceID="LUKE_SKYWALKER">
@@ -428,7 +466,20 @@ Image paths are merged into the officer's active image set, so omitted paths rem
   <MessageImagePath>Pack/Factions/Alliance/Units/Officers/OFAL003/jedi-message</MessageImagePath>
   <EncyclopediaImagePath>Pack/Factions/Alliance/Units/Officers/OFAL003/jedi-encyclopedia</EncyclopediaImagePath>
 </SetOfficerImages>
+```
 
+### SetOfficerVoiceSet
+
+Replaces authored categories in the officer's active voice set. Omitted categories remain unchanged.
+
+- `OfficerInstanceID` — required officer ID.
+- Each optional voice-category child contains one or more `Path` elements.
+
+Voice categories are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFailure`, `MissionAbort`,
+`Released`, `Recovered`, `EnemyDetected`, `ForceGrowth`, `ForceUserDiscovered`,
+`TraitorDiscovered`, and `RescueAttempt`.
+
+```xml
 <SetOfficerVoiceSet OfficerInstanceID="LUKE_SKYWALKER">
   <PersonnelArrived>
     <Path>Pack/Factions/Alliance/Units/Officers/OFAL003/Voice/advanced-personnel-arrived-01</Path>
@@ -440,15 +491,42 @@ Image paths are merged into the officer's active image set, so omitted paths rem
 </SetOfficerVoiceSet>
 ```
 
-Voice categories are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFailure`, `MissionAbort`, `Released`, `Recovered`, `EnemyDetected`, `ForceGrowth`, `ForceUserDiscovered`, `TraitorDiscovered`, and `RescueAttempt`.
-
 ## Display metadata
 
 These actions accept one direct `TargetInstanceID` or a `Targets` selector collection.
 
+### SetDisplayName
+
+Sets a node's authored display name.
+
+- `Name` — required display name.
+- `TargetInstanceID` — optional direct target.
+- `Targets` — optional selector collection.
+
 ```xml
 <SetDisplayName TargetInstanceID="LUKE_SKYWALKER" Name="Luke Skywalker (Jedi)"/>
+```
+
+### SetDisplayStatus
+
+Sets supplemental status text without changing gameplay state.
+
+- `Status` — required display text.
+- `TargetInstanceID` — optional direct target.
+- `Targets` — optional selector collection.
+
+```xml
 <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER" Status="On Mission (Dagobah)"/>
+```
+
+### ClearDisplayStatus
+
+Clears supplemental status text.
+
+- `TargetInstanceID` — optional direct target.
+- `Targets` — optional selector collection.
+
+```xml
 <ClearDisplayStatus TargetInstanceID="LUKE_SKYWALKER"/>
 ```
 

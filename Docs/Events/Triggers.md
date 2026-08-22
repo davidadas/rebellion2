@@ -1,10 +1,17 @@
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 # Triggers and Bindings
 
-Triggers activate events from typed simulation results. A trigger does not poll game state: it receives a result at the moment gameplay produces that result, then gives the event one opportunity to execute.
+Triggers activate events from typed simulation results. A trigger does not poll game state: it receives
+a result when gameplay produces one, then gives the event one opportunity to execute. An event uses
+`Triggers` instead of `Schedule`. Multiple triggers are alternatives, so any matching result may
+activate the event.
 
-An event uses `Triggers` instead of `Schedule`. Multiple triggers on the same event are alternatives—any one matching result may activate it.
+## Triggers
 
-## Trigger structure
+`Triggers` contains one or more `Trigger` elements. It cannot appear with `Schedule`. When an
+event declares multiple triggers, every route must expose the same binding aliases with compatible
+types.
 
 ```xml
 <Triggers>
@@ -17,18 +24,514 @@ An event uses `Triggers` instead of `Schedule`. Multiple triggers on the same ev
 </Triggers>
 ```
 
-`Event` chooses a supported result contract. Each `Bind` reads one public argument from that result and stores it under the authored alias in `As`.
+## Trigger
 
-| Element | Attributes | Child elements | Rules |
-| --- | --- | --- | --- |
-| `Triggers` | None | One or more `Trigger` elements | Cannot appear with `Schedule`. Trigger routes are alternatives. |
-| `Trigger` | `Event` — required trigger ID | Optional `Bindings` | The trigger ID must appear in the catalog below. |
-| `Bindings` | None | One or more `Bind` elements when present | Every trigger route on the event must expose the same aliases and compatible types. |
-| `Bind` | `Argument` — required contract argument; `As` — required alias | None | `As` must be unique, cannot be `target`, and is referenced as `$alias`. |
+`Trigger` selects one supported gameplay-result contract.
+
+- `Event` — required trigger ID.
+- `Bindings` — optional collection of values to expose to the event.
+- Overlapping result types are rejected, so one result cannot activate the same event through two
+  routes.
+
+## Bindings
+
+`Bindings` contains one or more `Bind` elements. Each trigger route on the event must expose the
+same aliases and compatible types.
+
+## Bind
+
+`Bind` copies one public argument from the triggering result into the event context.
+
+- `Argument` — required argument name listed by that trigger below.
+- `As` — required unique alias. It cannot be `target`.
+- Refer to the resulting value as `$alias` in conditions, selectors, targets, and actions.
+
+```xml
+<Bind Argument="UnitInstanceID" As="unitInstanceID"/>
+```
+
+Bind the object when another element needs the scene node itself. Bind its instance-ID argument when
+a scalar string comparison is sufficient.
+
+## Available triggers
+
+#### Planet
+
+#### core:planet.owner-changed
+
+Activates when the game produces the **planet owner-changed** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `PreviousOwner`, `PreviousOwnerInstanceID`, `NewOwner`, `NewOwnerInstanceID`, `Reason`, `ObserverFactionInstanceIDs`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:planet.owner-changed"/>
+```
+
+#### core:planet.stat-changed
+
+Activates when the game produces the **planet stat-changed** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `Category`, `OldValue`, `NewValue`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:planet.stat-changed"/>
+```
+
+#### core:smuggling.changed
+
+Activates when the game produces the **smuggling changed** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `ControllerFaction`, `ControllerFactionInstanceID`, `BeneficiaryFaction`, `BeneficiaryFactionInstanceID`, `OldPercent`, `NewPercent`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:smuggling.changed"/>
+```
+
+#### core:blockade.changed
+
+Activates when the game produces the **blockade changed** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `BlockadingFleet`, `BlockadingFleetInstanceID`, `IsBlockaded`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:blockade.changed"/>
+```
+
+#### core:uprising.started
+
+Activates when the game produces the **uprising started** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `InstigatorFaction`, `InstigatorFactionInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:uprising.started"/>
+```
+
+#### core:uprising.nearing
+
+Activates when the game produces the **uprising nearing** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:uprising.nearing"/>
+```
+
+#### core:uprising.ended
+
+Activates when the game produces the **uprising ended** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:uprising.ended"/>
+```
+
+#### core:headquarters.destroyed
+
+Activates when the game produces the **headquarters destroyed** result.
+
+- Available binding arguments: `Headquarters`, `HeadquartersInstanceID`, `Planet`, `PlanetInstanceID`, `DefenderFaction`, `DefenderFactionInstanceID`, `AttackerFaction`, `AttackerFactionInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:headquarters.destroyed"/>
+```
+
+#### core:planet.garrison-changed
+
+Activates when the game produces the **planet garrison-changed** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:planet.garrison-changed"/>
+```
+
+#### core:planet.incident
+
+Activates when the game produces the **planet incident** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `IncidentType`, `Severity`, `ChangedStat`, `OldValue`, `NewValue`, `DestroyedObjects`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:planet.incident"/>
+```
+
+### Faction
+
+#### core:intelligence.revealed
+
+Activates when the game produces the **intelligence revealed** result.
+
+- Available binding arguments: `RecipientFaction`, `RecipientFactionInstanceID`, `Observations`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:intelligence.revealed"/>
+```
+
+#### core:maintenance.required
+
+Activates when the game produces the **maintenance required** result.
+
+- Available binding arguments: `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `Amount`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:maintenance.required"/>
+```
+
+#### core:research.completed
+
+Activates when the game produces the **research completed** result.
+
+- Available binding arguments: `Faction`, `FactionInstanceID`, `Discipline`, `ResearchOrder`, `Technology`, `TechnologyTypeID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:research.completed"/>
+```
+
+#### core:research.exhausted
+
+Activates when the game produces the **research exhausted** result.
+
+- Available binding arguments: `Faction`, `FactionInstanceID`, `Discipline`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:research.exhausted"/>
+```
+
+#### core:recruitment.exhausted
+
+Activates when the game produces the **recruitment exhausted** result.
+
+- Available binding arguments: `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:recruitment.exhausted"/>
+```
+
+#### core:game.completed
+
+Activates when the game produces the **game completed** result.
+
+- Available binding arguments: `WinnerFaction`, `WinnerFactionInstanceID`, `LoserFaction`, `LoserFactionInstanceID`, `GameMode`, `Description`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:game.completed"/>
+```
+
+### Mission
+
+#### core:mission.completed
+
+Activates when the game produces the **mission completed** result.
+
+- Available binding arguments: `Mission`, `Outcome`, `CompletionReason`, `Participants`, `Location`, `ReturnDestination`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:mission.completed"/>
+```
+
+#### core:planet-sectors.revealed
+
+Activates when the game produces the **planet-sectors revealed** result.
+
+- Available binding arguments: `PlanetSectors`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:planet-sectors.revealed"/>
+```
+
+### Officer
+
+#### core:force.discovered
+
+Activates when the game produces the **force discovered** result.
+
+- Available binding arguments: `Officer`, `Discoverer`, `ForceRank`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:force.discovered"/>
+```
+
+#### core:officer.recruited
+
+Activates when the game produces the **officer recruited** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:officer.recruited"/>
+```
+
+#### core:officer.capture-changed
+
+Activates when the game produces the **officer capture-changed** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `LinkedOfficer`, `Context`, `IsCaptured`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:officer.capture-changed"/>
+```
+
+#### core:officer.killed
+
+Activates when the game produces the **officer killed** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `Assassin`, `Context`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:officer.killed"/>
+```
+
+#### core:officer.injured
+
+Activates when the game produces the **officer injured** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `Severity`, `Detail`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:officer.injured"/>
+```
+
+#### core:officer.rescued
+
+Activates when the game produces the **officer rescued** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `RescuingFaction`, `RescuingFactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:officer.rescued"/>
+```
+
+#### core:officer.command-changed
+
+Activates when the game produces the **officer command-changed** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `CommandKind`, `Detail`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:officer.command-changed"/>
+```
+
+#### core:officer.command-assigned
+
+Activates when the game produces the **officer command-assigned** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `CommandTarget`, `CommandTargetInstanceID`, `Context`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:officer.command-assigned"/>
+```
+
+#### core:officer.traitor-discovered
+
+Activates when the game produces the **officer traitor-discovered** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `DiscoveredBy`, `Context`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:officer.traitor-discovered"/>
+```
+
+#### core:force.training-completed
+
+Activates when the game produces the **force training-completed** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `Progress`, `Detail`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:force.training-completed"/>
+```
+
+#### core:force.experience-gained
+
+Activates when the game produces the **force experience-gained** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `ExperienceGained`, `PreviousForceRank`, `CurrentForceRank`, `Detail`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:force.experience-gained"/>
+```
+
+### Unit lifecycle
+
+#### core:unit.owner-changed
+
+Activates when the game produces the **unit owner-changed** result.
+
+- Available binding arguments: `Unit`, `UnitInstanceID`, `PreviousOwner`, `PreviousOwnerInstanceID`, `NewOwner`, `NewOwnerInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:unit.owner-changed"/>
+```
+
+#### core:unit.created
+
+Activates when the game produces the **unit created** result.
+
+- Available binding arguments: `Unit`, `UnitInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:unit.created"/>
+```
+
+#### core:unit.deployed
+
+Activates when the game produces the **unit deployed** result.
+
+- Available binding arguments: `Unit`, `UnitInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:unit.deployed"/>
+```
+
+#### core:unit.movement-started
+
+Activates when the game produces the **unit movement-started** result.
+
+- Available binding arguments: `Unit`, `UnitInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:unit.movement-started"/>
+```
+
+#### core:unit.arrived
+
+Activates when the game produces the **unit arrived** result.
+
+- Available binding arguments: `Unit`, `UnitInstanceID`, `Destination`, `DestinationInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:unit.arrived"/>
+```
+
+#### core:unit.damaged
+
+Activates when the game produces the **unit damaged** result.
+
+- Available binding arguments: `Unit`, `UnitInstanceID`, `Damage`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:unit.damaged"/>
+```
+
+#### core:unit.destroyed
+
+Activates when the game produces the **unit destroyed** result.
+
+- Available binding arguments: `Unit`, `UnitInstanceID`, `DestroyedBy`, `Context`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:unit.destroyed"/>
+```
+
+#### core:unit.destroyed-on-arrival
+
+Activates when the game produces the **unit destroyed-on-arrival** result.
+
+- Available binding arguments: `Unit`, `UnitInstanceID`, `Reference`, `Context`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:unit.destroyed-on-arrival"/>
+```
+
+#### core:unit.autoscrapped
+
+Activates when the game produces the **unit autoscrapped** result.
+
+- Available binding arguments: `Unit`, `UnitInstanceID`, `Reference`, `Context`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:unit.autoscrapped"/>
+```
+
+#### core:unit.sabotaged
+
+Activates when the game produces the **unit sabotaged** result.
+
+- Available binding arguments: `Unit`, `UnitInstanceID`, `Saboteur`, `Context`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:unit.sabotaged"/>
+```
+
+### Combat
+
+#### core:duel.completed
+
+Activates when the game produces the **duel completed** result.
+
+- Available binding arguments: `Officer`, `OfficerInstanceID`, `Opponent`, `OpponentInstanceID`, `Location`, `OfficerCaptured`, `OfficerInjury`, `OpponentInjury`, `ImagePath`, `AudioPath`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:duel.completed"/>
+```
+
+#### core:combat.completed
+
+Activates when the game produces the **combat completed** result.
+
+- Available binding arguments: `AttackerFleet`, `DefenderFleet`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Planet`, `PlanetInstanceID`, `Winner`, `AttackerOutcome`, `DefenderOutcome`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:combat.completed"/>
+```
+
+#### core:bombardment.completed
+
+Activates when the game produces the **bombardment completed** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `AttackingFaction`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Type`, `SuccessfulStrikes`, `HeadquartersDestroyed`, `PlanetDestroyed`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:bombardment.completed"/>
+```
+
+#### core:planetary-assault.completed
+
+Activates when the game produces the **planetary-assault completed** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `AttackingFaction`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Success`, `BlockedByShields`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:planetary-assault.completed"/>
+```
+
+#### core:evacuation.completed
+
+Activates when the game produces the **evacuation completed** result.
+
+- Available binding arguments: `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `LostCapitalShips`, `LostStarfighters`, `LostRegiments`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:evacuation.completed"/>
+```
+
+### Manufacturing
+
+#### core:manufacturing.completed
+
+Activates when the game produces the **manufacturing completed** result.
+
+- Available binding arguments: `Faction`, `FactionInstanceID`, `Unit`, `UnitInstanceID`, `Location`, `LocationInstanceID`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:manufacturing.completed"/>
+```
+
+#### core:manufacturing.idle
+
+Activates when the game produces the **manufacturing idle** result.
+
+- Available binding arguments: `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `ManufacturingType`, `SourceEventInstanceID`.
+
+```xml
+<Trigger Event="core:manufacturing.idle"/>
+```
 
 ## Using bindings
 
-Binding references begin with `$`. A binding can be consumed by conditions, selectors, targets, and actions that accept that value type.
+Binding references begin with `$`:
 
 ```xml
 <Conditionals>
@@ -41,117 +544,11 @@ Binding references begin with `$`. A binding can be consumed by conditions, sele
 </Conditionals>
 ```
 
-Bind the object when another element needs the actual scene node; bind its `InstanceID` argument when string comparison is sufficient.
+`core:unit.destroyed` represents ordinary unit destruction. Destruction during arrival,
+autoscrapping, and sabotage use their corresponding specialized triggers.
 
-## Multiple triggers
-
-Multiple triggers are alternative routes into one event. Every route must expose the same aliases with compatible types, because the rest of the event must be valid regardless of which trigger activated it.
-
-```xml
-<Triggers>
-  <Trigger Event="core:unit.destroyed">
-    <Bindings>
-      <Bind Argument="Unit" As="destroyedUnit"/>
-      <Bind Argument="UnitInstanceID" As="destroyedUnitInstanceID"/>
-    </Bindings>
-  </Trigger>
-  <Trigger Event="core:unit.sabotaged">
-    <Bindings>
-      <Bind Argument="Unit" As="destroyedUnit"/>
-      <Bind Argument="UnitInstanceID" As="destroyedUnitInstanceID"/>
-    </Bindings>
-  </Trigger>
-</Triggers>
-```
-
-Overlapping result types are rejected, so one simulation result cannot activate the same event through two trigger routes.
-
-## Trigger catalog
-
-### Planet
-
-| Trigger | Available arguments |
-| --- | --- |
-| `core:planet.owner-changed` | `Planet`, `PlanetInstanceID`, `PreviousOwner`, `PreviousOwnerInstanceID`, `NewOwner`, `NewOwnerInstanceID`, `Reason`, `ObserverFactionInstanceIDs`, `SourceEventInstanceID` |
-| `core:planet.stat-changed` | `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `Category`, `OldValue`, `NewValue`, `SourceEventInstanceID` |
-| `core:smuggling.changed` | `Planet`, `PlanetInstanceID`, `ControllerFaction`, `ControllerFactionInstanceID`, `BeneficiaryFaction`, `BeneficiaryFactionInstanceID`, `OldPercent`, `NewPercent`, `SourceEventInstanceID` |
-| `core:blockade.changed` | `Planet`, `PlanetInstanceID`, `BlockadingFleet`, `BlockadingFleetInstanceID`, `IsBlockaded`, `SourceEventInstanceID` |
-| `core:uprising.started` | `Planet`, `PlanetInstanceID`, `InstigatorFaction`, `InstigatorFactionInstanceID`, `SourceEventInstanceID` |
-| `core:uprising.nearing` | `Planet`, `PlanetInstanceID`, `SourceEventInstanceID` |
-| `core:uprising.ended` | `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `SourceEventInstanceID` |
-| `core:headquarters.destroyed` | `Headquarters`, `HeadquartersInstanceID`, `Planet`, `PlanetInstanceID`, `DefenderFaction`, `DefenderFactionInstanceID`, `AttackerFaction`, `AttackerFactionInstanceID`, `SourceEventInstanceID` |
-| `core:planet.garrison-changed` | `Planet`, `PlanetInstanceID`, `SourceEventInstanceID` |
-| `core:planet.incident` | `Planet`, `PlanetInstanceID`, `IncidentType`, `Severity`, `ChangedStat`, `OldValue`, `NewValue`, `DestroyedObjects`, `SourceEventInstanceID` |
-
-### Faction
-
-| Trigger | Available arguments |
-| --- | --- |
-| `core:intelligence.revealed` | `RecipientFaction`, `RecipientFactionInstanceID`, `Observations`, `SourceEventInstanceID` |
-| `core:maintenance.required` | `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `Amount`, `SourceEventInstanceID` |
-| `core:research.completed` | `Faction`, `FactionInstanceID`, `Discipline`, `ResearchOrder`, `Technology`, `TechnologyTypeID`, `SourceEventInstanceID` |
-| `core:research.exhausted` | `Faction`, `FactionInstanceID`, `Discipline`, `SourceEventInstanceID` |
-| `core:recruitment.exhausted` | `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID` |
-| `core:game.completed` | `WinnerFaction`, `WinnerFactionInstanceID`, `LoserFaction`, `LoserFactionInstanceID`, `GameMode`, `Description`, `SourceEventInstanceID` |
-
-### Mission
-
-| Trigger | Available arguments |
-| --- | --- |
-| `core:mission.completed` | `Mission`, `Outcome`, `CompletionReason`, `Participants`, `Location`, `ReturnDestination`, `SourceEventInstanceID` |
-| `core:planet-sectors.revealed` | `PlanetSectors`, `SourceEventInstanceID` |
-
-### Officer
-
-| Trigger | Available arguments |
-| --- | --- |
-| `core:force.discovered` | `Officer`, `Discoverer`, `ForceRank`, `SourceEventInstanceID` |
-| `core:officer.recruited` | `Officer`, `OfficerInstanceID`, `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID` |
-| `core:officer.capture-changed` | `Officer`, `OfficerInstanceID`, `LinkedOfficer`, `Context`, `IsCaptured`, `SourceEventInstanceID` |
-| `core:officer.killed` | `Officer`, `OfficerInstanceID`, `Assassin`, `Context`, `SourceEventInstanceID` |
-| `core:officer.injured` | `Officer`, `OfficerInstanceID`, `Severity`, `Detail`, `SourceEventInstanceID` |
-| `core:officer.rescued` | `Officer`, `OfficerInstanceID`, `RescuingFaction`, `RescuingFactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID` |
-| `core:officer.command-changed` | `Officer`, `OfficerInstanceID`, `CommandKind`, `Detail`, `SourceEventInstanceID` |
-| `core:officer.command-assigned` | `Officer`, `OfficerInstanceID`, `CommandTarget`, `CommandTargetInstanceID`, `Context`, `SourceEventInstanceID` |
-| `core:officer.traitor-discovered` | `Officer`, `OfficerInstanceID`, `DiscoveredBy`, `Context`, `SourceEventInstanceID` |
-| `core:force.training-completed` | `Officer`, `OfficerInstanceID`, `Progress`, `Detail`, `SourceEventInstanceID` |
-| `core:force.experience-gained` | `Officer`, `OfficerInstanceID`, `ExperienceGained`, `PreviousForceRank`, `CurrentForceRank`, `Detail`, `SourceEventInstanceID` |
-
-### Unit lifecycle
-
-| Trigger | Available arguments |
-| --- | --- |
-| `core:unit.owner-changed` | `Unit`, `UnitInstanceID`, `PreviousOwner`, `PreviousOwnerInstanceID`, `NewOwner`, `NewOwnerInstanceID`, `SourceEventInstanceID` |
-| `core:unit.created` | `Unit`, `UnitInstanceID`, `SourceEventInstanceID` |
-| `core:unit.deployed` | `Unit`, `UnitInstanceID`, `SourceEventInstanceID` |
-| `core:unit.movement-started` | `Unit`, `UnitInstanceID`, `SourceEventInstanceID` |
-| `core:unit.arrived` | `Unit`, `UnitInstanceID`, `Destination`, `DestinationInstanceID`, `SourceEventInstanceID` |
-| `core:unit.damaged` | `Unit`, `UnitInstanceID`, `Damage`, `SourceEventInstanceID` |
-| `core:unit.destroyed` | `Unit`, `UnitInstanceID`, `DestroyedBy`, `Context`, `SourceEventInstanceID` |
-| `core:unit.destroyed-on-arrival` | `Unit`, `UnitInstanceID`, `Reference`, `Context`, `SourceEventInstanceID` |
-| `core:unit.autoscrapped` | `Unit`, `UnitInstanceID`, `Reference`, `Context`, `SourceEventInstanceID` |
-| `core:unit.sabotaged` | `Unit`, `UnitInstanceID`, `Saboteur`, `Context`, `SourceEventInstanceID` |
-
-### Combat
-
-| Trigger | Available arguments |
-| --- | --- |
-| `core:duel.completed` | `Officer`, `OfficerInstanceID`, `Opponent`, `OpponentInstanceID`, `Location`, `OfficerCaptured`, `OfficerInjury`, `OpponentInjury`, `ImagePath`, `AudioPath`, `SourceEventInstanceID` |
-| `core:combat.completed` | `AttackerFleet`, `DefenderFleet`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Planet`, `PlanetInstanceID`, `Winner`, `AttackerOutcome`, `DefenderOutcome`, `SourceEventInstanceID` |
-| `core:bombardment.completed` | `Planet`, `PlanetInstanceID`, `AttackingFaction`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Type`, `SuccessfulStrikes`, `HeadquartersDestroyed`, `PlanetDestroyed`, `SourceEventInstanceID` |
-| `core:planetary-assault.completed` | `Planet`, `PlanetInstanceID`, `AttackingFaction`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Success`, `BlockedByShields`, `SourceEventInstanceID` |
-| `core:evacuation.completed` | `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `LostCapitalShips`, `LostStarfighters`, `LostRegiments`, `SourceEventInstanceID` |
-
-### Manufacturing
-
-| Trigger | Available arguments |
-| --- | --- |
-| `core:manufacturing.completed` | `Faction`, `FactionInstanceID`, `Unit`, `UnitInstanceID`, `Location`, `LocationInstanceID`, `SourceEventInstanceID` |
-| `core:manufacturing.idle` | `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `ManufacturingType`, `SourceEventInstanceID` |
-
-`core:unit.destroyed` represents ordinary unit destruction. Destruction during arrival, autoscrapping, and sabotage are distinct simulation outcomes and use their corresponding specialized triggers.
-
-`SourceEventInstanceID` identifies an authored event that caused the result when one exists. It is empty for results produced entirely by normal gameplay.
+`SourceEventInstanceID` identifies the authored event that caused the result when one exists. It is
+empty for results produced entirely by normal gameplay.
 
 ---
 

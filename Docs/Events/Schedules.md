@@ -1,32 +1,13 @@
 # Schedules
 
-Schedules activate events from campaign time. A `Schedule` contains exactly one mode and cannot be combined with gameplay `Triggers`.
-
-| Mode | Use it when |
-| --- | --- |
-| [`At`](#at) | The event must become eligible on one absolute campaign tick. |
-| [`Every`](#every) | The event should repeat at a fixed interval. |
-| [`Random`](#random) | Each activation should wait for a newly rolled delay. |
-| [`After`](#after) | The event depends on one earlier event. |
-| [`AfterAll`](#afterall-and-afterany) | Every listed event must have executed. |
-| [`AfterAny`](#afterall-and-afterany) | At least one listed event must have executed. |
-
-## Element reference
-
-| Element | Attributes | Child elements | Rules |
-| --- | --- | --- | --- |
-| `Schedule` | None | Exactly one of `At`, `Every`, `Random`, `After`, `AfterAll`, or `AfterAny` | Cannot appear with `Triggers`. |
-| `At` | `Tick` — required non-negative integer | None | One-time; requires `TriggerCount="1"`. |
-| `Every` | `Ticks` — required positive integer; `InitialDelayTicks` — optional non-negative integer, default `0` | None | Repeats after successful activations. |
-| `Random` | `MinimumTicks` — required positive integer; `MaximumTicks` — required integer greater than or equal to the minimum | None | Rolls a new inclusive delay after successful activations. |
-| `After` | `EventInstanceID`, `DelayTicks` — required; delay must be non-negative | None | One-time; referenced event must exist. |
-| `AfterAll` | `DelayTicks` — required non-negative integer | `Events` containing one or more `Event` elements | One-time; every dependency must execute. |
-| `AfterAny` | `DelayTicks` — required non-negative integer | `Events` containing one or more `Event` elements | One-time; the first completed dependency is sufficient. |
-| `Event` | `EventInstanceID` — required | None | IDs in one dependency list must be unique. |
+Schedules activate events from campaign time. A `Schedule` contains exactly one scheduling option and
+cannot be combined with gameplay `Triggers`.
 
 ## At
 
 `At` becomes eligible on an absolute campaign tick. It is a one-time schedule and therefore requires `TriggerCount="1"`.
+
+- `Tick` — required non-negative campaign tick.
 
 ```xml
 <GameEvent TriggerCount="1">
@@ -44,6 +25,9 @@ Conditions may delay actual execution beyond tick 200. Once eligible, the event 
 
 `Every` repeats at a fixed interval. `InitialDelayTicks` controls the first eligible tick; when omitted, the event is eligible immediately.
 
+- `Ticks` — required positive interval between successful activations.
+- `InitialDelayTicks` — optional non-negative delay before the first activation; defaults to `0`.
+
 ```xml
 <Schedule>
   <Every Ticks="50" InitialDelayTicks="10"/>
@@ -55,6 +39,9 @@ After a successful activation, the next eligible tick is the current tick plus `
 ## Random
 
 `Random` rolls an inclusive delay for the first activation and rolls a fresh delay after every successful activation.
+
+- `MinimumTicks` — required positive minimum delay.
+- `MaximumTicks` — required maximum delay; cannot be lower than `MinimumTicks`.
 
 ```xml
 <Schedule>
@@ -68,6 +55,9 @@ Both values are delays, not absolute tick numbers. The minimum must be positive 
 
 `After` waits for one event to execute, then applies a delay from that event's last execution tick. It is a one-time schedule and requires `TriggerCount="1"`.
 
+- `EventInstanceID` — required ID of an event in the loaded catalog.
+- `DelayTicks` — required non-negative delay after that event executes.
+
 ```xml
 <Schedule>
   <After EventInstanceID="EVENT_A" DelayTicks="20"/>
@@ -76,9 +66,14 @@ Both values are delays, not absolute tick numbers. The minimum must be positive 
 
 The referenced event must exist in the same loaded event pool.
 
-## AfterAll and AfterAny
+## AfterAll
 
-Use `AfterAll` when every dependency must have executed. Its delay starts from the latest dependency execution. Use `AfterAny` when the first completed dependency is sufficient; its delay starts from the earliest completed dependency.
+`AfterAll` waits until every listed event has executed. Its delay starts from the latest dependency
+execution. It is a one-time schedule and requires `TriggerCount="1"`.
+
+- `DelayTicks` — required non-negative delay.
+- `Events` — required child containing one or more `Event` elements.
+- `EventInstanceID` — required attribute on each `Event`; IDs must be unique.
 
 ```xml
 <Schedule>
@@ -91,7 +86,25 @@ Use `AfterAll` when every dependency must have executed. Its delay starts from t
 </Schedule>
 ```
 
-Both modes are one-time schedules and require `TriggerCount="1"`. Dependencies must be present, unique, and valid.
+## AfterAny
+
+`AfterAny` waits until the first listed event executes. Its delay starts from the earliest completed
+dependency. It is a one-time schedule and requires `TriggerCount="1"`.
+
+- `DelayTicks` — required non-negative delay.
+- `Events` — required child containing one or more `Event` elements.
+- `EventInstanceID` — required attribute on each `Event`; IDs must be unique.
+
+```xml
+<Schedule>
+  <AfterAny DelayTicks="20">
+    <Events>
+      <Event EventInstanceID="EVENT_A"/>
+      <Event EventInstanceID="EVENT_B"/>
+    </Events>
+  </AfterAny>
+</Schedule>
+```
 
 ## Limiting and stopping repetition
 

@@ -1,6 +1,15 @@
 # Targets and Selectors
 
-Selectors return typed collections of scene nodes. They are reused by targets, conditions, and actions wherever authored XML needs to identify game objects. A top-level `Target` requires exactly one result and exposes it to the rest of the event as `$target`:
+Selectors find typed collections of scene nodes. Targets, conditions, and actions use them wherever
+authored XML needs to identify game objects. Direct selectors return every active matching object
+when no optional filter is supplied.
+
+## Target
+
+`Target` selects exactly one scene node and exposes it to the event as `$target`. Zero results or
+multiple results fail the activation.
+
+- `From` — required child containing exactly one selector.
 
 ```xml
 <Target>
@@ -14,60 +23,188 @@ Selectors return typed collections of scene nodes. They are reused by targets, c
 </Target>
 ```
 
-## Selector reference
+## Planet selectors
 
-Direct-selector filters are optional unless marked required. Omitting every filter selects every active object of that direct selector's type.
+### SelectPlanets
 
-| Element | Attributes | Child elements | Result |
-| --- | --- | --- | --- |
-| `Target` | None | Required `From` containing exactly one selector | Exactly one scene node, exposed as `$target`; zero or multiple results fail. |
-| `SelectPlanets` | `InstanceID`, `OwnerFactionInstanceID`, `SectorType` | None | Matching planets. |
-| `SelectPlanetSectors` | `InstanceID`, `SectorType` | None | Matching planet sectors. |
-| `SelectOfficers` | `InstanceID`, `PlanetInstanceID` or `PlanetBinding`, `OwnerFactionInstanceID`, `IsCaptured`, `IncludeInactive` | None | Matching officers. `IncludeInactive` defaults to `false`. |
-| `SelectSpecialForces` | `InstanceID`, `PlanetInstanceID` or `PlanetBinding`, `OwnerFactionInstanceID` | None | Matching special forces. |
-| `SelectFleets` | Same location and ownership filters | None | Matching fleets. |
-| `SelectMissions` | Same location and ownership filters | None | Matching missions. |
-| `SelectCapitalShips` | Location and ownership filters plus `TypeID`, `ManufacturingStatus` | None | Matching capital ships. |
-| `SelectStarfighters` | Location and ownership filters plus `TypeID`, `ManufacturingStatus` | None | Matching starfighters. |
-| `SelectRegiments` | Location and ownership filters plus `TypeID`, `ManufacturingStatus` | None | Matching regiments. |
-| `SelectBuildings` | Location and ownership filters plus `TypeID`, `ManufacturingStatus`, `Category` | None | Matching buildings. |
-| `SelectManufacturingOrders` | `PlanetInstanceID` or `PlanetBinding`, `OwnerFactionInstanceID`, `ManufacturingType` | None | Matching queued manufacturing items. |
-| `SelectRandom` | `ChancePercent` (default `100`), either `Count` or `MinimumCount`/`MaximumCount` | Required `From` selector collection | A random subset of the combined candidates. |
-| `SelectFirst` | None | Required ordered `From` selector collection | The first distinct candidate. In a destination, placement checks candidates in order. |
-| `SelectBinding` | `Binding` — required | None | The scene node or scene-node collection stored in the binding. |
-| `SelectNearestParent` | `Type` — required | Required `From` selector collection | Each candidate's nearest parent of `Type`; never the candidate itself. |
-| `SelectPreviousLocation` | Exactly one of `UnitInstanceID` or `UnitBinding` | None | The unit's registered `LastParentInstanceID`, when it still resolves. |
-| `SpawnUnits` | `TypeID`, `OwnerFactionInstanceID` — required; `Count` — optional, default `1` | None | Newly created detached units. Valid only inside `PlaceUnits/Units`. |
+Selects planets. All filters are optional and combine using AND.
 
-## Combining selectors
-
-A selector collection combines the results of every child selector. This lets one action operate on several unit categories without introducing an untyped catch-all selector:
+- `InstanceID` — select one specific planet.
+- `OwnerFactionInstanceID` — require the current owner.
+- `SectorType` — require `Core` or `OuterRim`.
 
 ```xml
-<Units>
-  <SelectCapitalShips PlanetBinding="$target" OwnerFactionInstanceID="FNEMP1"/>
-  <SelectStarfighters PlanetBinding="$target" OwnerFactionInstanceID="FNEMP1"/>
-  <SelectRegiments PlanetBinding="$target" OwnerFactionInstanceID="FNEMP1"/>
-</Units>
+<SelectPlanets OwnerFactionInstanceID="FNALL1" SectorType="Core"/>
 ```
 
-Selectors remove duplicate scene nodes before actions are applied.
+### SelectPlanetSectors
 
-## Selecting from a binding
+Selects planet sectors.
 
-Use `SelectBinding` when a trigger already supplied the object or collection:
+- `InstanceID` — optional specific sector ID.
+- `SectorType` — optional `Core` or `OuterRim` filter.
 
 ```xml
-<Units>
-  <SelectBinding Binding="$participants"/>
-</Units>
+<SelectPlanetSectors SectorType="OuterRim"/>
 ```
 
-The binding's runtime type must be valid for the action consuming the selector.
+## Personnel and mission selectors
 
-## Choosing a destination
+### SelectOfficers
 
-`SelectFirst` is explicit fallback behavior: it returns candidates in selector order and lets placement or movement use the first destination that accepts the units.
+Selects officers. Inactive officers are excluded unless explicitly requested.
+
+- `InstanceID` — optional officer ID.
+- `PlanetInstanceID` — optional explicit planet location.
+- `PlanetBinding` — optional binding containing a planet.
+- `OwnerFactionInstanceID` — optional owner filter.
+- `IsCaptured` — optional capture-state filter.
+- `IncludeInactive` — optionally include inactive officers; defaults to `false`.
+- `PlanetInstanceID` and `PlanetBinding` are mutually exclusive.
+
+```xml
+<SelectOfficers PlanetInstanceID="NABOO"
+                OwnerFactionInstanceID="FNALL1"
+                IsCaptured="false"/>
+```
+
+### SelectSpecialForces
+
+Selects special-forces units.
+
+- `InstanceID` — optional unit ID.
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `OwnerFactionInstanceID` — optional owner filter.
+
+```xml
+<SelectSpecialForces PlanetInstanceID="NABOO" OwnerFactionInstanceID="FNALL1"/>
+```
+
+### SelectMissions
+
+Selects missions.
+
+- `InstanceID` — optional mission ID.
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `OwnerFactionInstanceID` — optional owner filter.
+
+```xml
+<SelectMissions PlanetBinding="$target" OwnerFactionInstanceID="FNEMP1"/>
+```
+
+## Fleet and unit selectors
+
+### SelectFleets
+
+Selects fleets.
+
+- `InstanceID` — optional fleet ID.
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `OwnerFactionInstanceID` — optional owner filter.
+
+```xml
+<SelectFleets PlanetInstanceID="NABOO" OwnerFactionInstanceID="FNALL1"/>
+```
+
+### SelectCapitalShips
+
+Selects capital ships.
+
+- `InstanceID` — optional ship ID.
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `OwnerFactionInstanceID` — optional owner filter.
+- `TypeID` — optional unit-definition ID.
+- `ManufacturingStatus` — optional `Building` or `Complete` filter.
+
+```xml
+<SelectCapitalShips TypeID="MON_CALAMARI_CRUISER" ManufacturingStatus="Complete"/>
+```
+
+### SelectStarfighters
+
+Selects starfighters. It supports the same filters as `SelectCapitalShips`.
+
+```xml
+<SelectStarfighters PlanetBinding="$target"
+                    OwnerFactionInstanceID="FNEMP1"
+                    ManufacturingStatus="Complete"/>
+```
+
+### SelectRegiments
+
+Selects regiments. It supports the same filters as `SelectCapitalShips`.
+
+```xml
+<SelectRegiments PlanetBinding="$target" OwnerFactionInstanceID="FNALL1"/>
+```
+
+### SelectBuildings
+
+Selects buildings.
+
+- `InstanceID` — optional building ID.
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `OwnerFactionInstanceID` — optional owner filter.
+- `TypeID` — optional unit-definition ID.
+- `ManufacturingStatus` — optional `Building` or `Complete` filter.
+- `Category` — optional `Any`, `PlanetaryDefense`, or `ManufacturingFacility` filter.
+
+```xml
+<SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
+```
+
+### SelectManufacturingOrders
+
+Selects queued manufacturing items.
+
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `OwnerFactionInstanceID` — optional owner filter.
+- `ManufacturingType` — optional `Ship`, `Building`, or `Troop` filter.
+
+```xml
+<SelectManufacturingOrders PlanetInstanceID="NABOO" ManufacturingType="Ship"/>
+```
+
+## Selector composition
+
+### From
+
+`From` combines the results of every child selector in authored order and removes duplicate scene
+nodes. It is used by selectors that transform another selection.
+
+```xml
+<From>
+  <SelectCapitalShips PlanetBinding="$target"/>
+  <SelectStarfighters PlanetBinding="$target"/>
+  <SelectRegiments PlanetBinding="$target"/>
+</From>
+```
+
+### SelectRandom
+
+Selects a random subset of the candidates returned by `From`.
+
+- `ChancePercent` — optional independent inclusion chance; defaults to `100`.
+- `Count` — optional exact result count.
+- `MinimumCount` and `MaximumCount` — optional inclusive result-count range.
+- Use either `Count` or the minimum/maximum pair, never both.
+- `From` — required selector collection.
+
+```xml
+<SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
+  <From>
+    <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
+    <SelectRegiments PlanetBinding="$target"/>
+  </From>
+</SelectRandom>
+```
+
+### SelectFirst
+
+Returns the first distinct candidate from `From`. When used as a destination, placement or movement
+checks candidates in authored order and uses the first one that accepts the units.
+
+- `From` — required ordered selector collection.
 
 ```xml
 <Destination>
@@ -80,7 +217,23 @@ The binding's runtime type must be valid for the action consuming the selector.
 </Destination>
 ```
 
-`SelectNearestParent` maps each source to its nearest parent of the requested scene type. It does not return the source itself:
+### SelectBinding
+
+Returns the scene node or scene-node collection stored by a trigger binding. Its runtime type must
+be valid for the consumer.
+
+- `Binding` — required `$alias` reference.
+
+```xml
+<SelectBinding Binding="$participants"/>
+```
+
+### SelectNearestParent
+
+Maps each source to its nearest parent of the requested type. It never returns the source itself.
+
+- `Type` — required scene-node type.
+- `From` — required source selector collection.
 
 ```xml
 <SelectNearestParent Type="Planet">
@@ -90,26 +243,27 @@ The binding's runtime type must be valid for the action consuming the selector.
 </SelectNearestParent>
 ```
 
-`SelectPreviousLocation` is intended for returning a unit whose location changed or whose active state was temporarily disabled:
+### SelectPreviousLocation
+
+Returns a unit's registered `LastParentInstanceID` when that node still resolves.
+
+- Exactly one of `UnitInstanceID` or `UnitBinding` is required.
 
 ```xml
 <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
 ```
 
-Planet location filters use `PlanetInstanceID` or `PlanetBinding`. Sector types are `Core` and
-`OuterRim`. Manufacturing statuses are `Building` and `Complete`. Manufacturing types are `Ship`,
-`Building`, and `Troop`. Building categories are `Any`, `PlanetaryDefense`, and
-`ManufacturingFacility`.
+### SpawnUnits
 
-`SelectRandom` accepts `ChancePercent`, exact `Count`, or `MinimumCount` and `MaximumCount`:
+Creates detached units from an existing unit definition. It is valid only inside the `Units`
+collection of `PlaceUnits`; placement attaches the resulting units to their destination.
+
+- `TypeID` — required unit-definition ID.
+- `OwnerFactionInstanceID` — required owner faction.
+- `Count` — optional positive quantity; defaults to `1`.
 
 ```xml
-<SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
-  <From>
-    <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
-    <SelectRegiments PlanetBinding="$target"/>
-  </From>
-</SelectRandom>
+<SpawnUnits TypeID="X_WING" OwnerFactionInstanceID="FNALL1" Count="3"/>
 ```
 
 ---
