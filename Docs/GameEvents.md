@@ -110,6 +110,20 @@ Triggers expose result information through named bindings. Binding references be
 | `core:duel.completed` | `Officer`, `OfficerInstanceID`, `Opponent`, `OpponentInstanceID`, `Location`, `OfficerCaptured`, `OfficerInjury`, `OpponentInjury`, `ImagePath`, `AudioPath`, `SourceEventInstanceID` |
 | `core:officer.capture-changed` | `Officer`, `OfficerInstanceID`, `LinkedOfficer`, `Context`, `IsCaptured`, `SourceEventInstanceID` |
 | `core:force.discovered` | `Officer`, `Discoverer`, `ForceRank`, `SourceEventInstanceID` |
+| `core:planet.owner-changed` | `Planet`, `PlanetInstanceID`, `PreviousOwner`, `PreviousOwnerInstanceID`, `NewOwner`, `NewOwnerInstanceID`, `Reason`, `ObserverFactionInstanceIDs`, `SourceEventInstanceID` |
+| `core:unit.owner-changed` | `Unit`, `UnitInstanceID`, `PreviousOwner`, `PreviousOwnerInstanceID`, `NewOwner`, `NewOwnerInstanceID`, `SourceEventInstanceID` |
+| `core:unit.created` | `Unit`, `UnitInstanceID`, `SourceEventInstanceID` |
+| `core:unit.destroyed` | `Unit`, `UnitInstanceID`, `DestroyedBy`, `Context`, `SourceEventInstanceID` |
+| `core:officer.killed` | `Officer`, `OfficerInstanceID`, `Assassin`, `Context`, `SourceEventInstanceID` |
+| `core:officer.injured` | `Officer`, `OfficerInstanceID`, `Severity`, `Detail`, `SourceEventInstanceID` |
+| `core:officer.recruited` | `Officer`, `OfficerInstanceID`, `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID` |
+| `core:combat.completed` | `AttackerFleet`, `DefenderFleet`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Planet`, `PlanetInstanceID`, `Winner`, `AttackerOutcome`, `DefenderOutcome`, `SourceEventInstanceID` |
+| `core:bombardment.completed` | `Planet`, `PlanetInstanceID`, `AttackingFaction`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Type`, `SuccessfulStrikes`, `HeadquartersDestroyed`, `PlanetDestroyed`, `SourceEventInstanceID` |
+| `core:planetary-assault.completed` | `Planet`, `PlanetInstanceID`, `AttackingFaction`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Success`, `BlockedByShields`, `SourceEventInstanceID` |
+| `core:manufacturing.completed` | `Faction`, `FactionInstanceID`, `Unit`, `UnitInstanceID`, `Location`, `LocationInstanceID`, `SourceEventInstanceID` |
+| `core:research.completed` | `Faction`, `FactionInstanceID`, `Discipline`, `ResearchOrder`, `Technology`, `TechnologyTypeID`, `SourceEventInstanceID` |
+| `core:uprising.started` | `Planet`, `PlanetInstanceID`, `InstigatorFaction`, `InstigatorFactionInstanceID`, `SourceEventInstanceID` |
+| `core:uprising.ended` | `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `SourceEventInstanceID` |
 
 Multiple triggers are alternatives. Each trigger on one event must expose the same aliases with
 compatible types.
