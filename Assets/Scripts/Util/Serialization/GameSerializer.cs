@@ -320,6 +320,23 @@ namespace Rebellion.Util.Serialization
 
                 if (value != null)
                 {
+                    bool isInlineCollection = Attribute.IsDefined(
+                        member,
+                        typeof(PersistableInlineCollectionAttribute)
+                    );
+                    if (isInlineCollection && value is IEnumerable inlineCollection)
+                    {
+                        foreach (object item in inlineCollection)
+                        {
+                            WriteValue(
+                                item,
+                                writer,
+                                ReflectionHelper.GetPersistableElementName(item.GetType())
+                            );
+                        }
+                        continue;
+                    }
+
                     string elementName = GetElementName(member, value);
                     PersistableCollectionItemAttribute collectionItem =
                         (PersistableCollectionItemAttribute)
@@ -681,6 +698,17 @@ namespace Rebellion.Util.Serialization
             IDictionary<string, MemberInfo> memberLookup = ReflectionHelper.GetElementMemberLookup(
                 actualType
             );
+            MemberInfo inlineCollectionMember = ReflectionHelper
+                .GetPersistableMembers(actualType, ReflectionHelper.OperationType.Read)
+                .SingleOrDefault(member =>
+                    Attribute.IsDefined(member, typeof(PersistableInlineCollectionAttribute))
+                );
+            Type inlineElementType =
+                inlineCollectionMember == null
+                    ? null
+                    : GetCollectionElementType(
+                        ReflectionHelper.GetMemberType(inlineCollectionMember)
+                    );
 
             HashSet<MemberInfo> populatedAttributes = reader.HasAttributes
                 ? ReadAttributes(reader, attributes, obj)
@@ -718,6 +746,13 @@ namespace Rebellion.Util.Serialization
                             );
                         object value = ReadMember(attributeMember, reader);
                         ReflectionHelper.SetMemberValue(attributeMember, obj, value);
+                    }
+                    else if (inlineCollectionMember != null)
+                    {
+                        object item = ReadValue(inlineElementType, reader);
+                        IList collection = (IList)
+                            ReflectionHelper.GetMemberValue(inlineCollectionMember, obj);
+                        collection.Add(item);
                     }
                     else
                     {

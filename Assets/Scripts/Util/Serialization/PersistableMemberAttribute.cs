@@ -40,4 +40,14 @@ namespace Rebellion.Util.Serialization
     {
         public string Name { get; set; }
     }
+
+    /// <summary>
+    /// Writes collection items directly beneath their containing object without a collection wrapper.
+    /// </summary>
+    [AttributeUsage(
+        AttributeTargets.Field | AttributeTargets.Property,
+        Inherited = false,
+        AllowMultiple = false
+    )]
+    public sealed class PersistableInlineCollectionAttribute : Attribute { }
 }

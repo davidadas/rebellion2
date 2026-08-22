@@ -62,6 +62,46 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void CompositeConditionals_RoundTripWithoutCollectionWrappers()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                Conditionals = new List<GameConditional>
+                {
+                    new NotConditional
+                    {
+                        Conditionals = new List<GameConditional>
+                        {
+                            new AnyConditional
+                            {
+                                Conditionals = new List<GameConditional>
+                                {
+                                    new IsCapturedConditional
+                                    {
+                                        OfficerInstanceID = "LUKE_SKYWALKER",
+                                    },
+                                    new IsInTransitConditional
+                                    {
+                                        UnitInstanceID = "LUKE_SKYWALKER",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize(gameEvent);
+            GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
+
+            StringAssert.Contains("<Not><Any><IsCaptured", xml);
+            Assert.IsFalse(xml.Contains("<Not><Conditionals>"));
+            NotConditional not = (NotConditional)restored.Conditionals.Single();
+            AnyConditional any = (AnyConditional)not.Conditionals.Single();
+            Assert.AreEqual(2, any.Conditionals.Count);
+        }
+
+        [Test]
         public void Actions_AuthoredAliasesAndPresentation_RoundTripConcreteValues()
         {
             GameEvent gameEvent = new GameEvent
