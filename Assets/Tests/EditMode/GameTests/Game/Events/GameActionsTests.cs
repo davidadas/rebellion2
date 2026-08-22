@@ -555,7 +555,6 @@ namespace Rebellion.Tests.Game.Events
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent(),
                 new GameEventState(),
-                null,
                 completion
             );
 
@@ -624,8 +623,7 @@ namespace Rebellion.Tests.Game.Events
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
-                new GameEventState(),
-                empirePlanet
+                new GameEventState()
             );
 
             List<GameResult> results = action.Execute(game, game.Random, context);
@@ -740,10 +738,10 @@ namespace Rebellion.Tests.Game.Events
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent(),
                 new GameEventState(),
-                null,
                 encounter,
-                new GameEventTrigger("core:duel.completed", ("AudioPath", "audioPath"))
+                new DuelCompletedTrigger { As = "duel" }
             );
+            context.Bind("audioPath", encounter.AudioPath);
 
             MessageDeliveryRequest result = action
                 .ExecuteRequests(game, game.Random, context)
@@ -1378,9 +1376,9 @@ namespace Rebellion.Tests.Game.Events
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent(),
-                null,
-                planet
+                null
             );
+            context.Bind("target", planet);
 
             List<GameResult> results = action.Execute(game, new SequenceRNG(), context);
 
@@ -1405,9 +1403,9 @@ namespace Rebellion.Tests.Game.Events
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent(),
-                null,
-                planet
+                null
             );
+            context.Bind("target", planet);
 
             PlanetStatChangedResult result = action
                 .Execute(game, new SequenceRNG(), context)
@@ -1435,11 +1433,8 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
             GameEvent gameEvent = new GameEvent { InstanceID = "disaster" };
-            GameEventExecutionContext context = new GameEventExecutionContext(
-                gameEvent,
-                null,
-                planet
-            );
+            GameEventExecutionContext context = new GameEventExecutionContext(gameEvent, null);
+            context.Bind("target", planet);
 
             List<GameResult> results = action.Execute(game, new FixedRNG(0.99), context);
 
@@ -1498,11 +1493,8 @@ namespace Rebellion.Tests.Game.Events
                     new RecordPlanetIncidentAction { IncidentType = PlanetIncidentType.Disaster },
                 },
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
-                gameEvent,
-                null,
-                planet
-            );
+            GameEventExecutionContext context = new GameEventExecutionContext(gameEvent, null);
+            context.Bind("target", planet);
 
             List<GameResult> results = gameEvent.Execute(game, new FixedRNG(0.99), context).Results;
 
@@ -1573,7 +1565,7 @@ namespace Rebellion.Tests.Game.Events
         public void Random_WeightedSelection_ExecutesEveryActionInSelectedOutcome()
         {
             GameRoot game = BuildGame(out _, out _);
-            RandomAction action = new RandomAction
+            RollRandomAction action = new RollRandomAction
             {
                 Outcomes = new List<RandomOutcome>
                 {

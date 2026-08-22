@@ -461,19 +461,7 @@ namespace Rebellion.Tests.Managers
                         InstanceID = "UNRELATED_SOURCE_FILTERED_ARRIVAL",
                         Triggers = new List<GameEventTrigger>
                         {
-                            new GameEventTrigger(
-                                "core:unit.arrived",
-                                ("SourceEventInstanceID", "sourceEventInstanceID")
-                            ),
-                        },
-                        Conditionals = new List<GameConditional>
-                        {
-                            new EvaluateBindingConditional
-                            {
-                                Binding = "$sourceEventInstanceID",
-                                Comparison = ComparisonOperator.Equal,
-                                CompareTo = "SOME_OTHER_EVENT",
-                            },
+                            new UnitArrivedTrigger { SourceEventInstanceID = "SOME_OTHER_EVENT" },
                         },
                     }
                 );

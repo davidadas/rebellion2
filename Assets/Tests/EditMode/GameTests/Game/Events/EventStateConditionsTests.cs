@@ -97,7 +97,8 @@ namespace Rebellion.Tests.Game.Events
         public void IsEventExhausted_LoadedCountAtLimit_ReturnsTrueBeforeEventProcessing()
         {
             GameRoot game = BuildGame(out _, out _);
-            game.GetEventPool().Add(new GameEvent { InstanceID = "limited", TriggerCount = 2 });
+            game.GetEventPool()
+                .Add(new GameEvent { InstanceID = "limited", MaximumActivations = 2 });
             game.EventRuntime.GetState("limited").ExecutionCount = 2;
             IsEventExhaustedConditional conditional = new IsEventExhaustedConditional
             {

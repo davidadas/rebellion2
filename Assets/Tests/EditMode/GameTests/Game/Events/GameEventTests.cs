@@ -11,23 +11,23 @@ namespace Rebellion.Tests.Game.Events
     public sealed class GameEventTests
     {
         [Test]
-        public void CanExecute_TriggerCountReached_ReturnsFalse()
+        public void CanActivate_MaximumActivationsReached_ReturnsFalse()
         {
-            GameEvent gameEvent = new GameEvent { TriggerCount = 3 };
+            GameEvent gameEvent = new GameEvent { MaximumActivations = 3 };
             GameEventState state = new GameEventState { ExecutionCount = 3 };
 
-            bool result = gameEvent.CanExecute(state);
+            bool result = gameEvent.CanActivate(state);
 
             Assert.IsFalse(result);
         }
 
         [Test]
-        public void CanExecute_UnlimitedEvent_ReturnsTrue()
+        public void CanActivate_UnlimitedEvent_ReturnsTrue()
         {
             GameEvent gameEvent = new GameEvent();
             GameEventState state = new GameEventState { ExecutionCount = 100 };
 
-            bool result = gameEvent.CanExecute(state);
+            bool result = gameEvent.CanActivate(state);
 
             Assert.IsTrue(result);
         }
@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Game.Events
                 InstanceID = "EVENT_STORY",
                 Actions = new List<GameAction>
                 {
-                    new RandomAction
+                    new RollRandomAction
                     {
                         Outcomes = new List<RandomOutcome>
                         {
@@ -87,7 +87,7 @@ namespace Rebellion.Tests.Game.Events
                                         {
                                             Path = "Story/dialogue",
                                         },
-                                        AdvisorNotification = new AdvisorNotification
+                                        TriggerAdvisorNotification = new AdvisorNotification
                                         {
                                             Preset = AdvisorNotificationPreset.SubjectReport,
                                             Protocol = new AdvisorAnimation
@@ -113,15 +113,18 @@ namespace Rebellion.Tests.Game.Events
             string xml = SerializationHelper.Serialize(gameEvent);
             GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
 
-            RandomAction random = restored.Actions[0] as RandomAction;
+            RollRandomAction random = restored.Actions[0] as RollRandomAction;
             SendMessageAction message =
                 random?.Outcomes.Single().Actions.Single() as SendMessageAction;
             Assert.IsNotNull(message);
             Assert.AreEqual("LUKE", message.SubjectInstanceID);
             Assert.AreEqual("VADER", message.RelatedSubjectInstanceID);
             Assert.AreEqual("Story/dialogue", message.BackgroundAudio.Path);
-            Assert.AreEqual("Story/advisor", message.AdvisorNotification.Protocol.AnimationPath);
-            Assert.AreEqual(3, message.AdvisorNotification.Protocol.FrameCount);
+            Assert.AreEqual(
+                "Story/advisor",
+                message.TriggerAdvisorNotification.Protocol.AnimationPath
+            );
+            Assert.AreEqual(3, message.TriggerAdvisorNotification.Protocol.FrameCount);
             Assert.AreEqual(
                 "LUKE_SKYWALKER",
                 ((SetActiveAction)restored.Actions[1]).UnitInstanceID
@@ -131,14 +134,18 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void TriggerCount_AuthoredValue_RoundTripsAttribute()
+        public void MaximumActivations_AuthoredValue_RoundTripsAttribute()
         {
-            GameEvent gameEvent = new GameEvent { InstanceID = "LIMITED_EVENT", TriggerCount = 5 };
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "LIMITED_EVENT",
+                MaximumActivations = 5,
+            };
 
             string xml = SerializationHelper.Serialize(gameEvent);
             GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
 
-            Assert.AreEqual(5, restored.TriggerCount);
+            Assert.AreEqual(5, restored.MaximumActivations);
         }
     }
 }

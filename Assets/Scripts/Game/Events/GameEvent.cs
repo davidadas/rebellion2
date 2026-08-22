@@ -1,5 +1,8 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
@@ -19,6 +22,39 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Selects one scene node and exposes it under an authored activation-scoped binding name.
+    /// </summary>
+    [PersistableObject(Name = "Bind")]
+    public sealed class GameEventSelectionBinding
+    {
+        [PersistableAttribute]
+        public string As { get; set; }
+
+        [PersistableMember(Name = "From")]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+
+        /// <summary>Selects exactly one scene node and stores it in the activation context.</summary>
+        internal void Bind(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            if (Selectors.Count != 1)
+                throw new InvalidOperationException(
+                    $"Selection binding '{As}' requires exactly one selector."
+                );
+
+            ISceneNode[] values = Selectors[0].Select(game, provider, context).Distinct().ToArray();
+            if (values.Length != 1)
+                throw new InvalidOperationException(
+                    $"Selection binding '{As}' must resolve exactly one object but resolved {values.Length}."
+                );
+            context.Bind(As, values[0]);
+        }
+    }
+
+    /// <summary>
     /// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.
     /// Execute returns the results of those actions for notification and logging.
     /// </summary>
@@ -28,21 +64,20 @@ namespace Rebellion.Game.Events
         public string InstanceID { get; set; }
 
         [PersistableAttribute]
-        public int? TriggerCount { get; set; }
+        public int? MaximumActivations { get; set; }
 
-        public bool CanExecute(GameEventState state) =>
-            !state.IsExhausted
-            && (!TriggerCount.HasValue || state.ExecutionCount < TriggerCount.Value);
-
-        // Result Triggers.
         public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
-
-        // Schedule and Execution Pipeline.
         public GameEventScheduler Schedule { get; set; }
+        public List<GameEventSelectionBinding> Bindings { get; set; } =
+            new List<GameEventSelectionBinding>();
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
-        public List<GameConditional> Until { get; set; } = new List<GameConditional>();
-        public GameEventTarget Target { get; set; }
+        public List<GameConditional> StopWhen { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
+
+        /// <summary>Returns whether the event remains below its authored activation limit.</summary>
+        internal bool CanActivate(GameEventState state) =>
+            !state.IsExhausted
+            && (!MaximumActivations.HasValue || state.ExecutionCount < MaximumActivations.Value);
 
         /// <summary>
         /// Creates an empty event definition for deserialization.

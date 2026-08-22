@@ -194,8 +194,8 @@ namespace Rebellion.Game.Events
                 .Find(gameEvent =>
                     string.Equals(gameEvent.InstanceID, EventInstanceID, StringComparison.Ordinal)
                 );
-            int? triggerCount = definition?.TriggerCount;
-            return triggerCount.HasValue && state.ExecutionCount >= triggerCount.Value;
+            int? maximumActivations = definition?.MaximumActivations;
+            return maximumActivations.HasValue && state.ExecutionCount >= maximumActivations.Value;
         }
     }
 
@@ -509,7 +509,6 @@ namespace Rebellion.Game.Events
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
                 ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
                 : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
-            planet ??= context.Activation?.GetTarget<Planet>();
             if (planet == null)
                 return false;
             int current = planet.GetStatValue(Stat);
@@ -523,14 +522,24 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public BuildingType Type { get; set; }
 
-        public override bool IsMet(GameConditionContext context) =>
-            context
-                .Activation?.GetTarget<Planet>()
-                ?.GetChildren<Building>()
-                .Any(building =>
-                    building.BuildingType == Type
-                    && building.ManufacturingStatus == ManufacturingStatus.Complete
-                ) == true;
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
+        public override bool IsMet(GameConditionContext context)
+        {
+            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
+                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
+            return planet
+                    ?.GetChildren<Building>()
+                    .Any(building =>
+                        building.BuildingType == Type
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    ) == true;
+        }
     }
 
     /// <summary>
@@ -587,7 +596,6 @@ namespace Rebellion.Game.Events
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
                 ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
                 : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
-            planet ??= context.Activation?.GetTarget<Planet>();
             if (planet == null || string.IsNullOrWhiteSpace(FactionInstanceID))
                 return false;
 

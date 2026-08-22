@@ -11,13 +11,13 @@ namespace Rebellion.Game.Events
     {
         public AtTick At { get; set; }
         public EveryTicks Every { get; set; }
-        public RandomTickRange Random { get; set; }
+        public RandomTickRange RandomDelay { get; set; }
         public AfterEvent After { get; set; }
         public AfterEvents AfterAll { get; set; }
         public AfterEvents AfterAny { get; set; }
 
         [PersistableIgnore]
-        public bool IsRecurring => Every != null || Random != null;
+        public bool IsRecurring => Every != null || RandomDelay != null;
 
         /// <summary>
         /// Gets the inclusive delay range for an event's first activation.
@@ -44,7 +44,7 @@ namespace Rebellion.Game.Events
                 return;
             }
 
-            Random.GetRange(out minimum, out maximum);
+            RandomDelay.GetRange(out minimum, out maximum);
         }
 
         /// <summary>
@@ -60,7 +60,7 @@ namespace Rebellion.Game.Events
                 return;
             }
 
-            Random.GetRange(out minimum, out maximum);
+            RandomDelay.GetRange(out minimum, out maximum);
         }
     }
 

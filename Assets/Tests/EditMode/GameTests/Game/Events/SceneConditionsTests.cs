@@ -27,9 +27,9 @@ namespace Rebellion.Tests.Game.Events
                 };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
-                new GameEventState(),
-                planet
+                new GameEventState()
             );
+            context.Bind("target", planet);
 
             bool result = conditional.IsMet(new GameConditionContext(game, context));
 

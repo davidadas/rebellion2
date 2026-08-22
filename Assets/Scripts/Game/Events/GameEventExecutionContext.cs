@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 
@@ -18,7 +19,6 @@ namespace Rebellion.Game.Events
 
         public GameEvent Event { get; }
         public GameEventState State { get; }
-        public ISceneNode Target { get; }
         public GameResult TriggerResult { get; }
         public IReadOnlyList<GameResult> Results => _results;
 
@@ -27,32 +27,20 @@ namespace Rebellion.Game.Events
         /// </summary>
         /// <param name="gameEvent">The event definition being executed.</param>
         /// <param name="state">Persistent scheduling state for this activation scope.</param>
-        /// <param name="target">The selected planet or other targeted scene node.</param>
         /// <param name="triggerResult">The result that activated this event, if any.</param>
         /// <param name="trigger">The trigger definition that matched the result, if any.</param>
         public GameEventExecutionContext(
             GameEvent gameEvent,
             GameEventState state,
-            ISceneNode target,
             GameResult triggerResult = null,
             GameEventTrigger trigger = null
         )
         {
             Event = gameEvent;
             State = state;
-            Target = target;
             TriggerResult = triggerResult;
-            Bind("target", target);
             trigger?.Bind(this, triggerResult);
         }
-
-        /// <summary>
-        /// Gets the scope target when it has the requested scene-node type.
-        /// </summary>
-        /// <typeparam name="T">The expected scene-node type.</typeparam>
-        /// <returns>The typed target, or null when the target has another type.</returns>
-        public T GetTarget<T>()
-            where T : class, ISceneNode => Target as T;
 
         /// <summary>
         /// Stores a named value for subsequent actions in this activation.
@@ -102,12 +90,20 @@ namespace Rebellion.Game.Events
 
         public bool TryGetBindingReference<T>(string reference, out T value)
         {
-            return TryGetBinding(GetBindingName(reference), out value);
+            object resolved = ResolveBindingReference(reference);
+            if (resolved is T typed)
+            {
+                value = typed;
+                return true;
+            }
+            value = default;
+            return false;
         }
 
         public bool TryGetBindingReference(string reference, out object value)
         {
-            return TryGetBinding(GetBindingName(reference), out value);
+            value = ResolveBindingReference(reference);
+            return value != null;
         }
 
         public T GetBindingReference<T>(string reference)
@@ -120,6 +116,28 @@ namespace Rebellion.Game.Events
             if (string.IsNullOrWhiteSpace(reference) || reference[0] != '$')
                 throw new InvalidOperationException("Binding references must begin with '$'.");
             return reference.Substring(1);
+        }
+
+        /// <summary>Resolves a binding and optional public property path from the activation context.</summary>
+        private object ResolveBindingReference(string reference)
+        {
+            string path = GetBindingName(reference);
+            string[] segments = path.Split('.');
+            if (!_bindings.TryGetValue(segments[0], out object value))
+                return null;
+
+            for (int index = 1; index < segments.Length && value != null; index++)
+            {
+                PropertyInfo property = value
+                    .GetType()
+                    .GetProperty(segments[index], BindingFlags.Instance | BindingFlags.Public);
+                if (property == null)
+                    throw new InvalidOperationException(
+                        $"Binding '{reference}' references unknown property '{segments[index]}'."
+                    );
+                value = property.GetValue(value);
+            }
+            return value;
         }
 
         /// <summary>

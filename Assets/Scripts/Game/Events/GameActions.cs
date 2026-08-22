@@ -22,13 +22,13 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int Weight { get; set; } = 1;
 
-        public List<GameConditional> When { get; set; } = new List<GameConditional>();
+        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
 
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
     }
 
-    [PersistableObject(Name = "Random")]
-    public sealed class RandomAction : GameAction
+    [PersistableObject(Name = "RollRandom")]
+    public sealed class RollRandomAction : GameAction
     {
         public List<RandomOutcome> Outcomes { get; set; } = new List<RandomOutcome>();
 
@@ -40,7 +40,7 @@ namespace Rebellion.Game.Events
             List<RandomOutcome> eligible = Outcomes
                 .Where(outcome =>
                     outcome.Weight > 0
-                    && outcome.When.All(condition =>
+                    && outcome.Conditionals.All(condition =>
                         condition.IsMet(context.Game, context.Activation)
                     )
                 )
@@ -225,7 +225,7 @@ namespace Rebellion.Game.Events
         public MessageImage OverlayImage { get; set; }
         public MessageAudio BackgroundAudio { get; set; }
         public MessageOfficerVoice OfficerVoice { get; set; }
-        public AdvisorNotification AdvisorNotification { get; set; }
+        public AdvisorNotification TriggerAdvisorNotification { get; set; }
 
         /// <summary>
         /// Resolves the authored references and emits presentation-neutral narrative data.
@@ -289,7 +289,7 @@ namespace Rebellion.Game.Events
                     OverlayImagePath = OverlayImage?.Path ?? (subject as Officer)?.MessageImagePath,
                     BackgroundAudioPath = backgroundAudioPath,
                     OfficerVoicePath = OfficerVoice?.ResolvePath(subject as Officer, provider),
-                    AdvisorNotification = AdvisorNotification,
+                    AdvisorNotification = TriggerAdvisorNotification,
                     Tick = game.CurrentTick,
                 }
             );
@@ -1214,13 +1214,12 @@ namespace Rebellion.Game.Events
             Planet explicitPlanet = !string.IsNullOrWhiteSpace(PlanetBinding)
                 ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
-            explicitPlanet ??= context.Activation?.GetTarget<Planet>();
             if (explicitPlanet != null)
                 selected = new ISceneNode[] { explicitPlanet }.Concat(selected);
             List<ISceneNode> nodes = selected.Distinct().ToList();
             if (nodes.Count == 0)
                 throw new InvalidOperationException(
-                    "ChangePlanetStat requires a planet, planet binding, target, or matching selector."
+                    "ChangePlanetStat requires a planet, planet binding, or matching selector."
                 );
             if (nodes.Any(node => node is not Planet))
                 throw new InvalidOperationException(
@@ -1274,6 +1273,12 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "ReducePlanetStats")]
     public sealed class ReducePlanetStatsAction : GameAction
     {
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
         [PersistableAttribute(Name = "LossProbabilityPerResource")]
         public double LossProbabilityPerResource { get; set; } = 0.05;
 
@@ -1288,9 +1293,11 @@ namespace Rebellion.Game.Events
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            Planet planet = context.Activation?.GetTarget<Planet>();
+            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
+                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             if (planet == null)
-                throw new InvalidOperationException("ReducePlanetStats requires a planet target.");
+                throw new InvalidOperationException("ReducePlanetStats requires a planet.");
 
             List<PlanetStat> selectedStats = Stats.Select(stat => stat.Stat).Distinct().ToList();
             if (selectedStats.Count == 0)
@@ -1405,16 +1412,22 @@ namespace Rebellion.Game.Events
         [PersistableAttribute(Name = "Type")]
         public PlanetIncidentType IncidentType { get; set; }
 
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
         /// <summary>
         /// Records the authored incident against the event's target planet.
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
-            Planet planet = context.Activation?.GetTarget<Planet>();
+            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
+                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             if (planet == null)
-                throw new InvalidOperationException(
-                    "RecordPlanetIncident requires a planet target."
-                );
+                throw new InvalidOperationException("RecordPlanetIncident requires a planet.");
 
             List<PlanetStatChangedResult> statChanges = context
                 .Activation.Results.OfType<PlanetStatChangedResult>()
@@ -1450,6 +1463,12 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "DestroyUnits")]
     public sealed class DestroyUnitsAction : GameAction
     {
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
         [PersistableMember(Name = "Units")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
@@ -1475,7 +1494,9 @@ namespace Rebellion.Game.Events
                 game.DeleteNode(root);
             }
 
-            Planet planet = context.Activation?.GetTarget<Planet>();
+            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
+                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
 
             context.Record(
                 destroyed.ConvertAll<GameResult>(unit => new GameObjectDestroyedResult
