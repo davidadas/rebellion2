@@ -597,6 +597,18 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void RevealToFaction_Targets_DeserializeSelectors()
+        {
+            RevealToFactionAction action = (RevealToFactionAction)
+                SerializationHelper.Deserialize<GameAction>(
+                    "<RevealToFaction FactionInstanceID=\"FNALL1\"><Targets><SelectPlanets InstanceID=\"NABOO\"/></Targets></RevealToFaction>"
+                );
+
+            Assert.AreEqual("FNALL1", action.FactionInstanceID);
+            Assert.AreEqual("NABOO", action.Targets.OfType<SelectPlanets>().Single().InstanceID);
+        }
+
+        [Test]
         public void RevealToFaction_SelectedOfficer_EmitsConcreteObservation()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
@@ -605,7 +617,7 @@ namespace Rebellion.Tests.Game.Events
             RevealToFactionAction action = new RevealToFactionAction
             {
                 FactionInstanceID = "rebels",
-                Selectors = new List<GameEventSelector>
+                Targets = new List<GameEventSelector>
                 {
                     new SelectOfficers { InstanceID = officer.InstanceID },
                 },

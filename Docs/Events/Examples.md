@@ -319,7 +319,7 @@ This event reveals one randomly selected Imperial subject at Coruscant to the Al
   </Schedule>
   <Actions>
     <RevealToFaction FactionInstanceID="FNALL1">
-      <Subjects>
+      <Targets>
         <!-- Reveal exactly one randomly selected subject from the combined candidates. -->
         <SelectRandom Count="1">
           <From>
@@ -331,7 +331,7 @@ This event reveals one randomly selected Imperial subject at Coruscant to the Al
                              OwnerFactionInstanceID="FNEMP1"/>
           </From>
         </SelectRandom>
-      </Subjects>
+      </Targets>
     </RevealToFaction>
     <SendMessage RecipientFactionInstanceID="FNALL1"
                  LocationInstanceID="CORUSCANT"

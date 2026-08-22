@@ -136,16 +136,16 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string FactionInstanceID { get; set; }
 
-        [PersistableMember(Name = "Subjects")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        [PersistableMember(Name = "Targets")]
+        public List<GameEventSelector> Targets { get; set; } = new List<GameEventSelector>();
 
         /// <summary>
-        /// Produces current observations of the selected subjects for the recipient faction.
+        /// Produces current observations of the selected targets for the recipient faction.
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
             Faction recipient = context.Game.GetFactionByOwnerInstanceID(FactionInstanceID);
-            List<ISceneNode> observations = Selectors
+            List<ISceneNode> observations = Targets
                 .SelectMany(selector =>
                     selector.Select(context.Game, context.Random, context.Activation)
                 )

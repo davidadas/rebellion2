@@ -144,22 +144,22 @@ Use [`EvaluateEventVariable`](Conditions.md) to read the value from a condition.
 
 ### RevealToFaction
 
-`RevealToFaction` records current observations of every selected subject for one recipient faction. The selectors determine whether the faction learns about planets, fleets, missions, units, buildings, or manufacturing.
+`RevealToFaction` records current observations of every selected target for one recipient faction. The selectors determine whether the faction learns about planets, fleets, missions, units, buildings, or manufacturing.
 
 **Options**
 
 - `FactionInstanceID` — required recipient faction.
-- `Subjects` — required selector collection containing the objects to reveal.
+- `Targets` — required selector collection containing the objects to reveal.
 
 ```xml
 <RevealToFaction FactionInstanceID="FNALL1">
-  <Subjects>
+  <Targets>
     <SelectCapitalShips PlanetInstanceID="CORUSCANT"
                         OwnerFactionInstanceID="FNEMP1"
                         ManufacturingStatus="Complete"/>
     <SelectOfficers PlanetInstanceID="CORUSCANT"
                     OwnerFactionInstanceID="FNEMP1"/>
-  </Subjects>
+  </Targets>
 </RevealToFaction>
 ```
 
