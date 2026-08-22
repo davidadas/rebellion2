@@ -92,4 +92,4 @@ A complete event uses the following high-level shape. Most events only need some
 
 ---
 
-[Schedules →](Schedules.md)
+<p align="right"><a href="Schedules.md">Schedules →</a></p>

@@ -148,4 +148,6 @@ Overlapping result types are rejected, so one simulation result cannot activate 
 
 ---
 
-[← Schedules](Schedules.md) · [Event guide](README.md) · [Conditions →](Conditions.md)
+[← Schedules](Schedules.md) · [Event guide](README.md)
+
+<p align="right"><a href="Conditions.md">Conditions →</a></p>

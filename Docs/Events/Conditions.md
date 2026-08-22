@@ -155,4 +155,6 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 
 ---
 
-[← Triggers](Triggers.md) · [Event guide](README.md) · [Targets →](Targets.md)
+[← Triggers](Triggers.md) · [Event guide](README.md)
+
+<p align="right"><a href="Targets.md">Targets →</a></p>
