@@ -124,6 +124,38 @@ Triggers expose result information through named bindings. Binding references be
 | `core:research.completed` | `Faction`, `FactionInstanceID`, `Discipline`, `ResearchOrder`, `Technology`, `TechnologyTypeID`, `SourceEventInstanceID` |
 | `core:uprising.started` | `Planet`, `PlanetInstanceID`, `InstigatorFaction`, `InstigatorFactionInstanceID`, `SourceEventInstanceID` |
 | `core:uprising.ended` | `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `SourceEventInstanceID` |
+| `core:planet.stat-changed` | `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `Category`, `OldValue`, `NewValue`, `SourceEventInstanceID` |
+| `core:smuggling.changed` | `Planet`, `PlanetInstanceID`, `ControllerFaction`, `ControllerFactionInstanceID`, `BeneficiaryFaction`, `BeneficiaryFactionInstanceID`, `OldPercent`, `NewPercent`, `SourceEventInstanceID` |
+| `core:blockade.changed` | `Planet`, `PlanetInstanceID`, `BlockadingFleet`, `BlockadingFleetInstanceID`, `IsBlockaded`, `SourceEventInstanceID` |
+| `core:uprising.nearing` | `Planet`, `PlanetInstanceID`, `SourceEventInstanceID` |
+| `core:headquarters.destroyed` | `Headquarters`, `HeadquartersInstanceID`, `Planet`, `PlanetInstanceID`, `DefenderFaction`, `DefenderFactionInstanceID`, `AttackerFaction`, `AttackerFactionInstanceID`, `SourceEventInstanceID` |
+| `core:planet.garrison-changed` | `Planet`, `PlanetInstanceID`, `SourceEventInstanceID` |
+| `core:planet.incident` | `Planet`, `PlanetInstanceID`, `IncidentType`, `Severity`, `ChangedStat`, `OldValue`, `NewValue`, `DestroyedObjects`, `SourceEventInstanceID` |
+| `core:intelligence.revealed` | `RecipientFaction`, `RecipientFactionInstanceID`, `Observations`, `SourceEventInstanceID` |
+| `core:maintenance.required` | `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `Amount`, `SourceEventInstanceID` |
+| `core:research.exhausted` | `Faction`, `FactionInstanceID`, `Discipline`, `SourceEventInstanceID` |
+| `core:recruitment.exhausted` | `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID` |
+| `core:game.completed` | `WinnerFaction`, `WinnerFactionInstanceID`, `LoserFaction`, `LoserFactionInstanceID`, `GameMode`, `Description`, `SourceEventInstanceID` |
+| `core:planet-sectors.revealed` | `PlanetSectors`, `SourceEventInstanceID` |
+| `core:officer.rescued` | `Officer`, `OfficerInstanceID`, `RescuingFaction`, `RescuingFactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID` |
+| `core:officer.command-changed` | `Officer`, `OfficerInstanceID`, `CommandKind`, `Detail`, `SourceEventInstanceID` |
+| `core:officer.command-assigned` | `Officer`, `OfficerInstanceID`, `CommandTarget`, `CommandTargetInstanceID`, `Context`, `SourceEventInstanceID` |
+| `core:officer.traitor-discovered` | `Officer`, `OfficerInstanceID`, `DiscoveredBy`, `Context`, `SourceEventInstanceID` |
+| `core:force.training-completed` | `Officer`, `OfficerInstanceID`, `Progress`, `Detail`, `SourceEventInstanceID` |
+| `core:force.experience-gained` | `Officer`, `OfficerInstanceID`, `ExperienceGained`, `PreviousForceRank`, `CurrentForceRank`, `Detail`, `SourceEventInstanceID` |
+| `core:unit.deployed` | `Unit`, `UnitInstanceID`, `SourceEventInstanceID` |
+| `core:unit.movement-started` | `Unit`, `UnitInstanceID`, `SourceEventInstanceID` |
+| `core:unit.damaged` | `Unit`, `UnitInstanceID`, `Damage`, `SourceEventInstanceID` |
+| `core:unit.destroyed-on-arrival` | `Unit`, `UnitInstanceID`, `Reference`, `Context`, `SourceEventInstanceID` |
+| `core:unit.autoscrapped` | `Unit`, `UnitInstanceID`, `Reference`, `Context`, `SourceEventInstanceID` |
+| `core:unit.sabotaged` | `Unit`, `UnitInstanceID`, `Saboteur`, `Context`, `SourceEventInstanceID` |
+| `core:evacuation.completed` | `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `LostCapitalShips`, `LostStarfighters`, `LostRegiments`, `SourceEventInstanceID` |
+| `core:manufacturing.idle` | `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `ManufacturingType`, `SourceEventInstanceID` |
+
+`core:unit.destroyed` represents ordinary unit destruction. Destruction during arrival,
+autoscrapping, and sabotage are distinct simulation outcomes and use their corresponding specialized
+triggers. An event that handles every destruction path can list those triggers as alternatives and bind
+their shared `Unit` and `UnitInstanceID` arguments to the same aliases.
 
 Multiple triggers are alternatives. Each trigger on one event must expose the same aliases with
 compatible types.
