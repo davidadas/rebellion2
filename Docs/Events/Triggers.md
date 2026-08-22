@@ -148,6 +148,10 @@ Overlapping result types are rejected, so one simulation result cannot activate 
 
 ---
 
-[← Schedules](Schedules.md) · [Event guide](README.md)
-
-<p align="right"><a href="Conditions.md">Conditions →</a></p>
+<table width="100%">
+  <tr>
+    <td><a href="Schedules.md">← Schedules</a></td>
+    <td align="center"><a href="README.md">Event guide</a></td>
+    <td align="right"><a href="Conditions.md">Conditions →</a></td>
+  </tr>
+</table>

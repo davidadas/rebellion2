@@ -98,6 +98,10 @@ Use [`Until`](Conditions.md#stopping-an-event-with-until) when game state, rathe
 
 ---
 
-[← Event guide](README.md)
-
-<p align="right"><a href="Triggers.md">Triggers →</a></p>
+<table width="100%">
+  <tr>
+    <td></td>
+    <td align="center"><a href="README.md">Event guide</a></td>
+    <td align="right"><a href="Triggers.md">Triggers →</a></td>
+  </tr>
+</table>
