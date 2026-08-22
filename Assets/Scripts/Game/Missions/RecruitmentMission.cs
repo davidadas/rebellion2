@@ -111,10 +111,13 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns false when this faction no longer has an unrecruited officer available.
+        /// Returns why recruitment can no longer continue at the mission planet.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if at least one unrecruited officer is available.</returns>
+        /// <returns>
+        /// The target-unavailable reason when the planet is no longer friendly or no candidate
+        /// remains; otherwise null.
+        /// </returns>
         protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
             MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
