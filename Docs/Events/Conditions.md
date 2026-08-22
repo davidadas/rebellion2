@@ -155,10 +155,4 @@ Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `Construc
 
 ---
 
-<table width="100%">
-  <tr>
-    <td><a href="Triggers.md">← Triggers</a></td>
-    <td align="center"><a href="README.md">Event guide</a></td>
-    <td align="right"><a href="Targets.md">Targets →</a></td>
-  </tr>
-</table>
+<p align="center"><a href="Triggers.md">← Triggers</a> · <a href="README.md">Event guide</a> · <a href="Targets.md">Targets →</a></p>

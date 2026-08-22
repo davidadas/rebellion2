@@ -105,10 +105,4 @@ Planet location filters use `PlanetInstanceID` or `PlanetBinding`. Sector types 
 
 ---
 
-<table width="100%">
-  <tr>
-    <td><a href="Conditions.md">← Conditions</a></td>
-    <td align="center"><a href="README.md">Event guide</a></td>
-    <td align="right"><a href="Actions.md">Actions →</a></td>
-  </tr>
-</table>
+<p align="center"><a href="Conditions.md">← Conditions</a> · <a href="README.md">Event guide</a> · <a href="Actions.md">Actions →</a></p>

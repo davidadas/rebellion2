@@ -29,10 +29,4 @@ Event IDs and variable keys are persisted, so changing them can invalidate exist
 
 ---
 
-<table width="100%">
-  <tr>
-    <td><a href="Examples.md">← Examples</a></td>
-    <td align="center"><a href="README.md">Event guide</a></td>
-    <td></td>
-  </tr>
-</table>
+<p align="center"><a href="Examples.md">← Examples</a> · <a href="README.md">Event guide</a></p>

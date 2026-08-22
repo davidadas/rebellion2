@@ -148,10 +148,4 @@ Overlapping result types are rejected, so one simulation result cannot activate 
 
 ---
 
-<table width="100%">
-  <tr>
-    <td><a href="Schedules.md">← Schedules</a></td>
-    <td align="center"><a href="README.md">Event guide</a></td>
-    <td align="right"><a href="Conditions.md">Conditions →</a></td>
-  </tr>
-</table>
+<p align="center"><a href="Schedules.md">← Schedules</a> · <a href="README.md">Event guide</a> · <a href="Conditions.md">Conditions →</a></p>

@@ -420,10 +420,4 @@ These actions accept one direct `TargetInstanceID` or a `Targets` selector colle
 
 ---
 
-<table width="100%">
-  <tr>
-    <td><a href="Targets.md">← Targets</a></td>
-    <td align="center"><a href="README.md">Event guide</a></td>
-    <td align="right"><a href="Examples.md">Examples →</a></td>
-  </tr>
-</table>
+<p align="center"><a href="Targets.md">← Targets</a> · <a href="README.md">Event guide</a> · <a href="Examples.md">Examples →</a></p>
