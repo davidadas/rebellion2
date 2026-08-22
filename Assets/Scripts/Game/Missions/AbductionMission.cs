@@ -32,11 +32,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
-
-        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public AbductionMission()
@@ -85,7 +80,7 @@ namespace Rebellion.Game.Missions
             if (!(ctx.Location is Planet planet))
                 return null;
 
-            Officer target = ctx.TargetOfficer;
+            Officer target = ctx.SelectedTarget as Officer;
             Planet targetPlanet = target?.GetParentOfType<Planet>();
             if (
                 target == null
@@ -110,24 +105,13 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 
             return HasValidTarget(game) ? null : MissionCompletionReason.TargetUnavailable;
-        }
-
-        /// <summary>
-        /// Returns false if the target officer has already been captured or has moved
-        /// away from the mission's planet before execution.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the target is still free and on the mission planet.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
-        {
-            return HasValidTarget(game);
         }
 
         /// <summary>
@@ -168,21 +152,24 @@ namespace Rebellion.Game.Missions
         /// <returns>The abduction effects followed by the terminal mission result.</returns>
         internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
+            MissionCompletionReason? invalidationReason = GetMissionInvalidationReason(game);
+            if (invalidationReason.HasValue)
+                return BuildInvalidatedResults(game, provider, invalidationReason.Value);
+
             List<GameResult> results = new List<GameResult>();
-            bool targetAvailable = IsMissionSatisfied(game);
             bool targetKilled = false;
             List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
                 provider,
                 game,
                 participant =>
                 {
-                    ImproveMissionParticipantRating(participant);
-                    if (!targetAvailable || targetKilled)
-                        return;
+                    if (targetKilled)
+                        return true;
 
                     List<GameResult> attemptResults = OnSuccess(game, provider, participant);
                     results.AddRange(attemptResults);
                     targetKilled = attemptResults.Exists(result => result is OfficerKilledResult);
+                    return true;
                 }
             );
 
@@ -192,12 +179,6 @@ namespace Rebellion.Game.Missions
             {
                 outcome = MissionOutcome.Failed;
                 completionReason = MissionCompletionReason.Failure;
-                results.AddRange(OnFailed(game, provider));
-            }
-            else if (!targetAvailable)
-            {
-                outcome = MissionOutcome.Failed;
-                completionReason = MissionCompletionReason.TargetUnavailable;
                 results.AddRange(OnFailed(game, provider));
             }
             else

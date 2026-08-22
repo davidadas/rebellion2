@@ -527,7 +527,6 @@ public sealed class MissionCreateWindowController
         {
             Location = target.Planet.Planet,
             SelectedTarget = target.Item,
-            TargetOfficer = target.Item as Officer,
             MainParticipants = participants.ToList(),
             DecoyParticipants = new List<IMissionParticipant>(),
         };
@@ -554,7 +553,6 @@ public sealed class MissionCreateWindowController
             MissionTypeID = choice.MissionTypeID,
             Location = missionPlanet,
             SelectedTarget = session.Target.GetSpecificMissionTarget(choice.MissionTypeID),
-            TargetOfficer = session.Target.GetMissionTargetOfficer(choice.MissionTypeID),
             Discipline = choice.Discipline,
             MainParticipants = session.Agents.ToList(),
             DecoyParticipants = session.Decoys.ToList(),

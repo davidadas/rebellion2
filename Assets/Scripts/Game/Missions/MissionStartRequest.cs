@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Rebellion.Game.Research;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Missions
@@ -17,7 +16,6 @@ namespace Rebellion.Game.Missions
             new List<IMissionParticipant>();
         public List<IMissionParticipant> DecoyParticipants { get; set; } =
             new List<IMissionParticipant>();
-        public Officer TargetOfficer { get; set; }
         public ResearchDiscipline? Discipline { get; set; }
     }
 }

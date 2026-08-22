@@ -66,21 +66,4 @@ public sealed class StrategyMissionTarget : ITargetable
 
         return null;
     }
-
-    /// <summary>
-    /// Resolves the officer target used by one officer-directed mission type.
-    /// </summary>
-    /// <param name="missionTypeID">The requested mission type identifier.</param>
-    /// <returns>The selected officer, or null when the mission is not officer-directed.</returns>
-    public Officer GetMissionTargetOfficer(string missionTypeID)
-    {
-        if (
-            missionTypeID == MissionTypeIDs.Abduction
-            || missionTypeID == MissionTypeIDs.Assassination
-            || missionTypeID == MissionTypeIDs.Rescue
-        )
-            return Item as Officer;
-
-        return null;
-    }
 }

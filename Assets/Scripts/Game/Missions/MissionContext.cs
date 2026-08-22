@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Rebellion.Game.Research;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Missions
@@ -44,11 +43,6 @@ namespace Rebellion.Game.Missions
         /// Decoy participants assigned to distract defenders.
         /// </summary>
         public List<IMissionParticipant> DecoyParticipants { get; set; }
-
-        /// <summary>
-        /// The specific officer to target for Abduction, Assassination, and Rescue missions.
-        /// </summary>
-        public Officer TargetOfficer { get; set; }
 
         /// <summary>
         /// The research discipline for Research missions.

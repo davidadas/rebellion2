@@ -890,7 +890,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 DisplayName = "Recruitment Mission",
                 OwnerInstanceID = _ownerId,
                 LocationInstanceID = _planet.InstanceID,
-                TargetOfficerInstanceID = recruitedOfficer.InstanceID,
+                RecruitedOfficerInstanceID = recruitedOfficer.InstanceID,
             };
             _game.AttachNode(mission, _planet);
 

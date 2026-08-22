@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Research;
-using Rebellion.Game.Units;
 
 namespace Rebellion.Game.Missions
 {
@@ -145,7 +144,6 @@ namespace Rebellion.Game.Missions
                 SelectedTarget = context.SelectedTarget,
                 MainParticipants = context.MainParticipants ?? new List<IMissionParticipant>(),
                 DecoyParticipants = context.DecoyParticipants ?? new List<IMissionParticipant>(),
-                TargetOfficer = context.TargetOfficer ?? context.SelectedTarget as Officer,
                 Discipline = context.Discipline,
             };
 
@@ -220,7 +218,6 @@ namespace Rebellion.Game.Missions
                 SelectedTarget = context.SelectedTarget,
                 MainParticipants = context.MainParticipants,
                 DecoyParticipants = context.DecoyParticipants,
-                TargetOfficer = context.TargetOfficer,
                 Discipline = option.Discipline,
             };
         }

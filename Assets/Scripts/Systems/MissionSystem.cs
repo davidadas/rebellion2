@@ -17,7 +17,7 @@ namespace Rebellion.Systems
     /// Mission creation and scene graph attachment are delegated to MissionFactory.
     /// Participant movement and mission initiation are orchestrated here.
     /// </summary>
-    public class MissionSystem : IGameResultHandler<PlanetUprisingStartedResult>
+    public class MissionSystem
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -79,27 +79,6 @@ namespace Rebellion.Systems
 
             AddRecruitmentExhaustedResults(results, recruitmentAvailabilityBefore);
             return results;
-        }
-
-        /// <summary>
-        /// Aborts missions invalidated by uprisings reported in a result batch.
-        /// </summary>
-        /// <param name="results">The result batch to inspect.</param>
-        /// <returns>The terminal results produced by aborted missions.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<PlanetUprisingStartedResult> results)
-        {
-            List<GameResult> missionResults = new List<GameResult>();
-            if (results == null)
-                return missionResults;
-
-            IEnumerable<Planet> affectedPlanets = results
-                .Select(result => result.Planet)
-                .Where(planet => planet != null)
-                .Distinct();
-            foreach (Planet planet in affectedPlanets)
-                missionResults.AddRange(AbortInvalidMissions(planet));
-
-            return missionResults;
         }
 
         /// <summary>
@@ -263,47 +242,6 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Aborts active missions whose target conditions became invalid on a planet.
-        /// </summary>
-        /// <param name="planet">The planet whose missions must be re-evaluated.</param>
-        /// <returns>The terminal mission results produced by the aborted missions.</returns>
-        internal List<GameResult> AbortInvalidMissions(Planet planet)
-        {
-            List<GameResult> results = new List<GameResult>();
-            if (planet == null)
-                return results;
-
-            List<Mission> missions = _game
-                .GetSceneNodesByType<Mission>()
-                .Where(mission => mission.GetParentOfType<Planet>() == planet)
-                .ToList();
-            foreach (Mission mission in missions)
-            {
-                MissionCompletionReason? reason = mission.GetAbortReason(_game);
-                if (!reason.HasValue)
-                    continue;
-                if (
-                    mission.IsWaitingForParticipants()
-                    && reason.Value == MissionCompletionReason.TargetUnavailable
-                )
-                    continue;
-
-                MissionCompletedResult result = BuildTerminatingMissionResult(
-                    mission,
-                    MissionOutcome.Failed,
-                    reason.Value,
-                    mission.GetAllParticipants()
-                );
-                result.MissionInstanceID = mission.InstanceID;
-                AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
-                results.Add(result);
-                TearDownMission(mission, null, results);
-            }
-
-            return results;
-        }
-
-        /// <summary>
         /// Resolves mission participants while preserving the caller's observed target state.
         /// </summary>
         /// <param name="request">The mission start request to resolve.</param>
@@ -328,8 +266,6 @@ namespace Rebellion.Systems
             if (mainParticipants == null || decoyParticipants == null)
                 return null;
 
-            Officer targetOfficer = request.TargetOfficer ?? request.SelectedTarget as Officer;
-
             return new MissionContext
             {
                 Game = _game,
@@ -339,7 +275,6 @@ namespace Rebellion.Systems
                 SelectedTarget = request.SelectedTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
-                TargetOfficer = targetOfficer,
                 Discipline = request.Discipline,
             };
         }
@@ -503,13 +438,7 @@ namespace Rebellion.Systems
                 betrayalResults.AddRange(mission.ResolveBetrayedMission(_game, _provider));
                 results = betrayalResults;
             }
-            else if (_uprisingSystem.TryExecuteMission(mission, out results))
-            {
-                results.AddRange(
-                    HandleResults(results.OfType<PlanetUprisingStartedResult>().ToList())
-                );
-            }
-            else
+            else if (!_uprisingSystem.TryExecuteMission(mission, out results))
             {
                 results = mission.Execute(_game, _provider);
             }
@@ -987,11 +916,7 @@ namespace Rebellion.Systems
             foreach (IMissionParticipant participant in mission.GetAllParticipants())
             {
                 if (participant.GetParent() != mission)
-                {
-                    if (mission.OriginInstanceID == null)
-                        mission.OriginInstanceID = participant.GetParent()?.GetInstanceID();
                     _movementManager.SendToMission(participant, mission);
-                }
             }
 
             mission.Initiate(RollMissionDuration(mission));

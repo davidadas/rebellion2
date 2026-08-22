@@ -186,7 +186,7 @@ namespace Rebellion.AI.Proposals
                 {
                     MissionTypeID = MissionTypeID,
                     Location = TargetPlanet,
-                    TargetOfficer = TargetOfficer,
+                    SelectedTarget = TargetOfficer,
                     Discipline = Discipline,
                     MainParticipants = new List<IMissionParticipant> { Participant },
                 }
@@ -209,7 +209,7 @@ namespace Rebellion.AI.Proposals
                     {
                         MissionTypeID = MissionTypeID,
                         Location = TargetPlanet,
-                        TargetOfficer = TargetOfficer,
+                        SelectedTarget = TargetOfficer,
                         Discipline = Discipline,
                         MainParticipants = new List<IMissionParticipant> { Participant },
                     }

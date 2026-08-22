@@ -46,6 +46,35 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Constructor_ParticipantListsChangedByCaller_PreservesMissionAssignments()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+            List<IMissionParticipant> mainParticipants = new List<IMissionParticipant> { officer };
+            List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant> { decoy };
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                mainParticipants,
+                decoyParticipants,
+                target
+            );
+            mainParticipants.Clear();
+            decoyParticipants.Clear();
+
+            CollectionAssert.AreEqual(new[] { officer }, mission.GetMainParticipants());
+            CollectionAssert.AreEqual(new[] { decoy }, mission.GetDecoyParticipants());
+        }
+
+        [Test]
         public void GetAbortReason_MainParticipantRemoved_ReturnsFailure()
         {
             (

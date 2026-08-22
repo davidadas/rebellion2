@@ -32,11 +32,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
-
-        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public RescueMission()
@@ -85,7 +80,7 @@ namespace Rebellion.Game.Missions
             if (!(ctx.Location is Planet planet))
                 return null;
 
-            Officer target = ctx.TargetOfficer;
+            Officer target = ctx.SelectedTarget as Officer;
             Planet targetPlanet = target?.GetParentOfType<Planet>();
             if (
                 target == null
@@ -110,24 +105,13 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 
             return HasValidTarget(game) ? null : MissionCompletionReason.TargetUnavailable;
-        }
-
-        /// <summary>
-        /// Returns false if the target officer is no longer captured or has moved
-        /// away from the mission's planet before execution.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the target is still captured and on the mission planet.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
-        {
-            return HasValidTarget(game);
         }
 
         /// <summary>

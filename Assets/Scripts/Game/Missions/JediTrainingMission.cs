@@ -176,9 +176,9 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The abort reason, or null when training may advance.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 

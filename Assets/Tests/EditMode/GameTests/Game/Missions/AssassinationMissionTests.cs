@@ -546,7 +546,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetMovedToDifferentPlanet_ReturnsFailed()
+        public void Execute_TargetMovedToDifferentPlanet_DoesNotRollOrImproveParticipant()
         {
             (
                 GameRoot game,
@@ -581,20 +581,19 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
+            int originalCombat = officer.GetBaseRating(OfficerRating.Combat);
 
             // Target moves to a different planet before mission executes
             game.MoveNode(target, anotherEnemyPlanet);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.Execute(game, new ThrowingRNG());
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
-            Assert.AreEqual(
-                MissionOutcome.Failed,
-                completed.Outcome,
-                "Mission should fail when target officer has moved to a different planet before execution"
-            );
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.AreEqual(originalCombat, officer.GetBaseRating(OfficerRating.Combat));
         }
 
         [Test]

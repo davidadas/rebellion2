@@ -117,6 +117,17 @@ public class FixedRNG : IRandomNumberProvider
 }
 
 /// <summary>
+/// Fails when code unexpectedly requests a random value.
+/// </summary>
+public sealed class ThrowingRNG : IRandomNumberProvider
+{
+    public double NextDouble() => throw new InvalidOperationException("Unexpected random roll.");
+
+    public int NextInt(int min, int max) =>
+        throw new InvalidOperationException("Unexpected random roll.");
+}
+
+/// <summary>
 /// Returns the highest value permitted by each random-number request.
 /// </summary>
 public sealed class MaximumRNG : IRandomNumberProvider
@@ -450,10 +461,9 @@ public static class MissionTestFactory
             MissionTypeID = missionTypeId,
             OwnerInstanceId = ownerInstanceId,
             Location = target,
-            SelectedTarget = selectedTarget,
             MainParticipants = mainParticipants ?? new List<IMissionParticipant>(),
             DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>(),
-            TargetOfficer = targetOfficer ?? selectedTarget as Officer,
+            SelectedTarget = targetOfficer ?? selectedTarget,
             Discipline = discipline,
         };
 

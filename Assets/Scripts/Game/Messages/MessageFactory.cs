@@ -683,7 +683,7 @@ namespace Rebellion.Game.Messages
                     result.Outcome == MissionOutcome.Success
                     && result.Mission?.ConfigKey == MissionTypeIDs.Recruitment
                 )
-                .Select(result => GetMissionOfficerInstanceID(result.Mission))
+                .Select(result => GetMissionRelatedOfficerInstanceID(result.Mission))
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
 
@@ -1336,7 +1336,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<OfficerKilledResult> killedResults
         )
         {
-            string officerID = GetMissionOfficerInstanceID(result?.Mission);
+            string officerID = GetMissionRelatedOfficerInstanceID(result?.Mission);
             if (string.IsNullOrEmpty(officerID))
                 return string.Empty;
 
@@ -1352,21 +1352,20 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Gets the target officer instance ID for missions that target officers.
+        /// Gets the officer instance ID associated with a mission report. Recruitment reports
+        /// use the recruited officer outcome; officer-targeting missions use their objective.
         /// </summary>
         /// <param name="mission">The mission to inspect.</param>
-        /// <returns>The target officer instance ID, or null when the mission does not target an officer.</returns>
-        private static string GetMissionOfficerInstanceID(Mission mission)
+        /// <returns>The related officer instance ID, or null when none is available.</returns>
+        private static string GetMissionRelatedOfficerInstanceID(Mission mission)
         {
-            if (
-                mission?.ConfigKey == MissionTypeIDs.Recruitment
-                || mission?.ConfigKey == MissionTypeIDs.Abduction
-                || mission?.ConfigKey == MissionTypeIDs.Assassination
-                || mission?.ConfigKey == MissionTypeIDs.Rescue
-            )
-                return GetMissionTargetOfficerInstanceID(mission);
-
-            return null;
+            return mission switch
+            {
+                RecruitmentMission recruitment => recruitment.RecruitedOfficerInstanceID,
+                AbductionMission or AssassinationMission or RescueMission =>
+                    GetMissionTargetOfficerInstanceID(mission),
+                _ => null,
+            };
         }
 
         /// <summary>
@@ -1378,7 +1377,6 @@ namespace Rebellion.Game.Messages
         {
             return mission switch
             {
-                RecruitmentMission recruitment => recruitment.TargetOfficerInstanceID,
                 AbductionMission abduction => abduction.TargetOfficerInstanceID,
                 AssassinationMission assassination => assassination.TargetOfficerInstanceID,
                 RescueMission rescue => rescue.TargetOfficerInstanceID,
