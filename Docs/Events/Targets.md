@@ -1,3 +1,7 @@
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 # Targets and Selectors
 
 Selectors find typed collections of scene nodes. Targets, conditions, and actions use them wherever
@@ -8,6 +12,8 @@ when no optional filter is supplied.
 
 `Target` selects exactly one scene node and exposes it to the event as `$target`. Zero results or
 multiple results fail the activation.
+
+**Options**
 
 - `From` — required child containing exactly one selector.
 
@@ -29,6 +35,8 @@ multiple results fail the activation.
 
 Selects planets. All filters are optional and combine using AND.
 
+**Options**
+
 - `InstanceID` — select one specific planet.
 - `OwnerFactionInstanceID` — require the current owner.
 - `SectorType` — require `Core` or `OuterRim`.
@@ -40,6 +48,8 @@ Selects planets. All filters are optional and combine using AND.
 ### SelectPlanetSectors
 
 Selects planet sectors.
+
+**Options**
 
 - `InstanceID` — optional specific sector ID.
 - `SectorType` — optional `Core` or `OuterRim` filter.
@@ -53,6 +63,8 @@ Selects planet sectors.
 ### SelectOfficers
 
 Selects officers. Inactive officers are excluded unless explicitly requested.
+
+**Options**
 
 - `InstanceID` — optional officer ID.
 - `PlanetInstanceID` — optional explicit planet location.
@@ -72,6 +84,8 @@ Selects officers. Inactive officers are excluded unless explicitly requested.
 
 Selects special-forces units.
 
+**Options**
+
 - `InstanceID` — optional unit ID.
 - `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
 - `OwnerFactionInstanceID` — optional owner filter.
@@ -83,6 +97,8 @@ Selects special-forces units.
 ### SelectMissions
 
 Selects missions.
+
+**Options**
 
 - `InstanceID` — optional mission ID.
 - `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
@@ -98,6 +114,8 @@ Selects missions.
 
 Selects fleets.
 
+**Options**
+
 - `InstanceID` — optional fleet ID.
 - `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
 - `OwnerFactionInstanceID` — optional owner filter.
@@ -109,6 +127,8 @@ Selects fleets.
 ### SelectCapitalShips
 
 Selects capital ships.
+
+**Options**
 
 - `InstanceID` — optional ship ID.
 - `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
@@ -142,6 +162,8 @@ Selects regiments. It supports the same filters as `SelectCapitalShips`.
 
 Selects buildings.
 
+**Options**
+
 - `InstanceID` — optional building ID.
 - `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
 - `OwnerFactionInstanceID` — optional owner filter.
@@ -156,6 +178,8 @@ Selects buildings.
 ### SelectManufacturingOrders
 
 Selects queued manufacturing items.
+
+**Options**
 
 - `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
 - `OwnerFactionInstanceID` — optional owner filter.
@@ -184,10 +208,13 @@ nodes. It is used by selectors that transform another selection.
 
 Selects a random subset of the candidates returned by `From`.
 
+**Options**
+
 - `ChancePercent` — optional independent inclusion chance; defaults to `100`.
 - `Count` — optional exact result count.
 - `MinimumCount` and `MaximumCount` — optional inclusive result-count range.
 - Use either `Count` or the minimum/maximum pair, never both.
+
 - `From` — required selector collection.
 
 ```xml
@@ -203,6 +230,8 @@ Selects a random subset of the candidates returned by `From`.
 
 Returns the first distinct candidate from `From`. When used as a destination, placement or movement
 checks candidates in authored order and uses the first one that accepts the units.
+
+**Options**
 
 - `From` — required ordered selector collection.
 
@@ -222,6 +251,8 @@ checks candidates in authored order and uses the first one that accepts the unit
 Returns the scene node or scene-node collection stored by a trigger binding. Its runtime type must
 be valid for the consumer.
 
+**Options**
+
 - `Binding` — required `$alias` reference.
 
 ```xml
@@ -231,6 +262,8 @@ be valid for the consumer.
 ### SelectNearestParent
 
 Maps each source to its nearest parent of the requested type. It never returns the source itself.
+
+**Options**
 
 - `Type` — required scene-node type.
 - `From` — required source selector collection.
@@ -247,6 +280,8 @@ Maps each source to its nearest parent of the requested type. It never returns t
 
 Returns a unit's registered `LastParentInstanceID` when that node still resolves.
 
+**Options**
+
 - Exactly one of `UnitInstanceID` or `UnitBinding` is required.
 
 ```xml
@@ -257,6 +292,8 @@ Returns a unit's registered `LastParentInstanceID` when that node still resolves
 
 Creates detached units from an existing unit definition. It is valid only inside the `Units`
 collection of `PlaceUnits`; placement attaches the resulting units to their destination.
+
+**Options**
 
 - `TypeID` — required unit-definition ID.
 - `OwnerFactionInstanceID` — required owner faction.

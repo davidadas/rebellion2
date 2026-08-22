@@ -1,3 +1,7 @@
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 # Actions
 
 Actions change game state. They execute from top to bottom against one shared context, so a later action can observe changes and results produced by an earlier action.
@@ -24,6 +28,8 @@ Every action belongs inside an event's `Actions` collection:
 
 `If` evaluates its nested conditions when execution reaches it. It runs `Actions` when every condition passes and otherwise runs the optional `Else` list.
 
+**Options**
+
 - `Conditions` — required condition collection.
 - `Actions` — required action collection executed when the conditions pass.
 - `Else` — optional action collection executed when the conditions fail.
@@ -48,6 +54,8 @@ Every action belongs inside an event's `Actions` collection:
 ### Random
 
 `Random` first removes outcomes whose `When` conditions fail, then selects one remaining outcome by `Weight`. Weights are relative: weights `30` and `70` produce a 30/70 split.
+
+**Options**
 
 - `Outcomes` — required child containing one or more `Outcome` elements.
 - `Weight` — required positive attribute on each `Outcome`.
@@ -79,6 +87,8 @@ Every action belongs inside an event's `Actions` collection:
 ### PerformSkillCheck
 
 `PerformSkillCheck` looks up the named mission probability table using the officer's effective rating multiplied by `RatingMultiplier`. It executes exactly one of `OnSuccess` or `OnFailure`; it does not emit a separate skill-check result.
+
+**Options**
 
 - `OfficerInstanceID` — required officer ID.
 - `Rating` — required officer rating.
@@ -114,6 +124,8 @@ Officer ratings are `Diplomacy`, `Espionage`, `Combat`, `Leadership`, `ShipResea
 
 Event variables are saved integers shared by all events. Operations are `Set`, `Add`, `Minimum`, and `Maximum`.
 
+**Options**
+
 - `Key` — required variable key.
 - `Operand` — required integer input.
 - `Operation` — optional `Set`, `Add`, `Minimum`, or `Maximum`; defaults to `Set`.
@@ -134,6 +146,8 @@ Use [`EvaluateEventVariable`](Conditions.md) to read the value from a condition.
 
 `RevealToFaction` records current observations of every selected subject for one recipient faction. The selectors determine whether the faction learns about planets, fleets, missions, units, buildings, or manufacturing.
 
+**Options**
+
 - `FactionInstanceID` — required recipient faction.
 - `Subjects` — required selector collection containing the objects to reveal.
 
@@ -152,6 +166,8 @@ Use [`EvaluateEventVariable`](Conditions.md) to read the value from a condition.
 ### SendMessage
 
 `SendMessage` delivers a normal strategy message. The recipient can be explicit or inferred from a recipient unit or subject. Subject and location may use instance IDs or trigger bindings.
+
+**Options**
 
 - `RecipientFactionInstanceID` — optional explicit recipient faction.
 - `RecipientUnitInstanceID` — optional unit from which to infer the recipient.
@@ -189,6 +205,8 @@ Message types are `PopularSupport`, `Fleet`, `Mission`, `Resource`, `Manufacturi
 
 Choose exactly one adjustment mode: signed `Amount` or signed `PercentOfCurrent`. The action can address a planet by instance ID, binding, top-level `$target`, or selectors.
 
+**Options**
+
 - `Stat` — required planet stat.
 - `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive planet source.
 - `Planets` — optional planet selector collection.
@@ -207,6 +225,8 @@ Supported stats are `RawResourceNodes` and `EnergyCapacity`. Values cannot fall 
 
 This action requires a planet top-level target. It independently rolls `LossProbabilityPerResource` once for every current point in the selected stats, then enforces `MinimumTotalLoss`.
 
+**Options**
+
 - `LossProbabilityPerResource` — required probability applied to each existing point.
 - `MinimumTotalLoss` — required minimum combined loss.
 - `Stats` — required child containing one or more `Stat` elements.
@@ -224,6 +244,8 @@ This action requires a planet top-level target. It independently rolls `LossProb
 ### RecordPlanetIncident
 
 This action requires a planet top-level target. It records an incident from planet-stat changes and destroyed units already produced earlier in the same activation. It records nothing when those earlier actions made no change.
+
+**Options**
 
 - `Type` — required `Uprising`, `Intelligence`, `Disaster`, or `Resource` incident type.
 
@@ -250,6 +272,8 @@ Incident types are `Uprising`, `Intelligence`, `Disaster`, and `Resource`.
 
 `DestroyUnits` permanently deletes every selected unit. Selecting a parent and its child does not double-delete the child.
 
+**Options**
+
 - `Units` — required unit selector collection.
 
 ```xml
@@ -269,6 +293,8 @@ Incident types are `Uprising`, `Intelligence`, `Disaster`, and `Resource`.
 
 Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use planetary-control rules; unit transfers retain valid containment while ownership indexes are updated.
 
+**Options**
+
 - `FactionInstanceID` — required new owner.
 - Exactly one of `Planets` or `Units` is required, containing matching selectors.
 
@@ -284,6 +310,8 @@ Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use 
 ### PlaceUnits
 
 `PlaceUnits` bypasses transit and requests immediate placement at one valid destination. It accepts existing-unit selectors and any number of `SpawnUnits` sources. Each spawned unit receives a new runtime instance ID and starts complete and stationary.
+
+**Options**
 
 - `UnitInstanceID` — optional direct unit source.
 - `Units` — optional selectors and `SpawnUnits` sources.
@@ -307,6 +335,8 @@ Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use 
 
 `SendUnits` moves active, already-placed units through normal validation and transit. It cannot spawn units.
 
+**Options**
+
 - `UnitInstanceID` — optional direct unit source.
 - `Units` — optional existing-unit selector collection.
 - `DestinationInstanceID` — optional direct destination.
@@ -322,6 +352,8 @@ Both `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `Destinatio
 ### SetActive
 
 `SetActive` controls whether retained units participate in gameplay. Inactive units remain attached to the scene graph and save normally, but ordinary gameplay queries ignore them. Set `IsActive="true"` before placing or sending a returning unit.
+
+**Options**
 
 - `IsActive` — required state.
 - `UnitInstanceID` — optional direct unit ID, accepted as an attribute or child element.
@@ -344,6 +376,8 @@ Both `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `Destinatio
 
 Capturing requires `CaptorFactionInstanceID`. Releasing must omit it. `CanEscape` defaults to `true`.
 
+**Options**
+
 - `IsCaptured` — required state.
 - `OfficerInstanceID` — optional direct officer ID.
 - `Officers` — optional officer selector collection.
@@ -360,6 +394,8 @@ Capturing requires `CaptorFactionInstanceID`. Releasing must omit it. `CanEscape
 ### ChangeOfficerRating
 
 Choose exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap`. Percentage-of-gap changes also require `ReferenceOfficerInstanceID`.
+
+**Options**
 
 - `Rating` — required officer rating.
 - `OfficerInstanceID` — optional direct officer ID.
@@ -378,6 +414,8 @@ Choose exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `Per
 ### IncreaseOfficerForce
 
 This uses the same calculation modes as `ChangeOfficerRating`, but every configured and calculated change must increase Force progression.
+
+**Options**
 
 - `OfficerInstanceID` — optional direct officer ID.
 - `Officers` — optional officer selector collection.
@@ -398,6 +436,8 @@ This uses the same calculation modes as `ChangeOfficerRating`, but every configu
 
 Marks an officer as having latent Force potential.
 
+**Options**
+
 - `OfficerInstanceID` — required officer ID.
 
 ```xml
@@ -409,6 +449,8 @@ Marks an officer as having latent Force potential.
 Marks a Force-sensitive officer's potential as discovered and initializes Force progression.
 Eligibility requires sensitivity, so use both actions when revealing a previously unknown candidate.
 
+**Options**
+
 - `OfficerInstanceID` — required officer ID.
 
 ```xml
@@ -418,6 +460,8 @@ Eligibility requires sensitivity, so use both actions when revealing a previousl
 ### ApplyOfficerInjury
 
 The action rolls an inclusive injury value and records the standard officer-injured result.
+
+**Options**
 
 - `OfficerInstanceID` — required officer ID.
 - `MinimumInjury` — required minimum injury.
@@ -433,6 +477,8 @@ The action rolls an inclusive injury value and records the standard officer-inju
 ### TriggerDuel
 
 `TriggerDuel` requests normal duel resolution between two active officers. `ImagePath` and `AudioPath` optionally override the presentation used for this duel.
+
+**Options**
 
 - `FirstOfficerInstanceID` — required first officer.
 - `SecondOfficerInstanceID` — required second officer.
@@ -455,6 +501,8 @@ The duel produces `core:duel.completed`. A later event can [trigger from that re
 
 Image paths are merged into the officer's active image set, so omitted paths remain unchanged.
 
+**Options**
+
 - `OfficerInstanceID` — required officer ID.
 - `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, and
   `EncyclopediaImagePath` — optional paths; supply at least one.
@@ -471,6 +519,8 @@ Image paths are merged into the officer's active image set, so omitted paths rem
 ### SetOfficerVoiceSet
 
 Replaces authored categories in the officer's active voice set. Omitted categories remain unchanged.
+
+**Options**
 
 - `OfficerInstanceID` — required officer ID.
 - Each optional voice-category child contains one or more `Path` elements.
@@ -499,6 +549,8 @@ These actions accept one direct `TargetInstanceID` or a `Targets` selector colle
 
 Sets a node's authored display name.
 
+**Options**
+
 - `Name` — required display name.
 - `TargetInstanceID` — optional direct target.
 - `Targets` — optional selector collection.
@@ -511,6 +563,8 @@ Sets a node's authored display name.
 
 Sets supplemental status text without changing gameplay state.
 
+**Options**
+
 - `Status` — required display text.
 - `TargetInstanceID` — optional direct target.
 - `Targets` — optional selector collection.
@@ -522,6 +576,8 @@ Sets supplemental status text without changing gameplay state.
 ### ClearDisplayStatus
 
 Clears supplemental status text.
+
+**Options**
 
 - `TargetInstanceID` — optional direct target.
 - `Targets` — optional selector collection.

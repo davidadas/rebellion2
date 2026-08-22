@@ -1,5 +1,9 @@
 /Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 /Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 # Triggers and Bindings
 
 Triggers activate events from typed simulation results. A trigger does not poll game state: it receives
@@ -28,6 +32,8 @@ types.
 
 `Trigger` selects one supported gameplay-result contract.
 
+**Options**
+
 - `Event` — required trigger ID.
 - `Bindings` — optional collection of values to expose to the event.
 - Overlapping result types are rejected, so one result cannot activate the same event through two
@@ -42,6 +48,8 @@ same aliases and compatible types.
 
 `Bind` copies one public argument from the triggering result into the event context.
 
+**Options**
+
 - `Argument` — required argument name listed by that trigger below.
 - `As` — required unique alias. It cannot be `target`.
 - Refer to the resulting value as `$alias` in conditions, selectors, targets, and actions.
@@ -55,11 +63,13 @@ a scalar string comparison is sufficient.
 
 ## Available triggers
 
-#### Planet
+### Planet
 
 #### core:planet.owner-changed
 
 Activates when the game produces the **planet owner-changed** result.
+
+**Options**
 
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `PreviousOwner`, `PreviousOwnerInstanceID`, `NewOwner`, `NewOwnerInstanceID`, `Reason`, `ObserverFactionInstanceIDs`, `SourceEventInstanceID`.
 
@@ -71,6 +81,8 @@ Activates when the game produces the **planet owner-changed** result.
 
 Activates when the game produces the **planet stat-changed** result.
 
+**Options**
+
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `Category`, `OldValue`, `NewValue`, `SourceEventInstanceID`.
 
 ```xml
@@ -80,6 +92,8 @@ Activates when the game produces the **planet stat-changed** result.
 #### core:smuggling.changed
 
 Activates when the game produces the **smuggling changed** result.
+
+**Options**
 
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `ControllerFaction`, `ControllerFactionInstanceID`, `BeneficiaryFaction`, `BeneficiaryFactionInstanceID`, `OldPercent`, `NewPercent`, `SourceEventInstanceID`.
 
@@ -91,6 +105,8 @@ Activates when the game produces the **smuggling changed** result.
 
 Activates when the game produces the **blockade changed** result.
 
+**Options**
+
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `BlockadingFleet`, `BlockadingFleetInstanceID`, `IsBlockaded`, `SourceEventInstanceID`.
 
 ```xml
@@ -100,6 +116,8 @@ Activates when the game produces the **blockade changed** result.
 #### core:uprising.started
 
 Activates when the game produces the **uprising started** result.
+
+**Options**
 
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `InstigatorFaction`, `InstigatorFactionInstanceID`, `SourceEventInstanceID`.
 
@@ -111,6 +129,8 @@ Activates when the game produces the **uprising started** result.
 
 Activates when the game produces the **uprising nearing** result.
 
+**Options**
+
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `SourceEventInstanceID`.
 
 ```xml
@@ -120,6 +140,8 @@ Activates when the game produces the **uprising nearing** result.
 #### core:uprising.ended
 
 Activates when the game produces the **uprising ended** result.
+
+**Options**
 
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `SourceEventInstanceID`.
 
@@ -131,6 +153,8 @@ Activates when the game produces the **uprising ended** result.
 
 Activates when the game produces the **headquarters destroyed** result.
 
+**Options**
+
 - Available binding arguments: `Headquarters`, `HeadquartersInstanceID`, `Planet`, `PlanetInstanceID`, `DefenderFaction`, `DefenderFactionInstanceID`, `AttackerFaction`, `AttackerFactionInstanceID`, `SourceEventInstanceID`.
 
 ```xml
@@ -141,6 +165,8 @@ Activates when the game produces the **headquarters destroyed** result.
 
 Activates when the game produces the **planet garrison-changed** result.
 
+**Options**
+
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `SourceEventInstanceID`.
 
 ```xml
@@ -150,6 +176,8 @@ Activates when the game produces the **planet garrison-changed** result.
 #### core:planet.incident
 
 Activates when the game produces the **planet incident** result.
+
+**Options**
 
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `IncidentType`, `Severity`, `ChangedStat`, `OldValue`, `NewValue`, `DestroyedObjects`, `SourceEventInstanceID`.
 
@@ -163,6 +191,8 @@ Activates when the game produces the **planet incident** result.
 
 Activates when the game produces the **intelligence revealed** result.
 
+**Options**
+
 - Available binding arguments: `RecipientFaction`, `RecipientFactionInstanceID`, `Observations`, `SourceEventInstanceID`.
 
 ```xml
@@ -172,6 +202,8 @@ Activates when the game produces the **intelligence revealed** result.
 #### core:maintenance.required
 
 Activates when the game produces the **maintenance required** result.
+
+**Options**
 
 - Available binding arguments: `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `Amount`, `SourceEventInstanceID`.
 
@@ -183,6 +215,8 @@ Activates when the game produces the **maintenance required** result.
 
 Activates when the game produces the **research completed** result.
 
+**Options**
+
 - Available binding arguments: `Faction`, `FactionInstanceID`, `Discipline`, `ResearchOrder`, `Technology`, `TechnologyTypeID`, `SourceEventInstanceID`.
 
 ```xml
@@ -192,6 +226,8 @@ Activates when the game produces the **research completed** result.
 #### core:research.exhausted
 
 Activates when the game produces the **research exhausted** result.
+
+**Options**
 
 - Available binding arguments: `Faction`, `FactionInstanceID`, `Discipline`, `SourceEventInstanceID`.
 
@@ -203,6 +239,8 @@ Activates when the game produces the **research exhausted** result.
 
 Activates when the game produces the **recruitment exhausted** result.
 
+**Options**
+
 - Available binding arguments: `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID`.
 
 ```xml
@@ -212,6 +250,8 @@ Activates when the game produces the **recruitment exhausted** result.
 #### core:game.completed
 
 Activates when the game produces the **game completed** result.
+
+**Options**
 
 - Available binding arguments: `WinnerFaction`, `WinnerFactionInstanceID`, `LoserFaction`, `LoserFactionInstanceID`, `GameMode`, `Description`, `SourceEventInstanceID`.
 
@@ -225,6 +265,8 @@ Activates when the game produces the **game completed** result.
 
 Activates when the game produces the **mission completed** result.
 
+**Options**
+
 - Available binding arguments: `Mission`, `Outcome`, `CompletionReason`, `Participants`, `Location`, `ReturnDestination`, `SourceEventInstanceID`.
 
 ```xml
@@ -234,6 +276,8 @@ Activates when the game produces the **mission completed** result.
 #### core:planet-sectors.revealed
 
 Activates when the game produces the **planet-sectors revealed** result.
+
+**Options**
 
 - Available binding arguments: `PlanetSectors`, `SourceEventInstanceID`.
 
@@ -247,6 +291,8 @@ Activates when the game produces the **planet-sectors revealed** result.
 
 Activates when the game produces the **force discovered** result.
 
+**Options**
+
 - Available binding arguments: `Officer`, `Discoverer`, `ForceRank`, `SourceEventInstanceID`.
 
 ```xml
@@ -256,6 +302,8 @@ Activates when the game produces the **force discovered** result.
 #### core:officer.recruited
 
 Activates when the game produces the **officer recruited** result.
+
+**Options**
 
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID`.
 
@@ -267,6 +315,8 @@ Activates when the game produces the **officer recruited** result.
 
 Activates when the game produces the **officer capture-changed** result.
 
+**Options**
+
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `LinkedOfficer`, `Context`, `IsCaptured`, `SourceEventInstanceID`.
 
 ```xml
@@ -276,6 +326,8 @@ Activates when the game produces the **officer capture-changed** result.
 #### core:officer.killed
 
 Activates when the game produces the **officer killed** result.
+
+**Options**
 
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `Assassin`, `Context`, `SourceEventInstanceID`.
 
@@ -287,6 +339,8 @@ Activates when the game produces the **officer killed** result.
 
 Activates when the game produces the **officer injured** result.
 
+**Options**
+
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `Severity`, `Detail`, `SourceEventInstanceID`.
 
 ```xml
@@ -296,6 +350,8 @@ Activates when the game produces the **officer injured** result.
 #### core:officer.rescued
 
 Activates when the game produces the **officer rescued** result.
+
+**Options**
 
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `RescuingFaction`, `RescuingFactionInstanceID`, `Planet`, `PlanetInstanceID`, `SourceEventInstanceID`.
 
@@ -307,6 +363,8 @@ Activates when the game produces the **officer rescued** result.
 
 Activates when the game produces the **officer command-changed** result.
 
+**Options**
+
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `CommandKind`, `Detail`, `SourceEventInstanceID`.
 
 ```xml
@@ -316,6 +374,8 @@ Activates when the game produces the **officer command-changed** result.
 #### core:officer.command-assigned
 
 Activates when the game produces the **officer command-assigned** result.
+
+**Options**
 
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `CommandTarget`, `CommandTargetInstanceID`, `Context`, `SourceEventInstanceID`.
 
@@ -327,6 +387,8 @@ Activates when the game produces the **officer command-assigned** result.
 
 Activates when the game produces the **officer traitor-discovered** result.
 
+**Options**
+
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `DiscoveredBy`, `Context`, `SourceEventInstanceID`.
 
 ```xml
@@ -337,6 +399,8 @@ Activates when the game produces the **officer traitor-discovered** result.
 
 Activates when the game produces the **force training-completed** result.
 
+**Options**
+
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `Progress`, `Detail`, `SourceEventInstanceID`.
 
 ```xml
@@ -346,6 +410,8 @@ Activates when the game produces the **force training-completed** result.
 #### core:force.experience-gained
 
 Activates when the game produces the **force experience-gained** result.
+
+**Options**
 
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `ExperienceGained`, `PreviousForceRank`, `CurrentForceRank`, `Detail`, `SourceEventInstanceID`.
 
@@ -359,6 +425,8 @@ Activates when the game produces the **force experience-gained** result.
 
 Activates when the game produces the **unit owner-changed** result.
 
+**Options**
+
 - Available binding arguments: `Unit`, `UnitInstanceID`, `PreviousOwner`, `PreviousOwnerInstanceID`, `NewOwner`, `NewOwnerInstanceID`, `SourceEventInstanceID`.
 
 ```xml
@@ -368,6 +436,8 @@ Activates when the game produces the **unit owner-changed** result.
 #### core:unit.created
 
 Activates when the game produces the **unit created** result.
+
+**Options**
 
 - Available binding arguments: `Unit`, `UnitInstanceID`, `SourceEventInstanceID`.
 
@@ -379,6 +449,8 @@ Activates when the game produces the **unit created** result.
 
 Activates when the game produces the **unit deployed** result.
 
+**Options**
+
 - Available binding arguments: `Unit`, `UnitInstanceID`, `SourceEventInstanceID`.
 
 ```xml
@@ -388,6 +460,8 @@ Activates when the game produces the **unit deployed** result.
 #### core:unit.movement-started
 
 Activates when the game produces the **unit movement-started** result.
+
+**Options**
 
 - Available binding arguments: `Unit`, `UnitInstanceID`, `SourceEventInstanceID`.
 
@@ -399,6 +473,8 @@ Activates when the game produces the **unit movement-started** result.
 
 Activates when the game produces the **unit arrived** result.
 
+**Options**
+
 - Available binding arguments: `Unit`, `UnitInstanceID`, `Destination`, `DestinationInstanceID`, `SourceEventInstanceID`.
 
 ```xml
@@ -408,6 +484,8 @@ Activates when the game produces the **unit arrived** result.
 #### core:unit.damaged
 
 Activates when the game produces the **unit damaged** result.
+
+**Options**
 
 - Available binding arguments: `Unit`, `UnitInstanceID`, `Damage`, `SourceEventInstanceID`.
 
@@ -419,6 +497,8 @@ Activates when the game produces the **unit damaged** result.
 
 Activates when the game produces the **unit destroyed** result.
 
+**Options**
+
 - Available binding arguments: `Unit`, `UnitInstanceID`, `DestroyedBy`, `Context`, `SourceEventInstanceID`.
 
 ```xml
@@ -428,6 +508,8 @@ Activates when the game produces the **unit destroyed** result.
 #### core:unit.destroyed-on-arrival
 
 Activates when the game produces the **unit destroyed-on-arrival** result.
+
+**Options**
 
 - Available binding arguments: `Unit`, `UnitInstanceID`, `Reference`, `Context`, `SourceEventInstanceID`.
 
@@ -439,6 +521,8 @@ Activates when the game produces the **unit destroyed-on-arrival** result.
 
 Activates when the game produces the **unit autoscrapped** result.
 
+**Options**
+
 - Available binding arguments: `Unit`, `UnitInstanceID`, `Reference`, `Context`, `SourceEventInstanceID`.
 
 ```xml
@@ -448,6 +532,8 @@ Activates when the game produces the **unit autoscrapped** result.
 #### core:unit.sabotaged
 
 Activates when the game produces the **unit sabotaged** result.
+
+**Options**
 
 - Available binding arguments: `Unit`, `UnitInstanceID`, `Saboteur`, `Context`, `SourceEventInstanceID`.
 
@@ -461,6 +547,8 @@ Activates when the game produces the **unit sabotaged** result.
 
 Activates when the game produces the **duel completed** result.
 
+**Options**
+
 - Available binding arguments: `Officer`, `OfficerInstanceID`, `Opponent`, `OpponentInstanceID`, `Location`, `OfficerCaptured`, `OfficerInjury`, `OpponentInjury`, `ImagePath`, `AudioPath`, `SourceEventInstanceID`.
 
 ```xml
@@ -470,6 +558,8 @@ Activates when the game produces the **duel completed** result.
 #### core:combat.completed
 
 Activates when the game produces the **combat completed** result.
+
+**Options**
 
 - Available binding arguments: `AttackerFleet`, `DefenderFleet`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Planet`, `PlanetInstanceID`, `Winner`, `AttackerOutcome`, `DefenderOutcome`, `SourceEventInstanceID`.
 
@@ -481,6 +571,8 @@ Activates when the game produces the **combat completed** result.
 
 Activates when the game produces the **bombardment completed** result.
 
+**Options**
+
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `AttackingFaction`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Type`, `SuccessfulStrikes`, `HeadquartersDestroyed`, `PlanetDestroyed`, `SourceEventInstanceID`.
 
 ```xml
@@ -491,6 +583,8 @@ Activates when the game produces the **bombardment completed** result.
 
 Activates when the game produces the **planetary-assault completed** result.
 
+**Options**
+
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `AttackingFaction`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Success`, `BlockedByShields`, `SourceEventInstanceID`.
 
 ```xml
@@ -500,6 +594,8 @@ Activates when the game produces the **planetary-assault completed** result.
 #### core:evacuation.completed
 
 Activates when the game produces the **evacuation completed** result.
+
+**Options**
 
 - Available binding arguments: `Faction`, `FactionInstanceID`, `Planet`, `PlanetInstanceID`, `LostCapitalShips`, `LostStarfighters`, `LostRegiments`, `SourceEventInstanceID`.
 
@@ -513,6 +609,8 @@ Activates when the game produces the **evacuation completed** result.
 
 Activates when the game produces the **manufacturing completed** result.
 
+**Options**
+
 - Available binding arguments: `Faction`, `FactionInstanceID`, `Unit`, `UnitInstanceID`, `Location`, `LocationInstanceID`, `SourceEventInstanceID`.
 
 ```xml
@@ -522,6 +620,8 @@ Activates when the game produces the **manufacturing completed** result.
 #### core:manufacturing.idle
 
 Activates when the game produces the **manufacturing idle** result.
+
+**Options**
 
 - Available binding arguments: `Planet`, `PlanetInstanceID`, `Faction`, `FactionInstanceID`, `ManufacturingType`, `SourceEventInstanceID`.
 

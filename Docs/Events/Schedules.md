@@ -1,3 +1,7 @@
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 # Schedules
 
 Schedules activate events from campaign time. A `Schedule` contains exactly one scheduling option and
@@ -6,6 +10,8 @@ cannot be combined with gameplay `Triggers`.
 ## At
 
 `At` becomes eligible on an absolute campaign tick. It is a one-time schedule and therefore requires `TriggerCount="1"`.
+
+**Options**
 
 - `Tick` — required non-negative campaign tick.
 
@@ -25,6 +31,8 @@ Conditions may delay actual execution beyond tick 200. Once eligible, the event 
 
 `Every` repeats at a fixed interval. `InitialDelayTicks` controls the first eligible tick; when omitted, the event is eligible immediately.
 
+**Options**
+
 - `Ticks` — required positive interval between successful activations.
 - `InitialDelayTicks` — optional non-negative delay before the first activation; defaults to `0`.
 
@@ -39,6 +47,8 @@ After a successful activation, the next eligible tick is the current tick plus `
 ## Random
 
 `Random` rolls an inclusive delay for the first activation and rolls a fresh delay after every successful activation.
+
+**Options**
 
 - `MinimumTicks` — required positive minimum delay.
 - `MaximumTicks` — required maximum delay; cannot be lower than `MinimumTicks`.
@@ -55,6 +65,8 @@ Both values are delays, not absolute tick numbers. The minimum must be positive 
 
 `After` waits for one event to execute, then applies a delay from that event's last execution tick. It is a one-time schedule and requires `TriggerCount="1"`.
 
+**Options**
+
 - `EventInstanceID` — required ID of an event in the loaded catalog.
 - `DelayTicks` — required non-negative delay after that event executes.
 
@@ -70,6 +82,8 @@ The referenced event must exist in the same loaded event pool.
 
 `AfterAll` waits until every listed event has executed. Its delay starts from the latest dependency
 execution. It is a one-time schedule and requires `TriggerCount="1"`.
+
+**Options**
 
 - `DelayTicks` — required non-negative delay.
 - `Events` — required child containing one or more `Event` elements.
@@ -90,6 +104,8 @@ execution. It is a one-time schedule and requires `TriggerCount="1"`.
 
 `AfterAny` waits until the first listed event executes. Its delay starts from the earliest completed
 dependency. It is a one-time schedule and requires `TriggerCount="1"`.
+
+**Options**
 
 - `DelayTicks` — required non-negative delay.
 - `Events` — required child containing one or more `Event` elements.

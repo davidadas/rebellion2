@@ -1,3 +1,7 @@
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
+/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 # Conditions
 
 Conditions inspect game state without changing it. The XML collection is named `Conditionals`, but
@@ -112,6 +116,8 @@ more conditions.
 
 Compares the current campaign tick.
 
+**Options**
+
 - `Comparison` — required comparison operator.
 - `Ticks` — required non-negative integer.
 
@@ -122,6 +128,8 @@ Compares the current campaign tick.
 ### HasEventTriggered
 
 Passes after the referenced event has executed at least once.
+
+**Options**
 
 - `EventInstanceID` — required event ID.
 
@@ -134,6 +142,8 @@ Passes after the referenced event has executed at least once.
 Passes when the referenced event can never execute again because it reached its trigger count,
 matched `Until`, or completed a one-time schedule.
 
+**Options**
+
 - `EventInstanceID` — required event ID.
 
 ```xml
@@ -143,6 +153,8 @@ matched `Until`, or completed a one-time schedule.
 ### EvaluateEventVariable
 
 Compares a saved integer event variable.
+
+**Options**
 
 - `Key` — required variable key.
 - `Comparison` — required comparison operator.
@@ -161,6 +173,8 @@ Compares a saved integer event variable.
 Compares a scalar value supplied by a trigger binding. Ordered comparisons require an integer
 binding.
 
+**Options**
+
 - `Binding` — required `$alias` reference.
 - `Comparison` — required comparison operator.
 - `CompareTo` — required value.
@@ -172,6 +186,8 @@ binding.
 ### BindingIncludesUnit
 
 Passes when a bound collection contains the named unit.
+
+**Options**
 
 - `Binding` — required `$alias` reference to a collection.
 - `UnitInstanceID` — required unit ID.
@@ -188,6 +204,8 @@ Passes when the selected planet has a non-neutral owner. Supply `FactionInstance
 specific owner. If neither planet property is supplied, the condition uses the event's `$target`
 planet.
 
+**Options**
+
 - `PlanetInstanceID` — optional explicit planet ID.
 - `PlanetBinding` — optional binding containing a planet.
 - `FactionInstanceID` — optional required owner.
@@ -201,6 +219,8 @@ planet.
 
 Rolls a random percentage against the selected faction's current support on a planet. If neither
 planet property is supplied, it uses the event's `$target` planet.
+
+**Options**
 
 - `FactionInstanceID` — required faction ID.
 - `PlanetInstanceID` — optional explicit planet ID.
@@ -217,6 +237,8 @@ planet property is supplied, it uses the event's `$target` planet.
 
 Passes when the unit is the location itself or is contained anywhere beneath it.
 
+**Options**
+
 - `UnitInstanceID` — required child element.
 - `LocationInstanceID` — required child element.
 
@@ -230,6 +252,8 @@ Passes when the unit is the location itself or is contained anywhere beneath it.
 ### ShareParent
 
 Passes when every listed unit has the exact same immediate parent.
+
+**Options**
 
 - `Units` — required child containing at least two `Unit` elements.
 - `UnitInstanceID` — required attribute on each `Unit`.
@@ -246,6 +270,8 @@ Passes when every listed unit has the exact same immediate parent.
 ### ShareAncestor
 
 Passes when every listed unit shares the same nearest ancestor of the requested scene type.
+
+**Options**
 
 - `Type` — required: `Galaxy`, `PlanetSector`, `Planet`, `Fleet`, `Mission`, or `CapitalShip`.
 - `Units` — required child containing at least two `Unit` elements.
@@ -264,6 +290,8 @@ Passes when every listed unit shares the same nearest ancestor of the requested 
 
 Passes when exactly two supplied units exist and have different owners.
 
+**Options**
+
 - `UnitInstanceIDs` — required child containing exactly two `String` unit IDs.
 
 ```xml
@@ -281,6 +309,8 @@ Passes when exactly two supplied units exist and have different owners.
 
 Passes when the unit has a mission parent.
 
+**Options**
+
 - `UnitInstanceID` — required unit ID.
 
 ```xml
@@ -290,6 +320,8 @@ Passes when the unit has a mission parent.
 ### IsInTransit
 
 Passes when the unit currently has movement state.
+
+**Options**
 
 - `UnitInstanceID` — required unit ID.
 
@@ -301,6 +333,8 @@ Passes when the unit currently has movement state.
 
 Passes when the officer is captured.
 
+**Options**
+
 - `OfficerInstanceID` — required officer ID.
 
 ```xml
@@ -310,6 +344,8 @@ Passes when the officer is captured.
 ### IsCapturedBy
 
 Passes when the officer is captured by the specified faction.
+
+**Options**
 
 - `OfficerInstanceID` — required officer ID.
 - `CaptorFactionInstanceID` — required capturing faction ID.
@@ -322,6 +358,8 @@ Passes when the officer is captured by the specified faction.
 
 Passes when the officer is killed.
 
+**Options**
+
 - `OfficerInstanceID` — required officer ID.
 
 ```xml
@@ -332,6 +370,8 @@ Passes when the officer is killed.
 
 Passes when the officer is injured.
 
+**Options**
+
 - `OfficerInstanceID` — required officer ID.
 
 ```xml
@@ -341,6 +381,8 @@ Passes when the officer is injured.
 ### IsForceEligible
 
 Passes when the officer is eligible to use and develop Force ability.
+
+**Options**
 
 - `OfficerInstanceID` — required officer ID.
 
@@ -353,6 +395,8 @@ Passes when the officer is eligible to use and develop Force ability.
 ### HasForceRank
 
 Compares an officer's effective Force rank against a named rank.
+
+**Options**
 
 - `OfficerInstanceID` — required officer ID.
 - `Comparison` — required comparison operator.
@@ -367,6 +411,8 @@ Compares an officer's effective Force rank against a named rank.
 ### CompareOfficerRating
 
 Compares one effective officer rating against an integer.
+
+**Options**
 
 - `OfficerInstanceID` — required officer ID.
 - `Rating` — required officer rating.
@@ -384,6 +430,8 @@ Compares one effective officer rating against an integer.
 
 Compares an officer's effective Force value against an integer.
 
+**Options**
+
 - `OfficerInstanceID` — required officer ID.
 - `Comparison` — required comparison operator.
 - `Value` — required integer.
@@ -398,6 +446,8 @@ Compares an officer's effective Force value against an integer.
 
 Compares one planet stat against an integer. If neither planet property is supplied, it uses the
 event's `$target` planet.
+
+**Options**
 
 - `Stat` — required planet stat.
 - `Comparison` — required comparison operator.
@@ -416,6 +466,8 @@ event's `$target` planet.
 ### HasBuildingType
 
 Passes when the event's `$target` planet contains a completed building of the requested type.
+
+**Options**
 
 - `Type` — required building type.
 

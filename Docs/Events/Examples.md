@@ -10,6 +10,7 @@ This event executes once when tick 10 becomes eligible.
 ```xml
 <GameEvent TriggerCount="1">
   <InstanceID>MOD_OPENING_REPORT</InstanceID>
+  <!-- At is an absolute campaign tick and can execute only once. -->
   <Schedule>
     <At Tick="10"/>
   </Schedule>
@@ -29,9 +30,11 @@ This event runs every 50 ticks while Han remains free. Capturing him permanently
 ```xml
 <GameEvent>
   <InstanceID>MOD_HAN_STATUS_REPORT</InstanceID>
+  <!-- Omit TriggerCount to allow unlimited successful activations. -->
   <Schedule>
     <Every Ticks="50" InitialDelayTicks="10"/>
   </Schedule>
+  <!-- Until permanently exhausts the event before its next activation. -->
   <Until>
     <IsCaptured OfficerInstanceID="HAN_SOLO"/>
   </Until>
@@ -58,6 +61,7 @@ This repeating event selects one Alliance-owned core planet and adds a raw-resou
   </Schedule>
   <Target>
     <From>
+      <!-- Target must resolve exactly one node, so reduce the matching planets to one. -->
       <SelectRandom Count="1">
         <From>
           <SelectPlanets OwnerFactionInstanceID="FNALL1" SectorType="Core"/>
@@ -66,6 +70,7 @@ This repeating event selects one Alliance-owned core planet and adds a raw-resou
     </From>
   </Target>
   <Actions>
+    <!-- With no explicit planet on the action, ChangePlanetStat uses $target. -->
     <ChangePlanetStat Stat="RawResourceNodes">
       <Amount>1</Amount>
     </ChangePlanetStat>
@@ -93,6 +98,7 @@ percent of the time and a message-only outcome 70 percent of the time.
   <Actions>
     <Random>
       <Outcomes>
+        <!-- Weights are relative; 30 and 70 form a 30/70 split. -->
         <Outcome Weight="30">
           <Actions>
             <ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
@@ -137,11 +143,13 @@ records the changes as an incident, and sends a message.
     </From>
   </Target>
   <Conditionals>
+    <!-- Omitting FactionInstanceID means any non-neutral owner is accepted. -->
     <IsOwned PlanetBinding="$target"/>
   </Conditionals>
   <Actions>
     <DestroyUnits>
       <Units>
+        <!-- Build one candidate pool, then destroy only the random subset. -->
         <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
           <From>
             <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
@@ -170,6 +178,7 @@ Trigger bindings expose the arriving unit and destination for conditions and act
   <InstanceID>MOD_EMPEROR_REACHES_CORUSCANT</InstanceID>
   <Triggers>
     <Trigger Event="core:unit.arrived">
+      <!-- Bind only the result values needed by the rest of this event. -->
       <Bindings>
         <Bind Argument="UnitInstanceID" As="unitInstanceID"/>
         <Bind Argument="DestinationInstanceID" As="destinationInstanceID"/>
@@ -177,6 +186,7 @@ Trigger bindings expose the arriving unit and destination for conditions and act
     </Trigger>
   </Triggers>
   <Conditionals>
+    <!-- Binding aliases are referenced with a leading $. -->
     <EvaluateBinding Binding="$unitInstanceID"
                      Comparison="Equal"
                      CompareTo="EMPEROR_PALPATINE"/>
@@ -208,12 +218,14 @@ planet.
   <Triggers>
     <Trigger Event="core:mission.completed">
       <Bindings>
+        <!-- Participants is the collection captured by the completed mission result. -->
         <Bind Argument="Participants" As="participants"/>
       </Bindings>
     </Trigger>
   </Triggers>
   <Conditionals>
     <BindingIncludesUnit Binding="$participants" UnitInstanceID="LUKE_SKYWALKER"/>
+    <!-- ShareAncestor includes units attached through a fleet or mission at that planet. -->
     <ShareAncestor Type="Planet">
       <Units>
         <Unit UnitInstanceID="LUKE_SKYWALKER"/>
@@ -239,11 +251,13 @@ planet.
     <Random MinimumTicks="300" MaximumTicks="600"/>
   </Schedule>
   <Actions>
+    <!-- The check performs either OnSuccess or OnFailure inline. -->
     <PerformSkillCheck OfficerInstanceID="HAN_SOLO"
                        Rating="Combat"
                        ProbabilityTable="Abduction"
                        RatingMultiplier="-1">
       <OnSuccess>
+        <!-- Capture state and gameplay activity are independent changes. -->
         <SetCaptureStatus OfficerInstanceID="HAN_SOLO"
                           IsCaptured="true"
                           CaptorFactionInstanceID="FNEMP1"
@@ -277,6 +291,7 @@ them at the destination without transit.
   <Actions>
     <PlaceUnits DestinationInstanceID="NABOO">
       <Units>
+        <!-- SpawnUnits creates detached instances; PlaceUnits attaches them to Naboo. -->
         <SpawnUnits TypeID="SFAL02"
                     OwnerFactionInstanceID="FNALL1"
                     Count="3"/>
@@ -305,6 +320,7 @@ This event reveals one randomly selected Imperial subject at Coruscant to the Al
   <Actions>
     <RevealToFaction FactionInstanceID="FNALL1">
       <Subjects>
+        <!-- Reveal exactly one randomly selected subject from the combined candidates. -->
         <SelectRandom Count="1">
           <From>
             <SelectCapitalShips PlanetInstanceID="CORUSCANT"
@@ -339,6 +355,7 @@ starfighter at Naboo to the Alliance.
     <At Tick="300"/>
   </Schedule>
   <Actions>
+    <!-- ChangeOwner transfers existing units; it does not create or move them. -->
     <ChangeOwner FactionInstanceID="FNALL1">
       <Units>
         <SelectStarfighters PlanetInstanceID="NABOO"
@@ -361,6 +378,7 @@ reactivates him and attempts to place him at his recorded previous location.
     <At Tick="300"/>
   </Schedule>
   <Actions>
+    <!-- Inactive nodes remain saved and attached but are ignored by normal gameplay queries. -->
     <SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="false"/>
     <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER"
                       Status="Away on assignment"/>
@@ -373,6 +391,7 @@ reactivates him and attempts to place him at his recorded previous location.
     <After EventInstanceID="MOD_OFFICER_LEAVES" DelayTicks="100"/>
   </Schedule>
   <Actions>
+    <!-- Reactivate before placement so normal destination validation can see the officer. -->
     <SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="true"/>
     <PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
       <Destination>
