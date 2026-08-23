@@ -87,6 +87,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
+        public void Render_LongDetailRow_KeepsColumnsSeparateAndFitsTextWithoutWrapping()
+        {
+            _view.Render(
+                CreateRenderData(
+                    false,
+                    false,
+                    "Capital Ship Status",
+                    new[] { _firstTexture },
+                    "Ship",
+                    new[]
+                    {
+                        new StatusWindowRowRenderData(
+                            "Maximum Shield Strength:",
+                            "Extremely Long Fleet Name"
+                        ),
+                    }
+                )
+            );
+
+            TextMeshProUGUI left = FindText("LeftRowTextField0");
+            TextMeshProUGUI right = FindText("RightRowTextField0");
+            RectInt leftRect = UILayout.GetSourceRect(left.rectTransform);
+            RectInt rightRect = UILayout.GetSourceRect(right.rectTransform);
+
+            Assert.LessOrEqual(leftRect.xMax, rightRect.x);
+            Assert.IsTrue(left.enableAutoSizing);
+            Assert.IsTrue(right.enableAutoSizing);
+            Assert.AreEqual(TextWrappingModes.NoWrap, left.textWrappingMode);
+            Assert.AreEqual(TextWrappingModes.NoWrap, right.textWrappingMode);
+            Assert.AreEqual(TextOverflowModes.Ellipsis, left.overflowMode);
+            Assert.AreEqual(TextOverflowModes.Ellipsis, right.overflowMode);
+        }
+
+        [Test]
         public void Render_CenteredImage_CentersFittedImageInAuthoredArea()
         {
             _view.Render(

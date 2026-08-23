@@ -55,6 +55,9 @@ public sealed class MissionCreateWindowView
     private Button okButton;
 
     [SerializeField]
+    private RawImagePressVisual okButtonPressVisual;
+
+    [SerializeField]
     private Button cancelButton;
 
     [Header("Mission Selection")]
@@ -134,6 +137,15 @@ public sealed class MissionCreateWindowView
 
     [SerializeField]
     private Texture2D dropdownButtonDownTexture;
+
+    [SerializeField]
+    private Texture2D okButtonUpTexture;
+
+    [SerializeField]
+    private Texture2D okButtonDownTexture;
+
+    [SerializeField]
+    private Texture2D okButtonDisabledTexture;
 
     private UnityAction cancelListener;
     private UnityAction dropdownListener;
@@ -278,6 +290,18 @@ public sealed class MissionCreateWindowView
             contentAssets,
             "Application/Strategy/UI/Windows/ui_strategyview_construction_open_button_pressed"
         );
+        okButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_ok_button"
+        );
+        okButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_ok_button_pressed"
+        );
+        okButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_ok_button_disabled"
+        );
         VerifyContentReferences();
     }
 
@@ -302,6 +326,11 @@ public sealed class MissionCreateWindowView
         );
         RenderTitle(data.TitleTexture, data.ActiveTab);
         RenderTabs(data.Tabs);
+        okButtonPressVisual.SetInteractiveTextures(
+            data.CanConfirm ? okButtonUpTexture : okButtonDisabledTexture,
+            data.CanConfirm ? okButtonDownTexture : null
+        );
+        okButton.interactable = data.CanConfirm;
 
         if (data.ActiveTab == MissionCreateWindowTab.Mission)
         {
@@ -920,6 +949,8 @@ public sealed class MissionCreateWindowView
             throw new MissingReferenceException($"{name}/InfoButton is missing.");
         if (okButton == null)
             throw new MissingReferenceException($"{name}/OkButton is missing.");
+        if (okButtonPressVisual == null)
+            throw new MissingReferenceException($"{name}/OkButtonPressVisual is missing.");
         if (cancelButton == null)
             throw new MissingReferenceException($"{name}/CancelButton is missing.");
         if (missionSelectionRoot == null)
@@ -991,6 +1022,12 @@ public sealed class MissionCreateWindowView
             throw new MissingReferenceException($"{name}/DropdownButtonUpTexture is missing.");
         if (dropdownButtonDownTexture == null)
             throw new MissingReferenceException($"{name}/DropdownButtonDownTexture is missing.");
+        if (okButtonUpTexture == null)
+            throw new MissingReferenceException($"{name}/OkButtonUpTexture is missing.");
+        if (okButtonDownTexture == null)
+            throw new MissingReferenceException($"{name}/OkButtonDownTexture is missing.");
+        if (okButtonDisabledTexture == null)
+            throw new MissingReferenceException($"{name}/OkButtonDisabledTexture is missing.");
     }
 
     /// <summary>

@@ -1,65 +1,66 @@
 namespace Rebellion.Game.Advisor
 {
     /// <summary>
-    /// Identifies the semantic advisor notification selected by gameplay.
+    /// Identifies the semantic advisor notification selected by gameplay. Numeric values are the
+    /// authored notification codes consumed by faction advisor themes and must remain stable.
     /// </summary>
     public enum AdvisorNotificationType
     {
         /// <summary>No advisor interruption is requested.</summary>
-        None,
+        None = 0,
 
         /// <summary>Popular support changed in the recipient's favor.</summary>
-        PositivePopularSupport,
+        PositivePopularSupport = 1,
 
         /// <summary>Popular support changed against the recipient.</summary>
-        NegativePopularSupport,
+        NegativePopularSupport = 2,
 
         /// <summary>A manufacturing update requires attention.</summary>
-        Manufacturing,
+        Manufacturing = 3,
 
         /// <summary>A research update requires attention.</summary>
-        Research,
+        Research = 4,
 
         /// <summary>A fleet completed transit.</summary>
-        FleetArrived,
+        FleetArrived = 5,
 
         /// <summary>One or more non-fleet units completed transit.</summary>
-        UnitsArrived,
+        UnitsArrived = 6,
 
         /// <summary>A capital ship completed repairs.</summary>
-        CapitalShipRepaired,
+        CapitalShipRepaired = 8,
 
         /// <summary>A starfighter unit completed repairs.</summary>
-        StarfighterRepaired,
+        StarfighterRepaired = 9,
 
         /// <summary>Maintenance requirements changed.</summary>
-        Maintenance,
+        Maintenance = 12,
 
         /// <summary>The recipient established a blockade.</summary>
-        BlockadeInitiated,
+        BlockadeInitiated = 13,
 
         /// <summary>The recipient detected an opposing blockade.</summary>
-        BlockadeDetected,
+        BlockadeDetected = 14,
 
         /// <summary>Personnel in the field submitted a report.</summary>
-        FieldPersonnel,
+        FieldPersonnel = 20,
 
         /// <summary>An agent submitted a mission report.</summary>
-        AgentReport,
+        AgentReport = 21,
 
         /// <summary>A planet's strategic state changed.</summary>
-        PlanetaryStatus,
+        PlanetaryStatus = 28,
 
         /// <summary>A prisoner escaped custody.</summary>
-        PrisonerEscaped,
+        PrisonerEscaped = 36,
 
         /// <summary>The recipient intercepted a communication.</summary>
-        InterceptedCommunication,
+        InterceptedCommunication = 41,
 
         /// <summary>An opposing bombardment occurred.</summary>
-        Bombardment,
+        Bombardment = 46,
 
         /// <summary>An opposing planetary assault occurred.</summary>
-        PlanetaryAssault,
+        PlanetaryAssault = 47,
     }
 }

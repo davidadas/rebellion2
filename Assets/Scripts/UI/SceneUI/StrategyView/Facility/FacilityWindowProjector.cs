@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using UnityEngine;
 
 /// <summary>
@@ -199,16 +200,42 @@ internal sealed class FacilityWindowProjector
             uiContext.GetTexture(
                 selected ? stateTheme?.ActiveImagePath : stateTheme?.InactiveImagePath
             ),
-            current == null ? null : uiContext.GetEntityTexture(current, true),
+            GetManufacturingTexture(uiContext, ownerFactionId, current),
             current?.GetManufacturingProgress() ?? 0,
             current?.GetConstructionCost() ?? 0,
             GetManufacturingTitle(type),
             GetManufacturingEmptyText(type),
             current?.GetDisplayName(),
             current == null ? string.Empty : "Building " + Math.Max(1, queue.Count),
-            "Destination: " + GetDestinationName(planet, type, destinationNames),
+            "Destination: " + GetDestinationName(planet, type, current, destinationNames),
             $"{activeFacilityCount}:{facilities.Count}"
         );
+    }
+
+    /// <summary>
+    /// Resolves the artwork for the item currently being manufactured.
+    /// </summary>
+    /// <param name="uiContext">The active presentation context.</param>
+    /// <param name="ownerFactionId">The producing planet owner.</param>
+    /// <param name="item">The current queue item.</param>
+    /// <returns>The configured construction artwork or the item's compact artwork.</returns>
+    private static Texture GetManufacturingTexture(
+        UIContext uiContext,
+        string ownerFactionId,
+        IManufacturable item
+    )
+    {
+        if (item is Building building)
+        {
+            string constructionPath = uiContext
+                .GetTheme(ownerFactionId)
+                ?.StrategyWindows?.Facility?.GetConstructionImagePath(building.GetTypeID());
+            Texture constructionTexture = uiContext.GetTexture(constructionPath);
+            if (constructionTexture != null)
+                return constructionTexture;
+        }
+
+        return item is ISceneNode node ? uiContext.GetEntityTexture(node, true) : null;
     }
 
     /// <summary>
@@ -216,14 +243,19 @@ internal sealed class FacilityWindowProjector
     /// </summary>
     /// <param name="planet">The represented planet.</param>
     /// <param name="type">The manufacturing category.</param>
+    /// <param name="current">The item currently being manufactured.</param>
     /// <param name="destinationNames">The configured destination labels.</param>
     /// <returns>The destination label.</returns>
     private static string GetDestinationName(
         Planet planet,
         ManufacturingType type,
+        IManufacturable current,
         IReadOnlyDictionary<ManufacturingType, string> destinationNames
     )
     {
+        if (current is ISceneNode node && node.GetParent() is ISceneNode destination)
+            return destination.GetDisplayName();
+
         return
             destinationNames?.TryGetValue(type, out string destinationName) == true
             && !string.IsNullOrEmpty(destinationName)

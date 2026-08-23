@@ -1695,7 +1695,9 @@ namespace Rebellion.Game.Messages
             ICollection<MessageDeliveryRequest> deliveries
         )
         {
-            UnitArrivedResult[] arrivalResults = arrivals.ToArray();
+            UnitArrivedResult[] arrivalResults = arrivals
+                .Where(arrival => arrival?.IsManufacturingDeployment != true)
+                .ToArray();
             var shipGroups =
                 new Dictionary<
                     (string Owner, string Destination, string Group),
@@ -2262,6 +2264,7 @@ namespace Rebellion.Game.Messages
             };
             MessageDeliveryRequest message = BuildCombatMessage(definition, faction, values);
             SetCombatLocation(message, result.Planet, GetFleet(faction, result));
+            AttachCombatReport(message, result, faction);
             return message;
         }
 
@@ -2289,6 +2292,7 @@ namespace Rebellion.Game.Messages
                     : AdvisorNotificationType.Bombardment
             );
             SetCombatLocation(message, result.Planet, result.Planet);
+            AttachCombatReport(message, result, faction);
             return message;
         }
 
@@ -2316,6 +2320,7 @@ namespace Rebellion.Game.Messages
                     : AdvisorNotificationType.PlanetaryAssault
             );
             SetCombatLocation(message, result.Planet, result.Planet);
+            AttachCombatReport(message, result, faction);
             return message;
         }
 
@@ -2464,6 +2469,26 @@ namespace Rebellion.Game.Messages
                 return;
             message.EventLocationInstanceID = planet?.InstanceID;
             message.NavigationTargetInstanceID = target?.InstanceID ?? planet?.InstanceID;
+        }
+
+        /// <summary>
+        /// Attaches the detached completed outcome that allows a delivered message to reopen its full report.
+        /// </summary>
+        private static void AttachCombatReport(
+            MessageDeliveryRequest message,
+            GameResult result,
+            Faction recipient
+        )
+        {
+            if (message == null)
+                return;
+
+            message.CombatReport = CombatReport.Capture(
+                result,
+                recipient?.InstanceID,
+                message.Subject,
+                message.Body
+            );
         }
 
         private void AddCombatDelivery(

@@ -267,9 +267,26 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     public void PlayInTransitOrderRejected()
     {
+        PlayOrderRejected(theme?.InTransitOrderRejected);
+    }
+
+    /// <summary>
+    /// Immediately plays the authored response for an order targeting a unit under construction.
+    /// </summary>
+    public void PlayUnitUnderConstructionOrderRejected()
+    {
+        PlayOrderRejected(theme?.UnitUnderConstructionOrderRejected);
+    }
+
+    /// <summary>
+    /// Resolves and immediately plays one authored order-rejection response.
+    /// </summary>
+    /// <param name="animationTheme">The rejection animation and audio.</param>
+    private void PlayOrderRejected(StrategyAdvisorAnimationTheme animationTheme)
+    {
         List<StrategyAdvisorAnimationViewData> playbacks =
             new List<StrategyAdvisorAnimationViewData>();
-        if (!TryAddPlayback(playbacks, theme?.InTransitOrderRejected, false))
+        if (!TryAddPlayback(playbacks, animationTheme, false))
             return;
 
         StrategyAdvisorAnimationViewData playback = playbacks.FirstOrDefault();

@@ -482,6 +482,7 @@ namespace Rebellion.Game.Results
         public IGameEntity Unit { get; set; }
         public Planet Destination { get; set; }
         public string MovementGroupID { get; set; }
+        public bool IsManufacturingDeployment { get; set; }
     }
 
     /// <summary>

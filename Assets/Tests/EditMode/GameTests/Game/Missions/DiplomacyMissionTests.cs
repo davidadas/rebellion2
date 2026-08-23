@@ -16,6 +16,23 @@ namespace Rebellion.Tests.Game.Missions
     public class DiplomacyMissionTests
     {
         [Test]
+        public void RollParticipantSuccess_MissingStoredLocation_ReturnsFalse()
+        {
+            GameRoot game = BuildGame(out _, empireSupport: 50);
+            Officer participant = EntityFactory.CreateOfficer("diplomat", "rebels");
+            participant.SetBaseRating(OfficerRating.Diplomacy, 100);
+            Mission mission = new DiplomacyMission
+            {
+                OwnerInstanceID = "rebels",
+                LocationInstanceID = "missing-planet",
+            };
+
+            bool succeeded = mission.RollParticipantSuccess(participant, new FixedRNG(0.0), game);
+
+            Assert.IsFalse(succeeded);
+        }
+
+        [Test]
         public void ResolveObjective_SupportBelowThreshold_NoOwnershipChange()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);

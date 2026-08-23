@@ -263,6 +263,8 @@ public class StrategyAdvisorTheme
 
     public StrategyAdvisorAnimationTheme InTransitOrderRejected { get; set; }
 
+    public StrategyAdvisorAnimationTheme UnitUnderConstructionOrderRejected { get; set; }
+
     public List<StrategyAdvisorNotificationCodeTheme> NotificationCodes { get; set; } =
         new List<StrategyAdvisorNotificationCodeTheme>();
 

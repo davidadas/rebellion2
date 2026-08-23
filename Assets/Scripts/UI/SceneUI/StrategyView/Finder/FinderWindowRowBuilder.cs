@@ -260,16 +260,19 @@ public sealed class FinderWindowRowBuilder
             );
         }
 
-        Faction ownedFaction = factions.FirstOrDefault(faction =>
-            string.Equals(faction.InstanceID, ownerId, StringComparison.Ordinal)
-        );
-        AddPersonnelRows(
-            rows,
-            seen,
-            null,
-            PlanetIcon.Defense,
-            ownedFaction?.GetOwnedUnitsByType<Officer>().Where(officer => !officer.IsKilled)
-        );
+        if (string.Equals(ownerId, playerFactionId, StringComparison.Ordinal))
+        {
+            Faction ownedFaction = factions.FirstOrDefault(faction =>
+                string.Equals(faction.InstanceID, ownerId, StringComparison.Ordinal)
+            );
+            AddPersonnelRows(
+                rows,
+                seen,
+                null,
+                PlanetIcon.Defense,
+                ownedFaction?.GetOwnedUnitsByType<Officer>().Where(officer => !officer.IsKilled)
+            );
+        }
 
         return rows.Where(row =>
                 string.Equals(row.Node?.OwnerInstanceID, ownerId, StringComparison.Ordinal)

@@ -355,6 +355,37 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void SerializeAndDeserialize_ManufacturingQueueOrder_RetainsOrder()
+        {
+            Building first = new Building
+            {
+                InstanceID = "first",
+                OwnerInstanceID = _planet.OwnerInstanceID,
+                ProductionType = ManufacturingType.Building,
+            };
+            Building second = new Building
+            {
+                InstanceID = "second",
+                OwnerInstanceID = _planet.OwnerInstanceID,
+                ProductionType = ManufacturingType.Building,
+            };
+            _planet.AddChild(first);
+            first.SetParent(_planet);
+            _planet.AddChild(second);
+            second.SetParent(_planet);
+            _planet.AddToManufacturingQueue(second);
+            _planet.AddToManufacturingQueue(first);
+
+            string serialized = SerializationHelper.Serialize(_planet);
+            Planet deserialized = SerializationHelper.Deserialize<Planet>(serialized);
+
+            CollectionAssert.AreEqual(
+                new[] { second.InstanceID, first.InstanceID },
+                deserialized.GetManufacturingQueueOrder(ManufacturingType.Building)
+            );
+        }
+
+        [Test]
         public void GetProductionRate_ValidManufacturingType_ReturnsCorrectRate()
         {
             Building building1 = new Building

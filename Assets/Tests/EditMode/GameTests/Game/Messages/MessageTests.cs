@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Results;
 
 namespace Rebellion.Tests.Game.Messages
 {
@@ -61,6 +62,25 @@ namespace Rebellion.Tests.Game.Messages
                 NavigationTargetInstanceID = "OFFICER1",
                 NavigationSecondaryTargetInstanceID = "MISSION1",
                 MissionInstanceID = "mission-1",
+                CombatReport = new CombatReport
+                {
+                    Type = CombatReportType.SpaceBattle,
+                    PlanetInstanceID = "PLANET1",
+                    PlanetName = "Test System",
+                    Winner = CombatSide.Attacker,
+                    AttackerOutcome = SpaceCombatSideOutcome.Active,
+                    DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                    AttackingUnits =
+                    {
+                        new CombatReportUnit
+                        {
+                            InstanceID = "SHIP1",
+                            DisplayName = "Test Cruiser",
+                            Category = CombatReportUnitCategory.CapitalShip,
+                            WasOperational = true,
+                        },
+                    },
+                },
                 CreatedTick = 42,
                 Read = true,
             };
@@ -127,6 +147,21 @@ namespace Rebellion.Tests.Game.Messages
                 message.CreatedTick,
                 deserialized.CreatedTick,
                 "CreatedTick should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.CombatReport.PlanetName,
+                deserialized.CombatReport.PlanetName,
+                "Combat report location should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.CombatReport.DefenderOutcome,
+                deserialized.CombatReport.DefenderOutcome,
+                "Combat report outcome should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.CombatReport.AttackingUnits[0].DisplayName,
+                deserialized.CombatReport.AttackingUnits[0].DisplayName,
+                "Combat report units should be correctly deserialized."
             );
         }
     }

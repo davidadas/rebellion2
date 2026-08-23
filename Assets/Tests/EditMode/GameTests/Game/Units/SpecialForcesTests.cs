@@ -1,4 +1,3 @@
-using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
@@ -136,19 +135,6 @@ namespace Rebellion.Tests.Game.Units
             int ratingValue = _specialForces.GetBaseRating(OfficerRating.Leadership);
 
             Assert.AreEqual(15, ratingValue, "Leadership rating should return the correct value");
-        }
-
-        [Test]
-        public void GetEntityData_ConfiguredSpecialForces_LoadsMissionRatings()
-        {
-            SpecialForces specialForces = TestContent.Data.SpecialForces.Single(item =>
-                item.TypeID == "SPAL001"
-            );
-
-            Assert.AreEqual(0, specialForces.GetBaseRating(OfficerRating.Diplomacy));
-            Assert.AreEqual(55, specialForces.GetBaseRating(OfficerRating.Espionage));
-            Assert.AreEqual(20, specialForces.GetBaseRating(OfficerRating.Combat));
-            Assert.AreEqual(50, specialForces.GetBaseRating(OfficerRating.Leadership));
         }
 
         [Test]

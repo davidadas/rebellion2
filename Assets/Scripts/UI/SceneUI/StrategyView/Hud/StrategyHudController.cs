@@ -126,6 +126,14 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Plays the protocol advisor's authored rejection for a destination under construction.
+    /// </summary>
+    public void PlayUnitUnderConstructionOrderRejected()
+    {
+        advisorController.PlayUnitUnderConstructionOrderRejected();
+    }
+
+    /// <summary>
     /// Cancels current protocol-advisor playback and replaces it with one resolved animation.
     /// </summary>
     /// <param name="animation">The resolved animation presentation.</param>
@@ -211,7 +219,11 @@ public sealed class StrategyHudController : IContextMenuReceiver
         Color textColor = theme?.GetPrimaryColor() ?? Color.white;
         return new StrategyHudViewData(
             backgroundTexture: ResolveTexture(hudTheme?.ImagePath),
-            tickCounter: CreateCounter(data.TickText, textColor, hudTheme?.TickCounterSourceLayout),
+            tickCounter: CreateCounter(
+                data.Speed == TickSpeed.Paused ? "PAUSED" : data.TickText,
+                textColor,
+                hudTheme?.TickCounterSourceLayout
+            ),
             rawMaterialsCounter: CreateCounter(
                 data.RawMaterialsText,
                 textColor,

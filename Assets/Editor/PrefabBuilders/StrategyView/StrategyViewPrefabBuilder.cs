@@ -1317,7 +1317,7 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(selectedItem.rectTransform, 42, 28, 122, 50);
         TextMeshProUGUI selectedName = CreateTextLabel("SelectedNameTextField", window.transform);
         selectedName.text = "Nebulon-B Frigate";
-        selectedName.color = new Color32(128, 128, 128, 255);
+        selectedName.color = Color.white;
         selectedName.fontSize = 10;
         selectedName.alignment = TextAlignmentOptions.Top;
         SetSourceRect(selectedName.rectTransform, 6, 72, 195, 13);
@@ -1400,7 +1400,7 @@ public static class StrategyViewPrefabBuilder
             "CompletionLabelTextField",
             window.transform
         );
-        completionLabel.text = "Best Time to Completion";
+        completionLabel.text = "Best Time To Completion:";
         completionLabel.color = Color.white;
         completionLabel.fontSize = 11;
         completionLabel.alignment = TextAlignmentOptions.TopLeft;
@@ -1430,7 +1430,7 @@ public static class StrategyViewPrefabBuilder
             "DeploymentLabelTextField",
             window.transform
         );
-        deploymentLabel.text = "Best Time to Deployment";
+        deploymentLabel.text = "Best Time To Deployment:";
         deploymentLabel.color = Color.white;
         deploymentLabel.fontSize = 11;
         deploymentLabel.alignment = TextAlignmentOptions.TopLeft;
@@ -2815,12 +2815,12 @@ public static class StrategyViewPrefabBuilder
             _constructionActionButtonHeight
         );
         Button okButtonComponent = CreateButton(okButton);
-        okButton
-            .GetComponent<RawImagePressVisual>()
-            .SetTextures(
-                LoadTexture(_constructionOkButtonPreviewPath),
-                LoadTexture(_constructionOkButtonDownPreviewPath)
-            );
+        okButtonComponent.interactable = false;
+        RawImagePressVisual okButtonPressVisual = okButton.GetComponent<RawImagePressVisual>();
+        okButtonPressVisual.SetTextures(
+            LoadTexture(_constructionOkButtonDisabledPreviewPath),
+            null
+        );
         SetPressedBindingAddress(okButton, _constructionOkButtonDownPreviewPath);
         RawImage cancelButton = CreateRawImage(
             "CancelButtonImage",
@@ -3089,6 +3089,7 @@ public static class StrategyViewPrefabBuilder
         AssignReferenceArray(view, "tabButtons", tabButtons);
         AssignReference(view, "infoButton", infoButtonComponent);
         AssignReference(view, "okButton", okButtonComponent);
+        AssignReference(view, "okButtonPressVisual", okButtonPressVisual);
         AssignReference(view, "cancelButton", cancelButtonComponent);
         AssignReference(view, "missionSelectionRoot", missionSelection);
         AssignReference(view, "dropdownButtonImage", dropdownButton);
@@ -3130,6 +3131,17 @@ public static class StrategyViewPrefabBuilder
             view,
             "dropdownButtonDownTexture",
             LoadTexture(_constructionOpenButtonDownPreviewPath)
+        );
+        AssignReference(view, "okButtonUpTexture", LoadTexture(_constructionOkButtonPreviewPath));
+        AssignReference(
+            view,
+            "okButtonDownTexture",
+            LoadTexture(_constructionOkButtonDownPreviewPath)
+        );
+        AssignReference(
+            view,
+            "okButtonDisabledTexture",
+            LoadTexture(_constructionOkButtonDisabledPreviewPath)
         );
 
         dropdown.gameObject.SetActive(false);
@@ -3616,6 +3628,11 @@ public static class StrategyViewPrefabBuilder
         leftRowTemplate.text = "Location:";
         leftRowTemplate.color = Color.white;
         leftRowTemplate.fontSize = 10;
+        leftRowTemplate.enableAutoSizing = true;
+        leftRowTemplate.fontSizeMin = 7;
+        leftRowTemplate.fontSizeMax = 10;
+        leftRowTemplate.textWrappingMode = TextWrappingModes.NoWrap;
+        leftRowTemplate.overflowMode = TextOverflowModes.Ellipsis;
         leftRowTemplate.alignment = TextAlignmentOptions.TopLeft;
         SetSourceRect(leftRowTemplate.rectTransform, 0, 0, 99, 14);
         leftRowTemplate.gameObject.SetActive(false);
@@ -3624,6 +3641,11 @@ public static class StrategyViewPrefabBuilder
         rightRowTemplate.text = "Corellia";
         rightRowTemplate.color = Color.white;
         rightRowTemplate.fontSize = 10;
+        rightRowTemplate.enableAutoSizing = true;
+        rightRowTemplate.fontSizeMin = 7;
+        rightRowTemplate.fontSizeMax = 10;
+        rightRowTemplate.textWrappingMode = TextWrappingModes.NoWrap;
+        rightRowTemplate.overflowMode = TextOverflowModes.Ellipsis;
         rightRowTemplate.alignment = TextAlignmentOptions.TopLeft;
         SetSourceRect(rightRowTemplate.rectTransform, 104, 0, 89, 14);
         rightRowTemplate.gameObject.SetActive(false);

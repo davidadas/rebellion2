@@ -262,6 +262,60 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void OpenDetail_CombatMessage_OpensSavedOutcomeInsteadOfGenericDetail()
+        {
+            CombatReport report = new CombatReport
+            {
+                Type = CombatReportType.SpaceBattle,
+                Title = "Battle at Test",
+            };
+            Message message = new Message(MessageType.Conflict, "Battle at Test")
+            {
+                InstanceID = "combat-message",
+                CombatReport = report,
+            };
+            Faction faction = new Faction { InstanceID = "player" };
+            faction.AddMessage(message);
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(faction);
+            game.Summary.PlayerFactionID = faction.InstanceID;
+            UIContext uiContext = TestContent.CreateUIContext(
+                game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
+
+            try
+            {
+                StrategyWindowLayerView windowLayer =
+                    root.GetComponentInChildren<StrategyWindowLayerView>(true);
+                UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
+                MessagesWindowController controller = new MessagesWindowController(
+                    _ => { },
+                    () => uiContext,
+                    windowLayer,
+                    windowManager,
+                    () => Vector2Int.zero,
+                    windowManager.DestroyWindow,
+                    () => { }
+                );
+                TestActions actions = new TestActions();
+                controller.Initialize(actions);
+
+                controller.OpenDetail(message, MessagesTab.All);
+
+                Assert.AreSame(report, actions.OpenedCombatReport);
+                Assert.IsTrue(message.Read);
+                Assert.IsFalse(controller.IsOpen);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void TabClick_FromMessageDetail_LoadsRequestedTabRows()
         {
             Message fleetMessage = new Message(MessageType.Fleet, "Fleet")
@@ -325,6 +379,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
         private sealed class TestActions : IMessagesWindowActions
         {
+            public CombatReport OpenedCombatReport { get; private set; }
+
+            public void OpenCombatReport(CombatReport report)
+            {
+                OpenedCombatReport = report;
+            }
+
             public bool OpenMessageTarget(
                 string targetInstanceId,
                 string secondaryTargetInstanceId,

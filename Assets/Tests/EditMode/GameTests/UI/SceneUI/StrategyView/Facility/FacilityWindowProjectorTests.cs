@@ -18,6 +18,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
     {
         private const string _ownerId = "FNALL1";
 
+        private Texture2D _constructionTexture;
+        private GameRoot _game;
         private GameObject _windowObject;
         private UIWindow _window;
         private Planet _planet;
@@ -25,17 +27,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private FacilityWindowSession _session;
         private UIContext _uiContext;
         private FacilityWindowProjector _projector;
+        private List<Texture2D> _textures;
 
         [SetUp]
         public void SetUp()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            game.GetFactions().Add(new Faction { InstanceID = _ownerId });
-            game.Summary.PlayerFactionID = _ownerId;
-            _uiContext = TestContent.CreateUIContext(
-                game,
-                TestContent.CreateThemeLibrary(),
-                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            _game = new GameRoot(TestConfig.Create());
+            _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
+            _game.Summary.PlayerFactionID = _ownerId;
+            Dictionary<string, Texture2D> texturesByPath = CreateTextures();
+            FactionTheme theme = CreateTheme();
+            _uiContext = new UIContext(
+                _game,
+                new FactionThemeLibrary(
+                    new FactionThemes
+                    {
+                        new FactionTheme { FactionInstanceID = "DEFAULT" },
+                        theme,
+                    }
+                ),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>()),
+                path => texturesByPath.TryGetValue(path, out Texture2D texture) ? texture : null
             );
             _windowObject = new GameObject(
                 "FacilityWindow",
@@ -52,6 +64,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 OwnerInstanceID = _ownerId,
                 NumRawResourceNodes = 3,
             };
+            GalaxyPlanetSector sector = new GalaxyPlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(_planet, sector);
             _mapPlanet = new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty);
             _session = new FacilityWindowSession(_window, _mapPlanet);
             _projector = new FacilityWindowProjector(() => _uiContext);
@@ -61,6 +76,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_windowObject);
+            foreach (Texture2D texture in _textures)
+                UnityEngine.Object.DestroyImmediate(texture);
         }
 
         [Test]
@@ -233,16 +250,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         [Test]
         public void CreateRenderData_MovingBuilding_UsesTransitTexture()
         {
-            Building definition = GetBuildingDefinition(BuildingType.Refinery);
             Building refinery = CreateBuilding(
                 "refinery",
                 "Refinery",
                 BuildingType.Refinery,
                 ManufacturingStatus.Complete
             );
-            refinery.DisplayImagePath = definition.DisplayImagePath;
-            refinery.SmallDisplayImagePath = definition.SmallDisplayImagePath;
-            refinery.InTransitSmallImagePath = definition.InTransitSmallImagePath;
             refinery.Movement = new MovementState();
             _planet.AddTestChild(refinery);
             _session.Reconcile();
@@ -252,8 +265,61 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 
             Assert.IsNotNull(data.InventoryItems[0].Texture);
             Assert.AreSame(
-                _uiContext.GetTexture(definition.InTransitSmallImagePath),
+                _uiContext.GetTexture(refinery.InTransitSmallImagePath),
                 data.InventoryItems[0].Texture
+            );
+        }
+
+        [Test]
+        public void CreateRenderData_QueuedBuilding_UsesConfiguredConstructionTexture()
+        {
+            Building building = CreateBuilding(
+                "queued-building",
+                "Orbital Facility",
+                BuildingType.Mine,
+                ManufacturingStatus.Building
+            );
+            _planet.ManufacturingQueue[ManufacturingType.Building] = new List<IManufacturable>
+            {
+                building,
+            };
+
+            FacilityWindowRenderData data = _projector.CreateRenderData(_window, _session, null);
+
+            Assert.AreSame(_constructionTexture, data.ManufacturingCards[2].EntityTexture);
+        }
+
+        [Test]
+        public void CreateRenderData_ActiveQueueItem_UsesLiveDeliveryDestination()
+        {
+            Rebellion.Game.Units.Fleet liveDestination = new Rebellion.Game.Units.Fleet
+            {
+                InstanceID = "live-destination",
+                DisplayName = "Live Destination",
+                OwnerInstanceID = _ownerId,
+            };
+            CapitalShip ship = CreateCapitalShip("queued-ship", "Queued Ship");
+            ship.ManufacturingStatus = ManufacturingStatus.Building;
+            _game.AttachNode(liveDestination, _planet);
+            _game.AttachNode(ship, liveDestination);
+            _planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable> { ship };
+            Dictionary<ManufacturingType, string> staleDestinations = new Dictionary<
+                ManufacturingType,
+                string
+            >
+            {
+                { ManufacturingType.Ship, "Stale Destination" },
+            };
+
+            FacilityWindowRenderData data = _projector.CreateRenderData(
+                _window,
+                _session,
+                staleDestinations
+            );
+
+            Assert.AreEqual(
+                "Destination: Live Destination",
+                data.ManufacturingCards[0].DestinationText
             );
         }
 
@@ -264,42 +330,101 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             ManufacturingStatus status
         )
         {
-            Building definition = GetBuildingDefinition(buildingType);
             return new Building
             {
                 InstanceID = instanceId,
-                TypeID = definition.TypeID,
+                TypeID = buildingType.ToString(),
                 DisplayName = displayName,
                 OwnerInstanceID = _ownerId,
                 BuildingType = buildingType,
                 ManufacturingStatus = status,
-                DisplayImagePath = definition.DisplayImagePath,
-                SmallDisplayImagePath = definition.SmallDisplayImagePath,
-                InTransitSmallImagePath = definition.InTransitSmallImagePath,
+                DisplayImagePath = "building-display",
+                SmallDisplayImagePath = "building-small",
+                InTransitSmallImagePath = "building-transit",
             };
         }
 
-        private static Building GetBuildingDefinition(BuildingType buildingType)
+        private Dictionary<string, Texture2D> CreateTextures()
         {
-            return TestContent.Data.Buildings.First(building =>
-                building.BuildingType == buildingType
-                && building.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
-            );
+            _constructionTexture = new Texture2D(4, 2);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                ["title-active"] = new Texture2D(1, 1),
+                ["title-inactive"] = new Texture2D(1, 1),
+                ["control-active"] = new Texture2D(1, 1),
+                ["control-inactive"] = new Texture2D(1, 1),
+                ["control-disabled"] = new Texture2D(1, 1),
+                ["lane-active"] = new Texture2D(1, 1),
+                ["lane-inactive"] = new Texture2D(1, 1),
+                ["selection"] = new Texture2D(1, 1),
+                ["raw-resource"] = new Texture2D(1, 1),
+                ["building-display"] = new Texture2D(1, 1),
+                ["building-small"] = new Texture2D(1, 1),
+                ["building-transit"] = new Texture2D(1, 1),
+                ["ship-display"] = new Texture2D(1, 1),
+                ["ship-small"] = new Texture2D(1, 1),
+                ["construction"] = _constructionTexture,
+            };
+            _textures = textures.Values.Distinct().ToList();
+            return textures;
+        }
+
+        private static FactionTheme CreateTheme()
+        {
+            return new FactionTheme
+            {
+                FactionInstanceID = _ownerId,
+                WindowTitleTheme = new WindowTitleTheme
+                {
+                    ActiveImagePath = "title-active",
+                    InactiveImagePath = "title-inactive",
+                },
+                StrategyWindows = new StrategyWindowsTheme
+                {
+                    Facility = new FacilityWindowTheme
+                    {
+                        ControlTab = new WindowTabImageTheme
+                        {
+                            ActiveImagePath = "control-active",
+                            InactiveImagePath = "control-inactive",
+                            DisabledImagePath = "control-disabled",
+                        },
+                        SelectionImagePath = "selection",
+                        RawResourceNodeImagePath = "raw-resource",
+                        ConstructionImages = new List<FacilityConstructionImageTheme>
+                        {
+                            new FacilityConstructionImageTheme
+                            {
+                                TypeID = BuildingType.Mine.ToString(),
+                                ImagePath = "construction",
+                            },
+                        },
+                    },
+                },
+                PlanetWindowTheme = new PlanetWindowTheme
+                {
+                    BuildingsPane = new BuildingsPaneTheme
+                    {
+                        ManufacturingLaneState = new ManufacturingLaneStateTheme
+                        {
+                            ActiveImagePath = "lane-active",
+                            InactiveImagePath = "lane-inactive",
+                        },
+                    },
+                },
+            };
         }
 
         private static CapitalShip CreateCapitalShip(string instanceId, string displayName)
         {
-            CapitalShip definition = TestContent.Data.CapitalShips.First(ship =>
-                ship.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
-            );
             return new CapitalShip
             {
                 InstanceID = instanceId,
-                TypeID = definition.TypeID,
+                TypeID = "capital-ship",
                 DisplayName = displayName,
                 OwnerInstanceID = _ownerId,
-                DisplayImagePath = definition.DisplayImagePath,
-                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                DisplayImagePath = "ship-display",
+                SmallDisplayImagePath = "ship-small",
             };
         }
     }

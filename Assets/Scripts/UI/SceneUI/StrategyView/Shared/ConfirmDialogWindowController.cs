@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Missions;
 using Rebellion.SceneGraph;
 using UnityEngine;
 
@@ -12,6 +13,7 @@ public sealed class ConfirmDialogWindowController
     private const string _moveTransitLabel = "Transit Time in Days";
     private const string _retirePrompt = "Retire these personnel?";
     private const string _scrapPrompt = "Scrap these units?";
+    private const string _missionAbortPrompt = "Are you sure you want to abort this mission?";
     private const string _stopConstructionPrompt =
         "Are you sure you want to stop construction of the following?";
 
@@ -133,6 +135,23 @@ public sealed class ConfirmDialogWindowController
     )
     {
         Open(sourceWindow, sourceItems, ConfirmDialogKind.Move, transitTimeInDays, confirmedAction);
+    }
+
+    /// <summary>
+    /// Opens abort confirmation for an active mission.
+    /// </summary>
+    /// <param name="sourceWindow">The originating Missions window.</param>
+    /// <param name="mission">The mission being aborted.</param>
+    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
+    public void OpenMissionAbort(UIWindow sourceWindow, Mission mission, Action confirmedAction)
+    {
+        Open(
+            sourceWindow,
+            mission == null ? Array.Empty<ISceneNode>() : new ISceneNode[] { mission },
+            ConfirmDialogKind.MissionAbort,
+            -1,
+            confirmedAction
+        );
     }
 
     /// <summary>
@@ -310,7 +329,8 @@ public sealed class ConfirmDialogWindowController
     private static IReadOnlyList<string> BuildLines(ConfirmDialogSession session)
     {
         List<string> lines = new List<string> { GetPrompt(session) };
-        lines.AddRange(session.Items.Select(item => item?.GetDisplayName() ?? string.Empty));
+        if (session.Kind != ConfirmDialogKind.MissionAbort)
+            lines.AddRange(session.Items.Select(item => item?.GetDisplayName() ?? string.Empty));
         return lines;
     }
 
@@ -326,6 +346,7 @@ public sealed class ConfirmDialogWindowController
             ConfirmDialogKind.Scrap => _scrapPrompt,
             ConfirmDialogKind.Retire => _retirePrompt,
             ConfirmDialogKind.StopConstruction => _stopConstructionPrompt,
+            ConfirmDialogKind.MissionAbort => _missionAbortPrompt,
             ConfirmDialogKind.Move when session.TransitTimeInDays >= 0 =>
                 $"{_moveTransitLabel} {session.TransitTimeInDays}",
             _ => _moveTransitLabel,
@@ -345,6 +366,7 @@ public sealed class ConfirmDialogWindowController
             ConfirmDialogKind.Scrap => theme?.ScrapTitleImagePath,
             ConfirmDialogKind.Retire => theme?.RetireTitleImagePath,
             ConfirmDialogKind.StopConstruction => theme?.StopConstructionTitleImagePath,
+            ConfirmDialogKind.MissionAbort => theme?.MissionAbortTitleImagePath,
             _ => theme?.MoveTitleImagePath,
         };
     }
@@ -356,10 +378,12 @@ public sealed class ConfirmDialogWindowController
     private void PlayPromptSound(ConfirmDialogKind kind)
     {
         ConfirmDialogTheme theme = GetUIContext().GetPlayerFactionTheme()?.ConfirmDialogTheme;
-        string path =
-            kind == ConfirmDialogKind.StopConstruction
-                ? theme?.StopConstructionSoundPath
-                : theme?.ScrapRetireSoundPath;
+        string path = kind switch
+        {
+            ConfirmDialogKind.StopConstruction => theme?.StopConstructionSoundPath,
+            ConfirmDialogKind.MissionAbort => null,
+            _ => theme?.ScrapRetireSoundPath,
+        };
         if (!string.IsNullOrEmpty(path))
             playSfx(path);
     }

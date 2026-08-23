@@ -324,6 +324,66 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void GetNotificationCode_MaintenanceNotification_ReturnsAuthoredMaintenanceCode()
+        {
+            MessageDeliveredResult delivery = new MessageDeliveredResult
+            {
+                NotificationType = AdvisorNotificationType.Maintenance,
+            };
+
+            int code = StrategyAdvisorController.GetNotificationCode(
+                new StrategyAdvisorTheme(),
+                delivery
+            );
+
+            Assert.AreEqual(12, code);
+        }
+
+        [Test]
+        public void PlayUnitUnderConstructionOrderRejected_AuthoredResponse_ReplacesPlayback()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            advisorTheme.AudioRoot = "Audio";
+            advisorTheme.UnitUnderConstructionOrderRejected = new StrategyAdvisorAnimationTheme
+            {
+                Animation = "Rejected",
+                FrameCount = 1,
+                Audio = "Rejected",
+            };
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D rejectedFrame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleAnimation, 0, false)] = idle,
+                [advisorTheme.GetFramePath(advisorTheme.DroidIdleAnimation, 0, true)] = idle,
+                [advisorTheme.GetFramePath("Rejected", 0, false)] = rejectedFrame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+                StrategyAdvisorAnimationViewData playback = null;
+                view.PlaybackStarted += data => playback = data;
+
+                controller.PlayUnitUnderConstructionOrderRejected();
+
+                Assert.IsNotNull(playback);
+                Assert.AreSame(rejectedFrame, playback.Frames.Single());
+                Assert.AreEqual("Audio/Rejected", playback.AudioPath);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(rejectedFrame);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
         public void ReplaceAnimation_ValidPlayback_InvokesPlaybackCallbacks()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);

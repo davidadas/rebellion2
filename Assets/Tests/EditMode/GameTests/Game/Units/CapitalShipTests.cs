@@ -34,6 +34,7 @@ namespace Rebellion.Tests.Game.Units
                 TractorBeamnRange = 3,
                 HasGravityWell = false,
                 DetectionRating = 25,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
 
@@ -156,6 +157,14 @@ namespace Rebellion.Tests.Game.Units
             SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "INVALID" };
 
             Assert.IsFalse(_capitalShip.CanAcceptChild(specialForces));
+        }
+
+        [Test]
+        public void CanAcceptChild_ShipUnderConstruction_ReturnsFalse()
+        {
+            _capitalShip.ManufacturingStatus = ManufacturingStatus.Building;
+
+            Assert.IsFalse(_capitalShip.CanAcceptChild(new Officer { OwnerInstanceID = "FNALL1" }));
         }
 
         [Test]

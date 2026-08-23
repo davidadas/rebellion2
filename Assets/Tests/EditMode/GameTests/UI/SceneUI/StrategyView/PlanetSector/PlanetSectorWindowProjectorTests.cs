@@ -219,6 +219,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void CreateRenderData_StationedOfficer_ReturnsDefenseOverlay()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
+            planet.AddTestChild(
+                new Officer { OwnerInstanceID = _playerFactionId, Movement = null }
+            );
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
+            );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                sector,
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNotNull(data.Planets[0].DefenseTexture);
+            Assert.IsNotNull(data.Planets[0].DefensePressedTexture);
+        }
+
+        [Test]
         public void CreateRenderData_UprisingPlanet_ReturnsUprisingAndMissionOverlays()
         {
             Planet planet = CreatePlanet("planet", _opposingFactionId, 10, 20);

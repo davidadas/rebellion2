@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using UnityEngine;
 
@@ -225,6 +226,24 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
+    /// Opens the completed outcome retained by a delivered combat message.
+    /// </summary>
+    /// <param name="report">The durable report to display.</param>
+    internal void OpenReport(CombatReport report)
+    {
+        BattleResultPresentation presentation = BattleResultPresentation.Create(report);
+
+        EnsureInitialized();
+        BattleAlertWindowView view = FindWindow() ?? OpenWindow();
+        if (view == null)
+            return;
+
+        SetCombatResult(view, presentation);
+        PlayResultAudio(presentation);
+        markDirty();
+    }
+
+    /// <summary>
     /// Finds the registered battle-alert view.
     /// </summary>
     /// <returns>The open battle-alert view, or null when none is registered.</returns>
@@ -386,7 +405,7 @@ public sealed class BattleAlertWindowController
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            Planet planet = session.Result.Planet;
+            Planet planet = session.Result.GetPlanet(getUIContext());
             if (planet == null)
             {
                 CloseWindow(view);
@@ -407,7 +426,7 @@ public sealed class BattleAlertWindowController
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            Planet planet = session.Result.Planet;
+            Planet planet = session.Result.GetPlanet(getUIContext());
             if (planet?.GetParent() is not PlanetSector sector)
             {
                 CloseWindow(view);

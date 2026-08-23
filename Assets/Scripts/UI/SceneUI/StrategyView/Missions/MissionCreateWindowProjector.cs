@@ -51,6 +51,7 @@ internal sealed class MissionCreateWindowProjector
             window.Y,
             session.ActiveTab,
             session.DropdownOpen,
+            session.Agents.Count > 0,
             uiContext.GetTexture(theme?.TitleImagePath),
             selectedChoice?.Name,
             GetMissionChoiceTexture(uiContext, selectedChoice),

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -332,6 +333,7 @@ public sealed class StrategyController
         );
         facilityWindowController = new FacilityWindowController(
             () => gameManager.GetGame(),
+            () => gameManager.ManufacturingSystem,
             constructionWindowController,
             () => uiContext,
             targetingController,
@@ -499,7 +501,8 @@ public sealed class StrategyController
             RebuildSnapshot,
             MarkDirty,
             () => gameManager.HeadquartersSystem,
-            strategyHudController.PlayInTransitOrderRejected
+            strategyHudController.PlayInTransitOrderRejected,
+            strategyHudController.PlayUnitUnderConstructionOrderRejected
         );
     }
 
@@ -1932,6 +1935,51 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Opens strategy confirmation before aborting one active mission.
+    /// </summary>
+    /// <param name="sourceWindow">The Missions window requesting confirmation.</param>
+    /// <param name="missionInstanceId">The mission to abort.</param>
+    void IMissionsWindowActions.OpenAbortMissionConfirmWindow(
+        UIWindow sourceWindow,
+        string missionInstanceId
+    )
+    {
+        GameRoot game = gameManager.GetGame();
+        Mission mission = game?.GetSceneNodeByInstanceID<Mission>(missionInstanceId);
+        if (mission?.IsWaitingForParticipants() != false)
+            return;
+
+        confirmDialogWindowController.OpenMissionAbort(
+            sourceWindow,
+            mission,
+            () =>
+            {
+                Mission liveMission = game?.GetSceneNodeByInstanceID<Mission>(missionInstanceId);
+                if (liveMission == null)
+                    return;
+
+                Officer speaker = liveMission
+                    .GetMainParticipants()
+                    .Concat(liveMission.GetDecoyParticipants())
+                    .OfType<Officer>()
+                    .FirstOrDefault(officer =>
+                        officer.HasVoicePath(OfficerVoiceLineType.MissionAbort)
+                    );
+                string voicePath = speaker?.GetVoicePath(
+                    OfficerVoiceLineType.MissionAbort,
+                    game.Random
+                );
+                if (!gameManager.MissionSystem.AbortMission(missionInstanceId))
+                    return;
+
+                if (!string.IsNullOrEmpty(voicePath))
+                    PlayStrategySfx(voicePath);
+                RefreshStrategyState();
+            }
+        );
+    }
+
+    /// <summary>
     /// Rebuilds strategy state after a mission is created.
     /// </summary>
     void IMissionCreateWindowActions.RefreshAfterMissionCreation()
@@ -1961,6 +2009,15 @@ public sealed class StrategyController
     )
     {
         return OpenMessageTarget(targetInstanceId, secondaryTargetInstanceId, locationInstanceId);
+    }
+
+    /// <summary>
+    /// Opens the complete combat outcome retained by a delivered message.
+    /// </summary>
+    /// <param name="report">The durable combat report.</param>
+    void IMessagesWindowActions.OpenCombatReport(CombatReport report)
+    {
+        battleAlertWindowController.OpenReport(report);
     }
 
     /// <summary>

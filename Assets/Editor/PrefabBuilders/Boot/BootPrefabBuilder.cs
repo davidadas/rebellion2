@@ -34,6 +34,8 @@ public static class BootPrefabBuilder
             "CutscenePlayer",
             typeof(RectTransform),
             typeof(Canvas),
+            typeof(CanvasRenderer),
+            typeof(Image),
             typeof(VideoPlayer),
             typeof(AudioSource),
             typeof(CutscenePlayer)
@@ -46,6 +48,10 @@ public static class BootPrefabBuilder
             Canvas canvas = root.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 1000;
+
+            Image background = root.GetComponent<Image>();
+            background.color = Color.black;
+            background.raycastTarget = false;
 
             VideoPlayer videoPlayer = root.GetComponent<VideoPlayer>();
             videoPlayer.playOnAwake = false;

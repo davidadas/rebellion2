@@ -35,6 +35,11 @@ namespace Rebellion.Game.Movement
         public string SourceEventInstanceID { get; set; }
 
         /// <summary>
+        /// Whether this transit is the delivery phase of a newly manufactured item.
+        /// </summary>
+        public bool IsManufacturingDeployment { get; set; }
+
+        /// <summary>
         /// Position at the start of transit (origin planet coordinates).
         /// Used for interpolating position during transit.
         /// </summary>
@@ -85,6 +90,7 @@ namespace Rebellion.Game.Movement
                 TicksElapsed = TicksElapsed,
                 MovementGroupID = MovementGroupID,
                 SourceEventInstanceID = SourceEventInstanceID,
+                IsManufacturingDeployment = IsManufacturingDeployment,
                 OriginPositionX = OriginPositionX,
                 OriginPositionY = OriginPositionY,
                 CurrentPositionX = CurrentPositionX,

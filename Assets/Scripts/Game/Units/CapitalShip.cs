@@ -386,6 +386,9 @@ namespace Rebellion.Game.Units
         /// <returns>True if AddChild would succeed; otherwise false.</returns>
         public override bool CanAcceptChild(ISceneNode child)
         {
+            if (ManufacturingStatus != ManufacturingStatus.Complete)
+                return false;
+
             if (child is Starfighter)
                 return GetExcessStarfighterCapacity() > 0;
             if (child is Regiment)

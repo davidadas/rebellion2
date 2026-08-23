@@ -82,9 +82,9 @@ internal sealed class ConstructionWindowProjector
                 ? string.Empty
                 : FormatTotalCost(selected.GetMaintenanceCost(), buildCount),
             FormatEstimate(selectedEstimate?.CompletionTicks),
-            selectedEstimate != null,
+            selectedEstimate?.CompletionTicks.HasValue == true,
             FormatEstimate(selectedEstimate?.DeploymentTicks),
-            selectedEstimate != null,
+            selectedEstimate?.DeploymentTicks.HasValue == true,
             dropdownOpen,
             selected != null && canStartSelections.Contains(selectedIndex),
             CreateDropdownItems(uiContext, items, selectedIndex)

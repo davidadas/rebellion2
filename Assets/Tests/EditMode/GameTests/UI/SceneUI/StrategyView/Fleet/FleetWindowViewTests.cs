@@ -104,6 +104,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
 
             Assert.IsFalse(FindObject("BannerImage").activeSelf);
+            Assert.IsFalse(FindObject("DetailBackgroundImage").activeSelf);
             Assert.IsFalse(FindObject("FleetNameTextField").activeSelf);
             Assert.IsFalse(FindObject("CapacityLeftTextField").activeSelf);
             Assert.IsFalse(FindObject("CapacityRightTextField").activeSelf);

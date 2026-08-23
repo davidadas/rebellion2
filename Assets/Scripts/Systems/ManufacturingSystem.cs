@@ -137,6 +137,52 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Changes the delivery destination for every unfinished item in one production lane.
+        /// </summary>
+        /// <param name="producer">The planet that owns the production queue.</param>
+        /// <param name="type">The production lane to retarget.</param>
+        /// <param name="destination">The new delivery container.</param>
+        /// <param name="ownerInstanceId">The faction requesting the change.</param>
+        /// <returns>True when the lane is empty or every queued item accepted the new destination.</returns>
+        public bool RetargetManufacturingDestination(
+            Planet producer,
+            ManufacturingType type,
+            ContainerNode destination,
+            string ownerInstanceId
+        )
+        {
+            if (
+                producer == null
+                || type == ManufacturingType.None
+                || destination == null
+                || string.IsNullOrEmpty(ownerInstanceId)
+                || !string.Equals(
+                    producer.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                return false;
+            }
+
+            if (
+                !producer.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue)
+                || queue.Count == 0
+            )
+            {
+                return true;
+            }
+
+            if (_movementSystem == null)
+                return false;
+
+            List<ISceneNode> items = queue.OfType<ISceneNode>().ToList();
+            return items.Count == queue.Count
+                && _movementSystem.TryRequestMove(items, destination, ownerInstanceId);
+        }
+
+        /// <summary>
         /// Determines whether an owner can queue copies of a manufacturing template for one destination.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
@@ -352,6 +398,53 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Estimates when one item in a planet's manufacturing queue will be completed.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="item">The queued item to inspect.</param>
+        /// <returns>The estimated remaining ticks through the item, or null when unavailable.</returns>
+        public static int? EstimateItemCompletionTicks(Planet producer, IManufacturable item)
+        {
+            if (
+                producer == null
+                || item == null
+                || item.GetManufacturingStatus() != ManufacturingStatus.Building
+                || !producer
+                    .GetManufacturingQueue()
+                    .TryGetValue(item.GetManufacturingType(), out List<IManufacturable> queue)
+                || queue == null
+            )
+                return null;
+
+            long requiredProgress = 0;
+            foreach (IManufacturable queuedItem in queue)
+            {
+                requiredProgress += Math.Max(
+                    queuedItem.GetConstructionCost() - queuedItem.GetManufacturingProgress(),
+                    0
+                );
+                if (
+                    ReferenceEquals(queuedItem, item)
+                    || (
+                        !string.IsNullOrEmpty(item.InstanceID)
+                        && string.Equals(
+                            queuedItem.InstanceID,
+                            item.InstanceID,
+                            StringComparison.Ordinal
+                        )
+                    )
+                )
+                    return EstimateManufacturingTicks(
+                        producer,
+                        item.GetManufacturingType(),
+                        requiredProgress
+                    );
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Estimates production ticks from remaining progress and active facility rates.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
@@ -367,16 +460,88 @@ namespace Rebellion.Systems
             if (requiredProgress <= 0)
                 return 0;
 
-            int productionRate = producer
+            List<Building> facilities = producer
                 .GetProductionFacilities(type)
                 .Where(facility => facility.GetProcessRate() > 0)
-                .Sum(facility => _productionRateScale / facility.GetProcessRate());
-            if (productionRate <= 0)
+                .ToList();
+            if (facilities.Count == 0)
                 return null;
 
-            long scaledProgress = requiredProgress * _productionRateScale;
-            long estimatedTicks = (scaledProgress + productionRate - 1) / productionRate;
-            return estimatedTicks <= int.MaxValue ? (int)estimatedTicks : int.MaxValue;
+            long fastestUpperBound = GetFirstProductionPointTick(facilities[0]);
+            long fastestRate = facilities.Min(facility => facility.GetProcessRate());
+            if (requiredProgress > 1)
+            {
+                long remainingPoints = requiredProgress - 1;
+                fastestUpperBound =
+                    remainingPoints > (int.MaxValue - fastestUpperBound) / fastestRate
+                        ? int.MaxValue
+                        : fastestUpperBound + remainingPoints * fastestRate;
+            }
+
+            long low = 1;
+            long high = Math.Min(fastestUpperBound, int.MaxValue);
+            if (
+                CountBestCaseProductionPoints(facilities, high, requiredProgress) < requiredProgress
+            )
+                return int.MaxValue;
+
+            while (low < high)
+            {
+                long middle = low + (high - low) / 2;
+                if (
+                    CountBestCaseProductionPoints(facilities, middle, requiredProgress)
+                    >= requiredProgress
+                )
+                    high = middle;
+                else
+                    low = middle + 1;
+            }
+
+            return (int)low;
+        }
+
+        /// <summary>
+        /// Counts production points available by one future tick under uninterrupted conditions.
+        /// </summary>
+        /// <param name="facilities">The active production facilities.</param>
+        /// <param name="tick">The one-based future tick to inspect.</param>
+        /// <param name="requiredProgress">The point count at which counting may stop.</param>
+        /// <returns>The available production points, capped at the required amount.</returns>
+        private static long CountBestCaseProductionPoints(
+            IReadOnlyList<Building> facilities,
+            long tick,
+            long requiredProgress
+        )
+        {
+            long points = 0;
+            foreach (Building facility in facilities)
+            {
+                long firstTick = GetFirstProductionPointTick(facility);
+                if (tick < firstTick)
+                    continue;
+
+                points += 1 + (tick - firstTick) / facility.GetProcessRate();
+                if (points >= requiredProgress)
+                    return requiredProgress;
+            }
+
+            return points;
+        }
+
+        /// <summary>
+        /// Returns the first future tick on which a facility can supply a production point.
+        /// </summary>
+        /// <param name="facility">The active production facility.</param>
+        /// <returns>A one-based future tick.</returns>
+        private static long GetFirstProductionPointTick(Building facility)
+        {
+            if (facility.ProductionPointReady)
+                return 1;
+
+            return Math.Max(
+                1L,
+                (long)Math.Ceiling(facility.GetProcessRate() - facility.ProductionCycleProgress)
+            );
         }
 
         /// <summary>
@@ -713,6 +878,8 @@ namespace Rebellion.Systems
                 if (items.Count == 0)
                     DiscardReadyProductionPoints(readyFacilities);
             }
+
+            planet.SynchronizeManufacturingQueueOrder();
 
             return results;
         }
@@ -1104,9 +1271,8 @@ namespace Rebellion.Systems
                 productionPlanet.GetOwnerInstanceID()
             );
 
-            return new List<GameResult>
+            List<GameResult> results = new List<GameResult>
             {
-                new GameObjectDeployedResult { GameObject = item, Tick = _game.CurrentTick },
                 new ManufacturingRemainingResult
                 {
                     Faction = faction,
@@ -1122,6 +1288,15 @@ namespace Rebellion.Systems
                     Tick = _game.CurrentTick,
                 },
             };
+            if (item is not IMovable movable || movable.Movement == null)
+            {
+                results.Insert(
+                    0,
+                    new GameObjectDeployedResult { GameObject = item, Tick = _game.CurrentTick }
+                );
+            }
+
+            return results;
         }
 
         /// <summary>
@@ -1170,6 +1345,7 @@ namespace Rebellion.Systems
 
             ClearQueueItems(planet, items);
             queue.Remove(type);
+            planet.SynchronizeManufacturingQueueOrder();
             return true;
         }
 
@@ -1225,6 +1401,8 @@ namespace Rebellion.Systems
             {
                 queues.Remove(type);
             }
+
+            producer.SynchronizeManufacturingQueueOrder();
 
             return true;
         }
@@ -1315,6 +1493,8 @@ namespace Rebellion.Systems
                 ClearQueueItems(planet, items);
                 queue.Remove(type);
             }
+
+            planet.SynchronizeManufacturingQueueOrder();
         }
 
         /// <summary>
@@ -1323,15 +1503,12 @@ namespace Rebellion.Systems
         /// </summary>
         public void RebuildQueues()
         {
-            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
-            {
-                Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                    planet.GetManufacturingQueue();
-                foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue)
-                {
-                    kvp.Value.Clear();
-                }
-            }
+            List<Planet> planets = _game.GetSceneNodesByType<Planet>().ToList();
+            Dictionary<Planet, Dictionary<ManufacturingType, List<IManufacturable>>> candidates =
+                planets.ToDictionary(
+                    planet => planet,
+                    _ => new Dictionary<ManufacturingType, List<IManufacturable>>()
+                );
 
             _game
                 .GetGalaxyMap()
@@ -1357,21 +1534,79 @@ namespace Rebellion.Systems
                             return;
                         }
 
-                        producerPlanet.AddToManufacturingQueue(manufacturable);
+                        ManufacturingType type = manufacturable.GetManufacturingType();
+                        if (
+                            !candidates[producerPlanet]
+                                .TryGetValue(type, out List<IManufacturable> lane)
+                        )
+                        {
+                            lane = new List<IManufacturable>();
+                            candidates[producerPlanet][type] = lane;
+                        }
+
+                        lane.Add(manufacturable);
                     }
                 });
 
-            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+            foreach (Planet planet in planets)
             {
                 Dictionary<ManufacturingType, List<IManufacturable>> queue =
                     planet.GetManufacturingQueue();
-                foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue)
+                queue.Clear();
+                foreach (
+                    KeyValuePair<ManufacturingType, List<IManufacturable>> entry in candidates[
+                        planet
+                    ]
+                )
                 {
-                    kvp.Value.Sort(
-                        (a, b) => a.ManufacturingProgress.CompareTo(b.ManufacturingProgress)
-                    );
+                    IReadOnlyList<string> savedOrder = planet.GetManufacturingQueueOrder(entry.Key);
+                    List<IManufacturable> ordered = OrderRebuiltQueue(entry.Value, savedOrder);
+                    queue[entry.Key] = ordered;
                 }
+
+                planet.SynchronizeManufacturingQueueOrder();
             }
+        }
+
+        /// <summary>
+        /// Restores a queue from persisted identifiers or repairs the legacy progress ordering.
+        /// </summary>
+        /// <param name="candidates">The live queued items discovered in the scene graph.</param>
+        /// <param name="savedOrder">The persisted queue order, when present.</param>
+        /// <returns>The rebuilt queue in manufacturing order.</returns>
+        private static List<IManufacturable> OrderRebuiltQueue(
+            IReadOnlyList<IManufacturable> candidates,
+            IReadOnlyList<string> savedOrder
+        )
+        {
+            Dictionary<string, IManufacturable> byId = candidates
+                .OfType<ISceneNode>()
+                .Where(item => !string.IsNullOrEmpty(item.InstanceID))
+                .ToDictionary(item => item.InstanceID, item => (IManufacturable)item);
+            List<IManufacturable> ordered = new List<IManufacturable>();
+            foreach (string instanceId in savedOrder ?? Array.Empty<string>())
+            {
+                if (byId.Remove(instanceId, out IManufacturable item))
+                    ordered.Add(item);
+            }
+
+            IEnumerable<IManufacturable> missing = candidates.Where(candidate =>
+                candidate is not ISceneNode node || byId.ContainsKey(node.InstanceID)
+            );
+            if (ordered.Count == 0 && (savedOrder == null || savedOrder.Count == 0))
+            {
+                ordered.AddRange(
+                    missing.OrderByDescending(item => item.GetManufacturingProgress())
+                );
+                for (int index = 1; index < ordered.Count; index++)
+                    ordered[index].ManufacturingProgress = 0;
+            }
+            else
+            {
+                ordered.AddRange(missing);
+            }
+
+            return ordered;
         }
     }
 }

@@ -454,6 +454,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     /// <param name="data">The fleet-window snapshot.</param>
     private void RenderSelectedFleet(FleetWindowRenderData data)
     {
+        SetActive(detailBackgroundImage, data.HasSelectedFleet);
         SetActive(bannerImage, data.HasSelectedFleet);
         SetActive(bannerEnrouteOverlayImage, data.HasSelectedFleet);
         SetActive(bannerDamagedOverlayImage, data.HasSelectedFleet);

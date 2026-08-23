@@ -102,6 +102,7 @@ namespace Rebellion.Systems
                 NavigationTargetInstanceID = request.NavigationTargetInstanceID,
                 NavigationSecondaryTargetInstanceID = request.NavigationSecondaryTargetInstanceID,
                 MissionInstanceID = request.MissionInstanceID,
+                CombatReport = request.CombatReport,
                 CreatedTick = _game.CurrentTick,
             };
 

@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -383,11 +384,29 @@ internal sealed class PlanetSectorWindowProjector
                 planet
                     .GetChildren<Building>()
                     .Any(building =>
-                        building.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon
+                        building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                        && building.GetTransitMovement() == null
+                        && building.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon
                     )
-                || planet.GetChildren<Regiment>().Count > 0
-                || planet.GetChildren<Starfighter>().Count > 0
+                || planet.GetChildren<Officer>().Any(IsStationed)
+                || planet.GetChildren<SpecialForces>().Any(IsStationed)
+                || planet.GetChildren<Regiment>().Any(IsStationed)
+                || planet.GetChildren<Starfighter>().Any(IsStationed)
             );
+    }
+
+    /// <summary>
+    /// Returns whether a movable unit is physically stationed at its parent planet.
+    /// </summary>
+    /// <param name="unit">The unit to inspect.</param>
+    /// <returns>True when the unit is active and not in transit.</returns>
+    private static bool IsStationed(IMovable unit)
+    {
+        if (unit?.IsActive() != true || unit.GetTransitMovement() != null)
+            return false;
+
+        return unit is not IManufacturable manufacturable
+            || manufacturable.GetManufacturingStatus() == ManufacturingStatus.Complete;
     }
 
     /// <summary>

@@ -92,6 +92,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void CreateViewData_PausedSpeed_ShowsPausedInsteadOfTick()
+        {
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData("42", "100", "200", "300", TickSpeed.Paused, null),
+                new FactionTheme()
+            );
+
+            Assert.AreEqual("PAUSED", data.TickCounter.Text);
+        }
+
+        [Test]
+        public void CreateViewData_RunningSpeed_ShowsTick()
+        {
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData("42", "100", "200", "300", TickSpeed.Medium, null),
+                new FactionTheme()
+            );
+
+            Assert.AreEqual("42", data.TickCounter.Text);
+        }
+
+        [Test]
         public void BuildSpeedMenuCommands_DefaultCatalog_ReturnsOrderedEnabledCommands()
         {
             IReadOnlyList<StrategyMenuCommand> commands =

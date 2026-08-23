@@ -16,6 +16,22 @@ namespace Rebellion.Tests.Game.Missions
     public class RecruitmentMissionTests
     {
         [Test]
+        public void RollParticipantSuccess_MissingStoredLocation_ReturnsFalse()
+        {
+            (GameRoot game, _, Officer participant) = BuildScene();
+            participant.SetBaseRating(OfficerRating.Leadership, 100);
+            Mission mission = new RecruitmentMission
+            {
+                OwnerInstanceID = "empire",
+                LocationInstanceID = "missing-planet",
+            };
+
+            bool succeeded = mission.RollParticipantSuccess(participant, new FixedRNG(0.0), game);
+
+            Assert.IsFalse(succeeded);
+        }
+
+        [Test]
         public void ResolveObjective_AvailableCandidate_TransfersOfficerToFaction()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();

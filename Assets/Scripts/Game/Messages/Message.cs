@@ -30,6 +30,7 @@ namespace Rebellion.Game.Messages
         public string NavigationTargetInstanceID;
         public string NavigationSecondaryTargetInstanceID;
         public string MissionInstanceID;
+        public CombatReport CombatReport;
         public int CreatedTick;
         public bool Read;
 
