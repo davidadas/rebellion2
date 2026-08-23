@@ -140,9 +140,7 @@ namespace Rebellion.Game.Missions
         /// <returns>The participant's raw recruitment score.</returns>
         protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
-            Planet planet = GetMissionPlanet(game);
-            if (planet == null)
-                return null;
+            Planet planet = GetParent() as Planet;
 
             int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
             return agent.GetEffectiveRating(OfficerRating.Leadership) - opposingSupport;

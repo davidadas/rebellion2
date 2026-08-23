@@ -415,18 +415,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Resolves the mission planet from live containment or from the stored location identifier.
-        /// Detached mission proposals use the latter before the mission enters the scene graph.
-        /// </summary>
-        /// <param name="game">The game containing the configured mission location.</param>
-        /// <returns>The mission planet, or null when the location is unavailable.</returns>
-        protected Planet GetMissionPlanet(GameRoot game)
-        {
-            return GetParent() as Planet
-                ?? game?.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
-        }
-
-        /// <summary>
         /// Returns the participant's mission success probability.
         /// </summary>
         /// <param name="agent">The participant whose raw score is evaluated.</param>

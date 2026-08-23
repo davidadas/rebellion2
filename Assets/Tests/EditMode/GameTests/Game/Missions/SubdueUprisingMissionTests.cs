@@ -121,34 +121,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void RollParticipantSuccess_DetachedProposal_UsesStoredLocation()
-        {
-            (
-                GameRoot game,
-                Planet empirePlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-            empirePlanet.BeginUprising();
-            game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
-            {
-                { -1000, 100 },
-            };
-            Mission mission = CreateSubdueUprisingMission(
-                "empire",
-                empirePlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-
-            bool successful = mission.RollParticipantSuccess(officer, new FixedRNG(0), game);
-
-            Assert.IsTrue(successful);
-            Assert.IsNull(mission.GetParent());
-        }
-
-        [Test]
         public void DisplayName_IsHumanReadable()
         {
             (

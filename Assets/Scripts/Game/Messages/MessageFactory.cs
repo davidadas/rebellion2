@@ -2472,8 +2472,11 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Attaches the detached completed outcome that allows a delivered message to reopen its full report.
+        /// Captures a completed combat result and stores the resulting report on a message.
         /// </summary>
+        /// <param name="message">The message that receives the combat report.</param>
+        /// <param name="result">The completed combat result to capture.</param>
+        /// <param name="recipient">The faction whose perspective the report represents.</param>
         private static void AttachCombatReport(
             MessageDeliveryRequest message,
             GameResult result,

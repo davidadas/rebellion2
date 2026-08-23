@@ -81,9 +81,7 @@ namespace Rebellion.Game.Missions
         /// <returns>The participant's raw incite-uprising score.</returns>
         protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
-            Planet planet = GetMissionPlanet(game);
-            if (planet == null)
-                return null;
+            Planet planet = GetParent() as Planet;
 
             int leadershipSkill = agent.GetEffectiveRating(OfficerRating.Leadership);
             int enemySupport = planet.GetOpposingPopularSupport(OwnerInstanceID);

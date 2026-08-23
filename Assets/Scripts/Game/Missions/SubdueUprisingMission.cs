@@ -109,9 +109,7 @@ namespace Rebellion.Game.Missions
         /// <returns>The participant's raw subdue-uprising score.</returns>
         protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
-            Planet planet = GetMissionPlanet(game);
-            if (planet == null)
-                return null;
+            Planet planet = GetParent() as Planet;
 
             int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
                 game?.Config?.Uprising?.ResistanceRegimentTypeID
