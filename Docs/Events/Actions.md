@@ -193,7 +193,32 @@ Use [`EvaluateEventVariable`](Conditions.md) to read the value from a condition.
 
 Message types are `PopularSupport`, `Fleet`, `Mission`, `Resource`, `Manufacturing`, `Defense`, `Conflict`, `Chat`, and `Advice`.
 
-`ConditionalBodies` can append alternate `Body` or `ElseBody` text based on conditions. Message text supports context tokens such as `{subject}` and `{location}`. Presentation elements accept the source forms supported by that element: authored paths, configured keys or presets, and trigger bindings where applicable.
+`ConditionalBodies` contains zero or more `ConditionalBody` entries. Each entry accepts optional
+`Conditionals`, `Body`, and `ElseBody` children and appends the selected text. Message text supports
+context tokens such as `{subject}` and `{location}`.
+
+Presentation sources have distinct contracts:
+
+- `BackgroundImage` — exactly one `Key`, `Path`, or string-valued `Binding`.
+- `OverlayImage` — optional `Path`. When omitted, an officer subject supplies its current message
+  image.
+- `BackgroundAudio` — exactly one `Path` or string-valued `Binding`.
+- `OfficerVoice` — exactly one explicit `Path` or officer voice-line `Preset`.
+- `AdvisorNotification` — optional `Preset`, `LifetimeTicks`, `Droid`, and `Protocol`. `Droid` and
+  `Protocol` accept `Animation`, `AnimationPath`, `FrameCount`, `Audio`, `AudioPath`,
+  `DelayBeforeSeconds`, and `RequiresAnnouncementsEnabled` overrides.
+
+XML permits presentation properties as attributes or child elements where the schema declares
+both forms. Do not provide the same property in both forms.
+
+Officer voice presets are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFailure`,
+`MissionAbort`, `Released`, `Recovered`, `EnemyDetected`, `ForceGrowth`, `ForceUserDiscovered`,
+`TraitorDiscovered`, and `RescueAttempt`. Advisor presets are `None`, `PositivePopularSupport`,
+`NegativePopularSupport`, `Manufacturing`, `Research`, `FleetArrived`, `UnitsArrived`,
+`CapitalShipRepaired`, `StarfighterRepaired`, `Maintenance`, `BlockadeInitiated`,
+`BlockadeDetected`, `FieldPersonnel`, `AgentReport`, `PlanetaryStatus`, `PrisonerEscaped`,
+`InterceptedCommunication`, `Bombardment`, `PlanetaryAssault`, `SubjectReport`,
+`SubjectCaptured`, and `SubjectReleased`.
 
 ## Planets and resources
 
@@ -353,6 +378,10 @@ Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use 
 ```
 
 Both `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `DestinationInstanceID` attributes or typed `Units` and `Destination` selector collections. A destination collection must resolve exactly one destination unless it explicitly uses `SelectFirst`.
+
+Transfer actions submit requests to the normal movement rules. If no destination accepts the whole
+group, existing units remain where they were and newly spawned units are not retained; the event
+activation itself is still consumed. Use `SelectFirst` to provide ordered fallback destinations.
 
 ### SetNodeActive
 

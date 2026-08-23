@@ -167,7 +167,8 @@ binding.
 - `CompareTo` — required value.
 
 ```xml
-<EvaluateBinding Binding="$outcome" Comparison="Equal" CompareTo="Succeeded"/>
+<!-- Given <MissionCompleted As="mission"/> in this event's Triggers. -->
+<EvaluateBinding Binding="$mission.Outcome" Comparison="Equal" CompareTo="Success"/>
 ```
 
 ### BindingIncludesUnit
@@ -180,7 +181,8 @@ Passes when a bound collection contains the named unit.
 - `UnitInstanceID` — required unit ID.
 
 ```xml
-<BindingIncludesUnit Binding="$participants" UnitInstanceID="LUKE_SKYWALKER"/>
+<!-- Given <MissionCompleted As="mission"/> in this event's Triggers. -->
+<BindingIncludesUnit Binding="$mission.Participants" UnitInstanceID="LUKE_SKYWALKER"/>
 ```
 
 ## Ownership and support

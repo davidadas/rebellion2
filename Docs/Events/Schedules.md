@@ -27,7 +27,9 @@ If the event's conditionals fail at tick 200, it remains eligible until they pas
 
 ## RandomDelay
 
-`RandomDelay` rolls one inclusive delay before a one-shot event becomes eligible.
+`RandomDelay` rolls one inclusive campaign tick before a one-shot event becomes eligible. Initial
+schedule values are measured from campaign tick zero; they are not added to the tick on which the
+event catalog happens to be evaluated.
 
 **Options**
 
@@ -42,7 +44,8 @@ If the event's conditionals fail at tick 200, it remains eligible until they pas
 
 ## Every
 
-`Every` repeats at a fixed interval. `InitialDelayTicks` controls its first eligible tick.
+`Every` repeats at a fixed interval. `InitialDelayTicks` sets its first eligible campaign tick,
+measured from tick zero. Later intervals are measured from the event's previous activation.
 
 **Options**
 
@@ -62,7 +65,8 @@ If the event's conditionals fail at tick 200, it remains eligible until they pas
 
 ## RandomInterval
 
-`RandomInterval` repeats after a newly rolled inclusive delay following each activation.
+`RandomInterval` rolls its first eligible campaign tick from the authored range, measured from tick
+zero. After each activation, it rolls a new inclusive delay from that activation tick.
 
 **Options**
 

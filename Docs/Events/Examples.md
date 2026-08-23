@@ -126,8 +126,8 @@ percent of the time and a message-only outcome 70 percent of the time.
 
 ## Damage random defensive units
 
-This repeating event selects an owned core planet, destroys a random sample of defensive units,
-records the changes as an incident, and sends a message.
+This repeating event selects an Alliance-owned core planet, destroys a random sample of defensive
+units, records the changes as an incident, and sends a message to the Alliance.
 
 ```xml
 <GameEvent>
@@ -137,7 +137,7 @@ records the changes as an incident, and sends a message.
       <From>
         <SelectRandom Count="1">
           <From>
-            <SelectPlanets SectorType="Core"/>
+            <SelectPlanets OwnerFactionInstanceID="FNALL1" SectorType="Core"/>
           </From>
         </SelectRandom>
       </From>
@@ -146,10 +146,6 @@ records the changes as an incident, and sends a message.
   <Schedule>
     <RandomInterval MinimumTicks="100" MaximumTicks="300"/>
   </Schedule>
-  <Conditionals>
-    <!-- Omitting FactionInstanceID means any non-neutral owner is accepted. -->
-    <IsOwned PlanetBinding="$planet"/>
-  </Conditionals>
   <Actions>
     <DestroyUnits PlanetBinding="$planet">
       <Units>
@@ -163,7 +159,9 @@ records the changes as an incident, and sends a message.
       </Units>
     </DestroyUnits>
     <RecordPlanetIncident Type="Uprising" PlanetBinding="$planet"/>
-    <SendMessage LocationBinding="$planet" Type="Defense">
+    <SendMessage RecipientFactionInstanceID="FNALL1"
+                 LocationBinding="$planet"
+                 Type="Defense">
       <Subject>Planetary defenses attacked</Subject>
       <Body>Hostile forces attacked defenses on {location}.</Body>
       <BackgroundImage Path="Pack/Shared/Events/MessageBackgrounds/planetary-attack"/>

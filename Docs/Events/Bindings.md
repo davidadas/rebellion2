@@ -14,7 +14,9 @@ results or multiple results fail the evaluation.
 **Options**
 
 - `As` — required unique binding name.
-- `From` — required child containing exactly one selector.
+- `From` — required child containing exactly one supported selector. The schema currently accepts
+  direct planet, officer, special-forces, fleet, mission, ship, regiment, building, and
+  manufacturing-order selectors, plus `SelectRandom` and `SelectBinding`.
 
 ```xml
 <Bindings>
@@ -269,15 +271,16 @@ checks candidates in authored order and uses the first one that accepts the unit
 
 ### SelectBinding
 
-Returns the scene node or scene-node collection stored by a trigger binding. Its runtime type must
-be valid for the consumer.
+Returns the scene node or scene-node collection stored by an event binding or reachable through a
+trigger-result property path. Its runtime type must be valid for the consumer.
 
 **Options**
 
 - `Binding` — required `$alias` reference.
 
 ```xml
-<SelectBinding Binding="$participants"/>
+<!-- Given <MissionCompleted As="mission"/> in this event's Triggers. -->
+<SelectBinding Binding="$mission.Participants"/>
 ```
 
 ### SelectNearestParent

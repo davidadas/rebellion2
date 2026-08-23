@@ -9,7 +9,8 @@ Triggers activate events from typed gameplay results. An event uses either `Trig
 </Triggers>
 ```
 
-When multiple triggers use `As`, every trigger on that event must use the same alias and expose a compatible result type.
+When multiple triggers use `As`, every trigger on that event must use the same alias and expose the
+same concrete result type.
 
 ## MissionCompleted
 
@@ -80,7 +81,8 @@ Activates when a duel completes and all authored filters match.
 
 ## Trigger bindings
 
-`As` binds the complete matched result for use by conditionals and actions. Prefix the alias with `$` when referring to it:
+`As` binds the complete matched result for use by conditionals and actions. Prefix the alias with
+`$` when referring to it, then traverse public result properties with dots:
 
 ```xml
 <Triggers>
@@ -94,6 +96,10 @@ Activates when a duel completes and all authored filters match.
 ```
 
 Use top-level [`Bindings`](Bindings.md#bindings) when an event must select and retain a scene node independently of a gameplay result.
+
+Mission outcomes are `Success`, `Failed`, and `Foiled`. Completion reasons are `None`, `Success`,
+`Failure`, `Foiled`, `TargetUnavailable`, `NoResearchFacilities`, `ResearchProgress`, and
+`ResearchBreakthrough`. Participant matching supports `Any` and `All`.
 
 ---
 
