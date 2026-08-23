@@ -17,7 +17,16 @@ When multiple triggers use `As`, they must use the same alias and expose the sam
 
 Activates after a planet changes owner.
 
-**Options:** `PlanetInstanceID`, `PreviousOwnerFactionInstanceID`, `NewOwnerFactionInstanceID`, `Reason` (`None` or `PopularSupport`), `SourceEventInstanceID`, and `As`.
+**Options**
+
+- `PlanetInstanceID` — limits the trigger to one planet.
+- `PreviousOwnerFactionInstanceID` — limits the trigger by previous owner.
+- `NewOwnerFactionInstanceID` — limits the trigger by new owner.
+- `Reason` — accepts `None` or `PopularSupport`.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `PlanetOwnershipChangedResult`.
+
+**Example**
 
 ```xml
 <Triggers>
@@ -31,25 +40,97 @@ Activates after a planet changes owner.
 
 Activates after a recorded planet value changes.
 
-**Options:** `PlanetInstanceID`, `FactionInstanceID`, `Category`, `SourceEventInstanceID`, and `As`. Categories are `Energy`, `EnergyAllocated`, `Loyalty`, `ProductionModifier`, `RawMaterial`, `RawMaterialAllocated`, `Smuggling`, `TroopWithdrawPercent`, `TroopSurplus`, `TroopRequired`, and `ControlUprising`.
+**Options**
+
+- `PlanetInstanceID` — limits the trigger to one planet.
+- `FactionInstanceID` — limits the trigger to a faction-specific value.
+- `Category` — accepts `Energy`, `EnergyAllocated`, `Loyalty`, `ProductionModifier`, `RawMaterial`, `RawMaterialAllocated`, `Smuggling`, `TroopWithdrawPercent`, `TroopSurplus`, `TroopRequired`, or `ControlUprising`.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `PlanetStatChangedResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <PlanetStatChanged PlanetInstanceID="NABOO" Category="Loyalty" As="change"/>
+</Triggers>
+```
 
 ### BlockadeChanged
 
 Activates when a blockade begins or ends.
 
-**Options:** `PlanetInstanceID`, `IsBlockaded`, `SourceEventInstanceID`, and `As`.
+**Options**
 
-### UprisingStarted and UprisingEnded
+- `PlanetInstanceID` — limits the trigger to one planet.
+- `IsBlockaded` — use `true` for a new blockade or `false` for a lifted blockade.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `BlockadeChangedResult`.
 
-Activate when an uprising starts or ends.
+**Example**
 
-**Options:** Both accept `PlanetInstanceID`, `SourceEventInstanceID`, and `As`. `UprisingStarted` also accepts `InstigatorFactionInstanceID`; `UprisingEnded` accepts `FactionInstanceID`.
+```xml
+<Triggers>
+  <BlockadeChanged PlanetInstanceID="CORUSCANT" IsBlockaded="true"/>
+</Triggers>
+```
+
+### UprisingStarted
+
+Activates when an uprising starts.
+
+**Options**
+
+- `PlanetInstanceID` — limits the trigger to one planet.
+- `InstigatorFactionInstanceID` — limits the trigger by the instigating faction.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `PlanetUprisingStartedResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <UprisingStarted PlanetInstanceID="NABOO" InstigatorFactionInstanceID="FNALL1"/>
+</Triggers>
+```
+
+### UprisingEnded
+
+Activates when an uprising ends.
+
+**Options**
+
+- `PlanetInstanceID` — limits the trigger to one planet.
+- `FactionInstanceID` — limits the trigger by the affected faction.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `PlanetUprisingEndedResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <UprisingEnded PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
+</Triggers>
+```
 
 ### PlanetIncident
 
 Activates when an event records a planet incident.
 
-**Options:** `PlanetInstanceID`, `Type` (`Uprising`, `Intelligence`, `Disaster`, or `Resource`), `SourceEventInstanceID`, and `As`.
+**Options**
+
+- `PlanetInstanceID` — limits the trigger to one planet.
+- `Type` — accepts `Uprising`, `Intelligence`, `Disaster`, or `Resource`.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `PlanetIncidentResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <PlanetIncident PlanetInstanceID="NABOO" Type="Disaster"/>
+</Triggers>
+```
 
 ## Faction
 
@@ -57,7 +138,15 @@ Activates when an event records a planet incident.
 
 Activates when a faction advances a research discipline.
 
-**Options:** `FactionInstanceID`, `Discipline` (`None`, `ShipDesign`, `FacilityDesign`, or `TroopTraining`), `TechnologyTypeID`, `SourceEventInstanceID`, and `As`.
+**Options**
+
+- `FactionInstanceID` — limits the trigger to one faction.
+- `Discipline` — accepts `None`, `ShipDesign`, `FacilityDesign`, or `TroopTraining`.
+- `TechnologyTypeID` — limits the trigger to one technology type.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `ResearchOrderedResult`.
+
+**Example**
 
 ```xml
 <Triggers>
@@ -73,7 +162,16 @@ Activates when a faction advances a research discipline.
 
 Activates when a mission completes.
 
-**Options:** `MissionTypeID`, `Outcome`, `CompletionReason`, `SourceEventInstanceID`, `As`, and an optional `Participants` filter with `Match="Any"` or `Match="All"`.
+**Options**
+
+- `MissionTypeID` — limits the trigger to one mission type.
+- `Outcome` — accepts `Success`, `Failed`, or `Foiled`.
+- `CompletionReason` — accepts `None`, `Success`, `Failure`, `Foiled`, `TargetUnavailable`, `NoResearchFacilities`, `ResearchProgress`, or `ResearchBreakthrough`.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `MissionCompletedResult`.
+- `Participants` — optionally requires `Any` or `All` listed units to have participated.
+
+**Example**
 
 ```xml
 <Triggers>
@@ -88,27 +186,82 @@ Activates when a mission completes.
 </Triggers>
 ```
 
-Mission outcomes are `Success`, `Failed`, and `Foiled`. Completion reasons are `None`, `Success`, `Failure`, `Foiled`, `TargetUnavailable`, `NoResearchFacilities`, `ResearchProgress`, and `ResearchBreakthrough`.
-
 ## Officer
 
 ### OfficerCaptureChanged
 
 Activates when an officer becomes captured or is released.
 
-**Options:** `OfficerInstanceID`, `IsCaptured`, `SourceEventInstanceID`, and `As`.
+**Options**
 
-### OfficerKilled and OfficerInjured
+- `OfficerInstanceID` — limits the trigger to one officer.
+- `IsCaptured` — use `true` for capture or `false` for release.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `OfficerCaptureStateResult`.
 
-Activate when an officer is killed or injured.
+**Example**
 
-**Options:** `OfficerInstanceID`, `SourceEventInstanceID`, and `As`.
+```xml
+<Triggers>
+  <OfficerCaptureChanged OfficerInstanceID="HAN_SOLO" IsCaptured="true"/>
+</Triggers>
+```
+
+### OfficerKilled
+
+Activates when an officer is killed.
+
+**Options**
+
+- `OfficerInstanceID` — limits the trigger to one officer.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `OfficerKilledResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <OfficerKilled OfficerInstanceID="EMPEROR_PALPATINE"/>
+</Triggers>
+```
+
+### OfficerInjured
+
+Activates when an officer is injured.
+
+**Options**
+
+- `OfficerInstanceID` — limits the trigger to one officer.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `OfficerInjuredResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <OfficerInjured OfficerInstanceID="LUKE_SKYWALKER" As="injury"/>
+</Triggers>
+```
 
 ### OfficerRecruited
 
 Activates when an officer is recruited.
 
-**Options:** `OfficerInstanceID`, `FactionInstanceID`, `PlanetInstanceID`, `SourceEventInstanceID`, and `As`.
+**Options**
+
+- `OfficerInstanceID` — limits the trigger to one officer.
+- `FactionInstanceID` — limits the trigger to one recruiting faction.
+- `PlanetInstanceID` — limits the trigger to one recruitment planet.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `OfficerRecruitedResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <OfficerRecruited OfficerInstanceID="HAN_SOLO" FactionInstanceID="FNALL1"/>
+</Triggers>
+```
 
 ## Unit lifecycle
 
@@ -116,19 +269,199 @@ Activates when an officer is recruited.
 
 Activates after a unit changes owner.
 
-**Options:** `UnitInstanceID`, `PreviousOwnerFactionInstanceID`, `NewOwnerFactionInstanceID`, `SourceEventInstanceID`, and `As`.
+**Options**
 
-### UnitCreated and UnitDestroyed
+- `UnitInstanceID` — limits the trigger to one unit.
+- `PreviousOwnerFactionInstanceID` — limits the trigger by previous owner.
+- `NewOwnerFactionInstanceID` — limits the trigger by new owner.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `UnitOwnershipChangedResult`.
 
-Activate when a unit is created or destroyed.
+**Example**
 
-**Options:** `UnitInstanceID`, `SourceEventInstanceID`, and `As`.
+```xml
+<Triggers>
+  <UnitOwnershipChanged UnitInstanceID="CAPTURED_SHIP"
+                        NewOwnerFactionInstanceID="FNALL1"/>
+</Triggers>
+```
+
+### UnitCreated
+
+Activates when a unit is created.
+
+**Options**
+
+- `UnitInstanceID` — limits the trigger to one unit.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `GameObjectCreatedResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <UnitCreated UnitInstanceID="ROGUE_SQUADRON"/>
+</Triggers>
+```
+
+### UnitDestroyed
+
+Activates when a unit is destroyed.
+
+**Options**
+
+- `UnitInstanceID` — limits the trigger to one unit.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `GameObjectDestroyedResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <UnitDestroyed UnitInstanceID="DEATH_STAR"/>
+</Triggers>
+```
 
 ### UnitArrived
 
 Activates when a unit finishes movement.
 
-**Options:** `UnitInstanceID`, `DestinationInstanceID`, `SourceEventInstanceID`, and `As`.
+**Options**
+
+- `UnitInstanceID` — limits the trigger to one arriving unit.
+- `DestinationInstanceID` — limits the trigger to one destination.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `UnitArrivedResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <UnitArrived UnitInstanceID="EMPEROR_PALPATINE"
+               DestinationInstanceID="CORUSCANT"
+               As="arrival"/>
+</Triggers>
+```
+
+## Combat
+
+### SpaceCombatCompleted
+
+Activates after a space battle resolves.
+
+**Options**
+
+- `PlanetInstanceID` — limits the trigger to combat at one planet.
+- `AttackerFactionInstanceID` — limits the trigger by attacker.
+- `DefenderFactionInstanceID` — limits the trigger by defender.
+- `Winner` — accepts `Attacker`, `Defender`, or `Draw`.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `SpaceCombatResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <SpaceCombatCompleted PlanetInstanceID="ENDOR" Winner="Attacker" As="battle"/>
+</Triggers>
+```
+
+### BombardmentCompleted
+
+Activates after bombardment resolves.
+
+**Options**
+
+- `PlanetInstanceID` — limits the trigger to one planet.
+- `AttackerFactionInstanceID` — limits the trigger by attacker.
+- `DefenderFactionInstanceID` — limits the trigger by defender.
+- `Type` — accepts `Military`, `Civilian`, `General`, or `DestroyPlanet`.
+- `PlanetDestroyed` — limits the trigger by whether the planet was destroyed.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `BombardmentResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <BombardmentCompleted PlanetInstanceID="ALDERAAN"
+                        Type="DestroyPlanet"
+                        PlanetDestroyed="true"/>
+</Triggers>
+```
+
+### PlanetaryAssaultCompleted
+
+Activates after a planetary assault resolves.
+
+**Options**
+
+- `PlanetInstanceID` — limits the trigger to one planet.
+- `AttackerFactionInstanceID` — limits the trigger by attacker.
+- `DefenderFactionInstanceID` — limits the trigger by defender.
+- `Success` — limits the trigger by assault success.
+- `BlockedByShields` — limits the trigger by whether shields prevented the assault.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `PlanetaryAssaultResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <PlanetaryAssaultCompleted PlanetInstanceID="HOTH"
+                             AttackerFactionInstanceID="FNEMP1"
+                             Success="true"/>
+</Triggers>
+```
+
+### DuelCompleted
+
+Activates after a duel resolves.
+
+**Options**
+
+- `FirstOfficerInstanceID` — limits the first officer.
+- `SecondOfficerInstanceID` — limits the second officer.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `DuelResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <DuelCompleted FirstOfficerInstanceID="LUKE_SKYWALKER"
+                 SecondOfficerInstanceID="DARTH_VADER"
+                 As="duel"/>
+</Triggers>
+```
+
+## Manufacturing
+
+### ManufacturingCompleted
+
+Activates when a manufactured unit is deployed.
+
+**Options**
+
+- `FactionInstanceID` — limits the trigger to one manufacturing faction.
+- `UnitInstanceID` — limits the trigger to one deployed unit.
+- `LocationInstanceID` — limits the trigger to one deployment location.
+- `SourceEventInstanceID` — limits the trigger to results from one event.
+- `As` — binds the complete `ManufacturingDeployedResult`.
+
+**Example**
+
+```xml
+<Triggers>
+  <ManufacturingCompleted FactionInstanceID="FNALL1"
+                          LocationInstanceID="YAVIN"
+                          As="production"/>
+</Triggers>
+```
+
+## Trigger bindings
+
+`As` binds the complete matched result. Prefix the alias with `$` and traverse its public properties from conditionals or actions:
 
 ```xml
 <Triggers>
@@ -141,49 +474,7 @@ Activates when a unit finishes movement.
 </Conditionals>
 ```
 
-## Combat
-
-### SpaceCombatCompleted
-
-Activates after a space battle resolves.
-
-**Options:** `PlanetInstanceID`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Winner` (`Attacker`, `Defender`, or `Draw`), `SourceEventInstanceID`, and `As`.
-
-### BombardmentCompleted
-
-Activates after bombardment resolves.
-
-**Options:** `PlanetInstanceID`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Type` (`Military`, `Civilian`, `General`, or `DestroyPlanet`), `PlanetDestroyed`, `SourceEventInstanceID`, and `As`.
-
-### PlanetaryAssaultCompleted
-
-Activates after a planetary assault resolves.
-
-**Options:** `PlanetInstanceID`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Success`, `BlockedByShields`, `SourceEventInstanceID`, and `As`.
-
-### DuelCompleted
-
-Activates after a duel resolves.
-
-**Options:** `FirstOfficerInstanceID`, `SecondOfficerInstanceID`, `SourceEventInstanceID`, and `As`.
-
-## Manufacturing
-
-### ManufacturingCompleted
-
-Activates when a manufactured unit is deployed.
-
-**Options:** `FactionInstanceID`, `UnitInstanceID`, `LocationInstanceID`, `SourceEventInstanceID`, and `As`.
-
-```xml
-<Triggers>
-  <ManufacturingCompleted FactionInstanceID="FNALL1" As="production"/>
-</Triggers>
-```
-
-## Trigger bindings
-
-`As` binds the complete matched result. Prefix the alias with `$` and traverse its public properties from conditionals or actions. Use top-level [`Bindings`](Bindings.md#bindings) when an event must select and retain a scene node independently of a gameplay result.
+Use top-level [`Bindings`](Bindings.md#bindings) when an event must select and retain a scene node independently of a gameplay result.
 
 ---
 
