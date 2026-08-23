@@ -89,8 +89,7 @@ namespace Rebellion.Game.Events
         /// <summary>Attempts to resolve one explicit binding reference as the requested type.</summary>
         public bool TryGetBindingReference<T>(string reference, out T value)
         {
-            object resolved = ResolveBindingReference(reference);
-            if (resolved is T typed)
+            if (TryResolveBindingReference(reference, out object resolved) && resolved is T typed)
             {
                 value = typed;
                 return true;
@@ -100,11 +99,8 @@ namespace Rebellion.Game.Events
         }
 
         /// <summary>Attempts to resolve one explicit binding reference without a type constraint.</summary>
-        public bool TryGetBindingReference(string reference, out object value)
-        {
-            value = ResolveBindingReference(reference);
-            return value != null;
-        }
+        public bool TryGetBindingReference(string reference, out object value) =>
+            TryResolveBindingReference(reference, out value);
 
         /// <summary>Gets one explicit binding reference as the requested type.</summary>
         public T GetBindingReference<T>(string reference)
@@ -120,15 +116,15 @@ namespace Rebellion.Game.Events
             return reference.Substring(1);
         }
 
-        /// <summary>Resolves one explicitly authored binding from the evaluation context.</summary>
-        private object ResolveBindingReference(string reference)
+        /// <summary>Attempts to resolve one explicitly authored binding from the evaluation context.</summary>
+        private bool TryResolveBindingReference(string reference, out object value)
         {
             string name = GetBindingName(reference);
             if (name.Contains("."))
                 throw new InvalidOperationException(
                     "Binding references cannot traverse object properties. Bind the required trigger argument explicitly."
                 );
-            return _bindings.TryGetValue(name, out object value) ? value : null;
+            return _bindings.TryGetValue(name, out value);
         }
 
         /// <summary>

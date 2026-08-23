@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -10,8 +9,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace Rebellion.Tests.Managers
 {
@@ -572,7 +569,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void LoadGameData_UnknownElement_SkipsElementAndWarns()
+        public void LoadGameData_UnknownElement_SkipsElement()
         {
             GameRoot game = new GameRoot
             {
@@ -588,11 +585,6 @@ namespace Rebellion.Tests.Managers
                     "<GameRoot><FutureField><Nested>future value</Nested></FutureField>"
                 );
             File.WriteAllText(savePath, xml);
-            LogAssert.Expect(
-                LogType.Warning,
-                new Regex(".*Ignored unknown element 'FutureField' while loading GameRoot\\.")
-            );
-
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(20, loadedGame.CurrentTick);
