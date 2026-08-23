@@ -180,6 +180,37 @@ namespace Rebellion.Tests.Util.Serialization
     }
 
     [PersistableObject]
+    public class ItemWithInlineCollection
+    {
+        [PersistableInlineCollection]
+        public List<ITestItem> Items { get; set; } = new List<ITestItem>();
+    }
+
+    [PersistableObject]
+    public class ItemWithNullInlineCollection
+    {
+        [PersistableInlineCollection]
+        public List<ITestItem> Items { get; set; }
+    }
+
+    [PersistableObject]
+    public class ItemWithInvalidInlineCollection
+    {
+        [PersistableInlineCollection]
+        public IEnumerable<ITestItem> Items { get; set; } = new List<ITestItem>();
+    }
+
+    [PersistableObject]
+    public class ItemWithMultipleInlineCollections
+    {
+        [PersistableInlineCollection]
+        public List<ITestItem> First { get; set; } = new List<ITestItem>();
+
+        [PersistableInlineCollection]
+        public List<ITestItem> Second { get; set; } = new List<ITestItem>();
+    }
+
+    [PersistableObject]
     public class ItemWithInclude
     {
         [PersistableInclude(typeof(SimpleItem))]
@@ -208,6 +239,138 @@ namespace Rebellion.Tests.Util.Serialization
             StringAssert.Contains("<Path>first</Path>", xml);
             StringAssert.DoesNotContain("<String>", xml);
             CollectionAssert.AreEqual(item.Paths, restored.Paths);
+        }
+
+        [Test]
+        public void Serialize_InlineCollection_RoundTripsWithoutWrapper()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithInlineCollection));
+            ItemWithInlineCollection item = new ItemWithInlineCollection
+            {
+                Items = new List<ITestItem>
+                {
+                    new SimpleItem { Name = "first" },
+                    new SimpleItem { Name = "second" },
+                },
+            };
+
+            string xml = SerializeToString(serializer, item);
+            ItemWithInlineCollection restored = (ItemWithInlineCollection)DeserializeFromString(
+                serializer,
+                xml
+            );
+
+            StringAssert.Contains(
+                "<ItemWithInlineCollection><SimpleItem>",
+                xml.Replace("\r", "").Replace("\n", "").Replace("  ", "")
+            );
+            StringAssert.DoesNotContain("<Items>", xml);
+            Assert.AreEqual(2, restored.Items.Count);
+            Assert.AreEqual("first", restored.Items[0].Name);
+            Assert.AreEqual("second", restored.Items[1].Name);
+        }
+
+        [Test]
+        public void Deserialize_InlineCollection_AcceptsLegacyWrapper()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithInlineCollection));
+            const string xml =
+                "<ItemWithInlineCollection><Items><SimpleItem><Name>legacy</Name></SimpleItem></Items></ItemWithInlineCollection>";
+
+            ItemWithInlineCollection restored = (ItemWithInlineCollection)DeserializeFromString(
+                serializer,
+                xml
+            );
+
+            Assert.AreEqual(1, restored.Items.Count);
+            Assert.AreEqual("legacy", restored.Items[0].Name);
+        }
+
+        [Test]
+        public void Serialize_InlineCollection_AllowsEmptyCollection()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithInlineCollection));
+
+            string xml = SerializeToString(serializer, new ItemWithInlineCollection());
+            ItemWithInlineCollection restored = (ItemWithInlineCollection)DeserializeFromString(
+                serializer,
+                xml
+            );
+
+            Assert.AreEqual(0, restored.Items.Count);
+        }
+
+        [Test]
+        public void Deserialize_InlineCollection_RejectsUnknownChildType()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithInlineCollection));
+            const string xml = "<ItemWithInlineCollection><NestedItem/></ItemWithInlineCollection>";
+
+            Assert.Throws<InvalidOperationException>(() => DeserializeFromString(serializer, xml));
+        }
+
+        [Test]
+        public void Serialize_InlineCollection_RejectsNullCollection()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithNullInlineCollection));
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                SerializeToString(serializer, new ItemWithNullInlineCollection())
+            );
+
+            StringAssert.Contains("cannot be null", exception.Message);
+        }
+
+        [Test]
+        public void Deserialize_InlineCollection_RejectsNullCollection()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithNullInlineCollection));
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                DeserializeFromString(serializer, "<ItemWithNullInlineCollection/>")
+            );
+
+            StringAssert.Contains("must be initialized", exception.Message);
+        }
+
+        [Test]
+        public void Serialize_InlineCollection_RejectsNullItem()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithInlineCollection));
+            ItemWithInlineCollection item = new ItemWithInlineCollection();
+            item.Items.Add(null);
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                SerializeToString(serializer, item)
+            );
+
+            StringAssert.Contains("cannot contain null items", exception.Message);
+        }
+
+        [Test]
+        public void Serialize_InlineCollection_RejectsNonListCollection()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithInvalidInlineCollection));
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                SerializeToString(serializer, new ItemWithInvalidInlineCollection())
+            );
+
+            StringAssert.Contains("must be a mutable generic IList", exception.Message);
+        }
+
+        [Test]
+        public void Serialize_InlineCollection_RejectsMultipleInlineMembers()
+        {
+            GameSerializer serializer = new GameSerializer(
+                typeof(ItemWithMultipleInlineCollections)
+            );
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                SerializeToString(serializer, new ItemWithMultipleInlineCollections())
+            );
+
+            StringAssert.Contains("more than one inline collection", exception.Message);
         }
 
         [Test]

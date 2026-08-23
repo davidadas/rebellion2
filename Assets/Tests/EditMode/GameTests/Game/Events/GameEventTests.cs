@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Advisor;
 using Rebellion.Game.Events;
@@ -94,8 +95,12 @@ namespace Rebellion.Tests.Game.Events
             string xml = SerializationHelper.Serialize(gameEvent);
             GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
 
-            StringAssert.Contains("<Not><Any><IsCaptured", xml);
-            Assert.IsFalse(xml.Contains("<Not><Conditionals>"));
+            XElement root = XElement.Parse(xml);
+            XElement notElement = root.Element("Conditionals")?.Element("Not");
+            XElement anyElement = notElement?.Element("Any");
+            Assert.IsNotNull(anyElement?.Element("IsCaptured"));
+            Assert.IsNull(notElement?.Element("Conditionals"));
+            Assert.IsNull(anyElement.Element("Conditionals"));
             NotConditional not = (NotConditional)restored.Conditionals.Single();
             AnyConditional any = (AnyConditional)not.Conditionals.Single();
             Assert.AreEqual(2, any.Conditionals.Count);

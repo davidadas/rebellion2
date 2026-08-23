@@ -42,7 +42,7 @@ namespace Rebellion.Util.Serialization
     }
 
     /// <summary>
-    /// Writes collection items directly beneath their containing object without a collection wrapper.
+    /// Writes items from one initialized mutable list directly beneath their containing object.
     /// </summary>
     [AttributeUsage(
         AttributeTargets.Field | AttributeTargets.Property,
