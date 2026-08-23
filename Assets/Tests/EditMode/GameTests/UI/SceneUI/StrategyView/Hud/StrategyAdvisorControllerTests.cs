@@ -197,18 +197,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
             StrategyAdvisorTheme theme = CreateTheme();
-            theme.NotificationCodes.Add(
-                new StrategyAdvisorNotificationCodeTheme
-                {
-                    Code = (int)AdvisorNotificationType.PositivePopularSupport,
-                    TableID = 10,
-                    LifetimeTicks = 20,
-                }
-            );
             theme.Notifications.Add(
                 new StrategyAdvisorNotificationTheme
                 {
-                    TableID = 10,
+                    NotificationType = AdvisorNotificationType.PositivePopularSupport,
+                    LifetimeTicks = 20,
                     Droid = new StrategyAdvisorAnimationTheme
                     {
                         Animation = "Alert",
@@ -321,22 +314,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 UnityEngine.Object.DestroyImmediate(protocolIdleTexture);
                 UnityEngine.Object.DestroyImmediate(rootObject);
             }
-        }
-
-        [Test]
-        public void GetNotificationCode_MaintenanceNotification_ReturnsAuthoredMaintenanceCode()
-        {
-            MessageDeliveredResult delivery = new MessageDeliveredResult
-            {
-                NotificationType = AdvisorNotificationType.Maintenance,
-            };
-
-            int code = StrategyAdvisorController.GetNotificationCode(
-                new StrategyAdvisorTheme(),
-                delivery
-            );
-
-            Assert.AreEqual(12, code);
         }
 
         [Test]

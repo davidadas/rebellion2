@@ -177,60 +177,24 @@ public class StrategyBriefingTheme
 }
 
 /// <summary>
-/// Defines the droid and protocol animations for an advisor notification table entry.
+/// Defines the presentation for a semantic advisor notification.
 /// </summary>
 [PersistableObject]
 public class StrategyAdvisorNotificationTheme
 {
-    public int TableID { get; set; }
+    public AdvisorNotificationType NotificationType { get; set; }
+
+    public string SubjectTypeID { get; set; }
+
+    public AdvisorSubjectNotification SubjectNotification { get; set; }
+
+    public AdvisorNotificationType QueueGroup { get; set; }
+
+    public int LifetimeTicks { get; set; }
 
     public StrategyAdvisorAnimationTheme Droid { get; set; }
 
     public StrategyAdvisorAnimationTheme Protocol { get; set; }
-}
-
-/// <summary>
-/// Maps an advisor notification code to a table entry and display lifetime.
-/// </summary>
-[PersistableObject]
-public class StrategyAdvisorNotificationCodeTheme
-{
-    public int Code { get; set; }
-
-    public int TableID { get; set; }
-
-    public int LifetimeTicks { get; set; }
-}
-
-/// <summary>
-/// Maps advisor subject notifications to report codes for one subject type.
-/// </summary>
-[PersistableObject]
-public class StrategyAdvisorSubjectTheme
-{
-    public string TypeID { get; set; }
-
-    public int ReportCode { get; set; }
-
-    public int CapturedCode { get; set; }
-
-    public int ReleasedCode { get; set; }
-
-    /// <summary>
-    /// Gets the configured report code for a subject notification.
-    /// </summary>
-    /// <param name="notification">The subject notification.</param>
-    /// <returns>The configured report code, or zero when unsupported.</returns>
-    public int GetCode(AdvisorSubjectNotification notification)
-    {
-        return notification switch
-        {
-            AdvisorSubjectNotification.Report => ReportCode,
-            AdvisorSubjectNotification.Captured => CapturedCode,
-            AdvisorSubjectNotification.Released => ReleasedCode,
-            _ => 0,
-        };
-    }
 }
 
 /// <summary>
@@ -255,75 +219,71 @@ public class StrategyAdvisorTheme
 
     public int RepeatCooldownTicks { get; set; }
 
-    public int DefaultReportCode { get; set; }
-
-    public int DefaultCapturedCode { get; set; }
-
-    public int DefaultReleasedCode { get; set; }
-
     public StrategyAdvisorAnimationTheme InTransitOrderRejected { get; set; }
 
     public StrategyAdvisorAnimationTheme UnitUnderConstructionOrderRejected { get; set; }
 
-    public List<StrategyAdvisorNotificationCodeTheme> NotificationCodes { get; set; } =
-        new List<StrategyAdvisorNotificationCodeTheme>();
-
     public List<StrategyAdvisorNotificationTheme> Notifications { get; set; } =
         new List<StrategyAdvisorNotificationTheme>();
 
-    public List<StrategyAdvisorSubjectTheme> Subjects { get; set; } =
-        new List<StrategyAdvisorSubjectTheme>();
-
     /// <summary>
-    /// Gets the notification theme mapped to an advisor report code.
+    /// Gets the presentation mapped directly to a semantic advisor notification.
     /// </summary>
-    /// <param name="code">The advisor report code.</param>
-    /// <param name="lifetimeTicks">Receives the configured display lifetime.</param>
+    /// <param name="notificationType">The general notification type.</param>
+    /// <param name="subjectTypeID">The optional subject type identifier.</param>
+    /// <param name="subjectNotification">The optional subject notification.</param>
     /// <returns>The matching notification theme, or <see langword="null"/>.</returns>
-    public StrategyAdvisorNotificationTheme GetNotification(int code, out int lifetimeTicks)
+    public StrategyAdvisorNotificationTheme GetNotification(
+        AdvisorNotificationType notificationType,
+        string subjectTypeID,
+        AdvisorSubjectNotification subjectNotification
+    )
     {
-        lifetimeTicks = 0;
-        int tableID = 0;
-        foreach (StrategyAdvisorNotificationCodeTheme notificationCode in NotificationCodes)
+        if (subjectNotification == AdvisorSubjectNotification.None)
         {
-            if (notificationCode?.Code != code)
-                continue;
-
-            tableID = notificationCode.TableID;
-            lifetimeTicks = notificationCode.LifetimeTicks;
-            break;
+            return Notifications.Find(notification =>
+                notification != null
+                && notification.SubjectNotification == AdvisorSubjectNotification.None
+                && notification.NotificationType == notificationType
+            );
         }
 
-        foreach (StrategyAdvisorNotificationTheme notification in Notifications)
-        {
-            if (notification?.TableID == tableID)
-                return notification;
-        }
-
-        return null;
+        StrategyAdvisorNotificationTheme exactMatch = Notifications.Find(notification =>
+            notification != null
+            && notification.SubjectNotification == subjectNotification
+            && notification.SubjectTypeID == subjectTypeID
+        );
+        return exactMatch
+            ?? Notifications.Find(notification =>
+                notification != null
+                && notification.SubjectNotification == subjectNotification
+                && string.IsNullOrEmpty(notification.SubjectTypeID)
+            );
     }
 
     /// <summary>
-    /// Gets the advisor notification code for a subject type and notification.
+    /// Builds the stable semantic queue key for one notification presentation.
     /// </summary>
-    /// <param name="typeID">The subject type identifier.</param>
-    /// <param name="notification">The subject notification.</param>
-    /// <returns>The subject-specific code or the configured default code.</returns>
-    public int GetSubjectNotificationCode(string typeID, AdvisorSubjectNotification notification)
+    /// <param name="notification">The authored notification presentation.</param>
+    /// <returns>A semantic key, or <see langword="null"/> for an invalid entry.</returns>
+    public static string GetNotificationKey(StrategyAdvisorNotificationTheme notification)
     {
-        foreach (StrategyAdvisorSubjectTheme subject in Subjects)
+        if (notification == null)
+            return null;
+
+        if (notification.QueueGroup != AdvisorNotificationType.None)
+            return $"Group:{notification.QueueGroup}";
+
+        if (notification.SubjectNotification == AdvisorSubjectNotification.None)
         {
-            if (subject?.TypeID == typeID)
-                return subject.GetCode(notification);
+            return notification.NotificationType == AdvisorNotificationType.None
+                ? null
+                : $"Notification:{notification.NotificationType}";
         }
 
-        return notification switch
-        {
-            AdvisorSubjectNotification.Report => DefaultReportCode,
-            AdvisorSubjectNotification.Captured => DefaultCapturedCode,
-            AdvisorSubjectNotification.Released => DefaultReleasedCode,
-            _ => 0,
-        };
+        return string.IsNullOrEmpty(notification.SubjectTypeID)
+            ? $"Subject:{notification.SubjectNotification}"
+            : $"Subject:{notification.SubjectTypeID}:{notification.SubjectNotification}";
     }
 
     /// <summary>
