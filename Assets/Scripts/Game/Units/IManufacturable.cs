@@ -39,6 +39,7 @@ namespace Rebellion.Game.Units
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
+        public long ManufacturingQueueSequence { get; set; }
         public int ManufacturingProgress { get; set; }
         public ManufacturingStatus ManufacturingStatus { get; set; }
 

@@ -387,6 +387,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void SerializeAndDeserialize_WithPopulatedStarfighter_MaintainsState()
         {
+            _starfighter.ManufacturingQueueSequence = 7;
             string serialized = SerializationHelper.Serialize(_starfighter);
             Starfighter deserialized = SerializationHelper.Deserialize<Starfighter>(serialized);
 
@@ -504,6 +505,11 @@ namespace Rebellion.Tests.Game.Units
                 _starfighter.ManufacturingProgress,
                 deserialized.ManufacturingProgress,
                 "ManufacturingProgress should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                _starfighter.ManufacturingQueueSequence,
+                deserialized.ManufacturingQueueSequence,
+                "ManufacturingQueueSequence should be correctly deserialized."
             );
             Assert.AreEqual(
                 _starfighter.ProducerOwnerID,

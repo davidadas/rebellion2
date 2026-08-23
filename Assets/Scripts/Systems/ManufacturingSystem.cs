@@ -879,8 +879,6 @@ namespace Rebellion.Systems
                     DiscardReadyProductionPoints(readyFacilities);
             }
 
-            planet.SynchronizeManufacturingQueueOrder();
-
             return results;
         }
 
@@ -1307,6 +1305,7 @@ namespace Rebellion.Systems
         private void MarkCompleteAndDispatch(Planet productionPlanet, IManufacturable item)
         {
             item.ManufacturingStatus = ManufacturingStatus.Complete;
+            item.ManufacturingQueueSequence = 0;
 
             ContainerNode destination = item.GetParent() as ContainerNode;
             if (destination != null)
@@ -1345,7 +1344,6 @@ namespace Rebellion.Systems
 
             ClearQueueItems(planet, items);
             queue.Remove(type);
-            planet.SynchronizeManufacturingQueueOrder();
             return true;
         }
 
@@ -1396,13 +1394,12 @@ namespace Rebellion.Systems
                 return false;
 
             queue.Remove(queuedItem);
+            queuedItem.ManufacturingQueueSequence = 0;
             DetachQueuedItem(queuedItem);
             if (queue.Count == 0)
             {
                 queues.Remove(type);
             }
-
-            producer.SynchronizeManufacturingQueueOrder();
 
             return true;
         }
@@ -1437,6 +1434,7 @@ namespace Rebellion.Systems
         {
             foreach (IManufacturable item in items.ToList())
             {
+                item.ManufacturingQueueSequence = 0;
                 DetachQueuedItem(item);
                 GameLogger.Debug(
                     $"Cancelled manufacturing: {item.GetType().Name} at {planet.GetDisplayName()}"
@@ -1493,8 +1491,6 @@ namespace Rebellion.Systems
                 ClearQueueItems(planet, items);
                 queue.Remove(type);
             }
-
-            planet.SynchronizeManufacturingQueueOrder();
         }
 
         /// <summary>
@@ -1559,52 +1555,44 @@ namespace Rebellion.Systems
                     ]
                 )
                 {
-                    IReadOnlyList<string> savedOrder = planet.GetManufacturingQueueOrder(entry.Key);
-                    List<IManufacturable> ordered = OrderRebuiltQueue(entry.Value, savedOrder);
+                    List<IManufacturable> ordered = OrderRebuiltQueue(entry.Value);
                     queue[entry.Key] = ordered;
                 }
-
-                planet.SynchronizeManufacturingQueueOrder();
             }
         }
 
         /// <summary>
-        /// Restores a queue from persisted identifiers or repairs the legacy progress ordering.
+        /// Restores a queue from persisted item sequences or repairs legacy ordering.
         /// </summary>
         /// <param name="candidates">The live queued items discovered in the scene graph.</param>
-        /// <param name="savedOrder">The persisted queue order, when present.</param>
         /// <returns>The rebuilt queue in manufacturing order.</returns>
         private static List<IManufacturable> OrderRebuiltQueue(
-            IReadOnlyList<IManufacturable> candidates,
-            IReadOnlyList<string> savedOrder
+            IReadOnlyList<IManufacturable> candidates
         )
         {
-            Dictionary<string, IManufacturable> byId = candidates
-                .OfType<ISceneNode>()
-                .Where(item => !string.IsNullOrEmpty(item.InstanceID))
-                .ToDictionary(item => item.InstanceID, item => (IManufacturable)item);
-            List<IManufacturable> ordered = new List<IManufacturable>();
-            foreach (string instanceId in savedOrder ?? Array.Empty<string>())
+            bool hasPersistedSequence = candidates.Any(item => item.ManufacturingQueueSequence > 0);
+            List<IManufacturable> ordered;
+            if (hasPersistedSequence)
             {
-                if (byId.Remove(instanceId, out IManufacturable item))
-                    ordered.Add(item);
-            }
-
-            IEnumerable<IManufacturable> missing = candidates.Where(candidate =>
-                candidate is not ISceneNode node || byId.ContainsKey(node.InstanceID)
-            );
-            if (ordered.Count == 0 && (savedOrder == null || savedOrder.Count == 0))
-            {
-                ordered.AddRange(
-                    missing.OrderByDescending(item => item.GetManufacturingProgress())
-                );
-                for (int index = 1; index < ordered.Count; index++)
-                    ordered[index].ManufacturingProgress = 0;
+                ordered = candidates
+                    .OrderBy(item =>
+                        item.ManufacturingQueueSequence > 0
+                            ? item.ManufacturingQueueSequence
+                            : long.MaxValue
+                    )
+                    .ToList();
             }
             else
             {
-                ordered.AddRange(missing);
+                ordered = candidates
+                    .OrderByDescending(item => item.GetManufacturingProgress())
+                    .ToList();
+                for (int index = 1; index < ordered.Count; index++)
+                    ordered[index].ManufacturingProgress = 0;
             }
+
+            for (int index = 0; index < ordered.Count; index++)
+                ordered[index].ManufacturingQueueSequence = index + 1;
 
             return ordered;
         }

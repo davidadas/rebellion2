@@ -206,6 +206,8 @@ namespace Rebellion.Tests.Game.Units
                 WeaponStrength = 10,
                 ShieldStrength = 15,
                 ProducerOwnerID = "Faction1",
+                ProducerPlanetID = "Planet1",
+                ManufacturingQueueSequence = 7,
                 ManufacturingProgress = 50,
                 ManufacturingStatus = ManufacturingStatus.Building,
                 ProductionType = ManufacturingType.Building,
@@ -232,6 +234,11 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(building.WeaponStrength, deserializedBuilding.WeaponStrength);
             Assert.AreEqual(building.ShieldStrength, deserializedBuilding.ShieldStrength);
             Assert.AreEqual(building.ProducerOwnerID, deserializedBuilding.ProducerOwnerID);
+            Assert.AreEqual(building.ProducerPlanetID, deserializedBuilding.ProducerPlanetID);
+            Assert.AreEqual(
+                building.ManufacturingQueueSequence,
+                deserializedBuilding.ManufacturingQueueSequence
+            );
             Assert.AreEqual(
                 building.ManufacturingProgress,
                 deserializedBuilding.ManufacturingProgress

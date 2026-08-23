@@ -112,10 +112,6 @@ namespace Rebellion.Game.Galaxy
         private List<Building> _buildings = new List<Building>();
 
         // Manufacturing Status.
-        [PersistableMember(Name = "ManufacturingQueueOrder")]
-        private Dictionary<ManufacturingType, List<string>> _manufacturingQueueOrder =
-            new Dictionary<ManufacturingType, List<string>>();
-
         [PersistableIgnore]
         public Dictionary<ManufacturingType, List<IManufacturable>> ManufacturingQueue
         {
@@ -165,10 +161,6 @@ namespace Rebellion.Game.Galaxy
             copy.UprisingClearTimerOrder = UprisingClearTimerOrder;
             copy.NextUprisingTimerOrder = NextUprisingTimerOrder;
             copy.PopularSupport = new Dictionary<string, int>(PopularSupport);
-            copy._manufacturingQueueOrder = _manufacturingQueueOrder.ToDictionary(
-                entry => entry.Key,
-                entry => new List<string>(entry.Value ?? new List<string>())
-            );
             copy.ManufacturingQueue = ManufacturingQueue.Keys.ToDictionary(
                 type => type,
                 _ => new List<IManufacturable>()
@@ -608,48 +600,12 @@ namespace Rebellion.Game.Galaxy
             }
 
             // Don't call SetPosition - units in queue aren't built yet, position comes from parent planet when completed.
+            long previousSequence = ManufacturingQueue[type]
+                .Select(item => item.ManufacturingQueueSequence)
+                .DefaultIfEmpty()
+                .Max();
+            manufacturable.ManufacturingQueueSequence = previousSequence + 1;
             ManufacturingQueue[type].Add(manufacturable);
-            if (!_manufacturingQueueOrder.TryGetValue(type, out List<string> order))
-            {
-                order = new List<string>();
-                _manufacturingQueueOrder[type] = order;
-            }
-
-            if (
-                !string.IsNullOrEmpty(manufacturable.InstanceID)
-                && !order.Contains(manufacturable.InstanceID)
-            )
-                order.Add(manufacturable.InstanceID);
-        }
-
-        /// <summary>
-        /// Returns the persisted instance order for one manufacturing lane.
-        /// </summary>
-        /// <param name="type">The manufacturing lane to inspect.</param>
-        /// <returns>The ordered queued instance identifiers.</returns>
-        internal IReadOnlyList<string> GetManufacturingQueueOrder(ManufacturingType type)
-        {
-            return _manufacturingQueueOrder.TryGetValue(type, out List<string> order)
-                ? order
-                : Array.Empty<string>();
-        }
-
-        /// <summary>
-        /// Synchronizes persisted queue identifiers with the current runtime queues.
-        /// </summary>
-        internal void SynchronizeManufacturingQueueOrder()
-        {
-            _manufacturingQueueOrder = ManufacturingQueue
-                .Where(entry => entry.Value?.Count > 0)
-                .ToDictionary(
-                    entry => entry.Key,
-                    entry =>
-                        entry
-                            .Value.OfType<ISceneNode>()
-                            .Select(item => item.InstanceID)
-                            .Where(id => !string.IsNullOrEmpty(id))
-                            .ToList()
-                );
         }
 
         /// <summary>

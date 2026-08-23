@@ -37,6 +37,7 @@ namespace Rebellion.Game.Units
         // Manufacture Info.
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
+        public long ManufacturingQueueSequence { get; set; }
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
         public int BaseBuildSpeed { get; set; }
@@ -128,6 +129,7 @@ namespace Rebellion.Game.Units
             copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;
             copy.ProducerOwnerID = ProducerOwnerID;
             copy.ProducerPlanetID = ProducerPlanetID;
+            copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
             copy.ConstructionCost = ConstructionCost;
             copy.MaintenanceCost = MaintenanceCost;
             copy.BaseBuildSpeed = BaseBuildSpeed;

@@ -190,6 +190,7 @@ namespace Rebellion.Tests.Systems
                 _coruscant.GetManufacturingQueue();
             Assert.AreEqual(0, queue[ManufacturingType.Building].Count);
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.AreEqual(0, mine.ManufacturingQueueSequence);
             ManufacturingDeployedResult deployed = results
                 .OfType<ManufacturingDeployedResult>()
                 .FirstOrDefault();
@@ -3405,6 +3406,8 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(result);
             Assert.AreEqual(1, queue.Count);
             Assert.AreSame(retained, queue[0]);
+            Assert.AreEqual(0, cancelled.ManufacturingQueueSequence);
+            Assert.AreEqual(2, retained.ManufacturingQueueSequence);
             Assert.IsNull(((ISceneNode)cancelled).GetParent());
             Assert.AreSame(destination, ((ISceneNode)retained).GetParent());
         }
@@ -3621,6 +3624,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, items[0].ManufacturingProgress);
             Assert.AreEqual(0, items[1].ManufacturingProgress);
             Assert.AreEqual(0, items[2].ManufacturingProgress);
+            Assert.AreEqual(1, items[0].ManufacturingQueueSequence);
+            Assert.AreEqual(2, items[1].ManufacturingQueueSequence);
+            Assert.AreEqual(3, items[2].ManufacturingQueueSequence);
         }
 
         [Test]
@@ -3634,12 +3640,12 @@ namespace Rebellion.Tests.Systems
             second.OwnerInstanceID = "empire";
             first.ProducerPlanetID = planet.InstanceID;
             second.ProducerPlanetID = planet.InstanceID;
+            first.ManufacturingQueueSequence = 2;
+            second.ManufacturingQueueSequence = 1;
             first.ManufacturingStatus = ManufacturingStatus.Building;
             second.ManufacturingStatus = ManufacturingStatus.Building;
             game.AttachNode(first, planet);
             game.AttachNode(second, planet);
-            planet.AddToManufacturingQueue(second);
-            planet.AddToManufacturingQueue(first);
 
             ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
             manager.RebuildQueues();
@@ -3720,6 +3726,8 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, queue1.Count, "Planet 1 should have 2 types");
             Assert.AreEqual(1, queue1[ManufacturingType.Building].Count);
             Assert.AreEqual(1, queue1[ManufacturingType.Troop].Count);
+            Assert.AreEqual(1, item1.ManufacturingQueueSequence);
+            Assert.AreEqual(1, item2.ManufacturingQueueSequence);
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue2 =
                 planet2.GetManufacturingQueue();

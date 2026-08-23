@@ -267,6 +267,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void SerializeAndDeserialize_WithPopulatedSpecialForces_MaintainsState()
         {
+            _specialForces.ManufacturingQueueSequence = 7;
             string serialized = SerializationHelper.Serialize(_specialForces);
             SpecialForces deserialized = SerializationHelper.Deserialize<SpecialForces>(serialized);
 
@@ -327,6 +328,11 @@ namespace Rebellion.Tests.Game.Units
                 _specialForces.ManufacturingProgress,
                 deserialized.ManufacturingProgress,
                 "ManufacturingProgress should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                _specialForces.ManufacturingQueueSequence,
+                deserialized.ManufacturingQueueSequence,
+                "ManufacturingQueueSequence should be correctly deserialized."
             );
             Assert.AreEqual(
                 _specialForces.Ratings[OfficerRating.Diplomacy],
