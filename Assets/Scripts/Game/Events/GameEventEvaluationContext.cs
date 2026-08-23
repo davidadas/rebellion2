@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Events
 {
@@ -128,9 +126,13 @@ namespace Rebellion.Game.Events
 
             for (int index = 1; index < segments.Length && value != null; index++)
             {
-                PropertyInfo property = value
+                System.Reflection.PropertyInfo property = value
                     .GetType()
-                    .GetProperty(segments[index], BindingFlags.Instance | BindingFlags.Public);
+                    .GetProperty(
+                        segments[index],
+                        System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.Public
+                    );
                 if (property == null)
                     throw new InvalidOperationException(
                         $"Binding '{reference}' references unknown property '{segments[index]}'."

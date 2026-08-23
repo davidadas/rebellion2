@@ -191,7 +191,6 @@ recorded individually.
 - `Type` **[Optional]:** message type; defaults to `Advice`.
 - `Subject` **[Optional]:** message subject text.
 - `Body` **[Optional]:** message body text.
-- `ConditionalBodies` **[Optional]:** conditional message body segments.
 - `BackgroundImage` **[Optional]:** message background image.
 - `OverlayImage` **[Optional]:** message overlay image.
 - `BackgroundAudio` **[Optional]:** message background audio.
@@ -215,9 +214,8 @@ recorded individually.
 
 Message types are `PopularSupport`, `Fleet`, `Mission`, `Resource`, `Manufacturing`, `Defense`, `Conflict`, `Chat`, and `Advice`.
 
-`ConditionalBodies` contains zero or more `ConditionalBody` entries. Each entry accepts optional
-`Conditionals`, `Body`, and `ElseBody` children and appends the selected text. Message text supports
-context tokens such as `{subject}` and `{location}`.
+Message text supports context tokens such as `{subject}` and `{location}`. Use an `If` action to
+select between messages based on game state.
 
 Presentation sources have distinct contracts:
 

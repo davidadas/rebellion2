@@ -714,40 +714,6 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SendMessage_ConditionalBodies_ComposesFromOfficerState()
-        {
-            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
-            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.InjuryPoints = 12;
-            game.AttachNode(luke, rebelPlanet);
-            SendMessageAction action = new SendMessageAction
-            {
-                RecipientFactionInstanceID = "rebels",
-                SubjectInstanceID = luke.InstanceID,
-                Body = "Luke learned the truth. ",
-                ConditionalBodies = new List<ConditionalMessageBody>
-                {
-                    new ConditionalMessageBody
-                    {
-                        Conditionals = new List<GameConditional>
-                        {
-                            new IsInjuredConditional { OfficerInstanceID = luke.InstanceID },
-                        },
-                        Body = "Luke was injured.",
-                        ElseBody = "Luke escaped unharmed.",
-                    },
-                },
-            };
-
-            MessageDeliveryRequest result = action
-                .ExecuteRequests(game)
-                .OfType<MessageDeliveryRequest>()
-                .Single();
-
-            Assert.AreEqual("Luke learned the truth. Luke was injured.", result.Body);
-        }
-
-        [Test]
         public void SendMessage_AudioBinding_UsesTriggerBindingPath()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);

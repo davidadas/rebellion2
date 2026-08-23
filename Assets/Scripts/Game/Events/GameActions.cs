@@ -168,27 +168,6 @@ namespace Rebellion.Game.Events
 
     #region MessageActions
     /// <summary>
-    /// Selects one authored narrative fragment from current simulation state.
-    /// </summary>
-    [PersistableObject(Name = "ConditionalBody")]
-    public sealed class ConditionalMessageBody
-    {
-        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
-        public string Body { get; set; }
-        public string ElseBody { get; set; }
-
-        /// <summary>
-        /// Selects the primary or fallback body from the current conditions.
-        /// </summary>
-        /// <param name="context">The current condition context and event bindings.</param>
-        /// <returns>The body selected by the condition results.</returns>
-        public string Resolve(GameConditionContext context)
-        {
-            return Conditionals.TrueForAll(condition => condition.IsMet(context)) ? Body : ElseBody;
-        }
-    }
-
-    /// <summary>
     /// Emits a normal faction message from presentation data authored with a game event.
     /// </summary>
     [PersistableObject(Name = "SendMessage")]
@@ -216,8 +195,6 @@ namespace Rebellion.Game.Events
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public string Subject { get; set; }
         public string Body { get; set; }
-        public List<ConditionalMessageBody> ConditionalBodies { get; set; } =
-            new List<ConditionalMessageBody>();
         public MessageBackgroundImage BackgroundImage { get; set; }
         public MessageImage OverlayImage { get; set; }
         public MessageAudio BackgroundAudio { get; set; }
@@ -254,13 +231,6 @@ namespace Rebellion.Game.Events
             if (location == null && subject != null)
                 location = subject as Planet ?? subject.GetParentOfType<Planet>();
 
-            string bodyTemplate = Body ?? string.Empty;
-            GameConditionContext conditionContext = new GameConditionContext(
-                game,
-                context.Evaluation
-            );
-            foreach (ConditionalMessageBody segment in ConditionalBodies)
-                bodyTemplate += segment.Resolve(conditionContext) ?? string.Empty;
             string backgroundAudioPath = MessageMediaResolver.Resolve(BackgroundAudio, context);
             string imagePath = MessageMediaResolver.Resolve(BackgroundImage, context);
 
@@ -273,7 +243,7 @@ namespace Rebellion.Game.Events
                     Location = location,
                     MessageType = MessageType,
                     Subject = Subject,
-                    Body = bodyTemplate,
+                    Body = Body ?? string.Empty,
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = imagePath,
                     OverlayImagePath = OverlayImage?.Path ?? (subject as Officer)?.MessageImagePath,
