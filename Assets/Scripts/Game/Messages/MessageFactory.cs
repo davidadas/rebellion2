@@ -1706,7 +1706,9 @@ namespace Rebellion.Game.Messages
                 .ToHashSet();
             UnitArrivedResult[] arrivalResults = arrivals
                 .Where(arrival =>
-                    arrival?.Unit != null && !deployedUnitIds.Contains(arrival.Unit.GetInstanceID())
+                    arrival?.Unit != null
+                    && arrival.Unit is not Officer { IsCaptured: true }
+                    && !deployedUnitIds.Contains(arrival.Unit.GetInstanceID())
                 )
                 .ToArray();
             var shipGroups =

@@ -167,11 +167,11 @@ namespace Rebellion.Systems
                     else if (planetSnapshot != null)
                     {
                         viewPlanet = BlankPlanetView(masterPlanet);
-                        ApplySnapshotView(viewPlanet, masterPlanet, faction, planetSnapshot);
+                        ApplySnapshotView(viewPlanet, planetSnapshot);
                     }
                     else
                     {
-                        viewPlanet = UnexploredPlanetView(masterPlanet, faction);
+                        viewPlanet = UnexploredPlanetView(masterPlanet);
                     }
 
                     viewPlanet.VisitingFactionIDs = masterPlanet.WasVisitedBy(faction.InstanceID)
@@ -473,19 +473,11 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Populates a view planet from the last known snapshot. The faction has no current
-        /// visibility but has previously observed this planet. Captured friendly officers are
-        /// always live.
+        /// visibility but has previously observed this planet.
         /// </summary>
         /// <param name="viewPlanet">The view planet to populate.</param>
-        /// <param name="masterPlanet">The authoritative planet data source.</param>
-        /// <param name="faction">The faction whose view is being built.</param>
         /// <param name="planetSnapshot">The prior snapshot for the planet.</param>
-        private void ApplySnapshotView(
-            Planet viewPlanet,
-            Planet masterPlanet,
-            Faction faction,
-            PlanetSnapshot planetSnapshot
-        )
+        private void ApplySnapshotView(Planet viewPlanet, PlanetSnapshot planetSnapshot)
         {
             viewPlanet.OwnerInstanceID = planetSnapshot.OwnerInstanceID;
             viewPlanet.IsColonized = planetSnapshot.IsColonized;
@@ -498,17 +490,9 @@ namespace Rebellion.Systems
 
             viewPlanet.PopularSupport = new Dictionary<string, int>(planetSnapshot.PopularSupport);
 
-            IEnumerable<Officer> officers = planetSnapshot
-                .Officers.Select(FogOfWarRecorder.CopyOfficerForSnapshot)
-                .Concat(
-                    masterPlanet
-                        .GetChildren<Officer>()
-                        .Where(o => o.IsCaptured && o.OwnerInstanceID == faction.InstanceID)
-                        .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
-                );
             viewPlanet.SetChildren(
                 planetSnapshot.Fleets.Select(FogOfWarRecorder.CopyFleetForSnapshot),
-                officers,
+                planetSnapshot.Officers.Select(FogOfWarRecorder.CopyOfficerForSnapshot),
                 planetSnapshot.Regiments.Select(FogOfWarRecorder.CopyEntityForSnapshot),
                 planetSnapshot.SpecialForces.Select(FogOfWarRecorder.CopyEntityForSnapshot),
                 planetSnapshot.Starfighters.Select(FogOfWarRecorder.CopyEntityForSnapshot),
@@ -627,12 +611,11 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Creates a view planet for a completely unexplored location. No ownership or
-        /// entity data is surfaced. Captured friendly officers remain visible.
+        /// entity data is surfaced.
         /// </summary>
         /// <param name="masterPlanet">The authoritative planet data source.</param>
-        /// <param name="faction">The faction whose view is being built.</param>
         /// <returns>A planet view containing only the data visible for an unexplored planet.</returns>
-        private Planet UnexploredPlanetView(Planet masterPlanet, Faction faction)
+        private Planet UnexploredPlanetView(Planet masterPlanet)
         {
             Planet viewPlanet = new Planet
             {
@@ -647,10 +630,7 @@ namespace Rebellion.Systems
 
             viewPlanet.SetChildren(
                 Enumerable.Empty<Fleet>(),
-                masterPlanet
-                    .GetChildren<Officer>()
-                    .Where(o => o.IsCaptured && o.OwnerInstanceID == faction.InstanceID)
-                    .Select(FogOfWarRecorder.CopyOfficerForSnapshot),
+                Enumerable.Empty<Officer>(),
                 Enumerable.Empty<Regiment>(),
                 Enumerable.Empty<SpecialForces>(),
                 Enumerable.Empty<Starfighter>(),

@@ -9,6 +9,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
 {
+    private const int _minimumRowColumnWidth = 24;
+
     private readonly List<TextMeshProUGUI> labelTextFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> leftRowTextFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> rightRowTextFields = new List<TextMeshProUGUI>();
@@ -287,12 +289,17 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
         for (int i = 0; i < safeRows.Count; i++)
         {
             StatusWindowRowRenderData row = safeRows[i];
-            int leftHeight = GetPreferredTextHeight(leftRowTextTemplate, row.Left, leftTemplate);
-            int rightHeight = GetPreferredTextHeight(
+            GetRowRects(
+                leftRowTextTemplate,
                 rightRowTextTemplate,
-                row.Right,
-                rightTemplate
+                leftTemplate,
+                rightTemplate,
+                row,
+                out RectInt leftRect,
+                out RectInt rightRect
             );
+            int leftHeight = GetPreferredTextHeight(leftRowTextTemplate, row.Left, leftRect);
+            int rightHeight = GetPreferredTextHeight(rightRowTextTemplate, row.Right, rightRect);
             int rowHeight = Mathf.Max(leftHeight, rightHeight);
             UILayout.SetTemplateText(
                 GetLeftRowTextField(i),
@@ -300,9 +307,9 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
                 row.Left,
                 Color.white,
                 new RectInt(
-                    leftTemplate.x,
-                    leftTemplate.y + contentHeight + rowHeight - leftHeight,
-                    leftTemplate.width,
+                    leftRect.x,
+                    leftRect.y + contentHeight + rowHeight - leftHeight,
+                    leftRect.width,
                     leftHeight
                 )
             );
@@ -312,9 +319,9 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
                 row.Right,
                 Color.white,
                 new RectInt(
-                    rightTemplate.x,
-                    rightTemplate.y + contentHeight + rowHeight - rightHeight,
-                    rightTemplate.width,
+                    rightRect.x,
+                    rightRect.y + contentHeight + rowHeight - rightHeight,
+                    rightRect.width,
                     rightHeight
                 )
             );
@@ -329,6 +336,65 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
         HideTextFieldsFrom(leftRowTextFields, safeRows.Count);
         HideTextFieldsFrom(rightRowTextFields, safeRows.Count);
         StoreRenderedRows(safeRows);
+    }
+
+    /// <summary>
+    /// Allocates unused row width to whichever column needs it while preserving the authored gap.
+    /// </summary>
+    /// <param name="leftTemplate">The authored left-column text field.</param>
+    /// <param name="rightTemplate">The authored right-column text field.</param>
+    /// <param name="leftRect">The authored left-column bounds.</param>
+    /// <param name="rightRect">The authored right-column bounds.</param>
+    /// <param name="row">The row content to fit.</param>
+    /// <param name="resolvedLeftRect">The allocated left-column bounds.</param>
+    /// <param name="resolvedRightRect">The allocated right-column bounds.</param>
+    private static void GetRowRects(
+        TextMeshProUGUI leftTemplate,
+        TextMeshProUGUI rightTemplate,
+        RectInt leftRect,
+        RectInt rightRect,
+        StatusWindowRowRenderData row,
+        out RectInt resolvedLeftRect,
+        out RectInt resolvedRightRect
+    )
+    {
+        int gap = rightRect.x - leftRect.xMax;
+        int availableWidth = rightRect.xMax - leftRect.x - gap;
+        int preferredLeftWidth = Mathf.Max(
+            _minimumRowColumnWidth,
+            Mathf.CeilToInt(leftTemplate.GetPreferredValues(row.Left ?? string.Empty).x)
+        );
+        int preferredRightWidth = Mathf.Max(
+            _minimumRowColumnWidth,
+            Mathf.CeilToInt(rightTemplate.GetPreferredValues(row.Right ?? string.Empty).x)
+        );
+        int leftWidth;
+        if (preferredLeftWidth + preferredRightWidth <= availableWidth)
+        {
+            leftWidth = Mathf.Clamp(
+                leftRect.width,
+                preferredLeftWidth,
+                availableWidth - preferredRightWidth
+            );
+        }
+        else
+        {
+            float leftShare =
+                (float)preferredLeftWidth / (preferredLeftWidth + preferredRightWidth);
+            leftWidth = Mathf.Clamp(
+                Mathf.RoundToInt(availableWidth * leftShare),
+                _minimumRowColumnWidth,
+                availableWidth - _minimumRowColumnWidth
+            );
+        }
+
+        resolvedLeftRect = new RectInt(leftRect.x, leftRect.y, leftWidth, leftRect.height);
+        resolvedRightRect = new RectInt(
+            leftRect.x + leftWidth + gap,
+            rightRect.y,
+            availableWidth - leftWidth,
+            rightRect.height
+        );
     }
 
     /// <summary>

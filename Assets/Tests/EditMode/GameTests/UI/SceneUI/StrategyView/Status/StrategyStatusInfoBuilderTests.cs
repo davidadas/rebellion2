@@ -163,7 +163,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
             Assert.AreEqual("Ship Construction", info.Header);
             Assert.AreEqual("Shipyards", info.Label);
-            Assert.IsFalse(info.CenterImage);
+            Assert.IsTrue(info.CenterImage);
             CollectionAssert.AreEqual(new[] { StatusWindowImage.Shipyard }, info.Images);
             CollectionAssert.AreEqual(
                 new[] { "Location:|Corellia", "Status:|No Facilities" },
@@ -537,7 +537,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void Build_CapturedOfficer_ReturnsCapturedOverlayStatus()
+        public void Build_CapturedOfficer_ReturnsCapturedStatusWithPrimaryImageOnly()
         {
             Officer officer = new Officer
             {
@@ -552,7 +552,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 
             Assert.AreEqual("Captured", info.Rows.Single(row => row.Left == "Status:").Right);
-            CollectionAssert.AreEqual(new[] { officer }, info.OverlayImageItems);
             CollectionAssert.AreEqual(new[] { officer }, info.ImageItems);
         }
 

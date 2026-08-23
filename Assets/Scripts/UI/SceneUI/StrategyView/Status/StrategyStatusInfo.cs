@@ -25,11 +25,6 @@ internal sealed class StrategyStatusInfo
     public List<ISceneNode> ImageItems { get; } = new List<ISceneNode>();
 
     /// <summary>
-    /// Gets the overlay image items.
-    /// </summary>
-    public List<ISceneNode> OverlayImageItems { get; } = new List<ISceneNode>();
-
-    /// <summary>
     /// Gets the rows.
     /// </summary>
     public List<StrategyStatusRow> Rows { get; } = new List<StrategyStatusRow>();

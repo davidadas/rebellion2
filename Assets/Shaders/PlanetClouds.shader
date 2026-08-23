@@ -3,8 +3,8 @@ Shader "Custom/PlanetClouds"
     Properties
     {
         _MainTex ("Cloud Texture", 2D) = "white" {}
-        _PoleFadeStart ("Pole Fade Start", Range(0.0, 1.0)) = 0.992
-        _PoleFadeEnd ("Pole Fade End", Range(0.0, 1.0)) = 0.9998
+        _PoleFadeStart ("Pole Fade Start", Range(0.0, 1.0)) = 0.965
+        _PoleFadeEnd ("Pole Fade End", Range(0.0, 1.0)) = 0.998
     }
 
     SubShader
