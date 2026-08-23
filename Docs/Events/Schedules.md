@@ -5,6 +5,10 @@ Schedules activate events from campaign time. A `Schedule` contains exactly one 
 Top-level bindings are resolved before a schedule is evaluated. Consequently, `Until` may use the
 same bindings as the event's top-level conditionals and actions.
 
+Bindings are evaluation-scoped, not persistent. Their selectors run whenever the event is
+evaluated, including while a recurring schedule is waiting for its next eligible tick. A random
+binding can therefore resolve a different node on successive evaluations.
+
 ## At
 
 `At` makes an event eligible at one absolute campaign tick. It is inherently one-shot.
@@ -147,8 +151,9 @@ Failed event conditionals do not consume an activation or roll the next interval
 </GameEvent>
 ```
 
-One-shot schedules do not require `MaximumActivations="1"`.
+One-shot schedules do not require `MaximumActivations="1"` and cannot specify a value greater than
+one.
 
 ---
 
-<p align="center"><a href="Targets.md">← Targets</a> · <a href="Index.md">Event guide</a> · <a href="Triggers.md">Triggers →</a></p>
+<p align="center"><a href="Bindings.md">← Bindings</a> · <a href="Index.md">Event guide</a> · <a href="Triggers.md">Triggers →</a></p>

@@ -89,7 +89,7 @@ Every action belongs inside an event's `Actions` collection:
 - `OfficerInstanceID` — required officer ID.
 - `Rating` — required officer rating.
 - `ProbabilityTable` — required probability-table name.
-- `RatingMultiplier` — optional multiplier; defaults to `1`.
+- `RatingMultiplier` — optional nonzero multiplier; defaults to `1`.
 - `OnSuccess` — optional actions run after a successful check.
 - `OnFailure` — optional actions run after a failed check.
 
@@ -222,13 +222,17 @@ This action requires a planet instance ID or planet binding. It independently ro
 
 **Options**
 
-- `LossProbabilityPerResource` — required probability applied to each existing point.
+- `PlanetInstanceID` or `PlanetBinding` — required, mutually exclusive planet source.
+- `LossProbabilityPerResource` — required probability from `0` through `1`, applied independently
+  to each existing point.
 - `MinimumTotalLoss` — required minimum combined loss.
 - `Stats` — required child containing one or more `Stat` elements.
 - `Name` — required planet-stat attribute on each `Stat`.
 
 ```xml
-<ReducePlanetStats LossProbabilityPerResource="0.05" MinimumTotalLoss="1">
+<ReducePlanetStats PlanetInstanceID="NABOO"
+                   LossProbabilityPerResource="0.05"
+                   MinimumTotalLoss="1">
   <Stats>
     <Stat Name="RawResourceNodes"/>
     <Stat Name="EnergyCapacity"/>
@@ -238,15 +242,18 @@ This action requires a planet instance ID or planet binding. It independently ro
 
 ### RecordPlanetIncident
 
-This action requires a planet instance ID or planet binding. It records an incident from planet-stat changes and destroyed units already produced earlier in the same activation. It records nothing when those earlier actions made no change.
+This action requires a planet instance ID or planet binding. It records an incident from planet-stat
+changes and destroyed units already produced earlier in the same evaluation. It records nothing
+when those earlier actions made no change.
 
 **Options**
 
 - `Type` — required `Uprising`, `Intelligence`, `Disaster`, or `Resource` incident type.
+- `PlanetInstanceID` or `PlanetBinding` — required, mutually exclusive incident location.
 
 ```xml
 <Actions>
-  <DestroyUnits>
+  <DestroyUnits PlanetBinding="$planet">
     <Units>
       <SelectRandom Count="1">
         <From>
@@ -255,7 +262,7 @@ This action requires a planet instance ID or planet binding. It records an incid
       </SelectRandom>
     </Units>
   </DestroyUnits>
-  <RecordPlanetIncident Type="Disaster"/>
+  <RecordPlanetIncident Type="Disaster" PlanetBinding="$planet"/>
 </Actions>
 ```
 
@@ -270,6 +277,8 @@ Incident types are `Uprising`, `Intelligence`, `Disaster`, and `Resource`.
 **Options**
 
 - `Units` — required unit selector collection.
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive result context. These values
+  do not filter the selected units.
 
 ```xml
 <DestroyUnits>
@@ -291,6 +300,7 @@ Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use 
 **Options**
 
 - `FactionInstanceID` — required new owner.
+- `Planets` or `Units` — required selector collection; specify exactly one ownership domain.
 - Exactly one of `Planets` or `Units` is required, containing matching selectors.
 
 ```xml

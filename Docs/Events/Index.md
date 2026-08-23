@@ -85,7 +85,7 @@ Optional maximum number of successful activations. Omission means unlimited.
 Optionally select scene nodes and expose them throughout the current event evaluation. Scheduled
 events declare bindings before `Schedule`, allowing recurring `Until` conditions to consume them.
 Triggered events declare `Triggers` first, allowing selections to consume trigger-result bindings.
-Top-level conditionals and actions may consume either kind. See [Targets and selectors](Targets.md).
+Top-level conditionals and actions may consume either kind. See [Bindings and selectors](Bindings.md).
 
 ### Schedule
 
@@ -110,9 +110,9 @@ serve as a persistent timing or completion marker. See [Actions](Actions.md).
 
 ## Guide
 
-1. [Targets and selectors](Targets.md)
+1. [Bindings and selectors](Bindings.md)
 2. [Schedules](Schedules.md)
-3. [Triggers and bindings](Triggers.md)
+3. [Triggers](Triggers.md)
 4. [Conditions](Conditions.md)
 5. [Actions and messages](Actions.md)
 6. [Complete examples](Examples.md)
@@ -120,4 +120,4 @@ serve as a persistent timing or completion marker. See [Actions](Actions.md).
 
 ---
 
-<p align="center"><a href="Targets.md">Targets →</a></p>
+<p align="center"><a href="Bindings.md">Bindings →</a></p>

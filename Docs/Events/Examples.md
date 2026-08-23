@@ -5,7 +5,7 @@ with values from the content you are editing.
 
 ## Send a message on a specific tick
 
-This event executes once when tick 10 becomes eligible.
+This event activates once when tick 10 becomes eligible.
 
 ```xml
 <GameEvent>
@@ -356,10 +356,10 @@ starfighter at Naboo to the Alliance.
 </GameEvent>
 ```
 
-## Temporarily remove and return an officer
+## Temporarily deactivate and restore an officer
 
-The first event retains Luke in the scene graph but excludes him from gameplay. The dependent event
-reactivates him and attempts to place him at his recorded previous location.
+The first event leaves Luke attached to his current scene location but excludes him from gameplay.
+The dependent event restores him at that same location.
 
 ```xml
 <GameEvent>
@@ -381,13 +381,8 @@ reactivates him and attempts to place him at his recorded previous location.
     <After EventInstanceID="MOD_OFFICER_LEAVES" DelayTicks="100"/>
   </Schedule>
   <Actions>
-    <!-- Reactivate before placement so normal destination validation can see the officer. -->
+    <!-- Reactivation restores the officer at the location that remained attached. -->
     <SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="true"/>
-    <PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
-      <Destination>
-        <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
-      </Destination>
-    </PlaceUnits>
     <ClearDisplayStatus TargetInstanceID="LUKE_SKYWALKER"/>
   </Actions>
 </GameEvent>

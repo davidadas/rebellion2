@@ -1,4 +1,4 @@
-# Triggers and Bindings
+# Triggers
 
 Triggers activate events from typed gameplay results. An event uses either `Triggers` or `Schedule`, never both. Multiple triggers are alternatives: any matching result gives the event one activation opportunity.
 
@@ -93,7 +93,7 @@ Activates when a duel completes and all authored filters match.
 </Conditionals>
 ```
 
-Use top-level [`Bindings`](Targets.md#bindings) when an event must select and retain a scene node independently of a gameplay result.
+Use top-level [`Bindings`](Bindings.md#bindings) when an event must select and retain a scene node independently of a gameplay result.
 
 ---
 

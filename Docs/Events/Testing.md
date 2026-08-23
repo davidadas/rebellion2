@@ -17,6 +17,7 @@ If an event does not run:
 - Check the Unity log for content-load or runtime validation errors.
 - Confirm `pack.xml` points to the correct `GameEventsPath`.
 - Confirm every `InstanceID`, referenced event, faction, planet, unit, and media path exists.
+- Confirm `After`, `AfterAll`, and `AfterAny` dependencies do not form a cycle.
 - Confirm the event does not combine `Schedule` with `Triggers`.
 - Confirm trigger argument names and `$binding` aliases match exactly.
 - Confirm every top-level `Bind` resolves exactly one node.

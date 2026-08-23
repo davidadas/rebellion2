@@ -1,4 +1,4 @@
-# Targets and Selectors
+# Bindings and Selectors
 
 Selectors find typed collections of scene nodes. Bindings, conditions, and actions use them wherever
 authored XML needs to identify game objects. Direct selectors return every active matching object
@@ -231,11 +231,11 @@ Selects a random subset of the candidates returned by `From`.
 
 **Options**
 
-- `ChancePercent` — optional independent inclusion chance; defaults to `100`.
+- `ChancePercent` — optional independent inclusion chance from `0` through `100`; defaults to `100`.
 - `Count` — optional exact result count.
-- `MinimumCount` and `MaximumCount` — optional inclusive result-count range.
+- `MinimumCount` and `MaximumCount` — optional nonnegative inclusive result-count range;
+  `MinimumCount` defaults to `0`.
 - Use either `Count` or the minimum/maximum pair, never both.
-
 - `From` — required selector collection.
 
 ```xml
