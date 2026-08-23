@@ -124,6 +124,35 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void ProcessEvents_RecurringScheduleUntilMet_ExhaustsAndRemovesEvent()
+        {
+            GameEvent gameEvent = CreateTickEvent("UNTIL_MET", targetTick: 0, repeatable: true);
+            gameEvent.Schedule = new GameEventScheduler
+            {
+                Every = new EveryTicks
+                {
+                    Ticks = 5,
+                    Until = new List<GameConditional>
+                    {
+                        new TickCountConditional
+                        {
+                            Comparison = ComparisonOperator.GreaterThanOrEqual,
+                            Ticks = 10,
+                        },
+                    },
+                },
+            };
+            _game.CurrentTick = 10;
+            _game.GetEventPool().Add(gameEvent);
+
+            _system.ProcessEvents(_game.GetEventPool());
+
+            Assert.AreEqual(0, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
+            Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
+        }
+
+        [Test]
         public void ProcessEvents_TriggerCountFive_ExecutesFiveTimes()
         {
             GameEvent gameEvent = CreateTickEvent("FIVE_RUNS", targetTick: 0, repeatable: false);
@@ -152,12 +181,12 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_InitialRandomDelay_WaitsUntilRolledAbsoluteTick()
+        public void ProcessEvents_InitialRandomInterval_WaitsUntilRolledAbsoluteTick()
         {
             GameEvent gameEvent = CreateTickEvent("DELAYED", targetTick: 0, repeatable: false);
             gameEvent.Schedule = new GameEventScheduler
             {
-                RandomDelay = new RandomTickRange { MinimumTicks = 10, MaximumTicks = 14 },
+                RandomInterval = new RandomTickRange { MinimumTicks = 10, MaximumTicks = 14 },
             };
             _game.GetEventPool().Add(gameEvent);
 

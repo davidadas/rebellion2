@@ -171,7 +171,7 @@ namespace Rebellion.Systems
             int configuredModes =
                 (schedule.At == null ? 0 : 1)
                 + (schedule.Every == null ? 0 : 1)
-                + (schedule.RandomDelay == null ? 0 : 1)
+                + (schedule.RandomInterval == null ? 0 : 1)
                 + (schedule.After == null ? 0 : 1)
                 + (schedule.AfterAll == null ? 0 : 1)
                 + (schedule.AfterAny == null ? 0 : 1);
@@ -192,14 +192,14 @@ namespace Rebellion.Systems
                     $"Event '{gameEvent.InstanceID}' Every.InitialDelayTicks cannot be negative."
                 );
             if (
-                schedule.RandomDelay != null
+                schedule.RandomInterval != null
                 && (
-                    schedule.RandomDelay.MinimumTicks < 1
-                    || schedule.RandomDelay.MaximumTicks < schedule.RandomDelay.MinimumTicks
+                    schedule.RandomInterval.MinimumTicks < 1
+                    || schedule.RandomInterval.MaximumTicks < schedule.RandomInterval.MinimumTicks
                 )
             )
                 throw new InvalidOperationException(
-                    $"Event '{gameEvent.InstanceID}' RandomDelay requires a positive ordered tick range."
+                    $"Event '{gameEvent.InstanceID}' RandomInterval requires a positive ordered tick range."
                 );
             if (schedule.After is { DelayTicks: < 0 })
                 throw new InvalidOperationException(
@@ -349,6 +349,18 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                gameEvent,
+                state,
+                triggerResult,
+                trigger
+            );
+            if (ShouldEndSchedule(gameEvent, state, context))
+            {
+                results = new List<GameResult>();
+                return false;
+            }
+
             if (!InitializeSchedule(gameEvent, state))
             {
                 results = new List<GameResult>();
@@ -360,17 +372,6 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            GameEventExecutionContext context = new GameEventExecutionContext(
-                gameEvent,
-                state,
-                triggerResult,
-                trigger
-            );
-            if (ShouldStop(gameEvent, state, context))
-            {
-                results = new List<GameResult>();
-                return false;
-            }
             foreach (GameEventSelectionBinding binding in gameEvent.Bindings)
                 binding.Bind(_game, _provider, context);
             if (!gameEvent.AreConditionsMet(_game, context))
@@ -410,9 +411,9 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns whether an event reached its trigger count or authored stop conditions.
+        /// Permanently exhausts a recurring schedule when all of its terminal conditions are met.
         /// </summary>
-        private bool ShouldStop(
+        private bool ShouldEndSchedule(
             GameEvent gameEvent,
             GameEventState state,
             GameEventExecutionContext context
@@ -420,9 +421,11 @@ namespace Rebellion.Systems
         {
             if (state.IsExhausted)
                 return true;
+            IReadOnlyList<GameConditional> until = gameEvent.Schedule?.Until;
             state.IsExhausted =
-                gameEvent.StopWhen.Count > 0
-                && gameEvent.StopWhen.All(condition =>
+                until != null
+                && until.Count > 0
+                && until.All(condition =>
                     condition.IsMet(new GameConditionContext(_game, context))
                 );
             return state.IsExhausted;

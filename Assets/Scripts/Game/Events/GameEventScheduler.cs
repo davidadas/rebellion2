@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
@@ -11,13 +12,29 @@ namespace Rebellion.Game.Events
     {
         public AtTick At { get; set; }
         public EveryTicks Every { get; set; }
-        public RandomTickRange RandomDelay { get; set; }
+        public RandomTickRange RandomInterval { get; set; }
         public AfterEvent After { get; set; }
         public AfterEvents AfterAll { get; set; }
         public AfterEvents AfterAny { get; set; }
 
         [PersistableIgnore]
-        public bool IsRecurring => Every != null || RandomDelay != null;
+        public bool IsRecurring => Every != null || RandomInterval != null;
+
+        /// <summary>
+        /// Gets the conditions that permanently end the recurring schedule.
+        /// </summary>
+        [PersistableIgnore]
+        public IReadOnlyList<GameConditional> Until
+        {
+            get
+            {
+                if (Every != null)
+                    return Every.Until;
+                if (RandomInterval != null)
+                    return RandomInterval.Until;
+                return Array.Empty<GameConditional>();
+            }
+        }
 
         /// <summary>
         /// Gets the inclusive delay range for an event's first activation.
@@ -44,7 +61,7 @@ namespace Rebellion.Game.Events
                 return;
             }
 
-            RandomDelay.GetRange(out minimum, out maximum);
+            RandomInterval.GetRange(out minimum, out maximum);
         }
 
         /// <summary>
@@ -60,7 +77,7 @@ namespace Rebellion.Game.Events
                 return;
             }
 
-            RandomDelay.GetRange(out minimum, out maximum);
+            RandomInterval.GetRange(out minimum, out maximum);
         }
     }
 
@@ -117,6 +134,9 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public int InitialDelayTicks { get; set; }
+
+        /// <summary>Gets the conditions that permanently end this recurring schedule.</summary>
+        public List<GameConditional> Until { get; set; } = new List<GameConditional>();
     }
 
     /// <summary>
@@ -130,6 +150,9 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public int MaximumTicks { get; set; }
+
+        /// <summary>Gets the conditions that permanently end this recurring schedule.</summary>
+        public List<GameConditional> Until { get; set; } = new List<GameConditional>();
 
         /// <summary>
         /// Returns the configured inclusive delay range after load-time validation.

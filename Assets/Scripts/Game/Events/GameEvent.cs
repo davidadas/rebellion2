@@ -71,7 +71,6 @@ namespace Rebellion.Game.Events
         public List<GameEventSelectionBinding> Bindings { get; set; } =
             new List<GameEventSelectionBinding>();
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
-        public List<GameConditional> StopWhen { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
         /// <summary>Returns whether the event remains below its authored activation limit.</summary>

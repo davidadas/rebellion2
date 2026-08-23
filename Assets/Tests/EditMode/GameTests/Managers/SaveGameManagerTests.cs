@@ -612,7 +612,7 @@ namespace Rebellion.Tests.Managers
                 InstanceID = "EVENT1",
                 Schedule = new GameEventScheduler
                 {
-                    RandomDelay = new RandomTickRange { MinimumTicks = 300, MaximumTicks = 400 },
+                    RandomInterval = new RandomTickRange { MinimumTicks = 300, MaximumTicks = 400 },
                 },
             };
             GameEvent event2 = new GameEvent { InstanceID = "EVENT2" };
@@ -626,8 +626,8 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, loadedGame.GetEventPool().Count);
             Assert.AreEqual("EVENT1", loadedGame.GetEventPool()[0].InstanceID);
             Assert.AreEqual("EVENT2", loadedGame.GetEventPool()[1].InstanceID);
-            Assert.AreEqual(300, loadedGame.GetEventPool()[0].Schedule.RandomDelay.MinimumTicks);
-            Assert.AreEqual(400, loadedGame.GetEventPool()[0].Schedule.RandomDelay.MaximumTicks);
+            Assert.AreEqual(300, loadedGame.GetEventPool()[0].Schedule.RandomInterval.MinimumTicks);
+            Assert.AreEqual(400, loadedGame.GetEventPool()[0].Schedule.RandomInterval.MaximumTicks);
         }
 
         [Test]
