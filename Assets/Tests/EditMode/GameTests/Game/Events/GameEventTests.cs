@@ -120,6 +120,7 @@ namespace Rebellion.Tests.Game.Events
                                 {
                                     new SendMessageAction
                                     {
+                                        RecipientFactionInstanceID = "FNALL1",
                                         SubjectInstanceID = "LUKE",
                                         RelatedSubjectInstanceID = "VADER",
                                         MessageType = MessageType.Advice,

@@ -178,12 +178,11 @@ recorded individually.
 
 ### SendMessage
 
-`SendMessage` delivers a normal strategy message. The recipient can be explicit or inferred from a recipient unit or subject. Subject and location may use instance IDs or trigger bindings.
+`SendMessage` delivers a normal strategy message to an explicitly identified faction. Subject and location may use instance IDs or trigger bindings.
 
 **Options**
 
-- `RecipientFactionInstanceID` — optional explicit recipient faction.
-- `RecipientUnitInstanceID` — optional unit from which to infer the recipient.
+- `RecipientFactionInstanceID` — required recipient faction.
 - `SubjectInstanceID` or `SubjectBinding` — optional message subject. When both are present,
   `SubjectBinding` takes precedence.
 - `RelatedSubjectInstanceID` — optional secondary subject.
@@ -193,9 +192,6 @@ recorded individually.
 - `Subject`, `Body`, and `ConditionalBodies` — optional authored text.
 - `BackgroundImage`, `OverlayImage`, `BackgroundAudio`, `OfficerVoice`, and
   `AdvisorNotification` — optional presentation.
-- Recipient resolution uses `RecipientFactionInstanceID` first, then the recipient unit's owner,
-  then the subject's owner. At least one of those sources must resolve a faction.
-
 ```xml
 <SendMessage RecipientFactionInstanceID="FNALL1"
              SubjectInstanceID="LUKE_SKYWALKER"
@@ -253,7 +249,7 @@ Choose exactly one adjustment mode: signed `Amount` or signed `PercentOfCurrent`
 - `PlanetInstanceID` or `PlanetBinding` — optional direct planet source. When both are present,
   `PlanetBinding` takes precedence.
 - `Planets` — optional planet selector collection.
-- Exactly one of `Amount` or `PercentOfCurrent` is required.
+- `Amount` or `PercentOfCurrent` — exactly one signed adjustment is required.
 
 ```xml
 <ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
@@ -360,7 +356,7 @@ unless they are also selected.
 **Options**
 
 - `FactionInstanceID` — required new owner.
-- Exactly one of `Planets` or `Units` — required selector collection for that ownership domain.
+- `Planets` or `Units` — exactly one selector collection is required.
 
 ```xml
 <ChangeOwner FactionInstanceID="FNALL1">
@@ -377,11 +373,8 @@ unless they are also selected.
 
 **Options**
 
-- `UnitInstanceID` — optional direct unit source.
-- `Units` — optional selectors and `SpawnUnits` sources.
-- `DestinationInstanceID` — optional direct destination.
-- `Destination` — optional destination selector collection.
-- At least one unit and one destination must resolve.
+- `UnitInstanceID` or `Units` — at least one direct unit, selected unit, or `SpawnUnits` source must resolve.
+- `DestinationInstanceID` or `Destination` — exactly one valid destination must resolve.
 
 ```xml
 <PlaceUnits DestinationInstanceID="NABOO">
@@ -401,11 +394,8 @@ unless they are also selected.
 
 **Options**
 
-- `UnitInstanceID` — optional direct unit source.
-- `Units` — optional existing-unit selector collection.
-- `DestinationInstanceID` — optional direct destination.
-- `Destination` — optional destination selector collection.
-- At least one unit and one destination must resolve.
+- `UnitInstanceID` or `Units` — at least one direct or selected existing unit must resolve.
+- `DestinationInstanceID` or `Destination` — exactly one valid destination must resolve.
 
 ```xml
 <SendUnits UnitInstanceID="DARTH_VADER" DestinationInstanceID="YAVIN"/>
@@ -425,10 +415,8 @@ Reactivate a returning unit before placing or sending it.
 
 **Options**
 
-- `InstanceID` — optional direct scene-node ID.
 - `IsActive` — required state.
-- `Nodes` — optional selector collection.
-- At least one direct node or selected node must resolve.
+- `InstanceID` or `Nodes` — at least one direct or selected scene node must resolve.
 
 ```xml
 <SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="false"/>
@@ -451,12 +439,10 @@ properties only; it does not move or deactivate the officer.
 **Options**
 
 - `IsCaptured` — required state.
-- `OfficerInstanceID` — optional direct officer ID.
-- `Officers` — optional officer selector collection.
+- `OfficerInstanceID` or `Officers` — at least one direct or selected officer must resolve.
 - `CaptorFactionInstanceID` — required when capturing and forbidden when releasing.
 - `CanEscape` — optional state used when capturing; defaults to `true`. Releasing always resets it
   to `true`.
-- At least one direct officer or selected officer must resolve.
 
 ```xml
 <SetCaptureStatus OfficerInstanceID="HAN_SOLO"
@@ -472,13 +458,10 @@ Choose exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `Per
 **Options**
 
 - `Rating` — required officer rating.
-- `OfficerInstanceID` — optional direct officer ID.
-- `Officers` — optional officer selector collection.
+- `OfficerInstanceID` or `Officers` — at least one direct or selected officer must resolve.
 - `ReferenceOfficerInstanceID` — required by `PercentOfPositiveGap`.
 - `MinimumAmount` — optional non-negative lower bound used only with `PercentOfPositiveGap`.
-- Exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` is
-  required.
-- At least one direct officer or selected officer must resolve.
+- `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` — exactly one adjustment mode is required.
 
 ```xml
 <ChangeOfficerRating OfficerInstanceID="LUKE_SKYWALKER" Rating="Combat">
@@ -497,13 +480,10 @@ This uses the same calculation modes as `ChangeOfficerRating`, but every configu
 
 **Options**
 
-- `OfficerInstanceID` — optional direct officer ID.
-- `Officers` — optional officer selector collection.
+- `OfficerInstanceID` or `Officers` — at least one direct or selected officer must resolve.
 - `ReferenceOfficerInstanceID` — required by `PercentOfPositiveGap`.
 - `MinimumAmount` — optional non-negative lower bound used only with `PercentOfPositiveGap`.
-- Exactly one positive `Amount`, `PercentOfStored`, `PercentOfEffective`, or
-  `PercentOfPositiveGap` is required.
-- At least one direct officer or selected officer must resolve.
+- `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` — exactly one positive adjustment mode is required.
 
 ```xml
 <IncreaseOfficerForce OfficerInstanceID="LUKE_SKYWALKER"

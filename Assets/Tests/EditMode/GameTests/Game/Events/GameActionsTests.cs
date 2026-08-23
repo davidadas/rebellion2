@@ -648,7 +648,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SendMessage_RecipientFromSubject_EmitsResolvedResult()
+        public void SendMessage_ExplicitRecipient_EmitsResolvedResult()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -656,6 +656,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = luke.InstanceID,
                 MessageType = MessageType.Advice,
                 Subject = "A message for {subject}",
@@ -675,6 +676,19 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void SendMessage_RecipientOmitted_ThrowsException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            SendMessageAction action = new SendMessageAction();
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                action.Execute(game)
+            );
+
+            Assert.AreEqual("SendMessage requires RecipientFactionInstanceID.", exception.Message);
+        }
+
+        [Test]
         public void SendMessage_InactiveSubject_EmitsResolvedResult()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
@@ -683,6 +697,7 @@ namespace Rebellion.Tests.Game.Events
             luke.IsEnabled = false;
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = luke.InstanceID,
                 Subject = "Rescue failed",
                 Body = "Luke remains captured.",
@@ -707,6 +722,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = luke.InstanceID,
                 Body = "Luke learned the truth. ",
                 ConditionalBodies = new List<ConditionalMessageBody>
@@ -739,6 +755,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = luke.InstanceID,
                 BackgroundAudio = new MessageAudio { Binding = "$audioPath" },
             };
@@ -772,6 +789,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = luke.InstanceID,
                 OfficerVoice = new MessageOfficerVoice
                 {
@@ -795,6 +813,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(officer, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = officer.InstanceID,
                 BackgroundImage = new MessageBackgroundImage
                 {

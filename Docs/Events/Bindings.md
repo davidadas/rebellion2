@@ -321,7 +321,7 @@ Returns a unit's registered `LastParentInstanceID` when that node still resolves
 
 **Options**
 
-- Exactly one of `UnitInstanceID` or `UnitBinding` is required.
+- `UnitInstanceID` or `UnitBinding` — exactly one unit source is required.
 
 ```xml
 <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>

@@ -198,9 +198,6 @@ namespace Rebellion.Game.Events
         public string RecipientFactionInstanceID { get; set; }
 
         [PersistableAttribute]
-        public string RecipientUnitInstanceID { get; set; }
-
-        [PersistableAttribute]
         public string SubjectInstanceID { get; set; }
 
         [PersistableAttribute]
@@ -245,19 +242,12 @@ namespace Rebellion.Game.Events
             ISceneNode relatedSubject = game.GetSceneNodeByInstanceID<ISceneNode>(
                 RelatedSubjectInstanceID
             );
-            ISceneNode recipientUnit = game.GetSceneNodeByInstanceID<ISceneNode>(
-                RecipientUnitInstanceID
-            );
-            string recipientId = RecipientFactionInstanceID;
-            if (string.IsNullOrWhiteSpace(recipientId))
-                recipientId = recipientUnit?.OwnerInstanceID ?? subject?.OwnerInstanceID;
-
-            if (string.IsNullOrWhiteSpace(recipientId))
+            if (string.IsNullOrWhiteSpace(RecipientFactionInstanceID))
                 throw new InvalidOperationException(
-                    "SendMessage could not resolve its recipient faction."
+                    "SendMessage requires RecipientFactionInstanceID."
                 );
 
-            Faction recipient = game.GetFactionByOwnerInstanceID(recipientId);
+            Faction recipient = game.GetFactionByOwnerInstanceID(RecipientFactionInstanceID);
             Planet location = !string.IsNullOrWhiteSpace(LocationBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(LocationBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
