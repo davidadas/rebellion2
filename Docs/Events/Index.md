@@ -68,7 +68,9 @@ A complete event uses the following high-level shape. Most events only need some
   <Conditionals>...</Conditionals>
 
   <!-- Optional authored behavior. -->
-  <Actions>...</Actions>
+  <Actions>
+    <!-- Add the actions that should run on each activation. -->
+  </Actions>
 </GameEvent>
 ```
 
@@ -78,9 +80,25 @@ Required stable identity used by runtime state, saves, and dependent events.
 
 ### MaximumActivations
 
-Optional maximum number of successful activations. Omission adds no numerical cap; a one-shot
-schedule still completes after one activation, and a recurring schedule can still complete through
-`Until`.
+Optional positive maximum number of successful activations, regardless of whether the event uses a
+schedule or triggers. Omission adds no numerical cap. One-shot schedules still complete after one
+activation, recurring schedules can complete through `Until`, and triggered events remain active
+until their limit is reached.
+
+```xml
+<GameEvent MaximumActivations="3">
+  <InstanceID>EVENT_ACTIVATES_THREE_TIMES</InstanceID>
+  <Schedule>
+    <Every Ticks="50"/>
+  </Schedule>
+  <Actions>
+    <!-- Add the actions that should run on each activation. -->
+  </Actions>
+</GameEvent>
+```
+
+Do not add `MaximumActivations="1"` to a one-shot schedule; it is redundant. A one-shot schedule
+cannot specify a value greater than one.
 
 ### Bindings
 

@@ -146,24 +146,9 @@ ticks.
 </Schedule>
 ```
 
-## Limiting activations
-
-`MaximumActivations` belongs on `GameEvent` because it limits activations regardless of their
-source. Omit it when a recurring or triggered event should have no activation-count cap; recurring
-`Until` conditions may still complete the event.
-
-```xml
-<GameEvent MaximumActivations="3">
-  <InstanceID>EVENT_ACTIVATES_THREE_TIMES</InstanceID>
-  <Schedule>
-    <Every Ticks="50"/>
-  </Schedule>
-  <Actions>...</Actions>
-</GameEvent>
-```
-
-One-shot schedules do not require `MaximumActivations="1"` and cannot specify a value greater than
-one.
+To cap how often an event can activate, use the event-level
+[`MaximumActivations`](Index.md#maximumactivations) option. It is not part of `Schedule` because it
+also applies to trigger-driven events.
 
 ---
 
