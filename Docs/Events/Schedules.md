@@ -9,16 +9,6 @@ Bindings are evaluation-scoped, not persistent. Their selectors run whenever the
 evaluated, including while a recurring schedule is waiting for its next eligible tick. A random
 binding can therefore resolve a different node on successive evaluations.
 
-## Contents
-
-- [`At`](#at)
-- [`RandomDelay`](#randomdelay)
-- [`Every`](#every)
-- [`RandomInterval`](#randominterval)
-- [`After`](#after)
-- [`AfterAll`](#afterall)
-- [`AfterAny`](#afterany)
-
 ## At
 
 `At` makes an event eligible at one absolute campaign tick. It is inherently one-shot.

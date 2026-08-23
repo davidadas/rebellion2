@@ -1414,12 +1414,12 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ReducePlanetStats_MinimumLoss_GuaranteesOnePointLoss()
+        public void DamagePlanetStats_MinimumLoss_GuaranteesOnePointLoss()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 3;
             planet.EnergyCapacity = 3;
-            ReducePlanetStatsAction action = new ReducePlanetStatsAction
+            DamagePlanetStatsAction action = new DamagePlanetStatsAction
             {
                 LossProbabilityPerResource = 0,
                 MinimumTotalLoss = 1,

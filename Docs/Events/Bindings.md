@@ -4,32 +4,6 @@ Selectors find typed collections of scene nodes. Bindings, conditionals, and act
 authored XML needs to identify game objects. Direct selectors return every active matching object
 when no optional filter is supplied.
 
-## Contents
-
-- [Bindings](#bindings)
-- [Planet selectors](#planet-selectors)
-  - [`SelectPlanets`](#selectplanets)
-  - [`SelectPlanetSectors`](#selectplanetsectors)
-- [Personnel and mission selectors](#personnel-and-mission-selectors)
-  - [`SelectOfficers`](#selectofficers)
-  - [`SelectSpecialForces`](#selectspecialforces)
-  - [`SelectMissions`](#selectmissions)
-- [Fleet and unit selectors](#fleet-and-unit-selectors)
-  - [`SelectFleets`](#selectfleets)
-  - [`SelectCapitalShips`](#selectcapitalships)
-  - [`SelectStarfighters`](#selectstarfighters)
-  - [`SelectRegiments`](#selectregiments)
-  - [`SelectBuildings`](#selectbuildings)
-  - [`SelectManufacturingOrders`](#selectmanufacturingorders)
-- [Selector composition](#selector-composition)
-  - [`From`](#from)
-  - [`SelectRandom`](#selectrandom)
-  - [`SelectFirst`](#selectfirst)
-  - [`SelectBinding`](#selectbinding)
-  - [`SelectNearestParent`](#selectnearestparent)
-  - [`SelectPreviousLocation`](#selectpreviouslocation)
-  - [`SpawnUnits`](#spawnunits)
-
 ## Bindings
 
 Each `Bind` selects exactly one scene node and exposes it under its `As` name for the complete event

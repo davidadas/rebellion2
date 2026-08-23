@@ -7,40 +7,6 @@ Requests and results produced by event actions retain the source event's `Instan
 activate other result-triggered events, but they do not generate automatic strategy messages.
 Use `SendMessage` when the event should communicate with a player.
 
-## Contents
-
-- [Flow and event state](#flow-and-event-state)
-  - [`If`](#if)
-  - [`RollRandom`](#rollrandom)
-  - [`PerformSkillCheck`](#performskillcheck)
-  - [`SetEventVariable`](#seteventvariable)
-- [Information and messages](#information-and-messages)
-  - [`RevealToFaction`](#revealtofaction)
-  - [`SendMessage`](#sendmessage)
-- [Planets and resources](#planets-and-resources)
-  - [`ChangePlanetStat`](#changeplanetstat)
-  - [`ReducePlanetStats`](#reduceplanetstats)
-- [Units and ownership](#units-and-ownership)
-  - [`DestroyUnits`](#destroyunits)
-  - [`ChangeOwner`](#changeowner)
-  - [`PlaceUnits`](#placeunits)
-  - [`SendUnits`](#sendunits)
-  - [`SetNodeActive`](#setnodeactive)
-- [Officers](#officers)
-  - [`SetCaptureStatus`](#setcapturestatus)
-  - [`ChangeOfficerRating`](#changeofficerrating)
-  - [`IncreaseForceRank`](#increaseforcerank)
-  - [`SetForceSensitive`](#setforcesensitive)
-  - [`SetForceEligible`](#setforceeligible)
-  - [`ApplyOfficerInjury`](#applyofficerinjury)
-  - [`TriggerDuel`](#triggerduel)
-  - [`SetOfficerImages`](#setofficerimages)
-  - [`SetOfficerVoiceSet`](#setofficervoiceset)
-- [Display metadata](#display-metadata)
-  - [`SetDisplayName`](#setdisplayname)
-  - [`SetDisplayStatus`](#setdisplaystatus)
-  - [`ClearDisplayStatus`](#cleardisplaystatus)
-
 Every action belongs inside an event's `Actions` collection:
 
 ```xml
@@ -285,7 +251,7 @@ Adjusts one stat on one or more planets.
 
 Values cannot fall below zero.
 
-### ReducePlanetStats
+### DamagePlanetStats
 
 Randomly removes points from selected planet stats without reducing them below zero.
 
@@ -299,14 +265,14 @@ Randomly removes points from selected planet stats without reducing them below z
 - `Name` **[Required]:** The stat selected by each `Stat` element: `RawResourceNodes` or `EnergyCapacity`.
 
 ```xml
-<ReducePlanetStats PlanetInstanceID="NABOO"
+<DamagePlanetStats PlanetInstanceID="NABOO"
                    LossProbabilityPerResource="0.05"
                    MinimumTotalLoss="1">
   <Stats>
     <Stat Name="RawResourceNodes"/>
     <Stat Name="EnergyCapacity"/>
   </Stats>
-</ReducePlanetStats>
+</DamagePlanetStats>
 ```
 
 ## Units and ownership

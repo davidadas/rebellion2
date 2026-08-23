@@ -3,44 +3,6 @@
 Conditionals inspect game state without changing it. Every top-level conditional must pass before
 an event activates.
 
-## Contents
-
-- [Collections and logic](#collections-and-logic)
-  - [`Conditionals`](#conditionals)
-  - [`All`](#all)
-  - [`Any`](#any)
-  - [`Not`](#not)
-  - [`Xor`](#xor)
-- [Time and event state](#time-and-event-state)
-  - [`TickCount`](#tickcount)
-  - [`HasEventActivated`](#haseventactivated)
-  - [`IsEventComplete`](#iseventcomplete)
-  - [`EvaluateEventVariable`](#evaluateeventvariable)
-- [Trigger bindings](#trigger-bindings)
-  - [`EvaluateBinding`](#evaluatebinding)
-  - [`BindingIncludesUnit`](#bindingincludesunit)
-- [Ownership and support](#ownership-and-support)
-  - [`IsOwned`](#isowned)
-  - [`RollAgainstPopularSupport`](#rollagainstpopularsupport)
-- [Location and scene relationships](#location-and-scene-relationships)
-  - [`IsAtLocation`](#isatlocation)
-  - [`ShareParent`](#shareparent)
-  - [`ShareAncestor`](#shareancestor)
-  - [`AreOnOpposingFactions`](#areonopposingfactions)
-- [Unit and officer state](#unit-and-officer-state)
-  - [`IsOnMission`](#isonmission)
-  - [`IsInTransit`](#isintransit)
-  - [`IsCaptured`](#iscaptured)
-  - [`IsKilled`](#iskilled)
-  - [`IsInjured`](#isinjured)
-  - [`IsForceEligible`](#isforceeligible)
-- [Ratings, Force, and planet state](#ratings-force-and-planet-state)
-  - [`HasForceRank`](#hasforcerank)
-  - [`CompareOfficerRating`](#compareofficerrating)
-  - [`CompareOfficerForce`](#compareofficerforce)
-  - [`ComparePlanetStat`](#compareplanetstat)
-  - [`HasBuildingType`](#hasbuildingtype)
-
 ```xml
 <Conditionals>
   <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>

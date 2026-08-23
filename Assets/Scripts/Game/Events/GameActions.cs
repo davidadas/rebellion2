@@ -1230,8 +1230,8 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Reduces selected planet stats by independently rolling once for each current point.
     /// </summary>
-    [PersistableObject(Name = "ReducePlanetStats")]
-    public sealed class ReducePlanetStatsAction : GameAction
+    [PersistableObject(Name = "DamagePlanetStats")]
+    public sealed class DamagePlanetStatsAction : GameAction
     {
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
@@ -1257,12 +1257,12 @@ namespace Rebellion.Game.Events
                 ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             if (planet == null)
-                throw new InvalidOperationException("ReducePlanetStats requires a planet.");
+                throw new InvalidOperationException("DamagePlanetStats requires a planet.");
 
             List<PlanetStat> selectedStats = Stats.Select(stat => stat.Stat).Distinct().ToList();
             if (selectedStats.Count == 0)
                 throw new InvalidOperationException(
-                    "ReducePlanetStats requires at least one planet stat."
+                    "DamagePlanetStats requires at least one planet stat."
                 );
             Dictionary<PlanetStat, int> oldValues = selectedStats.ToDictionary(
                 stat => stat,
@@ -1273,11 +1273,11 @@ namespace Rebellion.Game.Events
 
             if (LossProbabilityPerResource < 0 || LossProbabilityPerResource > 1)
                 throw new InvalidOperationException(
-                    "ReducePlanetStats.LossProbabilityPerResource must be between zero and one."
+                    "DamagePlanetStats.LossProbabilityPerResource must be between zero and one."
                 );
             if (MinimumTotalLoss < 0)
                 throw new InvalidOperationException(
-                    "ReducePlanetStats.MinimumTotalLoss cannot be negative."
+                    "DamagePlanetStats.MinimumTotalLoss cannot be negative."
                 );
 
             Dictionary<PlanetStat, int> losses = selectedStats.ToDictionary(stat => stat, _ => 0);

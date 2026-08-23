@@ -11,37 +11,6 @@ All triggers support:
 
 When multiple triggers use `As`, they must use the same alias and expose the same result type.
 
-## Contents
-
-- [Planet](#planet)
-  - [`PlanetOwnershipChanged`](#planetownershipchanged)
-  - [`PlanetStatChanged`](#planetstatchanged)
-  - [`BlockadeChanged`](#blockadechanged)
-  - [`UprisingStarted`](#uprisingstarted)
-  - [`UprisingEnded`](#uprisingended)
-- [Faction](#faction)
-  - [`ResearchAdvanced`](#researchadvanced)
-- [Mission](#mission)
-  - [`MissionCompleted`](#missioncompleted)
-- [Officer](#officer)
-  - [`OfficerCaptureChanged`](#officercapturechanged)
-  - [`OfficerKilled`](#officerkilled)
-  - [`OfficerInjured`](#officerinjured)
-  - [`OfficerRecruited`](#officerrecruited)
-- [Unit lifecycle](#unit-lifecycle)
-  - [`UnitOwnershipChanged`](#unitownershipchanged)
-  - [`UnitCreated`](#unitcreated)
-  - [`UnitDestroyed`](#unitdestroyed)
-  - [`UnitArrived`](#unitarrived)
-- [Combat](#combat)
-  - [`SpaceCombatCompleted`](#spacecombatcompleted)
-  - [`BombardmentCompleted`](#bombardmentcompleted)
-  - [`PlanetaryAssaultCompleted`](#planetaryassaultcompleted)
-  - [`DuelCompleted`](#duelcompleted)
-- [Manufacturing](#manufacturing)
-  - [`ManufacturingCompleted`](#manufacturingcompleted)
-- [Trigger bindings](#trigger-bindings)
-
 ## Planet
 
 ### PlanetOwnershipChanged
