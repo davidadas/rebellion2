@@ -2,35 +2,78 @@
 
 Triggers activate events from typed gameplay results. An event uses either `Triggers` or `Schedule`, never both. Multiple triggers are alternatives: any matching result gives the event one activation opportunity.
 
-If the event's top-level conditionals fail for that result, the opportunity is not retained or
-retried; the event waits for another matching result. A top-level binding that does not resolve
-exactly one node is an authoring error and stops that evaluation.
+If the event's top-level conditionals fail, that opportunity is discarded. The event waits for another matching result. Every trigger option is optional and narrows which results match.
 
-`SourceEventInstanceID` filters identify the authored event that produced the triggering result.
-Use them when a reaction must belong to one particular event chain.
+All triggers support:
+
+- `As` — exposes the complete matched result as a binding.
+- `SourceEventInstanceID` — accepts only results produced by that authored event.
+
+When multiple triggers use `As`, they must use the same alias and expose the same result type.
+
+## Planet
+
+### PlanetOwnershipChanged
+
+Activates after a planet changes owner.
+
+**Options:** `PlanetInstanceID`, `PreviousOwnerFactionInstanceID`, `NewOwnerFactionInstanceID`, `Reason` (`None` or `PopularSupport`), `SourceEventInstanceID`, and `As`.
 
 ```xml
 <Triggers>
-  <UnitArrived UnitInstanceID="LUKE_SKYWALKER"/>
-  <UnitArrived UnitInstanceID="DARTH_VADER"/>
+  <PlanetOwnershipChanged PlanetInstanceID="NABOO"
+                          NewOwnerFactionInstanceID="FNALL1"
+                          As="ownershipChange"/>
 </Triggers>
 ```
 
-When multiple triggers use `As`, every trigger on that event must use the same alias and expose the
-same concrete result type.
+### PlanetStatChanged
 
-## MissionCompleted
+Activates after a recorded planet value changes.
 
-Activates when a mission completes and all authored filters match.
+**Options:** `PlanetInstanceID`, `FactionInstanceID`, `Category`, `SourceEventInstanceID`, and `As`. Categories are `Energy`, `EnergyAllocated`, `Loyalty`, `ProductionModifier`, `RawMaterial`, `RawMaterialAllocated`, `Smuggling`, `TroopWithdrawPercent`, `TroopSurplus`, `TroopRequired`, and `ControlUprising`.
 
-**Options**
+### BlockadeChanged
 
-- `MissionTypeID` — optional mission type filter.
-- `Outcome` — optional mission outcome filter.
-- `CompletionReason` — optional completion-reason filter.
-- `SourceEventInstanceID` — optional source-event filter.
-- `As` — optional alias exposing the complete `MissionCompletedResult`.
-- `Participants` — optional participant filter with `Match="Any"` or `Match="All"`.
+Activates when a blockade begins or ends.
+
+**Options:** `PlanetInstanceID`, `IsBlockaded`, `SourceEventInstanceID`, and `As`.
+
+### UprisingStarted and UprisingEnded
+
+Activate when an uprising starts or ends.
+
+**Options:** Both accept `PlanetInstanceID`, `SourceEventInstanceID`, and `As`. `UprisingStarted` also accepts `InstigatorFactionInstanceID`; `UprisingEnded` accepts `FactionInstanceID`.
+
+### PlanetIncident
+
+Activates when an event records a planet incident.
+
+**Options:** `PlanetInstanceID`, `Type` (`Uprising`, `Intelligence`, `Disaster`, or `Resource`), `SourceEventInstanceID`, and `As`.
+
+## Faction
+
+### ResearchAdvanced
+
+Activates when a faction advances a research discipline.
+
+**Options:** `FactionInstanceID`, `Discipline` (`None`, `ShipDesign`, `FacilityDesign`, or `TroopTraining`), `TechnologyTypeID`, `SourceEventInstanceID`, and `As`.
+
+```xml
+<Triggers>
+  <ResearchAdvanced FactionInstanceID="FNALL1"
+                    Discipline="ShipDesign"
+                    As="research"/>
+</Triggers>
+```
+
+## Mission
+
+### MissionCompleted
+
+Activates when a mission completes.
+
+**Options:** `MissionTypeID`, `Outcome`, `CompletionReason`, `SourceEventInstanceID`, `As`, and an optional `Participants` filter with `Match="Any"` or `Match="All"`.
 
 ```xml
 <Triggers>
@@ -45,51 +88,47 @@ Activates when a mission completes and all authored filters match.
 </Triggers>
 ```
 
-## UnitArrived
+Mission outcomes are `Success`, `Failed`, and `Foiled`. Completion reasons are `None`, `Success`, `Failure`, `Foiled`, `TargetUnavailable`, `NoResearchFacilities`, `ResearchProgress`, and `ResearchBreakthrough`.
 
-Activates when one unit finishes movement and all authored filters match.
+## Officer
 
-**Options**
+### OfficerCaptureChanged
 
-- `UnitInstanceID` — optional arriving-unit filter.
-- `DestinationInstanceID` — optional destination filter.
-- `SourceEventInstanceID` — optional source-event filter.
-- `As` — optional alias exposing the complete `UnitArrivedResult`.
+Activates when an officer becomes captured or is released.
 
-Use multiple triggers when any of several units should activate the event:
+**Options:** `OfficerInstanceID`, `IsCaptured`, `SourceEventInstanceID`, and `As`.
 
-```xml
-<Triggers>
-  <UnitArrived UnitInstanceID="LUKE_SKYWALKER" As="arrival"/>
-  <UnitArrived UnitInstanceID="DARTH_VADER" As="arrival"/>
-</Triggers>
-```
+### OfficerKilled and OfficerInjured
 
-Multiple triggers express the OR relationship directly.
+Activate when an officer is killed or injured.
 
-## DuelCompleted
+**Options:** `OfficerInstanceID`, `SourceEventInstanceID`, and `As`.
 
-Activates when a duel completes and all authored filters match.
+### OfficerRecruited
 
-**Options**
+Activates when an officer is recruited.
 
-- `FirstOfficerInstanceID` — optional first-officer filter.
-- `SecondOfficerInstanceID` — optional second-officer filter.
-- `SourceEventInstanceID` — optional source-event filter.
-- `As` — optional alias exposing the complete `DuelResult`.
+**Options:** `OfficerInstanceID`, `FactionInstanceID`, `PlanetInstanceID`, `SourceEventInstanceID`, and `As`.
 
-```xml
-<Triggers>
-  <DuelCompleted FirstOfficerInstanceID="LUKE_SKYWALKER"
-                 SecondOfficerInstanceID="DARTH_VADER"
-                 As="duel"/>
-</Triggers>
-```
+## Unit lifecycle
 
-## Trigger bindings
+### UnitOwnershipChanged
 
-`As` binds the complete matched result for use by conditionals and actions. Prefix the alias with
-`$` when referring to it, then traverse public result properties with dots:
+Activates after a unit changes owner.
+
+**Options:** `UnitInstanceID`, `PreviousOwnerFactionInstanceID`, `NewOwnerFactionInstanceID`, `SourceEventInstanceID`, and `As`.
+
+### UnitCreated and UnitDestroyed
+
+Activate when a unit is created or destroyed.
+
+**Options:** `UnitInstanceID`, `SourceEventInstanceID`, and `As`.
+
+### UnitArrived
+
+Activates when a unit finishes movement.
+
+**Options:** `UnitInstanceID`, `DestinationInstanceID`, `SourceEventInstanceID`, and `As`.
 
 ```xml
 <Triggers>
@@ -102,11 +141,49 @@ Activates when a duel completes and all authored filters match.
 </Conditionals>
 ```
 
-Use top-level [`Bindings`](Bindings.md#bindings) when an event must select and retain a scene node independently of a gameplay result.
+## Combat
 
-Mission outcomes are `Success`, `Failed`, and `Foiled`. Completion reasons are `None`, `Success`,
-`Failure`, `Foiled`, `TargetUnavailable`, `NoResearchFacilities`, `ResearchProgress`, and
-`ResearchBreakthrough`. Participant matching supports `Any` and `All`.
+### SpaceCombatCompleted
+
+Activates after a space battle resolves.
+
+**Options:** `PlanetInstanceID`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Winner` (`Attacker`, `Defender`, or `Draw`), `SourceEventInstanceID`, and `As`.
+
+### BombardmentCompleted
+
+Activates after bombardment resolves.
+
+**Options:** `PlanetInstanceID`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Type` (`Military`, `Civilian`, `General`, or `DestroyPlanet`), `PlanetDestroyed`, `SourceEventInstanceID`, and `As`.
+
+### PlanetaryAssaultCompleted
+
+Activates after a planetary assault resolves.
+
+**Options:** `PlanetInstanceID`, `AttackerFactionInstanceID`, `DefenderFactionInstanceID`, `Success`, `BlockedByShields`, `SourceEventInstanceID`, and `As`.
+
+### DuelCompleted
+
+Activates after a duel resolves.
+
+**Options:** `FirstOfficerInstanceID`, `SecondOfficerInstanceID`, `SourceEventInstanceID`, and `As`.
+
+## Manufacturing
+
+### ManufacturingCompleted
+
+Activates when a manufactured unit is deployed.
+
+**Options:** `FactionInstanceID`, `UnitInstanceID`, `LocationInstanceID`, `SourceEventInstanceID`, and `As`.
+
+```xml
+<Triggers>
+  <ManufacturingCompleted FactionInstanceID="FNALL1" As="production"/>
+</Triggers>
+```
+
+## Trigger bindings
+
+`As` binds the complete matched result. Prefix the alias with `$` and traverse its public properties from conditionals or actions. Use top-level [`Bindings`](Bindings.md#bindings) when an event must select and retain a scene node independently of a gameplay result.
 
 ---
 
