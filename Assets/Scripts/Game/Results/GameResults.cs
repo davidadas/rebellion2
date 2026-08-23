@@ -138,16 +138,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Ownership of one unit changed hands.
-    /// </summary>
-    public sealed class UnitOwnershipChangedResult : GameResult
-    {
-        public ISceneNode Unit { get; set; }
-        public Faction PreviousOwner { get; set; }
-        public Faction NewOwner { get; set; }
-    }
-
-    /// <summary>
     /// A faction lost its headquarters to an opposing faction.
     /// </summary>
     public abstract class HeadquartersLostResult : GameResult
