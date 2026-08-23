@@ -521,8 +521,8 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Increases selected officers' stored Force progression using one authored calculation.
     /// </summary>
-    [PersistableObject(Name = "IncreaseOfficerForce")]
-    public sealed class IncreaseOfficerForceAction : GameAction
+    [PersistableObject(Name = "IncreaseForceRank")]
+    public sealed class IncreaseForceRankAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -555,7 +555,7 @@ namespace Rebellion.Game.Events
             }.Count(value => value.HasValue);
             if (modeCount != 1)
                 throw new InvalidOperationException(
-                    "IncreaseOfficerForce requires exactly one increase value."
+                    "IncreaseForceRank requires exactly one increase value."
                 );
             if (
                 Amount is <= 0
@@ -564,11 +564,11 @@ namespace Rebellion.Game.Events
                 || PercentOfPositiveGap is <= 0
             )
                 throw new InvalidOperationException(
-                    "IncreaseOfficerForce values must be greater than zero."
+                    "IncreaseForceRank values must be greater than zero."
                 );
             if (MinimumAmount < 0)
                 throw new InvalidOperationException(
-                    "IncreaseOfficerForce MinimumAmount cannot be negative."
+                    "IncreaseForceRank MinimumAmount cannot be negative."
                 );
 
             GameRoot game = context.Game;
@@ -581,7 +581,7 @@ namespace Rebellion.Game.Events
                 );
                 if (referenceOfficer == null)
                     throw new InvalidOperationException(
-                        $"IncreaseOfficerForce could not resolve reference officer '{ReferenceOfficerInstanceID}'."
+                        $"IncreaseForceRank could not resolve reference officer '{ReferenceOfficerInstanceID}'."
                     );
             }
 
@@ -596,7 +596,7 @@ namespace Rebellion.Game.Events
                 );
                 if (explicitOfficer == null)
                     throw new InvalidOperationException(
-                        $"IncreaseOfficerForce could not resolve officer '{OfficerInstanceID}'."
+                        $"IncreaseForceRank could not resolve officer '{OfficerInstanceID}'."
                     );
                 selected = new ISceneNode[] { explicitOfficer }.Concat(selected);
             }
@@ -604,11 +604,11 @@ namespace Rebellion.Game.Events
             List<Officer> officers = selected.Distinct().OfType<Officer>().ToList();
             if (officers.Count == 0)
                 throw new InvalidOperationException(
-                    "IncreaseOfficerForce requires an officer or a matching selector."
+                    "IncreaseForceRank requires an officer or a matching selector."
                 );
             if (selected.Any(node => node is not Officer))
                 throw new InvalidOperationException(
-                    "IncreaseOfficerForce selectors may return only officers."
+                    "IncreaseForceRank selectors may return only officers."
                 );
 
             foreach (Officer officer in officers)
@@ -632,7 +632,7 @@ namespace Rebellion.Game.Events
                     );
                 if (increase <= 0)
                     throw new InvalidOperationException(
-                        $"IncreaseOfficerForce calculated no increase for '{officer.InstanceID}'."
+                        $"IncreaseForceRank calculated no increase for '{officer.InstanceID}'."
                     );
                 officer.ForceValue = checked(stored + increase);
             }

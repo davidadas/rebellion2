@@ -23,7 +23,7 @@ This event activates once when tick 10 becomes eligible.
 </GameEvent>
 ```
 
-## Repeat an event until a condition is met
+## Repeat an event until a conditional is met
 
 This event runs every 50 ticks while Han remains free. Capturing him permanently completes it.
 

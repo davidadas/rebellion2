@@ -13,7 +13,7 @@ after a matching simulation result is produced. Once selected, an event follows 
 
 1. The event confirms that it is not already complete and initializes its schedule.
 2. A matched trigger exposes its result, then top-level bindings select any required scene nodes.
-3. A recurring schedule's `Until` conditions may permanently complete the event.
+3. A recurring schedule's `Until` conditionals may permanently complete the event.
 4. A scheduled event must have reached its next eligible tick.
 5. Every top-level conditional must pass.
 6. Actions execute from top to bottom.
@@ -103,7 +103,7 @@ cannot specify a value greater than one.
 ### Bindings
 
 Optionally select scene nodes and expose them throughout the current event evaluation. Scheduled
-events declare bindings before `Schedule`, allowing recurring `Until` conditions to consume them.
+events declare bindings before `Schedule`, allowing recurring `Until` conditionals to consume them.
 Triggered events declare `Triggers` first, allowing selections to consume trigger-result bindings.
 Top-level conditionals and actions may consume either kind. See [Bindings and selectors](Bindings.md).
 
@@ -119,24 +119,14 @@ Optionally activates the event in response to gameplay results and exposes resul
 
 ### Conditionals
 
-Optional XML collection containing the conditions that gate an activation against current game
+Optional XML collection containing the conditionals that gate an activation against current game
 state and bindings. The collection is named `Conditionals`; the individual elements are called
-conditions. See [Conditions](Conditions.md).
+conditionals. See [Conditionals](Conditionals.md).
 
 ### Actions
 
 Optional collection of game changes performed in authored order. An event without actions can still
 serve as a persistent timing or completion marker. See [Actions](Actions.md).
-
-## Guide
-
-1. [Bindings and selectors](Bindings.md)
-2. [Schedules](Schedules.md)
-3. [Triggers](Triggers.md)
-4. [Conditions](Conditions.md)
-5. [Actions and messages](Actions.md)
-6. [Complete examples](Examples.md)
-7. [Testing and troubleshooting](Testing.md)
 
 ---
 

@@ -143,7 +143,7 @@ namespace Rebellion.Tests.Game.Events
                         },
                     },
                     new SetNodeActiveAction { InstanceID = "LUKE_SKYWALKER", IsActive = false },
-                    new IncreaseOfficerForceAction
+                    new IncreaseForceRankAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",
                         Amount = 5,
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.Game.Events
                 ((SetNodeActiveAction)restored.Actions[1]).InstanceID
             );
             Assert.IsFalse(((SetNodeActiveAction)restored.Actions[1]).IsActive);
-            Assert.AreEqual(5, ((IncreaseOfficerForceAction)restored.Actions[2]).Amount);
+            Assert.AreEqual(5, ((IncreaseForceRankAction)restored.Actions[2]).Amount);
         }
 
         [Test]

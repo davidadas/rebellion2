@@ -1064,13 +1064,13 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void IncreaseOfficerForce_PercentOfEffectiveRank_AdjustsForceRating()
+        public void IncreaseForceRank_PercentOfEffectiveRank_AdjustsForceRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.ForceValue = 40;
             game.AttachNode(luke, rebelPlanet);
-            IncreaseOfficerForceAction action = new IncreaseOfficerForceAction
+            IncreaseForceRankAction action = new IncreaseForceRankAction
             {
                 OfficerInstanceID = luke.InstanceID,
                 PercentOfEffective = 25,

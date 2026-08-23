@@ -9,13 +9,23 @@ Bindings are evaluation-scoped, not persistent. Their selectors run whenever the
 evaluated, including while a recurring schedule is waiting for its next eligible tick. A random
 binding can therefore resolve a different node on successive evaluations.
 
+## Contents
+
+- [`At`](#at)
+- [`RandomDelay`](#randomdelay)
+- [`Every`](#every)
+- [`RandomInterval`](#randominterval)
+- [`After`](#after)
+- [`AfterAll`](#afterall)
+- [`AfterAny`](#afterany)
+
 ## At
 
 `At` makes an event eligible at one absolute campaign tick. It is inherently one-shot.
 
-**Options**
+**Required options**
 
-- `Tick` **[Required]:** non-negative campaign tick.
+- `Tick` **[Required]:** Non-negative campaign tick.
 
 ```xml
 <Schedule>
@@ -31,10 +41,10 @@ If the event's conditionals fail at tick 200, it remains eligible until they pas
 schedule values are measured from campaign tick zero; they are not added to the tick on which the
 event catalog happens to be evaluated.
 
-**Options**
+**Required options**
 
-- `MinimumTicks` **[Required]:** positive minimum first eligible campaign tick.
-- `MaximumTicks` **[Required]:** maximum first eligible campaign tick; cannot be lower than
+- `MinimumTicks` **[Required]:** Positive minimum first eligible campaign tick.
+- `MaximumTicks` **[Required]:** Maximum first eligible campaign tick; cannot be lower than
   `MinimumTicks`.
 
 ```xml
@@ -48,11 +58,14 @@ event catalog happens to be evaluated.
 `Every` repeats at a fixed interval. `InitialDelayTicks` sets its first eligible campaign tick,
 measured from tick zero. Later intervals are measured from the event's previous activation.
 
-**Options**
+**Required options**
 
-- `Ticks` **[Required]:** positive interval between activations.
-- `InitialDelayTicks` **[Optional]:** non-negative initial delay; defaults to `0`.
-- `Until` **[Optional]:** conditionals that permanently complete the schedule when all pass.
+- `Ticks` **[Required]:** Positive interval between activations.
+
+**Optional options**
+
+- `InitialDelayTicks` **[Optional]:** Non-negative initial delay; defaults to `0`.
+- `Until` **[Optional]:** Conditionals that permanently complete the schedule when all pass.
 
 ```xml
 <Schedule>
@@ -69,11 +82,14 @@ measured from tick zero. Later intervals are measured from the event's previous 
 `RandomInterval` rolls its first eligible campaign tick from the authored range, measured from tick
 zero. After each activation, it rolls a new inclusive delay from that activation tick.
 
-**Options**
+**Required options**
 
-- `MinimumTicks` **[Required]:** positive minimum interval.
-- `MaximumTicks` **[Required]:** maximum interval; cannot be lower than `MinimumTicks`.
-- `Until` **[Optional]:** conditionals that permanently complete the schedule when all pass.
+- `MinimumTicks` **[Required]:** Positive minimum interval.
+- `MaximumTicks` **[Required]:** Maximum interval; cannot be lower than `MinimumTicks`.
+
+**Optional options**
+
+- `Until` **[Optional]:** Conditionals that permanently complete the schedule when all pass.
 
 ```xml
 <Schedule>
@@ -93,10 +109,10 @@ the schedule.
 
 `After` makes a one-shot event eligible after another event activates, plus an authored delay.
 
-**Options**
+**Required options**
 
 - `EventInstanceID` **[Required]:** ID of an event in the loaded catalog.
-- `DelayTicks` **[Required]:** non-negative delay after that activation.
+- `DelayTicks` **[Required]:** Non-negative delay after that activation.
 
 ```xml
 <Schedule>
@@ -108,10 +124,10 @@ the schedule.
 
 `AfterAll` waits for every listed event to activate. Its delay begins at the latest activation.
 
-**Options**
+**Required options**
 
-- `DelayTicks` **[Required]:** non-negative delay.
-- `Events` **[Required]:** collection containing one or more unique event IDs.
+- `DelayTicks` **[Required]:** Non-negative delay.
+- `Events` **[Required]:** Collection containing one or more unique event IDs.
 
 ```xml
 <Schedule>
@@ -130,10 +146,10 @@ the schedule.
 activated when it initializes, the delay uses the earliest of their recorded latest activation
 ticks.
 
-**Options**
+**Required options**
 
-- `DelayTicks` **[Required]:** non-negative delay.
-- `Events` **[Required]:** collection containing one or more unique event IDs.
+- `DelayTicks` **[Required]:** Non-negative delay.
+- `Events` **[Required]:** Collection containing one or more unique event IDs.
 
 ```xml
 <Schedule>

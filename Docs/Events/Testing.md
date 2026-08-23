@@ -23,7 +23,7 @@ If an event does not run:
 - Confirm the event does not combine `Schedule` with `Triggers`.
 - Confirm trigger argument names and `$binding` aliases match exactly.
 - Confirm every top-level `Bind` resolves exactly one node.
-- Confirm conditions can pass in the tested game state.
+- Confirm conditionals can pass in the tested game state.
 - Confirm the event has not reached `MaximumActivations` or matched its recurring schedule's `Until`.
 
 Finally, save and reload after the event has run. Verify recurring schedules, activation counts,
