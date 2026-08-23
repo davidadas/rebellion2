@@ -94,14 +94,7 @@ public sealed class MainMenuController : MonoBehaviour
             ContentPack contentPack = bootstrap.GetContentPack();
             view?.InitializeContent(bootstrap.GetContentAssets());
             view?.RenderVictoryCondition(currentVictoryCondition);
-            FactionThemeLibrary themeLibrary = new FactionThemeLibrary(
-                contentPack.GameData.FactionThemes
-            );
-            view?.RenderFactions(
-                contentPack.Scenario.PlayableFactionIDs,
-                themeLibrary.GetTheme,
-                bootstrap.GetContentAssets().GetTexture
-            );
+            view?.RenderFactions(contentPack.Scenario.PlayableFactionIDs);
             AudioManager audioManager = bootstrap.GetAudioManager();
             audioManager.PreloadSfx(view?.GetAudioCuePaths());
             audioManager.PlayTrack(_menuMusicPath, true);
