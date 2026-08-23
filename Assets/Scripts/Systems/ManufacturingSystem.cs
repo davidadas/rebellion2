@@ -467,7 +467,7 @@ namespace Rebellion.Systems
             if (facilities.Count == 0)
                 return null;
 
-            long fastestUpperBound = GetFirstProductionPointTick(facilities[0]);
+            long fastestUpperBound = GetNextProductionTick(facilities[0]);
             long fastestRate = facilities.Min(facility => facility.GetProcessRate());
             if (requiredProgress > 1)
             {
@@ -481,7 +481,7 @@ namespace Rebellion.Systems
             long low = 1;
             long high = Math.Min(fastestUpperBound, int.MaxValue);
             if (
-                CountBestCaseProductionPoints(facilities, high, requiredProgress) < requiredProgress
+                GetProductionProgressAtTick(facilities, high, requiredProgress) < requiredProgress
             )
                 return int.MaxValue;
 
@@ -490,7 +490,7 @@ namespace Rebellion.Systems
             {
                 long middle = low + (high - low) / 2;
                 if (
-                    CountBestCaseProductionPoints(facilities, middle, requiredProgress)
+                    GetProductionProgressAtTick(facilities, middle, requiredProgress)
                     >= requiredProgress
                 )
                     high = middle;
@@ -508,7 +508,7 @@ namespace Rebellion.Systems
         /// <param name="tick">The one-based future tick to inspect.</param>
         /// <param name="requiredProgress">The point count at which counting may stop.</param>
         /// <returns>The available production points, capped at the required amount.</returns>
-        private static long CountBestCaseProductionPoints(
+        private static long GetProductionProgressAtTick(
             IReadOnlyList<Building> facilities,
             long tick,
             long requiredProgress
@@ -517,7 +517,7 @@ namespace Rebellion.Systems
             long points = 0;
             foreach (Building facility in facilities)
             {
-                long firstTick = GetFirstProductionPointTick(facility);
+                long firstTick = GetNextProductionTick(facility);
                 if (tick < firstTick)
                     continue;
 
@@ -530,11 +530,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the first future tick on which a facility can supply a production point.
+        /// Returns the next future tick on which a facility can supply a production point.
         /// </summary>
         /// <param name="facility">The active production facility.</param>
         /// <returns>A one-based future tick.</returns>
-        private static long GetFirstProductionPointTick(Building facility)
+        private static long GetNextProductionTick(Building facility)
         {
             if (facility.ProductionPointReady)
                 return 1;
@@ -1563,41 +1563,24 @@ namespace Rebellion.Systems
                     ]
                 )
                 {
-                    List<IManufacturable> ordered = OrderRebuiltQueue(entry.Value);
+                    List<IManufacturable> ordered = RestoreQueueOrder(entry.Value);
                     queue[entry.Key] = ordered;
                 }
             }
         }
 
         /// <summary>
-        /// Restores a queue from persisted item sequences or repairs legacy ordering.
+        /// Restores a queue from persisted item sequences.
         /// </summary>
         /// <param name="candidates">The live queued items discovered in the scene graph.</param>
         /// <returns>The rebuilt queue in manufacturing order.</returns>
-        private static List<IManufacturable> OrderRebuiltQueue(
+        private static List<IManufacturable> RestoreQueueOrder(
             IReadOnlyList<IManufacturable> candidates
         )
         {
-            bool hasPersistedSequence = candidates.Any(item => item.ManufacturingQueueSequence > 0);
-            List<IManufacturable> ordered;
-            if (hasPersistedSequence)
-            {
-                ordered = candidates
-                    .OrderBy(item =>
-                        item.ManufacturingQueueSequence > 0
-                            ? item.ManufacturingQueueSequence
-                            : long.MaxValue
-                    )
-                    .ToList();
-            }
-            else
-            {
-                ordered = candidates
-                    .OrderByDescending(item => item.GetManufacturingProgress())
-                    .ToList();
-                for (int index = 1; index < ordered.Count; index++)
-                    ordered[index].ManufacturingProgress = 0;
-            }
+            List<IManufacturable> ordered = candidates
+                .OrderBy(item => item.ManufacturingQueueSequence)
+                .ToList();
 
             for (int index = 0; index < ordered.Count; index++)
                 ordered[index].ManufacturingQueueSequence = index + 1;
