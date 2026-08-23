@@ -26,8 +26,6 @@ Activates after a planet changes owner.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `PlanetOwnershipChangedResult`.
 
-**Example**
-
 ```xml
 <Triggers>
   <PlanetOwnershipChanged PlanetInstanceID="NABOO"
@@ -48,8 +46,6 @@ Activates after a recorded planet value changes.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `PlanetStatChangedResult`.
 
-**Example**
-
 ```xml
 <Triggers>
   <PlanetStatChanged PlanetInstanceID="NABOO" Category="Loyalty" As="change"/>
@@ -66,8 +62,6 @@ Activates when a blockade begins or ends.
 - `IsBlockaded` — use `true` for a new blockade or `false` for a lifted blockade.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `BlockadeChangedResult`.
-
-**Example**
 
 ```xml
 <Triggers>
@@ -86,8 +80,6 @@ Activates when an uprising starts.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `PlanetUprisingStartedResult`.
 
-**Example**
-
 ```xml
 <Triggers>
   <UprisingStarted PlanetInstanceID="NABOO" InstigatorFactionInstanceID="FNALL1"/>
@@ -105,8 +97,6 @@ Activates when an uprising ends.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `PlanetUprisingEndedResult`.
 
-**Example**
-
 ```xml
 <Triggers>
   <UprisingEnded PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
@@ -123,8 +113,6 @@ Activates when an event records a planet incident.
 - `Type` — accepts `Uprising`, `Intelligence`, `Disaster`, or `Resource`.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `PlanetIncidentResult`.
-
-**Example**
 
 ```xml
 <Triggers>
@@ -145,8 +133,6 @@ Activates when a faction advances a research discipline.
 - `TechnologyTypeID` — limits the trigger to one technology type.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `ResearchOrderedResult`.
-
-**Example**
 
 ```xml
 <Triggers>
@@ -170,8 +156,6 @@ Activates when a mission completes.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `MissionCompletedResult`.
 - `Participants` — optionally requires `Any` or `All` listed units to have participated.
-
-**Example**
 
 ```xml
 <Triggers>
@@ -199,8 +183,6 @@ Activates when an officer becomes captured or is released.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `OfficerCaptureStateResult`.
 
-**Example**
-
 ```xml
 <Triggers>
   <OfficerCaptureChanged OfficerInstanceID="HAN_SOLO" IsCaptured="true"/>
@@ -217,8 +199,6 @@ Activates when an officer is killed.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `OfficerKilledResult`.
 
-**Example**
-
 ```xml
 <Triggers>
   <OfficerKilled OfficerInstanceID="EMPEROR_PALPATINE"/>
@@ -234,8 +214,6 @@ Activates when an officer is injured.
 - `OfficerInstanceID` — limits the trigger to one officer.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `OfficerInjuredResult`.
-
-**Example**
 
 ```xml
 <Triggers>
@@ -254,8 +232,6 @@ Activates when an officer is recruited.
 - `PlanetInstanceID` — limits the trigger to one recruitment planet.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `OfficerRecruitedResult`.
-
-**Example**
 
 ```xml
 <Triggers>
@@ -277,8 +253,6 @@ Activates after a unit changes owner.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `UnitOwnershipChangedResult`.
 
-**Example**
-
 ```xml
 <Triggers>
   <UnitOwnershipChanged UnitInstanceID="CAPTURED_SHIP"
@@ -296,8 +270,6 @@ Activates when a unit is created.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `GameObjectCreatedResult`.
 
-**Example**
-
 ```xml
 <Triggers>
   <UnitCreated UnitInstanceID="ROGUE_SQUADRON"/>
@@ -313,8 +285,6 @@ Activates when a unit is destroyed.
 - `UnitInstanceID` — limits the trigger to one unit.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `GameObjectDestroyedResult`.
-
-**Example**
 
 ```xml
 <Triggers>
@@ -332,8 +302,6 @@ Activates when a unit finishes movement.
 - `DestinationInstanceID` — limits the trigger to one destination.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `UnitArrivedResult`.
-
-**Example**
 
 ```xml
 <Triggers>
@@ -358,8 +326,6 @@ Activates after a space battle resolves.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `SpaceCombatResult`.
 
-**Example**
-
 ```xml
 <Triggers>
   <SpaceCombatCompleted PlanetInstanceID="ENDOR" Winner="Attacker" As="battle"/>
@@ -379,8 +345,6 @@ Activates after bombardment resolves.
 - `PlanetDestroyed` — limits the trigger by whether the planet was destroyed.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `BombardmentResult`.
-
-**Example**
 
 ```xml
 <Triggers>
@@ -404,8 +368,6 @@ Activates after a planetary assault resolves.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `PlanetaryAssaultResult`.
 
-**Example**
-
 ```xml
 <Triggers>
   <PlanetaryAssaultCompleted PlanetInstanceID="HOTH"
@@ -424,8 +386,6 @@ Activates after a duel resolves.
 - `SecondOfficerInstanceID` — limits the second officer.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `DuelResult`.
-
-**Example**
 
 ```xml
 <Triggers>
@@ -448,8 +408,6 @@ Activates when a manufactured unit is deployed.
 - `LocationInstanceID` — limits the trigger to one deployment location.
 - `SourceEventInstanceID` — limits the trigger to results from one event.
 - `As` — binds the complete `ManufacturingDeployedResult`.
-
-**Example**
 
 ```xml
 <Triggers>
