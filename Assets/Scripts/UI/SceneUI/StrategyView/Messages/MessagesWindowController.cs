@@ -12,6 +12,12 @@ using UnityEngine.EventSystems;
 public interface IMessagesWindowActions
 {
     /// <summary>
+    /// Opens a combat report in the battle-result view.
+    /// </summary>
+    /// <param name="report">The durable combat report.</param>
+    void OpenCombatReport(CombatReport report);
+
+    /// <summary>
     /// Opens the strategy location represented by a message target.
     /// </summary>
     /// <param name="targetInstanceId">The preferred target instance identifier.</param>
@@ -193,6 +199,9 @@ public sealed class MessagesWindowController
 
         session.SelectOnly(currentMessage);
         MarkMessageRead(currentMessage);
+        if (TryOpenCombatReport(session, currentMessage))
+            return;
+
         session.ShowDetail();
         PlayMessageDetailAudio(currentMessage);
         windowManager.Focus(window);
@@ -535,6 +544,9 @@ public sealed class MessagesWindowController
 
         Message message = session.GetSelectedMessage();
         MarkMessageRead(message);
+        if (TryOpenCombatReport(session, message))
+            return;
+
         session.ShowDetail();
         PlayMessageDetailAudio(message);
         RequestRender();
@@ -610,6 +622,9 @@ public sealed class MessagesWindowController
 
         session.SelectOnly(message);
         MarkMessageRead(message);
+        if (TryOpenCombatReport(session, message))
+            return;
+
         session.ShowDetail();
         PlayMessageDetailAudio(message);
         RequestRender();
@@ -633,6 +648,23 @@ public sealed class MessagesWindowController
         session.SelectOnly(message);
         MarkMessageRead(message);
         RequestRender();
+    }
+
+    /// <summary>
+    /// Replaces the Messages window with the full saved combat outcome when one is available.
+    /// </summary>
+    /// <param name="session">The requesting Messages session.</param>
+    /// <param name="message">The message being displayed.</param>
+    /// <returns>True when a combat report was opened.</returns>
+    private bool TryOpenCombatReport(MessagesWindowSession session, Message message)
+    {
+        if (message is not CombatReport report)
+            return false;
+
+        closeWindow(session.Window);
+        actions.OpenCombatReport(report);
+        markDirty();
+        return true;
     }
 
     /// <summary>
@@ -737,7 +769,11 @@ public sealed class MessagesWindowController
         Message message = session.GetSelectedMessage();
         MarkMessageRead(message);
         if (session.DetailVisible && moved)
+        {
+            if (TryOpenCombatReport(session, message))
+                return;
             PlayMessageDetailAudio(message);
+        }
         RequestRender();
     }
 

@@ -23,6 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         private Planet _unexplored;
         private GalaxyMapPlanet _alphaMapPlanet;
         private GalaxyMapPlanet _betaMapPlanet;
+        private Faction _opponentFaction;
         private Faction _playerFaction;
         private FinderWindowRowBuilder _builder;
 
@@ -53,11 +54,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 new GalaxyMapSector(secondSector, new[] { unexploredMapPlanet, _betaMapPlanet }),
             };
             _playerFaction = new Faction { InstanceID = _playerFactionId, DisplayName = "Player" };
-            Faction[] factions =
+            _opponentFaction = new Faction
             {
-                new Faction { InstanceID = _opponentFactionId, DisplayName = "Opponent" },
-                _playerFaction,
+                InstanceID = _opponentFactionId,
+                DisplayName = "Opponent",
             };
+            Faction[] factions = { _opponentFaction, _playerFaction };
             _builder = new FinderWindowRowBuilder(
                 sectors,
                 factions,
@@ -418,6 +420,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
 
             Assert.AreEqual("Retired Officer - Unknown ( Retired )", rows.Single().Name);
+        }
+
+        [Test]
+        public void GetRows_OpponentPersonnelOutsideSnapshot_DoesNotRevealLiveOfficerState()
+        {
+            _opponentFaction.AddOwnedUnit(
+                new Officer
+                {
+                    InstanceID = "hidden-opponent",
+                    DisplayName = "Hidden Opponent",
+                    OwnerInstanceID = _opponentFactionId,
+                    Movement = new MovementState { TransitTicks = 10 },
+                }
+            );
+
+            List<FinderWindowRow> rows = _builder.GetRows(
+                FinderMode.Personnel,
+                false,
+                FinderWindowTab.Faction(_opponentFactionId, "Opponent")
+            );
+
+            Assert.IsEmpty(rows);
         }
 
         [Test]

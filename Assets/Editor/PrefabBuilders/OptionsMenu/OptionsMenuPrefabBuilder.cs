@@ -619,7 +619,7 @@ public static class OptionsMenuPrefabBuilder
         Image renameBackground = slotRenameField.GetComponent<Image>();
         renameBackground.color = new Color(0.08f, 0.10f, 0.13f, 0.98f);
         slotRenameField.textComponent.fontSize = 12;
-        slotRenameField.textComponent.alignment = TextAlignmentOptions.BaselineLeft;
+        slotRenameField.textComponent.alignment = TextAlignmentOptions.Left;
         StretchFillInputChild((RectTransform)slotRenameField.textComponent.transform);
         slotRenameField.customCaretColor = true;
         slotRenameField.caretColor = Color.white;
@@ -629,7 +629,7 @@ public static class OptionsMenuPrefabBuilder
         if (slotRenameField.placeholder is TextMeshProUGUI renamePlaceholder)
         {
             renamePlaceholder.fontSize = 12;
-            renamePlaceholder.alignment = TextAlignmentOptions.BaselineLeft;
+            renamePlaceholder.alignment = TextAlignmentOptions.Left;
             renamePlaceholder.color = new Color(0.60f, 0.65f, 0.72f);
             StretchFillInputChild(renamePlaceholder.rectTransform);
         }

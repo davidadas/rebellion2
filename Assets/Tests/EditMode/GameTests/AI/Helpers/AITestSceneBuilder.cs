@@ -15,6 +15,8 @@ namespace Rebellion.Tests.AI.Helpers
             GameRoot game = new GameRoot(TestConfig.Create());
             empire = new Faction { InstanceID = "empire" };
             rebels = new Faction { InstanceID = "rebels" };
+            empire.Settings.ResourceProcessingPointsPerFacility = 50;
+            rebels.Settings.ResourceProcessingPointsPerFacility = 50;
             game.GetFactions().Add(empire);
             game.GetFactions().Add(rebels);
             return game;

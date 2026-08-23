@@ -252,7 +252,7 @@ internal static class MessagesWindowProjector
         if (message == null)
             return string.Empty;
 
-        string header = !string.IsNullOrEmpty(message.Title) ? message.Title : message.Text;
+        string header = !string.IsNullOrEmpty(message.Title) ? message.Title : message.Body;
         if (string.IsNullOrEmpty(header))
             return string.Empty;
 
@@ -376,7 +376,7 @@ internal static class MessagesWindowProjector
         return new MessagesDetailPanelRenderData(
             message.InstanceID,
             GetHeader(message),
-            message.Text,
+            message.Body,
             GetTexture(uiContext, imagePath),
             GetTexture(uiContext, message.OverlayImagePath),
             GetTexture(uiContext, theme?.GetNormalIconImagePath(message.Type)),

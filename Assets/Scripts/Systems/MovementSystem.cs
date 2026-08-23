@@ -230,7 +230,7 @@ namespace Rebellion.Systems
             if (!CanReceiveMoveOrder(unit))
                 return;
 
-            if (IsUnderConstruction(unit))
+            if (IsManufacturingDestinationChange(unit))
             {
                 RetargetManufacturingDestination(unit, destination);
                 return;
@@ -299,6 +299,7 @@ namespace Rebellion.Systems
             if (destinationPlanet == origin)
             {
                 unit.Movement = null;
+                CompleteManufacturingDelivery(unit);
                 AddPlanetGarrisonChangedResults(_pendingResults, unit, destinationPlanet);
                 return;
             }
@@ -688,7 +689,8 @@ namespace Rebellion.Systems
                     return false;
 
                 int unitTransitTicks =
-                    IsUnderConstruction(liveUnit) || ReferenceEquals(destinationPlanet, origin)
+                    IsManufacturingDestinationChange(liveUnit)
+                    || ReferenceEquals(destinationPlanet, origin)
                         ? 0
                         : CalculateTransitTicks(liveUnit, origin, destinationPlanet);
                 maxTransitTicks = Math.Max(maxTransitTicks, unitTransitTicks);
@@ -905,7 +907,7 @@ namespace Rebellion.Systems
             {
                 IMovable unit = units[index];
                 ContainerNode resolvedDestination = destinations[index];
-                if (IsUnderConstruction(unit))
+                if (IsManufacturingDestinationChange(unit))
                     ApplyManufacturingDestination(unit, resolvedDestination);
                 else
                     ExecuteAcceptedMove(
@@ -1129,7 +1131,8 @@ namespace Rebellion.Systems
         /// <returns>True if the unit can receive the order.</returns>
         private bool CanReceiveMoveOrder(IMovable unit)
         {
-            if (!IsUnderConstruction(unit) && unit.GetTransitMovement() != null)
+            bool changesManufacturingDestination = IsManufacturingDestinationChange(unit);
+            if (!changesManufacturingDestination && unit.GetTransitMovement() != null)
             {
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} is already in transit."
@@ -1163,6 +1166,25 @@ namespace Rebellion.Systems
         {
             return unit is IManufacturable manufacturable
                 && manufacturable.ManufacturingStatus == ManufacturingStatus.Building;
+        }
+
+        /// <summary>
+        /// Returns whether an order changes a manufacturing destination instead of initiating
+        /// physical travel. A fleet containing only unfinished ships represents their shared
+        /// delivery destination and therefore follows the same rule as one unfinished item.
+        /// </summary>
+        /// <param name="unit">The unit or fleet receiving the order.</param>
+        /// <returns>True when the order only retargets manufacturing delivery.</returns>
+        private static bool IsManufacturingDestinationChange(IMovable unit)
+        {
+            if (IsUnderConstruction(unit))
+                return true;
+
+            if (unit is not Fleet fleet)
+                return false;
+
+            IReadOnlyList<CapitalShip> ships = fleet.GetChildren<CapitalShip>();
+            return ships.Count > 0 && ships.All(IsUnderConstruction);
         }
 
         /// <summary>
@@ -1278,6 +1300,8 @@ namespace Rebellion.Systems
         {
             string movementGroupID = movable.Movement?.MovementGroupID;
             string sourceEventInstanceID = movable.Movement?.SourceEventInstanceID;
+            bool completesManufacturingDelivery =
+                movable is IManufacturable { ManufacturingStatus: ManufacturingStatus.Delivering };
 
             if (TryFollowMovingFleetDestination(movable, destination))
                 return;
@@ -1300,12 +1324,15 @@ namespace Rebellion.Systems
             try
             {
                 CompleteArrival(movable, destination, destinationPlanet, results);
+                if (completesManufacturingDelivery)
+                    CompleteManufacturingDelivery(movable);
                 AddArrivalResults(
                     movable,
                     destinationPlanet,
                     movementGroupID,
                     results,
-                    sourceEventInstanceID
+                    sourceEventInstanceID,
+                    completesManufacturingDelivery
                 );
             }
             catch (SceneAccessException ex)
@@ -1524,12 +1551,14 @@ namespace Rebellion.Systems
         /// <param name="movementGroupID">The movement order id that produced the arrival.</param>
         /// <param name="results">The results generated this tick.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
+        /// <param name="completedManufacturingDelivery">Whether the arrival completed a manufactured delivery.</param>
         private void AddArrivalResults(
             IMovable movable,
             Planet destinationPlanet,
             string movementGroupID,
             ICollection<GameResult> results,
-            string sourceEventInstanceID = null
+            string sourceEventInstanceID = null,
+            bool completedManufacturingDelivery = false
         )
         {
             results.Add(
@@ -1550,6 +1579,29 @@ namespace Rebellion.Systems
                     Tick = _game.CurrentTick,
                 }
             );
+            if (completedManufacturingDelivery)
+            {
+                results.Add(
+                    new GameObjectDeployedResult { GameObject = movable, Tick = _game.CurrentTick }
+                );
+            }
+        }
+
+        /// <summary>
+        /// Marks a manufactured item as complete after its initial delivery finishes.
+        /// </summary>
+        /// <param name="movable">The delivered unit.</param>
+        private static void CompleteManufacturingDelivery(IMovable movable)
+        {
+            if (
+                movable is IManufacturable
+                {
+                    ManufacturingStatus: ManufacturingStatus.Delivering
+                } manufacturable
+            )
+            {
+                manufacturable.ManufacturingStatus = ManufacturingStatus.Complete;
+            }
         }
 
         /// <summary>
@@ -2372,24 +2424,7 @@ namespace Rebellion.Systems
         {
             double distance = destination.GetRawDistanceTo(originPos);
 
-            int slowestHyperdrive = _game.GetConfig().Movement.DefaultFighterHyperdrive;
-            if (unit is Fleet fleet)
-            {
-                if (fleet.GetChildren<CapitalShip>().Count > 0)
-                {
-                    slowestHyperdrive = fleet
-                        .GetChildren<CapitalShip>()
-                        .Select(ship => ship.Hyperdrive)
-                        .Where(h => h > 0)
-                        .DefaultIfEmpty(1)
-                        .Min();
-                    slowestHyperdrive = Math.Max(slowestHyperdrive, 1);
-                }
-            }
-            else if (unit is CapitalShip capitalShip)
-            {
-                slowestHyperdrive = Math.Max(capitalShip.Hyperdrive, 1);
-            }
+            int slowestHyperdrive = Math.Max(GetMovementHyperdrive(unit), 1);
 
             int baseTicks = (int)
                 Math.Ceiling(
@@ -2401,6 +2436,38 @@ namespace Rebellion.Systems
                 : _game.GetConfig().Movement.MinTransitTicks;
 
             return Math.Max(baseTicks, minimumTransitTicks);
+        }
+
+        /// <summary>
+        /// Returns the hyperdrive available to a strategic movement order.
+        /// </summary>
+        /// <param name="unit">The unit receiving the order.</param>
+        /// <returns>The usable hyperdrive rating, or zero when the unit cannot travel.</returns>
+        private int GetMovementHyperdrive(IMovable unit)
+        {
+            if (unit is Fleet fleet)
+            {
+                List<CapitalShip> completedShips = fleet
+                    .GetChildren<CapitalShip>()
+                    .Where(ship =>
+                        ship.ManufacturingStatus == ManufacturingStatus.Complete
+                        && ship.Movement == null
+                    )
+                    .ToList();
+                if (completedShips.Count > 0)
+                {
+                    return completedShips
+                        .Select(ship => ship.Hyperdrive)
+                        .Where(hyperdrive => hyperdrive > 0)
+                        .DefaultIfEmpty(1)
+                        .Min();
+                }
+            }
+
+            if (unit is CapitalShip capitalShip)
+                return Math.Max(capitalShip.Hyperdrive, 1);
+
+            return Math.Max(_game.GetConfig().Movement.DefaultFighterHyperdrive, 1);
         }
 
         /// <summary>

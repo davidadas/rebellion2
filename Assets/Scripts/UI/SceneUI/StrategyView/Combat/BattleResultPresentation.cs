@@ -1,5 +1,6 @@
 using System;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 
 /// <summary>
@@ -17,9 +18,11 @@ internal abstract class BattleResultPresentation
     internal abstract string DefenderOwnerInstanceID { get; }
 
     /// <summary>
-    /// Returns the planet represented by this result.
+    /// Resolves the live planet represented by this result when it remains available.
     /// </summary>
-    internal abstract Planet Planet { get; }
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <returns>The live planet, or null when it no longer exists.</returns>
+    internal abstract Planet GetPlanet(UIContext uiContext);
 
     /// <summary>
     /// Returns the sound effect played when this result opens.
@@ -51,6 +54,18 @@ internal abstract class BattleResultPresentation
             null => throw new ArgumentNullException(nameof(result)),
             _ => throw new ArgumentException("Unsupported battle result.", nameof(result)),
         };
+    }
+
+    /// <summary>
+    /// Creates a presentation adapter for a durable combat report.
+    /// </summary>
+    /// <param name="report">The saved completed encounter.</param>
+    /// <returns>The durable report presentation.</returns>
+    internal static BattleResultPresentation Create(CombatReport report)
+    {
+        return report == null
+            ? throw new ArgumentNullException(nameof(report))
+            : new SavedCombatReportPresentation(report);
     }
 
     /// <summary>
@@ -285,7 +300,7 @@ internal abstract class BattleResultPresentation
 
         internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
 
-        internal override Planet Planet => result.Planet;
+        internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
 
         internal override string Title =>
             $"Battle at {BattleAlertWindowProjector.GetPlanetName(result.Planet)}";
@@ -382,7 +397,7 @@ internal abstract class BattleResultPresentation
 
         internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
 
-        internal override Planet Planet => result.Planet;
+        internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
 
         internal override string Title =>
             $"Orbital bombardment of {BattleAlertWindowProjector.GetPlanetName(result.Planet)}";
@@ -455,7 +470,7 @@ internal abstract class BattleResultPresentation
 
         internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
 
-        internal override Planet Planet => result.Planet;
+        internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
 
         internal override string SoundEffectPath => StrategyUISoundPaths.PlanetaryAssault;
 
@@ -511,6 +526,213 @@ internal abstract class BattleResultPresentation
         )
         {
             return projector.ProjectPlanetaryAssault(uiContext, result, ownerInstanceId, category);
+        }
+    }
+
+    /// <summary>
+    /// Adapts a durable combat report to the shared battle-result presentation.
+    /// </summary>
+    private sealed class SavedCombatReportPresentation : BattleResultPresentation
+    {
+        private readonly CombatReport report;
+
+        /// <summary>
+        /// Creates presentation for one durable combat report.
+        /// </summary>
+        internal SavedCombatReportPresentation(CombatReport report)
+        {
+            this.report = report ?? throw new ArgumentNullException(nameof(report));
+        }
+
+        internal override BattleResultCategory DefaultCategory =>
+            report.CombatType == CombatReportType.PlanetaryAssault
+                ? BattleResultCategory.Troops
+                : BattleResultCategory.CapitalShips;
+
+        internal override string AttackerOwnerInstanceID => report.AttackerOwnerInstanceID;
+
+        internal override string DefenderOwnerInstanceID => report.DefenderOwnerInstanceID;
+
+        internal override string SoundEffectPath =>
+            report.CombatType == CombatReportType.PlanetaryAssault
+                ? StrategyUISoundPaths.PlanetaryAssault
+                : null;
+
+        internal override string Title =>
+            FirstNonBlank(report.Title, GetDefaultTitle(report.CombatType, report.PlanetName));
+
+        internal override bool UsesPlanetaryLayout =>
+            report.CombatType != CombatReportType.SpaceBattle;
+
+        /// <summary>
+        /// Resolves the report location against current game state without making the report depend on it.
+        /// </summary>
+        internal override Planet GetPlanet(UIContext uiContext)
+        {
+            return string.IsNullOrEmpty(report.PlanetInstanceID)
+                ? null
+                : uiContext?.Game?.GetSceneNodeByInstanceID<Planet>(report.PlanetInstanceID);
+        }
+
+        /// <summary>
+        /// Returns completed fleet-engagement music from the saved recipient perspective.
+        /// </summary>
+        internal override string GetMusicPath(BattleAlertWindowTheme theme, string playerFactionId)
+        {
+            if (theme == null || report.CombatType != CombatReportType.SpaceBattle)
+                return null;
+            if (report.Winner == CombatSide.Draw)
+                return FirstNonBlank(theme.ResultDrawMusicPath, theme.ResultMusicPath);
+
+            CombatSide? playerSide = GetSideForOwner(report, playerFactionId);
+            return playerSide.HasValue && playerSide.Value == report.Winner
+                ? FirstNonBlank(theme.ResultVictoryMusicPath, theme.ResultMusicPath)
+                : FirstNonBlank(theme.ResultDefeatMusicPath, theme.ResultMusicPath);
+        }
+
+        /// <summary>
+        /// Returns the outcome summary frozen into the delivered message.
+        /// </summary>
+        internal override string GetSummary(UIContext uiContext, string playerFactionId)
+        {
+            return report.Body ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Selects completed-result artwork from the saved outcome rather than current combat state.
+        /// </summary>
+        internal override string GetSummaryImagePath(
+            UIContext uiContext,
+            BattleAlertWindowTheme theme
+        )
+        {
+            return report.CombatType switch
+            {
+                CombatReportType.SpaceBattle => GetSpaceSummaryImagePath(uiContext, theme),
+                CombatReportType.Bombardment => GetBombardmentSummaryImagePath(theme),
+                CombatReportType.PlanetaryAssault => FirstNonBlank(
+                    uiContext
+                        ?.GetTheme(report.AttackerOwnerInstanceID)
+                        ?.StrategyWindows?.BattleAlert?.PlanetaryAssaultImagePath,
+                    theme?.PlanetaryAssaultImagePath,
+                    theme?.ResultSummaryImagePath
+                ),
+                _ => theme?.ResultSummaryImagePath,
+            };
+        }
+
+        /// <summary>
+        /// Projects the saved participating-unit lists into the established result table.
+        /// </summary>
+        internal override BattleResultTableRenderData ProjectTable(
+            BattleResultTableProjector projector,
+            UIContext uiContext,
+            string ownerInstanceId,
+            BattleResultCategory category
+        )
+        {
+            return projector.ProjectReport(uiContext, report, ownerInstanceId, category);
+        }
+
+        /// <summary>
+        /// Selects fleet-engagement summary artwork from the saved winner and withdrawal state.
+        /// </summary>
+        private string GetSpaceSummaryImagePath(UIContext uiContext, BattleAlertWindowTheme theme)
+        {
+            if (report.Winner == CombatSide.Draw)
+                return theme?.ResultSummaryImagePath;
+
+            CombatSide losingSide =
+                report.Winner == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
+            if (GetOutcome(report, losingSide) == SpaceCombatSideOutcome.Withdrawn)
+            {
+                return FirstNonBlank(
+                    GetParticipantImagePath(uiContext, losingSide, victorious: false),
+                    GetParticipantImagePath(uiContext, report.Winner, victorious: true),
+                    theme?.ResultSummaryImagePath
+                );
+            }
+
+            return FirstNonBlank(
+                GetParticipantImagePath(uiContext, report.Winner, victorious: true),
+                theme?.ResultSummaryImagePath
+            );
+        }
+
+        /// <summary>
+        /// Selects bombardment artwork using every persisted loss indicator.
+        /// </summary>
+        private string GetBombardmentSummaryImagePath(BattleAlertWindowTheme theme)
+        {
+            if (
+                report.AttackingUnits?.Exists(unit =>
+                    unit != null && (unit.Damaged || unit.Destroyed)
+                ) == true
+            )
+                return theme?.BombardmentAttackerLossesImagePath;
+            if (
+                report.PlanetDestroyed
+                || report.HeadquartersDestroyed
+                || report.EnergyCapacityDamage > 0
+                || report.AllocatedEnergyDamage > 0
+                || report.DefendingUnits?.Exists(unit => unit?.Destroyed == true) == true
+            )
+                return theme?.BombardmentTargetLossesImagePath;
+            return theme?.BombardmentNoLossesImagePath;
+        }
+
+        /// <summary>
+        /// Resolves faction-specific victory or defeat artwork for one saved combat side.
+        /// </summary>
+        private string GetParticipantImagePath(
+            UIContext uiContext,
+            CombatSide side,
+            bool victorious
+        )
+        {
+            string ownerInstanceId =
+                side == CombatSide.Attacker
+                    ? report.AttackerOwnerInstanceID
+                    : report.DefenderOwnerInstanceID;
+            BattleParticipantTheme participant = uiContext
+                ?.GetTheme(ownerInstanceId)
+                ?.BattleParticipant;
+            return victorious ? participant?.VictoriousImagePath : participant?.DefeatedImagePath;
+        }
+
+        /// <summary>
+        /// Returns one side's saved fleet outcome.
+        /// </summary>
+        private static SpaceCombatSideOutcome GetOutcome(CombatReport report, CombatSide side)
+        {
+            return side == CombatSide.Attacker ? report.AttackerOutcome : report.DefenderOutcome;
+        }
+
+        /// <summary>
+        /// Returns the saved side represented by one faction identifier.
+        /// </summary>
+        private static CombatSide? GetSideForOwner(CombatReport report, string ownerInstanceId)
+        {
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return null;
+            if (ownerInstanceId == report.AttackerOwnerInstanceID)
+                return CombatSide.Attacker;
+            if (ownerInstanceId == report.DefenderOwnerInstanceID)
+                return CombatSide.Defender;
+            return null;
+        }
+
+        /// <summary>
+        /// Builds a fallback title for older reports that do not store resolved text.
+        /// </summary>
+        private static string GetDefaultTitle(CombatReportType type, string planetName)
+        {
+            return type switch
+            {
+                CombatReportType.Bombardment => $"Orbital bombardment of {planetName}",
+                CombatReportType.PlanetaryAssault => $"Assault on {planetName}",
+                _ => $"Battle at {planetName}",
+            };
         }
     }
 }

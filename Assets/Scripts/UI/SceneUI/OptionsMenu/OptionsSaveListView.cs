@@ -306,16 +306,15 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     {
         if (_renameField.textComponent is TextMeshProUGUI text)
         {
-            text.alignment = TextAlignmentOptions.BaselineLeft;
+            text.alignment = TextAlignmentOptions.Left;
             StretchRenameText(text.rectTransform);
         }
         if (_renameField.placeholder is TextMeshProUGUI placeholder)
         {
-            placeholder.alignment = TextAlignmentOptions.BaselineLeft;
+            placeholder.alignment = TextAlignmentOptions.Left;
             StretchRenameText(placeholder.rectTransform);
         }
 
-        _renameField.textViewport = _renameField.transform as RectTransform;
         _renameField.customCaretColor = true;
         _renameField.caretColor = Color.white;
         _renameField.caretWidth = 2;

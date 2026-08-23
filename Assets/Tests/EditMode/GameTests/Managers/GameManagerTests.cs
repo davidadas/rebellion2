@@ -151,7 +151,9 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot(config) { CurrentTick = 400 };
             Faction faction = new Faction { InstanceID = "FACTION" };
             game.GetFactions().Add(faction);
-            faction.AddMessage(new Message(MessageType.Conflict, "Expired") { CreatedTick = 100 });
+            faction.AddMessage(
+                new StatusMessage(MessageType.Conflict, "Expired") { CreatedTick = 100 }
+            );
             GameManager manager = TestContent.CreateGameManager(game);
 
             manager.ProcessTick();

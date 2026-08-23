@@ -108,7 +108,7 @@ namespace Rebellion.Util.Serialization
             {
                 if (reader.NodeType == XmlNodeType.Element && reader.Name == name)
                 {
-                    return (T)XmlDeserializer.ReadValue(typeof(T), reader);
+                    return (T)XmlDeserializer.ReadValue(typeof(T), reader, _settings);
                 }
             } while (reader.Read());
 
@@ -135,7 +135,7 @@ namespace Rebellion.Util.Serialization
         private object DeserializeFromXmlReader(XmlReader reader)
         {
             reader.MoveToContent();
-            return XmlDeserializer.ReadValue(_type, reader);
+            return XmlDeserializer.ReadValue(_type, reader, _settings);
         }
     }
 
@@ -421,11 +421,13 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="objType">The type of object to read.</param>
         /// <param name="reader">The XmlReader to use.</param>
+        /// <param name="settings">The serializer settings that control deserialization.</param>
         /// <param name="attributes">Optional attributes for the object.</param>
         /// <returns>The read object.</returns>
         public static object ReadValue(
             Type objType,
             XmlReader reader,
+            GameSerializerSettings settings,
             PersistableAttributes attributes = default
         )
         {
@@ -441,15 +443,15 @@ namespace Rebellion.Util.Serialization
             {
                 if (TypeHelper.IsDictionary(objType))
                 {
-                    return ReadDictionary(objType, reader);
+                    return ReadDictionary(objType, reader, settings);
                 }
                 else if (TypeHelper.IsEnumerable(objType))
                 {
-                    return ReadCollection(objType, reader);
+                    return ReadCollection(objType, reader, settings);
                 }
                 else if (TypeHelper.HasAttribute<PersistableObjectAttribute>(objType))
                 {
-                    return ReadPersistable(objType, reader, attributes);
+                    return ReadPersistable(objType, reader, settings, attributes);
                 }
                 else
                 {
@@ -503,8 +505,13 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="type">The type of dictionary to read.</param>
         /// <param name="reader">The XmlReader to use.</param>
+        /// <param name="settings">The serializer settings that control deserialization.</param>
         /// <returns>The read dictionary.</returns>
-        private static object ReadDictionary(Type type, XmlReader reader)
+        private static object ReadDictionary(
+            Type type,
+            XmlReader reader,
+            GameSerializerSettings settings
+        )
         {
             Type[] keyValueType = type.GetGenericArguments();
             Type keyType = keyValueType[0];
@@ -528,10 +535,10 @@ namespace Rebellion.Util.Serialization
                 {
                     reader.ReadStartElement("Entry");
                     reader.ReadStartElement("Key");
-                    object objKey = ReadValue(keyType, reader);
+                    object objKey = ReadValue(keyType, reader, settings);
                     reader.ReadEndElement();
                     reader.ReadStartElement("Value");
-                    object objValue = ReadValue(valueType, reader);
+                    object objValue = ReadValue(valueType, reader, settings);
                     reader.ReadEndElement();
 
                     dictionary.Add(objKey, objValue);
@@ -556,8 +563,13 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="type">The type of collection to read.</param>
         /// <param name="reader">The XmlReader to use.</param>
+        /// <param name="settings">The serializer settings that control deserialization.</param>
         /// <returns>The read collection.</returns>
-        private static object ReadCollection(Type type, XmlReader reader)
+        private static object ReadCollection(
+            Type type,
+            XmlReader reader,
+            GameSerializerSettings settings
+        )
         {
             Type elementType = GetCollectionElementType(type);
             if (elementType == null)
@@ -566,7 +578,7 @@ namespace Rebellion.Util.Serialization
             if (type.IsArray)
             {
                 List<object> tempList = new List<object>();
-                ReadCollectionElements(reader, elementType, tempList);
+                ReadCollectionElements(reader, elementType, tempList, settings);
                 Array array = Array.CreateInstance(elementType, tempList.Count);
                 for (int i = 0; i < tempList.Count; i++)
                 {
@@ -581,7 +593,7 @@ namespace Rebellion.Util.Serialization
                 // Try IList first (List<T>, ArrayList, etc.)
                 if (instance is IList list)
                 {
-                    ReadCollectionElements(reader, elementType, list);
+                    ReadCollectionElements(reader, elementType, list, settings);
                     return list;
                 }
                 // Fall back to ICollection<T> for HashSet, SortedSet, etc.
@@ -589,7 +601,7 @@ namespace Rebellion.Util.Serialization
                 {
                     // Use a temporary list, then copy to the collection.
                     List<object> tempList = new List<object>();
-                    ReadCollectionElements(reader, elementType, tempList);
+                    ReadCollectionElements(reader, elementType, tempList, settings);
 
                     // Use reflection to call Add method.
                     MethodInfo addMethod = type.GetMethod("Add");
@@ -634,10 +646,12 @@ namespace Rebellion.Util.Serialization
         /// <param name="reader">The XmlReader to use.</param>
         /// <param name="elementType">The type of elements in the collection.</param>
         /// <param name="collection">The collection to add elements to.</param>
+        /// <param name="settings">The serializer settings that control deserialization.</param>
         private static void ReadCollectionElements(
             XmlReader reader,
             Type elementType,
-            IList collection
+            IList collection,
+            GameSerializerSettings settings
         )
         {
             // Self-closing element (e.g. <UnrecruitedOfficers />), consume and return empty.
@@ -661,7 +675,7 @@ namespace Rebellion.Util.Serialization
                         ? persistableMap[elementName]
                         : elementType;
 
-                    object value = ReadValue(actualElementType, reader);
+                    object value = ReadValue(actualElementType, reader, settings);
                     collection.Add(value);
                 }
                 else if (!reader.Read())
@@ -682,11 +696,13 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="objType">The type of persistable object to read.</param>
         /// <param name="reader">The XmlReader to use.</param>
+        /// <param name="settings">The serializer settings that control deserialization.</param>
         /// <param name="objAttributes">Optional attributes for the object.</param>
         /// <returns>The read persistable object.</returns>
         private static object ReadPersistable(
             Type objType,
             XmlReader reader,
+            GameSerializerSettings settings,
             PersistableAttributes objAttributes = default
         )
         {
@@ -753,7 +769,7 @@ namespace Rebellion.Util.Serialization
                             throw new InvalidOperationException(
                                 $"Member '{elementName}' cannot be provided as both an attribute and an element."
                             );
-                        object value = ReadMember(member, reader);
+                        object value = ReadMember(member, reader, settings);
                         ReflectionHelper.SetMemberValue(member, obj, value);
                     }
                     else if (attributes.TryGetValue(elementName, out MemberInfo attributeMember))
@@ -762,7 +778,7 @@ namespace Rebellion.Util.Serialization
                             throw new InvalidOperationException(
                                 $"Member '{elementName}' cannot be provided as both an attribute and an element."
                             );
-                        object value = ReadMember(attributeMember, reader);
+                        object value = ReadMember(attributeMember, reader, settings);
                         ReflectionHelper.SetMemberValue(attributeMember, obj, value);
                     }
                     else if (inlineCollectionMember != null)
@@ -772,9 +788,13 @@ namespace Rebellion.Util.Serialization
                     }
                     else
                     {
-                        throw new InvalidOperationException(
-                            $"Unknown element '{elementName}' encountered while deserializing {objType.Name}."
-                        );
+                        string message =
+                            $"Unknown element '{elementName}' encountered while deserializing {actualType.Name}.";
+                        if (!settings.IgnoreUnknownElements)
+                            throw new InvalidOperationException(message);
+
+                        settings.UnknownElementSkipped?.Invoke(actualType, elementName);
+                        reader.Skip();
                     }
                 }
                 else
@@ -866,8 +886,13 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="info">The MemberInfo of the member to read.</param>
         /// <param name="reader">The XmlReader to use.</param>
+        /// <param name="settings">The serializer settings that control deserialization.</param>
         /// <returns>The read member value.</returns>
-        private static object ReadMember(MemberInfo info, XmlReader reader)
+        private static object ReadMember(
+            MemberInfo info,
+            XmlReader reader,
+            GameSerializerSettings settings
+        )
         {
             Type type = ReflectionHelper.GetMemberType(info);
 
@@ -906,7 +931,7 @@ namespace Rebellion.Util.Serialization
                     Attribute.GetCustomAttributes(info, typeof(PersistableAttributeAttribute)),
             };
 
-            return ReadValue(type, reader, attributes);
+            return ReadValue(type, reader, settings, attributes);
         }
     }
 
@@ -1325,6 +1350,8 @@ namespace Rebellion.Util.Serialization
                 })
                 .Where(type =>
                     Attribute.IsDefined(type, typeof(PersistableObjectAttribute))
+                    && !type.IsAbstract
+                    && !type.IsInterface
                     && (type.Name == elementName || GetPersistableElementName(type) == elementName)
                 );
         }
@@ -1357,8 +1384,17 @@ namespace Rebellion.Util.Serialization
             if (string.IsNullOrWhiteSpace(name))
                 return;
 
-            if (!persistableMap.ContainsKey(name))
-                persistableMap.Add(name, type);
+            if (
+                !persistableMap.TryGetValue(name, out Type existingType)
+                || (
+                    (existingType.IsAbstract || existingType.IsInterface)
+                    && !type.IsAbstract
+                    && !type.IsInterface
+                )
+            )
+            {
+                persistableMap[name] = type;
+            }
         }
 
         /// <summary>

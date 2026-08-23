@@ -64,6 +64,7 @@ public sealed class MissionCreateWindowRenderData
     /// <param name="y">The source-space vertical position.</param>
     /// <param name="activeTab">The selected workflow tab.</param>
     /// <param name="dropdownOpen">Whether the mission dropdown is visible.</param>
+    /// <param name="canConfirm">Whether at least one primary participant is assigned.</param>
     /// <param name="titleTexture">The faction-specific window title texture.</param>
     /// <param name="missionName">The selected mission name.</param>
     /// <param name="selectedMissionTexture">The selected mission icon.</param>
@@ -81,6 +82,7 @@ public sealed class MissionCreateWindowRenderData
         int y,
         MissionCreateWindowTab activeTab,
         bool dropdownOpen,
+        bool canConfirm,
         Texture titleTexture,
         string missionName,
         Texture selectedMissionTexture,
@@ -99,6 +101,7 @@ public sealed class MissionCreateWindowRenderData
         Y = y;
         ActiveTab = activeTab;
         DropdownOpen = dropdownOpen;
+        CanConfirm = canConfirm;
         TitleTexture = titleTexture;
         MissionName = missionName ?? string.Empty;
         SelectedMissionTexture = selectedMissionTexture;
@@ -120,6 +123,8 @@ public sealed class MissionCreateWindowRenderData
     public MissionCreateWindowTab ActiveTab { get; }
 
     public bool DropdownOpen { get; }
+
+    public bool CanConfirm { get; }
 
     public Texture TitleTexture { get; }
 

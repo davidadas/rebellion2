@@ -2,7 +2,7 @@
 .claude/
 
 # Coverage
-/Coverage/
+/Coverage*/
 /CodeCoverage/
 
 # Unity Files

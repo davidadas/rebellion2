@@ -36,6 +36,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private int _rebuildCount;
         private int _playedSfxCount;
         private int _transitRejectionCount;
+        private int _underConstructionRejectionCount;
         private GameObject _rootObject;
         private SpecialForces _specialForces;
         private UIWindow _sourceWindow;
@@ -51,6 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _rebuildCount = 0;
             _playedSfxCount = 0;
             _transitRejectionCount = 0;
+            _underConstructionRejectionCount = 0;
             _game = CreateGame(
                 out Planet origin,
                 out GalaxyMapPlanet destination,
@@ -112,7 +114,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 () => _rebuildCount++,
                 () => _dirtyCount++,
                 null,
-                () => _transitRejectionCount++
+                () => _transitRejectionCount++,
+                () => _underConstructionRejectionCount++
             );
         }
 
@@ -216,6 +219,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.IsFalse(moved);
             Assert.AreEqual(1, _transitRejectionCount);
+            Assert.AreEqual(0, _playedSfxCount);
+        }
+
+        [Test]
+        public void TryExecuteMove_ShipUnderConstruction_PlaysAdvisorRejection()
+        {
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "unfinished-ship",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
+                _playerFactionId,
+                "fleet"
+            );
+            _game.AttachNode(fleet, _destination.Planet);
+            _game.AttachNode(ship, fleet);
+
+            bool moved = _controller.TryExecuteMove(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, ship),
+                new ISceneNode[] { _officer }
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreEqual(1, _underConstructionRejectionCount);
             Assert.AreEqual(0, _playedSfxCount);
         }
 

@@ -26,22 +26,23 @@ internal sealed class StrategyStatusInfoBuilder
     /// </summary>
     /// <param name="sectors">The visible sectors in presentation order.</param>
     /// <param name="findVisibleNode">Resolves a node from the visible galaxy snapshot.</param>
-    /// <param name="game">The active game.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="currentTick">The current game tick.</param>
+    /// <param name="jediConfig">The configured Force-rank presentation.</param>
     public StrategyStatusInfoBuilder(
-        GameRoot game,
         IReadOnlyList<GalaxyMapSector> sectors,
-        Func<string, ISceneNode> findVisibleNode
+        Func<string, ISceneNode> findVisibleNode,
+        string playerFactionId,
+        int currentTick,
+        GameConfig.JediConfig jediConfig
     )
     {
-        if (game == null)
-            throw new ArgumentNullException(nameof(game));
-
         this.sectors = sectors ?? throw new ArgumentNullException(nameof(sectors));
-        playerFactionId = game.GetPlayerFaction()?.InstanceID ?? string.Empty;
-        currentTick = game.CurrentTick;
         this.findVisibleNode =
             findVisibleNode ?? throw new ArgumentNullException(nameof(findVisibleNode));
-        jediConfig = game.Config?.Jedi;
+        this.playerFactionId = playerFactionId ?? string.Empty;
+        this.currentTick = currentTick;
+        this.jediConfig = jediConfig;
     }
 
     /// <summary>
@@ -604,7 +605,7 @@ internal sealed class StrategyStatusInfoBuilder
             new StrategyStatusRow("Ship Damaged:", capitalShip.IsDamaged() ? "Yes" : "No")
         );
         info.Rows.Add(
-            new StrategyStatusRow("Ship Hyperdrive Rating:", capitalShip.Hyperdrive.ToString())
+            new StrategyStatusRow("Hyperdrive Rating:", capitalShip.Hyperdrive.ToString())
         );
         info.Rows.Add(
             new StrategyStatusRow(
@@ -622,13 +623,16 @@ internal sealed class StrategyStatusInfoBuilder
             )
         );
         info.Rows.Add(
-            new StrategyStatusRow("Max Shield Strength:", capitalShip.MaxShieldStrength.ToString())
+            new StrategyStatusRow(
+                "Maximum Shield Strength:",
+                capitalShip.MaxShieldStrength.ToString()
+            )
         );
         info.Rows.Add(
             new StrategyStatusRow("Tractor Beam Power:", capitalShip.TractorBeamPower.ToString())
         );
         info.Rows.Add(
-            new StrategyStatusRow("Sub Light Engine Rating:", capitalShip.SublightSpeed.ToString())
+            new StrategyStatusRow("Sub-Light Engine Rating:", capitalShip.SublightSpeed.ToString())
         );
         info.Rows.Add(
             new StrategyStatusRow("Maneuverability:", capitalShip.Maneuverability.ToString())
@@ -637,7 +641,7 @@ internal sealed class StrategyStatusInfoBuilder
             new StrategyStatusRow("Detection Rating:", capitalShip.DetectionRating.ToString())
         );
         info.Rows.Add(
-            new StrategyStatusRow("Weapons Recharge Rate:", capitalShip.WeaponRecharge.ToString())
+            new StrategyStatusRow("Weapon Recharge Rate:", capitalShip.WeaponRecharge.ToString())
         );
         info.Rows.Add(
             new StrategyStatusRow("Bombardment Modifier:", capitalShip.Bombardment.ToString())
@@ -854,7 +858,27 @@ internal sealed class StrategyStatusInfoBuilder
     /// <param name="item">The status entity whose effective movement should be displayed.</param>
     private void AddEtaDestinationRow(StrategyStatusInfo info, ISceneNode item)
     {
-        AddEtaDestinationRow(info, GetTransitMovement(item));
+        MovementState movement = GetTransitMovement(item);
+        if (movement != null)
+        {
+            AddEtaDestinationRow(info, movement);
+            return;
+        }
+
+        if (
+            item is not IManufacturable manufacturable
+            || manufacturable.GetManufacturingStatus() != ManufacturingStatus.Building
+            || string.IsNullOrWhiteSpace(manufacturable.ProducerPlanetID)
+        )
+            return;
+
+        Planet producer = findVisibleNode(manufacturable.ProducerPlanetID) as Planet;
+        int? completionTicks = ManufacturingSystem.EstimateCompletionTicks(
+            producer,
+            manufacturable
+        );
+        if (completionTicks.HasValue)
+            AddEtaDestinationRow(info, completionTicks.Value);
     }
 
     /// <summary>
@@ -880,7 +904,17 @@ internal sealed class StrategyStatusInfoBuilder
         if (movement == null)
             return;
 
-        long arrivalDay = (long)currentTick + Math.Max(movement.TicksRemaining(), 0);
+        AddEtaDestinationRow(info, Math.Max(movement.TicksRemaining(), 0));
+    }
+
+    /// <summary>
+    /// Appends an arrival or completion day from a remaining tick count.
+    /// </summary>
+    /// <param name="info">The status information receiving the ETA row.</param>
+    /// <param name="remainingTicks">The non-negative number of ticks remaining.</param>
+    private void AddEtaDestinationRow(StrategyStatusInfo info, int remainingTicks)
+    {
+        long arrivalDay = (long)currentTick + Math.Max(remainingTicks, 0);
         info.Rows.Add(new StrategyStatusRow("ETA Destination:", $"Day {arrivalDay}"));
     }
 

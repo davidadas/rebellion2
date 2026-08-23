@@ -20,7 +20,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void GetDetailAudioPaths_MessageAndOfficerPaths_ReturnsPlaybackOrder()
         {
-            Message message = new Message(MessageType.Fleet, "Fleet Arrived")
+            Message message = new StatusMessage(MessageType.Fleet, "Fleet Arrived")
             {
                 BackgroundAudioPath = "Audio/SFX/StrategyView/Messages/fleet",
                 OfficerVoicePath = "Audio/Voices/Officers/officer",
@@ -45,7 +45,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void GetDetailAudioPaths_EmptyPaths_ReturnsEmptyPlaybackOrder()
         {
-            Message message = new Message(MessageType.Fleet, "Fleet Arrived");
+            Message message = new StatusMessage(MessageType.Fleet, "Fleet Arrived");
 
             IReadOnlyList<string> paths = MessagesWindowController.GetDetailAudioPaths(message);
 
@@ -88,12 +88,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void RemoveSelectedMessages_SelectedIDs_RemovesMatchingMessagesAcrossBuckets()
         {
-            Message fleet = new Message(MessageType.Fleet, "Fleet") { InstanceID = "fleet" };
-            Message mission = new Message(MessageType.Mission, "Mission")
+            Message fleet = new StatusMessage(MessageType.Fleet, "Fleet") { InstanceID = "fleet" };
+            Message mission = new StatusMessage(MessageType.Mission, "Mission")
             {
                 InstanceID = "mission",
             };
-            Message retained = new Message(MessageType.Mission, "Retained")
+            Message retained = new StatusMessage(MessageType.Mission, "Retained")
             {
                 InstanceID = "retained",
             };
@@ -117,7 +117,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Faction faction = new Faction();
             faction.Messages[MessageType.Fleet] = new List<Message>
             {
-                new Message(MessageType.Fleet, "Fleet") { InstanceID = "fleet" },
+                new StatusMessage(MessageType.Fleet, "Fleet") { InstanceID = "fleet" },
             };
 
             Assert.IsFalse(
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void MarkMessageRead_Message_SetsReadState()
         {
-            Message message = new Message(MessageType.Fleet, "Fleet") { Read = false };
+            Message message = new StatusMessage(MessageType.Fleet, "Fleet") { Read = false };
 
             MessagesWindowController.MarkMessageRead(message);
             MessagesWindowController.MarkMessageRead(null);
@@ -150,14 +150,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void HasNavigationTarget_AnyNavigationIdentifier_ReturnsTrue()
         {
-            Message primary = new Message { NavigationTargetInstanceID = "primary" };
-            Message secondary = new Message { NavigationSecondaryTargetInstanceID = "secondary" };
-            Message location = new Message { EventLocationInstanceID = "location" };
+            Message primary = new StatusMessage { NavigationTargetInstanceID = "primary" };
+            Message secondary = new StatusMessage
+            {
+                NavigationSecondaryTargetInstanceID = "secondary",
+            };
+            Message location = new StatusMessage { EventLocationInstanceID = "location" };
 
             Assert.IsTrue(MessagesWindowController.HasNavigationTarget(primary));
             Assert.IsTrue(MessagesWindowController.HasNavigationTarget(secondary));
             Assert.IsTrue(MessagesWindowController.HasNavigationTarget(location));
-            Assert.IsFalse(MessagesWindowController.HasNavigationTarget(new Message()));
+            Assert.IsFalse(MessagesWindowController.HasNavigationTarget(new StatusMessage()));
             Assert.IsFalse(MessagesWindowController.HasNavigationTarget(null));
         }
 
@@ -172,8 +175,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void GetRows_AllMessages_ReturnsMessagesAcrossBucketsInStorageOrder()
         {
-            Message fleet = new Message(MessageType.Fleet, "Fleet");
-            Message mission = new Message(MessageType.Mission, "Mission");
+            Message fleet = new StatusMessage(MessageType.Fleet, "Fleet");
+            Message mission = new StatusMessage(MessageType.Mission, "Mission");
             Faction faction = new Faction();
             faction.Messages[MessageType.Fleet] = new List<Message> { fleet };
             faction.Messages[MessageType.Mission] = new List<Message> { mission };
@@ -186,7 +189,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void GetRows_CategoryTab_ReturnsStoredCategoryOrEmptyList()
         {
-            Message fleet = new Message(MessageType.Fleet, "Fleet");
+            Message fleet = new StatusMessage(MessageType.Fleet, "Fleet");
             Faction faction = new Faction();
             faction.Messages[MessageType.Fleet] = new List<Message> { fleet };
 
@@ -211,7 +214,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Faction faction = new Faction { InstanceID = "FNALL1" };
             faction.Messages[MessageType.Advice] = new List<Message>
             {
-                new Message(MessageType.Advice, "Agent Advice"),
+                new StatusMessage(MessageType.Advice, "Agent Advice"),
             };
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(faction);
@@ -262,13 +265,64 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void OpenDetail_CombatReport_OpensBattleResultInsteadOfGenericDetail()
+        {
+            CombatReport report = new CombatReport
+            {
+                Type = MessageType.Conflict,
+                CombatType = CombatReportType.SpaceBattle,
+                Title = "Battle at Test",
+                InstanceID = "combat-message",
+            };
+            Faction faction = new Faction { InstanceID = "player" };
+            faction.AddMessage(report);
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(faction);
+            game.Summary.PlayerFactionID = faction.InstanceID;
+            UIContext uiContext = TestContent.CreateUIContext(
+                game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
+
+            try
+            {
+                StrategyWindowLayerView windowLayer =
+                    root.GetComponentInChildren<StrategyWindowLayerView>(true);
+                UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
+                MessagesWindowController controller = new MessagesWindowController(
+                    _ => { },
+                    () => uiContext,
+                    windowLayer,
+                    windowManager,
+                    () => Vector2Int.zero,
+                    windowManager.DestroyWindow,
+                    () => { }
+                );
+                TestActions actions = new TestActions();
+                controller.Initialize(actions);
+
+                controller.OpenDetail(report, MessagesTab.All);
+
+                Assert.AreSame(report, actions.OpenedCombatReport);
+                Assert.IsTrue(report.Read);
+                Assert.IsFalse(controller.IsOpen);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void TabClick_FromMessageDetail_LoadsRequestedTabRows()
         {
-            Message fleetMessage = new Message(MessageType.Fleet, "Fleet")
+            Message fleetMessage = new StatusMessage(MessageType.Fleet, "Fleet")
             {
                 InstanceID = "fleet-message",
             };
-            Message missionMessage = new Message(MessageType.Mission, "Mission")
+            Message missionMessage = new StatusMessage(MessageType.Mission, "Mission")
             {
                 InstanceID = "mission-message",
             };
@@ -325,6 +379,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
         private sealed class TestActions : IMessagesWindowActions
         {
+            public CombatReport OpenedCombatReport { get; private set; }
+
+            public void OpenCombatReport(CombatReport report)
+            {
+                OpenedCombatReport = report;
+            }
+
             public bool OpenMessageTarget(
                 string targetInstanceId,
                 string secondaryTargetInstanceId,

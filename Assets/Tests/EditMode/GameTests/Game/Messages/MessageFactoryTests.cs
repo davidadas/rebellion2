@@ -967,6 +967,44 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_DeployedUnitArrival_ReturnsDeploymentInsteadOfArrival()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "regiment",
+                DisplayName = "Infantry Regiment",
+                OwnerInstanceID = alliance.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destination);
+
+            List<MessageDeliveryRequest> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UnitsArrived,
+                        MessageType.Fleet,
+                        "Units Arrive at {system}",
+                        "Units:\n{units}"
+                    ),
+                    Definition(
+                        MessageResultType.RegimentDeployed,
+                        MessageType.Manufacturing,
+                        "{item} Deployed to {system}",
+                        "The following units have been deployed to {system}:\n{items}"
+                    ),
+                },
+                new UnitArrivedResult { Unit = regiment, Destination = destination },
+                new GameObjectDeployedResult { GameObject = regiment }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual("Infantry Regiment Deployed to Yavin", AsMessage(deliveries[0]).Title);
+        }
+
+        [Test]
         public void CreateMessages_DeployedFacilityWithoutMatchingDefinition_ReturnsNoDelivery()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
@@ -1105,6 +1143,10 @@ namespace Rebellion.Tests.Game.Messages
                 messages[3].Body
             );
             Assert.AreEqual("regiment-encyclopedia-image", messages[3].DisplayImagePath);
+            Assert.AreEqual(
+                AdvisorNotificationType.Manufacturing,
+                DeliveryFor(messages[3]).NotificationType
+            );
         }
 
         [Test]
@@ -2825,6 +2867,10 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("sabotage:Shield Generator:Yavin", message.Title);
             Assert.AreEqual("body:Shield Generator:Yavin", message.Body);
             Assert.AreEqual("empire-image", message.DisplayImagePath);
+            Assert.AreEqual(
+                AdvisorNotificationType.Maintenance,
+                DeliveryFor(message).NotificationType
+            );
         }
 
         [Test]
@@ -3627,6 +3673,51 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_SpaceBattle_RetainsDetachedCompletedOutcome()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "attacker-ship",
+                DisplayName = "Test Cruiser",
+                OwnerInstanceID = alliance.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                BattleResultImagePath = "battle-result-cruiser",
+            };
+            CombatUnitSnapshot snapshot = new CombatUnitSnapshot(ship) { Damaged = true };
+
+            List<MessageDeliveryRequest> deliveries = CreateMessages(
+                game,
+                SpaceBattleDefinitions(),
+                new SpaceCombatResult
+                {
+                    AttackerOwnerInstanceID = alliance.InstanceID,
+                    DefenderOwnerInstanceID = empire.InstanceID,
+                    Planet = target,
+                    Winner = CombatSide.Attacker,
+                    AttackerOutcome = SpaceCombatSideOutcome.Active,
+                    DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                    AttackingUnits = { snapshot },
+                }
+            );
+
+            CombatReport report = FirstDeliveryFor(deliveries, alliance).Message as CombatReport;
+
+            Assert.IsNotNull(report);
+            Assert.AreEqual(CombatReportType.SpaceBattle, report.CombatType);
+            Assert.AreEqual(target.InstanceID, report.PlanetInstanceID);
+            Assert.AreEqual(CombatSide.Attacker, report.Winner);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, report.DefenderOutcome);
+            Assert.AreEqual("Test Cruiser", report.AttackingUnits.Single().DisplayName);
+            Assert.AreEqual(
+                "battle-result-cruiser",
+                report.AttackingUnits.Single().ResultImagePath
+            );
+            Assert.IsTrue(report.AttackingUnits.Single().Damaged);
+        }
+
+        [Test]
         public void CreateMessages_SpaceBattle_RendersRecordedRetreatDestination()
         {
             (GameRoot game, Faction alliance, Faction empire, Planet retreat, Planet target) =
@@ -3714,6 +3805,8 @@ namespace Rebellion.Tests.Game.Messages
                 new BombardmentResult
                 {
                     AttackingFaction = alliance,
+                    AttackerOwnerInstanceID = alliance.InstanceID,
+                    DefenderOwnerInstanceID = empire.InstanceID,
                     Planet = target,
                     DestroyedBuildings = { new Building { DisplayName = "Shield Generator" } },
                 }
@@ -3730,6 +3823,11 @@ namespace Rebellion.Tests.Game.Messages
                 AdvisorNotificationType.Bombardment,
                 DeliveryFor(defendingMessage).NotificationType
             );
+            CombatReport report = DeliveryFor(defendingMessage).Message as CombatReport;
+            Assert.AreEqual(CombatReportType.Bombardment, report.CombatType);
+            Assert.AreEqual(target.InstanceID, report.PlanetInstanceID);
+            Assert.AreEqual(alliance.InstanceID, report.AttackerOwnerInstanceID);
+            Assert.AreEqual(empire.InstanceID, report.DefenderOwnerInstanceID);
         }
 
         [Test]
@@ -3785,6 +3883,8 @@ namespace Rebellion.Tests.Game.Messages
                 new PlanetaryAssaultResult
                 {
                     AttackingFaction = alliance,
+                    AttackerOwnerInstanceID = alliance.InstanceID,
+                    DefenderOwnerInstanceID = empire.InstanceID,
                     Planet = target,
                     Success = false,
                 }
@@ -3804,6 +3904,12 @@ namespace Rebellion.Tests.Game.Messages
                 AdvisorNotificationType.PlanetaryAssault,
                 DeliveryFor(defenderMessage).NotificationType
             );
+            CombatReport report = DeliveryFor(defenderMessage).Message as CombatReport;
+            Assert.AreEqual(CombatReportType.PlanetaryAssault, report.CombatType);
+            Assert.AreEqual(target.InstanceID, report.PlanetInstanceID);
+            Assert.AreEqual(alliance.InstanceID, report.AttackerOwnerInstanceID);
+            Assert.AreEqual(empire.InstanceID, report.DefenderOwnerInstanceID);
+            Assert.IsFalse(report.Success);
         }
 
         [Test]
@@ -3857,20 +3963,24 @@ namespace Rebellion.Tests.Game.Messages
             if (_messagesByDelivery.TryGetValue(request, out Message existing))
                 return existing;
 
-            Message message = new Message(request.MessageType, request.Subject, request.Body)
-            {
-                ResultType = request.ResultType,
-                DisplayName = request.Subject,
-                BackgroundImageKey = request.BackgroundImageKey,
-                DisplayImagePath = request.BackgroundImagePath,
-                OverlayImagePath = request.OverlayImagePath,
-                BackgroundAudioPath = request.BackgroundAudioPath,
-                OfficerVoicePath = request.OfficerVoicePath,
-                EventLocationInstanceID = request.EventLocationInstanceID,
-                NavigationTargetInstanceID = request.NavigationTargetInstanceID,
-                NavigationSecondaryTargetInstanceID = request.NavigationSecondaryTargetInstanceID,
-                MissionInstanceID = request.MissionInstanceID,
-            };
+            Message message =
+                request.Message
+                ?? new StatusMessage(request.MessageType, request.Subject, request.Body);
+            message.Type = request.MessageType;
+            message.ResultType = request.ResultType;
+            message.Title = request.Subject;
+            message.Body = request.Body;
+            message.DisplayName = request.Subject;
+            message.BackgroundImageKey = request.BackgroundImageKey;
+            message.DisplayImagePath = request.BackgroundImagePath;
+            message.OverlayImagePath = request.OverlayImagePath;
+            message.BackgroundAudioPath = request.BackgroundAudioPath;
+            message.OfficerVoicePath = request.OfficerVoicePath;
+            message.EventLocationInstanceID = request.EventLocationInstanceID;
+            message.NavigationTargetInstanceID = request.NavigationTargetInstanceID;
+            message.NavigationSecondaryTargetInstanceID =
+                request.NavigationSecondaryTargetInstanceID;
+            message.MissionInstanceID = request.MissionInstanceID;
             _messagesByDelivery.Add(request, message);
             return message;
         }

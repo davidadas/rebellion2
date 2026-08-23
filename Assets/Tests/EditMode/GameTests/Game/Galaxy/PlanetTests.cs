@@ -328,6 +328,40 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void AddToManufacturingQueue_ItemsInSameLane_AssignsIncreasingSequences()
+        {
+            Building first = new Building { OwnerInstanceID = _planet.OwnerInstanceID };
+            Building second = new Building { OwnerInstanceID = _planet.OwnerInstanceID };
+            _planet.AddChild(first);
+            first.SetParent(_planet);
+            _planet.AddChild(second);
+            second.SetParent(_planet);
+
+            _planet.AddToManufacturingQueue(first);
+            _planet.AddToManufacturingQueue(second);
+
+            Assert.AreEqual(1, first.ManufacturingQueueSequence);
+            Assert.AreEqual(2, second.ManufacturingQueueSequence);
+        }
+
+        [Test]
+        public void AddToManufacturingQueue_ItemsInDifferentLanes_AssignsIndependentSequences()
+        {
+            Building building = new Building { OwnerInstanceID = _planet.OwnerInstanceID };
+            Regiment regiment = new Regiment { OwnerInstanceID = _planet.OwnerInstanceID };
+            _planet.AddChild(building);
+            building.SetParent(_planet);
+            _planet.AddChild(regiment);
+            regiment.SetParent(_planet);
+
+            _planet.AddToManufacturingQueue(building);
+            _planet.AddToManufacturingQueue(regiment);
+
+            Assert.AreEqual(1, building.ManufacturingQueueSequence);
+            Assert.AreEqual(1, regiment.ManufacturingQueueSequence);
+        }
+
+        [Test]
         public void SerializeAndDeserialize_Planet_RetainsProperties()
         {
             _planet.SetPopularSupport("FNALL1", 100);

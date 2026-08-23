@@ -64,6 +64,7 @@ namespace Rebellion.Game.Requests
         public string EventLocationInstanceID { get; set; }
         public string NavigationTargetInstanceID { get; set; }
         public string NavigationSecondaryTargetInstanceID { get; set; }
+        public Message Message { get; set; }
     }
 
     /// <summary>

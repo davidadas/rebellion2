@@ -190,6 +190,7 @@ namespace Rebellion.Tests.Systems
                 _coruscant.GetManufacturingQueue();
             Assert.AreEqual(0, queue[ManufacturingType.Building].Count);
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.AreEqual(0, mine.ManufacturingQueueSequence);
             ManufacturingDeployedResult deployed = results
                 .OfType<ManufacturingDeployedResult>()
                 .FirstOrDefault();
@@ -1027,7 +1028,7 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(originPlanet, ship, fleet, ignoreCost: true);
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, ship.ManufacturingStatus);
             Assert.IsNotNull(ship.Movement, "Ship should have _movement state for transit.");
             Assert.Greater(ship.Movement.TransitTicks, 0, "Should have travel time.");
             Assert.IsNull(fleet.Movement, "Fleet should not move — the ship travels to it.");
@@ -1085,7 +1086,7 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, ship.ManufacturingStatus);
             Assert.IsNotNull(
                 ship.Movement,
                 "Ship should travel to its assigned fleet even when the fleet is over a hostile planet."
@@ -1136,7 +1137,7 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, fighter.ManufacturingStatus);
             Assert.IsNotNull(fighter.Movement, "Should have _movement state for shipping.");
             Assert.Greater(fighter.Movement.TransitTicks, 0, "Should have travel time.");
         }
@@ -1216,11 +1217,16 @@ namespace Rebellion.Tests.Systems
                 _movement
             );
             mfg.Enqueue(originPlanet, regiment, destPlanet, ignoreCost: true);
-            mfg.ProcessTick();
+            List<GameResult> results = mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, regiment.ManufacturingStatus);
             Assert.IsNotNull(regiment.Movement, "Should have _movement state for shipping.");
             Assert.Greater(regiment.Movement.TransitTicks, 0, "Should have travel time.");
+            Assert.IsFalse(
+                results
+                    .OfType<GameObjectDeployedResult>()
+                    .Any(result => ReferenceEquals(result.GameObject, regiment))
+            );
         }
 
         [Test]
@@ -1350,7 +1356,7 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(originPlanet, mine, destPlanet, ignoreCost: true);
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, mine.ManufacturingStatus);
             Assert.IsNotNull(mine.Movement, "Should have _movement state for shipping.");
             Assert.Greater(mine.Movement.TransitTicks, 0, "Should have travel time.");
         }
@@ -1474,7 +1480,7 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, mine.ManufacturingStatus);
             Assert.AreEqual(
                 planetA,
                 mine.GetParent(),
@@ -2144,7 +2150,7 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, fighter.ManufacturingStatus);
             Assert.AreEqual(
                 carrier,
                 fighter.GetParent(),
@@ -2202,7 +2208,7 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, regiment.ManufacturingStatus);
             Assert.AreEqual(
                 carrier,
                 regiment.GetParent(),
@@ -2319,9 +2325,9 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
-            Assert.AreEqual(ManufacturingStatus.Complete, mine2.ManufacturingStatus);
-            Assert.AreEqual(ManufacturingStatus.Complete, mine3.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, mine1.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, mine2.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, mine3.ManufacturingStatus);
             Assert.AreEqual(
                 planetA,
                 mine1.GetParent(),
@@ -3399,6 +3405,8 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(result);
             Assert.AreEqual(1, queue.Count);
             Assert.AreSame(retained, queue[0]);
+            Assert.AreEqual(0, cancelled.ManufacturingQueueSequence);
+            Assert.AreEqual(2, retained.ManufacturingQueueSequence);
             Assert.IsNull(((ISceneNode)cancelled).GetParent());
             Assert.AreSame(destination, ((ISceneNode)retained).GetParent());
         }
@@ -3544,74 +3552,30 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RebuildQueues_SinglePlanet_CorrectOrder()
+        public void RebuildQueues_PersistedOrder_RestoresOriginalQueueOrder()
         {
-            GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
-            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestPlanet(game, "p1", "empire");
+            Building first = CreateOrderTestBuildingTemplate("first");
+            Building second = CreateOrderTestBuildingTemplate("second");
+            first.OwnerInstanceID = "empire";
+            second.OwnerInstanceID = "empire";
+            first.ProducerPlanetID = planet.InstanceID;
+            second.ProducerPlanetID = planet.InstanceID;
+            first.ManufacturingQueueSequence = 2;
+            second.ManufacturingQueueSequence = 1;
+            first.ManufacturingStatus = ManufacturingStatus.Building;
+            second.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(first, planet);
+            game.AttachNode(second, planet);
 
-            Planet planet = new Planet
-            {
-                InstanceID = "p1",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-                EnergyCapacity = 10,
-            };
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
-            _game.AttachNode(planetSector, _game.Galaxy);
-            _game.AttachNode(planet, planetSector);
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
+            manager.RebuildQueues();
 
-            Building item1 = new Building
-            {
-                InstanceID = "b1",
-                OwnerInstanceID = "empire",
-                ProducerPlanetID = "p1",
-                ManufacturingStatus = ManufacturingStatus.Building,
-                ManufacturingProgress = 10,
-                ProductionType = ManufacturingType.Building,
-                BuildingType = BuildingType.Mine,
-                ConstructionCost = 100,
-            };
-            Building item2 = new Building
-            {
-                InstanceID = "b2",
-                OwnerInstanceID = "empire",
-                ProducerPlanetID = "p1",
-                ManufacturingStatus = ManufacturingStatus.Building,
-                ManufacturingProgress = 5,
-                ProductionType = ManufacturingType.Building,
-                BuildingType = BuildingType.Mine,
-                ConstructionCost = 100,
-            };
-            Building item3 = new Building
-            {
-                InstanceID = "b3",
-                OwnerInstanceID = "empire",
-                ProducerPlanetID = "p1",
-                ManufacturingStatus = ManufacturingStatus.Building,
-                ManufacturingProgress = 0,
-                ProductionType = ManufacturingType.Building,
-                BuildingType = BuildingType.Mine,
-                ConstructionCost = 100,
-            };
-
-            _game.AttachNode(item1, planet);
-            _game.AttachNode(item2, planet);
-            _game.AttachNode(item3, planet);
-
-            ManufacturingSystem _manager = new ManufacturingSystem(_game, new FleetSystem(_game));
-            _manager.RebuildQueues();
-
-            Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                planet.GetManufacturingQueue();
-            Assert.AreEqual(1, queue.Count, "Should have one manufacturing type");
-            Assert.IsTrue(queue.ContainsKey(ManufacturingType.Building));
-
-            List<IManufacturable> items = queue[ManufacturingType.Building];
-            Assert.AreEqual(3, items.Count, "Should have 3 items");
-            Assert.AreEqual("b3", items[0].InstanceID, "Lowest progress first");
-            Assert.AreEqual("b2", items[1].InstanceID, "Middle progress second");
-            Assert.AreEqual("b1", items[2].InstanceID, "Highest progress last");
+            CollectionAssert.AreEqual(
+                new IManufacturable[] { second, first },
+                planet.GetManufacturingQueue()[ManufacturingType.Building]
+            );
         }
 
         [Test]
@@ -3684,6 +3648,8 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, queue1.Count, "Planet 1 should have 2 types");
             Assert.AreEqual(1, queue1[ManufacturingType.Building].Count);
             Assert.AreEqual(1, queue1[ManufacturingType.Troop].Count);
+            Assert.AreEqual(1, item1.ManufacturingQueueSequence);
+            Assert.AreEqual(1, item2.ManufacturingQueueSequence);
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue2 =
                 planet2.GetManufacturingQueue();
@@ -4303,6 +4269,42 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RetargetManufacturingDestination_QueuedLaneMovesEveryItem()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestConstructionPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            FleetSystem fleetSystem = new FleetSystem(game);
+            MovementSystem movementSystem = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                fleetSystem
+            );
+            ManufacturingSystem manager = new ManufacturingSystem(
+                game,
+                fleetSystem,
+                movementSystem
+            );
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            Assert.IsTrue(manager.StartManufacturing(producer, template, producer, 2, "empire"));
+
+            bool retargeted = manager.RetargetManufacturingDestination(
+                producer,
+                ManufacturingType.Building,
+                destination,
+                "empire"
+            );
+
+            Assert.IsTrue(retargeted);
+            Assert.IsTrue(
+                producer
+                    .GetManufacturingQueue()[ManufacturingType.Building]
+                    .OfType<ISceneNode>()
+                    .All(item => ReferenceEquals(item.GetParent(), destination))
+            );
+        }
+
+        [Test]
         public void StartManufacturing_CapitalShipRejected_RemovesEmptyDestinationFleet()
         {
             GameRoot game = CreateOrderTestGame();
@@ -4351,6 +4353,74 @@ namespace Rebellion.Tests.Systems
             template.ConstructionCost = 1;
 
             int? estimate = ManufacturingSystem.EstimateManufacturingTicks(planet, template, 1);
+
+            Assert.AreEqual(3, estimate);
+        }
+
+        [Test]
+        public void EstimateManufacturingTicks_InactiveFacilities_DoNotContribute()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestPlanet(game, "p1", "empire");
+            Building active = CreateOrderTestConstructionFacility("active", "empire", 4);
+            Building unfinished = CreateOrderTestConstructionFacility("unfinished", "empire", 1);
+            unfinished.ManufacturingStatus = ManufacturingStatus.Building;
+            Building traveling = CreateOrderTestConstructionFacility("traveling", "empire", 1);
+            traveling.Movement = new MovementState { TransitTicks = 5 };
+            game.AttachNode(active, planet);
+            game.AttachNode(unfinished, planet);
+            game.AttachNode(traveling, planet);
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            template.ConstructionCost = 1;
+
+            int? estimate = ManufacturingSystem.EstimateManufacturingTicks(planet, template, 1);
+
+            Assert.AreEqual(4, estimate);
+        }
+
+        [Test]
+        public void EstimateCompletionTicks_IncludesEarlierQueuedWorkAndCurrentProgress()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestPlanet(game, "p1", "empire");
+            game.AttachNode(CreateOrderTestConstructionFacility("yard", "empire", 2), planet);
+            Building first = CreateOrderTestBuildingTemplate("first");
+            first.ConstructionCost = 10;
+            first.ManufacturingProgress = 4;
+            first.ManufacturingStatus = ManufacturingStatus.Building;
+            first.OwnerInstanceID = "empire";
+            Building second = CreateOrderTestBuildingTemplate("second");
+            second.ConstructionCost = 20;
+            second.ManufacturingProgress = 5;
+            second.ManufacturingStatus = ManufacturingStatus.Building;
+            second.OwnerInstanceID = "empire";
+            game.AttachNode(first, planet);
+            game.AttachNode(second, planet);
+            planet.AddToManufacturingQueue(first);
+            planet.AddToManufacturingQueue(second);
+
+            int? estimate = ManufacturingSystem.EstimateCompletionTicks(planet, second);
+
+            Assert.AreEqual(42, estimate);
+        }
+
+        [Test]
+        public void EstimateCompletionTicks_ActiveFacilityCycle_UsesRemainingCycleTime()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestPlanet(game, "p1", "empire");
+            Building yard = CreateOrderTestConstructionFacility("yard", "empire", 4);
+            yard.ProductionCycleProgress = 1;
+            game.AttachNode(yard, planet);
+            Building item = CreateOrderTestBuildingTemplate("item");
+            item.ConstructionCost = 3;
+            item.ManufacturingProgress = 2;
+            item.ManufacturingStatus = ManufacturingStatus.Building;
+            item.OwnerInstanceID = "empire";
+            game.AttachNode(item, planet);
+            planet.AddToManufacturingQueue(item);
+
+            int? estimate = ManufacturingSystem.EstimateCompletionTicks(planet, item);
 
             Assert.AreEqual(3, estimate);
         }

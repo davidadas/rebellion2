@@ -101,6 +101,8 @@ public class ConfirmDialogTheme
 
     public string StopConstructionTitleImagePath { get; set; }
 
+    public string MissionAbortTitleImagePath { get; set; }
+
     public string ScrapRetireSoundPath { get; set; }
 
     public string StopConstructionSoundPath { get; set; }

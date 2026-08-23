@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using TMPro;
@@ -250,6 +251,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
+        public void OpenMissionAbort_Mission_RendersOriginalPromptWithoutPromptSound()
+        {
+            Mission mission = new TestMission { DisplayName = "Diplomacy" };
+
+            _controller.OpenMissionAbort(_sourceWindow, mission, Confirm);
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindows();
+
+            CollectionAssert.AreEqual(
+                new[] { "Are you sure you want to abort this mission?" },
+                GetVisibleLines(view)
+            );
+            Assert.IsEmpty(_playedSounds);
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_ReleasesSessionState()
         {
             ConfirmDialogWindowView view = OpenScrapAndInitializeView(out UIWindow window);
@@ -270,6 +290,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 window => _requestedCloseWindow = window,
                 () => _dirtyCount++
             );
+        }
+
+        private sealed class TestMission : Mission
+        {
+            protected override BaseSceneNode CreateNodeCopy() => new TestMission();
+
+            public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
         }
 
         private static GameRoot CreateGame()

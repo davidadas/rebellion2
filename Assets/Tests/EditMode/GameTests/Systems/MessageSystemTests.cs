@@ -61,9 +61,41 @@ namespace Rebellion.Tests.Systems
             );
 
             Message message = faction.Messages[MessageType.Fleet].Single();
+            Assert.IsInstanceOf<StatusMessage>(message);
             Assert.AreEqual("Fleet 1 arrived", message.Title);
             Assert.AreEqual("Yavin", message.Body);
             Assert.AreEqual(game.CurrentTick, message.CreatedTick);
+        }
+
+        [Test]
+        public void HandleRequests_WithCombatReport_DeliversReportAsMessage()
+        {
+            GameRoot game = new GameRoot(new GameConfig()) { CurrentTick = 42 };
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(faction);
+            CombatReport report = new CombatReport
+            {
+                CombatType = CombatReportType.SpaceBattle,
+                PlanetName = "Yavin",
+            };
+            MessageDeliveryRequest request = new MessageDeliveryRequest
+            {
+                Recipient = faction,
+                MessageType = MessageType.Conflict,
+                Subject = "Battle at Yavin",
+                Body = "Victory",
+                Message = report,
+            };
+            MessageSystem messageSystem = new MessageSystem(game, new List<MessageDefinition>());
+
+            List<GameResult> results = messageSystem.HandleRequests(new[] { request });
+
+            Message deliveredMessage = faction.Messages[MessageType.Conflict].Single();
+            Assert.AreSame(report, deliveredMessage);
+            Assert.AreSame(report, ((MessageDeliveredResult)results.Single()).Message);
+            Assert.AreEqual("Battle at Yavin", report.Title);
+            Assert.AreEqual("Victory", report.Body);
+            Assert.AreEqual(42, report.CreatedTick);
         }
 
         [Test]
@@ -101,8 +133,14 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(config) { CurrentTick = 401 };
             Faction faction = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
-            Message expired = new Message(MessageType.Conflict, "Expired") { CreatedTick = 100 };
-            Message retained = new Message(MessageType.Conflict, "Retained") { CreatedTick = 101 };
+            Message expired = new StatusMessage(MessageType.Conflict, "Expired")
+            {
+                CreatedTick = 100,
+            };
+            Message retained = new StatusMessage(MessageType.Conflict, "Retained")
+            {
+                CreatedTick = 101,
+            };
             faction.AddMessage(expired);
             faction.AddMessage(retained);
             MessageSystem messageSystem = new MessageSystem(game, new List<MessageDefinition>());
@@ -123,8 +161,14 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(config) { CurrentTick = 401 };
             Faction faction = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
-            Message expired = new Message(MessageType.Conflict, "Expired") { CreatedTick = 100 };
-            Message retained = new Message(MessageType.Conflict, "Retained") { CreatedTick = 101 };
+            Message expired = new StatusMessage(MessageType.Conflict, "Expired")
+            {
+                CreatedTick = 100,
+            };
+            Message retained = new StatusMessage(MessageType.Conflict, "Retained")
+            {
+                CreatedTick = 101,
+            };
             faction.AddMessage(expired);
             faction.AddMessage(retained);
             MessageSystem messageSystem = new MessageSystem(game, new List<MessageDefinition>());

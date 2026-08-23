@@ -13,15 +13,16 @@ using UnityEngine;
 /// </summary>
 public sealed class StrategyAdvisorController : IContextMenuReceiver
 {
+    private const string _customNotificationKey = "Notification:Custom";
+
     private readonly Func<Faction> getPlayerFaction;
     private readonly Func<string, Texture2D> getTexture;
     private readonly Action<string> playSfx;
-    private readonly Dictionary<int, StrategyAdvisorNotificationTheme> pendingNotifications =
-        new Dictionary<int, StrategyAdvisorNotificationTheme>();
-    private readonly Dictionary<int, int> pendingExpirationTicks = new Dictionary<int, int>();
-    private readonly Dictionary<int, int> nextAllowedTicks = new Dictionary<int, int>();
-    private readonly List<StrategyAdvisorNotificationTheme> notificationsByPriority =
-        new List<StrategyAdvisorNotificationTheme>();
+    private readonly Dictionary<string, StrategyAdvisorNotificationTheme> pendingNotifications =
+        new Dictionary<string, StrategyAdvisorNotificationTheme>();
+    private readonly Dictionary<string, int> pendingExpirationTicks = new Dictionary<string, int>();
+    private readonly Dictionary<string, int> nextAllowedTicks = new Dictionary<string, int>();
+    private readonly List<string> notificationKeysByPriority = new List<string>();
 
     private IStrategyHudActions actions;
     private StrategyAdvisorTheme theme;
@@ -119,10 +120,16 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
                 StrategyAdvisorNotificationTheme notification = theme.Notifications[i];
                 if (notification == null)
                     throw new InvalidOperationException($"Advisor notification theme {i} is null.");
-                notificationsByPriority.Add(notification);
+                string notificationKey = StrategyAdvisorTheme.GetNotificationKey(notification);
+                if (notificationKey == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Advisor notification theme {i} has no semantic selector."
+                    );
+                }
+                if (!notificationKeysByPriority.Contains(notificationKey))
+                    notificationKeysByPriority.Add(notificationKey);
             }
-
-            notificationsByPriority.Sort((left, right) => left.TableID.CompareTo(right.TableID));
         }
 
         GetRequiredView().Render(CreateViewData(theme));
@@ -141,36 +148,38 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 
         StrategyAdvisorNotificationTheme notification = ResolveNotification(
             delivery,
-            out int lifetimeTicks
+            out int lifetimeTicks,
+            out string notificationKey
         );
         if (notification == null)
             return;
 
-        if (
-            notification.TableID < 0
-            && notificationsByPriority.TrueForAll(candidate => candidate.TableID >= 0)
-        )
-        {
-            notificationsByPriority.Add(notification);
-            notificationsByPriority.Sort((left, right) => left.TableID.CompareTo(right.TableID));
-        }
+        if (!notificationKeysByPriority.Contains(notificationKey))
+            notificationKeysByPriority.Add(notificationKey);
 
-        pendingNotifications[notification.TableID] = notification;
-        pendingExpirationTicks[notification.TableID] = currentTick + lifetimeTicks;
+        pendingNotifications[notificationKey] = notification;
+        pendingExpirationTicks[notificationKey] = currentTick + lifetimeTicks;
     }
 
     private StrategyAdvisorNotificationTheme ResolveNotification(
         MessageDeliveredResult delivery,
-        out int lifetimeTicks
+        out int lifetimeTicks,
+        out string notificationKey
     )
     {
         AdvisorNotification authored = delivery.AdvisorNotification;
         StrategyAdvisorNotificationTheme preset = null;
         lifetimeTicks = 0;
+        notificationKey = _customNotificationKey;
         if (authored?.Preset.HasValue != false)
         {
-            int code = GetNotificationCode(theme, delivery);
-            preset = theme.GetNotification(code, out lifetimeTicks);
+            preset = theme.GetNotification(
+                delivery.NotificationType,
+                delivery.AdvisorSubjectTypeID,
+                delivery.AdvisorSubjectNotification
+            );
+            lifetimeTicks = preset?.LifetimeTicks ?? 0;
+            notificationKey = StrategyAdvisorTheme.GetNotificationKey(preset) ?? notificationKey;
         }
         if (authored?.HasOverrides != true)
             return preset;
@@ -180,7 +189,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             lifetimeTicks = 1;
         return new StrategyAdvisorNotificationTheme
         {
-            TableID = preset?.TableID ?? -1,
+            LifetimeTicks = lifetimeTicks,
             Droid = MergeAnimation(preset?.Droid, authored.Droid),
             Protocol = MergeAnimation(preset?.Protocol, authored.Protocol),
         };
@@ -220,26 +229,26 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             return;
 
         StrategyAdvisorView targetView = GetRequiredView();
-        for (int i = 0; i < notificationsByPriority.Count; i++)
+        for (int i = 0; i < notificationKeysByPriority.Count; i++)
         {
-            StrategyAdvisorNotificationTheme priority = notificationsByPriority[i];
+            string notificationKey = notificationKeysByPriority[i];
             if (
                 !pendingNotifications.TryGetValue(
-                    priority.TableID,
+                    notificationKey,
                     out StrategyAdvisorNotificationTheme notification
                 )
             )
                 continue;
 
-            int expirationTick = pendingExpirationTicks[priority.TableID];
+            int expirationTick = pendingExpirationTicks[notificationKey];
             if (expirationTick < currentTick)
             {
-                pendingNotifications.Remove(priority.TableID);
-                pendingExpirationTicks.Remove(priority.TableID);
+                pendingNotifications.Remove(notificationKey);
+                pendingExpirationTicks.Remove(notificationKey);
                 continue;
             }
 
-            int nextAllowedTick = nextAllowedTicks.TryGetValue(priority.TableID, out int tick)
+            int nextAllowedTick = nextAllowedTicks.TryGetValue(notificationKey, out int tick)
                 ? tick
                 : int.MinValue;
             if (nextAllowedTick > currentTick)
@@ -254,9 +263,9 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             )
                 return;
 
-            pendingNotifications.Remove(priority.TableID);
-            pendingExpirationTicks.Remove(priority.TableID);
-            nextAllowedTicks[priority.TableID] = currentTick + theme.RepeatCooldownTicks;
+            pendingNotifications.Remove(notificationKey);
+            pendingExpirationTicks.Remove(notificationKey);
+            nextAllowedTicks[notificationKey] = currentTick + theme.RepeatCooldownTicks;
             targetView.EnqueuePlaybacks(playbackBatch);
             break;
         }
@@ -267,9 +276,26 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     public void PlayInTransitOrderRejected()
     {
+        PlayOrderRejected(theme?.InTransitOrderRejected);
+    }
+
+    /// <summary>
+    /// Immediately plays the authored response for an order targeting a unit under construction.
+    /// </summary>
+    public void PlayUnitUnderConstructionOrderRejected()
+    {
+        PlayOrderRejected(theme?.UnitUnderConstructionOrderRejected);
+    }
+
+    /// <summary>
+    /// Resolves and immediately plays one authored order-rejection response.
+    /// </summary>
+    /// <param name="animationTheme">The rejection animation and audio.</param>
+    private void PlayOrderRejected(StrategyAdvisorAnimationTheme animationTheme)
+    {
         List<StrategyAdvisorAnimationViewData> playbacks =
             new List<StrategyAdvisorAnimationViewData>();
-        if (!TryAddPlayback(playbacks, theme?.InTransitOrderRejected, false))
+        if (!TryAddPlayback(playbacks, animationTheme, false))
             return;
 
         StrategyAdvisorAnimationViewData playback = playbacks.FirstOrDefault();
@@ -353,31 +379,6 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         playbackStarted = null;
         playbackCompleted = null;
         view?.ResetPlayback();
-    }
-
-    /// <summary>
-    /// Resolves the notification code for a message, honoring subject-specific mappings.
-    /// </summary>
-    /// <param name="advisorTheme">The active advisor theme.</param>
-    /// <param name="delivery">The delivered message and transient presentation request.</param>
-    /// <returns>The notification code mapped by the message.</returns>
-    internal static int GetNotificationCode(
-        StrategyAdvisorTheme advisorTheme,
-        MessageDeliveredResult delivery
-    )
-    {
-        if (advisorTheme == null)
-            throw new ArgumentNullException(nameof(advisorTheme));
-        if (delivery == null)
-            throw new ArgumentNullException(nameof(delivery));
-
-        if (delivery.AdvisorSubjectNotification == AdvisorSubjectNotification.None)
-            return (int)delivery.NotificationType;
-
-        return advisorTheme.GetSubjectNotificationCode(
-            delivery.AdvisorSubjectTypeID,
-            delivery.AdvisorSubjectNotification
-        );
     }
 
     /// <summary>
@@ -923,7 +924,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         pendingNotifications.Clear();
         pendingExpirationTicks.Clear();
         nextAllowedTicks.Clear();
-        notificationsByPriority.Clear();
+        notificationKeysByPriority.Clear();
     }
 
     /// <summary>

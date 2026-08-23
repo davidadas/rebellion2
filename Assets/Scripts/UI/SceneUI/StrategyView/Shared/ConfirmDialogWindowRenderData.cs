@@ -11,6 +11,7 @@ public enum ConfirmDialogKind
     Scrap,
     Retire,
     StopConstruction,
+    MissionAbort,
 }
 
 /// <summary>

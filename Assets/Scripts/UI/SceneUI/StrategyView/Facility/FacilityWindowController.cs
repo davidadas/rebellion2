@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -43,6 +44,7 @@ public sealed class FacilityWindowController
     private readonly HashSet<FacilityWindowView> boundViews = new HashSet<FacilityWindowView>();
     private readonly ConstructionWindowController constructionWindowController;
     private readonly Func<GameRoot> getGame;
+    private readonly Func<ManufacturingSystem> getManufacturingSystem;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
@@ -60,6 +62,7 @@ public sealed class FacilityWindowController
     /// Creates a facility feature controller.
     /// </summary>
     /// <param name="getGame">Returns the active game.</param>
+    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
     /// <param name="constructionWindowController">The construction sessions affected by destination changes.</param>
     /// <param name="getUIContext">Returns the active strategy presentation context.</param>
     /// <param name="targetingController">The strategy targeting controller.</param>
@@ -70,6 +73,7 @@ public sealed class FacilityWindowController
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public FacilityWindowController(
         Func<GameRoot> getGame,
+        Func<ManufacturingSystem> getManufacturingSystem,
         ConstructionWindowController constructionWindowController,
         Func<UIContext> getUIContext,
         TargetingController targetingController,
@@ -81,6 +85,9 @@ public sealed class FacilityWindowController
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
+        this.getManufacturingSystem =
+            getManufacturingSystem
+            ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
         this.constructionWindowController =
             constructionWindowController
             ?? throw new ArgumentNullException(nameof(constructionWindowController));
@@ -490,7 +497,22 @@ public sealed class FacilityWindowController
         if (!type.HasValue)
             return false;
 
-        session.GetDestination(type.Value, out destinationPlanetId, out destinationItemId);
+        if (
+            TryGetActiveManufacturingDestination(
+                session,
+                type.Value,
+                out destinationPlanetId,
+                out destinationItemId
+            )
+        )
+        {
+            session.SetDestination(type.Value, destinationPlanetId, destinationItemId);
+        }
+        else
+        {
+            session.GetDestination(type.Value, out destinationPlanetId, out destinationItemId);
+        }
+
         return true;
     }
 
@@ -666,6 +688,28 @@ public sealed class FacilityWindowController
             return;
 
         string destinationItemId = target.Item?.GetInstanceID();
+        ContainerNode destinationItem = GetAuthoritativeNode(destinationItemId) as ContainerNode;
+        ContainerNode destination = destinationItem ?? GetAuthoritativePlanet(destinationPlanetId);
+        if (destinationItem == null)
+            destinationItemId = null;
+
+        Planet producer = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
+        string playerFactionId = getGame()?.GetPlayerFaction()?.InstanceID;
+        ManufacturingSystem manufacturingSystem = getManufacturingSystem();
+        if (
+            destination == null
+            || producer == null
+            || manufacturingSystem?.RetargetManufacturingDestination(
+                producer,
+                type.Value,
+                destination,
+                playerFactionId
+            ) != true
+        )
+        {
+            return;
+        }
+
         session.SetDestination(type.Value, destinationPlanetId, destinationItemId);
 
         constructionWindowController.UpdateOpenConstructionDestination(
@@ -712,6 +756,43 @@ public sealed class FacilityWindowController
         }
 
         return names;
+    }
+
+    /// <summary>
+    /// Gets the authoritative delivery target of the active item in one production lane.
+    /// </summary>
+    /// <param name="session">The facility session that identifies the producer.</param>
+    /// <param name="type">The production lane.</param>
+    /// <param name="destinationPlanetId">Receives the containing destination planet.</param>
+    /// <param name="destinationItemId">Receives the destination container within that planet.</param>
+    /// <returns>True when the active queued item has a live delivery destination.</returns>
+    private bool TryGetActiveManufacturingDestination(
+        FacilityWindowSession session,
+        ManufacturingType type,
+        out string destinationPlanetId,
+        out string destinationItemId
+    )
+    {
+        destinationPlanetId = null;
+        destinationItemId = null;
+        Planet producer = GetAuthoritativePlanet(session?.Planet?.Planet?.InstanceID);
+        if (
+            producer?.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue)
+                != true
+            || queue.FirstOrDefault() is not ISceneNode current
+            || current.GetParent() is not ContainerNode destination
+        )
+        {
+            return false;
+        }
+
+        Planet destinationPlanet = destination as Planet ?? destination.GetParentOfType<Planet>();
+        if (destinationPlanet == null)
+            return false;
+
+        destinationPlanetId = destinationPlanet.InstanceID;
+        destinationItemId = destination is Planet ? null : destination.InstanceID;
+        return true;
     }
 
     /// <summary>

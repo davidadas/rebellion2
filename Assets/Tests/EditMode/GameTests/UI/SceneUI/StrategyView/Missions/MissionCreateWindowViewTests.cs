@@ -41,6 +41,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void Render_WithoutPrimaryParticipants_DisablesConfirmButtonAndUsesDisabledTexture()
+        {
+            RawImage image = FindComponent<RawImage>("OkButtonImage");
+            Texture disabledTexture = image.texture;
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                canConfirm: false
+            );
+
+            _view.Render(data);
+
+            Assert.IsFalse(FindComponent<Button>("OkButtonImage").interactable);
+            Assert.AreSame(disabledTexture, image.texture);
+        }
+
+        [Test]
         public void Render_MissionTab_AppliesTitleSelectionTargetTabsAndDropdown()
         {
             MissionCreateWindowRenderData data = CreateRenderData(
@@ -651,7 +671,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Texture selectedMissionTexture = null,
             string targetName = "Corellia",
             MissionCreateTabRenderData[] tabs = null,
-            bool showSelectedMission = true
+            bool showSelectedMission = true,
+            bool canConfirm = true
         )
         {
             return new MissionCreateWindowRenderData(
@@ -659,6 +680,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 31,
                 activeTab,
                 dropdownOpen,
+                canConfirm,
                 _texture,
                 missionName,
                 showSelectedMission ? selectedMissionTexture ?? _texture : null,

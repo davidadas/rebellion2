@@ -59,7 +59,12 @@ namespace Rebellion.Game.Messages
                 .ToArray();
             List<MessageDeliveryRequest> deliveries = new List<MessageDeliveryRequest>();
 
-            AddArrivalMessages(batch.OfType<UnitArrivedResult>(), game, deliveries);
+            AddArrivalMessages(
+                batch.OfType<UnitArrivedResult>(),
+                batch.OfType<GameObjectDeployedResult>(),
+                game,
+                deliveries
+            );
             AddFacilityLossMessages(
                 batch.OfType<GameObjectDestroyedOnArrivalResult>(),
                 game,
@@ -1690,11 +1695,20 @@ namespace Rebellion.Game.Messages
     {
         private void AddArrivalMessages(
             IEnumerable<UnitArrivedResult> arrivals,
+            IEnumerable<GameObjectDeployedResult> deployments,
             GameRoot game,
             ICollection<MessageDeliveryRequest> deliveries
         )
         {
-            UnitArrivedResult[] arrivalResults = arrivals.ToArray();
+            HashSet<string> deployedUnitIds = deployments
+                .Where(deployment => deployment?.GameObject != null)
+                .Select(deployment => deployment.GameObject.GetInstanceID())
+                .ToHashSet();
+            UnitArrivedResult[] arrivalResults = arrivals
+                .Where(arrival =>
+                    arrival?.Unit != null && !deployedUnitIds.Contains(arrival.Unit.GetInstanceID())
+                )
+                .ToArray();
             var shipGroups =
                 new Dictionary<
                     (string Owner, string Destination, string Group),
@@ -2261,6 +2275,7 @@ namespace Rebellion.Game.Messages
             };
             MessageDeliveryRequest message = BuildCombatMessage(definition, faction, values);
             SetCombatLocation(message, result.Planet, GetFleet(faction, result));
+            SetCombatReport(message, result, faction);
             return message;
         }
 
@@ -2288,6 +2303,7 @@ namespace Rebellion.Game.Messages
                     : AdvisorNotificationType.Bombardment
             );
             SetCombatLocation(message, result.Planet, result.Planet);
+            SetCombatReport(message, result, faction);
             return message;
         }
 
@@ -2315,6 +2331,7 @@ namespace Rebellion.Game.Messages
                     : AdvisorNotificationType.PlanetaryAssault
             );
             SetCombatLocation(message, result.Planet, result.Planet);
+            SetCombatReport(message, result, faction);
             return message;
         }
 
@@ -2463,6 +2480,29 @@ namespace Rebellion.Game.Messages
                 return;
             message.EventLocationInstanceID = planet?.InstanceID;
             message.NavigationTargetInstanceID = target?.InstanceID ?? planet?.InstanceID;
+        }
+
+        /// <summary>
+        /// Creates the combat report delivered by a combat-result request.
+        /// </summary>
+        /// <param name="request">The delivery request that receives the combat report.</param>
+        /// <param name="result">The completed combat result to capture.</param>
+        /// <param name="recipient">The faction whose perspective the report represents.</param>
+        private static void SetCombatReport(
+            MessageDeliveryRequest request,
+            GameResult result,
+            Faction recipient
+        )
+        {
+            if (request == null)
+                return;
+
+            request.Message = CombatReport.Capture(
+                result,
+                recipient?.InstanceID,
+                request.Subject,
+                request.Body
+            );
         }
 
         private void AddCombatDelivery(
@@ -3489,6 +3529,7 @@ namespace Rebellion.Game.Messages
             message.NavigationTargetInstanceID = result.SubjectNode?.InstanceID;
 
             MessageDeliveryRequest delivery = message;
+            delivery.Message = result.Message;
             delivery.AdvisorNotification = result.AdvisorNotification;
             delivery.NotificationType = result.NotificationType;
             delivery.AdvisorSubjectNotification = result.AdvisorSubjectNotification;

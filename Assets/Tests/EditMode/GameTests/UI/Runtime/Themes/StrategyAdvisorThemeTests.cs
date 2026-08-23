@@ -1,10 +1,91 @@
 using NUnit.Framework;
+using Rebellion.Game.Advisor;
 
 namespace Rebellion.Tests.UI.Runtime.Themes
 {
     [TestFixture]
     public class StrategyAdvisorThemeTests
     {
+        [Test]
+        public void GetNotification_GeneralNotification_ReturnsSemanticPresentation()
+        {
+            StrategyAdvisorNotificationTheme expected = new StrategyAdvisorNotificationTheme
+            {
+                NotificationType = AdvisorNotificationType.Maintenance,
+            };
+            StrategyAdvisorTheme theme = new StrategyAdvisorTheme();
+            theme.Notifications.Add(expected);
+
+            StrategyAdvisorNotificationTheme notification = theme.GetNotification(
+                AdvisorNotificationType.Maintenance,
+                null,
+                AdvisorSubjectNotification.None
+            );
+
+            Assert.AreSame(expected, notification);
+        }
+
+        [Test]
+        public void GetNotification_KnownSubject_ReturnsSubjectPresentation()
+        {
+            StrategyAdvisorNotificationTheme expected = new StrategyAdvisorNotificationTheme
+            {
+                SubjectTypeID = "subject-type",
+                SubjectNotification = AdvisorSubjectNotification.Captured,
+            };
+            StrategyAdvisorTheme theme = new StrategyAdvisorTheme();
+            theme.Notifications.Add(expected);
+
+            StrategyAdvisorNotificationTheme notification = theme.GetNotification(
+                AdvisorNotificationType.None,
+                "subject-type",
+                AdvisorSubjectNotification.Captured
+            );
+
+            Assert.AreSame(expected, notification);
+        }
+
+        [Test]
+        public void GetNotification_UnconfiguredSubject_ReturnsDefaultSubjectPresentation()
+        {
+            StrategyAdvisorNotificationTheme expected = new StrategyAdvisorNotificationTheme
+            {
+                SubjectNotification = AdvisorSubjectNotification.Report,
+            };
+            StrategyAdvisorTheme theme = new StrategyAdvisorTheme();
+            theme.Notifications.Add(expected);
+
+            StrategyAdvisorNotificationTheme notification = theme.GetNotification(
+                AdvisorNotificationType.None,
+                "unconfigured-subject-type",
+                AdvisorSubjectNotification.Report
+            );
+
+            Assert.AreSame(expected, notification);
+        }
+
+        [Test]
+        public void GetNotificationKey_SharedQueueGroup_ReturnsSameSemanticKey()
+        {
+            StrategyAdvisorNotificationTheme general = new StrategyAdvisorNotificationTheme
+            {
+                NotificationType = AdvisorNotificationType.FieldPersonnel,
+                QueueGroup = AdvisorNotificationType.FieldPersonnel,
+            };
+            StrategyAdvisorNotificationTheme subject = new StrategyAdvisorNotificationTheme
+            {
+                SubjectTypeID = "subject-type",
+                SubjectNotification = AdvisorSubjectNotification.Report,
+                QueueGroup = AdvisorNotificationType.FieldPersonnel,
+            };
+
+            string generalKey = StrategyAdvisorTheme.GetNotificationKey(general);
+            string subjectKey = StrategyAdvisorTheme.GetNotificationKey(subject);
+
+            Assert.AreEqual("Group:FieldPersonnel", generalKey);
+            Assert.AreEqual(generalKey, subjectKey);
+        }
+
         [Test]
         public void GetFramePath_AdvisorTheme_ReturnsRoleResourceAndFramePath()
         {

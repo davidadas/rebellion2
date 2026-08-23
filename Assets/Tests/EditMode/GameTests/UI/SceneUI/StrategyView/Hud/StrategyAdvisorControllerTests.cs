@@ -197,18 +197,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
             StrategyAdvisorTheme theme = CreateTheme();
-            theme.NotificationCodes.Add(
-                new StrategyAdvisorNotificationCodeTheme
-                {
-                    Code = (int)AdvisorNotificationType.PositivePopularSupport,
-                    TableID = 10,
-                    LifetimeTicks = 20,
-                }
-            );
             theme.Notifications.Add(
                 new StrategyAdvisorNotificationTheme
                 {
-                    TableID = 10,
+                    NotificationType = AdvisorNotificationType.PositivePopularSupport,
+                    LifetimeTicks = 20,
                     Droid = new StrategyAdvisorAnimationTheme
                     {
                         Animation = "Alert",
@@ -236,7 +229,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.Notify(
                     new MessageDeliveredResult
                     {
-                        Message = new Message(MessageType.Fleet, "Fleet arrived"),
+                        Message = new StatusMessage(MessageType.Fleet, "Fleet arrived"),
                         NotificationType = AdvisorNotificationType.PositivePopularSupport,
                     },
                     0,
@@ -292,7 +285,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.Notify(
                     new MessageDeliveredResult
                     {
-                        Message = new Message(MessageType.Advice, "Custom"),
+                        Message = new StatusMessage(MessageType.Advice, "Custom"),
                         AdvisorNotification = new AdvisorNotification
                         {
                             LifetimeTicks = 20,
@@ -319,6 +312,50 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 UnityEngine.Object.DestroyImmediate(customFrame);
                 UnityEngine.Object.DestroyImmediate(droidIdleTexture);
                 UnityEngine.Object.DestroyImmediate(protocolIdleTexture);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void PlayUnitUnderConstructionOrderRejected_AuthoredResponse_ReplacesPlayback()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            advisorTheme.AudioRoot = "Audio";
+            advisorTheme.UnitUnderConstructionOrderRejected = new StrategyAdvisorAnimationTheme
+            {
+                Animation = "Rejected",
+                FrameCount = 1,
+                Audio = "Rejected",
+            };
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D rejectedFrame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleAnimation, 0, false)] = idle,
+                [advisorTheme.GetFramePath(advisorTheme.DroidIdleAnimation, 0, true)] = idle,
+                [advisorTheme.GetFramePath("Rejected", 0, false)] = rejectedFrame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+                StrategyAdvisorAnimationViewData playback = null;
+                view.PlaybackStarted += data => playback = data;
+
+                controller.PlayUnitUnderConstructionOrderRejected();
+
+                Assert.IsNotNull(playback);
+                Assert.AreSame(rejectedFrame, playback.Frames.Single());
+                Assert.AreEqual("Audio/Rejected", playback.AudioPath);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(rejectedFrame);
+                UnityEngine.Object.DestroyImmediate(idle);
                 UnityEngine.Object.DestroyImmediate(rootObject);
             }
         }

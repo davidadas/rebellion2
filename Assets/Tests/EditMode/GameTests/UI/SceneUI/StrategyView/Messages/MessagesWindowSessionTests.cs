@@ -34,7 +34,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void SelectTab_WithSelectedDetail_ClearsSelectionAndDetail()
         {
-            Message message = new Message(MessageType.Fleet, "Fleet") { InstanceID = "message" };
+            Message message = new StatusMessage(MessageType.Fleet, "Fleet")
+            {
+                InstanceID = "message",
+            };
             _session.Reconcile(new[] { message });
             _session.SelectOnly(message);
             _session.ShowDetail();
@@ -66,11 +69,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void Reconcile_ReplacementWithSameID_PreservesSelectionIdentity()
         {
-            Message original = new Message(MessageType.Fleet, "Original")
+            Message original = new StatusMessage(MessageType.Fleet, "Original")
             {
                 InstanceID = "message",
             };
-            Message replacement = new Message(MessageType.Fleet, "Replacement")
+            Message replacement = new StatusMessage(MessageType.Fleet, "Replacement")
             {
                 InstanceID = original.InstanceID,
             };
@@ -86,7 +89,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void Reconcile_EmptyMessages_ClearsSelectionAndDetail()
         {
-            Message message = new Message(MessageType.Fleet, "Fleet") { InstanceID = "message" };
+            Message message = new StatusMessage(MessageType.Fleet, "Fleet")
+            {
+                InstanceID = "message",
+            };
             _session.Reconcile(new[] { message });
             _session.SelectOnly(message);
             _session.ShowDetail();
@@ -259,7 +265,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
         private static Message CreateMessage(string instanceId, string title)
         {
-            return new Message(MessageType.Fleet, title) { InstanceID = instanceId };
+            return new StatusMessage(MessageType.Fleet, title) { InstanceID = instanceId };
         }
     }
 }

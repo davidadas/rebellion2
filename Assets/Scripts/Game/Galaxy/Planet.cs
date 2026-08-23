@@ -591,6 +591,12 @@ namespace Rebellion.Game.Galaxy
             }
 
             // Don't call SetPosition - units in queue aren't built yet, position comes from parent planet when completed.
+            long nextSequence =
+                ManufacturingQueue[type]
+                    .Select(item => item.ManufacturingQueueSequence)
+                    .DefaultIfEmpty()
+                    .Max() + 1;
+            manufacturable.ManufacturingQueueSequence = nextSequence;
             ManufacturingQueue[type].Add(manufacturable);
         }
 

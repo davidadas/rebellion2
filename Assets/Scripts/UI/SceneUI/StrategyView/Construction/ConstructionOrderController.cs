@@ -176,13 +176,13 @@ public sealed class ConstructionOrderController
     }
 
     /// <summary>
-    /// Creates a build estimate when both completion and deployment can be calculated.
+    /// Creates a build estimate when either completion or deployment can be calculated.
     /// </summary>
     /// <param name="producer">The planet performing the manufacturing.</param>
     /// <param name="destination">The node that will receive manufactured units.</param>
     /// <param name="selected">The selected build template.</param>
     /// <param name="buildCount">The requested quantity.</param>
-    /// <returns>The completed estimate, or null when either value is unavailable.</returns>
+    /// <returns>The available estimates, or null when neither value can be calculated.</returns>
     private ConstructionBuildEstimate CreateBuildEstimate(
         Planet producer,
         ISceneNode destination,
@@ -192,8 +192,8 @@ public sealed class ConstructionOrderController
     {
         int? completionTicks = CalculateCompletionTicks(producer, selected, buildCount);
         int? deploymentTicks = CalculateDeploymentTicks(producer, destination, selected);
-        return completionTicks.HasValue && deploymentTicks.HasValue
-            ? new ConstructionBuildEstimate(completionTicks.Value, deploymentTicks.Value)
+        return completionTicks.HasValue || deploymentTicks.HasValue
+            ? new ConstructionBuildEstimate(completionTicks, deploymentTicks)
             : null;
     }
 
@@ -302,15 +302,15 @@ public sealed class ConstructionBuildEstimate
     /// <summary>
     /// Creates a construction estimate.
     /// </summary>
-    /// <param name="completionTicks">The manufacturing duration.</param>
-    /// <param name="deploymentTicks">The deployment duration.</param>
-    public ConstructionBuildEstimate(int completionTicks, int deploymentTicks)
+    /// <param name="completionTicks">The manufacturing duration, or null when unavailable.</param>
+    /// <param name="deploymentTicks">The deployment duration, or null when unavailable.</param>
+    public ConstructionBuildEstimate(int? completionTicks, int? deploymentTicks)
     {
         CompletionTicks = completionTicks;
         DeploymentTicks = deploymentTicks;
     }
 
-    public int CompletionTicks { get; }
+    public int? CompletionTicks { get; }
 
-    public int DeploymentTicks { get; }
+    public int? DeploymentTicks { get; }
 }

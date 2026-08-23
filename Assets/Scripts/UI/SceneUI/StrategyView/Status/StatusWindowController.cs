@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -263,12 +264,15 @@ public sealed class StatusWindowController
         StatusWindowSession session = GetSession(view);
 
         UIContext uiContext = GetUIContext();
+        GameRoot game = uiContext.Game;
         IReadOnlyList<GalaxyMapSector> sectors =
             getSectors() ?? throw new InvalidOperationException("Status sectors are unavailable.");
         StrategyStatusInfo info = new StrategyStatusInfoBuilder(
-            uiContext.Game,
             sectors,
-            findVisibleNode
+            findVisibleNode,
+            game.GetPlayerFaction()?.InstanceID,
+            game.CurrentTick,
+            game.Config?.Jedi
         ).Build(session.Target);
         if (info == null)
             return;

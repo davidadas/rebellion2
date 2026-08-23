@@ -118,6 +118,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(25, data.Y);
             Assert.AreEqual(MissionCreateWindowTab.Mission, data.ActiveTab);
             Assert.IsTrue(data.DropdownOpen);
+            Assert.IsFalse(data.CanConfirm);
             Assert.AreSame(_uiContext.GetTexture(theme.TitleImagePath), data.TitleTexture);
             Assert.AreEqual("Diplomacy", data.MissionName);
             Assert.AreSame(
@@ -191,6 +192,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             MissionCreateWindowRenderData data = _projector.Build(session, _window);
 
             Assert.AreEqual(MissionCreateWindowTab.Personnel, data.ActiveTab);
+            Assert.IsTrue(data.CanConfirm);
             Assert.IsFalse(data.DropdownOpen);
             Assert.IsEmpty(data.DropdownItems);
             Assert.AreEqual(2, data.AgentRows.Count);
