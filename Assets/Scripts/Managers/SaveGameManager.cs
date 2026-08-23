@@ -413,7 +413,7 @@ public class SaveGameManager
     {
         string saveFilePath = GetSaveFilePath(fileName);
 
-        GameSerializer serializer = new GameSerializer(typeof(GameRoot));
+        GameSerializer serializer = CreateSaveDeserializer(typeof(GameRoot));
 
         using FileStream fileStream = new FileStream(saveFilePath, FileMode.Open);
         return (GameRoot)serializer.Deserialize(fileStream);
@@ -456,7 +456,7 @@ public class SaveGameManager
         )
             return sidecarMetadata;
 
-        GameSerializer serializer = new GameSerializer(typeof(GameRoot));
+        GameSerializer serializer = CreateSaveDeserializer(typeof(GameRoot));
         using FileStream stream = new FileStream(
             saveFilePath,
             FileMode.Open,
@@ -484,7 +484,10 @@ public class SaveGameManager
     {
         try
         {
-            GameSerializer serializer = CreateMetadataSerializer();
+            GameSerializer serializer = CreateSaveDeserializer(
+                typeof(GameMetadata),
+                _metadataElementName
+            );
             using FileStream stream = new FileStream(
                 metadataFilePath,
                 FileMode.Open,
@@ -540,6 +543,37 @@ public class SaveGameManager
         return new GameSerializer(
             typeof(GameMetadata),
             new GameSerializerSettings { RootName = _metadataElementName }
+        );
+    }
+
+    /// <summary>
+    /// Creates a deserializer that tolerates fields written by another game version.
+    /// </summary>
+    /// <param name="type">The root type to deserialize.</param>
+    /// <param name="rootName">The optional serialized root element name.</param>
+    /// <returns>The configured save-game deserializer.</returns>
+    private static GameSerializer CreateSaveDeserializer(Type type, string rootName = null)
+    {
+        return new GameSerializer(
+            type,
+            new GameSerializerSettings
+            {
+                RootName = rootName,
+                IgnoreUnknownElements = true,
+                UnknownElementSkipped = WarnUnknownSaveElement,
+            }
+        );
+    }
+
+    /// <summary>
+    /// Warns that a save contained an element unknown to the current game version.
+    /// </summary>
+    /// <param name="objectType">The object type that did not recognize the element.</param>
+    /// <param name="elementName">The skipped XML element name.</param>
+    private static void WarnUnknownSaveElement(Type objectType, string elementName)
+    {
+        GameLogger.Warning(
+            $"Ignored unknown element '{elementName}' while loading {objectType.Name}."
         );
     }
 }

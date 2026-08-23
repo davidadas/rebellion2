@@ -1,3 +1,4 @@
+using System;
 using System.Xml;
 using System.Xml.Schema;
 
@@ -12,6 +13,16 @@ namespace Rebellion.Util.Serialization
         public bool Idendent { get; set; } = true;
         public bool IgnoreComments { get; set; } = true;
         public bool IgnoreWhitespace { get; set; } = true;
+
+        /// <summary>
+        /// Whether deserialization skips XML elements that have no matching member.
+        /// </summary>
+        public bool IgnoreUnknownElements { get; set; }
+
+        /// <summary>
+        /// Receives the containing type and element name whenever an unknown element is skipped.
+        /// </summary>
+        public Action<Type, string> UnknownElementSkipped { get; set; }
 
         /// <summary>
         /// Optional schema set for inline validation during deserialization.

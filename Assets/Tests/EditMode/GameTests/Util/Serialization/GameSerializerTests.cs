@@ -1536,6 +1536,32 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
+        public void Deserialize_UnknownElementWhenIgnored_SkipsElementAndInvokesCallback()
+        {
+            Type skippedObjectType = null;
+            string skippedElementName = null;
+            GameSerializerSettings settings = new GameSerializerSettings
+            {
+                IgnoreUnknownElements = true,
+                UnknownElementSkipped = (objectType, elementName) =>
+                {
+                    skippedObjectType = objectType;
+                    skippedElementName = elementName;
+                },
+            };
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem), settings);
+            string xml =
+                "<?xml version=\"1.0\"?><SimpleItem><Name>x</Name><UnknownField><Nested>oops</Nested></UnknownField><Value>42</Value></SimpleItem>";
+
+            SimpleItem item = (SimpleItem)DeserializeFromString(serializer, xml);
+
+            Assert.AreEqual("x", item.Name);
+            Assert.AreEqual(42, item.Value);
+            Assert.AreEqual(typeof(SimpleItem), skippedObjectType);
+            Assert.AreEqual("UnknownField", skippedElementName);
+        }
+
+        [Test]
         public void Deserialize_WithSchema_ValidXml_Succeeds()
         {
             GameSerializerSettings settings = new GameSerializerSettings
