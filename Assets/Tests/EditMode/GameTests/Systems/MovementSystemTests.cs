@@ -1565,7 +1565,7 @@ namespace Rebellion.Tests.Sectors
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
 
-            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(
                 building,
                 scene.blockadedDestination,
@@ -1575,6 +1575,7 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(building, scene.game.GetSceneNodeByInstanceID<Building>("building"));
             Assert.AreSame(scene.blockadedDestination, building.GetParent());
             Assert.IsNull(building.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
         }
 
         [Test]
@@ -3259,7 +3260,7 @@ namespace Rebellion.Tests.Sectors
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
 
-            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
 
             int transitTicks = building.Movement.TransitTicks;
@@ -3303,7 +3304,7 @@ namespace Rebellion.Tests.Sectors
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
 
-            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            regiment.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(regiment, scene.blockadedDestination, scene.origin);
 
             int transitTicks = regiment.Movement.TransitTicks;
@@ -3348,7 +3349,7 @@ namespace Rebellion.Tests.Sectors
             (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
 
-            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
             scene.game.DetachNode(blockadingFleet);
             scene.resultProcessor.Process(scene.blockade.ProcessTick());
@@ -3368,7 +3369,7 @@ namespace Rebellion.Tests.Sectors
             UnitArrivedResult arrival = results
                 .OfType<UnitArrivedResult>()
                 .Single(result => ReferenceEquals(result.Unit, building));
-            Assert.IsTrue(arrival.IsManufacturingDeployment);
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
             Assert.IsTrue(
                 results
                     .OfType<GameObjectDeployedResult>()
@@ -4076,7 +4077,7 @@ namespace Rebellion.Tests.Sectors
                 GameResultProcessor resultProcessor
             ) scene = BuildBlockadeRetargetingScene();
             Building building = EntityFactory.CreateBuilding("building", "empire");
-            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.game.AttachNode(building, scene.blockadedDestination);
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
 

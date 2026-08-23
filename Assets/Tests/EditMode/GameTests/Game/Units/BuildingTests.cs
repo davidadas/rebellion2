@@ -67,6 +67,52 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void SetManufacturingStatus_BuildingToDelivering_UpdatesSuccessfully()
+        {
+            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
+
+            building.SetManufacturingStatus(ManufacturingStatus.Delivering);
+
+            Assert.AreEqual(ManufacturingStatus.Delivering, building.ManufacturingStatus);
+        }
+
+        [Test]
+        public void SetManufacturingStatus_DeliveringToComplete_UpdatesSuccessfully()
+        {
+            Building building = new Building
+            {
+                ManufacturingStatus = ManufacturingStatus.Delivering,
+            };
+
+            building.SetManufacturingStatus(ManufacturingStatus.Complete);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+        }
+
+        [Test]
+        public void SetManufacturingStatus_DeliveringToBuilding_ThrowsException()
+        {
+            Building building = new Building
+            {
+                ManufacturingStatus = ManufacturingStatus.Delivering,
+            };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                building.SetManufacturingStatus(ManufacturingStatus.Building)
+            );
+        }
+
+        [Test]
+        public void SetManufacturingStatus_CompleteToDelivering_ThrowsException()
+        {
+            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                building.SetManufacturingStatus(ManufacturingStatus.Delivering)
+            );
+        }
+
+        [Test]
         public void SetManufacturingStatus_CompleteToComplete_UpdatesSuccessfully()
         {
             Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };

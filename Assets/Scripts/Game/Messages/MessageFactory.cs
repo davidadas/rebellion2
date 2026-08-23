@@ -59,7 +59,12 @@ namespace Rebellion.Game.Messages
                 .ToArray();
             List<MessageDeliveryRequest> deliveries = new List<MessageDeliveryRequest>();
 
-            AddArrivalMessages(batch.OfType<UnitArrivedResult>(), game, deliveries);
+            AddArrivalMessages(
+                batch.OfType<UnitArrivedResult>(),
+                batch.OfType<GameObjectDeployedResult>(),
+                game,
+                deliveries
+            );
             AddFacilityLossMessages(
                 batch.OfType<GameObjectDestroyedOnArrivalResult>(),
                 game,
@@ -1691,12 +1696,19 @@ namespace Rebellion.Game.Messages
     {
         private void AddArrivalMessages(
             IEnumerable<UnitArrivedResult> arrivals,
+            IEnumerable<GameObjectDeployedResult> deployments,
             GameRoot game,
             ICollection<MessageDeliveryRequest> deliveries
         )
         {
+            HashSet<string> deployedUnitIds = deployments
+                .Where(deployment => deployment?.GameObject != null)
+                .Select(deployment => deployment.GameObject.GetInstanceID())
+                .ToHashSet();
             UnitArrivedResult[] arrivalResults = arrivals
-                .Where(arrival => arrival?.IsManufacturingDeployment != true)
+                .Where(arrival =>
+                    arrival?.Unit != null && !deployedUnitIds.Contains(arrival.Unit.GetInstanceID())
+                )
                 .ToArray();
             var shipGroups =
                 new Dictionary<

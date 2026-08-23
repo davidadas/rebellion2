@@ -293,14 +293,13 @@ namespace Rebellion.Systems
             )
             {
                 ExecuteMove(unit, origin, _pendingResults);
-                if (unit.Movement != null)
-                    unit.Movement.IsManufacturingDeployment = true;
                 return;
             }
 
             if (destinationPlanet == origin)
             {
                 unit.Movement = null;
+                CompleteManufacturingDelivery(unit);
                 AddPlanetGarrisonChangedResults(_pendingResults, unit, destinationPlanet);
                 return;
             }
@@ -311,7 +310,6 @@ namespace Rebellion.Systems
                 TransitTicks = transitTicks,
                 TicksElapsed = 0,
                 MovementGroupID = Guid.NewGuid().ToString("N"),
-                IsManufacturingDeployment = true,
                 OriginPosition = origin.GetPosition(),
                 CurrentPosition = origin.GetPosition(),
             };
@@ -1302,7 +1300,8 @@ namespace Rebellion.Systems
         {
             string movementGroupID = movable.Movement?.MovementGroupID;
             string sourceEventInstanceID = movable.Movement?.SourceEventInstanceID;
-            bool isManufacturingDeployment = movable.Movement?.IsManufacturingDeployment == true;
+            bool completesManufacturingDelivery =
+                movable is IManufacturable { ManufacturingStatus: ManufacturingStatus.Delivering };
 
             if (TryFollowMovingFleetDestination(movable, destination))
                 return;
@@ -1325,13 +1324,15 @@ namespace Rebellion.Systems
             try
             {
                 CompleteArrival(movable, destination, destinationPlanet, results);
+                if (completesManufacturingDelivery)
+                    CompleteManufacturingDelivery(movable);
                 AddArrivalResults(
                     movable,
                     destinationPlanet,
                     movementGroupID,
                     results,
                     sourceEventInstanceID,
-                    isManufacturingDeployment
+                    completesManufacturingDelivery
                 );
             }
             catch (SceneAccessException ex)
@@ -1550,14 +1551,14 @@ namespace Rebellion.Systems
         /// <param name="movementGroupID">The movement order id that produced the arrival.</param>
         /// <param name="results">The results generated this tick.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
-        /// <param name="isManufacturingDeployment">Whether the arrival completes a manufactured delivery.</param>
+        /// <param name="completedManufacturingDelivery">Whether the arrival completed a manufactured delivery.</param>
         private void AddArrivalResults(
             IMovable movable,
             Planet destinationPlanet,
             string movementGroupID,
             ICollection<GameResult> results,
             string sourceEventInstanceID = null,
-            bool isManufacturingDeployment = false
+            bool completedManufacturingDelivery = false
         )
         {
             results.Add(
@@ -1574,16 +1575,32 @@ namespace Rebellion.Systems
                     Unit = movable,
                     Destination = destinationPlanet,
                     MovementGroupID = movementGroupID,
-                    IsManufacturingDeployment = isManufacturingDeployment,
                     SourceEventInstanceID = sourceEventInstanceID,
                     Tick = _game.CurrentTick,
                 }
             );
-            if (isManufacturingDeployment && movable is IManufacturable)
+            if (completedManufacturingDelivery)
             {
                 results.Add(
                     new GameObjectDeployedResult { GameObject = movable, Tick = _game.CurrentTick }
                 );
+            }
+        }
+
+        /// <summary>
+        /// Marks a manufactured item as complete after its initial delivery finishes.
+        /// </summary>
+        /// <param name="movable">The delivered unit.</param>
+        private static void CompleteManufacturingDelivery(IMovable movable)
+        {
+            if (
+                movable is IManufacturable
+                {
+                    ManufacturingStatus: ManufacturingStatus.Delivering
+                } manufacturable
+            )
+            {
+                manufacturable.ManufacturingStatus = ManufacturingStatus.Complete;
             }
         }
 
@@ -1816,7 +1833,6 @@ namespace Rebellion.Systems
         /// <param name="rejectedDestination">The planet that refused the unit.</param>
         private void HandleArrivalRejection(IMovable movable, Planet rejectedDestination)
         {
-            bool isManufacturingDeployment = movable.Movement?.IsManufacturingDeployment == true;
             string ownerID = GetMovementControlOwner(movable);
             if (string.IsNullOrEmpty(ownerID))
             {
@@ -1834,8 +1850,6 @@ namespace Rebellion.Systems
             {
                 movable.Movement = null;
                 ExecuteMove(movable, fallback, _pendingResults);
-                if (movable.Movement != null)
-                    movable.Movement.IsManufacturingDeployment = isManufacturingDeployment;
                 GameLogger.Log(
                     $"{movable.GetDisplayName()} redirected to fallback: {fallback.GetDisplayName()}"
                 );
@@ -2052,7 +2066,6 @@ namespace Rebellion.Systems
             Point currentPosition = movable.Movement.CurrentPosition;
             string movementGroupID = movable.Movement.MovementGroupID;
             string sourceEventInstanceID = movable.Movement.SourceEventInstanceID;
-            bool isManufacturingDeployment = movable.Movement.IsManufacturingDeployment;
             movable.Movement = new MovementState
             {
                 TransitTicks = CalculateTransitTicks(
@@ -2064,7 +2077,6 @@ namespace Rebellion.Systems
                 TicksElapsed = 0,
                 MovementGroupID = movementGroupID,
                 SourceEventInstanceID = sourceEventInstanceID,
-                IsManufacturingDeployment = isManufacturingDeployment,
                 OriginPosition = currentPosition,
                 CurrentPosition = currentPosition,
             };

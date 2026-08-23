@@ -1247,7 +1247,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Completes manufacturing of an item and dispatches it from the production planet.
+        /// Finishes construction of an item and dispatches it from the production planet.
         /// </summary>
         /// <param name="productionPlanet">The production planet.</param>
         /// <param name="item">The completed item.</param>
@@ -1298,18 +1298,25 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Marks a completed item and starts movement from the production planet if needed.
+        /// Advances a finished item into delivery and starts movement when needed.
         /// </summary>
         /// <param name="productionPlanet">The production planet.</param>
         /// <param name="item">The completed item.</param>
         private void MarkCompleteAndDispatch(Planet productionPlanet, IManufacturable item)
         {
-            item.ManufacturingStatus = ManufacturingStatus.Complete;
             item.ManufacturingQueueSequence = 0;
 
             ContainerNode destination = item.GetParent() as ContainerNode;
-            if (destination != null)
-                _movementSystem.RequestMove(item, destination, productionPlanet);
+            if (destination == null)
+            {
+                item.ManufacturingStatus = ManufacturingStatus.Complete;
+                return;
+            }
+
+            item.ManufacturingStatus = ManufacturingStatus.Delivering;
+            _movementSystem.RequestMove(item, destination, productionPlanet);
+            if (item.Movement == null)
+                item.ManufacturingStatus = ManufacturingStatus.Complete;
         }
 
         /// <summary>

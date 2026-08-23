@@ -1028,7 +1028,7 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(originPlanet, ship, fleet, ignoreCost: true);
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, ship.ManufacturingStatus);
             Assert.IsNotNull(ship.Movement, "Ship should have _movement state for transit.");
             Assert.Greater(ship.Movement.TransitTicks, 0, "Should have travel time.");
             Assert.IsNull(fleet.Movement, "Fleet should not move — the ship travels to it.");
@@ -1086,7 +1086,7 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, ship.ManufacturingStatus);
             Assert.IsNotNull(
                 ship.Movement,
                 "Ship should travel to its assigned fleet even when the fleet is over a hostile planet."
@@ -1137,7 +1137,7 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, fighter.ManufacturingStatus);
             Assert.IsNotNull(fighter.Movement, "Should have _movement state for shipping.");
             Assert.Greater(fighter.Movement.TransitTicks, 0, "Should have travel time.");
         }
@@ -1219,10 +1219,9 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(originPlanet, regiment, destPlanet, ignoreCost: true);
             List<GameResult> results = mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, regiment.ManufacturingStatus);
             Assert.IsNotNull(regiment.Movement, "Should have _movement state for shipping.");
             Assert.Greater(regiment.Movement.TransitTicks, 0, "Should have travel time.");
-            Assert.IsTrue(regiment.Movement.IsManufacturingDeployment);
             Assert.IsFalse(
                 results
                     .OfType<GameObjectDeployedResult>()
@@ -1357,7 +1356,7 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(originPlanet, mine, destPlanet, ignoreCost: true);
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, mine.ManufacturingStatus);
             Assert.IsNotNull(mine.Movement, "Should have _movement state for shipping.");
             Assert.Greater(mine.Movement.TransitTicks, 0, "Should have travel time.");
         }
@@ -1481,7 +1480,7 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, mine.ManufacturingStatus);
             Assert.AreEqual(
                 planetA,
                 mine.GetParent(),
@@ -2151,7 +2150,7 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, fighter.ManufacturingStatus);
             Assert.AreEqual(
                 carrier,
                 fighter.GetParent(),
@@ -2209,7 +2208,7 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, regiment.ManufacturingStatus);
             Assert.AreEqual(
                 carrier,
                 regiment.GetParent(),
@@ -2326,9 +2325,9 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
-            Assert.AreEqual(ManufacturingStatus.Complete, mine2.ManufacturingStatus);
-            Assert.AreEqual(ManufacturingStatus.Complete, mine3.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, mine1.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, mine2.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Delivering, mine3.ManufacturingStatus);
             Assert.AreEqual(
                 planetA,
                 mine1.GetParent(),

@@ -967,6 +967,44 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_DeployedUnitArrival_ReturnsDeploymentInsteadOfArrival()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "regiment",
+                DisplayName = "Infantry Regiment",
+                OwnerInstanceID = alliance.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destination);
+
+            List<MessageDeliveryRequest> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UnitsArrived,
+                        MessageType.Fleet,
+                        "Units Arrive at {system}",
+                        "Units:\n{units}"
+                    ),
+                    Definition(
+                        MessageResultType.RegimentDeployed,
+                        MessageType.Manufacturing,
+                        "{item} Deployed to {system}",
+                        "The following units have been deployed to {system}:\n{items}"
+                    ),
+                },
+                new UnitArrivedResult { Unit = regiment, Destination = destination },
+                new GameObjectDeployedResult { GameObject = regiment }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual("Infantry Regiment Deployed to Yavin", AsMessage(deliveries[0]).Title);
+        }
+
+        [Test]
         public void CreateMessages_DeployedFacilityWithoutMatchingDefinition_ReturnsNoDelivery()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
