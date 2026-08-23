@@ -47,6 +47,11 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         [Test]
         public void Awake_AuthoredPrefab_ConfiguresPlaybackComponents()
         {
+            Image background = _rootObject.GetComponent<Image>();
+
+            Assert.IsNotNull(background);
+            Assert.AreEqual(Color.black, background.color);
+            Assert.IsFalse(background.raycastTarget);
             Assert.IsNotNull(_screen);
             Assert.IsNotNull(_videoPlayer);
             Assert.IsNotNull(_audioSource);

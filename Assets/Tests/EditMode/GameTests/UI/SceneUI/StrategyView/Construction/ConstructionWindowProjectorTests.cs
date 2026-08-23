@@ -278,6 +278,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void CreateRenderData_CompletionOnlyEstimate_ShowsCompletionAndUnavailableDeployment()
+        {
+            CapitalShip ship = CreateCapitalShip("ship", "Ship", 1, 1);
+
+            ConstructionWindowRenderData data = _projector.CreateRenderData(
+                0,
+                0,
+                _ownerId,
+                true,
+                new IManufacturable[] { ship },
+                0,
+                1,
+                new[] { 0 },
+                new[] { new ConstructionBuildEstimate(8, null) },
+                false
+            );
+
+            Assert.AreEqual("8", data.CompletionEstimate);
+            Assert.IsTrue(data.CompletionHasDays);
+            Assert.AreEqual("N/A", data.DeploymentEstimate);
+            Assert.IsFalse(data.DeploymentHasDays);
+        }
+
+        [Test]
         public void CreateRenderData_EmptySelection_ProjectsHiddenSelectionState()
         {
             ConstructionWindowRenderData data = _projector.CreateRenderData(

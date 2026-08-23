@@ -293,6 +293,31 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreateMission_ParticipantAboardMovingFleet_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            planet.AddVisitor("empire");
+            Fleet fleet = EntityFactory.CreateFleet("moving-fleet", "empire");
+            fleet.Movement = new MovementState { TransitTicks = 10 };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.MoveNode(officer, ship);
+
+            bool created = factory.TryCreateMission(
+                CreateContext(game, MissionTypeIDs.Diplomacy, "empire", officer, planet),
+                out _
+            );
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
         public void TryCreateMission_NullOptionalFields_DoesNotMutateContext()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
@@ -393,6 +418,27 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Diplomacy));
             Assert.AreEqual(MissionTypeIDs.Espionage, options.Last().MissionTypeID);
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_RecruitmentAndDiplomacy_ListsRecruitmentFirst()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            officer.IsMain = true;
+            game.GetUnrecruitedOfficers().Add(CreateUnrecruitedOfficer("empire"));
+            planet.AddVisitor("empire");
+            MissionContext context = CreateContext(game, null, "empire", officer, planet);
+
+            List<MissionOption> options = factory.GetAvailableMissionOptions(context);
+
+            int recruitmentIndex = options.FindIndex(option =>
+                option.MissionTypeID == MissionTypeIDs.Recruitment
+            );
+            int diplomacyIndex = options.FindIndex(option =>
+                option.MissionTypeID == MissionTypeIDs.Diplomacy
+            );
+            Assert.GreaterOrEqual(recruitmentIndex, 0);
+            Assert.Greater(diplomacyIndex, recruitmentIndex);
         }
 
         [Test]

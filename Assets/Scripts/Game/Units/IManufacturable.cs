@@ -6,6 +6,7 @@ namespace Rebellion.Game.Units
     public enum ManufacturingStatus
     {
         Building,
+        Delivering,
         Complete,
     }
 
@@ -39,6 +40,7 @@ namespace Rebellion.Game.Units
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
+        public long ManufacturingQueueSequence { get; set; }
         public int ManufacturingProgress { get; set; }
         public ManufacturingStatus ManufacturingStatus { get; set; }
 
@@ -145,14 +147,19 @@ namespace Rebellion.Game.Units
         /// <exception cref="InvalidOperationException">Thrown when the status is invalid.</exception>
         public void SetManufacturingStatus(ManufacturingStatus status)
         {
-            // Check for invalid status.
             if (
-                GetManufacturingStatus() == ManufacturingStatus.Complete
-                && status == ManufacturingStatus.Building
+                (
+                    GetManufacturingStatus() == ManufacturingStatus.Delivering
+                    && status == ManufacturingStatus.Building
+                )
+                || (
+                    GetManufacturingStatus() == ManufacturingStatus.Complete
+                    && status != ManufacturingStatus.Complete
+                )
             )
             {
                 throw new InvalidOperationException(
-                    "Invalid manufacturing status. Cannot set to 'Building' once 'Complete'."
+                    $"Invalid manufacturing status transition from '{GetManufacturingStatus()}' to '{status}'."
                 );
             }
 

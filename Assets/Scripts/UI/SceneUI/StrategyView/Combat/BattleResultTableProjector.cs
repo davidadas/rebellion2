@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -117,6 +118,41 @@ internal sealed class BattleResultTableProjector
     }
 
     /// <summary>
+    /// Creates result-table presentation from a durable combat report.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="report">The saved completed encounter.</param>
+    /// <param name="ownerInstanceId">The represented owner identifier.</param>
+    /// <param name="category">The selected result category.</param>
+    /// <returns>The operational and destroyed result columns.</returns>
+    internal BattleResultTableRenderData ProjectReport(
+        UIContext uiContext,
+        CombatReport report,
+        string ownerInstanceId,
+        BattleResultCategory category
+    )
+    {
+        bool attacker = ownerInstanceId == report?.AttackerOwnerInstanceID;
+        bool defender = ownerInstanceId == report?.DefenderOwnerInstanceID;
+        if (!attacker && !defender)
+            return CreateEmptyTable();
+
+        bool withdrawing =
+            report.CombatType == CombatReportType.SpaceBattle
+            && (
+                attacker
+                    ? report.AttackerOutcome == SpaceCombatSideOutcome.Withdrawn
+                    : report.DefenderOutcome == SpaceCombatSideOutcome.Withdrawn
+            );
+        return ProjectReportUnits(
+            uiContext,
+            attacker ? report.AttackingUnits : report.DefendingUnits,
+            category,
+            withdrawing
+        );
+    }
+
+    /// <summary>
     /// Creates category rows from detached combat-unit snapshots.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
@@ -160,6 +196,96 @@ internal sealed class BattleResultTableProjector
 
         AddEmptyRows(operational, destroyed);
         return new BattleResultTableRenderData(operational, destroyed);
+    }
+
+    /// <summary>
+    /// Creates category rows from units captured in a durable combat report.
+    /// </summary>
+    private static BattleResultTableRenderData ProjectReportUnits(
+        UIContext uiContext,
+        IEnumerable<CombatReportUnit> units,
+        BattleResultCategory category,
+        bool withdrawing
+    )
+    {
+        List<BattleResultItemRenderData> operational = new List<BattleResultItemRenderData>();
+        List<BattleResultItemRenderData> destroyed = new List<BattleResultItemRenderData>();
+        HashSet<string> addedOperational = new HashSet<string>();
+        HashSet<string> addedDestroyed = new HashSet<string>();
+
+        foreach (
+            CombatReportUnit unit in (units ?? Enumerable.Empty<CombatReportUnit>()).Where(unit =>
+                unit != null && MatchesCategory(unit.Category, category)
+            )
+        )
+        {
+            if (!unit.WasOperational && !unit.Destroyed)
+                continue;
+
+            HashSet<string> added = unit.Destroyed ? addedDestroyed : addedOperational;
+            if (!string.IsNullOrEmpty(unit.InstanceID) && !added.Add(unit.InstanceID))
+                continue;
+
+            List<BattleResultItemRenderData> destination = unit.Destroyed ? destroyed : operational;
+            destination.Add(
+                new BattleResultItemRenderData(
+                    unit.DisplayName,
+                    GetTexture(
+                        uiContext,
+                        BattleResultPresentation.FirstNonBlank(
+                            unit.ResultImagePath,
+                            unit.SmallDisplayImagePath,
+                            unit.DisplayImagePath
+                        )
+                    ),
+                    !unit.Destroyed && withdrawing
+                        ? GetTexture(
+                            uiContext,
+                            BattleResultPresentation.FirstNonBlank(
+                                unit.ResultInTransitImagePath,
+                                unit.InTransitImagePath,
+                                unit.InTransitSmallImagePath
+                            )
+                        )
+                        : null,
+                    unit.Damaged || unit.Destroyed
+                        ? GetTexture(
+                            uiContext,
+                            BattleResultPresentation.FirstNonBlank(
+                                unit.ResultDamagedImagePath,
+                                unit.DamagedImagePath,
+                                unit.DamagedSmallImagePath
+                            )
+                        )
+                        : null,
+                    unit.Captured ? GetTexture(uiContext, unit.CapturedOverlayImagePath) : null
+                )
+            );
+        }
+
+        AddEmptyRows(operational, destroyed);
+        return new BattleResultTableRenderData(operational, destroyed);
+    }
+
+    /// <summary>
+    /// Returns whether a saved report-unit category belongs to the selected result tab.
+    /// </summary>
+    private static bool MatchesCategory(
+        CombatReportUnitCategory unitCategory,
+        BattleResultCategory category
+    )
+    {
+        return (unitCategory, category) switch
+        {
+            (CombatReportUnitCategory.CapitalShip, BattleResultCategory.CapitalShips) => true,
+            (CombatReportUnitCategory.Starfighter, BattleResultCategory.Starfighters) => true,
+            (CombatReportUnitCategory.ManufacturingFacility, BattleResultCategory.Manufacturing) =>
+                true,
+            (CombatReportUnitCategory.DefenseFacility, BattleResultCategory.Defense) => true,
+            (CombatReportUnitCategory.Troops, BattleResultCategory.Troops) => true,
+            (CombatReportUnitCategory.Personnel, BattleResultCategory.Personnel) => true,
+            _ => false,
+        };
     }
 
     /// <summary>

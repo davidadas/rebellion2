@@ -471,12 +471,12 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Measures wrapped text using the authored TextMesh Pro field and width.
+    /// Measures text using the authored TextMesh Pro field and width.
     /// </summary>
     /// <param name="template">The authored text field.</param>
     /// <param name="text">The displayed text.</param>
     /// <param name="rect">The authored field bounds.</param>
-    /// <returns>The source-space height required by the wrapped text.</returns>
+    /// <returns>The source-space height required by the text.</returns>
     private static int GetPreferredTextHeight(TextMeshProUGUI template, string text, RectInt rect)
     {
         float preferredHeight = template.GetPreferredValues(text ?? string.Empty, rect.width, 0f).y;

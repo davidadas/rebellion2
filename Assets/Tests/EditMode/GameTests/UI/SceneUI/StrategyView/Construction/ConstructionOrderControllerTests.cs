@@ -127,6 +127,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsTrue(selection.All(template => template.GetResearchOrder() <= unlockedOrder));
         }
 
+        [Test]
+        public void GetBuildEstimates_StationaryTemplate_ReturnsCompletionWithoutDeployment()
+        {
+            const string ownerId = "owner";
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = ownerId });
+            GalaxyPlanetSector sector = new GalaxyPlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet producer = CreatePlanet("producer", ownerId, 10);
+            game.AttachNode(producer, sector);
+            game.AttachNode(CreateConstructionFacility(ownerId), producer);
+            FleetSystem fleetSystem = new FleetSystem(game);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                fleetSystem
+            );
+            ConstructionOrderController controller = new ConstructionOrderController(
+                () => game,
+                () => new ManufacturingSystem(game, fleetSystem, movement),
+                () => movement
+            );
+            Building template = new Building
+            {
+                InstanceID = "template",
+                ConstructionCost = 10,
+                BuildingType = BuildingType.Mine,
+            };
+
+            ConstructionBuildEstimate estimate = controller
+                .GetBuildEstimates(
+                    producer,
+                    producer,
+                    new IManufacturable[] { template },
+                    1,
+                    new[] { 0 }
+                )
+                .Single();
+
+            Assert.AreEqual(10, estimate.CompletionTicks);
+            Assert.IsNull(estimate.DeploymentTicks);
+        }
+
         private static Planet CreatePlanet(string instanceId, string ownerId, int energyCapacity)
         {
             return new Planet

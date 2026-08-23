@@ -113,8 +113,7 @@ namespace Rebellion.Game.Missions
         /// <returns>The participant's raw diplomacy mission score.</returns>
         protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
-            if (!(GetParent() is Planet planet))
-                return base.GetAgentScore(agent, game);
+            Planet planet = GetParent() as Planet;
 
             int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
             int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(

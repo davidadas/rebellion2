@@ -12,6 +12,13 @@ using UnityEngine.EventSystems;
 public interface IMissionsWindowActions
 {
     /// <summary>
+    /// Opens abort confirmation for an active mission.
+    /// </summary>
+    /// <param name="sourceWindow">The Missions window requesting confirmation.</param>
+    /// <param name="missionInstanceId">The mission to abort.</param>
+    void OpenAbortMissionConfirmWindow(UIWindow sourceWindow, string missionInstanceId);
+
+    /// <summary>
     /// Opens status information for one mission or participant.
     /// </summary>
     /// <param name="target">The selected status target.</param>
@@ -373,6 +380,12 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
         StrategyStatusTarget target = GetStatusTarget(view);
         switch (strategyCommand.Action)
         {
+            case StrategyMenuAction.Abort:
+                actions.OpenAbortMissionConfirmWindow(
+                    context.Window,
+                    GetSession(view).SelectedMission?.InstanceID
+                );
+                break;
             case StrategyMenuAction.Encyclopedia:
                 actions.OpenMissionsInfo(target);
                 break;

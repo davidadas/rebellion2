@@ -76,6 +76,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.Throws<ArgumentNullException>(() =>
                 new FacilityWindowController(
                     null,
+                    () => _gameManager.ManufacturingSystem,
+                    _constructionController,
+                    () => _uiContext,
+                    _targetingController,
+                    _windowLayer,
+                    _windowManager,
+                    (_, _) => Vector2Int.zero,
+                    () => { }
+                )
+            );
+        }
+
+        [Test]
+        public void Constructor_NullManufacturingSystemProvider_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                new FacilityWindowController(
+                    () => _game,
+                    null,
                     _constructionController,
                     () => _uiContext,
                     _targetingController,
@@ -246,6 +265,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             return new FacilityWindowController(
                 () => _game,
+                () => _gameManager.ManufacturingSystem,
                 _constructionController,
                 () => _uiContext,
                 _targetingController,

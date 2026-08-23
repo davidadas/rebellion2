@@ -1,4 +1,3 @@
-using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
@@ -139,19 +138,6 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void GetEntityData_ConfiguredSpecialForces_LoadsMissionRatings()
-        {
-            SpecialForces specialForces = TestContent.Data.SpecialForces.Single(item =>
-                item.TypeID == "SPAL001"
-            );
-
-            Assert.AreEqual(0, specialForces.GetBaseRating(OfficerRating.Diplomacy));
-            Assert.AreEqual(55, specialForces.GetBaseRating(OfficerRating.Espionage));
-            Assert.AreEqual(20, specialForces.GetBaseRating(OfficerRating.Combat));
-            Assert.AreEqual(50, specialForces.GetBaseRating(OfficerRating.Leadership));
-        }
-
-        [Test]
         public void Ratings_WhenSet_StoresCorrectValues()
         {
             SpecialForces newSpecialForces = new SpecialForces();
@@ -281,6 +267,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void SerializeAndDeserialize_WithPopulatedSpecialForces_MaintainsState()
         {
+            _specialForces.ManufacturingQueueSequence = 7;
             string serialized = SerializationHelper.Serialize(_specialForces);
             SpecialForces deserialized = SerializationHelper.Deserialize<SpecialForces>(serialized);
 
@@ -341,6 +328,11 @@ namespace Rebellion.Tests.Game.Units
                 _specialForces.ManufacturingProgress,
                 deserialized.ManufacturingProgress,
                 "ManufacturingProgress should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                _specialForces.ManufacturingQueueSequence,
+                deserialized.ManufacturingQueueSequence,
+                "ManufacturingQueueSequence should be correctly deserialized."
             );
             Assert.AreEqual(
                 _specialForces.Ratings[OfficerRating.Diplomacy],

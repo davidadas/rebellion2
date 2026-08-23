@@ -104,6 +104,21 @@ namespace Rebellion.Tests.Util.Serialization
         }
     }
 
+    [PersistableObject]
+    public abstract class PolymorphicItem
+    {
+        public string Name { get; set; }
+    }
+
+    [PersistableObject(Name = nameof(PolymorphicItem))]
+    public sealed class ConcretePolymorphicItem : PolymorphicItem { }
+
+    [PersistableObject]
+    public sealed class PolymorphicItemCollection
+    {
+        public List<PolymorphicItem> Items { get; set; } = new List<PolymorphicItem>();
+    }
+
     public class SimpleItemCollection : List<SimpleItem> { }
 
     [PersistableObject]
@@ -515,6 +530,29 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml.Trim(),
                 "Serialized XML should match expected XML."
             );
+        }
+
+        [Test]
+        public void Serialize_AbstractCollectionWithAliasedElement_RoundTripsConcreteType()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(PolymorphicItemCollection));
+            PolymorphicItemCollection collection = new PolymorphicItemCollection
+            {
+                Items = new List<PolymorphicItem>
+                {
+                    new ConcretePolymorphicItem { Name = "Concrete item" },
+                },
+            };
+
+            string xml = SerializeToString(serializer, collection);
+            PolymorphicItemCollection restored = (PolymorphicItemCollection)DeserializeFromString(
+                serializer,
+                xml
+            );
+
+            StringAssert.Contains("<PolymorphicItem>", xml);
+            Assert.IsInstanceOf<ConcretePolymorphicItem>(restored.Items.Single());
+            Assert.AreEqual("Concrete item", restored.Items.Single().Name);
         }
 
         [Test]
@@ -1495,6 +1533,32 @@ namespace Rebellion.Tests.Util.Serialization
                 "<?xml version=\"1.0\"?><SimpleItem><Name>x</Name><UnknownField>oops</UnknownField></SimpleItem>";
 
             Assert.Throws<InvalidOperationException>(() => DeserializeFromString(serializer, xml));
+        }
+
+        [Test]
+        public void Deserialize_UnknownElementWhenIgnored_SkipsElementAndInvokesCallback()
+        {
+            Type skippedObjectType = null;
+            string skippedElementName = null;
+            GameSerializerSettings settings = new GameSerializerSettings
+            {
+                IgnoreUnknownElements = true,
+                UnknownElementSkipped = (objectType, elementName) =>
+                {
+                    skippedObjectType = objectType;
+                    skippedElementName = elementName;
+                },
+            };
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem), settings);
+            string xml =
+                "<?xml version=\"1.0\"?><SimpleItem><Name>x</Name><UnknownField><Nested>oops</Nested></UnknownField><Value>42</Value></SimpleItem>";
+
+            SimpleItem item = (SimpleItem)DeserializeFromString(serializer, xml);
+
+            Assert.AreEqual("x", item.Name);
+            Assert.AreEqual(42, item.Value);
+            Assert.AreEqual(typeof(SimpleItem), skippedObjectType);
+            Assert.AreEqual("UnknownField", skippedElementName);
         }
 
         [Test]

@@ -58,18 +58,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void Constructor_NullGame_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() =>
-                new StrategyStatusInfoBuilder(null, Array.Empty<GalaxyMapSector>(), _ => null)
-            );
-        }
-
-        [Test]
         public void Constructor_NullSectors_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyStatusInfoBuilder(_game, null, _ => null)
+                new StrategyStatusInfoBuilder(null, _ => null, _ownerId, 0, null)
             );
         }
 
@@ -77,7 +69,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         public void Constructor_NullNodeResolver_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyStatusInfoBuilder(_game, Array.Empty<GalaxyMapSector>(), null)
+                new StrategyStatusInfoBuilder(
+                    Array.Empty<GalaxyMapSector>(),
+                    null,
+                    _ownerId,
+                    0,
+                    null
+                )
             );
         }
 
@@ -757,18 +755,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
             Assert.AreEqual(
                 "80",
-                info.Rows.Single(row => row.Left == "Max Shield Strength:").Right
+                info.Rows.Single(row => row.Left == "Maximum Shield Strength:").Right
             );
             Assert.AreEqual("9", info.Rows.Single(row => row.Left == "Tractor Beam Power:").Right);
             Assert.AreEqual(
                 "11",
-                info.Rows.Single(row => row.Left == "Sub Light Engine Rating:").Right
+                info.Rows.Single(row => row.Left == "Sub-Light Engine Rating:").Right
             );
             Assert.AreEqual("13", info.Rows.Single(row => row.Left == "Maneuverability:").Right);
             Assert.AreEqual("15", info.Rows.Single(row => row.Left == "Detection Rating:").Right);
             Assert.AreEqual(
                 "17",
-                info.Rows.Single(row => row.Left == "Weapons Recharge Rate:").Right
+                info.Rows.Single(row => row.Left == "Weapon Recharge Rate:").Right
             );
             Assert.AreEqual(
                 "19",
@@ -776,6 +774,52 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
             CollectionAssert.IsEmpty(info.Images);
             CollectionAssert.AreEqual(new[] { ship }, info.ImageItems);
+        }
+
+        [Test]
+        public void Build_CapitalShipUnderConstruction_ReturnsOriginalCompletionDayLabel()
+        {
+            _game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = _ownerId,
+                    BuildingType = BuildingType.Shipyard,
+                    ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 2,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _planet
+            );
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "destination-fleet",
+                OwnerInstanceID = _ownerId,
+            };
+            _game.AttachNode(fleet, _planet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "queued-ship",
+                DisplayName = "Queued Ship",
+                OwnerInstanceID = _ownerId,
+                ConstructionCost = 20,
+                ManufacturingProgress = 5,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ProducerPlanetID = _planet.InstanceID,
+            };
+            _game.AttachNode(ship, fleet);
+            _planet.AddToManufacturingQueue(ship);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, ship));
+
+            Assert.AreEqual(
+                "Under Construction",
+                info.Rows.Single(row => row.Left == "Status:").Right
+            );
+            Assert.AreEqual(
+                "Day 130",
+                info.Rows.Single(row => row.Left == "ETA Destination:").Right
+            );
         }
 
         [Test]
@@ -910,9 +954,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         )
         {
             return new StrategyStatusInfoBuilder(
-                game,
                 new[] { sector },
-                instanceId => game.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
+                instanceId => game.GetSceneNodeByInstanceID<ISceneNode>(instanceId),
+                game.GetPlayerFaction()?.InstanceID,
+                game.CurrentTick,
+                game.Config?.Jedi
             );
         }
     }

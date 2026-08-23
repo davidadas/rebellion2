@@ -66,6 +66,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void SerializeAndDeserialize_WithPopulatedRegiment_MaintainsState()
         {
+            _regiment.ManufacturingQueueSequence = 7;
             string serialized = SerializationHelper.Serialize(_regiment);
             Regiment deserialized = SerializationHelper.Deserialize<Regiment>(serialized);
 
@@ -138,6 +139,11 @@ namespace Rebellion.Tests.Game.Units
                 _regiment.ManufacturingProgress,
                 deserialized.ManufacturingProgress,
                 "ManufacturingProgress should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                _regiment.ManufacturingQueueSequence,
+                deserialized.ManufacturingQueueSequence,
+                "ManufacturingQueueSequence should be correctly deserialized."
             );
         }
 

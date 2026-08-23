@@ -59,6 +59,7 @@ namespace Rebellion.Game.Units
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
+        public long ManufacturingQueueSequence { get; set; }
         public int ManufacturingProgress { get; set; } = 0;
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
         public ManufacturingType ProductionType { get; set; }
@@ -104,6 +105,7 @@ namespace Rebellion.Game.Units
             copy.ProductionModifier = ProductionModifier;
             copy.ProducerOwnerID = ProducerOwnerID;
             copy.ProducerPlanetID = ProducerPlanetID;
+            copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
             copy.ManufacturingProgress = ManufacturingProgress;
             copy.ManufacturingStatus = ManufacturingStatus;
             copy.ProductionType = ProductionType;
@@ -165,16 +167,22 @@ namespace Rebellion.Game.Units
         /// Sets the manufacturing status of the building.
         /// </summary>
         /// <param name="manufacturingStatus">The manufacturing status to set.</param>
-        /// <exception cref="InvalidOperationException">Thrown when trying to set status to Building after it's Complete.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the requested status would reverse the manufacturing lifecycle.</exception>
         public void SetManufacturingStatus(ManufacturingStatus manufacturingStatus)
         {
             if (
-                ManufacturingStatus == ManufacturingStatus.Complete
-                && manufacturingStatus == ManufacturingStatus.Building
+                (
+                    ManufacturingStatus == ManufacturingStatus.Delivering
+                    && manufacturingStatus == ManufacturingStatus.Building
+                )
+                || (
+                    ManufacturingStatus == ManufacturingStatus.Complete
+                    && manufacturingStatus != ManufacturingStatus.Complete
+                )
             )
             {
                 throw new InvalidOperationException(
-                    "Invalid manufacturing status. Cannot set to Building once Complete."
+                    $"Invalid manufacturing status transition from '{ManufacturingStatus}' to '{manufacturingStatus}'."
                 );
             }
             ManufacturingStatus = manufacturingStatus;

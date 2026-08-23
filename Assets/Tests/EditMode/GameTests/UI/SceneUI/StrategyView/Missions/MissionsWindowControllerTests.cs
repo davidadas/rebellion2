@@ -19,6 +19,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private const string _strategyViewPrefabPath =
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
+        private TestActions _actions;
         private MissionsWindowController _controller;
         private Officer _decoy;
         private int _dirtyCount;
@@ -51,7 +52,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _targetingController = new TargetingController();
             _controller = CreateController();
-            _controller.Initialize(new TestActions());
+            _actions = new TestActions();
+            _controller.Initialize(_actions);
         }
 
         [TearDown]
@@ -216,6 +218,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void OnContextMenuCommandSelected_Abort_RoutesSelectedMissionIdentity()
+        {
+            OpenWindow(out UIWindow window);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 4, 5, 177, 7),
+                null,
+                10,
+                20
+            );
+            _controller.TryCreateContextMenu(context, out ContextMenuRequest request, out int _);
+            StrategyMenuCommand abortCommand = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(command => command.Action == StrategyMenuAction.Abort);
+
+            _controller.OnContextMenuCommandSelected(request, abortCommand);
+
+            Assert.AreEqual(_firstMission.InstanceID, _actions.AbortedMissionInstanceId);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
             MissionsWindowView view = OpenWindow(out UIWindow _);
@@ -292,6 +315,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
         private sealed class TestActions : IMissionsWindowActions
         {
+            public string AbortedMissionInstanceId { get; private set; }
+
+            public void OpenAbortMissionConfirmWindow(
+                UIWindow sourceWindow,
+                string missionInstanceId
+            )
+            {
+                AbortedMissionInstanceId = missionInstanceId;
+            }
+
             public void OpenMissionsStatus(StrategyStatusTarget target) { }
 
             public void OpenMissionsInfo(StrategyStatusTarget target) { }

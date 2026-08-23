@@ -16,6 +16,8 @@ namespace Rebellion.Game.Advisor
                 MessageResultType.FleetArrived => AdvisorNotificationType.FleetArrived,
                 MessageResultType.ShipsArrived => AdvisorNotificationType.UnitsArrived,
                 MessageResultType.ManufacturingIdle => AdvisorNotificationType.Manufacturing,
+                MessageResultType.StarfighterDeployed => AdvisorNotificationType.Manufacturing,
+                MessageResultType.RegimentDeployed => AdvisorNotificationType.Manufacturing,
                 MessageResultType.CapitalShipRepaired =>
                     AdvisorNotificationType.CapitalShipRepaired,
                 MessageResultType.StarfighterRepaired =>

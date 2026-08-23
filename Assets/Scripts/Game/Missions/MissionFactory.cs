@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Research;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game.Missions
 {
@@ -33,12 +34,12 @@ namespace Rebellion.Game.Missions
                 OfficerRating.FacilityResearch,
                 discipline: ResearchDiscipline.FacilityDesign
             ),
-            new MissionOption(DiplomacyMission.MissionTypeID, "Diplomacy", OfficerRating.Diplomacy),
             new MissionOption(
                 RecruitmentMission.MissionTypeID,
                 "Recruitment",
                 OfficerRating.Leadership
             ),
+            new MissionOption(DiplomacyMission.MissionTypeID, "Diplomacy", OfficerRating.Diplomacy),
             new MissionOption(
                 RescueMission.MissionTypeID,
                 "Rescue",
@@ -173,6 +174,7 @@ namespace Rebellion.Game.Missions
                     || !missionParticipant.IsActive()
                     || missionParticipant.IsOnMission()
                     || !missionParticipant.IsMovable()
+                    || missionParticipant.GetTransitMovement() != null
                     || missionParticipant.CanPerformMission(resolvedContext.MissionTypeID) != true
                 )
                     return false;

@@ -27,6 +27,7 @@ public sealed class StrategyWindowCommandController
     private readonly Action rebuildSnapshot;
     private readonly Action markDirty;
     private readonly Action playInTransitOrderRejected;
+    private readonly Action playUnitUnderConstructionOrderRejected;
 
     /// <summary>
     /// Creates the shared strategy-window command handler.
@@ -44,6 +45,7 @@ public sealed class StrategyWindowCommandController
     /// <param name="markDirty">Invalidates the strategy presentation.</param>
     /// <param name="getHeadquartersSystem">Returns the mobile-headquarters system.</param>
     /// <param name="playInTransitOrderRejected">Plays the advisor's in-transit rejection.</param>
+    /// <param name="playUnitUnderConstructionOrderRejected">Plays the advisor's under-construction rejection.</param>
     public StrategyWindowCommandController(
         MissionCreateWindowController missionCreateWindowController,
         ConfirmDialogWindowController confirmDialogWindowController,
@@ -57,7 +59,8 @@ public sealed class StrategyWindowCommandController
         Action rebuildSnapshot,
         Action markDirty,
         Func<HeadquartersSystem> getHeadquartersSystem = null,
-        Action playInTransitOrderRejected = null
+        Action playInTransitOrderRejected = null,
+        Action playUnitUnderConstructionOrderRejected = null
     )
     {
         this.missionCreateWindowController =
@@ -84,6 +87,8 @@ public sealed class StrategyWindowCommandController
             rebuildSnapshot ?? throw new ArgumentNullException(nameof(rebuildSnapshot));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         this.playInTransitOrderRejected = playInTransitOrderRejected ?? (() => { });
+        this.playUnitUnderConstructionOrderRejected =
+            playUnitUnderConstructionOrderRejected ?? (() => { });
     }
 
     /// <summary>
@@ -289,6 +294,12 @@ public sealed class StrategyWindowCommandController
             return false;
         }
 
+        if (TargetsCapitalShipUnderConstruction(target))
+        {
+            playUnitUnderConstructionOrderRejected();
+            return false;
+        }
+
         ContainerNode destination = target?.GetMoveDestination() as ContainerNode;
         if (!ChangesDestination(items, destination))
             return false;
@@ -304,6 +315,19 @@ public sealed class StrategyWindowCommandController
             PlayMoveVoice(items);
 
         return moved;
+    }
+
+    /// <summary>
+    /// Returns whether the requested destination is a live capital ship still being built.
+    /// </summary>
+    private bool TargetsCapitalShipUnderConstruction(StrategyMissionTarget target)
+    {
+        if (target?.GetMoveDestination() is not CapitalShip destination)
+            return false;
+
+        CapitalShip liveDestination = getGame()
+            ?.GetSceneNodeByInstanceID<CapitalShip>(destination.InstanceID);
+        return (liveDestination ?? destination).ManufacturingStatus != ManufacturingStatus.Complete;
     }
 
     /// <summary>

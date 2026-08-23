@@ -67,6 +67,52 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void SetManufacturingStatus_BuildingToDelivering_UpdatesSuccessfully()
+        {
+            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
+
+            building.SetManufacturingStatus(ManufacturingStatus.Delivering);
+
+            Assert.AreEqual(ManufacturingStatus.Delivering, building.ManufacturingStatus);
+        }
+
+        [Test]
+        public void SetManufacturingStatus_DeliveringToComplete_UpdatesSuccessfully()
+        {
+            Building building = new Building
+            {
+                ManufacturingStatus = ManufacturingStatus.Delivering,
+            };
+
+            building.SetManufacturingStatus(ManufacturingStatus.Complete);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+        }
+
+        [Test]
+        public void SetManufacturingStatus_DeliveringToBuilding_ThrowsException()
+        {
+            Building building = new Building
+            {
+                ManufacturingStatus = ManufacturingStatus.Delivering,
+            };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                building.SetManufacturingStatus(ManufacturingStatus.Building)
+            );
+        }
+
+        [Test]
+        public void SetManufacturingStatus_CompleteToDelivering_ThrowsException()
+        {
+            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                building.SetManufacturingStatus(ManufacturingStatus.Delivering)
+            );
+        }
+
+        [Test]
         public void SetManufacturingStatus_CompleteToComplete_UpdatesSuccessfully()
         {
             Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
@@ -206,6 +252,8 @@ namespace Rebellion.Tests.Game.Units
                 WeaponStrength = 10,
                 ShieldStrength = 15,
                 ProducerOwnerID = "Faction1",
+                ProducerPlanetID = "Planet1",
+                ManufacturingQueueSequence = 7,
                 ManufacturingProgress = 50,
                 ManufacturingStatus = ManufacturingStatus.Building,
                 ProductionType = ManufacturingType.Building,
@@ -232,6 +280,11 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(building.WeaponStrength, deserializedBuilding.WeaponStrength);
             Assert.AreEqual(building.ShieldStrength, deserializedBuilding.ShieldStrength);
             Assert.AreEqual(building.ProducerOwnerID, deserializedBuilding.ProducerOwnerID);
+            Assert.AreEqual(building.ProducerPlanetID, deserializedBuilding.ProducerPlanetID);
+            Assert.AreEqual(
+                building.ManufacturingQueueSequence,
+                deserializedBuilding.ManufacturingQueueSequence
+            );
             Assert.AreEqual(
                 building.ManufacturingProgress,
                 deserializedBuilding.ManufacturingProgress

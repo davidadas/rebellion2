@@ -1565,7 +1565,7 @@ namespace Rebellion.Tests.Sectors
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
 
-            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(
                 building,
                 scene.blockadedDestination,
@@ -1575,6 +1575,7 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(building, scene.game.GetSceneNodeByInstanceID<Building>("building"));
             Assert.AreSame(scene.blockadedDestination, building.GetParent());
             Assert.IsNull(building.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
         }
 
         [Test]
@@ -2461,6 +2462,43 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void TryGetTransitTicks_FleetWithUnfinishedSlowerShip_IgnoresUnfinishedShip()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("mixed-fleet", "empire");
+            game.AttachNode(fleet, origin);
+            CapitalShip completedShip = CreateMovableCapitalShip("completed-ship");
+            completedShip.Hyperdrive = 10;
+            game.AttachNode(completedShip, fleet);
+            Assert.IsTrue(
+                movement.TryGetTransitTicks(
+                    new List<IMovable> { fleet },
+                    destination,
+                    out int completedOnlyTicks
+                )
+            );
+            CapitalShip unfinishedShip = new CapitalShip
+            {
+                InstanceID = "unfinished-ship",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(unfinishedShip, fleet);
+
+            bool estimated = movement.TryGetTransitTicks(
+                new List<IMovable> { fleet },
+                destination,
+                out int mixedFleetTicks
+            );
+
+            Assert.IsTrue(estimated);
+            Assert.AreEqual(completedOnlyTicks, mixedFleetTicks);
+            Assert.IsNull(fleet.Movement);
+        }
+
+        [Test]
         public void TryEstimateManufacturedTransitTicks_ValidDestination_DoesNotAssignMovement()
         {
             (
@@ -2806,6 +2844,7 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(fleetShip, fleet);
 
@@ -3221,7 +3260,7 @@ namespace Rebellion.Tests.Sectors
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
 
-            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
 
             int transitTicks = building.Movement.TransitTicks;
@@ -3265,7 +3304,7 @@ namespace Rebellion.Tests.Sectors
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
 
-            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            regiment.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(regiment, scene.blockadedDestination, scene.origin);
 
             int transitTicks = regiment.Movement.TransitTicks;
@@ -3310,7 +3349,7 @@ namespace Rebellion.Tests.Sectors
             (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
 
-            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
             scene.game.DetachNode(blockadingFleet);
             scene.resultProcessor.Process(scene.blockade.ProcessTick());
@@ -3327,10 +3366,14 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(scene.blockadedDestination, building.GetParent());
             Assert.IsNull(building.Movement);
             Assert.IsFalse(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
+            UnitArrivedResult arrival = results
+                .OfType<UnitArrivedResult>()
+                .Single(result => ReferenceEquals(result.Unit, building));
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
             Assert.IsTrue(
                 results
-                    .OfType<UnitArrivedResult>()
-                    .Any(result => ReferenceEquals(result.Unit, building))
+                    .OfType<GameObjectDeployedResult>()
+                    .Any(result => ReferenceEquals(result.GameObject, building))
             );
         }
 
@@ -3486,6 +3529,29 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(destinationFleet, firstShip.GetParent());
             Assert.AreSame(destinationFleet, secondShip.GetParent());
             Assert.IsNull(sourceFleet.GetParent());
+        }
+
+        [Test]
+        public void TryRequestMove_FleetWithOnlyShipsUnderConstruction_RetargetsDelivery()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("unfinished-fleet", "empire");
+            game.AttachNode(fleet, origin);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "unfinished-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(ship, fleet);
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { fleet }, destination, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destination, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            Assert.AreSame(fleet, ship.GetParent());
         }
 
         [Test]
@@ -4011,7 +4077,7 @@ namespace Rebellion.Tests.Sectors
                 GameResultProcessor resultProcessor
             ) scene = BuildBlockadeRetargetingScene();
             Building building = EntityFactory.CreateBuilding("building", "empire");
-            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.game.AttachNode(building, scene.blockadedDestination);
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
 
@@ -4289,6 +4355,7 @@ namespace Rebellion.Tests.Sectors
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
                 Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
                 StarfighterCapacity = 2,
                 RegimentCapacity = 2,
             };

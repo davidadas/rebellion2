@@ -34,6 +34,7 @@ namespace Rebellion.Tests.Game.Units
                 TractorBeamnRange = 3,
                 HasGravityWell = false,
                 DetectionRating = 25,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
 
@@ -156,6 +157,14 @@ namespace Rebellion.Tests.Game.Units
             SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "INVALID" };
 
             Assert.IsFalse(_capitalShip.CanAcceptChild(specialForces));
+        }
+
+        [Test]
+        public void CanAcceptChild_ShipUnderConstruction_ReturnsFalse()
+        {
+            _capitalShip.ManufacturingStatus = ManufacturingStatus.Building;
+
+            Assert.IsFalse(_capitalShip.CanAcceptChild(new Officer { OwnerInstanceID = "FNALL1" }));
         }
 
         [Test]
@@ -319,6 +328,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void SerializeAndDeserialize_CapitalShipWithChildren_MaintainsState()
         {
+            _capitalShip.ManufacturingQueueSequence = 7;
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
             Starfighter starfighter = new Starfighter();
             Regiment regiment = new Regiment();
@@ -346,6 +356,11 @@ namespace Rebellion.Tests.Game.Units
                 _capitalShip.OwnerInstanceID,
                 deserialized.OwnerInstanceID,
                 "OwnerInstanceID should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                _capitalShip.ManufacturingQueueSequence,
+                deserialized.ManufacturingQueueSequence,
+                "ManufacturingQueueSequence should be correctly deserialized."
             );
             Assert.AreEqual(
                 _capitalShip.GetChildren<Officer>().Count,
