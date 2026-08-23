@@ -58,18 +58,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void Constructor_NullGame_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() =>
-                new StrategyStatusInfoBuilder(null, Array.Empty<GalaxyMapSector>(), _ => null)
-            );
-        }
-
-        [Test]
         public void Constructor_NullSectors_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyStatusInfoBuilder(_game, null, _ => null)
+                new StrategyStatusInfoBuilder(null, _ => null, _ownerId, 0, null)
             );
         }
 
@@ -77,7 +69,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         public void Constructor_NullNodeResolver_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyStatusInfoBuilder(_game, Array.Empty<GalaxyMapSector>(), null)
+                new StrategyStatusInfoBuilder(
+                    Array.Empty<GalaxyMapSector>(),
+                    null,
+                    _ownerId,
+                    0,
+                    null
+                )
             );
         }
 
@@ -956,9 +954,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         )
         {
             return new StrategyStatusInfoBuilder(
-                game,
                 new[] { sector },
-                instanceId => game.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
+                instanceId => game.GetSceneNodeByInstanceID<ISceneNode>(instanceId),
+                game.GetPlayerFaction()?.InstanceID,
+                game.CurrentTick,
+                game.Config?.Jedi
             );
         }
     }

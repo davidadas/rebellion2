@@ -16,7 +16,6 @@ using Rebellion.Util.Extensions;
 internal sealed class StrategyStatusInfoBuilder
 {
     private readonly GameConfig.JediConfig jediConfig;
-    private readonly GameRoot game;
     private readonly IReadOnlyList<GalaxyMapSector> sectors;
     private readonly string playerFactionId;
     private readonly Func<string, ISceneNode> findVisibleNode;
@@ -27,23 +26,23 @@ internal sealed class StrategyStatusInfoBuilder
     /// </summary>
     /// <param name="sectors">The visible sectors in presentation order.</param>
     /// <param name="findVisibleNode">Resolves a node from the visible galaxy snapshot.</param>
-    /// <param name="game">The active game.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="currentTick">The current game tick.</param>
+    /// <param name="jediConfig">The configured Force-rank presentation.</param>
     public StrategyStatusInfoBuilder(
-        GameRoot game,
         IReadOnlyList<GalaxyMapSector> sectors,
-        Func<string, ISceneNode> findVisibleNode
+        Func<string, ISceneNode> findVisibleNode,
+        string playerFactionId,
+        int currentTick,
+        GameConfig.JediConfig jediConfig
     )
     {
-        if (game == null)
-            throw new ArgumentNullException(nameof(game));
-
-        this.game = game;
         this.sectors = sectors ?? throw new ArgumentNullException(nameof(sectors));
-        playerFactionId = game.GetPlayerFaction()?.InstanceID ?? string.Empty;
-        currentTick = game.CurrentTick;
         this.findVisibleNode =
             findVisibleNode ?? throw new ArgumentNullException(nameof(findVisibleNode));
-        jediConfig = game.Config?.Jedi;
+        this.playerFactionId = playerFactionId ?? string.Empty;
+        this.currentTick = currentTick;
+        this.jediConfig = jediConfig;
     }
 
     /// <summary>
@@ -873,7 +872,7 @@ internal sealed class StrategyStatusInfoBuilder
         )
             return;
 
-        Planet producer = game.GetSceneNodeByInstanceID<Planet>(manufacturable.ProducerPlanetID);
+        Planet producer = findVisibleNode(manufacturable.ProducerPlanetID) as Planet;
         int? completionTicks = ManufacturingSystem.EstimateCompletionTicks(
             producer,
             manufacturable
