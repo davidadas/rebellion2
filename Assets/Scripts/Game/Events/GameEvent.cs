@@ -9,16 +9,16 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Persists the scheduling history for one authored event definition.
+    /// Persists the activation history for one authored event definition.
     /// </summary>
     [PersistableObject]
     public sealed class GameEventState
     {
         public bool IsInitialized { get; set; }
         public int NextEligibleTick { get; set; }
-        public int ExecutionCount { get; set; }
-        public int LastExecutionTick { get; set; } = -1;
-        public bool IsExhausted { get; set; }
+        public int ActivationCount { get; set; }
+        public int LastActivationTick { get; set; } = -1;
+        public bool IsComplete { get; set; }
     }
 
     /// <summary>
@@ -55,8 +55,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.
-    /// Execute returns the results of those actions for notification and logging.
+    /// Defines one scheduled or triggered event and the actions performed when it activates.
     /// </summary>
     [PersistableObject]
     public sealed class GameEvent
@@ -75,8 +74,8 @@ namespace Rebellion.Game.Events
 
         /// <summary>Returns whether the event remains below its authored activation limit.</summary>
         internal bool CanActivate(GameEventState state) =>
-            !state.IsExhausted
-            && (!MaximumActivations.HasValue || state.ExecutionCount < MaximumActivations.Value);
+            !state.IsComplete
+            && (!MaximumActivations.HasValue || state.ActivationCount < MaximumActivations.Value);
 
         /// <summary>
         /// Creates an empty event definition for deserialization.

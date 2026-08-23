@@ -21,7 +21,7 @@ If an event does not run:
 - Confirm trigger argument names and `$binding` aliases match exactly.
 - Confirm the target selector returns exactly one node.
 - Confirm conditions can pass in the tested game state.
-- Confirm the event has not reached `TriggerCount` or matched `Until`.
+- Confirm the event has not reached `MaximumActivations` or matched its recurring schedule's `Until`.
 
 Finally, save and reload after the event has run. Verify recurring schedules, activation counts,
 event variables, retained units, display changes, and multi-stage chains still behave correctly.

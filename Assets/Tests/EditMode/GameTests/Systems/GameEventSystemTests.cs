@@ -48,6 +48,18 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void ValidateEvents_OneShotScheduleWithoutMaximumActivations_DoesNotThrow()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "ONE_SHOT",
+                Schedule = new GameEventScheduler { At = new AtTick { Tick = 25 } },
+            };
+
+            Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
+        }
+
+        [Test]
         public void ValidateEvents_DuplicateBindingAlias_ThrowsInvalidOperationException()
         {
             GameEvent gameEvent = new GameEvent
@@ -85,6 +97,22 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void ValidateEvents_MultipleFilteredTriggersWithSameAlias_DoesNotThrow()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "MULTI_TRIGGER",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new UnitArrivedTrigger { UnitInstanceID = "first", As = "arrival" },
+                    new UnitArrivedTrigger { UnitInstanceID = "second", As = "arrival" },
+                },
+            };
+
+            Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
+        }
+
+        [Test]
         public void ProcessEvents_UnmetOneShotEvent_RemainsPending()
         {
             GameEvent gameEvent = CreateTickEvent("PENDING", targetTick: 10, repeatable: false);
@@ -94,7 +122,7 @@ namespace Rebellion.Tests.Sectors
             _system.ProcessEvents(_game.GetEventPool());
 
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
-            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
+            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
         [Test]
@@ -107,7 +135,7 @@ namespace Rebellion.Tests.Sectors
             _system.ProcessEvents(_game.GetEventPool());
 
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
-            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
+            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
         [Test]
@@ -120,7 +148,7 @@ namespace Rebellion.Tests.Sectors
             _system.ProcessEvents(_game.GetEventPool());
 
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
-            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
+            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
         [Test]
@@ -147,13 +175,13 @@ namespace Rebellion.Tests.Sectors
 
             _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.AreEqual(0, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
-            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
+            Assert.AreEqual(0, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
+            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
         }
 
         [Test]
-        public void ProcessEvents_TriggerCountFive_ExecutesFiveTimes()
+        public void ProcessEvents_MaximumActivationsFive_ExecutesFiveTimes()
         {
             GameEvent gameEvent = CreateTickEvent("FIVE_RUNS", targetTick: 0, repeatable: false);
             gameEvent.MaximumActivations = 5;
@@ -163,11 +191,11 @@ namespace Rebellion.Tests.Sectors
             for (int iteration = 0; iteration < 6; iteration++)
                 _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.AreEqual(5, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(5, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_TriggerCountThree_ExecutesThreeTimes()
+        public void ProcessEvents_MaximumActivationsThree_ExecutesThreeTimes()
         {
             GameEvent gameEvent = CreateTickEvent("THREE_RUNS", targetTick: 0, repeatable: false);
             gameEvent.MaximumActivations = 3;
@@ -177,16 +205,17 @@ namespace Rebellion.Tests.Sectors
             for (int iteration = 0; iteration < 4; iteration++)
                 _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.AreEqual(3, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(3, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_InitialRandomInterval_WaitsUntilRolledAbsoluteTick()
+        public void ProcessEvents_RandomDelay_WaitsUntilRolledAbsoluteTick()
         {
             GameEvent gameEvent = CreateTickEvent("DELAYED", targetTick: 0, repeatable: false);
+            gameEvent.MaximumActivations = null;
             gameEvent.Schedule = new GameEventScheduler
             {
-                RandomInterval = new RandomTickRange { MinimumTicks = 10, MaximumTicks = 14 },
+                RandomDelay = new RandomDelay { MinimumTicks = 10, MaximumTicks = 14 },
             };
             _game.GetEventPool().Add(gameEvent);
 
@@ -199,7 +228,7 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
             Assert.AreEqual(
                 12,
-                _game.EventRuntime.GetState(gameEvent.InstanceID).LastExecutionTick
+                _game.EventRuntime.GetState(gameEvent.InstanceID).LastActivationTick
             );
         }
 
@@ -214,11 +243,11 @@ namespace Rebellion.Tests.Sectors
             _system.ProcessEvents(_game.GetEventPool());
             _game.CurrentTick = 5;
             _system.ProcessEvents(_game.GetEventPool());
-            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
 
             _game.CurrentTick = 6;
             _system.ProcessEvents(_game.GetEventPool());
-            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
@@ -408,7 +437,7 @@ namespace Rebellion.Tests.Sectors
 
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.AreEqual(150, state.NextEligibleTick);
-            Assert.AreEqual(1, state.ExecutionCount);
+            Assert.AreEqual(1, state.ActivationCount);
         }
 
         [Test]
@@ -456,7 +485,7 @@ namespace Rebellion.Tests.Sectors
 
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.AreEqual(130, state.NextEligibleTick);
-            Assert.AreEqual(1, state.ExecutionCount);
+            Assert.AreEqual(1, state.ActivationCount);
         }
 
         [Test]
@@ -563,7 +592,7 @@ namespace Rebellion.Tests.Sectors
 
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("luke.heritage.revealed"));
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
-            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
@@ -591,6 +620,32 @@ namespace Rebellion.Tests.Sectors
             );
 
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("arrival.triggered"));
+        }
+
+        [Test]
+        public void HandleResults_SecondUnitArrivedAlternativeMatches_ActivatesOnce()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "ALTERNATE_ARRIVALS",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new UnitArrivedTrigger { UnitInstanceID = "first" },
+                    new UnitArrivedTrigger { UnitInstanceID = "second" },
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "arrival.count", Operand = 1 },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _system.HandleResults(
+                new[] { new UnitArrivedResult { Unit = new Officer { InstanceID = "second" } } }
+            );
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("arrival.count"));
+            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
@@ -679,7 +734,7 @@ namespace Rebellion.Tests.Sectors
 
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
             Assert.AreEqual(2, _game.EventRuntime.GetVariable("encounter.count"));
-            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
@@ -722,11 +777,11 @@ namespace Rebellion.Tests.Sectors
                 },
             };
             GameEventState first = _game.EventRuntime.GetState("FIRST");
-            first.ExecutionCount = 1;
-            first.LastExecutionTick = 10;
+            first.ActivationCount = 1;
+            first.LastActivationTick = 10;
             GameEventState second = _game.EventRuntime.GetState("SECOND");
-            second.ExecutionCount = afterAll ? 1 : 0;
-            second.LastExecutionTick = afterAll ? 20 : 0;
+            second.ActivationCount = afterAll ? 1 : 0;
+            second.LastActivationTick = afterAll ? 20 : 0;
 
             GameEvent gameEvent = CreateTickEvent(instanceID, targetTick: 0, repeatable: false);
             gameEvent.Schedule = new GameEventScheduler();

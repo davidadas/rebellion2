@@ -1,52 +1,26 @@
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 # Schedules
 
-Schedules activate events from campaign time. A `Schedule` contains exactly one scheduling option and
-cannot be combined with gameplay `Triggers`.
+Schedules activate events from campaign time. A `Schedule` contains exactly one scheduling option and cannot be combined with `Triggers`.
 
 ## At
 
-`At` becomes eligible on an absolute campaign tick. It is a one-time schedule and therefore requires `TriggerCount="1"`.
+`At` makes an event eligible at one absolute campaign tick. It is inherently one-shot.
 
 **Options**
 
 - `Tick` — required non-negative campaign tick.
 
 ```xml
-<GameEvent TriggerCount="1">
-  <InstanceID>EVENT_AT_TICK_200</InstanceID>
-  <Schedule>
-    <At Tick="200"/>
-  </Schedule>
-  <Actions>...</Actions>
-</GameEvent>
-```
-
-Conditions may delay actual execution beyond tick 200. Once eligible, the event continues to be checked until its conditions pass or `Until` exhausts it.
-
-## Every
-
-`Every` repeats at a fixed interval. `InitialDelayTicks` controls the first eligible tick; when omitted, the event is eligible immediately.
-
-**Options**
-
-- `Ticks` — required positive interval between successful activations.
-- `InitialDelayTicks` — optional non-negative delay before the first activation; defaults to `0`.
-
-```xml
 <Schedule>
-  <Every Ticks="50" InitialDelayTicks="10"/>
+  <At Tick="200"/>
 </Schedule>
 ```
 
-After a successful activation, the next eligible tick is the current tick plus `Ticks`. Failed conditions do not consume an activation or move the schedule forward.
+If the event's conditionals fail at tick 200, it remains eligible until they pass.
 
-## Random
+## RandomDelay
 
-`Random` rolls an inclusive delay for the first activation and rolls a fresh delay after every successful activation.
+`RandomDelay` rolls one inclusive delay before a one-shot event becomes eligible.
 
 **Options**
 
@@ -55,20 +29,60 @@ After a successful activation, the next eligible tick is the current tick plus `
 
 ```xml
 <Schedule>
-  <Random MinimumTicks="25" MaximumTicks="75"/>
+  <RandomDelay MinimumTicks="300" MaximumTicks="400"/>
 </Schedule>
 ```
 
-Both values are delays, not absolute tick numbers. The minimum must be positive and the maximum cannot be lower than the minimum.
+## Every
+
+`Every` repeats at a fixed interval. `InitialDelayTicks` controls its first eligible tick.
+
+**Options**
+
+- `Ticks` — required positive interval between activations.
+- `InitialDelayTicks` — optional non-negative initial delay; defaults to `0`.
+- `Until` — optional conditionals that permanently complete the schedule when all pass.
+
+```xml
+<Schedule>
+  <Every Ticks="50" InitialDelayTicks="10">
+    <Until>
+      <IsCaptured OfficerInstanceID="HAN_SOLO"/>
+    </Until>
+  </Every>
+</Schedule>
+```
+
+## RandomInterval
+
+`RandomInterval` repeats after a newly rolled inclusive delay following each activation.
+
+**Options**
+
+- `MinimumTicks` — required positive minimum interval.
+- `MaximumTicks` — required maximum interval; cannot be lower than `MinimumTicks`.
+- `Until` — optional conditionals that permanently complete the schedule when all pass.
+
+```xml
+<Schedule>
+  <RandomInterval MinimumTicks="300" MaximumTicks="600">
+    <Until>
+      <IsCaptured OfficerInstanceID="HAN_SOLO" CaptorFactionInstanceID="FNEMP1"/>
+    </Until>
+  </RandomInterval>
+</Schedule>
+```
+
+Failed event conditionals do not consume an activation or roll the next interval.
 
 ## After
 
-`After` waits for one event to execute, then applies a delay from that event's last execution tick. It is a one-time schedule and requires `TriggerCount="1"`.
+`After` makes a one-shot event eligible after another event activates, plus an authored delay.
 
 **Options**
 
 - `EventInstanceID` — required ID of an event in the loaded catalog.
-- `DelayTicks` — required non-negative delay after that event executes.
+- `DelayTicks` — required non-negative delay after that activation.
 
 ```xml
 <Schedule>
@@ -76,18 +90,14 @@ Both values are delays, not absolute tick numbers. The minimum must be positive 
 </Schedule>
 ```
 
-The referenced event must exist in the same loaded event pool.
-
 ## AfterAll
 
-`AfterAll` waits until every listed event has executed. Its delay starts from the latest dependency
-execution. It is a one-time schedule and requires `TriggerCount="1"`.
+`AfterAll` waits for every listed event to activate. Its delay begins at the latest activation.
 
 **Options**
 
 - `DelayTicks` — required non-negative delay.
-- `Events` — required child containing one or more `Event` elements.
-- `EventInstanceID` — required attribute on each `Event`; IDs must be unique.
+- `Events` — required collection containing one or more unique event IDs.
 
 ```xml
 <Schedule>
@@ -102,14 +112,12 @@ execution. It is a one-time schedule and requires `TriggerCount="1"`.
 
 ## AfterAny
 
-`AfterAny` waits until the first listed event executes. Its delay starts from the earliest completed
-dependency. It is a one-time schedule and requires `TriggerCount="1"`.
+`AfterAny` waits for the first listed event to activate. Its delay begins at the earliest matching activation.
 
 **Options**
 
 - `DelayTicks` — required non-negative delay.
-- `Events` — required child containing one or more `Event` elements.
-- `EventInstanceID` — required attribute on each `Event`; IDs must be unique.
+- `Events` — required collection containing one or more unique event IDs.
 
 ```xml
 <Schedule>
@@ -122,13 +130,13 @@ dependency. It is a one-time schedule and requires `TriggerCount="1"`.
 </Schedule>
 ```
 
-## Limiting and stopping repetition
+## Limiting activations
 
-`TriggerCount` limits successful activations. Omit it for unlimited activations, or set a positive number:
+`MaximumActivations` belongs on `GameEvent` because it limits activations regardless of their source. Omit it for unlimited recurring or triggered events.
 
 ```xml
-<GameEvent TriggerCount="5">
-  <InstanceID>EVENT_RUNS_FIVE_TIMES</InstanceID>
+<GameEvent MaximumActivations="3">
+  <InstanceID>EVENT_ACTIVATES_THREE_TIMES</InstanceID>
   <Schedule>
     <Every Ticks="50"/>
   </Schedule>
@@ -136,7 +144,7 @@ dependency. It is a one-time schedule and requires `TriggerCount="1"`.
 </GameEvent>
 ```
 
-Use [`Until`](Conditions.md#stopping-an-event-with-until) when game state, rather than a fixed count, decides when a repeating event permanently stops.
+One-shot schedules do not require `MaximumActivations="1"`.
 
 ---
 

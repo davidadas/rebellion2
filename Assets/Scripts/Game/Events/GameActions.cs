@@ -68,7 +68,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "If")]
     public sealed class IfAction : GameAction
     {
-        public List<GameConditional> Conditions { get; set; } = new List<GameConditional>();
+        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
         public List<GameAction> Else { get; set; } = new List<GameAction>();
 
@@ -77,7 +77,7 @@ namespace Rebellion.Game.Events
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
-            IEnumerable<GameAction> selected = Conditions.TrueForAll(condition =>
+            IEnumerable<GameAction> selected = Conditionals.TrueForAll(condition =>
                 condition.IsMet(context.Game, context.Activation)
             )
                 ? Actions
@@ -173,7 +173,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "ConditionalBody")]
     public sealed class ConditionalMessageBody
     {
-        public List<GameConditional> Conditions { get; set; } = new List<GameConditional>();
+        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public string Body { get; set; }
         public string ElseBody { get; set; }
 
@@ -184,7 +184,7 @@ namespace Rebellion.Game.Events
         /// <returns>The body selected by the condition results.</returns>
         public string Resolve(GameConditionContext context)
         {
-            return Conditions.TrueForAll(condition => condition.IsMet(context)) ? Body : ElseBody;
+            return Conditionals.TrueForAll(condition => condition.IsMet(context)) ? Body : ElseBody;
         }
     }
 

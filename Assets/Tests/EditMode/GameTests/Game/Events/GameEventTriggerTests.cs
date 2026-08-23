@@ -30,25 +30,6 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void Matches_UnitArrivedTrigger_AcceptsAnyAuthoredUnit()
-        {
-            UnitArrivedTrigger trigger = new UnitArrivedTrigger
-            {
-                Units = new List<EventUnitReference>
-                {
-                    new EventUnitReference { UnitInstanceID = "first" },
-                    new EventUnitReference { UnitInstanceID = "second" },
-                },
-            };
-
-            Assert.IsTrue(
-                trigger.Matches(
-                    new UnitArrivedResult { Unit = new Officer { InstanceID = "second" } }
-                )
-            );
-        }
-
-        [Test]
         public void Matches_DuelCompletedTrigger_AppliesOfficerAndSourceFilters()
         {
             DuelCompletedTrigger trigger = new DuelCompletedTrigger

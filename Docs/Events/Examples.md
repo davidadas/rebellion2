@@ -8,7 +8,7 @@ with values from the content you are editing.
 This event executes once when tick 10 becomes eligible.
 
 ```xml
-<GameEvent TriggerCount="1">
+<GameEvent>
   <InstanceID>MOD_OPENING_REPORT</InstanceID>
   <!-- At is an absolute campaign tick and can execute only once. -->
   <Schedule>
@@ -25,19 +25,20 @@ This event executes once when tick 10 becomes eligible.
 
 ## Repeat an event until a condition is met
 
-This event runs every 50 ticks while Han remains free. Capturing him permanently exhausts it.
+This event runs every 50 ticks while Han remains free. Capturing him permanently completes it.
 
 ```xml
 <GameEvent>
   <InstanceID>MOD_HAN_STATUS_REPORT</InstanceID>
-  <!-- Omit TriggerCount to allow unlimited successful activations. -->
+  <!-- Omit MaximumActivations to allow unlimited successful activations. -->
   <Schedule>
-    <Every Ticks="50" InitialDelayTicks="10"/>
+    <Every Ticks="50" InitialDelayTicks="10">
+      <!-- Until permanently completes this recurring schedule. -->
+      <Until>
+        <IsCaptured OfficerInstanceID="HAN_SOLO"/>
+      </Until>
+    </Every>
   </Schedule>
-  <!-- Until permanently exhausts the event before its next activation. -->
-  <Until>
-    <IsCaptured OfficerInstanceID="HAN_SOLO"/>
-  </Until>
   <Actions>
     <SendMessage RecipientFactionInstanceID="FNALL1"
                  SubjectInstanceID="HAN_SOLO"
@@ -54,28 +55,29 @@ This event runs every 50 ticks while Han remains free. Capturing him permanently
 This repeating event selects one Alliance-owned core planet and adds a raw-resource node.
 
 ```xml
-<GameEvent TriggerCount="5">
+<GameEvent MaximumActivations="5">
   <InstanceID>MOD_RESOURCE_DISCOVERY</InstanceID>
   <Schedule>
-    <Random MinimumTicks="100" MaximumTicks="300"/>
+    <RandomInterval MinimumTicks="100" MaximumTicks="300"/>
   </Schedule>
-  <Target>
-    <From>
-      <!-- Target must resolve exactly one node, so reduce the matching planets to one. -->
-      <SelectRandom Count="1">
-        <From>
-          <SelectPlanets OwnerFactionInstanceID="FNALL1" SectorType="Core"/>
-        </From>
-      </SelectRandom>
-    </From>
-  </Target>
+  <Bindings>
+    <Bind As="planet">
+      <From>
+        <!-- A binding must resolve exactly one node. -->
+        <SelectRandom Count="1">
+          <From>
+            <SelectPlanets OwnerFactionInstanceID="FNALL1" SectorType="Core"/>
+          </From>
+        </SelectRandom>
+      </From>
+    </Bind>
+  </Bindings>
   <Actions>
-    <!-- With no explicit planet on the action, ChangePlanetStat uses $target. -->
-    <ChangePlanetStat Stat="RawResourceNodes">
+    <ChangePlanetStat Stat="RawResourceNodes" PlanetBinding="$planet">
       <Amount>1</Amount>
     </ChangePlanetStat>
     <SendMessage RecipientFactionInstanceID="FNALL1"
-                 LocationBinding="$target"
+                 LocationBinding="$planet"
                  Type="Resource">
       <Subject>Resources discovered</Subject>
       <Body>New raw materials have been discovered on {location}.</Body>
@@ -90,13 +92,13 @@ Eligible outcomes are selected by relative weight. Here the planet receives a re
 percent of the time and a message-only outcome 70 percent of the time.
 
 ```xml
-<GameEvent TriggerCount="1">
+<GameEvent>
   <InstanceID>MOD_NABOO_SURVEY</InstanceID>
   <Schedule>
     <At Tick="100"/>
   </Schedule>
   <Actions>
-    <Random>
+    <RollRandom>
       <Outcomes>
         <!-- Weights are relative; 30 and 70 form a 30/70 split. -->
         <Outcome Weight="30">
@@ -117,7 +119,7 @@ percent of the time and a message-only outcome 70 percent of the time.
           </Actions>
         </Outcome>
       </Outcomes>
-    </Random>
+    </RollRandom>
   </Actions>
 </GameEvent>
 ```
@@ -131,35 +133,37 @@ records the changes as an incident, and sends a message.
 <GameEvent>
   <InstanceID>MOD_PLANETARY_ATTACK</InstanceID>
   <Schedule>
-    <Random MinimumTicks="100" MaximumTicks="300"/>
+    <RandomInterval MinimumTicks="100" MaximumTicks="300"/>
   </Schedule>
-  <Target>
-    <From>
-      <SelectRandom Count="1">
-        <From>
-          <SelectPlanets SectorType="Core"/>
-        </From>
-      </SelectRandom>
-    </From>
-  </Target>
+  <Bindings>
+    <Bind As="planet">
+      <From>
+        <SelectRandom Count="1">
+          <From>
+            <SelectPlanets SectorType="Core"/>
+          </From>
+        </SelectRandom>
+      </From>
+    </Bind>
+  </Bindings>
   <Conditionals>
     <!-- Omitting FactionInstanceID means any non-neutral owner is accepted. -->
-    <IsOwned PlanetBinding="$target"/>
+    <IsOwned PlanetBinding="$planet"/>
   </Conditionals>
   <Actions>
-    <DestroyUnits>
+    <DestroyUnits PlanetBinding="$planet">
       <Units>
         <!-- Build one candidate pool, then destroy only the random subset. -->
         <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
           <From>
-            <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
-            <SelectRegiments PlanetBinding="$target"/>
+            <SelectBuildings PlanetBinding="$planet" Category="PlanetaryDefense"/>
+            <SelectRegiments PlanetBinding="$planet"/>
           </From>
         </SelectRandom>
       </Units>
     </DestroyUnits>
-    <RecordPlanetIncident Type="Uprising"/>
-    <SendMessage LocationBinding="$target" Type="Defense">
+    <RecordPlanetIncident Type="Uprising" PlanetBinding="$planet"/>
+    <SendMessage LocationBinding="$planet" Type="Defense">
       <Subject>Planetary defenses attacked</Subject>
       <Body>Hostile forces attacked defenses on {location}.</Body>
       <BackgroundImage Path="Pack/Shared/Events/MessageBackgrounds/planetary-attack"/>
@@ -171,29 +175,15 @@ records the changes as an incident, and sends a message.
 
 ## React to a unit arriving
 
-Trigger bindings expose the arriving unit and destination for conditions and actions.
+Typed trigger filters identify the arriving unit and destination directly.
 
 ```xml
-<GameEvent TriggerCount="1">
+<GameEvent MaximumActivations="1">
   <InstanceID>MOD_EMPEROR_REACHES_CORUSCANT</InstanceID>
   <Triggers>
-    <Trigger Event="core:unit.arrived">
-      <!-- Bind only the result values needed by the rest of this event. -->
-      <Bindings>
-        <Bind Argument="UnitInstanceID" As="unitInstanceID"/>
-        <Bind Argument="DestinationInstanceID" As="destinationInstanceID"/>
-      </Bindings>
-    </Trigger>
+    <UnitArrived UnitInstanceID="EMPEROR_PALPATINE"
+                 DestinationInstanceID="CORUSCANT"/>
   </Triggers>
-  <Conditionals>
-    <!-- Binding aliases are referenced with a leading $. -->
-    <EvaluateBinding Binding="$unitInstanceID"
-                     Comparison="Equal"
-                     CompareTo="EMPEROR_PALPATINE"/>
-    <EvaluateBinding Binding="$destinationInstanceID"
-                     Comparison="Equal"
-                     CompareTo="CORUSCANT"/>
-  </Conditionals>
   <Actions>
     <SendMessage RecipientFactionInstanceID="FNEMP1"
                  SubjectInstanceID="EMPEROR_PALPATINE"
@@ -216,15 +206,15 @@ planet.
 <GameEvent>
   <InstanceID>MOD_LUKE_MEETS_VADER</InstanceID>
   <Triggers>
-    <Trigger Event="core:mission.completed">
-      <Bindings>
-        <!-- Participants is the collection captured by the completed mission result. -->
-        <Bind Argument="Participants" As="participants"/>
-      </Bindings>
-    </Trigger>
+    <MissionCompleted>
+      <Participants Match="Any">
+        <Units>
+          <Unit UnitInstanceID="LUKE_SKYWALKER"/>
+        </Units>
+      </Participants>
+    </MissionCompleted>
   </Triggers>
   <Conditionals>
-    <BindingIncludesUnit Binding="$participants" UnitInstanceID="LUKE_SKYWALKER"/>
     <!-- ShareAncestor includes units attached through a fleet or mission at that planet. -->
     <ShareAncestor Type="Planet">
       <Units>
@@ -245,10 +235,10 @@ planet.
 `PerformSkillCheck` runs one nested action list and emits no separate skill-check result.
 
 ```xml
-<GameEvent TriggerCount="1">
+<GameEvent>
   <InstanceID>MOD_BOUNTY_HUNTERS_FIND_HAN</InstanceID>
   <Schedule>
-    <Random MinimumTicks="300" MaximumTicks="600"/>
+    <RandomDelay MinimumTicks="300" MaximumTicks="600"/>
   </Schedule>
   <Actions>
     <!-- The check performs either OnSuccess or OnFailure inline. -->
@@ -262,7 +252,7 @@ planet.
                           IsCaptured="true"
                           CaptorFactionInstanceID="FNEMP1"
                           CanEscape="false"/>
-        <SetActive UnitInstanceID="HAN_SOLO" IsActive="false"/>
+        <SetNodeActive InstanceID="HAN_SOLO" IsActive="false"/>
       </OnSuccess>
       <OnFailure>
         <SendMessage RecipientFactionInstanceID="FNALL1"
@@ -283,7 +273,7 @@ planet.
 them at the destination without transit.
 
 ```xml
-<GameEvent TriggerCount="1">
+<GameEvent>
   <InstanceID>MOD_NABOO_X_WINGS</InstanceID>
   <Schedule>
     <At Tick="200"/>
@@ -312,7 +302,7 @@ them at the destination without transit.
 This event reveals one randomly selected Imperial subject at Coruscant to the Alliance.
 
 ```xml
-<GameEvent TriggerCount="1">
+<GameEvent>
   <InstanceID>MOD_CORUSCANT_INFORMANTS</InstanceID>
   <Schedule>
     <At Tick="250"/>
@@ -349,7 +339,7 @@ This event reveals one randomly selected Imperial subject at Coruscant to the Al
 starfighter at Naboo to the Alliance.
 
 ```xml
-<GameEvent TriggerCount="1">
+<GameEvent>
   <InstanceID>MOD_NABOO_STARFIGHTERS_DEFECT</InstanceID>
   <Schedule>
     <At Tick="300"/>
@@ -372,27 +362,27 @@ The first event retains Luke in the scene graph but excludes him from gameplay. 
 reactivates him and attempts to place him at his recorded previous location.
 
 ```xml
-<GameEvent TriggerCount="1">
+<GameEvent>
   <InstanceID>MOD_OFFICER_LEAVES</InstanceID>
   <Schedule>
     <At Tick="300"/>
   </Schedule>
   <Actions>
     <!-- Inactive nodes remain saved and attached but are ignored by normal gameplay queries. -->
-    <SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="false"/>
+    <SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="false"/>
     <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER"
                       Status="Away on assignment"/>
   </Actions>
 </GameEvent>
 
-<GameEvent TriggerCount="1">
+<GameEvent>
   <InstanceID>MOD_OFFICER_RETURNS</InstanceID>
   <Schedule>
     <After EventInstanceID="MOD_OFFICER_LEAVES" DelayTicks="100"/>
   </Schedule>
   <Actions>
     <!-- Reactivate before placement so normal destination validation can see the officer. -->
-    <SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="true"/>
+    <SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="true"/>
     <PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
       <Destination>
         <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>

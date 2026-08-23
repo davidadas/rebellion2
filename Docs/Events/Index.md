@@ -1,24 +1,23 @@
 # Creating Game Events
 
-Game events let content authors react to campaign time and simulation results without adding new C# code. An event can select game objects, test the current game state, perform ordered actions, and persist its own execution history across saves.
+Game events let content authors react to campaign time and simulation results without adding new C# code. An event can select game objects, test current game state, perform ordered actions, and persist its activation history across saves.
 
 This guide explains the event lifecycle, where events are authored, and how each top-level part of a `GameEvent` works.
 
 ## How events work
 
-Event definitions are loaded with the rest of the game data when a campaign begins. Before play, the game validates event IDs, schedules, trigger contracts, bindings, and dependencies. Runtime state is stored by `InstanceID`, including how many times an event has executed and when it may execute again.
+Event definitions are loaded with the rest of the game data when a campaign begins. Before play, the game validates event IDs, schedules, trigger contracts, bindings, and dependencies. Runtime state is stored by `InstanceID`, including how many times an event has activated and when it may activate again.
 
 An event activation follows this pipeline:
 
-1. A schedule becomes eligible, a gameplay trigger receives a matching result, or an unscheduled event is checked during the current tick.
-2. `TriggerCount` and `Until` determine whether the event is permanently exhausted.
-3. The event waits until its scheduled tick, if it has a schedule.
-4. `Target` resolves one game object and exposes it as `$target`, if a target is declared.
-5. Every top-level conditional must pass.
-6. Actions execute from top to bottom.
-7. The execution count, last execution tick, and next eligible tick are persisted.
+1. A schedule becomes eligible or a gameplay trigger receives a matching result.
+2. `MaximumActivations` and a recurring schedule's `Until` determine whether the event is complete.
+3. Top-level bindings select and retain any required scene nodes.
+4. Every top-level conditional must pass.
+5. Actions execute from top to bottom.
+6. The activation count, last activation tick, and next eligible tick are persisted.
 
-An event with a `Schedule` is driven by campaign time. An event with `Triggers` reacts to typed simulation results. An event with neither is evaluated once per tick. An event cannot combine `Schedule` and `Triggers`.
+An event with a `Schedule` is driven by campaign time. An event with `Triggers` reacts to typed simulation results. Every event requires exactly one of those activation sources.
 
 ## Adding an event
 
@@ -31,7 +30,7 @@ Assets/Content/Packs/ClassicGalacticCivilWar/Shared/Data/game-events.xml
 Add a `GameEvent` inside the existing `GameEvents` root:
 
 ```xml
-<GameEvent TriggerCount="1">
+<GameEvent>
   <InstanceID>MY_FIRST_EVENT</InstanceID>
   <Schedule>
     <At Tick="10"/>
@@ -52,16 +51,15 @@ Add a `GameEvent` inside the existing `GameEvents` root:
 A complete event uses the following high-level shape. Most events only need some of these domains:
 
 ```xml
-<GameEvent TriggerCount="1">
+<GameEvent MaximumActivations="3">
   <InstanceID>UNIQUE_EVENT_ID</InstanceID>
 
   <!-- Choose Schedule or Triggers, never both. -->
   <Schedule>...</Schedule>
-  <Triggers>...</Triggers>
+  <!-- <Triggers>...</Triggers> -->
 
-  <!-- Optional execution controls. -->
-  <Until>...</Until>
-  <Target>...</Target>
+  <!-- Optional activation-scoped selections and gates. -->
+  <Bindings>...</Bindings>
   <Conditionals>...</Conditionals>
 
   <!-- Required behavior. -->
@@ -73,7 +71,7 @@ A complete event uses the following high-level shape. Most events only need some
 
 Required stable identity used by runtime state, saves, and dependent events.
 
-### TriggerCount
+### MaximumActivations
 
 Optional maximum number of successful activations. Omission means unlimited.
 
@@ -87,14 +85,9 @@ Optionally activates the event according to campaign time or another event. See
 Optionally activates the event in response to gameplay results and exposes result data. See
 [Triggers and bindings](Triggers.md). An event cannot combine `Triggers` with `Schedule`.
 
-### Until
+### Bindings
 
-Optionally exhausts the event permanently when its stop conditions pass. `Until` uses the same
-condition language as `Conditionals`. See [Conditions](Conditions.md#until).
-
-### Target
-
-Optionally selects exactly one scene node and binds it as `$target`. See
+Optionally select scene nodes and expose them under activation-scoped names. See
 [Targets and selectors](Targets.md).
 
 ### Conditionals
@@ -111,7 +104,7 @@ Required collection of game changes performed in authored order. See [Actions](A
 
 1. [Schedules](Schedules.md)
 2. [Triggers and bindings](Triggers.md)
-3. [Conditions and Until](Conditions.md)
+3. [Conditions](Conditions.md)
 4. [Targets and selectors](Targets.md)
 5. [Actions and messages](Actions.md)
 6. [Complete examples](Examples.md)

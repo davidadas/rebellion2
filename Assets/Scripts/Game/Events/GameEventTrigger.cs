@@ -109,7 +109,7 @@ namespace Rebellion.Game.Events
                     || completed.CompletionReason == CompletionReason.Value
                 )
                 && MatchesInstanceID(SourceEventInstanceID, completed.SourceEventInstanceID)
-                && (Participants == null || Participants.Matches(completed.Participants));
+                && (Participants?.Matches(completed.Participants) ?? true);
         }
     }
 
@@ -128,8 +128,6 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
 
-        public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
-
         internal override Type ResultType => typeof(UnitArrivedResult);
 
         internal override bool Matches(GameResult result)
@@ -137,10 +135,6 @@ namespace Rebellion.Game.Events
             if (result is not UnitArrivedResult arrived)
                 return false;
             return MatchesInstanceID(UnitInstanceID, arrived.Unit?.InstanceID)
-                && (
-                    Units.Count == 0
-                    || Units.Any(unit => unit.UnitInstanceID == arrived.Unit?.InstanceID)
-                )
                 && MatchesInstanceID(DestinationInstanceID, arrived.Destination?.InstanceID)
                 && MatchesInstanceID(SourceEventInstanceID, arrived.SourceEventInstanceID);
         }

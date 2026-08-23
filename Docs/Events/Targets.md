@@ -4,29 +4,32 @@
 /Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 # Targets and Selectors
 
-Selectors find typed collections of scene nodes. Targets, conditions, and actions use them wherever
+Selectors find typed collections of scene nodes. Bindings, conditions, and actions use them wherever
 authored XML needs to identify game objects. Direct selectors return every active matching object
 when no optional filter is supplied.
 
-## Target
+## Bindings
 
-`Target` selects exactly one scene node and exposes it to the event as `$target`. Zero results or
+Each `Bind` selects exactly one scene node and exposes it under its `As` name. Zero results or
 multiple results fail the activation.
 
 **Options**
 
+- `As` — required unique binding name.
 - `From` — required child containing exactly one selector.
 
 ```xml
-<Target>
-  <From>
-    <SelectRandom Count="1">
-      <From>
-        <SelectPlanets SectorType="Core"/>
-      </From>
-    </SelectRandom>
-  </From>
-</Target>
+<Bindings>
+  <Bind As="planet">
+    <From>
+      <SelectRandom Count="1">
+        <From>
+          <SelectPlanets SectorType="Core"/>
+        </From>
+      </SelectRandom>
+    </From>
+  </Bind>
+</Bindings>
 ```
 
 ## Planet selectors
@@ -105,7 +108,7 @@ Selects missions.
 - `OwnerFactionInstanceID` — optional owner filter.
 
 ```xml
-<SelectMissions PlanetBinding="$target" OwnerFactionInstanceID="FNEMP1"/>
+<SelectMissions PlanetBinding="$planet" OwnerFactionInstanceID="FNEMP1"/>
 ```
 
 ## Fleet and unit selectors
@@ -145,7 +148,7 @@ Selects capital ships.
 Selects starfighters. It supports the same filters as `SelectCapitalShips`.
 
 ```xml
-<SelectStarfighters PlanetBinding="$target"
+<SelectStarfighters PlanetBinding="$planet"
                     OwnerFactionInstanceID="FNEMP1"
                     ManufacturingStatus="Complete"/>
 ```
@@ -155,7 +158,7 @@ Selects starfighters. It supports the same filters as `SelectCapitalShips`.
 Selects regiments. It supports the same filters as `SelectCapitalShips`.
 
 ```xml
-<SelectRegiments PlanetBinding="$target" OwnerFactionInstanceID="FNALL1"/>
+<SelectRegiments PlanetBinding="$planet" OwnerFactionInstanceID="FNALL1"/>
 ```
 
 ### SelectBuildings
@@ -172,7 +175,7 @@ Selects buildings.
 - `Category` — optional `Any`, `PlanetaryDefense`, or `ManufacturingFacility` filter.
 
 ```xml
-<SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
+<SelectBuildings PlanetBinding="$planet" Category="PlanetaryDefense"/>
 ```
 
 ### SelectManufacturingOrders
@@ -198,9 +201,9 @@ nodes. It is used by selectors that transform another selection.
 
 ```xml
 <From>
-  <SelectCapitalShips PlanetBinding="$target"/>
-  <SelectStarfighters PlanetBinding="$target"/>
-  <SelectRegiments PlanetBinding="$target"/>
+  <SelectCapitalShips PlanetBinding="$planet"/>
+  <SelectStarfighters PlanetBinding="$planet"/>
+  <SelectRegiments PlanetBinding="$planet"/>
 </From>
 ```
 
@@ -220,8 +223,8 @@ Selects a random subset of the candidates returned by `From`.
 ```xml
 <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
   <From>
-    <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
-    <SelectRegiments PlanetBinding="$target"/>
+    <SelectBuildings PlanetBinding="$planet" Category="PlanetaryDefense"/>
+    <SelectRegiments PlanetBinding="$planet"/>
   </From>
 </SelectRandom>
 ```

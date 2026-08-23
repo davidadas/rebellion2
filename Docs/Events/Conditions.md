@@ -6,21 +6,17 @@
 
 Conditions inspect game state without changing it. The XML collection is named `Conditionals`, but
 this guide consistently calls the individual checks **conditions**. Every top-level condition must
-pass before an event executes.
+pass before an event activates.
 
 ```xml
 <Conditionals>
   <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
   <Not>
-    <Conditionals>
-      <Any>
-        <Conditionals>
-          <IsCaptured OfficerInstanceID="LEIA_ORGANA"/>
-          <IsOnMission UnitInstanceID="LEIA_ORGANA"/>
-          <IsInTransit UnitInstanceID="LEIA_ORGANA"/>
-        </Conditionals>
-      </Any>
-    </Conditionals>
+    <Any>
+      <IsCaptured OfficerInstanceID="LEIA_ORGANA"/>
+      <IsOnMission UnitInstanceID="LEIA_ORGANA"/>
+      <IsInTransit UnitInstanceID="LEIA_ORGANA"/>
+    </Any>
   </Not>
 </Conditionals>
 ```
@@ -41,72 +37,47 @@ conditions and passes when all of them pass. An empty collection does not block 
 </Conditionals>
 ```
 
-### Until
-
-`Until` accepts the same conditions as `Conditionals`. When all of them pass, the event becomes
-permanently exhausted. It is checked before each activation. An empty `Until` does not exhaust the
-event.
-
-```xml
-<Until>
-  <IsCapturedBy OfficerInstanceID="HAN_SOLO"
-                CaptorFactionInstanceID="FNEMP1"/>
-</Until>
-```
-
 ### All
 
-`All` passes when every nested condition passes. Its `Conditionals` child must contain one or more
-conditions.
+`All` passes when every nested condition passes.
 
 ```xml
 <All>
-  <Conditionals>
-    <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
-    <HasBuildingType Type="Defense"/>
-  </Conditionals>
+  <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
+  <HasBuildingType Type="Defense"/>
 </All>
 ```
 
 ### Any
 
-`Any` passes when at least one nested condition passes. Its `Conditionals` child must contain one or
-more conditions.
+`Any` passes when at least one nested condition passes.
 
 ```xml
 <Any>
-  <Conditionals>
-    <IsCaptured OfficerInstanceID="HAN_SOLO"/>
-    <IsKilled OfficerInstanceID="HAN_SOLO"/>
-  </Conditionals>
+  <IsCaptured OfficerInstanceID="HAN_SOLO"/>
+  <IsKilled OfficerInstanceID="HAN_SOLO"/>
 </Any>
 ```
 
 ### Not
 
-`Not` passes when every nested condition fails. Its `Conditionals` child must contain one or more
-conditions.
+`Not` passes when every nested condition fails.
 
 ```xml
 <Not>
-  <Conditionals>
-    <IsInTransit UnitInstanceID="HAN_SOLO"/>
-    <IsOnMission UnitInstanceID="HAN_SOLO"/>
-  </Conditionals>
+  <IsInTransit UnitInstanceID="HAN_SOLO"/>
+  <IsOnMission UnitInstanceID="HAN_SOLO"/>
 </Not>
 ```
 
 ### Xor
 
-`Xor` passes when exactly one nested condition passes. Its `Conditionals` child must contain one or
-more conditions.
+`Xor` passes when exactly one nested condition passes.
 
 ```xml
 <Xor>
-  <Conditionals>
-    <IsCaptured OfficerInstanceID="HAN_SOLO"/>
-    <IsInTransit UnitInstanceID="HAN_SOLO"/>
-  </Conditionals>
+  <IsCaptured OfficerInstanceID="HAN_SOLO"/>
+  <IsInTransit UnitInstanceID="HAN_SOLO"/>
 </Xor>
 ```
 
@@ -125,29 +96,29 @@ Compares the current campaign tick.
 <TickCount Comparison="GreaterThanOrEqual" Ticks="500"/>
 ```
 
-### HasEventTriggered
+### HasEventActivated
 
-Passes after the referenced event has executed at least once.
+Passes after the referenced event has activated at least once.
 
 **Options**
 
 - `EventInstanceID` — required event ID.
 
 ```xml
-<HasEventTriggered EventInstanceID="EVENT_A"/>
+<HasEventActivated EventInstanceID="EVENT_A"/>
 ```
 
-### IsEventExhausted
+### IsEventComplete
 
-Passes when the referenced event can never execute again because it reached its trigger count,
-matched `Until`, or completed a one-time schedule.
+Passes when the referenced event can no longer activate because it reached `MaximumActivations`,
+matched a recurring schedule's `Until`, or completed a one-shot schedule.
 
 **Options**
 
 - `EventInstanceID` — required event ID.
 
 ```xml
-<IsEventExhausted EventInstanceID="EVENT_B"/>
+<IsEventComplete EventInstanceID="EVENT_B"/>
 ```
 
 ### EvaluateEventVariable
@@ -201,8 +172,7 @@ Passes when a bound collection contains the named unit.
 ### IsOwned
 
 Passes when the selected planet has a non-neutral owner. Supply `FactionInstanceID` to require a
-specific owner. If neither planet property is supplied, the condition uses the event's `$target`
-planet.
+specific owner.
 
 **Options**
 
@@ -217,8 +187,7 @@ planet.
 
 ### RollAgainstPopularSupport
 
-Rolls a random percentage against the selected faction's current support on a planet. If neither
-planet property is supplied, it uses the event's `$target` planet.
+Rolls a random percentage against the selected faction's current support on a planet.
 
 **Options**
 
@@ -228,7 +197,7 @@ planet property is supplied, it uses the event's `$target` planet.
 - `PlanetInstanceID` and `PlanetBinding` are mutually exclusive.
 
 ```xml
-<RollAgainstPopularSupport PlanetBinding="$target" FactionInstanceID="FNALL1"/>
+<RollAgainstPopularSupport PlanetBinding="$planet" FactionInstanceID="FNALL1"/>
 ```
 
 ## Location and scene relationships
@@ -444,8 +413,7 @@ Compares an officer's effective Force value against an integer.
 
 ### ComparePlanetStat
 
-Compares one planet stat against an integer. If neither planet property is supplied, it uses the
-event's `$target` planet.
+Compares one planet stat against an integer.
 
 **Options**
 
@@ -465,20 +433,17 @@ event's `$target` planet.
 
 ### HasBuildingType
 
-Passes when the event's `$target` planet contains a completed building of the requested type.
+Passes when the selected planet contains a completed building of the requested type.
 
 **Options**
 
 - `Type` — required building type.
+- `PlanetInstanceID` — optional explicit planet ID.
+- `PlanetBinding` — optional binding containing a planet.
 
 ```xml
-<Target>
-  <From>
-    <SelectPlanets InstanceID="NABOO"/>
-  </From>
-</Target>
 <Conditionals>
-  <HasBuildingType Type="Defense"/>
+  <HasBuildingType Type="Defense" PlanetInstanceID="NABOO"/>
 </Conditionals>
 ```
 

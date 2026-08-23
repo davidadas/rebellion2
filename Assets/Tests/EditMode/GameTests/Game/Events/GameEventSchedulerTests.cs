@@ -33,11 +33,25 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void GetInitialRange_RandomDelaySchedule_ReturnsInclusiveRange()
+        {
+            GameEventScheduler scheduler = new GameEventScheduler
+            {
+                RandomDelay = new RandomDelay { MinimumTicks = 10, MaximumTicks = 30 },
+            };
+
+            scheduler.GetInitialRange(out int minimum, out int maximum);
+
+            Assert.AreEqual(10, minimum);
+            Assert.AreEqual(30, maximum);
+        }
+
+        [Test]
         public void GetRepeatRange_RandomIntervalSchedule_ReturnsInclusiveRange()
         {
             GameEventScheduler scheduler = new GameEventScheduler
             {
-                RandomInterval = new RandomTickRange { MinimumTicks = 10, MaximumTicks = 30 },
+                RandomInterval = new RandomInterval { MinimumTicks = 10, MaximumTicks = 30 },
             };
 
             scheduler.GetRepeatRange(out int minimum, out int maximum);
@@ -51,7 +65,7 @@ namespace Rebellion.Tests.Game.Events
         {
             GameEventScheduler scheduler = new GameEventScheduler
             {
-                RandomInterval = new RandomTickRange
+                RandomInterval = new RandomInterval
                 {
                     MinimumTicks = 10,
                     MaximumTicks = 30,

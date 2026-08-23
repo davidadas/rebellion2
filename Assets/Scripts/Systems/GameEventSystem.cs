@@ -73,7 +73,8 @@ namespace Rebellion.Systems
                     );
                 ValidateSchedule(gameEvent);
                 if (
-                    gameEvent.MaximumActivations != 1
+                    gameEvent.MaximumActivations.HasValue
+                    && gameEvent.MaximumActivations != 1
                     && gameEvent.Schedule is { IsRecurring: false }
                 )
                     throw new InvalidOperationException(
@@ -121,22 +122,6 @@ namespace Rebellion.Systems
                             $"Event '{gameEvent.InstanceID}' has a missing or duplicate selection binding alias '{binding.As}'."
                         );
                 }
-
-                for (int first = 0; first < gameEvent.Triggers.Count; first++)
-                {
-                    for (int second = first + 1; second < gameEvent.Triggers.Count; second++)
-                    {
-                        Type firstType = gameEvent.Triggers[first].ResultType;
-                        Type secondType = gameEvent.Triggers[second].ResultType;
-                        if (
-                            firstType.IsAssignableFrom(secondType)
-                            || secondType.IsAssignableFrom(firstType)
-                        )
-                            throw new InvalidOperationException(
-                                $"Event '{gameEvent.InstanceID}' has overlapping result triggers."
-                            );
-                    }
-                }
             }
 
             foreach (GameEvent gameEvent in definitions)
@@ -171,6 +156,7 @@ namespace Rebellion.Systems
             int configuredModes =
                 (schedule.At == null ? 0 : 1)
                 + (schedule.Every == null ? 0 : 1)
+                + (schedule.RandomDelay == null ? 0 : 1)
                 + (schedule.RandomInterval == null ? 0 : 1)
                 + (schedule.After == null ? 0 : 1)
                 + (schedule.AfterAll == null ? 0 : 1)
@@ -190,6 +176,16 @@ namespace Rebellion.Systems
             if (schedule.Every is { InitialDelayTicks: < 0 })
                 throw new InvalidOperationException(
                     $"Event '{gameEvent.InstanceID}' Every.InitialDelayTicks cannot be negative."
+                );
+            if (
+                schedule.RandomDelay != null
+                && (
+                    schedule.RandomDelay.MinimumTicks < 1
+                    || schedule.RandomDelay.MaximumTicks < schedule.RandomDelay.MinimumTicks
+                )
+            )
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' RandomDelay requires a positive ordered tick range."
                 );
             if (
                 schedule.RandomInterval != null
@@ -231,7 +227,7 @@ namespace Rebellion.Systems
         /// Processes all eligible events and returns the aggregate results.
         /// </summary>
         /// <param name="gameEvents">The events to evaluate.</param>
-        /// <returns>Results produced by events that executed.</returns>
+        /// <returns>Results produced by events that activated.</returns>
         public List<GameResult> ProcessEvents(List<GameEvent> gameEvents)
         {
             List<GameResult> allResults = new List<GameResult>();
@@ -244,7 +240,7 @@ namespace Rebellion.Systems
 
                 if (TryProcessEvent(gameEvent, null, null, out List<GameResult> globalResults))
                     allResults.AddRange(globalResults);
-                if (_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted)
+                if (_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete)
                     eventsToRemove.Add(gameEvent);
             }
 
@@ -293,7 +289,7 @@ namespace Rebellion.Systems
                         continue;
 
                     eventResults.AddRange(reactions);
-                    if (_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted)
+                    if (_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete)
                         _game.RemoveEvent(gameEvent);
                 }
             }
@@ -334,7 +330,7 @@ namespace Rebellion.Systems
         /// <param name="trigger">The trigger definition that matched the result, if any.</param>
         /// <param name="triggerResult">The simulation result that activated the event, if any.</param>
         /// <param name="results">Receives results produced by the event.</param>
-        /// <returns>True when the event executed; otherwise false.</returns>
+        /// <returns>True when the event activated; otherwise false.</returns>
         private bool TryProcessEvent(
             GameEvent gameEvent,
             GameEventTrigger trigger,
@@ -397,12 +393,12 @@ namespace Rebellion.Systems
                 results.AddRange(_requestDispatcher.Process(actionContext.Requests));
             }
 
-            state.ExecutionCount++;
-            state.LastExecutionTick = _game.CurrentTick;
+            state.ActivationCount++;
+            state.LastActivationTick = _game.CurrentTick;
             if (gameEvent.Schedule is { IsRecurring: false })
-                state.IsExhausted = true;
-            bool isExhausted = ReachedMaximumActivations(gameEvent, state);
-            if (!isExhausted)
+                state.IsComplete = true;
+            bool isComplete = ReachedMaximumActivations(gameEvent, state);
+            if (!isComplete)
             {
                 GetRepeatRange(gameEvent, out int minimum, out int maximum);
                 state.NextEligibleTick = _game.CurrentTick + RollRange(minimum, maximum);
@@ -411,7 +407,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Permanently exhausts a recurring schedule when all of its terminal conditions are met.
+        /// Permanently completes a recurring schedule when all of its terminal conditions are met.
         /// </summary>
         private bool ShouldEndSchedule(
             GameEvent gameEvent,
@@ -419,24 +415,24 @@ namespace Rebellion.Systems
             GameEventExecutionContext context
         )
         {
-            if (state.IsExhausted)
+            if (state.IsComplete)
                 return true;
             IReadOnlyList<GameConditional> until = gameEvent.Schedule?.Until;
-            state.IsExhausted =
-                until != null
-                && until.Count > 0
+            state.IsComplete =
+                until?.Count > 0
                 && until.All(condition =>
                     condition.IsMet(new GameConditionContext(_game, context))
                 );
-            return state.IsExhausted;
+            return state.IsComplete;
         }
 
-        /// <summary>Marks an event exhausted after it reaches its authored activation limit.</summary>
+        /// <summary>Marks an event complete after it reaches its authored activation limit.</summary>
         private static bool ReachedMaximumActivations(GameEvent gameEvent, GameEventState state)
         {
             int? maximum = gameEvent.MaximumActivations;
-            state.IsExhausted = maximum.HasValue && state.ExecutionCount >= maximum.Value;
-            return state.IsExhausted;
+            if (maximum.HasValue && state.ActivationCount >= maximum.Value)
+                state.IsComplete = true;
+            return state.IsComplete;
         }
 
         /// <summary>
@@ -460,10 +456,10 @@ namespace Rebellion.Systems
             if (after != null)
             {
                 GameEventState predecessor = _game.EventRuntime.GetState(after.EventInstanceID);
-                if (predecessor.ExecutionCount == 0)
+                if (predecessor.ActivationCount == 0)
                     return false;
 
-                state.NextEligibleTick = checked(predecessor.LastExecutionTick + after.DelayTicks);
+                state.NextEligibleTick = checked(predecessor.LastActivationTick + after.DelayTicks);
                 state.IsInitialized = true;
                 return true;
             }
@@ -479,18 +475,18 @@ namespace Rebellion.Systems
                 bool isAfterAll = gameEvent.Schedule.AfterAll != null;
                 if (
                     isAfterAll
-                    && predecessorStates.Any(predecessor => predecessor.ExecutionCount == 0)
+                    && predecessorStates.Any(predecessor => predecessor.ActivationCount == 0)
                 )
                     return false;
                 List<GameEventState> completed = predecessorStates
-                    .Where(predecessor => predecessor.ExecutionCount > 0)
+                    .Where(predecessor => predecessor.ActivationCount > 0)
                     .ToList();
                 if (completed.Count == 0)
                     return false;
 
                 int dependencyTick = isAfterAll
-                    ? completed.Max(predecessor => predecessor.LastExecutionTick)
-                    : completed.Min(predecessor => predecessor.LastExecutionTick);
+                    ? completed.Max(predecessor => predecessor.LastActivationTick)
+                    : completed.Min(predecessor => predecessor.LastActivationTick);
                 state.NextEligibleTick = checked(dependencyTick + dependencies.DelayTicks);
                 state.IsInitialized = true;
                 return true;

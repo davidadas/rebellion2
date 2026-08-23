@@ -713,7 +713,7 @@ namespace Rebellion.Tests.Game.Events
                 {
                     new ConditionalMessageBody
                     {
-                        Conditions = new List<GameConditional>
+                        Conditionals = new List<GameConditional>
                         {
                             new IsInjuredConditional { OfficerInstanceID = luke.InstanceID },
                         },
@@ -813,7 +813,7 @@ namespace Rebellion.Tests.Game.Events
             game.EventRuntime.SetVariable("luke.stage", 2);
             IfAction action = new IfAction
             {
-                Conditions = new List<GameConditional>
+                Conditionals = new List<GameConditional>
                 {
                     new EvaluateEventVariableConditional
                     {

@@ -25,7 +25,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Creates the runtime context for one event activation.
         /// </summary>
-        /// <param name="gameEvent">The event definition being executed.</param>
+        /// <param name="gameEvent">The event definition being activated.</param>
         /// <param name="state">Persistent scheduling state for this activation scope.</param>
         /// <param name="triggerResult">The result that activated this event, if any.</param>
         /// <param name="trigger">The trigger definition that matched the result, if any.</param>

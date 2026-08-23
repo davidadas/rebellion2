@@ -30,15 +30,15 @@ Every action belongs inside an event's `Actions` collection:
 
 **Options**
 
-- `Conditions` — required condition collection.
+- `Conditionals` — required condition collection.
 - `Actions` — required action collection executed when the conditions pass.
 - `Else` — optional action collection executed when the conditions fail.
 
 ```xml
 <If>
-  <Conditions>
+  <Conditionals>
     <IsCaptured OfficerInstanceID="HAN_SOLO"/>
-  </Conditions>
+  </Conditionals>
   <Actions>
     <SendMessage RecipientFactionInstanceID="FNALL1" Type="Mission">
       <Subject>Han is a captive</Subject>
@@ -51,19 +51,19 @@ Every action belongs inside an event's `Actions` collection:
 </If>
 ```
 
-### Random
+### RollRandom
 
-`Random` first removes outcomes whose `When` conditions fail, then selects one remaining outcome by `Weight`. Weights are relative: weights `30` and `70` produce a 30/70 split.
+`RollRandom` first removes outcomes whose `Conditionals` fail, then selects one remaining outcome by `Weight`. Weights are relative: weights `30` and `70` produce a 30/70 split.
 
 **Options**
 
 - `Outcomes` — required child containing one or more `Outcome` elements.
 - `Weight` — required positive attribute on each `Outcome`.
-- `When` — optional conditions for making an outcome eligible.
+- `Conditionals` — optional conditions for making an outcome eligible.
 - `Actions` — required actions for each outcome.
 
 ```xml
-<Random>
+<RollRandom>
   <Outcomes>
     <Outcome Weight="30">
       <Actions>
@@ -81,7 +81,7 @@ Every action belongs inside an event's `Actions` collection:
       </Actions>
     </Outcome>
   </Outcomes>
-</Random>
+</RollRandom>
 ```
 
 ### PerformSkillCheck
@@ -203,15 +203,14 @@ Message types are `PopularSupport`, `Fleet`, `Mission`, `Resource`, `Manufacturi
 
 ### ChangePlanetStat
 
-Choose exactly one adjustment mode: signed `Amount` or signed `PercentOfCurrent`. The action can address a planet by instance ID, binding, top-level `$target`, or selectors.
+Choose exactly one adjustment mode: signed `Amount` or signed `PercentOfCurrent`. The action can address a planet by instance ID, binding, or selectors.
 
 **Options**
 
 - `Stat` — required planet stat.
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive planet source.
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive direct planet source.
 - `Planets` — optional planet selector collection.
 - Exactly one of `Amount` or `PercentOfCurrent` is required.
-- When no planet source is supplied, the action uses `$target`.
 
 ```xml
 <ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
@@ -223,7 +222,7 @@ Supported stats are `RawResourceNodes` and `EnergyCapacity`. Values cannot fall 
 
 ### ReducePlanetStats
 
-This action requires a planet top-level target. It independently rolls `LossProbabilityPerResource` once for every current point in the selected stats, then enforces `MinimumTotalLoss`.
+This action requires a planet instance ID or planet binding. It independently rolls `LossProbabilityPerResource` once for every current point in the selected stats, then enforces `MinimumTotalLoss`.
 
 **Options**
 
@@ -243,7 +242,7 @@ This action requires a planet top-level target. It independently rolls `LossProb
 
 ### RecordPlanetIncident
 
-This action requires a planet top-level target. It records an incident from planet-stat changes and destroyed units already produced earlier in the same activation. It records nothing when those earlier actions made no change.
+This action requires a planet instance ID or planet binding. It records an incident from planet-stat changes and destroyed units already produced earlier in the same activation. It records nothing when those earlier actions made no change.
 
 **Options**
 
@@ -255,7 +254,7 @@ This action requires a planet top-level target. It records an incident from plan
     <Units>
       <SelectRandom Count="1">
         <From>
-          <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
+          <SelectBuildings PlanetBinding="$planet" Category="PlanetaryDefense"/>
         </From>
       </SelectRandom>
     </Units>
@@ -281,8 +280,8 @@ Incident types are `Uprising`, `Intelligence`, `Disaster`, and `Resource`.
   <Units>
     <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
       <From>
-        <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
-        <SelectRegiments PlanetBinding="$target"/>
+        <SelectBuildings PlanetBinding="$planet" Category="PlanetaryDefense"/>
+        <SelectRegiments PlanetBinding="$planet"/>
       </From>
     </SelectRandom>
   </Units>
@@ -360,9 +359,9 @@ Both `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `Destinatio
 - `Units` — optional unit selector collection.
 
 ```xml
-<SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="false"/>
+<SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="false"/>
 
-<SetActive UnitInstanceID="LUKE_SKYWALKER" IsActive="true"/>
+<SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="true"/>
 <PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
   <Destination>
     <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
@@ -485,8 +484,6 @@ The action rolls an inclusive injury value and records the standard officer-inju
 - `ImagePath` — optional presentation-image override.
 - `AudioPath` — optional presentation-audio override.
 
-When activated by `core:mission.completed`, exactly one configured officer must have participated in the completed mission. That participant becomes the encountered officer; the other becomes the opposing officer.
-
 ```xml
 <TriggerDuel FirstOfficerInstanceID="LUKE_SKYWALKER"
              SecondOfficerInstanceID="DARTH_VADER">
@@ -495,7 +492,7 @@ When activated by `core:mission.completed`, exactly one configured officer must 
 </TriggerDuel>
 ```
 
-The duel produces `core:duel.completed`. A later event can [trigger from that result and bind its outcome details](Triggers.md).
+The duel produces a result consumed by the typed [`DuelCompleted`](Triggers.md#duelcompleted) trigger.
 
 ### SetOfficerImages
 

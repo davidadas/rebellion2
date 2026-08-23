@@ -159,30 +159,30 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// A <see cref="GameConditional"/> that is met after the specified event has triggered.
+    /// A <see cref="GameConditional"/> that is met after the specified event has activated.
     /// </summary>
-    [PersistableObject(Name = "HasEventTriggered")]
-    public sealed class HasEventTriggeredConditional : GameConditional
+    [PersistableObject(Name = "HasEventActivated")]
+    public sealed class HasEventActivatedConditional : GameConditional
     {
         [PersistableAttribute]
         public string EventInstanceID { get; set; }
 
         /// <summary>
-        /// Checks whether the event with the configured instance ID has executed at least once.
+        /// Checks whether the event with the configured instance ID has activated at least once.
         /// </summary>
         /// <param name="context">The context providing event runtime state.</param>
-        /// <returns>True if the event has executed; otherwise false.</returns>
+        /// <returns>True if the event has activated; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
-            return context.Game.EventRuntime.GetState(EventInstanceID).ExecutionCount > 0;
+            return context.Game.EventRuntime.GetState(EventInstanceID).ActivationCount > 0;
         }
     }
 
     /// <summary>
-    /// Tests whether the specified event can no longer execute.
+    /// Tests whether the specified event can no longer activate.
     /// </summary>
-    [PersistableObject(Name = "IsEventExhausted")]
-    public sealed class IsEventExhaustedConditional : GameConditional
+    [PersistableObject(Name = "IsEventComplete")]
+    public sealed class IsEventCompleteConditional : GameConditional
     {
         [PersistableAttribute]
         public string EventInstanceID { get; set; }
@@ -190,7 +190,7 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             GameEventState state = context.Game.EventRuntime.GetState(EventInstanceID);
-            if (state.IsExhausted)
+            if (state.IsComplete)
                 return true;
 
             GameEvent definition = context
@@ -199,7 +199,7 @@ namespace Rebellion.Game.Events
                     string.Equals(gameEvent.InstanceID, EventInstanceID, StringComparison.Ordinal)
                 );
             int? maximumActivations = definition?.MaximumActivations;
-            return maximumActivations.HasValue && state.ExecutionCount >= maximumActivations.Value;
+            return maximumActivations.HasValue && state.ActivationCount >= maximumActivations.Value;
         }
     }
 

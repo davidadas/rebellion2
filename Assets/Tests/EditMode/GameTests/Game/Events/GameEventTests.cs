@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Game.Events
         public void CanActivate_MaximumActivationsReached_ReturnsFalse()
         {
             GameEvent gameEvent = new GameEvent { MaximumActivations = 3 };
-            GameEventState state = new GameEventState { ExecutionCount = 3 };
+            GameEventState state = new GameEventState { ActivationCount = 3 };
 
             bool result = gameEvent.CanActivate(state);
 
@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Events
         public void CanActivate_UnlimitedEvent_ReturnsTrue()
         {
             GameEvent gameEvent = new GameEvent();
-            GameEventState state = new GameEventState { ExecutionCount = 100 };
+            GameEventState state = new GameEventState { ActivationCount = 100 };
 
             bool result = gameEvent.CanActivate(state);
 
