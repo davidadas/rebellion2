@@ -7,13 +7,13 @@ namespace Rebellion.Tests.Game.Events
     public sealed class GameEventRuntimeStateTests
     {
         [Test]
-        public void GetState_NewEvent_ReturnsUnexhaustedState()
+        public void GetState_NewEvent_ReturnsIncompleteState()
         {
             GameEventRuntimeState state = new GameEventRuntimeState();
 
             GameEventState result = state.GetState("EVENT1");
 
-            Assert.IsFalse(result.IsExhausted);
+            Assert.IsFalse(result.IsComplete);
         }
 
         [Test]

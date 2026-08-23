@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
@@ -11,13 +12,30 @@ namespace Rebellion.Game.Events
     {
         public AtTick At { get; set; }
         public EveryTicks Every { get; set; }
-        public RandomTickRange Random { get; set; }
+        public RandomDelay RandomDelay { get; set; }
+        public RandomInterval RandomInterval { get; set; }
         public AfterEvent After { get; set; }
         public AfterEvents AfterAll { get; set; }
         public AfterEvents AfterAny { get; set; }
 
         [PersistableIgnore]
-        public bool IsRecurring => Every != null || Random != null;
+        public bool IsRecurring => Every != null || RandomInterval != null;
+
+        /// <summary>
+        /// Gets the conditions that permanently end the recurring schedule.
+        /// </summary>
+        [PersistableIgnore]
+        public IReadOnlyList<GameConditional> Until
+        {
+            get
+            {
+                if (Every != null)
+                    return Every.Until;
+                if (RandomInterval != null)
+                    return RandomInterval.Until;
+                return Array.Empty<GameConditional>();
+            }
+        }
 
         /// <summary>
         /// Gets the inclusive delay range for an event's first activation.
@@ -44,7 +62,13 @@ namespace Rebellion.Game.Events
                 return;
             }
 
-            Random.GetRange(out minimum, out maximum);
+            if (RandomDelay != null)
+            {
+                RandomDelay.GetRange(out minimum, out maximum);
+                return;
+            }
+
+            RandomInterval.GetRange(out minimum, out maximum);
         }
 
         /// <summary>
@@ -60,12 +84,12 @@ namespace Rebellion.Game.Events
                 return;
             }
 
-            Random.GetRange(out minimum, out maximum);
+            RandomInterval.GetRange(out minimum, out maximum);
         }
     }
 
     /// <summary>
-    /// Schedules a one-shot event relative to the most recent execution of another event.
+    /// Schedules a one-shot event relative to the most recent activation of another event.
     /// </summary>
     [PersistableObject]
     public sealed class AfterEvent
@@ -117,13 +141,16 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public int InitialDelayTicks { get; set; }
+
+        /// <summary>Gets the conditions that permanently end this recurring schedule.</summary>
+        public List<GameConditional> Until { get; set; } = new List<GameConditional>();
     }
 
     /// <summary>
     /// Schedules an event after a uniformly selected inclusive tick delay.
     /// </summary>
     [PersistableObject]
-    public sealed class RandomTickRange
+    public sealed class RandomDelay
     {
         [PersistableAttribute]
         public int MinimumTicks { get; set; }
@@ -136,6 +163,33 @@ namespace Rebellion.Game.Events
         /// </summary>
         /// <param name="minimum">Receives the minimum delay.</param>
         /// <param name="maximum">Receives the maximum delay.</param>
+        public void GetRange(out int minimum, out int maximum)
+        {
+            minimum = MinimumTicks;
+            maximum = MaximumTicks;
+        }
+    }
+
+    /// <summary>
+    /// Schedules recurring event activations at uniformly selected inclusive tick intervals.
+    /// </summary>
+    [PersistableObject]
+    public sealed class RandomInterval
+    {
+        [PersistableAttribute]
+        public int MinimumTicks { get; set; }
+
+        [PersistableAttribute]
+        public int MaximumTicks { get; set; }
+
+        /// <summary>Gets the conditions that permanently end this recurring schedule.</summary>
+        public List<GameConditional> Until { get; set; } = new List<GameConditional>();
+
+        /// <summary>
+        /// Returns the configured inclusive interval range after load-time validation.
+        /// </summary>
+        /// <param name="minimum">Receives the minimum interval.</param>
+        /// <param name="maximum">Receives the maximum interval.</param>
         public void GetRange(out int minimum, out int maximum)
         {
             minimum = MinimumTicks;

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Advisor;
 using Rebellion.Game.Events;
@@ -11,23 +12,23 @@ namespace Rebellion.Tests.Game.Events
     public sealed class GameEventTests
     {
         [Test]
-        public void CanExecute_TriggerCountReached_ReturnsFalse()
+        public void CanActivate_MaximumActivationsReached_ReturnsFalse()
         {
-            GameEvent gameEvent = new GameEvent { TriggerCount = 3 };
-            GameEventState state = new GameEventState { ExecutionCount = 3 };
+            GameEvent gameEvent = new GameEvent { MaximumActivations = 3 };
+            GameEventState state = new GameEventState { ActivationCount = 3 };
 
-            bool result = gameEvent.CanExecute(state);
+            bool result = gameEvent.CanActivate(state);
 
             Assert.IsFalse(result);
         }
 
         [Test]
-        public void CanExecute_UnlimitedEvent_ReturnsTrue()
+        public void CanActivate_UnlimitedEvent_ReturnsTrue()
         {
             GameEvent gameEvent = new GameEvent();
-            GameEventState state = new GameEventState { ExecutionCount = 100 };
+            GameEventState state = new GameEventState { ActivationCount = 100 };
 
-            bool result = gameEvent.CanExecute(state);
+            bool result = gameEvent.CanActivate(state);
 
             Assert.IsTrue(result);
         }
@@ -62,6 +63,70 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void IsActive_AuthoredNodeInstanceID_RoundTrips()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                Conditionals = new List<GameConditional>
+                {
+                    new IsActiveConditional { NodeInstanceID = "DARTH_VADER" },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize(gameEvent);
+            GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
+
+            StringAssert.Contains("<IsActive NodeInstanceID=\"DARTH_VADER\">", xml);
+            IsActiveConditional conditional = restored.Conditionals.Single() as IsActiveConditional;
+            Assert.IsNotNull(conditional);
+            Assert.AreEqual("DARTH_VADER", conditional.NodeInstanceID);
+        }
+
+        [Test]
+        public void CompositeConditionals_RoundTripWithoutCollectionWrappers()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                Conditionals = new List<GameConditional>
+                {
+                    new NotConditional
+                    {
+                        Conditionals = new List<GameConditional>
+                        {
+                            new AnyConditional
+                            {
+                                Conditionals = new List<GameConditional>
+                                {
+                                    new IsCapturedConditional
+                                    {
+                                        OfficerInstanceID = "LUKE_SKYWALKER",
+                                    },
+                                    new IsInTransitConditional
+                                    {
+                                        UnitInstanceID = "LUKE_SKYWALKER",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize(gameEvent);
+            GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
+
+            XElement root = XElement.Parse(xml);
+            XElement notElement = root.Element("Conditionals")?.Element("Not");
+            XElement anyElement = notElement?.Element("Any");
+            Assert.IsNotNull(anyElement?.Element("IsCaptured"));
+            Assert.IsNull(notElement?.Element("Conditionals"));
+            Assert.IsNull(anyElement.Element("Conditionals"));
+            NotConditional not = (NotConditional)restored.Conditionals.Single();
+            AnyConditional any = (AnyConditional)not.Conditionals.Single();
+            Assert.AreEqual(2, any.Conditionals.Count);
+        }
+
+        [Test]
         public void Actions_AuthoredAliasesAndPresentation_RoundTripConcreteValues()
         {
             GameEvent gameEvent = new GameEvent
@@ -69,7 +134,7 @@ namespace Rebellion.Tests.Game.Events
                 InstanceID = "EVENT_STORY",
                 Actions = new List<GameAction>
                 {
-                    new RandomAction
+                    new RollRandomAction
                     {
                         Outcomes = new List<RandomOutcome>
                         {
@@ -80,6 +145,7 @@ namespace Rebellion.Tests.Game.Events
                                 {
                                     new SendMessageAction
                                     {
+                                        RecipientFactionInstanceID = "FNALL1",
                                         SubjectInstanceID = "LUKE",
                                         RelatedSubjectInstanceID = "VADER",
                                         MessageType = MessageType.Advice,
@@ -101,8 +167,12 @@ namespace Rebellion.Tests.Game.Events
                             },
                         },
                     },
-                    new SetActiveAction { UnitInstanceID = "LUKE_SKYWALKER", IsActive = false },
-                    new IncreaseOfficerForceAction
+                    new SetNodeStateAction
+                    {
+                        InstanceID = "LUKE_SKYWALKER",
+                        State = SceneNodeState.Inactive,
+                    },
+                    new IncreaseForceRankAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",
                         Amount = 5,
@@ -113,7 +183,7 @@ namespace Rebellion.Tests.Game.Events
             string xml = SerializationHelper.Serialize(gameEvent);
             GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
 
-            RandomAction random = restored.Actions[0] as RandomAction;
+            RollRandomAction random = restored.Actions[0] as RollRandomAction;
             SendMessageAction message =
                 random?.Outcomes.Single().Actions.Single() as SendMessageAction;
             Assert.IsNotNull(message);
@@ -122,23 +192,27 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("Story/dialogue", message.BackgroundAudio.Path);
             Assert.AreEqual("Story/advisor", message.AdvisorNotification.Protocol.AnimationPath);
             Assert.AreEqual(3, message.AdvisorNotification.Protocol.FrameCount);
+            Assert.AreEqual("LUKE_SKYWALKER", ((SetNodeStateAction)restored.Actions[1]).InstanceID);
             Assert.AreEqual(
-                "LUKE_SKYWALKER",
-                ((SetActiveAction)restored.Actions[1]).UnitInstanceID
+                SceneNodeState.Inactive,
+                ((SetNodeStateAction)restored.Actions[1]).State
             );
-            Assert.IsFalse(((SetActiveAction)restored.Actions[1]).IsActive);
-            Assert.AreEqual(5, ((IncreaseOfficerForceAction)restored.Actions[2]).Amount);
+            Assert.AreEqual(5, ((IncreaseForceRankAction)restored.Actions[2]).Amount);
         }
 
         [Test]
-        public void TriggerCount_AuthoredValue_RoundTripsAttribute()
+        public void MaximumActivations_AuthoredValue_RoundTripsAttribute()
         {
-            GameEvent gameEvent = new GameEvent { InstanceID = "LIMITED_EVENT", TriggerCount = 5 };
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "LIMITED_EVENT",
+                MaximumActivations = 5,
+            };
 
             string xml = SerializationHelper.Serialize(gameEvent);
             GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
 
-            Assert.AreEqual(5, restored.TriggerCount);
+            Assert.AreEqual(5, restored.MaximumActivations);
         }
     }
 }

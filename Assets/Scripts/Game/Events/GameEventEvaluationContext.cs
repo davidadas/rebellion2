@@ -1,15 +1,14 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Describes one concrete execution of a data-defined event.
+    /// Holds the trigger result, state, and bindings available during one event evaluation.
     /// Scoped events receive the entity whose independent schedule activated them.
     /// </summary>
-    public sealed class GameEventExecutionContext
+    public sealed class GameEventEvaluationContext
     {
         private readonly Dictionary<string, object> _bindings = new Dictionary<string, object>(
             StringComparer.Ordinal
@@ -18,44 +17,31 @@ namespace Rebellion.Game.Events
 
         public GameEvent Event { get; }
         public GameEventState State { get; }
-        public ISceneNode Target { get; }
         public GameResult TriggerResult { get; }
         public IReadOnlyList<GameResult> Results => _results;
 
         /// <summary>
-        /// Creates the runtime context for one event activation.
+        /// Creates the runtime context for one event evaluation.
         /// </summary>
-        /// <param name="gameEvent">The event definition being executed.</param>
-        /// <param name="state">Persistent scheduling state for this activation scope.</param>
-        /// <param name="target">The selected planet or other targeted scene node.</param>
+        /// <param name="gameEvent">The event definition being activated.</param>
+        /// <param name="state">Persistent scheduling state for this event.</param>
         /// <param name="triggerResult">The result that activated this event, if any.</param>
         /// <param name="trigger">The trigger definition that matched the result, if any.</param>
-        public GameEventExecutionContext(
+        public GameEventEvaluationContext(
             GameEvent gameEvent,
             GameEventState state,
-            ISceneNode target,
             GameResult triggerResult = null,
             GameEventTrigger trigger = null
         )
         {
             Event = gameEvent;
             State = state;
-            Target = target;
             TriggerResult = triggerResult;
-            Bind("target", target);
             trigger?.Bind(this, triggerResult);
         }
 
         /// <summary>
-        /// Gets the scope target when it has the requested scene-node type.
-        /// </summary>
-        /// <typeparam name="T">The expected scene-node type.</typeparam>
-        /// <returns>The typed target, or null when the target has another type.</returns>
-        public T GetTarget<T>()
-            where T : class, ISceneNode => Target as T;
-
-        /// <summary>
-        /// Stores a named value for subsequent actions in this activation.
+        /// Stores a named value for subsequent evaluation stages.
         /// </summary>
         /// <param name="name">The stable binding name.</param>
         /// <param name="value">The value to expose, including null when a typed trigger argument has no value.</param>
@@ -100,21 +86,29 @@ namespace Rebellion.Game.Events
         public bool TryGetBinding(string name, out object value) =>
             _bindings.TryGetValue(name, out value);
 
+        /// <summary>Attempts to resolve one explicit binding reference as the requested type.</summary>
         public bool TryGetBindingReference<T>(string reference, out T value)
         {
-            return TryGetBinding(GetBindingName(reference), out value);
+            if (TryResolveBindingReference(reference, out object resolved) && resolved is T typed)
+            {
+                value = typed;
+                return true;
+            }
+            value = default;
+            return false;
         }
 
-        public bool TryGetBindingReference(string reference, out object value)
-        {
-            return TryGetBinding(GetBindingName(reference), out value);
-        }
+        /// <summary>Attempts to resolve one explicit binding reference without a type constraint.</summary>
+        public bool TryGetBindingReference(string reference, out object value) =>
+            TryResolveBindingReference(reference, out value);
 
+        /// <summary>Gets one explicit binding reference as the requested type.</summary>
         public T GetBindingReference<T>(string reference)
         {
             return TryGetBindingReference(reference, out T value) ? value : default;
         }
 
+        /// <summary>Removes the required dollar-sign prefix from a binding reference.</summary>
         private static string GetBindingName(string reference)
         {
             if (string.IsNullOrWhiteSpace(reference) || reference[0] != '$')
@@ -122,8 +116,19 @@ namespace Rebellion.Game.Events
             return reference.Substring(1);
         }
 
+        /// <summary>Attempts to resolve one explicitly authored binding from the evaluation context.</summary>
+        private bool TryResolveBindingReference(string reference, out object value)
+        {
+            string name = GetBindingName(reference);
+            if (name.Contains("."))
+                throw new InvalidOperationException(
+                    "Binding references cannot traverse object properties. Bind the required trigger argument explicitly."
+                );
+            return _bindings.TryGetValue(name, out value);
+        }
+
         /// <summary>
-        /// Records a result emitted during this activation for later actions to inspect.
+        /// Records a result emitted during this evaluation for later actions to inspect.
         /// </summary>
         /// <param name="result">The emitted result; null values are ignored.</param>
         public void AddResult(GameResult result)

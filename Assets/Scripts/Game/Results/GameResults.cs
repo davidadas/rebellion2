@@ -40,6 +40,17 @@ namespace Rebellion.Game.Results
         ForceUserDiscovered,
     }
 
+    /// <summary>
+    /// Identifies the gameplay path that destroyed a unit.
+    /// </summary>
+    public enum UnitDestructionReason
+    {
+        Direct,
+        Arrival,
+        Maintenance,
+        Sabotage,
+    }
+
     public enum CombatSide
     {
         Attacker,
@@ -63,7 +74,7 @@ namespace Rebellion.Game.Results
 
     #endregion
 
-    #region System / Planet
+    #region Planet
 
     /// <summary>
     /// A numeric attribute of a planet changed for a faction (energy, loyalty, raw materials, etc.).
@@ -97,18 +108,6 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
         public Fleet BlockadingFleet { get; set; }
         public bool Blockaded { get; set; }
-    }
-
-    /// <summary>
-    /// A Force discovery state changed — either an officer began scanning for Force users,
-    /// or a hidden Force user was discovered by a scanner.
-    /// </summary>
-    public class ForceDiscoveryResult : GameResult
-    {
-        public ForceEventType EventType { get; set; }
-        public Officer Officer { get; set; }
-        public Officer Discoverer { get; set; }
-        public int ForceRank { get; set; }
     }
 
     /// <summary>
@@ -150,16 +149,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Ownership of one unit changed hands.
-    /// </summary>
-    public sealed class UnitOwnershipChangedResult : GameResult
-    {
-        public ISceneNode Unit { get; set; }
-        public Faction PreviousOwner { get; set; }
-        public Faction NewOwner { get; set; }
-    }
-
-    /// <summary>
     /// A faction lost its headquarters to an opposing faction.
     /// </summary>
     public abstract class HeadquartersLostResult : GameResult
@@ -190,19 +179,9 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
     }
 
-    /// <summary>
-    /// A scripted incident occurred at a planet.
-    /// </summary>
-    public class PlanetIncidentResult : GameResult
-    {
-        public Planet Planet { get; set; }
-        public PlanetIncidentType IncidentType { get; set; }
-        public int Severity { get; set; }
-        public PlanetChangeCategory ChangedStat { get; set; }
-        public int OldValue { get; set; }
-        public int NewValue { get; set; }
-        public List<IGameEntity> DestroyedObjects { get; set; } = new List<IGameEntity>();
-    }
+    #endregion
+
+    #region Faction
 
     /// <summary>
     /// Current observations about selected game objects were supplied to a faction.
@@ -212,10 +191,6 @@ namespace Rebellion.Game.Results
         public Faction Recipient { get; set; }
         public List<ISceneNode> Observations { get; set; } = new List<ISceneNode>();
     }
-
-    #endregion
-
-    #region Faction / Side
 
     /// <summary>
     /// A faction requires maintenance at a system.
@@ -251,16 +226,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A recruitment mission completed (successfully or not).
-    /// </summary>
-    public class OfficerRecruitedResult : GameResult
-    {
-        public Officer Officer { get; set; }
-        public Faction Faction { get; set; }
-        public Planet Planet { get; set; }
-    }
-
-    /// <summary>
     /// A side has no remaining officers available for recruitment.
     /// </summary>
     public class RecruitmentExhaustedResult : GameResult
@@ -282,7 +247,7 @@ namespace Rebellion.Game.Results
 
     #endregion
 
-    #region Mission / Role
+    #region Mission
 
     /// <summary>
     /// A mission completed with a recorded outcome.
@@ -313,6 +278,28 @@ namespace Rebellion.Game.Results
     #endregion
 
     #region Officer
+
+    /// <summary>
+    /// A Force discovery state changed — either an officer began scanning for Force users,
+    /// or a hidden Force user was discovered by a scanner.
+    /// </summary>
+    public class ForceDiscoveryResult : GameResult
+    {
+        public ForceEventType EventType { get; set; }
+        public Officer Officer { get; set; }
+        public Officer Discoverer { get; set; }
+        public int ForceRank { get; set; }
+    }
+
+    /// <summary>
+    /// A recruitment mission completed (successfully or not).
+    /// </summary>
+    public class OfficerRecruitedResult : GameResult
+    {
+        public Officer Officer { get; set; }
+        public Faction Faction { get; set; }
+        public Planet Planet { get; set; }
+    }
 
     /// <summary>
     /// A character's capture state changed (captured or released).
@@ -378,21 +365,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Records the complete outcome of a linked-officer encounter.
-    /// </summary>
-    public class DuelResult : GameResult
-    {
-        public Officer EncounteredOfficer { get; set; }
-        public Officer OpposingOfficer { get; set; }
-        public Planet Location { get; set; }
-        public bool EncounteredOfficerCaptured { get; set; }
-        public int EncounteredOfficerInjury { get; set; }
-        public int OpposingOfficerInjury { get; set; }
-        public string ImagePath { get; set; }
-        public string AudioPath { get; set; }
-    }
-
-    /// <summary>
     /// A traitor was discovered.
     /// </summary>
     public class TraitorDiscoveredResult : GameResult
@@ -439,7 +411,17 @@ namespace Rebellion.Game.Results
 
     #endregion
 
-    #region GameObject Lifecycle
+    #region Unit Lifecycle
+
+    /// <summary>
+    /// Ownership of one unit changed hands.
+    /// </summary>
+    public sealed class UnitOwnershipChangedResult : GameResult
+    {
+        public ISceneNode Unit { get; set; }
+        public Faction PreviousOwner { get; set; }
+        public Faction NewOwner { get; set; }
+    }
 
     /// <summary>
     /// A game object was created.
@@ -501,41 +483,67 @@ namespace Rebellion.Game.Results
         public IGameEntity DestroyedObject { get; set; }
         public IGameEntity DestroyedBy { get; set; }
         public IGameEntity Context { get; set; }
+        public UnitDestructionReason Reason { get; set; }
     }
 
     /// <summary>
     /// A game object was destroyed on arrival at its destination.
     /// </summary>
-    public class GameObjectDestroyedOnArrivalResult : GameResult
+    public class GameObjectDestroyedOnArrivalResult : GameObjectDestroyedResult
     {
-        public IGameEntity DestroyedObject { get; set; }
         public IGameEntity Ref { get; set; }
-        public IGameEntity Context { get; set; }
+
+        /// <summary>Creates a destruction result attributed to arrival processing.</summary>
+        public GameObjectDestroyedOnArrivalResult()
+        {
+            Reason = UnitDestructionReason.Arrival;
+        }
     }
 
     /// <summary>
     /// A game object was automatically scrapped.
     /// </summary>
-    public class GameObjectAutoscrappedResult : GameResult
+    public class GameObjectAutoscrappedResult : GameObjectDestroyedResult
     {
-        public IGameEntity DestroyedObject { get; set; }
         public IGameEntity Ref { get; set; }
-        public IGameEntity Context { get; set; }
+
+        /// <summary>Creates a destruction result attributed to maintenance processing.</summary>
+        public GameObjectAutoscrappedResult()
+        {
+            Reason = UnitDestructionReason.Maintenance;
+        }
     }
 
     /// <summary>
     /// A game object was sabotaged and destroyed.
     /// </summary>
-    public class GameObjectSabotagedResult : GameResult
+    public class GameObjectSabotagedResult : GameObjectDestroyedResult
     {
-        public IGameEntity SabotagedObject { get; set; }
-        public IGameEntity Saboteur { get; set; }
-        public IGameEntity Context { get; set; }
+        /// <summary>Creates a destruction result attributed to sabotage.</summary>
+        public GameObjectSabotagedResult()
+        {
+            Reason = UnitDestructionReason.Sabotage;
+        }
     }
 
     #endregion
 
-    #region Fleet / Combat
+    #region Combat
+
+    /// <summary>
+    /// Records the complete outcome of a linked-officer encounter.
+    /// </summary>
+    public class DuelResult : GameResult
+    {
+        public Officer EncounteredOfficer { get; set; }
+        public Officer OpposingOfficer { get; set; }
+        public Planet Location { get; set; }
+        public bool EncounteredOfficerCaptured { get; set; }
+        public int EncounteredOfficerInjury { get; set; }
+        public int OpposingOfficerInjury { get; set; }
+        public string ImagePath { get; set; }
+        public string AudioPath { get; set; }
+    }
 
     /// <summary>
     /// A fighter squadron took casualties during combat.

@@ -5,7 +5,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Stores the persisted execution history owned by the game-event subsystem.
+    /// Stores the persisted activation history owned by the game-event subsystem.
     /// </summary>
     [PersistableObject]
     public sealed class GameEventRuntimeState

@@ -19,8 +19,8 @@ namespace Rebellion.Game.Events
         public bool IsMet(GameRoot game, GameResult triggerResult) =>
             IsMet(new GameConditionContext(game, triggerResult));
 
-        internal bool IsMet(GameRoot game, GameEventExecutionContext activation) =>
-            IsMet(new GameConditionContext(game, activation));
+        internal bool IsMet(GameRoot game, GameEventEvaluationContext evaluation) =>
+            IsMet(new GameConditionContext(game, evaluation));
     }
 
     /// <summary>
@@ -29,7 +29,7 @@ namespace Rebellion.Game.Events
     public sealed class GameConditionContext
     {
         public GameRoot Game { get; }
-        public GameEventExecutionContext Activation { get; }
+        public GameEventEvaluationContext Evaluation { get; }
         public GameResult TriggerResult { get; }
         public IRandomNumberProvider Random { get; }
 
@@ -39,17 +39,17 @@ namespace Rebellion.Game.Events
         public GameConditionContext(GameRoot game, GameResult triggerResult)
             : this(game, null, triggerResult) { }
 
-        public GameConditionContext(GameRoot game, GameEventExecutionContext activation)
-            : this(game, activation, activation?.TriggerResult) { }
+        public GameConditionContext(GameRoot game, GameEventEvaluationContext evaluation)
+            : this(game, evaluation, evaluation?.TriggerResult) { }
 
         private GameConditionContext(
             GameRoot game,
-            GameEventExecutionContext activation,
+            GameEventEvaluationContext evaluation,
             GameResult triggerResult
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
-            Activation = activation;
+            Evaluation = evaluation;
             TriggerResult = triggerResult;
             Random = game.Random;
         }

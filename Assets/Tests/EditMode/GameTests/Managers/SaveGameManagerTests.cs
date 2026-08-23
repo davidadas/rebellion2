@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -10,8 +9,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace Rebellion.Tests.Managers
 {
@@ -572,7 +569,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void LoadGameData_UnknownElement_SkipsElementAndWarns()
+        public void LoadGameData_UnknownElement_SkipsElement()
         {
             GameRoot game = new GameRoot
             {
@@ -588,11 +585,6 @@ namespace Rebellion.Tests.Managers
                     "<GameRoot><FutureField><Nested>future value</Nested></FutureField>"
                 );
             File.WriteAllText(savePath, xml);
-            LogAssert.Expect(
-                LogType.Warning,
-                new Regex(".*Ignored unknown element 'FutureField' while loading GameRoot\\.")
-            );
-
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(20, loadedGame.CurrentTick);
@@ -642,7 +634,7 @@ namespace Rebellion.Tests.Managers
                 InstanceID = "EVENT1",
                 Schedule = new GameEventScheduler
                 {
-                    Random = new RandomTickRange { MinimumTicks = 300, MaximumTicks = 400 },
+                    RandomInterval = new RandomInterval { MinimumTicks = 300, MaximumTicks = 400 },
                 },
             };
             GameEvent event2 = new GameEvent { InstanceID = "EVENT2" };
@@ -656,12 +648,12 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, loadedGame.GetEventPool().Count);
             Assert.AreEqual("EVENT1", loadedGame.GetEventPool()[0].InstanceID);
             Assert.AreEqual("EVENT2", loadedGame.GetEventPool()[1].InstanceID);
-            Assert.AreEqual(300, loadedGame.GetEventPool()[0].Schedule.Random.MinimumTicks);
-            Assert.AreEqual(400, loadedGame.GetEventPool()[0].Schedule.Random.MaximumTicks);
+            Assert.AreEqual(300, loadedGame.GetEventPool()[0].Schedule.RandomInterval.MinimumTicks);
+            Assert.AreEqual(400, loadedGame.GetEventPool()[0].Schedule.RandomInterval.MaximumTicks);
         }
 
         [Test]
-        public void SaveAndLoadGame_GameWithExhaustedEvents_PreservesEventStates()
+        public void SaveAndLoadGame_GameWithCompletedEvents_PreservesEventStates()
         {
             GameSummary summary = new GameSummary
             {
@@ -679,9 +671,9 @@ namespace Rebellion.Tests.Managers
                 {
                     States = new Dictionary<string, GameEventState>
                     {
-                        ["EVENT1"] = new GameEventState { IsExhausted = true },
-                        ["EVENT2"] = new GameEventState { IsExhausted = true },
-                        ["EVENT3"] = new GameEventState { IsExhausted = true },
+                        ["EVENT1"] = new GameEventState { IsComplete = true },
+                        ["EVENT2"] = new GameEventState { IsComplete = true },
+                        ["EVENT3"] = new GameEventState { IsComplete = true },
                     },
                 },
                 Galaxy = new GalaxyMap(),
@@ -691,9 +683,9 @@ namespace Rebellion.Tests.Managers
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(3, loadedGame.EventRuntime.States.Count);
-            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT1"].IsExhausted);
-            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT2"].IsExhausted);
-            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT3"].IsExhausted);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT1"].IsComplete);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT2"].IsComplete);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT3"].IsComplete);
         }
 
         [Test]
@@ -712,8 +704,8 @@ namespace Rebellion.Tests.Managers
                             {
                                 IsInitialized = true,
                                 NextEligibleTick = 412,
-                                ExecutionCount = 3,
-                                LastExecutionTick = 400,
+                                ActivationCount = 3,
+                                LastActivationTick = 400,
                             }
                         },
                     },
@@ -727,8 +719,8 @@ namespace Rebellion.Tests.Managers
             GameEventState state = loadedGame.EventRuntime.States["STORY_EVENT"];
             Assert.IsTrue(state.IsInitialized);
             Assert.AreEqual(412, state.NextEligibleTick);
-            Assert.AreEqual(3, state.ExecutionCount);
-            Assert.AreEqual(400, state.LastExecutionTick);
+            Assert.AreEqual(3, state.ActivationCount);
+            Assert.AreEqual(400, state.LastActivationTick);
         }
 
         [Test]
@@ -932,7 +924,7 @@ namespace Rebellion.Tests.Managers
                 new Dictionary<string, GameEventState>();
             for (int i = 0; i < 50; i++)
             {
-                eventStates.Add($"EVENT{i}", new GameEventState { IsExhausted = true });
+                eventStates.Add($"EVENT{i}", new GameEventState { IsComplete = true });
             }
 
             GameRoot game = new GameRoot
@@ -948,7 +940,7 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(50, loadedGame.EventRuntime.States.Count);
             for (int i = 0; i < 50; i++)
             {
-                Assert.IsTrue(loadedGame.EventRuntime.States[$"EVENT{i}"].IsExhausted);
+                Assert.IsTrue(loadedGame.EventRuntime.States[$"EVENT{i}"].IsComplete);
             }
         }
 

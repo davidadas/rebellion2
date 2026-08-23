@@ -37,7 +37,7 @@ namespace Rebellion.Game.Events
     {
         public GameRoot Game { get; }
         public IRandomNumberProvider Random { get; }
-        public GameEventExecutionContext Activation { get; }
+        public GameEventEvaluationContext Evaluation { get; }
         public UnitFactory UnitFactory { get; }
         internal List<GameRequest> Requests { get; } = new List<GameRequest>();
         internal List<GameResult> Results { get; } = new List<GameResult>();
@@ -45,13 +45,13 @@ namespace Rebellion.Game.Events
         public GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventExecutionContext activation = null,
+            GameEventEvaluationContext evaluation = null,
             UnitFactory unitFactory = null
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
             Random = random ?? throw new ArgumentNullException(nameof(random));
-            Activation = activation;
+            Evaluation = evaluation;
             UnitFactory = unitFactory;
         }
 
@@ -62,8 +62,8 @@ namespace Rebellion.Game.Events
         {
             if (request == null)
                 return;
-            if (string.IsNullOrEmpty(request.SourceEventInstanceID) && Activation?.Event != null)
-                request.SourceEventInstanceID = Activation.Event.InstanceID;
+            if (string.IsNullOrEmpty(request.SourceEventInstanceID) && Evaluation?.Event != null)
+                request.SourceEventInstanceID = Evaluation.Event.InstanceID;
             Requests.Add(request);
         }
 
@@ -74,9 +74,9 @@ namespace Rebellion.Game.Events
         {
             if (result == null)
                 return;
-            if (string.IsNullOrEmpty(result.SourceEventInstanceID) && Activation?.Event != null)
-                result.SourceEventInstanceID = Activation.Event.InstanceID;
-            Activation?.AddResult(result);
+            if (string.IsNullOrEmpty(result.SourceEventInstanceID) && Evaluation?.Event != null)
+                result.SourceEventInstanceID = Evaluation.Event.InstanceID;
+            Evaluation?.AddResult(result);
             Results.Add(result);
         }
 

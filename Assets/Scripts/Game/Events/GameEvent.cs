@@ -1,26 +1,66 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Persists the scheduling history for one authored event definition.
+    /// Persists the activation history for one authored event definition.
     /// </summary>
     [PersistableObject]
     public sealed class GameEventState
     {
         public bool IsInitialized { get; set; }
         public int NextEligibleTick { get; set; }
-        public int ExecutionCount { get; set; }
-        public int LastExecutionTick { get; set; } = -1;
-        public bool IsExhausted { get; set; }
+        public int ActivationCount { get; set; }
+        public int LastActivationTick { get; set; } = -1;
+        public bool IsComplete { get; set; }
     }
 
     /// <summary>
-    /// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.
-    /// Execute returns the results of those actions for notification and logging.
+    /// Assigns an explicitly selected value to an event-local binding name.
+    /// </summary>
+    [PersistableObject(Name = "Bind")]
+    public sealed class GameEventBinding
+    {
+        /// <summary>Gets or sets the stable trigger argument to expose.</summary>
+        [PersistableAttribute]
+        public string Argument { get; set; }
+
+        /// <summary>Gets or sets the event-local name assigned to the value.</summary>
+        [PersistableAttribute]
+        public string As { get; set; }
+
+        [PersistableMember(Name = "From")]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+
+        /// <summary>Selects exactly one scene node and stores it in the evaluation context.</summary>
+        internal void Bind(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventEvaluationContext context
+        )
+        {
+            if (Selectors.Count != 1)
+                throw new InvalidOperationException(
+                    $"Selection binding '{As}' requires exactly one selector."
+                );
+
+            ISceneNode[] values = Selectors[0].Select(game, provider, context).Distinct().ToArray();
+            if (values.Length != 1)
+                throw new InvalidOperationException(
+                    $"Selection binding '{As}' must resolve exactly one object but resolved {values.Length}."
+                );
+            context.Bind(As, values[0]);
+        }
+    }
+
+    /// <summary>
+    /// Defines one scheduled or triggered event and the actions performed when it activates.
     /// </summary>
     [PersistableObject]
     public sealed class GameEvent
@@ -28,21 +68,18 @@ namespace Rebellion.Game.Events
         public string InstanceID { get; set; }
 
         [PersistableAttribute]
-        public int? TriggerCount { get; set; }
+        public int? MaximumActivations { get; set; }
 
-        public bool CanExecute(GameEventState state) =>
-            !state.IsExhausted
-            && (!TriggerCount.HasValue || state.ExecutionCount < TriggerCount.Value);
-
-        // Result Triggers.
+        public List<GameEventBinding> Bindings { get; set; } = new List<GameEventBinding>();
         public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
-
-        // Schedule and Execution Pipeline.
         public GameEventScheduler Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
-        public List<GameConditional> Until { get; set; } = new List<GameConditional>();
-        public GameEventTarget Target { get; set; }
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
+
+        /// <summary>Returns whether the event remains below its authored activation limit.</summary>
+        internal bool CanActivate(GameEventState state) =>
+            !state.IsComplete
+            && (!MaximumActivations.HasValue || state.ActivationCount < MaximumActivations.Value);
 
         /// <summary>
         /// Creates an empty event definition for deserialization.
@@ -61,12 +98,12 @@ namespace Rebellion.Game.Events
         }
 
         /// <summary>
-        /// Returns true if all conditions accept the supplied execution context.
+        /// Returns true if all conditions accept the supplied evaluation context.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <returns>True if every conditional is satisfied.</returns>
-        internal bool AreConditionsMet(GameRoot game, GameEventExecutionContext context)
+        internal bool AreConditionsMet(GameRoot game, GameEventEvaluationContext context)
         {
             foreach (GameConditional conditional in Conditionals)
             {
@@ -84,10 +121,10 @@ namespace Rebellion.Game.Events
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
         /// <returns>The context containing requests and results produced by the actions.</returns>
-        internal GameActionContext Execute(
+        internal GameActionContext ExecuteActions(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context,
+            GameEventEvaluationContext context,
             UnitFactory unitFactory = null
         )
         {

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -122,9 +121,6 @@ namespace Rebellion.Game.Messages
         PlanetDeclaredNeutralityBySupport,
         PlanetCaptured,
         HeadquartersDestroyed,
-        NaturalDisaster,
-        NewResources,
-        ResourcesDepleted,
         BlockadeInitiated,
         BlockadeDetected,
         EvacuationLosses,
@@ -184,8 +180,6 @@ namespace Rebellion.Game.Messages
         public string NewOwnerInstanceID { get; set; }
         public string FactionInstanceID { get; set; }
         public string GameObjectTypeID { get; set; }
-        public PlanetChangeCategory PlanetChange { get; set; }
-        public bool HasDestroyedObjects { get; set; }
         public bool PlanetDestroyed { get; set; }
         public string Subject { get; set; }
         public string Body { get; set; }

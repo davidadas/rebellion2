@@ -48,15 +48,28 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ValidateEvents_ReservedTargetBinding_ThrowsInvalidOperationException()
+        public void ValidateEvents_OneShotScheduleWithoutMaximumActivations_DoesNotThrow()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "ONE_SHOT",
+                Schedule = new GameEventScheduler { At = new AtTick { Tick = 25 } },
+            };
+
+            Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
+        }
+
+        [Test]
+        public void ValidateEvents_DuplicateBindingAlias_ThrowsInvalidOperationException()
         {
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "INVALID_BINDING",
                 Triggers = new List<GameEventTrigger>
                 {
-                    new GameEventTrigger("core:unit.arrived", ("Unit", "target")),
+                    new UnitArrivedTrigger { Bindings = TriggerBindings(("Unit", "target")) },
                 },
+                Bindings = new List<GameEventBinding> { new GameEventBinding { As = "target" } },
             };
 
             TestDelegate validate = () => _system.ValidateEvents(new[] { gameEvent });
@@ -72,18 +85,39 @@ namespace Rebellion.Tests.Sectors
                 InstanceID = "MULTI_TRIGGER",
                 Triggers = new List<GameEventTrigger>
                 {
-                    new GameEventTrigger(
-                        "core:unit.arrived",
-                        ("UnitInstanceID", "subjectInstanceID")
-                    ),
-                    new GameEventTrigger("core:duel.completed"),
+                    new UnitArrivedTrigger { Bindings = TriggerBindings(("Unit", "result")) },
+                    new DuelCompletedTrigger(),
                 },
             };
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
                 _system.ValidateEvents(new[] { gameEvent })
             );
 
-            StringAssert.Contains("same binding aliases", exception.Message);
+            StringAssert.Contains("same trigger bindings and value types", exception.Message);
+        }
+
+        [Test]
+        public void ValidateEvents_MultipleFilteredTriggersWithSameAlias_DoesNotThrow()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "MULTI_TRIGGER",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new UnitArrivedTrigger
+                    {
+                        UnitInstanceID = "first",
+                        Bindings = TriggerBindings(("Unit", "arrival")),
+                    },
+                    new UnitArrivedTrigger
+                    {
+                        UnitInstanceID = "second",
+                        Bindings = TriggerBindings(("Unit", "arrival")),
+                    },
+                },
+            };
+
+            Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
         }
 
         [Test]
@@ -96,7 +130,7 @@ namespace Rebellion.Tests.Sectors
             _system.ProcessEvents(_game.GetEventPool());
 
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
-            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
+            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
         [Test]
@@ -109,7 +143,7 @@ namespace Rebellion.Tests.Sectors
             _system.ProcessEvents(_game.GetEventPool());
 
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
-            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
+            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
         [Test]
@@ -122,44 +156,122 @@ namespace Rebellion.Tests.Sectors
             _system.ProcessEvents(_game.GetEventPool());
 
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
-            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsExhausted);
+            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
         [Test]
-        public void ProcessEvents_TriggerCountFive_ExecutesFiveTimes()
+        public void ProcessEvents_RecurringScheduleUntilMet_CompletesAndRemovesEvent()
+        {
+            GameEvent gameEvent = CreateTickEvent("UNTIL_MET", targetTick: 0, repeatable: true);
+            gameEvent.Schedule = new GameEventScheduler
+            {
+                Every = new EveryTicks
+                {
+                    Ticks = 5,
+                    Until = new List<GameConditional>
+                    {
+                        new TickCountConditional
+                        {
+                            Comparison = ComparisonOperator.GreaterThanOrEqual,
+                            Ticks = 10,
+                        },
+                    },
+                },
+            };
+            _game.CurrentTick = 10;
+            _game.GetEventPool().Add(gameEvent);
+
+            _system.ProcessEvents(_game.GetEventPool());
+
+            Assert.AreEqual(0, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
+            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
+            Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
+        }
+
+        [Test]
+        public void ProcessEvents_RecurringScheduleUntilMet_UsesEvaluationBinding()
+        {
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "BOUND_UNTIL",
+                Bindings = new List<GameEventBinding>
+                {
+                    new GameEventBinding
+                    {
+                        As = "planet",
+                        Selectors = new List<GameEventSelector>
+                        {
+                            new SelectPlanets { InstanceID = planet.InstanceID },
+                        },
+                    },
+                },
+                Schedule = new GameEventScheduler
+                {
+                    Every = new EveryTicks
+                    {
+                        Ticks = 5,
+                        Until = new List<GameConditional>
+                        {
+                            new ComparePlanetStatConditional
+                            {
+                                PlanetBinding = "$planet",
+                                Stat = PlanetStat.RawResourceNodes,
+                                Comparison = ComparisonOperator.Equal,
+                                Value = 0,
+                            },
+                        },
+                    },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _system.ProcessEvents(_game.GetEventPool());
+
+            Assert.AreEqual(0, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
+            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
+            Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
+        }
+
+        [Test]
+        public void ProcessEvents_MaximumActivationsFive_ActivatesFiveTimes()
         {
             GameEvent gameEvent = CreateTickEvent("FIVE_RUNS", targetTick: 0, repeatable: false);
-            gameEvent.TriggerCount = 5;
+            gameEvent.MaximumActivations = 5;
             _game.CurrentTick = 1;
             _game.GetEventPool().Add(gameEvent);
 
             for (int iteration = 0; iteration < 6; iteration++)
                 _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.AreEqual(5, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(5, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_TriggerCountThree_ExecutesThreeTimes()
+        public void ProcessEvents_MaximumActivationsThree_ActivatesThreeTimes()
         {
             GameEvent gameEvent = CreateTickEvent("THREE_RUNS", targetTick: 0, repeatable: false);
-            gameEvent.TriggerCount = 3;
+            gameEvent.MaximumActivations = 3;
             _game.CurrentTick = 1;
             _game.GetEventPool().Add(gameEvent);
 
             for (int iteration = 0; iteration < 4; iteration++)
                 _system.ProcessEvents(_game.GetEventPool());
 
-            Assert.AreEqual(3, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(3, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_InitialRandomDelay_WaitsUntilRolledAbsoluteTick()
+        public void ProcessEvents_RandomDelay_WaitsUntilRolledAbsoluteTick()
         {
             GameEvent gameEvent = CreateTickEvent("DELAYED", targetTick: 0, repeatable: false);
+            gameEvent.MaximumActivations = null;
             gameEvent.Schedule = new GameEventScheduler
             {
-                Random = new RandomTickRange { MinimumTicks = 10, MaximumTicks = 14 },
+                RandomDelay = new RandomDelay { MinimumTicks = 10, MaximumTicks = 14 },
             };
             _game.GetEventPool().Add(gameEvent);
 
@@ -172,12 +284,12 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
             Assert.AreEqual(
                 12,
-                _game.EventRuntime.GetState(gameEvent.InstanceID).LastExecutionTick
+                _game.EventRuntime.GetState(gameEvent.InstanceID).LastActivationTick
             );
         }
 
         [Test]
-        public void ProcessEvents_RepeatDelay_PreventsExecutionUntilCooldownExpires()
+        public void ProcessEvents_RepeatDelay_PreventsActivationUntilCooldownExpires()
         {
             GameEvent gameEvent = CreateTickEvent("COOLDOWN", targetTick: 0, repeatable: true);
             gameEvent.Schedule = new GameEventScheduler { Every = new EveryTicks { Ticks = 5 } };
@@ -187,15 +299,15 @@ namespace Rebellion.Tests.Sectors
             _system.ProcessEvents(_game.GetEventPool());
             _game.CurrentTick = 5;
             _system.ProcessEvents(_game.GetEventPool());
-            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
 
             _game.CurrentTick = 6;
             _system.ProcessEvents(_game.GetEventPool());
-            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_AfterSchedule_DelaysFromPredecessorExecution()
+        public void ProcessEvents_AfterSchedule_DelaysFromPredecessorActivation()
         {
             GameEvent predecessor = CreateTickEvent("DEPARTURE", targetTick: 19, repeatable: false);
             GameEvent pending = CreateTickEvent("PENDING_RETURN", targetTick: 0, repeatable: false);
@@ -230,7 +342,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_AfterAllScheduleAtFinalDelay_ExecutesEvent()
+        public void ProcessEvents_AfterAllScheduleAtFinalDelay_ActivatesEvent()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ALL", afterAll: true);
             _game.GetEventPool().Add(pending);
@@ -254,7 +366,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_AfterAnyScheduleAtFirstDelay_ExecutesEvent()
+        public void ProcessEvents_AfterAnyScheduleAtFirstDelay_ActivatesEvent()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ANY", afterAll: false);
             _game.GetEventPool().Add(pending);
@@ -271,10 +383,7 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "RESULT_ONLY",
-                Triggers = new List<GameEventTrigger>
-                {
-                    new GameEventTrigger("core:duel.completed"),
-                },
+                Triggers = new List<GameEventTrigger> { new DuelCompletedTrigger() },
                 Actions = new List<GameAction>
                 {
                     new SetEventVariableAction { Key = "unexpected", Operand = 1 },
@@ -305,11 +414,15 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "SCOPED",
 
-                Target = new GameEventTarget
+                Bindings = new List<GameEventBinding>
                 {
-                    Selectors = new List<GameEventSelector>
+                    new GameEventBinding
                     {
-                        new SelectPlanets { InstanceID = first.InstanceID },
+                        As = "target",
+                        Selectors = new List<GameEventSelector>
+                        {
+                            new SelectPlanets { InstanceID = first.InstanceID },
+                        },
                     },
                 },
                 Conditionals = new List<GameConditional>
@@ -350,9 +463,13 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "OWNED_ONLY",
 
-                Target = new GameEventTarget
+                Bindings = new List<GameEventBinding>
                 {
-                    Selectors = new List<GameEventSelector> { new SelectPlanets() },
+                    new GameEventBinding
+                    {
+                        As = "target",
+                        Selectors = new List<GameEventSelector> { new SelectPlanets() },
+                    },
                 },
                 Conditionals = new List<GameConditional>
                 {
@@ -376,7 +493,7 @@ namespace Rebellion.Tests.Sectors
 
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.AreEqual(150, state.NextEligibleTick);
-            Assert.AreEqual(1, state.ExecutionCount);
+            Assert.AreEqual(1, state.ActivationCount);
         }
 
         [Test]
@@ -393,9 +510,13 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "OWNED_ONLY",
 
-                Target = new GameEventTarget
+                Bindings = new List<GameEventBinding>
                 {
-                    Selectors = new List<GameEventSelector> { new SelectPlanets() },
+                    new GameEventBinding
+                    {
+                        As = "target",
+                        Selectors = new List<GameEventSelector> { new SelectPlanets() },
+                    },
                 },
                 Conditionals = new List<GameConditional>
                 {
@@ -420,11 +541,11 @@ namespace Rebellion.Tests.Sectors
 
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.AreEqual(130, state.NextEligibleTick);
-            Assert.AreEqual(1, state.ExecutionCount);
+            Assert.AreEqual(1, state.ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_OneShotTarget_ExecutesTargetOnce()
+        public void ProcessEvents_OneShotTarget_ActivatesTargetOnce()
         {
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet { InstanceID = "planet" };
@@ -433,10 +554,14 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "ONE_SHOT_PER_PLANET",
-                TriggerCount = 1,
-                Target = new GameEventTarget
+                MaximumActivations = 1,
+                Bindings = new List<GameEventBinding>
                 {
-                    Selectors = new List<GameEventSelector> { new SelectPlanets() },
+                    new GameEventBinding
+                    {
+                        As = "target",
+                        Selectors = new List<GameEventSelector> { new SelectPlanets() },
+                    },
                 },
                 Actions = new List<GameAction> { new RecordScopedPlanetAction() },
             };
@@ -461,18 +586,22 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "DELAYED_RANDOM_TARGET",
-                TriggerCount = 1,
+                MaximumActivations = 1,
                 Schedule = new GameEventScheduler { At = new AtTick { Tick = 10 } },
-                Target = new GameEventTarget
+                Bindings = new List<GameEventBinding>
                 {
-                    Selectors = new List<GameEventSelector>
+                    new GameEventBinding
                     {
-                        new SelectRandom
+                        As = "target",
+                        Selectors = new List<GameEventSelector>
                         {
-                            Count = 1,
-                            Selectors = new List<GameEventSelector>
+                            new SelectRandom
                             {
-                                new SelectPlanets { SectorType = PlanetSectorType.Core },
+                                Count = 1,
+                                Selectors = new List<GameEventSelector>
+                                {
+                                    new SelectPlanets { SectorType = PlanetSectorType.Core },
+                                },
                             },
                         },
                     },
@@ -489,19 +618,19 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void HandleResults_MatchingEncounter_ExecutesResultTriggeredEventOnce()
+        public void HandleResults_MatchingEncounter_ActivatesResultTriggeredEventOnce()
         {
             Officer luke = new Officer { InstanceID = "luke" };
             Officer vader = new Officer { InstanceID = "vader" };
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "HERITAGE",
-                TriggerCount = 1,
+                MaximumActivations = 1,
                 Triggers = EncounterTrigger(),
                 Conditionals = new List<GameConditional>
                 {
-                    BindingEquals("officer", luke.InstanceID),
-                    BindingEquals("opponent", vader.InstanceID),
+                    BindingEquals("firstOfficerInstanceID", luke.InstanceID),
+                    BindingEquals("secondOfficerInstanceID", vader.InstanceID),
                 },
                 Actions = new List<GameAction>
                 {
@@ -519,22 +648,24 @@ namespace Rebellion.Tests.Sectors
 
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("luke.heritage.revealed"));
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
-            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
-        public void HandleResults_StableTriggerId_ExecutesWithoutClrTypeName()
+        public void HandleResults_StableTriggerId_ActivatesWithoutClrTypeName()
         {
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "ARRIVAL_REACTION",
                 Triggers = new List<GameEventTrigger>
                 {
-                    new GameEventTrigger(
-                        "core:unit.arrived",
-                        ("Unit", "unit"),
-                        ("Destination", "destination")
-                    ),
+                    new UnitArrivedTrigger
+                    {
+                        Bindings = TriggerBindings(
+                            ("Unit", "arrivedUnit"),
+                            ("Destination", "arrivalDestination")
+                        ),
+                    },
                 },
                 Conditionals = new List<GameConditional> { new HasArrivalBindingsConditional() },
                 Actions = new List<GameAction>
@@ -557,21 +688,40 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void HandleResults_MatchingOptionalSourceBinding_ExecutesEvent()
+        public void HandleResults_SecondUnitArrivedAlternativeMatches_ActivatesOnce()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "ALTERNATE_ARRIVALS",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new UnitArrivedTrigger { UnitInstanceID = "first" },
+                    new UnitArrivedTrigger { UnitInstanceID = "second" },
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "arrival.count", Operand = 1 },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _system.HandleResults(
+                new[] { new UnitArrivedResult { Unit = new Officer { InstanceID = "second" } } }
+            );
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("arrival.count"));
+            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
+        }
+
+        [Test]
+        public void HandleResults_MatchingOptionalSourceBinding_ActivatesEvent()
         {
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "SOURCE_FILTERED_ARRIVAL",
                 Triggers = new List<GameEventTrigger>
                 {
-                    new GameEventTrigger(
-                        "core:unit.arrived",
-                        ("SourceEventInstanceID", "sourceEventInstanceID")
-                    ),
-                },
-                Conditionals = new List<GameConditional>
-                {
-                    BindingEquals("sourceEventInstanceID", "EXPECTED_SOURCE"),
+                    new UnitArrivedTrigger { SourceEventInstanceID = "EXPECTED_SOURCE" },
                 },
                 Actions = new List<GameAction>
                 {
@@ -593,10 +743,7 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "HIDDEN_MISSION_REPORT",
-                Triggers = new List<GameEventTrigger>
-                {
-                    new GameEventTrigger("core:mission.completed"),
-                },
+                Triggers = new List<GameEventTrigger> { new MissionCompletedTrigger() },
             };
             _game.GetEventPool().Add(gameEvent);
             OfficerCaptureStateResult release = new OfficerCaptureStateResult
@@ -616,7 +763,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void HandleResults_RepeatableEncounterEffect_ExecutesForEveryEncounter()
+        public void HandleResults_RepeatableEncounterEffect_ActivatesForEveryEncounter()
         {
             Officer luke = new Officer { InstanceID = "luke" };
             Officer vader = new Officer { InstanceID = "vader" };
@@ -627,8 +774,8 @@ namespace Rebellion.Tests.Sectors
                 Triggers = EncounterTrigger(),
                 Conditionals = new List<GameConditional>
                 {
-                    BindingEquals("officer", luke.InstanceID),
-                    BindingEquals("opponent", vader.InstanceID),
+                    BindingEquals("firstOfficerInstanceID", luke.InstanceID),
+                    BindingEquals("secondOfficerInstanceID", vader.InstanceID),
                 },
                 Actions = new List<GameAction>
                 {
@@ -652,20 +799,7 @@ namespace Rebellion.Tests.Sectors
 
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
             Assert.AreEqual(2, _game.EventRuntime.GetVariable("encounter.count"));
-            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
-        }
-
-        [Test]
-        public void AvailableArguments_UnitArrivalTrigger_ExposesTypedContractMetadata()
-        {
-            GameEventTrigger trigger = new GameEventTrigger("core:unit.arrived");
-
-            IReadOnlyDictionary<string, Type> arguments = trigger.AvailableArguments;
-
-            Assert.AreEqual(typeof(IGameEntity), arguments["Unit"]);
-            Assert.AreEqual(typeof(string), arguments["UnitInstanceID"]);
-            Assert.AreEqual(typeof(Planet), arguments["Destination"]);
-            Assert.AreEqual(typeof(string), arguments["DestinationInstanceID"]);
+            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
@@ -687,10 +821,10 @@ namespace Rebellion.Tests.Sectors
                 },
             };
 
-            gameEvent.Execute(
+            gameEvent.ExecuteActions(
                 _game,
                 _game.Random,
-                new GameEventExecutionContext(gameEvent, new GameEventState(), null)
+                new GameEventEvaluationContext(gameEvent, new GameEventState(), null)
             );
 
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("result.observed"));
@@ -708,11 +842,11 @@ namespace Rebellion.Tests.Sectors
                 },
             };
             GameEventState first = _game.EventRuntime.GetState("FIRST");
-            first.ExecutionCount = 1;
-            first.LastExecutionTick = 10;
+            first.ActivationCount = 1;
+            first.LastActivationTick = 10;
             GameEventState second = _game.EventRuntime.GetState("SECOND");
-            second.ExecutionCount = afterAll ? 1 : 0;
-            second.LastExecutionTick = afterAll ? 20 : 0;
+            second.ActivationCount = afterAll ? 1 : 0;
+            second.LastActivationTick = afterAll ? 20 : 0;
 
             GameEvent gameEvent = CreateTickEvent(instanceID, targetTick: 0, repeatable: false);
             gameEvent.Schedule = new GameEventScheduler();
@@ -728,7 +862,7 @@ namespace Rebellion.Tests.Sectors
             return new GameEvent
             {
                 InstanceID = instanceId,
-                TriggerCount = repeatable ? null : 1,
+                MaximumActivations = repeatable ? null : 1,
                 Conditionals = new List<GameConditional>
                 {
                     new TickCountConditional
@@ -743,12 +877,27 @@ namespace Rebellion.Tests.Sectors
         private static List<GameEventTrigger> EncounterTrigger() =>
             new List<GameEventTrigger>
             {
-                new GameEventTrigger(
-                    "core:duel.completed",
-                    ("OfficerInstanceID", "officer"),
-                    ("OpponentInstanceID", "opponent")
-                ),
+                new DuelCompletedTrigger
+                {
+                    Bindings = TriggerBindings(
+                        ("FirstOfficer", "firstOfficer"),
+                        ("SecondOfficer", "secondOfficer"),
+                        ("FirstOfficerInstanceID", "firstOfficerInstanceID"),
+                        ("SecondOfficerInstanceID", "secondOfficerInstanceID")
+                    ),
+                },
             };
+
+        private static List<GameEventBinding> TriggerBindings(
+            params (string Argument, string As)[] bindings
+        ) =>
+            bindings
+                .Select(binding => new GameEventBinding
+                {
+                    Argument = binding.Argument,
+                    As = binding.As,
+                })
+                .ToList();
 
         private static EvaluateBindingConditional BindingEquals(string name, string value) =>
             new EvaluateBindingConditional
@@ -763,7 +912,7 @@ namespace Rebellion.Tests.Sectors
             internal override void Execute(GameActionContext context)
             {
                 GameRoot game = context.Game;
-                Planet planet = context.Activation.GetTarget<Planet>();
+                Planet planet = context.Evaluation.GetBinding<Planet>("target");
                 game.EventRuntime.SetVariable(
                     $"scope.{planet.InstanceID}",
                     game.EventRuntime.GetVariable($"scope.{planet.InstanceID}") + 1
@@ -774,8 +923,8 @@ namespace Rebellion.Tests.Sectors
         private sealed class HasArrivalBindingsConditional : GameConditional
         {
             public override bool IsMet(GameConditionContext context) =>
-                context.Activation?.GetBinding<Officer>("unit") != null
-                && context.Activation.GetBinding<Planet>("destination") != null;
+                context.Evaluation?.GetBinding<IGameEntity>("arrivedUnit") is Officer
+                && context.Evaluation.GetBinding<Planet>("arrivalDestination") != null;
         }
 
         private sealed class EmitTestResultAction : GameAction
@@ -788,7 +937,7 @@ namespace Rebellion.Tests.Sectors
         {
             internal override void Execute(GameActionContext context)
             {
-                if (context.Activation.Results.Any())
+                if (context.Evaluation.Results.Any())
                     context.Game.EventRuntime.SetVariable("result.observed", 1);
             }
         }

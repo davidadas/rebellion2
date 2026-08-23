@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Game.Events
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = emperor.InstanceID,
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 null
@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Game.Events
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = empirePlanet.InstanceID,
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 null
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.Game.Events
                 Comparison = comparison,
                 CompareTo = "EXPECTED_SOURCE",
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 null
@@ -94,35 +94,47 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void IsEventExhausted_LoadedCountAtLimit_ReturnsTrueBeforeEventProcessing()
+        public void HasEventActivated_ActivationRecorded_ReturnsTrue()
         {
             GameRoot game = BuildGame(out _, out _);
-            game.GetEventPool().Add(new GameEvent { InstanceID = "limited", TriggerCount = 2 });
-            game.EventRuntime.GetState("limited").ExecutionCount = 2;
-            IsEventExhaustedConditional conditional = new IsEventExhaustedConditional
+            game.EventRuntime.GetState("activated").ActivationCount = 1;
+            HasEventActivatedConditional conditional = new HasEventActivatedConditional
+            {
+                EventInstanceID = "activated",
+            };
+
+            Assert.IsTrue(conditional.IsMet(game));
+        }
+
+        [Test]
+        public void IsEventComplete_PersistedCompletionState_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            game.EventRuntime.GetState("limited").IsComplete = true;
+            IsEventCompleteConditional conditional = new IsEventCompleteConditional
             {
                 EventInstanceID = "limited",
             };
 
-            bool exhausted = conditional.IsMet(game);
+            bool isComplete = conditional.IsMet(game);
 
-            Assert.IsTrue(exhausted);
+            Assert.IsTrue(isComplete);
         }
 
         [Test]
-        public void IsEventExhausted_LoadedUnlimitedEvent_ReturnsFalse()
+        public void IsEventComplete_LoadedUnlimitedEvent_ReturnsFalse()
         {
             GameRoot game = BuildGame(out _, out _);
             game.GetEventPool().Add(new GameEvent { InstanceID = "unlimited" });
-            game.EventRuntime.GetState("unlimited").ExecutionCount = 10;
-            IsEventExhaustedConditional conditional = new IsEventExhaustedConditional
+            game.EventRuntime.GetState("unlimited").ActivationCount = 10;
+            IsEventCompleteConditional conditional = new IsEventCompleteConditional
             {
                 EventInstanceID = "unlimited",
             };
 
-            bool exhausted = conditional.IsMet(game);
+            bool isComplete = conditional.IsMet(game);
 
-            Assert.IsFalse(exhausted);
+            Assert.IsFalse(isComplete);
         }
 
         private static GameRoot BuildGame(out Planet empirePlanet, out Planet rebelPlanet)

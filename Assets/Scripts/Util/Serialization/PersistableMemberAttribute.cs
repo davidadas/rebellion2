@@ -40,4 +40,14 @@ namespace Rebellion.Util.Serialization
     {
         public string Name { get; set; }
     }
+
+    /// <summary>
+    /// Writes items from one initialized mutable list directly beneath their containing object.
+    /// </summary>
+    [AttributeUsage(
+        AttributeTargets.Field | AttributeTargets.Property,
+        Inherited = false,
+        AllowMultiple = false
+    )]
+    public sealed class PersistableInlineCollectionAttribute : Attribute { }
 }

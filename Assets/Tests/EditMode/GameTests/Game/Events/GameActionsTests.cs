@@ -48,16 +48,16 @@ namespace Rebellion.Tests.Game.Events
         }
 
         /// <summary>
-        /// Executes an action with a caller-supplied event activation context.
+        /// Executes an action with a caller-supplied event evaluation context.
         /// </summary>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventExecutionContext activation
+            GameEventEvaluationContext evaluation
         )
         {
-            GameActionContext context = new GameActionContext(game, random, activation);
+            GameActionContext context = new GameActionContext(game, random, evaluation);
             action.Execute(context);
             return context.Results;
         }
@@ -87,16 +87,16 @@ namespace Rebellion.Tests.Game.Events
         }
 
         /// <summary>
-        /// Executes an action with a caller-supplied event activation and returns its requests.
+        /// Executes an action with a caller-supplied event evaluation and returns its requests.
         /// </summary>
         internal static List<GameRequest> ExecuteRequests(
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventExecutionContext activation
+            GameEventEvaluationContext evaluation
         )
         {
-            GameActionContext context = new GameActionContext(game, random, activation);
+            GameActionContext context = new GameActionContext(game, random, evaluation);
             action.Execute(context);
             return context.Requests;
         }
@@ -405,23 +405,23 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetActive_Attributes_DeserializeState()
+        public void SetNodeState_Attributes_DeserializeState()
         {
-            SetActiveAction action = (SetActiveAction)
+            SetNodeStateAction action = (SetNodeStateAction)
                 SerializationHelper.Deserialize<GameAction>(
-                    "<SetActive UnitInstanceID=\"LUKE_SKYWALKER\" IsActive=\"false\"/>"
+                    "<SetNodeState InstanceID=\"LUKE_SKYWALKER\" State=\"Inactive\"/>"
                 );
 
-            Assert.AreEqual("LUKE_SKYWALKER", action.UnitInstanceID);
-            Assert.IsFalse(action.IsActive);
+            Assert.AreEqual("LUKE_SKYWALKER", action.InstanceID);
+            Assert.AreEqual(SceneNodeState.Inactive, action.State);
         }
 
         [Test]
-        public void SetActive_InactiveOfficerSelector_RoundTripsSelector()
+        public void SetNodeState_InactiveOfficerSelector_RoundTripsSelector()
         {
-            SetActiveAction action = new SetActiveAction
+            SetNodeStateAction action = new SetNodeStateAction
             {
-                IsActive = true,
+                State = SceneNodeState.Active,
                 Selectors = new List<GameEventSelector>
                 {
                     new SelectOfficers
@@ -434,43 +434,67 @@ namespace Rebellion.Tests.Game.Events
             };
 
             string xml = SerializationHelper.Serialize<GameAction>(action);
-            SetActiveAction restored = (SetActiveAction)
+            SetNodeStateAction restored = (SetNodeStateAction)
                 SerializationHelper.Deserialize<GameAction>(xml);
 
             SelectOfficers selector = restored.Selectors.OfType<SelectOfficers>().Single();
-            Assert.IsTrue(restored.IsActive);
+            Assert.AreEqual(SceneNodeState.Active, restored.State);
             Assert.AreEqual("$destination", selector.PlanetBinding);
             Assert.AreEqual(true, selector.IsCaptured);
             Assert.IsTrue(selector.IncludeInactive);
         }
 
         [Test]
-        public void SetActive_False_DisablesOfficerWithoutDetachingIt()
+        public void SetNodeState_Inactive_DisablesOfficerWithoutDetachingIt()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
             game.AttachNode(officer, rebelPlanet);
 
-            new SetActiveAction { UnitInstanceID = officer.InstanceID, IsActive = false }.Execute(
-                game
-            );
+            new SetNodeStateAction
+            {
+                InstanceID = officer.InstanceID,
+                State = SceneNodeState.Inactive,
+            }.Execute(game);
 
             Assert.AreSame(rebelPlanet, officer.GetParent());
             Assert.IsFalse(officer.IsActive());
         }
 
         [Test]
-        public void SetActive_True_EnablesOfficerAtExistingParent()
+        public void SetNodeState_Selector_DisablesEveryMatchingOfficer()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer first = EntityFactory.CreateOfficer("first", "rebels");
+            Officer second = EntityFactory.CreateOfficer("second", "rebels");
+            game.AttachNode(first, rebelPlanet);
+            game.AttachNode(second, rebelPlanet);
+
+            new SetNodeStateAction
+            {
+                State = SceneNodeState.Inactive,
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectOfficers { PlanetInstanceID = rebelPlanet.InstanceID },
+                },
+            }.Execute(game);
+
+            Assert.IsFalse(first.IsActive());
+            Assert.IsFalse(second.IsActive());
+        }
+
+        [Test]
+        public void SetNodeState_Active_EnablesOfficerAtExistingParent()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
             game.AttachNode(officer, rebelPlanet);
             officer.IsEnabled = false;
 
-            List<GameResult> results = new SetActiveAction
+            List<GameResult> results = new SetNodeStateAction
             {
-                UnitInstanceID = officer.InstanceID,
-                IsActive = true,
+                InstanceID = officer.InstanceID,
+                State = SceneNodeState.Active,
             }.Execute(game);
 
             Assert.IsEmpty(results);
@@ -479,16 +503,30 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetActive_InactiveOfficerSelector_EnablesMatchingOfficer()
+        public void SetNodeState_Planet_DisablesNonMovableNode()
+        {
+            GameRoot game = BuildGame(out _, out Planet planet);
+
+            new SetNodeStateAction
+            {
+                InstanceID = planet.InstanceID,
+                State = SceneNodeState.Inactive,
+            }.Execute(game);
+
+            Assert.IsFalse(planet.IsActive());
+        }
+
+        [Test]
+        public void SetNodeState_InactiveOfficerSelector_EnablesMatchingOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
             officer.IsCaptured = true;
             game.AttachNode(officer, rebelPlanet);
             officer.IsEnabled = false;
-            SetActiveAction action = new SetActiveAction
+            SetNodeStateAction action = new SetNodeStateAction
             {
-                IsActive = true,
+                State = SceneNodeState.Active,
                 Selectors = new List<GameEventSelector>
                 {
                     new SelectOfficers
@@ -552,10 +590,9 @@ namespace Rebellion.Tests.Game.Events
                 SecondOfficerInstanceID = "vader",
                 AudioPath = "encounter-voice",
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
-                null,
                 completion
             );
 
@@ -597,6 +634,18 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void RevealToFaction_Targets_DeserializeSelectors()
+        {
+            RevealToFactionAction action = (RevealToFactionAction)
+                SerializationHelper.Deserialize<GameAction>(
+                    "<RevealToFaction FactionInstanceID=\"FNALL1\"><Targets><SelectPlanets InstanceID=\"NABOO\"/></Targets></RevealToFaction>"
+                );
+
+            Assert.AreEqual("FNALL1", action.FactionInstanceID);
+            Assert.AreEqual("NABOO", action.Targets.OfType<SelectPlanets>().Single().InstanceID);
+        }
+
+        [Test]
         public void RevealToFaction_SelectedOfficer_EmitsConcreteObservation()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
@@ -605,15 +654,14 @@ namespace Rebellion.Tests.Game.Events
             RevealToFactionAction action = new RevealToFactionAction
             {
                 FactionInstanceID = "rebels",
-                Selectors = new List<GameEventSelector>
+                Targets = new List<GameEventSelector>
                 {
                     new SelectOfficers { InstanceID = officer.InstanceID },
                 },
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
-                new GameEventState(),
-                empirePlanet
+                new GameEventState()
             );
 
             List<GameResult> results = action.Execute(game, game.Random, context);
@@ -626,7 +674,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SendMessage_RecipientFromSubject_EmitsResolvedResult()
+        public void SendMessage_ExplicitRecipient_EmitsResolvedResult()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -634,6 +682,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = luke.InstanceID,
                 MessageType = MessageType.Advice,
                 Subject = "A message for {subject}",
@@ -653,6 +702,19 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void SendMessage_RecipientOmitted_ThrowsException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            SendMessageAction action = new SendMessageAction();
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                action.Execute(game)
+            );
+
+            Assert.AreEqual("SendMessage requires RecipientFactionInstanceID.", exception.Message);
+        }
+
+        [Test]
         public void SendMessage_InactiveSubject_EmitsResolvedResult()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
@@ -661,6 +723,7 @@ namespace Rebellion.Tests.Game.Events
             luke.IsEnabled = false;
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = luke.InstanceID,
                 Subject = "Rescue failed",
                 Body = "Luke remains captured.",
@@ -677,39 +740,6 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SendMessage_ConditionalBodies_ComposesFromOfficerState()
-        {
-            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
-            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.InjuryPoints = 12;
-            game.AttachNode(luke, rebelPlanet);
-            SendMessageAction action = new SendMessageAction
-            {
-                SubjectInstanceID = luke.InstanceID,
-                Body = "Luke learned the truth. ",
-                ConditionalBodies = new List<ConditionalMessageBody>
-                {
-                    new ConditionalMessageBody
-                    {
-                        Conditions = new List<GameConditional>
-                        {
-                            new IsInjuredConditional { OfficerInstanceID = luke.InstanceID },
-                        },
-                        Body = "Luke was injured.",
-                        ElseBody = "Luke escaped unharmed.",
-                    },
-                },
-            };
-
-            MessageDeliveryRequest result = action
-                .ExecuteRequests(game)
-                .OfType<MessageDeliveryRequest>()
-                .Single();
-
-            Assert.AreEqual("Luke learned the truth. Luke was injured.", result.Body);
-        }
-
-        [Test]
         public void SendMessage_AudioBinding_UsesTriggerBindingPath()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
@@ -717,6 +747,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = luke.InstanceID,
                 BackgroundAudio = new MessageAudio { Binding = "$audioPath" },
             };
@@ -725,12 +756,17 @@ namespace Rebellion.Tests.Game.Events
                 EncounteredOfficer = luke,
                 AudioPath = "selected-encounter-voice",
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
-                null,
                 encounter,
-                new GameEventTrigger("core:duel.completed", ("AudioPath", "audioPath"))
+                new DuelCompletedTrigger
+                {
+                    Bindings = new List<GameEventBinding>
+                    {
+                        new GameEventBinding { Argument = "AudioPath", As = "audioPath" },
+                    },
+                }
             );
 
             MessageDeliveryRequest result = action
@@ -750,6 +786,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = luke.InstanceID,
                 OfficerVoice = new MessageOfficerVoice
                 {
@@ -773,6 +810,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(officer, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
+                RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = officer.InstanceID,
                 BackgroundImage = new MessageBackgroundImage
                 {
@@ -791,7 +829,7 @@ namespace Rebellion.Tests.Game.Events
             game.EventRuntime.SetVariable("luke.stage", 2);
             IfAction action = new IfAction
             {
-                Conditions = new List<GameConditional>
+                Conditionals = new List<GameConditional>
                 {
                     new EvaluateEventVariableConditional
                     {
@@ -1057,13 +1095,13 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void IncreaseOfficerForce_PercentOfEffectiveRank_AdjustsForceRating()
+        public void IncreaseForceRank_PercentOfEffectiveRank_AdjustsForceRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.ForceValue = 40;
             game.AttachNode(luke, rebelPlanet);
-            IncreaseOfficerForceAction action = new IncreaseOfficerForceAction
+            IncreaseForceRankAction action = new IncreaseForceRankAction
             {
                 OfficerInstanceID = luke.InstanceID,
                 PercentOfEffective = 25,
@@ -1361,14 +1399,15 @@ namespace Rebellion.Tests.Game.Events
             planet.EnergyCapacity = 8;
             ChangePlanetStatAction action = new ChangePlanetStatAction
             {
+                PlanetBinding = "$target",
                 Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
-                null,
-                planet
+                null
             );
+            context.Bind("target", planet);
 
             List<GameResult> results = action.Execute(game, new SequenceRNG(), context);
 
@@ -1388,14 +1427,15 @@ namespace Rebellion.Tests.Game.Events
             planet.EnergyCapacity = 8;
             ChangePlanetStatAction action = new ChangePlanetStatAction
             {
+                PlanetBinding = "$target",
                 Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
-                null,
-                planet
+                null
             );
+            context.Bind("target", planet);
 
             PlanetStatChangedResult result = action
                 .Execute(game, new SequenceRNG(), context)
@@ -1407,13 +1447,14 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ReducePlanetStats_MinimumLoss_GuaranteesOnePointLoss()
+        public void DamagePlanetStats_MinimumLoss_GuaranteesOnePointLoss()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 3;
             planet.EnergyCapacity = 3;
-            ReducePlanetStatsAction action = new ReducePlanetStatsAction
+            DamagePlanetStatsAction action = new DamagePlanetStatsAction
             {
+                PlanetBinding = "$target",
                 LossProbabilityPerResource = 0,
                 MinimumTotalLoss = 1,
                 Stats = new List<PlanetStatReference>
@@ -1423,86 +1464,14 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
             GameEvent gameEvent = new GameEvent { InstanceID = "disaster" };
-            GameEventExecutionContext context = new GameEventExecutionContext(
-                gameEvent,
-                null,
-                planet
-            );
+            GameEventEvaluationContext context = new GameEventEvaluationContext(gameEvent, null);
+            context.Bind("target", planet);
 
             List<GameResult> results = action.Execute(game, new FixedRNG(0.99), context);
 
             Assert.AreEqual(2, planet.NumRawResourceNodes);
             Assert.AreEqual(3, planet.EnergyCapacity);
             Assert.AreEqual(1, results.OfType<PlanetStatChangedResult>().Count());
-        }
-
-        [Test]
-        public void RecordPlanetIncident_PriorDestroyedBuilding_IncludesFacility()
-        {
-            GameRoot game = BuildGame(out Planet planet, out _);
-            planet.NumRawResourceNodes = 1;
-            planet.EnergyCapacity = 1;
-            Building shipyard = new Building
-            {
-                InstanceID = "shipyard",
-                OwnerInstanceID = planet.OwnerInstanceID,
-                BuildingType = BuildingType.Shipyard,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            game.AttachNode(shipyard, planet);
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "disaster",
-                Actions = new List<GameAction>
-                {
-                    new ReducePlanetStatsAction
-                    {
-                        LossProbabilityPerResource = 0,
-                        MinimumTotalLoss = 1,
-                        Stats = new List<PlanetStatReference>
-                        {
-                            new PlanetStatReference { Stat = PlanetStat.RawResourceNodes },
-                            new PlanetStatReference { Stat = PlanetStat.EnergyCapacity },
-                        },
-                    },
-                    new DestroyUnitsAction
-                    {
-                        Selectors = new List<GameEventSelector>
-                        {
-                            new SelectRandom
-                            {
-                                ChancePercent = 100,
-                                Selectors = new List<GameEventSelector>
-                                {
-                                    new SelectBuildings
-                                    {
-                                        PlanetInstanceID = planet.InstanceID,
-                                        Category = BuildingSelectionCategory.ManufacturingFacility,
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    new RecordPlanetIncidentAction { IncidentType = PlanetIncidentType.Disaster },
-                },
-            };
-            GameEventExecutionContext context = new GameEventExecutionContext(
-                gameEvent,
-                null,
-                planet
-            );
-
-            List<GameResult> results = gameEvent.Execute(game, new FixedRNG(0.99), context).Results;
-
-            Assert.IsFalse(planet.GetChildren<Building>().Contains(shipyard));
-            Assert.AreSame(
-                shipyard,
-                results.OfType<GameObjectDestroyedResult>().Single().DestroyedObject
-            );
-            Assert.AreSame(
-                shipyard,
-                results.OfType<PlanetIncidentResult>().Single().DestroyedObjects.Single()
-            );
         }
 
         [Test]
@@ -1561,7 +1530,7 @@ namespace Rebellion.Tests.Game.Events
         public void Random_WeightedSelection_ExecutesEveryActionInSelectedOutcome()
         {
             GameRoot game = BuildGame(out _, out _);
-            RandomAction action = new RandomAction
+            RollRandomAction action = new RollRandomAction
             {
                 Outcomes = new List<RandomOutcome>
                 {

@@ -33,17 +33,59 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void GetRepeatRange_RandomSchedule_ReturnsInclusiveRange()
+        public void GetInitialRange_RandomDelaySchedule_ReturnsInclusiveRange()
         {
             GameEventScheduler scheduler = new GameEventScheduler
             {
-                Random = new RandomTickRange { MinimumTicks = 10, MaximumTicks = 30 },
+                RandomDelay = new RandomDelay { MinimumTicks = 10, MaximumTicks = 30 },
+            };
+
+            scheduler.GetInitialRange(out int minimum, out int maximum);
+
+            Assert.AreEqual(10, minimum);
+            Assert.AreEqual(30, maximum);
+        }
+
+        [Test]
+        public void GetRepeatRange_RandomIntervalSchedule_ReturnsInclusiveRange()
+        {
+            GameEventScheduler scheduler = new GameEventScheduler
+            {
+                RandomInterval = new RandomInterval { MinimumTicks = 10, MaximumTicks = 30 },
             };
 
             scheduler.GetRepeatRange(out int minimum, out int maximum);
 
             Assert.AreEqual(10, minimum);
             Assert.AreEqual(30, maximum);
+        }
+
+        [Test]
+        public void Serialization_RandomIntervalUntilConditions_RoundTrips()
+        {
+            GameEventScheduler scheduler = new GameEventScheduler
+            {
+                RandomInterval = new RandomInterval
+                {
+                    MinimumTicks = 10,
+                    MaximumTicks = 30,
+                    Until = new List<GameConditional>
+                    {
+                        new TickCountConditional
+                        {
+                            Comparison = ComparisonOperator.GreaterThanOrEqual,
+                            Ticks = 100,
+                        },
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize(scheduler);
+            GameEventScheduler restored = SerializationHelper.Deserialize<GameEventScheduler>(xml);
+
+            TickCountConditional condition = (TickCountConditional)restored.RandomInterval.Until[0];
+            Assert.AreEqual(ComparisonOperator.GreaterThanOrEqual, condition.Comparison);
+            Assert.AreEqual(100, condition.Ticks);
         }
 
         [Test]

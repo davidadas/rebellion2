@@ -18,6 +18,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "All")]
     public sealed class AllConditional : GameConditional
     {
+        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public AllConditional()
@@ -38,6 +39,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Any")]
     public sealed class AnyConditional : GameConditional
     {
+        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public AnyConditional()
@@ -58,6 +60,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Not")]
     public sealed class NotConditional : GameConditional
     {
+        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public NotConditional()
@@ -78,6 +81,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Xor")]
     public sealed class XorConditional : GameConditional
     {
+        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public XorConditional()
@@ -155,47 +159,40 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// A <see cref="GameConditional"/> that is met after the specified event has triggered.
+    /// A <see cref="GameConditional"/> that is met after the specified event has activated.
     /// </summary>
-    [PersistableObject(Name = "HasEventTriggered")]
-    public sealed class HasEventTriggeredConditional : GameConditional
+    [PersistableObject(Name = "HasEventActivated")]
+    public sealed class HasEventActivatedConditional : GameConditional
     {
         [PersistableAttribute]
         public string EventInstanceID { get; set; }
 
         /// <summary>
-        /// Checks whether the event with the configured instance ID has executed at least once.
+        /// Checks whether the event with the configured instance ID has activated at least once.
         /// </summary>
         /// <param name="context">The context providing event runtime state.</param>
-        /// <returns>True if the event has executed; otherwise false.</returns>
+        /// <returns>True if the event has activated; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
-            return context.Game.EventRuntime.GetState(EventInstanceID).ExecutionCount > 0;
+            return context.Game.EventRuntime.GetState(EventInstanceID).ActivationCount > 0;
         }
     }
 
     /// <summary>
-    /// Tests whether the specified event can no longer execute.
+    /// Tests whether the specified event can no longer activate.
     /// </summary>
-    [PersistableObject(Name = "IsEventExhausted")]
-    public sealed class IsEventExhaustedConditional : GameConditional
+    [PersistableObject(Name = "IsEventComplete")]
+    public sealed class IsEventCompleteConditional : GameConditional
     {
         [PersistableAttribute]
         public string EventInstanceID { get; set; }
 
+        /// <summary>Checks the persisted completion state for the referenced event.</summary>
+        /// <param name="context">The context providing event runtime state.</param>
+        /// <returns>True when the referenced event is permanently complete.</returns>
         public override bool IsMet(GameConditionContext context)
         {
-            GameEventState state = context.Game.EventRuntime.GetState(EventInstanceID);
-            if (state.IsExhausted)
-                return true;
-
-            GameEvent definition = context
-                .Game.GetEventPool()
-                .Find(gameEvent =>
-                    string.Equals(gameEvent.InstanceID, EventInstanceID, StringComparison.Ordinal)
-                );
-            int? triggerCount = definition?.TriggerCount;
-            return triggerCount.HasValue && state.ExecutionCount >= triggerCount.Value;
+            return context.Game.EventRuntime.GetState(EventInstanceID).IsComplete;
         }
     }
 
@@ -240,8 +237,8 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             if (
-                context.Activation == null
-                || !context.Activation.TryGetBindingReference(Binding, out object actual)
+                context.Evaluation == null
+                || !context.Evaluation.TryGetBindingReference(Binding, out object actual)
             )
                 return false;
 
@@ -316,8 +313,8 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             if (
-                context.Activation == null
-                || !context.Activation.TryGetBindingReference(Binding, out object actual)
+                context.Evaluation == null
+                || !context.Evaluation.TryGetBindingReference(Binding, out object actual)
                 || actual is not IEnumerable values
             )
                 return false;
@@ -359,7 +356,15 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "IsCaptured")]
     public sealed class IsCapturedConditional : OfficerBooleanConditional
     {
-        protected override bool Evaluate(Officer officer) => officer.IsCaptured;
+        [PersistableAttribute]
+        public string CaptorFactionInstanceID { get; set; }
+
+        protected override bool Evaluate(Officer officer) =>
+            officer.IsCaptured
+            && (
+                string.IsNullOrWhiteSpace(CaptorFactionInstanceID)
+                || officer.CaptorInstanceID == CaptorFactionInstanceID
+            );
     }
 
     [PersistableObject(Name = "IsKilled")]
@@ -378,27 +383,6 @@ namespace Rebellion.Game.Events
     public sealed class IsForceEligibleConditional : OfficerBooleanConditional
     {
         protected override bool Evaluate(Officer officer) => officer.IsForceEligible;
-    }
-
-    /// <summary>
-    /// Tests which faction currently holds a captured officer.
-    /// </summary>
-    [PersistableObject(Name = "IsCapturedBy")]
-    public sealed class IsCapturedByConditional : GameConditional
-    {
-        [PersistableAttribute]
-        public string OfficerInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public string CaptorFactionInstanceID { get; set; }
-
-        /// <summary>Returns whether the officer is captured by the configured faction.</summary>
-        public override bool IsMet(GameConditionContext context)
-        {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
-            return officer?.IsCaptured == true
-                && officer.CaptorInstanceID == CaptorFactionInstanceID;
-        }
     }
 
     /// <summary>
@@ -507,9 +491,8 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
-            planet ??= context.Activation?.GetTarget<Planet>();
             if (planet == null)
                 return false;
             int current = planet.GetStatValue(Stat);
@@ -523,14 +506,24 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public BuildingType Type { get; set; }
 
-        public override bool IsMet(GameConditionContext context) =>
-            context
-                .Activation?.GetTarget<Planet>()
-                ?.GetChildren<Building>()
-                .Any(building =>
-                    building.BuildingType == Type
-                    && building.ManufacturingStatus == ManufacturingStatus.Complete
-                ) == true;
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
+        public override bool IsMet(GameConditionContext context)
+        {
+            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
+                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
+            return planet
+                    ?.GetChildren<Building>()
+                    .Any(building =>
+                        building.BuildingType == Type
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    ) == true;
+        }
     }
 
     /// <summary>
@@ -553,7 +546,7 @@ namespace Rebellion.Game.Events
             GameRoot game = context.Game;
             Planet planet = string.IsNullOrWhiteSpace(PlanetBinding)
                 ? game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID)
-                : context.Activation?.GetBindingReference<Planet>(PlanetBinding);
+                : context.Evaluation?.GetBindingReference<Planet>(PlanetBinding);
             if (planet?.IsDestroyed != false)
                 return false;
 
@@ -585,9 +578,8 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
-            planet ??= context.Activation?.GetTarget<Planet>();
             if (planet == null || string.IsNullOrWhiteSpace(FactionInstanceID))
                 return false;
 
@@ -733,6 +725,26 @@ namespace Rebellion.Game.Events
             );
             // Check if the unit is on a mission.
             return sceneNode?.GetParent() is Mission;
+        }
+    }
+
+    /// <summary>
+    /// Tests whether a retained scene node participates in normal gameplay queries.
+    /// </summary>
+    [PersistableObject(Name = "IsActive")]
+    public sealed class IsActiveConditional : GameConditional
+    {
+        [PersistableAttribute]
+        public string NodeInstanceID { get; set; }
+
+        /// <summary>Returns whether the referenced node is active in its hierarchy.</summary>
+        public override bool IsMet(GameConditionContext context)
+        {
+            ISceneNode node = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
+                NodeInstanceID,
+                includeDisabled: true
+            );
+            return node?.IsActive() == true;
         }
     }
 

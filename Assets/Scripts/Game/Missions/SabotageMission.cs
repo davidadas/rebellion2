@@ -225,8 +225,8 @@ namespace Rebellion.Game.Missions
             {
                 new GameObjectSabotagedResult
                 {
-                    SabotagedObject = target,
-                    Saboteur = successfulParticipant,
+                    DestroyedObject = target,
+                    DestroyedBy = successfulParticipant,
                     Context = planet,
                     Tick = game.CurrentTick,
                 },

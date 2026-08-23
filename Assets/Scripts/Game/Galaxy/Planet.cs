@@ -39,15 +39,6 @@ namespace Rebellion.Game.Galaxy
         ControlUprising,
     }
 
-    /// <summary>Identifies the gameplay category assigned to a recorded planet incident.</summary>
-    public enum PlanetIncidentType
-    {
-        Uprising,
-        Intelligence,
-        Disaster,
-        Resource,
-    }
-
     /// <summary>
     /// Represents a planet in the game. A planet is a scene node that can contain fleets,
     /// officers, regiments, missions, and buildings. It also has a popular support rating,

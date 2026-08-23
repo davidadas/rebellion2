@@ -5,12 +5,12 @@ using Rebellion.Game.Events;
 namespace Rebellion.Tests.Game.Events
 {
     [TestFixture]
-    public class GameEventExecutionContextTests
+    public class GameEventEvaluationContextTests
     {
         [Test]
         public void Bind_BlankName_ThrowsArgumentException()
         {
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 null
@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Game.Events
         [Test]
         public void AddResult_NullResult_DoesNotRecordResult()
         {
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 null

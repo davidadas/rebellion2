@@ -296,6 +296,10 @@ namespace Rebellion.Util.Serialization
                 objType,
                 ReflectionHelper.OperationType.Write
             );
+            MemberInfo inlineCollectionMember = ReflectionHelper.GetInlineCollectionMember(
+                objType,
+                ReflectionHelper.OperationType.Write
+            );
             writer.WriteStartElement(key ?? objType.Name);
 
             foreach (MemberInfo attribute in attributes)
@@ -317,9 +321,33 @@ namespace Rebellion.Util.Serialization
             foreach (MemberInfo member in members)
             {
                 object value = ReflectionHelper.GetMemberValue(member, obj);
+                bool isInlineCollection = member == inlineCollectionMember;
+
+                if (isInlineCollection && value == null)
+                    throw new InvalidOperationException(
+                        $"Inline collection member '{objType.Name}.{member.Name}' cannot be null."
+                    );
 
                 if (value != null)
                 {
+                    if (isInlineCollection)
+                    {
+                        IEnumerable inlineCollection = (IEnumerable)value;
+                        foreach (object item in inlineCollection)
+                        {
+                            if (item == null)
+                                throw new InvalidOperationException(
+                                    $"Inline collection member '{objType.Name}.{member.Name}' cannot contain null items."
+                                );
+                            WriteValue(
+                                item,
+                                writer,
+                                ReflectionHelper.GetPersistableElementName(item.GetType())
+                            );
+                        }
+                        continue;
+                    }
+
                     string elementName = GetElementName(member, value);
                     PersistableCollectionItemAttribute collectionItem =
                         (PersistableCollectionItemAttribute)
@@ -697,6 +725,24 @@ namespace Rebellion.Util.Serialization
             IDictionary<string, MemberInfo> memberLookup = ReflectionHelper.GetElementMemberLookup(
                 actualType
             );
+            MemberInfo inlineCollectionMember = ReflectionHelper.GetInlineCollectionMember(
+                actualType,
+                ReflectionHelper.OperationType.Read
+            );
+            Type inlineElementType =
+                inlineCollectionMember == null
+                    ? null
+                    : GetCollectionElementType(
+                        ReflectionHelper.GetMemberType(inlineCollectionMember)
+                    );
+            IList inlineCollection =
+                inlineCollectionMember == null
+                    ? null
+                    : ReflectionHelper.GetMemberValue(inlineCollectionMember, obj) as IList;
+            if (inlineCollectionMember != null && inlineCollection == null)
+                throw new InvalidOperationException(
+                    $"Inline collection member '{actualType.Name}.{inlineCollectionMember.Name}' must be initialized before deserialization."
+                );
 
             HashSet<MemberInfo> populatedAttributes = reader.HasAttributes
                 ? ReadAttributes(reader, attributes, obj)
@@ -734,6 +780,11 @@ namespace Rebellion.Util.Serialization
                             );
                         object value = ReadMember(attributeMember, reader, settings);
                         ReflectionHelper.SetMemberValue(attributeMember, obj, value);
+                    }
+                    else if (inlineCollectionMember != null)
+                    {
+                        object item = ReadValue(inlineElementType, reader, settings);
+                        inlineCollection.Add(item);
                     }
                     else
                     {
@@ -997,6 +1048,73 @@ namespace Rebellion.Util.Serialization
             IReadOnlyList<MemberInfo> members = fields.Concat(properties).ToList();
             _persistableMembersCache[cacheKey] = members;
             return members;
+        }
+
+        /// <summary>
+        /// Returns and validates the single inline collection declared by a persistable type.
+        /// </summary>
+        /// <param name="classType">The type declaring the inline collection.</param>
+        /// <param name="operationType">The serialization operation being performed.</param>
+        /// <returns>The inline collection member, or null when none is declared.</returns>
+        public static MemberInfo GetInlineCollectionMember(
+            Type classType,
+            OperationType operationType
+        )
+        {
+            MemberInfo[] members = GetPersistableMembers(classType, operationType)
+                .Where(member =>
+                    Attribute.IsDefined(member, typeof(PersistableInlineCollectionAttribute))
+                )
+                .ToArray();
+            if (members.Length > 1)
+                throw new InvalidOperationException(
+                    $"Persistable type '{classType.Name}' declares more than one inline collection."
+                );
+
+            MemberInfo member = members.SingleOrDefault();
+            if (member != null)
+                ValidateInlineCollectionMember(classType, member);
+            return member;
+        }
+
+        /// <summary>
+        /// Verifies that an inline collection can be populated by the deserializer.
+        /// </summary>
+        /// <param name="classType">The type declaring the member.</param>
+        /// <param name="member">The member marked as an inline collection.</param>
+        public static void ValidateInlineCollectionMember(Type classType, MemberInfo member)
+        {
+            Type memberType = GetMemberType(member);
+            if (
+                memberType.IsArray
+                || !typeof(IList).IsAssignableFrom(memberType)
+                || GetInlineCollectionElementType(memberType) == null
+            )
+            {
+                throw new InvalidOperationException(
+                    $"Inline collection member '{classType.Name}.{member.Name}' must be a mutable generic IList."
+                );
+            }
+        }
+
+        /// <summary>
+        /// Returns the element type exposed by a generic collection type.
+        /// </summary>
+        /// <param name="collectionType">The collection type to inspect.</param>
+        /// <returns>The collection element type, or null when it cannot be resolved.</returns>
+        private static Type GetInlineCollectionElementType(Type collectionType)
+        {
+            Type elementType = collectionType.GetGenericArguments().FirstOrDefault();
+            if (elementType != null)
+                return elementType;
+
+            Type enumerableType = collectionType
+                .GetInterfaces()
+                .FirstOrDefault(interfaceType =>
+                    interfaceType.IsGenericType
+                    && interfaceType.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+                );
+            return enumerableType?.GetGenericArguments()[0];
         }
 
         /// <summary>

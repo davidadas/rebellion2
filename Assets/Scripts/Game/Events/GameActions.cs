@@ -22,13 +22,13 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int Weight { get; set; } = 1;
 
-        public List<GameConditional> When { get; set; } = new List<GameConditional>();
+        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
 
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
     }
 
-    [PersistableObject(Name = "Random")]
-    public sealed class RandomAction : GameAction
+    [PersistableObject(Name = "RollRandom")]
+    public sealed class RollRandomAction : GameAction
     {
         public List<RandomOutcome> Outcomes { get; set; } = new List<RandomOutcome>();
 
@@ -40,8 +40,8 @@ namespace Rebellion.Game.Events
             List<RandomOutcome> eligible = Outcomes
                 .Where(outcome =>
                     outcome.Weight > 0
-                    && outcome.When.All(condition =>
-                        condition.IsMet(context.Game, context.Activation)
+                    && outcome.Conditionals.All(condition =>
+                        condition.IsMet(context.Game, context.Evaluation)
                     )
                 )
                 .ToList();
@@ -68,7 +68,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "If")]
     public sealed class IfAction : GameAction
     {
-        public List<GameConditional> Conditions { get; set; } = new List<GameConditional>();
+        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
         public List<GameAction> Else { get; set; } = new List<GameAction>();
 
@@ -77,8 +77,8 @@ namespace Rebellion.Game.Events
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
-            IEnumerable<GameAction> selected = Conditions.TrueForAll(condition =>
-                condition.IsMet(context.Game, context.Activation)
+            IEnumerable<GameAction> selected = Conditionals.TrueForAll(condition =>
+                condition.IsMet(context.Game, context.Evaluation)
             )
                 ? Actions
                 : Else;
@@ -136,18 +136,18 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string FactionInstanceID { get; set; }
 
-        [PersistableMember(Name = "Subjects")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        [PersistableMember(Name = "Targets")]
+        public List<GameEventSelector> Targets { get; set; } = new List<GameEventSelector>();
 
         /// <summary>
-        /// Produces current observations of the selected subjects for the recipient faction.
+        /// Produces current observations of the selected targets for the recipient faction.
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
             Faction recipient = context.Game.GetFactionByOwnerInstanceID(FactionInstanceID);
-            List<ISceneNode> observations = Selectors
+            List<ISceneNode> observations = Targets
                 .SelectMany(selector =>
-                    selector.Select(context.Game, context.Random, context.Activation)
+                    selector.Select(context.Game, context.Random, context.Evaluation)
                 )
                 .Distinct()
                 .ToList();
@@ -168,27 +168,6 @@ namespace Rebellion.Game.Events
 
     #region MessageActions
     /// <summary>
-    /// Selects one authored narrative fragment from current simulation state.
-    /// </summary>
-    [PersistableObject(Name = "ConditionalBody")]
-    public sealed class ConditionalMessageBody
-    {
-        public List<GameConditional> Conditions { get; set; } = new List<GameConditional>();
-        public string Body { get; set; }
-        public string ElseBody { get; set; }
-
-        /// <summary>
-        /// Selects the primary or fallback body from the current conditions.
-        /// </summary>
-        /// <param name="context">The current condition context and event bindings.</param>
-        /// <returns>The body selected by the condition results.</returns>
-        public string Resolve(GameConditionContext context)
-        {
-            return Conditions.TrueForAll(condition => condition.IsMet(context)) ? Body : ElseBody;
-        }
-    }
-
-    /// <summary>
     /// Emits a normal faction message from presentation data authored with a game event.
     /// </summary>
     [PersistableObject(Name = "SendMessage")]
@@ -196,9 +175,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public string RecipientFactionInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public string RecipientUnitInstanceID { get; set; }
 
         [PersistableAttribute]
         public string SubjectInstanceID { get; set; }
@@ -219,8 +195,6 @@ namespace Rebellion.Game.Events
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public string Subject { get; set; }
         public string Body { get; set; }
-        public List<ConditionalMessageBody> ConditionalBodies { get; set; } =
-            new List<ConditionalMessageBody>();
         public MessageBackgroundImage BackgroundImage { get; set; }
         public MessageImage OverlayImage { get; set; }
         public MessageAudio BackgroundAudio { get; set; }
@@ -237,7 +211,7 @@ namespace Rebellion.Game.Events
             GameRoot game = context.Game;
             IRandomNumberProvider provider = context.Random;
             ISceneNode subject = !string.IsNullOrWhiteSpace(SubjectBinding)
-                ? context.Activation?.GetBindingReference<ISceneNode>(SubjectBinding)
+                ? context.Evaluation?.GetBindingReference<ISceneNode>(SubjectBinding)
                 : game.GetSceneNodeByInstanceID<ISceneNode>(
                     SubjectInstanceID,
                     includeDisabled: true
@@ -245,32 +219,18 @@ namespace Rebellion.Game.Events
             ISceneNode relatedSubject = game.GetSceneNodeByInstanceID<ISceneNode>(
                 RelatedSubjectInstanceID
             );
-            ISceneNode recipientUnit = game.GetSceneNodeByInstanceID<ISceneNode>(
-                RecipientUnitInstanceID
-            );
-            string recipientId = RecipientFactionInstanceID;
-            if (string.IsNullOrWhiteSpace(recipientId))
-                recipientId = recipientUnit?.OwnerInstanceID ?? subject?.OwnerInstanceID;
-
-            if (string.IsNullOrWhiteSpace(recipientId))
+            if (string.IsNullOrWhiteSpace(RecipientFactionInstanceID))
                 throw new InvalidOperationException(
-                    "SendMessage could not resolve its recipient faction."
+                    "SendMessage requires RecipientFactionInstanceID."
                 );
 
-            Faction recipient = game.GetFactionByOwnerInstanceID(recipientId);
+            Faction recipient = game.GetFactionByOwnerInstanceID(RecipientFactionInstanceID);
             Planet location = !string.IsNullOrWhiteSpace(LocationBinding)
-                ? context.Activation?.GetBindingReference<Planet>(LocationBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(LocationBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
             if (location == null && subject != null)
                 location = subject as Planet ?? subject.GetParentOfType<Planet>();
 
-            string bodyTemplate = Body ?? string.Empty;
-            GameConditionContext conditionContext = new GameConditionContext(
-                game,
-                context.Activation
-            );
-            foreach (ConditionalMessageBody segment in ConditionalBodies)
-                bodyTemplate += segment.Resolve(conditionContext) ?? string.Empty;
             string backgroundAudioPath = MessageMediaResolver.Resolve(BackgroundAudio, context);
             string imagePath = MessageMediaResolver.Resolve(BackgroundImage, context);
 
@@ -283,13 +243,13 @@ namespace Rebellion.Game.Events
                     Location = location,
                     MessageType = MessageType,
                     Subject = Subject,
-                    Body = bodyTemplate,
+                    Body = Body ?? string.Empty,
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = imagePath,
                     OverlayImagePath = OverlayImage?.Path ?? (subject as Officer)?.MessageImagePath,
                     BackgroundAudioPath = backgroundAudioPath,
                     OfficerVoicePath = OfficerVoice?.ResolvePath(subject as Officer, provider),
-                    AdvisorNotification = AdvisorNotification,
+                    AdvisorNotification = this.AdvisorNotification,
                     Tick = game.CurrentTick,
                 }
             );
@@ -343,7 +303,7 @@ namespace Rebellion.Game.Events
         {
             if (!string.IsNullOrWhiteSpace(path))
                 return path;
-            if (context.Activation?.TryGetBindingReference(binding, out string boundPath) == true)
+            if (context.Evaluation?.TryGetBindingReference(binding, out string boundPath) == true)
                 return boundPath;
             throw new InvalidOperationException(
                 $"Message media could not resolve binding '{binding}'."
@@ -389,7 +349,7 @@ namespace Rebellion.Game.Events
                     "SetCaptureStatus cannot specify CaptorFactionInstanceID when releasing officers."
                 );
             IEnumerable<ISceneNode> selectedNodes = Selectors.SelectMany(selector =>
-                selector.Select(game, context.Random, context.Activation)
+                selector.Select(game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
@@ -530,7 +490,7 @@ namespace Rebellion.Game.Events
         {
             GameRoot game = context.Game;
             IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
-                selector.Select(game, context.Random, context.Activation)
+                selector.Select(game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
@@ -561,8 +521,8 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Increases selected officers' stored Force progression using one authored calculation.
     /// </summary>
-    [PersistableObject(Name = "IncreaseOfficerForce")]
-    public sealed class IncreaseOfficerForceAction : GameAction
+    [PersistableObject(Name = "IncreaseForceRank")]
+    public sealed class IncreaseForceRankAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -595,7 +555,7 @@ namespace Rebellion.Game.Events
             }.Count(value => value.HasValue);
             if (modeCount != 1)
                 throw new InvalidOperationException(
-                    "IncreaseOfficerForce requires exactly one increase value."
+                    "IncreaseForceRank requires exactly one increase value."
                 );
             if (
                 Amount is <= 0
@@ -604,11 +564,11 @@ namespace Rebellion.Game.Events
                 || PercentOfPositiveGap is <= 0
             )
                 throw new InvalidOperationException(
-                    "IncreaseOfficerForce values must be greater than zero."
+                    "IncreaseForceRank values must be greater than zero."
                 );
             if (MinimumAmount < 0)
                 throw new InvalidOperationException(
-                    "IncreaseOfficerForce MinimumAmount cannot be negative."
+                    "IncreaseForceRank MinimumAmount cannot be negative."
                 );
 
             GameRoot game = context.Game;
@@ -621,12 +581,12 @@ namespace Rebellion.Game.Events
                 );
                 if (referenceOfficer == null)
                     throw new InvalidOperationException(
-                        $"IncreaseOfficerForce could not resolve reference officer '{ReferenceOfficerInstanceID}'."
+                        $"IncreaseForceRank could not resolve reference officer '{ReferenceOfficerInstanceID}'."
                     );
             }
 
             IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
-                selector.Select(game, context.Random, context.Activation)
+                selector.Select(game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
@@ -636,7 +596,7 @@ namespace Rebellion.Game.Events
                 );
                 if (explicitOfficer == null)
                     throw new InvalidOperationException(
-                        $"IncreaseOfficerForce could not resolve officer '{OfficerInstanceID}'."
+                        $"IncreaseForceRank could not resolve officer '{OfficerInstanceID}'."
                     );
                 selected = new ISceneNode[] { explicitOfficer }.Concat(selected);
             }
@@ -644,11 +604,11 @@ namespace Rebellion.Game.Events
             List<Officer> officers = selected.Distinct().OfType<Officer>().ToList();
             if (officers.Count == 0)
                 throw new InvalidOperationException(
-                    "IncreaseOfficerForce requires an officer or a matching selector."
+                    "IncreaseForceRank requires an officer or a matching selector."
                 );
             if (selected.Any(node => node is not Officer))
                 throw new InvalidOperationException(
-                    "IncreaseOfficerForce selectors may return only officers."
+                    "IncreaseForceRank selectors may return only officers."
                 );
 
             foreach (Officer officer in officers)
@@ -672,7 +632,7 @@ namespace Rebellion.Game.Events
                     );
                 if (increase <= 0)
                     throw new InvalidOperationException(
-                        $"IncreaseOfficerForce calculated no increase for '{officer.InstanceID}'."
+                        $"IncreaseForceRank calculated no increase for '{officer.InstanceID}'."
                     );
                 officer.ForceValue = checked(stored + increase);
             }
@@ -995,7 +955,7 @@ namespace Rebellion.Game.Events
                     $"TriggerDuel could not resolve officers '{FirstOfficerInstanceID}' and '{SecondOfficerInstanceID}'."
                 );
 
-            if (context.Activation?.TriggerResult is MissionCompletedResult completion)
+            if (context.Evaluation?.TriggerResult is MissionCompletedResult completion)
             {
                 bool firstParticipated = completion.Participants.Contains(first);
                 bool secondParticipated = completion.Participants.Contains(second);
@@ -1041,7 +1001,7 @@ namespace Rebellion.Game.Events
             IEnumerable<ISceneNode> selected = (
                 selectors ?? Enumerable.Empty<GameEventSelector>()
             ).SelectMany(selector =>
-                selector.Select(context.Game, context.Random, context.Activation)
+                selector.Select(context.Game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(targetInstanceID))
             {
@@ -1209,18 +1169,17 @@ namespace Rebellion.Game.Events
                     "ChangePlanetStat requires exactly one adjustment value."
                 );
             IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
-                selector.Select(game, context.Random, context.Activation)
+                selector.Select(game, context.Random, context.Evaluation)
             );
             Planet explicitPlanet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
-            explicitPlanet ??= context.Activation?.GetTarget<Planet>();
             if (explicitPlanet != null)
                 selected = new ISceneNode[] { explicitPlanet }.Concat(selected);
             List<ISceneNode> nodes = selected.Distinct().ToList();
             if (nodes.Count == 0)
                 throw new InvalidOperationException(
-                    "ChangePlanetStat requires a planet, planet binding, target, or matching selector."
+                    "ChangePlanetStat requires a planet, planet binding, or matching selector."
                 );
             if (nodes.Any(node => node is not Planet))
                 throw new InvalidOperationException(
@@ -1271,9 +1230,15 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Reduces selected planet stats by independently rolling once for each current point.
     /// </summary>
-    [PersistableObject(Name = "ReducePlanetStats")]
-    public sealed class ReducePlanetStatsAction : GameAction
+    [PersistableObject(Name = "DamagePlanetStats")]
+    public sealed class DamagePlanetStatsAction : GameAction
     {
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
         [PersistableAttribute(Name = "LossProbabilityPerResource")]
         public double LossProbabilityPerResource { get; set; } = 0.05;
 
@@ -1288,14 +1253,16 @@ namespace Rebellion.Game.Events
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            Planet planet = context.Activation?.GetTarget<Planet>();
+            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
+                : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             if (planet == null)
-                throw new InvalidOperationException("ReducePlanetStats requires a planet target.");
+                throw new InvalidOperationException("DamagePlanetStats requires a planet.");
 
             List<PlanetStat> selectedStats = Stats.Select(stat => stat.Stat).Distinct().ToList();
             if (selectedStats.Count == 0)
                 throw new InvalidOperationException(
-                    "ReducePlanetStats requires at least one planet stat."
+                    "DamagePlanetStats requires at least one planet stat."
                 );
             Dictionary<PlanetStat, int> oldValues = selectedStats.ToDictionary(
                 stat => stat,
@@ -1306,11 +1273,11 @@ namespace Rebellion.Game.Events
 
             if (LossProbabilityPerResource < 0 || LossProbabilityPerResource > 1)
                 throw new InvalidOperationException(
-                    "ReducePlanetStats.LossProbabilityPerResource must be between zero and one."
+                    "DamagePlanetStats.LossProbabilityPerResource must be between zero and one."
                 );
             if (MinimumTotalLoss < 0)
                 throw new InvalidOperationException(
-                    "ReducePlanetStats.MinimumTotalLoss cannot be negative."
+                    "DamagePlanetStats.MinimumTotalLoss cannot be negative."
                 );
 
             Dictionary<PlanetStat, int> losses = selectedStats.ToDictionary(stat => stat, _ => 0);
@@ -1399,57 +1366,18 @@ namespace Rebellion.Game.Events
         public PlanetStat Stat { get; set; }
     }
 
-    [PersistableObject(Name = "RecordPlanetIncident")]
-    public sealed class RecordPlanetIncidentAction : GameAction
-    {
-        [PersistableAttribute(Name = "Type")]
-        public PlanetIncidentType IncidentType { get; set; }
-
-        /// <summary>
-        /// Records the authored incident against the event's target planet.
-        /// </summary>
-        internal override void Execute(GameActionContext context)
-        {
-            Planet planet = context.Activation?.GetTarget<Planet>();
-            if (planet == null)
-                throw new InvalidOperationException(
-                    "RecordPlanetIncident requires a planet target."
-                );
-
-            List<PlanetStatChangedResult> statChanges = context
-                .Activation.Results.OfType<PlanetStatChangedResult>()
-                .Where(result => result.Planet == planet)
-                .ToList();
-            List<IGameEntity> destroyed = context
-                .Activation.Results.OfType<GameObjectDestroyedResult>()
-                .Where(result => result.Context == planet)
-                .Select(result => result.DestroyedObject)
-                .Where(result => result != null)
-                .ToList();
-            int severity =
-                statChanges.Sum(change => Math.Abs(change.NewValue - change.OldValue))
-                + destroyed.Count;
-            if (severity == 0)
-                return;
-
-            context.Record(
-                new PlanetIncidentResult
-                {
-                    Planet = planet,
-                    IncidentType = IncidentType,
-                    Severity = severity,
-                    DestroyedObjects = destroyed,
-                    Tick = context.Game.CurrentTick,
-                }
-            );
-        }
-    }
     #endregion
 
     #region UnitActions
     [PersistableObject(Name = "DestroyUnits")]
     public sealed class DestroyUnitsAction : GameAction
     {
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
         [PersistableMember(Name = "Units")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
@@ -1462,7 +1390,7 @@ namespace Rebellion.Game.Events
             if (Selectors.Count == 0)
                 throw new InvalidOperationException("DestroyUnits requires at least one selector.");
             HashSet<ISceneNode> selected = Selectors
-                .SelectMany(selector => selector.Select(game, context.Random, context.Activation))
+                .SelectMany(selector => selector.Select(game, context.Random, context.Evaluation))
                 .ToHashSet();
             List<ISceneNode> destroyedRoots = selected
                 .Where(unit => !HasSelectedAncestor(unit, selected))
@@ -1475,7 +1403,9 @@ namespace Rebellion.Game.Events
                 game.DeleteNode(root);
             }
 
-            Planet planet = context.Activation?.GetTarget<Planet>();
+            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
+                : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
 
             context.Record(
                 destroyed.ConvertAll<GameResult>(unit => new GameObjectDestroyedResult
@@ -1529,7 +1459,7 @@ namespace Rebellion.Game.Events
             Faction faction = context.Game.GetFactionByOwnerInstanceID(FactionInstanceID);
             List<ISceneNode> selected = (hasPlanets ? Planets : Units)
                 .SelectMany(selector =>
-                    selector.Select(context.Game, context.Random, context.Activation)
+                    selector.Select(context.Game, context.Random, context.Evaluation)
                 )
                 .Distinct()
                 .ToList();
@@ -1600,7 +1530,7 @@ namespace Rebellion.Game.Events
                 .ToList();
             IEnumerable<ISceneNode> selected = sources
                 .Where(source => source is not SpawnUnits)
-                .SelectMany(selector => selector.Select(game, context.Random, context.Activation));
+                .SelectMany(selector => selector.Select(game, context.Random, context.Evaluation));
             if (!string.IsNullOrWhiteSpace(unitInstanceID))
             {
                 ISceneNode direct = includeDisabled
@@ -1662,10 +1592,10 @@ namespace Rebellion.Game.Events
                 ? ((SelectFirst)destinationSelectors[0]).SelectCandidates(
                     game,
                     context.Random,
-                    context.Activation
+                    context.Evaluation
                 )
                 : destinationSelectors.SelectMany(selector =>
-                    selector.Select(game, context.Random, context.Activation)
+                    selector.Select(game, context.Random, context.Evaluation)
                 );
             if (!string.IsNullOrWhiteSpace(destinationInstanceID))
             {
@@ -1804,7 +1734,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         )
         {
             throw new InvalidOperationException(
@@ -1848,35 +1778,56 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Sets whether one or more units participate in active gameplay.
+    /// Defines whether selected scene nodes participate in active gameplay.
     /// </summary>
-    [PersistableObject(Name = "SetActive")]
-    public sealed class SetActiveAction : GameAction
+    public enum SceneNodeState
+    {
+        /// <summary>The node participates in normal gameplay queries.</summary>
+        Active,
+
+        /// <summary>The node remains retained but is excluded from normal gameplay queries.</summary>
+        Inactive,
+    }
+
+    /// <summary>
+    /// Sets the gameplay state of one or more retained scene nodes.
+    /// </summary>
+    [PersistableObject(Name = "SetNodeState")]
+    public sealed class SetNodeStateAction : GameAction
     {
         [PersistableAttribute]
-        public string UnitInstanceID { get; set; }
+        public string InstanceID { get; set; }
 
         [PersistableAttribute]
-        public bool IsActive { get; set; }
+        public SceneNodeState State { get; set; }
 
-        [PersistableMember(Name = "Units")]
+        [PersistableMember(Name = "Targets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <summary>
-        /// Applies the authored local active state to every selected unit.
+        /// Applies the authored local active state to every selected scene node.
         /// </summary>
         internal override void Execute(GameActionContext context)
         {
-            List<IMovable> units = UnitActionTargets.ResolveUnits(
-                UnitInstanceID,
-                Selectors,
-                context,
-                "SetActive",
-                includeDisabled: true
+            IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
+                selector.Select(context.Game, context.Random, context.Evaluation)
             );
+            ISceneNode explicitNode = string.IsNullOrWhiteSpace(InstanceID)
+                ? null
+                : context.Game.GetSceneNodeByInstanceID<ISceneNode>(
+                    InstanceID,
+                    includeDisabled: true
+                );
+            if (explicitNode != null)
+                selected = new[] { explicitNode }.Concat(selected);
+            List<ISceneNode> nodes = selected.Distinct().ToList();
+            if (nodes.Count == 0)
+                throw new InvalidOperationException(
+                    "SetNodeState requires a resolvable node or selector."
+                );
 
-            foreach (IMovable unit in units)
-                unit.IsEnabled = IsActive;
+            foreach (ISceneNode node in nodes)
+                node.IsEnabled = State == SceneNodeState.Active;
             return;
         }
     }

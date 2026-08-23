@@ -25,11 +25,11 @@ namespace Rebellion.Tests.Game.Events
                     FactionInstanceID = "faction",
                     PlanetBinding = "$target",
                 };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
-                new GameEventState(),
-                planet
+                new GameEventState()
             );
+            context.Bind("target", planet);
 
             bool result = conditional.IsMet(new GameConditionContext(game, context));
 
@@ -79,14 +79,14 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void IsCapturedBy_UncapturedOfficerWithStaleCaptor_DoesNotMatch()
+        public void IsCaptured_WithCaptor_UncapturedOfficerWithStaleCaptorDoesNotMatch()
         {
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             officer.IsCaptured = false;
             officer.CaptorInstanceID = "captor";
             game.AttachNode(officer, planet);
-            IsCapturedByConditional condition = new IsCapturedByConditional
+            IsCapturedConditional condition = new IsCapturedConditional
             {
                 OfficerInstanceID = officer.InstanceID,
                 CaptorFactionInstanceID = "captor",
@@ -95,6 +95,27 @@ namespace Rebellion.Tests.Game.Events
             bool isMet = condition.IsMet(game);
 
             Assert.IsFalse(isMet);
+        }
+
+        [Test]
+        public void IsCaptured_OptionalCaptor_QualifiesCapturedOfficerWhenProvided()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "captor";
+            game.AttachNode(officer, planet);
+
+            Assert.IsTrue(
+                new IsCapturedConditional { OfficerInstanceID = officer.InstanceID }.IsMet(game)
+            );
+            Assert.IsFalse(
+                new IsCapturedConditional
+                {
+                    OfficerInstanceID = officer.InstanceID,
+                    CaptorFactionInstanceID = "other",
+                }.IsMet(game)
+            );
         }
 
         [Test]
@@ -107,6 +128,43 @@ namespace Rebellion.Tests.Game.Events
             IsKilledConditional condition = new IsKilledConditional
             {
                 OfficerInstanceID = officer.InstanceID,
+            };
+
+            bool isMet = condition.IsMet(game);
+
+            Assert.IsTrue(isMet);
+        }
+
+        [Test]
+        public void IsActive_InactiveOfficer_ReturnsFalseWithoutLosingIdentity()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, planet);
+            officer.IsEnabled = false;
+            IsActiveConditional condition = new IsActiveConditional
+            {
+                NodeInstanceID = officer.InstanceID,
+            };
+
+            bool isMet = condition.IsMet(game);
+
+            Assert.IsFalse(isMet);
+            Assert.AreSame(
+                officer,
+                game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID, includeDisabled: true)
+            );
+        }
+
+        [Test]
+        public void IsActive_ActiveOfficer_ReturnsTrue()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, planet);
+            IsActiveConditional condition = new IsActiveConditional
+            {
+                NodeInstanceID = officer.InstanceID,
             };
 
             bool isMet = condition.IsMet(game);

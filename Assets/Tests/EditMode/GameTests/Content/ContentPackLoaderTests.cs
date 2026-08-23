@@ -87,6 +87,62 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void GameEventSchema_TriggerArgumentBinding_AcceptsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>EVENT</InstanceID>
+    <Triggers>
+      <ManufacturingCompleted>
+        <Bindings>
+          <Bind Argument=""DeployedObject"" As=""unit""/>
+          <Bind Argument=""Location"" As=""location""/>
+        </Bindings>
+      </ManufacturingCompleted>
+    </Triggers>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.DoesNotThrow(() => ValidateGameEventsXml(xml));
+        }
+
+        [Test]
+        public void GameEventSchema_TriggerResultBinding_RejectsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>EVENT</InstanceID>
+    <Triggers>
+      <ManufacturingCompleted As=""production""/>
+    </Triggers>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.Throws<XmlSchemaValidationException>(() => ValidateGameEventsXml(xml));
+        }
+
+        [Test]
+        public void GameEventSchema_DottedBindingReference_RejectsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>EVENT</InstanceID>
+    <Conditionals>
+      <EvaluateBinding Binding=""$production.Tick"" Comparison=""Equal"" CompareTo=""1""/>
+    </Conditionals>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.Throws<XmlSchemaValidationException>(() => ValidateGameEventsXml(xml));
+        }
+
+        [Test]
         public void GenerationConfigSchema_ValidStartingOfficer_AcceptsDocument()
         {
             const string officer =
