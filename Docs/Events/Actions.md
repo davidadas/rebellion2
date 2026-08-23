@@ -32,9 +32,9 @@ Every action belongs inside an event's `Actions` collection:
 
 **Options**
 
-- `Conditionals` *[Required]:* condition collection.
-- `Actions` *[Required]:* action collection executed when the conditions pass.
-- `Else` *[Optional]:* action collection executed when the conditions fail.
+- `Conditionals` **[Required]:** condition collection.
+- `Actions` **[Required]:** action collection executed when the conditions pass.
+- `Else` **[Optional]:** action collection executed when the conditions fail.
 
 ```xml
 <If>
@@ -61,10 +61,10 @@ eligible, the action does nothing.
 
 **Options**
 
-- `Outcomes` *[Required]:* child containing one or more `Outcome` elements.
-- `Weight` *[Required]:* positive attribute on each `Outcome`.
-- `Conditionals` *[Optional]:* conditions for making an outcome eligible.
-- `Actions` *[Required]:* actions for each outcome.
+- `Outcomes` **[Required]:** child containing one or more `Outcome` elements.
+- `Weight` **[Required]:** positive attribute on each `Outcome`.
+- `Conditionals` **[Optional]:** conditions for making an outcome eligible.
+- `Actions` **[Required]:** actions for each outcome.
 
 ```xml
 <RollRandom>
@@ -94,12 +94,12 @@ eligible, the action does nothing.
 
 **Options**
 
-- `OfficerInstanceID` *[Required]:* officer ID.
-- `Rating` *[Required]:* officer rating.
-- `ProbabilityTable` *[Required]:* probability-table name.
-- `RatingMultiplier` *[Optional]:* nonzero multiplier; defaults to `1`.
-- `OnSuccess` *[Optional]:* actions run after a successful check.
-- `OnFailure` *[Optional]:* actions run after a failed check.
+- `OfficerInstanceID` **[Required]:** officer ID.
+- `Rating` **[Required]:** officer rating.
+- `ProbabilityTable` **[Required]:** probability-table name.
+- `RatingMultiplier` **[Optional]:** nonzero multiplier; defaults to `1`.
+- `OnSuccess` **[Optional]:** actions run after a successful check.
+- `OnFailure` **[Optional]:** actions run after a failed check.
 
 ```xml
 <PerformSkillCheck OfficerInstanceID="HAN_SOLO"
@@ -130,9 +130,9 @@ Event variables are saved integers shared by all events. Operations are `Set`, `
 
 **Options**
 
-- `Key` *[Required]:* variable key.
-- `Operand` *[Required]:* integer input.
-- `Operation` *[Optional]:* `Set`, `Add`, `Minimum`, or `Maximum`; defaults to `Set`.
+- `Key` **[Required]:** variable key.
+- `Operand` **[Required]:** integer input.
+- `Operation` **[Optional]:** `Set`, `Add`, `Minimum`, or `Maximum`; defaults to `Set`.
 
 ```xml
 <SetEventVariable>
@@ -152,8 +152,8 @@ Use [`EvaluateEventVariable`](Conditions.md) to read the value from a condition.
 
 **Options**
 
-- `FactionInstanceID` *[Required]:* recipient faction.
-- `Targets` *[Required]:* selector collection containing the objects to reveal.
+- `FactionInstanceID` **[Required]:** recipient faction.
+- `Targets` **[Required]:** selector collection containing the objects to reveal.
 
 ```xml
 <RevealToFaction FactionInstanceID="FNALL1">
@@ -182,15 +182,15 @@ recorded individually.
 
 **Options**
 
-- `RecipientFactionInstanceID` *[Required]:* recipient faction.
-- `SubjectInstanceID` or `SubjectBinding` *[Optional]:* message subject. When both are present,
+- `RecipientFactionInstanceID` **[Required]:** recipient faction.
+- `SubjectInstanceID` or `SubjectBinding` **[Optional]:** message subject. When both are present,
   `SubjectBinding` takes precedence.
-- `RelatedSubjectInstanceID` *[Optional]:* secondary subject.
-- `LocationInstanceID` or `LocationBinding` *[Optional]:* location. When both are present,
+- `RelatedSubjectInstanceID` **[Optional]:** secondary subject.
+- `LocationInstanceID` or `LocationBinding` **[Optional]:** location. When both are present,
   `LocationBinding` takes precedence.
-- `Type` *[Optional]:* message type; defaults to `Advice`.
-- `Subject`, `Body`, and `ConditionalBodies` *[Optional]:* authored text.
-- `BackgroundImage`, `OverlayImage`, `BackgroundAudio`, `OfficerVoice`, and `AdvisorNotification` *[Optional]:* presentation.
+- `Type` **[Optional]:** message type; defaults to `Advice`.
+- `Subject`, `Body`, and `ConditionalBodies` **[Optional]:** authored text.
+- `BackgroundImage`, `OverlayImage`, `BackgroundAudio`, `OfficerVoice`, and `AdvisorNotification` **[Optional]:** presentation.
 
 ```xml
 <SendMessage RecipientFactionInstanceID="FNALL1"
@@ -215,13 +215,13 @@ context tokens such as `{subject}` and `{location}`.
 
 Presentation sources have distinct contracts:
 
-- `BackgroundImage` *[Optional]:* exactly one `Key`, `Path`, or string-valued `Binding`.
-- `OverlayImage` *[Optional]:* `Path`. When omitted, an officer subject supplies its current message
+- `BackgroundImage` **[Optional]:** exactly one `Key`, `Path`, or string-valued `Binding`.
+- `OverlayImage` **[Optional]:** `Path`. When omitted, an officer subject supplies its current message
   image.
-- `BackgroundAudio` *[Optional]:* exactly one `Path` or string-valued `Binding`.
-- `OfficerVoice` *[Optional]:* explicit `Path` or officer voice-line `Preset`; do not combine them. A
+- `BackgroundAudio` **[Optional]:** exactly one `Path` or string-valued `Binding`.
+- `OfficerVoice` **[Optional]:** explicit `Path` or officer voice-line `Preset`; do not combine them. A
   preset requires an officer subject, and an empty element produces no voice line.
-- `AdvisorNotification` *[Optional]:* `Preset`, `LifetimeTicks`, `Droid`, and `Protocol`. `Droid` and
+- `AdvisorNotification` **[Optional]:** `Preset`, `LifetimeTicks`, `Droid`, and `Protocol`. `Droid` and
   `Protocol` accept `Animation`, `AnimationPath`, `FrameCount`, `Audio`, `AudioPath`,
   `DelayBeforeSeconds`, and `RequiresAnnouncementsEnabled` overrides.
 
@@ -245,11 +245,11 @@ Choose exactly one adjustment mode: signed `Amount` or signed `PercentOfCurrent`
 
 **Options**
 
-- `Stat` *[Required]:* planet stat.
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* direct planet source. When both are present,
+- `Stat` **[Required]:** planet stat.
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** direct planet source. When both are present,
   `PlanetBinding` takes precedence.
-- `Planets` *[Optional]:* planet selector collection.
-- `Amount` or `PercentOfCurrent` *[Required]:* exactly one signed adjustment.
+- `Planets` **[Optional]:** planet selector collection.
+- `Amount` or `PercentOfCurrent` **[Required]:** exactly one signed adjustment.
 
 ```xml
 <ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
@@ -267,13 +267,13 @@ zero.
 
 **Options**
 
-- `PlanetInstanceID` or `PlanetBinding` *[Required]:* planet source. When both are present,
+- `PlanetInstanceID` or `PlanetBinding` **[Required]:** planet source. When both are present,
   `PlanetBinding` takes precedence.
-- `LossProbabilityPerResource` *[Required]:* probability from `0` through `1`, applied independently
+- `LossProbabilityPerResource` **[Required]:** probability from `0` through `1`, applied independently
   to each existing point.
-- `MinimumTotalLoss` *[Required]:* minimum combined loss.
-- `Stats` *[Required]:* child containing one or more `Stat` elements.
-- `Name` *[Required]:* planet-stat attribute on each `Stat`.
+- `MinimumTotalLoss` **[Required]:** minimum combined loss.
+- `Stats` **[Required]:** child containing one or more `Stat` elements.
+- `Name` **[Required]:** planet-stat attribute on each `Stat`.
 
 ```xml
 <ReducePlanetStats PlanetInstanceID="NABOO"
@@ -297,8 +297,8 @@ recorded for that planet.
 
 **Options**
 
-- `Type` *[Required]:* `Uprising`, `Intelligence`, `Disaster`, or `Resource` incident type.
-- `PlanetInstanceID` or `PlanetBinding` *[Required]:* incident location. When both are present,
+- `Type` **[Required]:** `Uprising`, `Intelligence`, `Disaster`, or `Resource` incident type.
+- `PlanetInstanceID` or `PlanetBinding` **[Required]:** incident location. When both are present,
   `PlanetBinding` takes precedence.
 
 ```xml
@@ -328,8 +328,8 @@ double-delete the child.
 
 **Options**
 
-- `Units` *[Required]:* unit selector collection.
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* result context. When both are present,
+- `Units` **[Required]:** unit selector collection.
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** result context. When both are present,
   `PlanetBinding` takes precedence. These values
   do not filter the selected units.
 
@@ -355,8 +355,8 @@ unless they are also selected.
 
 **Options**
 
-- `FactionInstanceID` *[Required]:* new owner.
-- `Planets` or `Units` *[Required]:* exactly one selector collection.
+- `FactionInstanceID` **[Required]:** new owner.
+- `Planets` or `Units` **[Required]:** exactly one selector collection.
 
 ```xml
 <ChangeOwner FactionInstanceID="FNALL1">
@@ -373,8 +373,8 @@ unless they are also selected.
 
 **Options**
 
-- `UnitInstanceID` or `Units` *[Required]:* at least one direct unit, selected unit, or `SpawnUnits` source must resolve.
-- `DestinationInstanceID` or `Destination` *[Required]:* exactly one valid destination must resolve.
+- `UnitInstanceID` or `Units` **[Required]:** at least one direct unit, selected unit, or `SpawnUnits` source must resolve.
+- `DestinationInstanceID` or `Destination` **[Required]:** exactly one valid destination must resolve.
 
 ```xml
 <PlaceUnits DestinationInstanceID="NABOO">
@@ -394,8 +394,8 @@ unless they are also selected.
 
 **Options**
 
-- `UnitInstanceID` or `Units` *[Required]:* at least one direct or selected existing unit must resolve.
-- `DestinationInstanceID` or `Destination` *[Required]:* exactly one valid destination must resolve.
+- `UnitInstanceID` or `Units` **[Required]:** at least one direct or selected existing unit must resolve.
+- `DestinationInstanceID` or `Destination` **[Required]:** exactly one valid destination must resolve.
 
 ```xml
 <SendUnits UnitInstanceID="DARTH_VADER" DestinationInstanceID="YAVIN"/>
@@ -415,8 +415,8 @@ Reactivate a returning unit before placing or sending it.
 
 **Options**
 
-- `IsActive` *[Required]:* state.
-- `InstanceID` or `Nodes` *[Required]:* at least one direct or selected scene node must resolve.
+- `IsActive` **[Required]:** state.
+- `InstanceID` or `Nodes` **[Required]:** at least one direct or selected scene node must resolve.
 
 ```xml
 <SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="false"/>
@@ -438,10 +438,10 @@ properties only; it does not move or deactivate the officer.
 
 **Options**
 
-- `IsCaptured` *[Required]:* state.
-- `OfficerInstanceID` or `Officers` *[Required]:* at least one direct or selected officer must resolve.
-- `CaptorFactionInstanceID` *[Required]:* when capturing and forbidden when releasing.
-- `CanEscape` *[Optional]:* state used when capturing; defaults to `true`. Releasing always resets it
+- `IsCaptured` **[Required]:** state.
+- `OfficerInstanceID` or `Officers` **[Required]:** at least one direct or selected officer must resolve.
+- `CaptorFactionInstanceID` **[Required]:** when capturing and forbidden when releasing.
+- `CanEscape` **[Optional]:** state used when capturing; defaults to `true`. Releasing always resets it
   to `true`.
 
 ```xml
@@ -457,11 +457,11 @@ Choose exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `Per
 
 **Options**
 
-- `Rating` *[Required]:* officer rating.
-- `OfficerInstanceID` or `Officers` *[Required]:* at least one direct or selected officer must resolve.
-- `ReferenceOfficerInstanceID` *[Required]:* by `PercentOfPositiveGap`.
-- `MinimumAmount` *[Optional]:* non-negative lower bound used only with `PercentOfPositiveGap`.
-- `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` *[Required]:* exactly one adjustment mode.
+- `Rating` **[Required]:** officer rating.
+- `OfficerInstanceID` or `Officers` **[Required]:** at least one direct or selected officer must resolve.
+- `ReferenceOfficerInstanceID` **[Required]:** by `PercentOfPositiveGap`.
+- `MinimumAmount` **[Optional]:** non-negative lower bound used only with `PercentOfPositiveGap`.
+- `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` **[Required]:** exactly one adjustment mode.
 
 ```xml
 <ChangeOfficerRating OfficerInstanceID="LUKE_SKYWALKER" Rating="Combat">
@@ -480,10 +480,10 @@ This uses the same calculation modes as `ChangeOfficerRating`, but every configu
 
 **Options**
 
-- `OfficerInstanceID` or `Officers` *[Required]:* at least one direct or selected officer must resolve.
-- `ReferenceOfficerInstanceID` *[Required]:* by `PercentOfPositiveGap`.
-- `MinimumAmount` *[Optional]:* non-negative lower bound used only with `PercentOfPositiveGap`.
-- `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` *[Required]:* exactly one positive adjustment mode.
+- `OfficerInstanceID` or `Officers` **[Required]:** at least one direct or selected officer must resolve.
+- `ReferenceOfficerInstanceID` **[Required]:** by `PercentOfPositiveGap`.
+- `MinimumAmount` **[Optional]:** non-negative lower bound used only with `PercentOfPositiveGap`.
+- `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` **[Required]:** exactly one positive adjustment mode.
 
 ```xml
 <IncreaseOfficerForce OfficerInstanceID="LUKE_SKYWALKER"
@@ -503,7 +503,7 @@ Marks an officer as having latent Force potential.
 
 **Options**
 
-- `OfficerInstanceID` *[Required]:* officer ID.
+- `OfficerInstanceID` **[Required]:** officer ID.
 
 ```xml
 <SetForceSensitive OfficerInstanceID="LEIA_ORGANA"/>
@@ -518,7 +518,7 @@ rolled value from zero through `JediLevelVariance`.
 
 **Options**
 
-- `OfficerInstanceID` *[Required]:* officer ID.
+- `OfficerInstanceID` **[Required]:** officer ID.
 
 ```xml
 <SetForceEligible OfficerInstanceID="LEIA_ORGANA"/>
@@ -530,9 +530,9 @@ The action rolls an inclusive injury value and records the standard officer-inju
 
 **Options**
 
-- `OfficerInstanceID` *[Required]:* officer ID.
-- `MinimumInjury` *[Required]:* non-negative minimum injury.
-- `MaximumInjury` *[Required]:* non-negative maximum injury and cannot be lower than the minimum.
+- `OfficerInstanceID` **[Required]:** officer ID.
+- `MinimumInjury` **[Required]:** non-negative minimum injury.
+- `MaximumInjury` **[Required]:** non-negative maximum injury and cannot be lower than the minimum.
 
 ```xml
 <ApplyOfficerInjury OfficerInstanceID="LUKE_SKYWALKER">
@@ -547,10 +547,10 @@ The action rolls an inclusive injury value and records the standard officer-inju
 
 **Options**
 
-- `FirstOfficerInstanceID` *[Required]:* first officer.
-- `SecondOfficerInstanceID` *[Required]:* second officer.
-- `ImagePath` *[Optional]:* presentation-image override.
-- `AudioPath` *[Optional]:* presentation-audio override.
+- `FirstOfficerInstanceID` **[Required]:** first officer.
+- `SecondOfficerInstanceID` **[Required]:** second officer.
+- `ImagePath` **[Optional]:** presentation-image override.
+- `AudioPath` **[Optional]:** presentation-audio override.
 
 ```xml
 <TriggerDuel FirstOfficerInstanceID="LUKE_SKYWALKER"
@@ -568,8 +568,8 @@ Image paths are merged into the officer's active image set, so omitted paths rem
 
 **Options**
 
-- `OfficerInstanceID` *[Required]:* officer ID.
-- `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, and `EncyclopediaImagePath` *[Optional]:* paths. An empty action makes no image changes.
+- `OfficerInstanceID` **[Required]:** officer ID.
+- `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, and `EncyclopediaImagePath` **[Optional]:** paths. An empty action makes no image changes.
 
 ```xml
 <SetOfficerImages OfficerInstanceID="LUKE_SKYWALKER">
@@ -586,8 +586,8 @@ Replaces authored categories in the officer's active voice set. Omitted categori
 
 **Options**
 
-- `OfficerInstanceID` *[Required]:* officer ID.
-- Voice-category children *[Optional]:* each contains `Path` elements. A category with no paths
+- `OfficerInstanceID` **[Required]:** officer ID.
+- Voice-category children **[Optional]:** each contains `Path` elements. A category with no paths
   makes no change to that category.
 
 Voice categories are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFailure`, `MissionAbort`,
@@ -617,9 +617,9 @@ Sets a node's authored display name.
 
 **Options**
 
-- `Name` *[Required]:* display name.
-- `TargetInstanceID` *[Optional]:* direct target.
-- `Targets` *[Optional]:* selector collection.
+- `Name` **[Required]:** display name.
+- `TargetInstanceID` **[Optional]:** direct target.
+- `Targets` **[Optional]:** selector collection.
 
 ```xml
 <SetDisplayName TargetInstanceID="LUKE_SKYWALKER" Name="Luke Skywalker (Jedi)"/>
@@ -631,9 +631,9 @@ Sets supplemental status text without changing gameplay state.
 
 **Options**
 
-- `Status` *[Required]:* display text.
-- `TargetInstanceID` *[Optional]:* direct target.
-- `Targets` *[Optional]:* selector collection.
+- `Status` **[Required]:** display text.
+- `TargetInstanceID` **[Optional]:** direct target.
+- `Targets` **[Optional]:** selector collection.
 
 ```xml
 <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER" Status="On Mission (Dagobah)"/>
@@ -645,8 +645,8 @@ Clears supplemental status text.
 
 **Options**
 
-- `TargetInstanceID` *[Optional]:* direct target.
-- `Targets` *[Optional]:* selector collection.
+- `TargetInstanceID` **[Optional]:** direct target.
+- `Targets` **[Optional]:** selector collection.
 
 ```xml
 <ClearDisplayStatus TargetInstanceID="LUKE_SKYWALKER"/>

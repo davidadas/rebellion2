@@ -13,8 +13,8 @@ results or multiple results raise a runtime authoring error.
 
 **Options**
 
-- `As` *[Required]:* unique binding name.
-- `From` *[Required]:* child containing exactly one supported selector. The schema currently accepts
+- `As` **[Required]:** unique binding name.
+- `From` **[Required]:** child containing exactly one supported selector. The schema currently accepts
   direct planet, officer, special-forces, fleet, mission, ship, regiment, building, and
   manufacturing-order selectors, plus `SelectRandom` and `SelectBinding`.
 
@@ -40,9 +40,9 @@ Selects active, non-destroyed planets. All filters are optional and combine usin
 
 **Options**
 
-- `InstanceID` *[Optional]:* select one specific planet.
-- `OwnerFactionInstanceID` *[Optional]:* require the current owner.
-- `SectorType` *[Optional]:* require `Core` or `OuterRim`.
+- `InstanceID` **[Optional]:** select one specific planet.
+- `OwnerFactionInstanceID` **[Optional]:** require the current owner.
+- `SectorType` **[Optional]:** require `Core` or `OuterRim`.
 
 ```xml
 <SelectPlanets OwnerFactionInstanceID="FNALL1" SectorType="Core"/>
@@ -54,8 +54,8 @@ Selects planet sectors.
 
 **Options**
 
-- `InstanceID` *[Optional]:* specific sector ID.
-- `SectorType` *[Optional]:* `Core` or `OuterRim` filter.
+- `InstanceID` **[Optional]:** specific sector ID.
+- `SectorType` **[Optional]:** `Core` or `OuterRim` filter.
 
 ```xml
 <SelectPlanetSectors SectorType="OuterRim"/>
@@ -69,11 +69,11 @@ Selects officers. Inactive officers are excluded unless explicitly requested.
 
 **Options**
 
-- `InstanceID` *[Optional]:* officer ID.
-- `OwnerFactionInstanceID` *[Optional]:* owner filter.
-- `IsCaptured` *[Optional]:* capture-state filter.
-- `IncludeInactive` *[Optional]:* include inactive officers; defaults to `false`.
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* location; `PlanetBinding` takes precedence when
+- `InstanceID` **[Optional]:** officer ID.
+- `OwnerFactionInstanceID` **[Optional]:** owner filter.
+- `IsCaptured` **[Optional]:** capture-state filter.
+- `IncludeInactive` **[Optional]:** include inactive officers; defaults to `false`.
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** location; `PlanetBinding` takes precedence when
   both are present.
 
 ```xml
@@ -88,10 +88,10 @@ Selects special-forces units.
 
 **Options**
 
-- `InstanceID` *[Optional]:* unit ID.
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* location; `PlanetBinding` takes precedence when
+- `InstanceID` **[Optional]:** unit ID.
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** location; `PlanetBinding` takes precedence when
   both are present.
-- `OwnerFactionInstanceID` *[Optional]:* owner filter.
+- `OwnerFactionInstanceID` **[Optional]:** owner filter.
 
 ```xml
 <SelectSpecialForces PlanetInstanceID="NABOO" OwnerFactionInstanceID="FNALL1"/>
@@ -103,10 +103,10 @@ Selects missions.
 
 **Options**
 
-- `InstanceID` *[Optional]:* mission ID.
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* location; `PlanetBinding` takes precedence when
+- `InstanceID` **[Optional]:** mission ID.
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** location; `PlanetBinding` takes precedence when
   both are present.
-- `OwnerFactionInstanceID` *[Optional]:* owner filter.
+- `OwnerFactionInstanceID` **[Optional]:** owner filter.
 
 ```xml
 <SelectMissions PlanetBinding="$planet" OwnerFactionInstanceID="FNEMP1"/>
@@ -120,10 +120,10 @@ Selects fleets.
 
 **Options**
 
-- `InstanceID` *[Optional]:* fleet ID.
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* location; `PlanetBinding` takes precedence when
+- `InstanceID` **[Optional]:** fleet ID.
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** location; `PlanetBinding` takes precedence when
   both are present.
-- `OwnerFactionInstanceID` *[Optional]:* owner filter.
+- `OwnerFactionInstanceID` **[Optional]:** owner filter.
 
 ```xml
 <SelectFleets PlanetInstanceID="NABOO" OwnerFactionInstanceID="FNALL1"/>
@@ -135,12 +135,12 @@ Selects capital ships.
 
 **Options**
 
-- `InstanceID` *[Optional]:* ship ID.
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* location; `PlanetBinding` takes precedence when
+- `InstanceID` **[Optional]:** ship ID.
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** location; `PlanetBinding` takes precedence when
   both are present.
-- `OwnerFactionInstanceID` *[Optional]:* owner filter.
-- `TypeID` *[Optional]:* unit-definition ID.
-- `ManufacturingStatus` *[Optional]:* `Building` or `Complete` filter.
+- `OwnerFactionInstanceID` **[Optional]:** owner filter.
+- `TypeID` **[Optional]:** unit-definition ID.
+- `ManufacturingStatus` **[Optional]:** `Building` or `Complete` filter.
 
 ```xml
 <SelectCapitalShips TypeID="ALCS008" ManufacturingStatus="Complete"/>
@@ -152,12 +152,12 @@ Selects starfighters. It supports the same filters as `SelectCapitalShips`.
 
 **Options**
 
-- `InstanceID` *[Optional]:* starfighter ID.
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* location; `PlanetBinding` takes precedence when
+- `InstanceID` **[Optional]:** starfighter ID.
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** location; `PlanetBinding` takes precedence when
   both are present.
-- `OwnerFactionInstanceID` *[Optional]:* owner filter.
-- `TypeID` *[Optional]:* unit-definition ID.
-- `ManufacturingStatus` *[Optional]:* `Building` or `Complete` filter.
+- `OwnerFactionInstanceID` **[Optional]:** owner filter.
+- `TypeID` **[Optional]:** unit-definition ID.
+- `ManufacturingStatus` **[Optional]:** `Building` or `Complete` filter.
 
 ```xml
 <SelectStarfighters PlanetBinding="$planet"
@@ -171,12 +171,12 @@ Selects regiments. It supports the same filters as `SelectCapitalShips`.
 
 **Options**
 
-- `InstanceID` *[Optional]:* regiment ID.
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* location; `PlanetBinding` takes precedence when
+- `InstanceID` **[Optional]:** regiment ID.
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** location; `PlanetBinding` takes precedence when
   both are present.
-- `OwnerFactionInstanceID` *[Optional]:* owner filter.
-- `TypeID` *[Optional]:* unit-definition ID.
-- `ManufacturingStatus` *[Optional]:* `Building` or `Complete` filter.
+- `OwnerFactionInstanceID` **[Optional]:** owner filter.
+- `TypeID` **[Optional]:** unit-definition ID.
+- `ManufacturingStatus` **[Optional]:** `Building` or `Complete` filter.
 
 ```xml
 <SelectRegiments PlanetBinding="$planet" OwnerFactionInstanceID="FNALL1"/>
@@ -188,13 +188,13 @@ Selects buildings.
 
 **Options**
 
-- `InstanceID` *[Optional]:* building ID.
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* location; `PlanetBinding` takes precedence when
+- `InstanceID` **[Optional]:** building ID.
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** location; `PlanetBinding` takes precedence when
   both are present.
-- `OwnerFactionInstanceID` *[Optional]:* owner filter.
-- `TypeID` *[Optional]:* unit-definition ID.
-- `ManufacturingStatus` *[Optional]:* `Building` or `Complete` filter.
-- `Category` *[Optional]:* `Any`, `PlanetaryDefense`, or `ManufacturingFacility` filter.
+- `OwnerFactionInstanceID` **[Optional]:** owner filter.
+- `TypeID` **[Optional]:** unit-definition ID.
+- `ManufacturingStatus` **[Optional]:** `Building` or `Complete` filter.
+- `Category` **[Optional]:** `Any`, `PlanetaryDefense`, or `ManufacturingFacility` filter.
 
 `PlanetaryDefense` includes `Defense` and `Weapon` buildings. `ManufacturingFacility` includes
 `Shipyard`, `TrainingFacility`, and `ConstructionFacility` buildings.
@@ -209,10 +209,10 @@ Selects queued manufacturing items.
 
 **Options**
 
-- `PlanetInstanceID` or `PlanetBinding` *[Optional]:* location; `PlanetBinding` takes precedence when
+- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** location; `PlanetBinding` takes precedence when
   both are present.
-- `OwnerFactionInstanceID` *[Optional]:* filter on the planet that owns the queue.
-- `ManufacturingType` *[Optional]:* `Ship`, `Building`, or `Troop` filter.
+- `OwnerFactionInstanceID` **[Optional]:** filter on the planet that owns the queue.
+- `ManufacturingType` **[Optional]:** `Ship`, `Building`, or `Troop` filter.
 
 ```xml
 <SelectManufacturingOrders PlanetInstanceID="NABOO" ManufacturingType="Ship"/>
@@ -227,7 +227,7 @@ nodes. It is used by selectors that transform another selection.
 
 **Options**
 
-- Child selectors *[Required]:* their results form the candidate collection.
+- Child selectors **[Required]:** their results form the candidate collection.
 
 ```xml
 <From>
@@ -243,13 +243,13 @@ Selects a random subset of the candidates returned by `From`.
 
 **Options**
 
-- `ChancePercent` *[Optional]:* independent inclusion chance from `0` through `100`; defaults to `100`.
-- `Count` *[Optional]:* exact result count when at least that many candidates exist; otherwise every
+- `ChancePercent` **[Optional]:** independent inclusion chance from `0` through `100`; defaults to `100`.
+- `Count` **[Optional]:** exact result count when at least that many candidates exist; otherwise every
   available candidate is returned.
-- `MinimumCount` and `MaximumCount` *[Optional]:* nonnegative bounds applied after independent chance
+- `MinimumCount` and `MaximumCount` **[Optional]:** nonnegative bounds applied after independent chance
   rolls; `MinimumCount` defaults to `0`, and neither bound can create missing candidates.
-- Selection limit *[Required]:* use either `Count` or the minimum/maximum pair, never both.
-- `From` *[Required]:* selector collection.
+- Selection limit **[Required]:** use either `Count` or the minimum/maximum pair, never both.
+- `From` **[Required]:** selector collection.
 
 ```xml
 <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
@@ -267,7 +267,7 @@ checks candidates in authored order and uses the first one that accepts the unit
 
 **Options**
 
-- `From` *[Required]:* ordered selector collection.
+- `From` **[Required]:** ordered selector collection.
 
 ```xml
 <Destination>
@@ -287,7 +287,7 @@ trigger-result property path. Its runtime type must be valid for the consumer.
 
 **Options**
 
-- `Binding` *[Required]:* `$alias` reference.
+- `Binding` **[Required]:** `$alias` reference.
 
 ```xml
 <!-- Given <MissionCompleted As="mission"/> in this event's Triggers. -->
@@ -304,8 +304,8 @@ Maps each source to its nearest parent of the requested type. It never returns t
 
 **Options**
 
-- `Type` *[Required]:* `Galaxy`, `PlanetSector`, `Planet`, `Fleet`, `Mission`, or `CapitalShip` type.
-- `From` *[Required]:* source selector collection.
+- `Type` **[Required]:** `Galaxy`, `PlanetSector`, `Planet`, `Fleet`, `Mission`, or `CapitalShip` type.
+- `From` **[Required]:** source selector collection.
 
 ```xml
 <SelectNearestParent Type="Planet">
@@ -321,7 +321,7 @@ Returns a unit's registered `LastParentInstanceID` when that node still resolves
 
 **Options**
 
-- `UnitInstanceID` or `UnitBinding` *[Required]:* exactly one unit source.
+- `UnitInstanceID` or `UnitBinding` **[Required]:** exactly one unit source.
 
 ```xml
 <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
@@ -334,9 +334,9 @@ collection of `PlaceUnits`; placement attaches the resulting units to their dest
 
 **Options**
 
-- `TypeID` *[Required]:* unit-definition ID.
-- `OwnerFactionInstanceID` *[Required]:* owner faction.
-- `Count` *[Optional]:* positive quantity; defaults to `1`.
+- `TypeID` **[Required]:** unit-definition ID.
+- `OwnerFactionInstanceID` **[Required]:** owner faction.
+- `Count` **[Optional]:** positive quantity; defaults to `1`.
 
 ```xml
 <SpawnUnits TypeID="SFAL02" OwnerFactionInstanceID="FNALL1" Count="3"/>

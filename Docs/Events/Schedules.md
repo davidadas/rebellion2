@@ -15,7 +15,7 @@ binding can therefore resolve a different node on successive evaluations.
 
 **Options**
 
-- `Tick` *[Required]:* non-negative campaign tick.
+- `Tick` **[Required]:** non-negative campaign tick.
 
 ```xml
 <Schedule>
@@ -33,8 +33,8 @@ event catalog happens to be evaluated.
 
 **Options**
 
-- `MinimumTicks` *[Required]:* positive minimum first eligible campaign tick.
-- `MaximumTicks` *[Required]:* maximum first eligible campaign tick; cannot be lower than
+- `MinimumTicks` **[Required]:** positive minimum first eligible campaign tick.
+- `MaximumTicks` **[Required]:** maximum first eligible campaign tick; cannot be lower than
   `MinimumTicks`.
 
 ```xml
@@ -50,9 +50,9 @@ measured from tick zero. Later intervals are measured from the event's previous 
 
 **Options**
 
-- `Ticks` *[Required]:* positive interval between activations.
-- `InitialDelayTicks` *[Optional]:* non-negative initial delay; defaults to `0`.
-- `Until` *[Optional]:* conditionals that permanently complete the schedule when all pass.
+- `Ticks` **[Required]:** positive interval between activations.
+- `InitialDelayTicks` **[Optional]:** non-negative initial delay; defaults to `0`.
+- `Until` **[Optional]:** conditionals that permanently complete the schedule when all pass.
 
 ```xml
 <Schedule>
@@ -71,9 +71,9 @@ zero. After each activation, it rolls a new inclusive delay from that activation
 
 **Options**
 
-- `MinimumTicks` *[Required]:* positive minimum interval.
-- `MaximumTicks` *[Required]:* maximum interval; cannot be lower than `MinimumTicks`.
-- `Until` *[Optional]:* conditionals that permanently complete the schedule when all pass.
+- `MinimumTicks` **[Required]:** positive minimum interval.
+- `MaximumTicks` **[Required]:** maximum interval; cannot be lower than `MinimumTicks`.
+- `Until` **[Optional]:** conditionals that permanently complete the schedule when all pass.
 
 ```xml
 <Schedule>
@@ -95,8 +95,8 @@ the schedule.
 
 **Options**
 
-- `EventInstanceID` *[Required]:* ID of an event in the loaded catalog.
-- `DelayTicks` *[Required]:* non-negative delay after that activation.
+- `EventInstanceID` **[Required]:** ID of an event in the loaded catalog.
+- `DelayTicks` **[Required]:** non-negative delay after that activation.
 
 ```xml
 <Schedule>
@@ -110,8 +110,8 @@ the schedule.
 
 **Options**
 
-- `DelayTicks` *[Required]:* non-negative delay.
-- `Events` *[Required]:* collection containing one or more unique event IDs.
+- `DelayTicks` **[Required]:** non-negative delay.
+- `Events` **[Required]:** collection containing one or more unique event IDs.
 
 ```xml
 <Schedule>
@@ -132,8 +132,8 @@ ticks.
 
 **Options**
 
-- `DelayTicks` *[Required]:* non-negative delay.
-- `Events` *[Required]:* collection containing one or more unique event IDs.
+- `DelayTicks` **[Required]:** non-negative delay.
+- `Events` **[Required]:** collection containing one or more unique event IDs.
 
 ```xml
 <Schedule>
