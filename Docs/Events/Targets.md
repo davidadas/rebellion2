@@ -145,6 +145,14 @@ Selects capital ships.
 
 Selects starfighters. It supports the same filters as `SelectCapitalShips`.
 
+**Options**
+
+- `InstanceID` — optional starfighter ID.
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `OwnerFactionInstanceID` — optional owner filter.
+- `TypeID` — optional unit-definition ID.
+- `ManufacturingStatus` — optional `Building` or `Complete` filter.
+
 ```xml
 <SelectStarfighters PlanetBinding="$planet"
                     OwnerFactionInstanceID="FNEMP1"
@@ -154,6 +162,14 @@ Selects starfighters. It supports the same filters as `SelectCapitalShips`.
 ### SelectRegiments
 
 Selects regiments. It supports the same filters as `SelectCapitalShips`.
+
+**Options**
+
+- `InstanceID` — optional regiment ID.
+- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `OwnerFactionInstanceID` — optional owner filter.
+- `TypeID` — optional unit-definition ID.
+- `ManufacturingStatus` — optional `Building` or `Complete` filter.
 
 ```xml
 <SelectRegiments PlanetBinding="$planet" OwnerFactionInstanceID="FNALL1"/>
@@ -196,6 +212,10 @@ Selects queued manufacturing items.
 
 `From` combines the results of every child selector in authored order and removes duplicate scene
 nodes. It is used by selectors that transform another selection.
+
+**Options**
+
+- Child selectors — required; their results form the candidate collection.
 
 ```xml
 <From>

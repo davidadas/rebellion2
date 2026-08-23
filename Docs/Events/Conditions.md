@@ -27,6 +27,10 @@ Sibling conditions are ANDed. Use `Any` for OR, `Not` for negation, `All` for an
 `Conditionals` is the XML collection used at the top level of an event. It accepts zero or more
 conditions and passes when all of them pass. An empty collection does not block execution.
 
+**Options**
+
+- Child conditions — optional; siblings are combined using AND.
+
 ```xml
 <Conditionals>
   <IsOwned PlanetInstanceID="NABOO"/>
@@ -36,6 +40,10 @@ conditions and passes when all of them pass. An empty collection does not block 
 ### All
 
 `All` passes when every nested condition passes.
+
+**Options**
+
+- Child conditions — optional; an empty `All` passes.
 
 ```xml
 <All>
@@ -48,6 +56,10 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 `Any` passes when at least one nested condition passes.
 
+**Options**
+
+- Child conditions — optional; an empty `Any` fails.
+
 ```xml
 <Any>
   <IsCaptured OfficerInstanceID="HAN_SOLO"/>
@@ -59,6 +71,10 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 `Not` passes when every nested condition fails.
 
+**Options**
+
+- Child conditions — optional; an empty `Not` passes.
+
 ```xml
 <Not>
   <IsInTransit UnitInstanceID="HAN_SOLO"/>
@@ -69,6 +85,10 @@ conditions and passes when all of them pass. An empty collection does not block 
 ### Xor
 
 `Xor` passes when exactly one nested condition passes.
+
+**Options**
+
+- Child conditions — optional; an empty `Xor` fails.
 
 ```xml
 <Xor>

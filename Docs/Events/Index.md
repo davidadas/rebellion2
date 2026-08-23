@@ -14,7 +14,7 @@ after a matching simulation result is produced. Once selected, an event follows 
 1. The event confirms that it is not already complete and initializes its schedule.
 2. A matched trigger exposes its result, then top-level bindings select any required scene nodes.
 3. A recurring schedule's `Until` conditions may permanently complete the event.
-4. The schedule becomes eligible or a gameplay trigger receives a matching result.
+4. A scheduled event must have reached its next eligible tick.
 5. Every top-level conditional must pass.
 6. Actions execute from top to bottom.
 7. The activation count, last activation tick, and next eligible tick are persisted.
