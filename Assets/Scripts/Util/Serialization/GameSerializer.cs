@@ -783,7 +783,7 @@ namespace Rebellion.Util.Serialization
                     }
                     else if (inlineCollectionMember != null)
                     {
-                        object item = ReadValue(inlineElementType, reader);
+                        object item = ReadValue(inlineElementType, reader, settings);
                         inlineCollection.Add(item);
                     }
                     else
