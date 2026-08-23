@@ -1399,6 +1399,7 @@ namespace Rebellion.Tests.Game.Events
             planet.EnergyCapacity = 8;
             ChangePlanetStatAction action = new ChangePlanetStatAction
             {
+                PlanetBinding = "$target",
                 Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
             };
@@ -1426,6 +1427,7 @@ namespace Rebellion.Tests.Game.Events
             planet.EnergyCapacity = 8;
             ChangePlanetStatAction action = new ChangePlanetStatAction
             {
+                PlanetBinding = "$target",
                 Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
             };
@@ -1452,6 +1454,7 @@ namespace Rebellion.Tests.Game.Events
             planet.EnergyCapacity = 3;
             DamagePlanetStatsAction action = new DamagePlanetStatsAction
             {
+                PlanetBinding = "$target",
                 LossProbabilityPerResource = 0,
                 MinimumTotalLoss = 1,
                 Stats = new List<PlanetStatReference>

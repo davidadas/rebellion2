@@ -197,7 +197,7 @@ namespace Rebellion.Tests.Game.Missions
                 .First();
             Assert.AreEqual(
                 officer.InstanceID,
-                sabotaged.Saboteur.InstanceID,
+                sabotaged.DestroyedBy.InstanceID,
                 "Saboteur should be the main participant"
             );
         }
@@ -342,7 +342,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
             Assert.AreEqual(
                 selectedBuilding,
-                results.OfType<GameObjectSabotagedResult>().Single().SabotagedObject
+                results.OfType<GameObjectSabotagedResult>().Single().DestroyedObject
             );
         }
 
@@ -391,7 +391,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             Assert.AreSame(
                 deathStar,
-                results.OfType<GameObjectSabotagedResult>().Single().SabotagedObject
+                results.OfType<GameObjectSabotagedResult>().Single().DestroyedObject
             );
         }
 

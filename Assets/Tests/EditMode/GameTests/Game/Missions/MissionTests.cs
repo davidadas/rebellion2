@@ -358,7 +358,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             Assert.AreSame(
                 specialForces,
-                results.OfType<GameObjectSabotagedResult>().Single().Saboteur
+                results.OfType<GameObjectSabotagedResult>().Single().DestroyedBy
             );
         }
 
@@ -402,7 +402,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             Assert.AreSame(
                 strongOfficer,
-                results.OfType<GameObjectSabotagedResult>().Single().Saboteur
+                results.OfType<GameObjectSabotagedResult>().Single().DestroyedBy
             );
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(target.InstanceID));
         }
@@ -443,7 +443,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreSame(
                 highScoreOfficer,
-                results.OfType<GameObjectSabotagedResult>().Single().Saboteur
+                results.OfType<GameObjectSabotagedResult>().Single().DestroyedBy
             );
         }
 

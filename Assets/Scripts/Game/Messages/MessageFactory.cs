@@ -538,14 +538,14 @@ namespace Rebellion.Game.Messages
                             "item",
                             string.Join(
                                 "\n",
-                                resultArray.Select(result => GetDisplayName(result.SabotagedObject))
+                                resultArray.Select(result => GetDisplayName(result.DestroyedObject))
                             )
                         },
                         { "system", target?.GetDisplayName() ?? string.Empty },
                     }
                 ),
                 target,
-                resultArray[0].SabotagedObject as ISceneNode
+                resultArray[0].DestroyedObject as ISceneNode
             );
         }
 
@@ -860,7 +860,7 @@ namespace Rebellion.Game.Messages
                 .Select(result =>
                 {
                     Planet target = GetSabotageTarget(result);
-                    string ownerInstanceID = GetOwnerInstanceID(result.SabotagedObject);
+                    string ownerInstanceID = GetOwnerInstanceID(result.DestroyedObject);
                     if (string.IsNullOrEmpty(ownerInstanceID))
                         ownerInstanceID = target?.OwnerInstanceID;
 
@@ -871,7 +871,7 @@ namespace Rebellion.Game.Messages
                         Faction = GetFaction(game, ownerInstanceID),
                         Definition = GetDefinition(
                             MessageResultType.SabotageStrike,
-                            gameObjectTypeId: result.SabotagedObject?.GetTypeID()
+                            gameObjectTypeId: result.DestroyedObject?.GetTypeID()
                         ),
                     };
                 })
@@ -1409,7 +1409,7 @@ namespace Rebellion.Game.Messages
 
             return GetDisplayName(
                 (sabotageResults ?? Enumerable.Empty<GameObjectSabotagedResult>())
-                    .Select(sabotageResult => sabotageResult.SabotagedObject)
+                    .Select(sabotageResult => sabotageResult.DestroyedObject)
                     .FirstOrDefault(sabotagedObject =>
                         sabotagedObject?.GetInstanceID() == targetInstanceID
                     )
@@ -1623,7 +1623,7 @@ namespace Rebellion.Game.Messages
             if (result?.Context is Planet contextPlanet)
                 return contextPlanet;
 
-            if (result?.SabotagedObject is ISceneNode sceneNode)
+            if (result?.DestroyedObject is ISceneNode sceneNode)
                 return sceneNode.GetParentOfType<Planet>() ?? sceneNode.GetLastParent() as Planet;
 
             return null;

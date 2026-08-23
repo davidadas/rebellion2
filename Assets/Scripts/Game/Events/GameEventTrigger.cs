@@ -150,6 +150,18 @@ namespace Rebellion.Game.Events
             );
             Add<PlanetUprisingEndedResult, Planet>(arguments, "Planet", result => result.Planet);
             Add<PlanetUprisingEndedResult, Faction>(arguments, "Faction", result => result.Faction);
+            Add<IntelligenceRevealedResult, Faction>(
+                arguments,
+                "Recipient",
+                result => result.Recipient
+            );
+            Add<IntelligenceRevealedResult, List<ISceneNode>>(
+                arguments,
+                "Observations",
+                result => result.Observations
+            );
+            Add<MaintenanceRequiredResult, Faction>(arguments, "Faction", result => result.Faction);
+            Add<MaintenanceRequiredResult, int>(arguments, "Amount", result => result.Amount);
             Add<ResearchOrderedResult, Faction>(arguments, "Faction", result => result.Faction);
             Add<ResearchOrderedResult, ResearchDiscipline>(
                 arguments,
@@ -237,6 +249,18 @@ namespace Rebellion.Game.Events
             Add<OfficerRecruitedResult, Officer>(arguments, "Officer", result => result.Officer);
             Add<OfficerRecruitedResult, Faction>(arguments, "Faction", result => result.Faction);
             Add<OfficerRecruitedResult, Planet>(arguments, "Planet", result => result.Planet);
+            Add<ForceDiscoveryResult, Officer>(arguments, "Officer", result => result.Officer);
+            Add<ForceDiscoveryResult, Officer>(
+                arguments,
+                "Discoverer",
+                result => result.Discoverer
+            );
+            Add<ForceDiscoveryResult, int>(arguments, "ForceRank", result => result.ForceRank);
+            Add<ForceDiscoveryResult, ForceEventType>(
+                arguments,
+                "EventType",
+                result => result.EventType
+            );
             Add<UnitOwnershipChangedResult, ISceneNode>(arguments, "Unit", result => result.Unit);
             Add<UnitOwnershipChangedResult, Faction>(
                 arguments,
@@ -267,6 +291,11 @@ namespace Rebellion.Game.Events
                 arguments,
                 "Context",
                 result => result.Context
+            );
+            Add<GameObjectDestroyedResult, UnitDestructionReason>(
+                arguments,
+                "Reason",
+                result => result.Reason
             );
             Add<UnitArrivedResult, IGameEntity>(arguments, "Unit", result => result.Unit);
             Add<UnitArrivedResult, Planet>(arguments, "Destination", result => result.Destination);
@@ -497,6 +526,51 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, ended);
     }
 
+    /// <summary>Activates when intelligence is revealed to a faction.</summary>
+    [PersistableObject(Name = "IntelligenceRevealed")]
+    public sealed class IntelligenceRevealedTrigger : GameEventTrigger
+    {
+        [PersistableAttribute]
+        public string RecipientFactionInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string ObservationInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string SourceEventInstanceID { get; set; }
+
+        internal override Type ResultType => typeof(IntelligenceRevealedResult);
+
+        internal override bool Matches(GameResult result) =>
+            result is IntelligenceRevealedResult revealed
+            && MatchesInstanceID(RecipientFactionInstanceID, revealed.Recipient?.InstanceID)
+            && (
+                string.IsNullOrWhiteSpace(ObservationInstanceID)
+                || revealed.Observations?.Any(observation =>
+                    MatchesInstanceID(ObservationInstanceID, observation?.InstanceID)
+                ) == true
+            )
+            && MatchesSource(SourceEventInstanceID, revealed);
+    }
+
+    /// <summary>Activates when a faction cannot meet a maintenance obligation.</summary>
+    [PersistableObject(Name = "MaintenanceRequired")]
+    public sealed class MaintenanceRequiredTrigger : GameEventTrigger
+    {
+        [PersistableAttribute]
+        public string FactionInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string SourceEventInstanceID { get; set; }
+
+        internal override Type ResultType => typeof(MaintenanceRequiredResult);
+
+        internal override bool Matches(GameResult result) =>
+            result is MaintenanceRequiredResult required
+            && MatchesInstanceID(FactionInstanceID, required.Faction?.InstanceID)
+            && MatchesSource(SourceEventInstanceID, required);
+    }
+
     #endregion
 
     #region Faction
@@ -698,6 +772,32 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, recruited);
     }
 
+    /// <summary>Activates when an officer's Force discovery state changes.</summary>
+    [PersistableObject(Name = "ForceDiscoveryChanged")]
+    public sealed class ForceDiscoveryChangedTrigger : GameEventTrigger
+    {
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string DiscovererInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public ForceEventType? EventType { get; set; }
+
+        [PersistableAttribute]
+        public string SourceEventInstanceID { get; set; }
+
+        internal override Type ResultType => typeof(ForceDiscoveryResult);
+
+        internal override bool Matches(GameResult result) =>
+            result is ForceDiscoveryResult changed
+            && MatchesInstanceID(OfficerInstanceID, changed.Officer?.InstanceID)
+            && MatchesInstanceID(DiscovererInstanceID, changed.Discoverer?.InstanceID)
+            && (!EventType.HasValue || changed.EventType == EventType.Value)
+            && MatchesSource(SourceEventInstanceID, changed);
+    }
+
     #endregion
 
     #region Unit Lifecycle
@@ -754,6 +854,9 @@ namespace Rebellion.Game.Events
         public string UnitInstanceID { get; set; }
 
         [PersistableAttribute]
+        public UnitDestructionReason? Reason { get; set; }
+
+        [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
 
         internal override Type ResultType => typeof(GameObjectDestroyedResult);
@@ -761,6 +864,7 @@ namespace Rebellion.Game.Events
         internal override bool Matches(GameResult result) =>
             result is GameObjectDestroyedResult destroyed
             && MatchesInstanceID(UnitInstanceID, destroyed.DestroyedObject?.InstanceID)
+            && (!Reason.HasValue || destroyed.Reason == Reason.Value)
             && MatchesSource(SourceEventInstanceID, destroyed);
     }
 

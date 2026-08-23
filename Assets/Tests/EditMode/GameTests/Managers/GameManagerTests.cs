@@ -296,8 +296,8 @@ namespace Rebellion.Tests.Managers
                             new EmitResultAction(
                                 new GameObjectSabotagedResult
                                 {
-                                    SabotagedObject = mine,
-                                    Saboteur = han,
+                                    DestroyedObject = mine,
+                                    DestroyedBy = han,
                                     Context = planet,
                                 }
                             ),

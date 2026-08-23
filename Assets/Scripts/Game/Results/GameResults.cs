@@ -40,6 +40,17 @@ namespace Rebellion.Game.Results
         ForceUserDiscovered,
     }
 
+    /// <summary>
+    /// Identifies the gameplay path that destroyed a unit.
+    /// </summary>
+    public enum UnitDestructionReason
+    {
+        Direct,
+        Arrival,
+        Maintenance,
+        Sabotage,
+    }
+
     public enum CombatSide
     {
         Attacker,
@@ -472,36 +483,47 @@ namespace Rebellion.Game.Results
         public IGameEntity DestroyedObject { get; set; }
         public IGameEntity DestroyedBy { get; set; }
         public IGameEntity Context { get; set; }
+        public UnitDestructionReason Reason { get; set; }
     }
 
     /// <summary>
     /// A game object was destroyed on arrival at its destination.
     /// </summary>
-    public class GameObjectDestroyedOnArrivalResult : GameResult
+    public class GameObjectDestroyedOnArrivalResult : GameObjectDestroyedResult
     {
-        public IGameEntity DestroyedObject { get; set; }
         public IGameEntity Ref { get; set; }
-        public IGameEntity Context { get; set; }
+
+        /// <summary>Creates a destruction result attributed to arrival processing.</summary>
+        public GameObjectDestroyedOnArrivalResult()
+        {
+            Reason = UnitDestructionReason.Arrival;
+        }
     }
 
     /// <summary>
     /// A game object was automatically scrapped.
     /// </summary>
-    public class GameObjectAutoscrappedResult : GameResult
+    public class GameObjectAutoscrappedResult : GameObjectDestroyedResult
     {
-        public IGameEntity DestroyedObject { get; set; }
         public IGameEntity Ref { get; set; }
-        public IGameEntity Context { get; set; }
+
+        /// <summary>Creates a destruction result attributed to maintenance processing.</summary>
+        public GameObjectAutoscrappedResult()
+        {
+            Reason = UnitDestructionReason.Maintenance;
+        }
     }
 
     /// <summary>
     /// A game object was sabotaged and destroyed.
     /// </summary>
-    public class GameObjectSabotagedResult : GameResult
+    public class GameObjectSabotagedResult : GameObjectDestroyedResult
     {
-        public IGameEntity SabotagedObject { get; set; }
-        public IGameEntity Saboteur { get; set; }
-        public IGameEntity Context { get; set; }
+        /// <summary>Creates a destruction result attributed to sabotage.</summary>
+        public GameObjectSabotagedResult()
+        {
+            Reason = UnitDestructionReason.Sabotage;
+        }
     }
 
     #endregion

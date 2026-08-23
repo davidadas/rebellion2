@@ -2814,7 +2814,7 @@ namespace Rebellion.Tests.Game.Messages
                     },
                     new GameObjectSabotagedResult
                     {
-                        SabotagedObject = shieldGenerator,
+                        DestroyedObject = shieldGenerator,
                         Context = target,
                     }
                 ),
@@ -2853,8 +2853,8 @@ namespace Rebellion.Tests.Game.Messages
                         "Destroyed at {system}:\n{item}"
                     ),
                 },
-                new GameObjectSabotagedResult { SabotagedObject = shield, Context = target },
-                new GameObjectSabotagedResult { SabotagedObject = regiment, Context = target }
+                new GameObjectSabotagedResult { DestroyedObject = shield, Context = target },
+                new GameObjectSabotagedResult { DestroyedObject = regiment, Context = target }
             );
 
             Assert.AreEqual(1, deliveries.Count);
@@ -2897,8 +2897,8 @@ namespace Rebellion.Tests.Game.Messages
             List<MessageDeliveryRequest> deliveries = CreateMessages(
                 game,
                 new[] { generic, specific },
-                new GameObjectSabotagedResult { SabotagedObject = deathStar, Context = target },
-                new GameObjectSabotagedResult { SabotagedObject = shield, Context = target }
+                new GameObjectSabotagedResult { DestroyedObject = deathStar, Context = target },
+                new GameObjectSabotagedResult { DestroyedObject = shield, Context = target }
             );
 
             Assert.AreEqual(2, deliveries.Count);
@@ -2938,7 +2938,7 @@ namespace Rebellion.Tests.Game.Messages
                 CreateMessages(
                     game,
                     new[] { generic, specific },
-                    new GameObjectSabotagedResult { SabotagedObject = deathStar, Context = target }
+                    new GameObjectSabotagedResult { DestroyedObject = deathStar, Context = target }
                 ),
                 empire
             );

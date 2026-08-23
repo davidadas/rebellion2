@@ -2253,8 +2253,8 @@ namespace Rebellion.Tests.Sectors
                 {
                     new GameObjectSabotagedResult
                     {
-                        SabotagedObject = mine,
-                        Saboteur = han,
+                        DestroyedObject = mine,
+                        DestroyedBy = han,
                         Context = _coruscant,
                     },
                 }

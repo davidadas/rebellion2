@@ -1,8 +1,8 @@
 # Bindings
 
 Bindings assign names to values that schedules, selectors, conditionals, and actions can reuse
-during one event evaluation. A binding may contain either a scene node selected by the event or the
-complete gameplay result matched by a trigger.
+during one event evaluation. A binding contains either a scene node selected by the event or one
+explicitly documented argument exposed by a matched trigger.
 
 Binding values are temporary. They are rebuilt whenever the event is evaluated and are not stored
 in the save game.

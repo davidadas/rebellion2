@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Game.Events
@@ -21,10 +22,14 @@ namespace Rebellion.Tests.Game.Events
                 Triggers = new List<GameEventTrigger>
                 {
                     new PlanetOwnershipChangedTrigger(),
+                    new IntelligenceRevealedTrigger(),
+                    new MaintenanceRequiredTrigger(),
                     new ResearchAdvancedTrigger(),
                     new MissionCompletedTrigger(),
                     new OfficerCaptureChangedTrigger(),
+                    new ForceDiscoveryChangedTrigger(),
                     new UnitOwnershipChangedTrigger(),
+                    new UnitDestroyedTrigger(),
                     new SpaceCombatCompletedTrigger(),
                     new ManufacturingCompletedTrigger
                     {
@@ -72,6 +77,42 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(trigger.Matches(result));
         }
 
+        [Test]
+        public void Matches_IntelligenceRevealedTrigger_AppliesRecipientAndObservationFilters()
+        {
+            IntelligenceRevealedTrigger trigger = new IntelligenceRevealedTrigger
+            {
+                RecipientFactionInstanceID = "alliance",
+                ObservationInstanceID = "planet",
+            };
+            IntelligenceRevealedResult result = new IntelligenceRevealedResult
+            {
+                Recipient = new Faction { InstanceID = "alliance" },
+                Observations = new List<ISceneNode> { new Planet { InstanceID = "planet" } },
+            };
+
+            Assert.IsTrue(trigger.Matches(result));
+            result.Observations.Clear();
+            Assert.IsFalse(trigger.Matches(result));
+        }
+
+        [Test]
+        public void Matches_MaintenanceRequiredTrigger_AppliesFactionFilter()
+        {
+            MaintenanceRequiredTrigger trigger = new MaintenanceRequiredTrigger
+            {
+                FactionInstanceID = "alliance",
+            };
+            MaintenanceRequiredResult result = new MaintenanceRequiredResult
+            {
+                Faction = new Faction { InstanceID = "alliance" },
+            };
+
+            Assert.IsTrue(trigger.Matches(result));
+            result.Faction.InstanceID = "empire";
+            Assert.IsFalse(trigger.Matches(result));
+        }
+
         #endregion
 
         #region Officer
@@ -92,6 +133,25 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.IsTrue(trigger.Matches(result));
             result.IsCaptured = false;
+            Assert.IsFalse(trigger.Matches(result));
+        }
+
+        [Test]
+        public void Matches_ForceDiscoveryChangedTrigger_AppliesOfficerAndEventTypeFilters()
+        {
+            ForceDiscoveryChangedTrigger trigger = new ForceDiscoveryChangedTrigger
+            {
+                OfficerInstanceID = "luke",
+                EventType = ForceEventType.ForceUserDiscovered,
+            };
+            ForceDiscoveryResult result = new ForceDiscoveryResult
+            {
+                Officer = new Officer { InstanceID = "luke" },
+                EventType = ForceEventType.ForceUserDiscovered,
+            };
+
+            Assert.IsTrue(trigger.Matches(result));
+            result.EventType = ForceEventType.DiscoveringForceUser;
             Assert.IsFalse(trigger.Matches(result));
         }
 
@@ -116,6 +176,46 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(trigger.Matches(result));
             result.Destination.InstanceID = "elsewhere";
             Assert.IsFalse(trigger.Matches(result));
+        }
+
+        [TestCaseSource(nameof(UnitDestructionResults))]
+        public void Matches_UnitDestroyedTrigger_CoversEveryDestructionPath(
+            GameObjectDestroyedResult result,
+            UnitDestructionReason reason
+        )
+        {
+            UnitDestroyedTrigger trigger = new UnitDestroyedTrigger
+            {
+                UnitInstanceID = "unit",
+                Reason = reason,
+            };
+
+            Assert.IsTrue(trigger.Matches(result));
+        }
+
+        private static IEnumerable<TestCaseData> UnitDestructionResults()
+        {
+            Officer unit = new Officer { InstanceID = "unit" };
+            yield return new TestCaseData(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = unit,
+                    Reason = UnitDestructionReason.Direct,
+                },
+                UnitDestructionReason.Direct
+            );
+            yield return new TestCaseData(
+                new GameObjectDestroyedOnArrivalResult { DestroyedObject = unit },
+                UnitDestructionReason.Arrival
+            );
+            yield return new TestCaseData(
+                new GameObjectAutoscrappedResult { DestroyedObject = unit },
+                UnitDestructionReason.Maintenance
+            );
+            yield return new TestCaseData(
+                new GameObjectSabotagedResult { DestroyedObject = unit },
+                UnitDestructionReason.Sabotage
+            );
         }
 
         #endregion

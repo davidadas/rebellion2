@@ -104,6 +104,40 @@ Activates when an uprising ends.
 </Triggers>
 ```
 
+### IntelligenceRevealed
+
+Activates when intelligence is revealed to a faction.
+
+**Optional options**
+
+- `RecipientFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have received the intelligence.
+- `ObservationInstanceID` **[Optional]:** The `InstanceID` of a scene node that must be among the revealed observations.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
+- `Bindings` **[Optional]:** Supports `Recipient` and `Observations`.
+
+```xml
+<Triggers>
+  <IntelligenceRevealed RecipientFactionInstanceID="FNALL1"
+                        ObservationInstanceID="CORUSCANT"/>
+</Triggers>
+```
+
+### MaintenanceRequired
+
+Activates when a faction cannot meet a maintenance obligation.
+
+**Optional options**
+
+- `FactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must require maintenance.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
+- `Bindings` **[Optional]:** Supports `Faction` and `Amount`.
+
+```xml
+<Triggers>
+  <MaintenanceRequired FactionInstanceID="FNALL1"/>
+</Triggers>
+```
+
 ## Faction
 
 ### ResearchAdvanced
@@ -222,6 +256,25 @@ Activates when an officer is recruited.
 </Triggers>
 ```
 
+### ForceDiscoveryChanged
+
+Activates when an officer's Force discovery state changes.
+
+**Optional options**
+
+- `OfficerInstanceID` **[Optional]:** The `InstanceID` of the officer whose Force discovery state must have changed.
+- `DiscovererInstanceID` **[Optional]:** The `InstanceID` of the officer who must have made the discovery.
+- `EventType` **[Optional]:** Accepts `DiscoveringForceUser` or `ForceUserDiscovered`.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
+- `Bindings` **[Optional]:** Supports `Officer`, `Discoverer`, `ForceRank`, and `EventType`.
+
+```xml
+<Triggers>
+  <ForceDiscoveryChanged OfficerInstanceID="LEIA_ORGANA"
+                         EventType="ForceUserDiscovered"/>
+</Triggers>
+```
+
 ## Unit lifecycle
 
 ### UnitOwnershipChanged
@@ -261,17 +314,18 @@ Activates when a unit is created.
 
 ### UnitDestroyed
 
-Activates when a unit is destroyed.
+Activates when a unit is destroyed by any supported destruction path.
 
 **Optional options**
 
 - `UnitInstanceID` **[Optional]:** The `InstanceID` of the unit that must have been destroyed.
+- `Reason` **[Optional]:** Accepts `Direct`, `Arrival`, `Maintenance`, or `Sabotage`.
 - `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
-- `Bindings` **[Optional]:** Supports `Unit`, `DestroyedBy`, and `Context`.
+- `Bindings` **[Optional]:** Supports `Unit`, `DestroyedBy`, `Context`, and `Reason`.
 
 ```xml
 <Triggers>
-  <UnitDestroyed UnitInstanceID="DEATH_STAR"/>
+  <UnitDestroyed UnitInstanceID="DEATH_STAR" Reason="Sabotage"/>
 </Triggers>
 ```
 

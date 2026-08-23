@@ -253,7 +253,7 @@ namespace Rebellion.Systems
         /// <param name="result">The sabotage result to process.</param>
         private void RemoveSabotagedObjectFromActorSnapshot(GameObjectSabotagedResult result)
         {
-            if (result?.SabotagedObject == null || result.Saboteur is not ISceneNode saboteur)
+            if (result?.DestroyedObject == null || result.DestroyedBy is not ISceneNode saboteur)
                 return;
 
             Faction faction = _game
@@ -262,7 +262,7 @@ namespace Rebellion.Systems
             if (faction == null)
                 return;
 
-            RemoveEntityFromSnapshots(faction, result.SabotagedObject.GetInstanceID());
+            RemoveEntityFromSnapshots(faction, result.DestroyedObject.GetInstanceID());
         }
 
         /// <summary>
