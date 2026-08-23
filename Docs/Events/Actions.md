@@ -367,7 +367,7 @@ Transfer actions submit requests to the normal movement rules. If no destination
 group, existing units remain where they were and newly spawned units are not retained; the event
 activation itself is still consumed. Use `SelectFirst` to provide ordered fallback destinations.
 
-### SetNodeActive
+### SetNodeState
 
 Activates or deactivates retained scene nodes. Inactive nodes remain
 attached to the scene graph and are preserved in saves, but ordinary gameplay queries ignore them.
@@ -375,14 +375,20 @@ Reactivate a returning unit before placing or sending it.
 
 **Required options**
 
-- `IsActive` **[Required]:** Whether the selected nodes are active (`true`) or inactive (`false`).
-- `InstanceID` **[Required]:** The `InstanceID` of a scene node to update; at least one node source must be provided and this may be combined with `Nodes`.
-- `Nodes` **[Required]:** The selectors identifying scene nodes to update; at least one node source must be provided and this may be combined with `InstanceID`.
+- `State` **[Required]:** The gameplay state to apply. Accepts `Active` or `Inactive`.
+- `InstanceID` **[Required]:** The `InstanceID` of a scene node to update; at least one node source must be provided and this may be combined with `Targets`.
+- `Targets` **[Required]:** The selectors identifying scene nodes to update; at least one node source must be provided and this may be combined with `InstanceID`.
 
 ```xml
-<SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="false"/>
+<SetNodeState InstanceID="LUKE_SKYWALKER" State="Inactive"/>
 
-<SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="true"/>
+<SetNodeState State="Inactive">
+  <Targets>
+    <SelectOfficers OwnerFactionInstanceID="FNALL1"/>
+  </Targets>
+</SetNodeState>
+
+<SetNodeState InstanceID="LUKE_SKYWALKER" State="Active"/>
 <PlaceUnits UnitInstanceID="LUKE_SKYWALKER">
   <Destination>
     <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>

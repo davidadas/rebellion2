@@ -249,7 +249,7 @@ planet.
                           IsCaptured="true"
                           CaptorFactionInstanceID="FNEMP1"
                           CanEscape="false"/>
-        <SetNodeActive InstanceID="HAN_SOLO" IsActive="false"/>
+        <SetNodeState InstanceID="HAN_SOLO" State="Inactive"/>
       </OnSuccess>
       <OnFailure>
         <SendMessage RecipientFactionInstanceID="FNALL1"
@@ -366,7 +366,7 @@ The dependent event restores him at that same location.
   </Schedule>
   <Actions>
     <!-- Inactive nodes remain saved and attached but are ignored by normal gameplay queries. -->
-    <SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="false"/>
+    <SetNodeState InstanceID="LUKE_SKYWALKER" State="Inactive"/>
     <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER"
                       Status="Away on assignment"/>
   </Actions>
@@ -379,7 +379,7 @@ The dependent event restores him at that same location.
   </Schedule>
   <Actions>
     <!-- Reactivation restores the officer at the location that remained attached. -->
-    <SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="true"/>
+    <SetNodeState InstanceID="LUKE_SKYWALKER" State="Active"/>
     <ClearDisplayStatus TargetInstanceID="LUKE_SKYWALKER"/>
   </Actions>
 </GameEvent>

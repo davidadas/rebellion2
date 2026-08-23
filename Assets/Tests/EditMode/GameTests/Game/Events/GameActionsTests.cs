@@ -405,23 +405,23 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetNodeActive_Attributes_DeserializeState()
+        public void SetNodeState_Attributes_DeserializeState()
         {
-            SetNodeActiveAction action = (SetNodeActiveAction)
+            SetNodeStateAction action = (SetNodeStateAction)
                 SerializationHelper.Deserialize<GameAction>(
-                    "<SetNodeActive InstanceID=\"LUKE_SKYWALKER\" IsActive=\"false\"/>"
+                    "<SetNodeState InstanceID=\"LUKE_SKYWALKER\" State=\"Inactive\"/>"
                 );
 
             Assert.AreEqual("LUKE_SKYWALKER", action.InstanceID);
-            Assert.IsFalse(action.IsActive);
+            Assert.AreEqual(SceneNodeState.Inactive, action.State);
         }
 
         [Test]
-        public void SetNodeActive_InactiveOfficerSelector_RoundTripsSelector()
+        public void SetNodeState_InactiveOfficerSelector_RoundTripsSelector()
         {
-            SetNodeActiveAction action = new SetNodeActiveAction
+            SetNodeStateAction action = new SetNodeStateAction
             {
-                IsActive = true,
+                State = SceneNodeState.Active,
                 Selectors = new List<GameEventSelector>
                 {
                     new SelectOfficers
@@ -434,43 +434,67 @@ namespace Rebellion.Tests.Game.Events
             };
 
             string xml = SerializationHelper.Serialize<GameAction>(action);
-            SetNodeActiveAction restored = (SetNodeActiveAction)
+            SetNodeStateAction restored = (SetNodeStateAction)
                 SerializationHelper.Deserialize<GameAction>(xml);
 
             SelectOfficers selector = restored.Selectors.OfType<SelectOfficers>().Single();
-            Assert.IsTrue(restored.IsActive);
+            Assert.AreEqual(SceneNodeState.Active, restored.State);
             Assert.AreEqual("$destination", selector.PlanetBinding);
             Assert.AreEqual(true, selector.IsCaptured);
             Assert.IsTrue(selector.IncludeInactive);
         }
 
         [Test]
-        public void SetNodeActive_False_DisablesOfficerWithoutDetachingIt()
+        public void SetNodeState_Inactive_DisablesOfficerWithoutDetachingIt()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
             game.AttachNode(officer, rebelPlanet);
 
-            new SetNodeActiveAction { InstanceID = officer.InstanceID, IsActive = false }.Execute(
-                game
-            );
+            new SetNodeStateAction
+            {
+                InstanceID = officer.InstanceID,
+                State = SceneNodeState.Inactive,
+            }.Execute(game);
 
             Assert.AreSame(rebelPlanet, officer.GetParent());
             Assert.IsFalse(officer.IsActive());
         }
 
         [Test]
-        public void SetNodeActive_True_EnablesOfficerAtExistingParent()
+        public void SetNodeState_Selector_DisablesEveryMatchingOfficer()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer first = EntityFactory.CreateOfficer("first", "rebels");
+            Officer second = EntityFactory.CreateOfficer("second", "rebels");
+            game.AttachNode(first, rebelPlanet);
+            game.AttachNode(second, rebelPlanet);
+
+            new SetNodeStateAction
+            {
+                State = SceneNodeState.Inactive,
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectOfficers { PlanetInstanceID = rebelPlanet.InstanceID },
+                },
+            }.Execute(game);
+
+            Assert.IsFalse(first.IsActive());
+            Assert.IsFalse(second.IsActive());
+        }
+
+        [Test]
+        public void SetNodeState_Active_EnablesOfficerAtExistingParent()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
             game.AttachNode(officer, rebelPlanet);
             officer.IsEnabled = false;
 
-            List<GameResult> results = new SetNodeActiveAction
+            List<GameResult> results = new SetNodeStateAction
             {
                 InstanceID = officer.InstanceID,
-                IsActive = true,
+                State = SceneNodeState.Active,
             }.Execute(game);
 
             Assert.IsEmpty(results);
@@ -479,28 +503,30 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetNodeActive_Planet_DisablesNonMovableNode()
+        public void SetNodeState_Planet_DisablesNonMovableNode()
         {
             GameRoot game = BuildGame(out _, out Planet planet);
 
-            new SetNodeActiveAction { InstanceID = planet.InstanceID, IsActive = false }.Execute(
-                game
-            );
+            new SetNodeStateAction
+            {
+                InstanceID = planet.InstanceID,
+                State = SceneNodeState.Inactive,
+            }.Execute(game);
 
             Assert.IsFalse(planet.IsActive());
         }
 
         [Test]
-        public void SetNodeActive_InactiveOfficerSelector_EnablesMatchingOfficer()
+        public void SetNodeState_InactiveOfficerSelector_EnablesMatchingOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
             officer.IsCaptured = true;
             game.AttachNode(officer, rebelPlanet);
             officer.IsEnabled = false;
-            SetNodeActiveAction action = new SetNodeActiveAction
+            SetNodeStateAction action = new SetNodeStateAction
             {
-                IsActive = true,
+                State = SceneNodeState.Active,
                 Selectors = new List<GameEventSelector>
                 {
                     new SelectOfficers

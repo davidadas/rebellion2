@@ -142,7 +142,11 @@ namespace Rebellion.Tests.Game.Events
                             },
                         },
                     },
-                    new SetNodeActiveAction { InstanceID = "LUKE_SKYWALKER", IsActive = false },
+                    new SetNodeStateAction
+                    {
+                        InstanceID = "LUKE_SKYWALKER",
+                        State = SceneNodeState.Inactive,
+                    },
                     new IncreaseForceRankAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",
@@ -163,11 +167,11 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("Story/dialogue", message.BackgroundAudio.Path);
             Assert.AreEqual("Story/advisor", message.AdvisorNotification.Protocol.AnimationPath);
             Assert.AreEqual(3, message.AdvisorNotification.Protocol.FrameCount);
+            Assert.AreEqual("LUKE_SKYWALKER", ((SetNodeStateAction)restored.Actions[1]).InstanceID);
             Assert.AreEqual(
-                "LUKE_SKYWALKER",
-                ((SetNodeActiveAction)restored.Actions[1]).InstanceID
+                SceneNodeState.Inactive,
+                ((SetNodeStateAction)restored.Actions[1]).State
             );
-            Assert.IsFalse(((SetNodeActiveAction)restored.Actions[1]).IsActive);
             Assert.AreEqual(5, ((IncreaseForceRankAction)restored.Actions[2]).Amount);
         }
 

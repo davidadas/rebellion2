@@ -1778,18 +1778,30 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Sets whether one or more scene nodes participate in active gameplay.
+    /// Defines whether selected scene nodes participate in active gameplay.
     /// </summary>
-    [PersistableObject(Name = "SetNodeActive")]
-    public sealed class SetNodeActiveAction : GameAction
+    public enum SceneNodeState
+    {
+        /// <summary>The node participates in normal gameplay queries.</summary>
+        Active,
+
+        /// <summary>The node remains retained but is excluded from normal gameplay queries.</summary>
+        Inactive,
+    }
+
+    /// <summary>
+    /// Sets the gameplay state of one or more retained scene nodes.
+    /// </summary>
+    [PersistableObject(Name = "SetNodeState")]
+    public sealed class SetNodeStateAction : GameAction
     {
         [PersistableAttribute]
         public string InstanceID { get; set; }
 
         [PersistableAttribute]
-        public bool IsActive { get; set; }
+        public SceneNodeState State { get; set; }
 
-        [PersistableMember(Name = "Nodes")]
+        [PersistableMember(Name = "Targets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <summary>
@@ -1811,11 +1823,11 @@ namespace Rebellion.Game.Events
             List<ISceneNode> nodes = selected.Distinct().ToList();
             if (nodes.Count == 0)
                 throw new InvalidOperationException(
-                    "SetNodeActive requires a resolvable node or selector."
+                    "SetNodeState requires a resolvable node or selector."
                 );
 
             foreach (ISceneNode node in nodes)
-                node.IsEnabled = IsActive;
+                node.IsEnabled = State == SceneNodeState.Active;
             return;
         }
     }
