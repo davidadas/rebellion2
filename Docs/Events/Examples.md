@@ -164,7 +164,7 @@ units, records the changes as an incident, and sends a message to the Alliance.
                  Type="Defense">
       <Subject>Planetary defenses attacked</Subject>
       <Body>Hostile forces attacked defenses on {location}.</Body>
-      <BackgroundImage Path="Pack/Shared/Events/MessageBackgrounds/planetary-attack"/>
+      <BackgroundImage Path="Pack/Shared/Strategy/Messages/Images/tatooine-krayt-dragon-attack"/>
       <AdvisorNotification Preset="SubjectReport"/>
     </SendMessage>
   </Actions>

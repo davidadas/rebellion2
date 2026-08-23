@@ -9,7 +9,7 @@ when no optional filter is supplied.
 Each `Bind` selects exactly one scene node and exposes it under its `As` name for the complete event
 evaluation. Bindings are resolved before schedules, so recurring `Until` conditions can consume
 them. In a triggered event, bindings follow `Triggers` and may consume the matched result. Zero
-results or multiple results fail the evaluation.
+results or multiple results raise a runtime authoring error.
 
 **Options**
 
@@ -36,7 +36,7 @@ results or multiple results fail the evaluation.
 
 ### SelectPlanets
 
-Selects planets. All filters are optional and combine using AND.
+Selects active, non-destroyed planets. All filters are optional and combine using AND.
 
 **Options**
 
@@ -70,12 +70,11 @@ Selects officers. Inactive officers are excluded unless explicitly requested.
 **Options**
 
 - `InstanceID` — optional officer ID.
-- `PlanetInstanceID` — optional explicit planet location.
-- `PlanetBinding` — optional binding containing a planet.
 - `OwnerFactionInstanceID` — optional owner filter.
 - `IsCaptured` — optional capture-state filter.
 - `IncludeInactive` — optionally include inactive officers; defaults to `false`.
-- `PlanetInstanceID` and `PlanetBinding` are mutually exclusive.
+- `PlanetInstanceID` or `PlanetBinding` — optional location; `PlanetBinding` takes precedence when
+  both are present.
 
 ```xml
 <SelectOfficers PlanetInstanceID="NABOO"
@@ -90,7 +89,8 @@ Selects special-forces units.
 **Options**
 
 - `InstanceID` — optional unit ID.
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `PlanetInstanceID` or `PlanetBinding` — optional location; `PlanetBinding` takes precedence when
+  both are present.
 - `OwnerFactionInstanceID` — optional owner filter.
 
 ```xml
@@ -104,7 +104,8 @@ Selects missions.
 **Options**
 
 - `InstanceID` — optional mission ID.
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `PlanetInstanceID` or `PlanetBinding` — optional location; `PlanetBinding` takes precedence when
+  both are present.
 - `OwnerFactionInstanceID` — optional owner filter.
 
 ```xml
@@ -120,7 +121,8 @@ Selects fleets.
 **Options**
 
 - `InstanceID` — optional fleet ID.
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `PlanetInstanceID` or `PlanetBinding` — optional location; `PlanetBinding` takes precedence when
+  both are present.
 - `OwnerFactionInstanceID` — optional owner filter.
 
 ```xml
@@ -134,13 +136,14 @@ Selects capital ships.
 **Options**
 
 - `InstanceID` — optional ship ID.
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `PlanetInstanceID` or `PlanetBinding` — optional location; `PlanetBinding` takes precedence when
+  both are present.
 - `OwnerFactionInstanceID` — optional owner filter.
 - `TypeID` — optional unit-definition ID.
 - `ManufacturingStatus` — optional `Building` or `Complete` filter.
 
 ```xml
-<SelectCapitalShips TypeID="MON_CALAMARI_CRUISER" ManufacturingStatus="Complete"/>
+<SelectCapitalShips TypeID="ALCS008" ManufacturingStatus="Complete"/>
 ```
 
 ### SelectStarfighters
@@ -150,7 +153,8 @@ Selects starfighters. It supports the same filters as `SelectCapitalShips`.
 **Options**
 
 - `InstanceID` — optional starfighter ID.
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `PlanetInstanceID` or `PlanetBinding` — optional location; `PlanetBinding` takes precedence when
+  both are present.
 - `OwnerFactionInstanceID` — optional owner filter.
 - `TypeID` — optional unit-definition ID.
 - `ManufacturingStatus` — optional `Building` or `Complete` filter.
@@ -168,7 +172,8 @@ Selects regiments. It supports the same filters as `SelectCapitalShips`.
 **Options**
 
 - `InstanceID` — optional regiment ID.
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `PlanetInstanceID` or `PlanetBinding` — optional location; `PlanetBinding` takes precedence when
+  both are present.
 - `OwnerFactionInstanceID` — optional owner filter.
 - `TypeID` — optional unit-definition ID.
 - `ManufacturingStatus` — optional `Building` or `Complete` filter.
@@ -184,11 +189,15 @@ Selects buildings.
 **Options**
 
 - `InstanceID` — optional building ID.
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
+- `PlanetInstanceID` or `PlanetBinding` — optional location; `PlanetBinding` takes precedence when
+  both are present.
 - `OwnerFactionInstanceID` — optional owner filter.
 - `TypeID` — optional unit-definition ID.
 - `ManufacturingStatus` — optional `Building` or `Complete` filter.
 - `Category` — optional `Any`, `PlanetaryDefense`, or `ManufacturingFacility` filter.
+
+`PlanetaryDefense` includes `Defense` and `Weapon` buildings. `ManufacturingFacility` includes
+`Shipyard`, `TrainingFacility`, and `ConstructionFacility` buildings.
 
 ```xml
 <SelectBuildings PlanetBinding="$planet" Category="PlanetaryDefense"/>
@@ -200,8 +209,9 @@ Selects queued manufacturing items.
 
 **Options**
 
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive location.
-- `OwnerFactionInstanceID` — optional owner filter.
+- `PlanetInstanceID` or `PlanetBinding` — optional location; `PlanetBinding` takes precedence when
+  both are present.
+- `OwnerFactionInstanceID` — optional filter on the planet that owns the queue.
 - `ManufacturingType` — optional `Ship`, `Building`, or `Troop` filter.
 
 ```xml
@@ -234,9 +244,10 @@ Selects a random subset of the candidates returned by `From`.
 **Options**
 
 - `ChancePercent` — optional independent inclusion chance from `0` through `100`; defaults to `100`.
-- `Count` — optional exact result count.
-- `MinimumCount` and `MaximumCount` — optional nonnegative inclusive result-count range;
-  `MinimumCount` defaults to `0`.
+- `Count` — optional exact result count when at least that many candidates exist; otherwise every
+  available candidate is returned.
+- `MinimumCount` and `MaximumCount` — optional nonnegative bounds applied after independent chance
+  rolls; `MinimumCount` defaults to `0`, and neither bound can create missing candidates.
 - Use either `Count` or the minimum/maximum pair, never both.
 - `From` — required selector collection.
 
@@ -280,7 +291,11 @@ trigger-result property path. Its runtime type must be valid for the consumer.
 
 ```xml
 <!-- Given <MissionCompleted As="mission"/> in this event's Triggers. -->
-<SelectBinding Binding="$mission.Participants"/>
+<RevealToFaction FactionInstanceID="FNALL1">
+  <Targets>
+    <SelectBinding Binding="$mission.Participants"/>
+  </Targets>
+</RevealToFaction>
 ```
 
 ### SelectNearestParent
@@ -289,7 +304,7 @@ Maps each source to its nearest parent of the requested type. It never returns t
 
 **Options**
 
-- `Type` — required scene-node type.
+- `Type` — required `Galaxy`, `PlanetSector`, `Planet`, `Fleet`, `Mission`, or `CapitalShip` type.
 - `From` — required source selector collection.
 
 ```xml
@@ -324,7 +339,7 @@ collection of `PlaceUnits`; placement attaches the resulting units to their dest
 - `Count` — optional positive quantity; defaults to `1`.
 
 ```xml
-<SpawnUnits TypeID="X_WING" OwnerFactionInstanceID="FNALL1" Count="3"/>
+<SpawnUnits TypeID="SFAL02" OwnerFactionInstanceID="FNALL1" Count="3"/>
 ```
 
 ---

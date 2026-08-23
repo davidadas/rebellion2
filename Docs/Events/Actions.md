@@ -1,6 +1,12 @@
 # Actions
 
-Actions change game state. They execute from top to bottom against one shared context, so a later action can observe changes and results produced by an earlier action.
+Actions change game state. They execute from top to bottom against one shared context, so later
+actions observe earlier state changes. Specialized actions, such as `RecordPlanetIncident`, can
+also inspect results recorded earlier in the same activation.
+
+Requests and results produced by event actions retain the source event's `InstanceID`. They can
+activate other result-triggered events, but they do not generate automatic strategy messages.
+Use `SendMessage` when the event should communicate with a player.
 
 Every action belongs inside an event's `Actions` collection:
 
@@ -49,7 +55,9 @@ Every action belongs inside an event's `Actions` collection:
 
 ### RollRandom
 
-`RollRandom` first removes outcomes whose `Conditionals` fail, then selects one remaining outcome by `Weight`. Weights are relative: weights `30` and `70` produce a 30/70 split.
+`RollRandom` first removes outcomes whose `Conditionals` fail, then selects one remaining outcome by
+`Weight`. Weights are relative: weights `30` and `70` produce a 30/70 split. If no outcome remains
+eligible, the action does nothing.
 
 **Options**
 
@@ -159,6 +167,15 @@ Use [`EvaluateEventVariable`](Conditions.md) to read the value from a condition.
 </RevealToFaction>
 ```
 
+If the selectors resolve no observations, the action does nothing.
+
+Selection granularity controls what is recorded. A planet records its current planet-level state,
+and a planet sector records that state for each of its planets. A fleet records its complete ship
+and cargo hierarchy. Selecting one capital ship records that ship without unselected cargo;
+selecting a carried officer, regiment, special-forces unit, or starfighter records that subject and
+only the parent structure needed to locate it. Buildings, missions, and manufacturing orders are
+recorded individually.
+
 ### SendMessage
 
 `SendMessage` delivers a normal strategy message. The recipient can be explicit or inferred from a recipient unit or subject. Subject and location may use instance IDs or trigger bindings.
@@ -167,14 +184,17 @@ Use [`EvaluateEventVariable`](Conditions.md) to read the value from a condition.
 
 - `RecipientFactionInstanceID` — optional explicit recipient faction.
 - `RecipientUnitInstanceID` — optional unit from which to infer the recipient.
-- `SubjectInstanceID` or `SubjectBinding` — optional, mutually exclusive message subject.
+- `SubjectInstanceID` or `SubjectBinding` — optional message subject. When both are present,
+  `SubjectBinding` takes precedence.
 - `RelatedSubjectInstanceID` — optional secondary subject.
-- `LocationInstanceID` or `LocationBinding` — optional, mutually exclusive location.
+- `LocationInstanceID` or `LocationBinding` — optional location. When both are present,
+  `LocationBinding` takes precedence.
 - `Type` — optional message type; defaults to `Advice`.
 - `Subject`, `Body`, and `ConditionalBodies` — optional authored text.
 - `BackgroundImage`, `OverlayImage`, `BackgroundAudio`, `OfficerVoice`, and
   `AdvisorNotification` — optional presentation.
-- Recipient resolution must identify exactly one faction.
+- Recipient resolution uses `RecipientFactionInstanceID` first, then the recipient unit's owner,
+  then the subject's owner. At least one of those sources must resolve a faction.
 
 ```xml
 <SendMessage RecipientFactionInstanceID="FNALL1"
@@ -183,10 +203,10 @@ Use [`EvaluateEventVariable`](Conditions.md) to read the value from a condition.
              Type="Mission">
   <Subject>Luke Returns</Subject>
   <Body>Luke has completed his training.</Body>
-  <BackgroundImage Path="Pack/Shared/Events/MessageBackgrounds/luke-returns"/>
+  <BackgroundImage Key="mission_report"/>
   <OverlayImage Path="Pack/Factions/Alliance/Units/Officers/OFAL003/message"/>
-  <BackgroundAudio Path="Pack/Factions/Alliance/Strategy/Audio/Messages/message-faction-report"/>
-  <OfficerVoice Preset="MissionSuccess"/>
+  <BackgroundAudio Path="Pack/Factions/Alliance/Strategy/Messages/Audio/message-faction-report"/>
+  <OfficerVoice Path="Pack/Factions/Alliance/Units/Officers/OFAL003/Voice/dagobah-completed-01"/>
   <AdvisorNotification Preset="SubjectReport"/>
 </SendMessage>
 ```
@@ -203,7 +223,8 @@ Presentation sources have distinct contracts:
 - `OverlayImage` — optional `Path`. When omitted, an officer subject supplies its current message
   image.
 - `BackgroundAudio` — exactly one `Path` or string-valued `Binding`.
-- `OfficerVoice` — exactly one explicit `Path` or officer voice-line `Preset`.
+- `OfficerVoice` — optional explicit `Path` or officer voice-line `Preset`; do not combine them. A
+  preset requires an officer subject, and an empty element produces no voice line.
 - `AdvisorNotification` — optional `Preset`, `LifetimeTicks`, `Droid`, and `Protocol`. `Droid` and
   `Protocol` accept `Animation`, `AnimationPath`, `FrameCount`, `Audio`, `AudioPath`,
   `DelayBeforeSeconds`, and `RequiresAnnouncementsEnabled` overrides.
@@ -229,7 +250,8 @@ Choose exactly one adjustment mode: signed `Amount` or signed `PercentOfCurrent`
 **Options**
 
 - `Stat` — required planet stat.
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive direct planet source.
+- `PlanetInstanceID` or `PlanetBinding` — optional direct planet source. When both are present,
+  `PlanetBinding` takes precedence.
 - `Planets` — optional planet selector collection.
 - Exactly one of `Amount` or `PercentOfCurrent` is required.
 
@@ -244,10 +266,13 @@ Supported stats are `RawResourceNodes` and `EnergyCapacity`. Values cannot fall 
 ### ReducePlanetStats
 
 This action requires a planet instance ID or planet binding. It independently rolls `LossProbabilityPerResource` once for every current point in the selected stats, then enforces `MinimumTotalLoss`.
+The minimum loss is capped by the total number of available points, and stats never fall below
+zero.
 
 **Options**
 
-- `PlanetInstanceID` or `PlanetBinding` — required, mutually exclusive planet source.
+- `PlanetInstanceID` or `PlanetBinding` — required planet source. When both are present,
+  `PlanetBinding` takes precedence.
 - `LossProbabilityPerResource` — required probability from `0` through `1`, applied independently
   to each existing point.
 - `MinimumTotalLoss` — required minimum combined loss.
@@ -271,10 +296,14 @@ This action requires a planet instance ID or planet binding. It records an incid
 changes and destroyed units already produced earlier in the same evaluation. It records nothing
 when those earlier actions made no change.
 
+Incident severity is the sum of absolute planet-stat changes plus the number of destroyed objects
+recorded for that planet.
+
 **Options**
 
 - `Type` — required `Uprising`, `Intelligence`, `Disaster`, or `Resource` incident type.
-- `PlanetInstanceID` or `PlanetBinding` — required, mutually exclusive incident location.
+- `PlanetInstanceID` or `PlanetBinding` — required incident location. When both are present,
+  `PlanetBinding` takes precedence.
 
 ```xml
 <Actions>
@@ -297,12 +326,15 @@ Incident types are `Uprising`, `Intelligence`, `Disaster`, and `Resource`.
 
 ### DestroyUnits
 
-`DestroyUnits` permanently deletes every selected unit. Selecting a parent and its child does not double-delete the child.
+`DestroyUnits` permanently deletes every selected unit. Selecting a container such as a fleet or
+capital ship also deletes its contained subtree. Selecting both a parent and its child does not
+double-delete the child.
 
 **Options**
 
 - `Units` — required unit selector collection.
-- `PlanetInstanceID` or `PlanetBinding` — optional, mutually exclusive result context. These values
+- `PlanetInstanceID` or `PlanetBinding` — optional result context. When both are present,
+  `PlanetBinding` takes precedence. These values
   do not filter the selected units.
 
 ```xml
@@ -320,13 +352,15 @@ Incident types are `Uprising`, `Intelligence`, `Disaster`, and `Resource`.
 
 ### ChangeOwner
 
-Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use planetary-control rules; unit transfers retain valid containment while ownership indexes are updated.
+Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use planetary-control
+rules. Unit transfers update the ownership indexes while leaving the unit at its current scene
+location. Only selected nodes change owner; contained descendants retain their existing owners
+unless they are also selected.
 
 **Options**
 
 - `FactionInstanceID` — required new owner.
-- `Planets` or `Units` — required selector collection; specify exactly one ownership domain.
-- Exactly one of `Planets` or `Units` is required, containing matching selectors.
+- Exactly one of `Planets` or `Units` — required selector collection for that ownership domain.
 
 ```xml
 <ChangeOwner FactionInstanceID="FNALL1">
@@ -346,15 +380,15 @@ Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use 
 - `UnitInstanceID` — optional direct unit source.
 - `Units` — optional selectors and `SpawnUnits` sources.
 - `DestinationInstanceID` — optional direct destination.
-- `Destination` — optional destination selector.
+- `Destination` — optional destination selector collection.
 - At least one unit and one destination must resolve.
 
 ```xml
 <PlaceUnits DestinationInstanceID="NABOO">
   <Units>
     <SelectOfficers InstanceID="LUKE_SKYWALKER"/>
-    <SpawnUnits TypeID="X_WING" Count="3" OwnerFactionInstanceID="FNALL1"/>
-    <SpawnUnits TypeID="ALLIANCE_REGIMENT" Count="2" OwnerFactionInstanceID="FNALL1"/>
+    <SpawnUnits TypeID="SFAL02" Count="3" OwnerFactionInstanceID="FNALL1"/>
+    <SpawnUnits TypeID="REAL002" Count="2" OwnerFactionInstanceID="FNALL1"/>
   </Units>
 </PlaceUnits>
 ```
@@ -370,7 +404,7 @@ Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use 
 - `UnitInstanceID` — optional direct unit source.
 - `Units` — optional existing-unit selector collection.
 - `DestinationInstanceID` — optional direct destination.
-- `Destination` — optional destination selector.
+- `Destination` — optional destination selector collection.
 - At least one unit and one destination must resolve.
 
 ```xml
@@ -411,7 +445,8 @@ Reactivate a returning unit before placing or sending it.
 
 ### SetCaptureStatus
 
-Capturing requires `CaptorFactionInstanceID`. Releasing must omit it. `CanEscape` defaults to `true`.
+Capturing requires `CaptorFactionInstanceID`. Releasing must omit it. This action changes capture
+properties only; it does not move or deactivate the officer.
 
 **Options**
 
@@ -419,7 +454,9 @@ Capturing requires `CaptorFactionInstanceID`. Releasing must omit it. `CanEscape
 - `OfficerInstanceID` — optional direct officer ID.
 - `Officers` — optional officer selector collection.
 - `CaptorFactionInstanceID` — required when capturing and forbidden when releasing.
-- `CanEscape` — optional escape state; defaults to `true`.
+- `CanEscape` — optional state used when capturing; defaults to `true`. Releasing always resets it
+  to `true`.
+- At least one direct officer or selected officer must resolve.
 
 ```xml
 <SetCaptureStatus OfficerInstanceID="HAN_SOLO"
@@ -438,15 +475,21 @@ Choose exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `Per
 - `OfficerInstanceID` — optional direct officer ID.
 - `Officers` — optional officer selector collection.
 - `ReferenceOfficerInstanceID` — required by `PercentOfPositiveGap`.
-- `MinimumAmount` — optional lower bound on the calculated change.
+- `MinimumAmount` — optional non-negative lower bound used only with `PercentOfPositiveGap`.
 - Exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` is
   required.
+- At least one direct officer or selected officer must resolve.
 
 ```xml
 <ChangeOfficerRating OfficerInstanceID="LUKE_SKYWALKER" Rating="Combat">
   <Amount>5</Amount>
 </ChangeOfficerRating>
 ```
+
+`Amount` adds a signed integer to the stored rating. `PercentOfStored` calculates a signed change
+from the stored rating. `PercentOfEffective` calculates it from the current effective rating, then
+applies that change to the stored rating. `PercentOfPositiveGap` adds a non-negative percentage of
+the effective-rating gap between the reference officer and each target.
 
 ### IncreaseOfficerForce
 
@@ -457,9 +500,10 @@ This uses the same calculation modes as `ChangeOfficerRating`, but every configu
 - `OfficerInstanceID` — optional direct officer ID.
 - `Officers` — optional officer selector collection.
 - `ReferenceOfficerInstanceID` — required by `PercentOfPositiveGap`.
-- `MinimumAmount` — optional positive lower bound.
+- `MinimumAmount` — optional non-negative lower bound used only with `PercentOfPositiveGap`.
 - Exactly one positive `Amount`, `PercentOfStored`, `PercentOfEffective`, or
   `PercentOfPositiveGap` is required.
+- At least one direct officer or selected officer must resolve.
 
 ```xml
 <IncreaseOfficerForce OfficerInstanceID="LUKE_SKYWALKER"
@@ -468,6 +512,10 @@ This uses the same calculation modes as `ChangeOfficerRating`, but every configu
   <PercentOfPositiveGap>25</PercentOfPositiveGap>
 </IncreaseOfficerForce>
 ```
+
+For Force, `PercentOfStored` uses `ForceValue`, `PercentOfEffective` uses the current effective
+`ForceRank`, and `PercentOfPositiveGap` uses the positive effective-rank gap to the reference
+officer. The calculated increase must be greater than zero.
 
 ### SetForceSensitive
 
@@ -485,6 +533,8 @@ Marks an officer as having latent Force potential.
 
 Marks a Force-sensitive officer's potential as discovered and initializes Force progression.
 Eligibility requires sensitivity, so use both actions when revealing a previously unknown candidate.
+On the first eligibility change, `ForceValue` is raised to at least `JediLevel` plus a uniformly
+rolled value from zero through `JediLevelVariance`.
 
 **Options**
 
@@ -501,8 +551,8 @@ The action rolls an inclusive injury value and records the standard officer-inju
 **Options**
 
 - `OfficerInstanceID` — required officer ID.
-- `MinimumInjury` — required minimum injury.
-- `MaximumInjury` — required maximum injury and cannot be lower than the minimum.
+- `MinimumInjury` — required non-negative minimum injury.
+- `MaximumInjury` — required non-negative maximum injury and cannot be lower than the minimum.
 
 ```xml
 <ApplyOfficerInjury OfficerInstanceID="LUKE_SKYWALKER">
@@ -525,8 +575,8 @@ The action rolls an inclusive injury value and records the standard officer-inju
 ```xml
 <TriggerDuel FirstOfficerInstanceID="LUKE_SKYWALKER"
              SecondOfficerInstanceID="DARTH_VADER">
-  <ImagePath>Pack/Shared/Events/MessageBackgrounds/luke-encounters-vader</ImagePath>
-  <AudioPath>Pack/Shared/Events/JediConfrontation/Audio/luke-vader</AudioPath>
+  <ImagePath>Pack/Factions/Alliance/Strategy/Messages/Images/luke-encounters-vader-trained</ImagePath>
+  <AudioPath>Pack/Shared/Events/JediConfrontation/Audio/luke-vader-dagobah-complete</AudioPath>
 </TriggerDuel>
 ```
 
@@ -540,13 +590,13 @@ Image paths are merged into the officer's active image set, so omitted paths rem
 
 - `OfficerInstanceID` — required officer ID.
 - `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, and
-  `EncyclopediaImagePath` — optional paths; supply at least one.
+  `EncyclopediaImagePath` — optional paths. An empty action makes no image changes.
 
 ```xml
 <SetOfficerImages OfficerInstanceID="LUKE_SKYWALKER">
   <DisplayImagePath>Pack/Factions/Alliance/Units/Officers/OFAL003/jedi-display</DisplayImagePath>
   <SmallDisplayImagePath>Pack/Factions/Alliance/Units/Officers/OFAL003/jedi-small-display</SmallDisplayImagePath>
-  <MessageImagePath>Pack/Factions/Alliance/Units/Officers/OFAL003/jedi-message</MessageImagePath>
+  <MessageImagePath>Pack/Factions/Alliance/Units/Officers/OFAL003/message</MessageImagePath>
   <EncyclopediaImagePath>Pack/Factions/Alliance/Units/Officers/OFAL003/jedi-encyclopedia</EncyclopediaImagePath>
 </SetOfficerImages>
 ```
@@ -558,7 +608,8 @@ Replaces authored categories in the officer's active voice set. Omitted categori
 **Options**
 
 - `OfficerInstanceID` — required officer ID.
-- Each optional voice-category child contains one or more `Path` elements.
+- Each optional voice-category child contains `Path` elements. A category with no paths makes no
+  change to that category.
 
 Voice categories are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFailure`, `MissionAbort`,
 `Released`, `Recovered`, `EnemyDetected`, `ForceGrowth`, `ForceUserDiscovered`,
@@ -571,7 +622,7 @@ Voice categories are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFail
     <Path>Pack/Factions/Alliance/Units/Officers/OFAL003/Voice/advanced-personnel-arrived-02</Path>
   </PersonnelArrived>
   <MissionSuccess>
-    <Path>Pack/Factions/Alliance/Units/Officers/OFAL003/Voice/advanced-mission-success-01</Path>
+    <Path>Pack/Factions/Alliance/Units/Officers/OFAL003/Voice/mission-success-01</Path>
   </MissionSuccess>
 </SetOfficerVoiceSet>
 ```
@@ -579,6 +630,7 @@ Voice categories are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFail
 ## Display metadata
 
 These actions accept one direct `TargetInstanceID` or a `Targets` selector collection.
+At least one direct or selected target must resolve.
 
 ### SetDisplayName
 

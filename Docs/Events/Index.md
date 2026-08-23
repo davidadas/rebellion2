@@ -78,7 +78,9 @@ Required stable identity used by runtime state, saves, and dependent events.
 
 ### MaximumActivations
 
-Optional maximum number of successful activations. Omission means unlimited.
+Optional maximum number of successful activations. Omission adds no numerical cap; a one-shot
+schedule still completes after one activation, and a recurring schedule can still complete through
+`Until`.
 
 ### Bindings
 

@@ -2,6 +2,13 @@
 
 Triggers activate events from typed gameplay results. An event uses either `Triggers` or `Schedule`, never both. Multiple triggers are alternatives: any matching result gives the event one activation opportunity.
 
+If the event's top-level conditionals fail for that result, the opportunity is not retained or
+retried; the event waits for another matching result. A top-level binding that does not resolve
+exactly one node is an authoring error and stops that evaluation.
+
+`SourceEventInstanceID` filters identify the authored event that produced the triggering result.
+Use them when a reaction must belong to one particular event chain.
+
 ```xml
 <Triggers>
   <UnitArrived UnitInstanceID="LUKE_SKYWALKER"/>
@@ -27,7 +34,7 @@ Activates when a mission completes and all authored filters match.
 
 ```xml
 <Triggers>
-  <MissionCompleted MissionTypeID="SABOTAGE" Outcome="Success" As="mission">
+  <MissionCompleted MissionTypeID="Sabotage" Outcome="Success" As="mission">
     <Participants Match="Any">
       <Units>
         <Unit UnitInstanceID="HAN_SOLO"/>

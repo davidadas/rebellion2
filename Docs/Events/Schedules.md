@@ -33,8 +33,9 @@ event catalog happens to be evaluated.
 
 **Options**
 
-- `MinimumTicks` — required positive minimum delay.
-- `MaximumTicks` — required maximum delay; cannot be lower than `MinimumTicks`.
+- `MinimumTicks` — required positive minimum first eligible campaign tick.
+- `MaximumTicks` — required maximum first eligible campaign tick; cannot be lower than
+  `MinimumTicks`.
 
 ```xml
 <Schedule>
@@ -84,7 +85,9 @@ zero. After each activation, it rolls a new inclusive delay from that activation
 </Schedule>
 ```
 
-Failed event conditionals do not consume an activation or roll the next interval.
+Failed event conditionals do not consume an activation or roll the next interval. Once the event is
+eligible, it is reconsidered on each campaign tick until its conditionals pass or `Until` completes
+the schedule.
 
 ## After
 
@@ -123,7 +126,9 @@ Failed event conditionals do not consume an activation or roll the next interval
 
 ## AfterAny
 
-`AfterAny` waits for the first listed event to activate. Its delay begins at the earliest matching activation.
+`AfterAny` initializes once any listed event has activated. If several predecessors have already
+activated when it initializes, the delay uses the earliest of their recorded latest activation
+ticks.
 
 **Options**
 
@@ -143,7 +148,9 @@ Failed event conditionals do not consume an activation or roll the next interval
 
 ## Limiting activations
 
-`MaximumActivations` belongs on `GameEvent` because it limits activations regardless of their source. Omit it for unlimited recurring or triggered events.
+`MaximumActivations` belongs on `GameEvent` because it limits activations regardless of their
+source. Omit it when a recurring or triggered event should have no activation-count cap; recurring
+`Until` conditions may still complete the event.
 
 ```xml
 <GameEvent MaximumActivations="3">

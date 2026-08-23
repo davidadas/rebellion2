@@ -43,7 +43,7 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 **Options**
 
-- Child conditions — optional; an empty `All` passes.
+- Child conditions — one or more; every child must pass.
 
 ```xml
 <All>
@@ -58,7 +58,7 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 **Options**
 
-- Child conditions — optional; an empty `Any` fails.
+- Child conditions — one or more; at least one child must pass.
 
 ```xml
 <Any>
@@ -73,7 +73,7 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 **Options**
 
-- Child conditions — optional; an empty `Not` passes.
+- Child conditions — one or more; every child must fail.
 
 ```xml
 <Not>
@@ -88,7 +88,7 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 **Options**
 
-- Child conditions — optional; an empty `Xor` fails.
+- Child conditions — one or more; exactly one child must pass.
 
 ```xml
 <Xor>
@@ -194,10 +194,11 @@ specific owner.
 
 **Options**
 
-- `PlanetInstanceID` — optional explicit planet ID.
-- `PlanetBinding` — optional binding containing a planet.
+- `PlanetInstanceID` — explicit planet ID.
+- `PlanetBinding` — binding containing a planet.
 - `FactionInstanceID` — optional required owner.
-- `PlanetInstanceID` and `PlanetBinding` are mutually exclusive.
+- `PlanetInstanceID` or `PlanetBinding` identifies the planet. `PlanetBinding` takes precedence when
+  both are present; the condition fails when neither resolves.
 
 ```xml
 <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
@@ -210,9 +211,10 @@ Rolls a random percentage against the selected faction's current support on a pl
 **Options**
 
 - `FactionInstanceID` — required faction ID.
-- `PlanetInstanceID` — optional explicit planet ID.
-- `PlanetBinding` — optional binding containing a planet.
-- `PlanetInstanceID` and `PlanetBinding` are mutually exclusive.
+- `PlanetInstanceID` — explicit planet ID.
+- `PlanetBinding` — binding containing a planet.
+- `PlanetInstanceID` or `PlanetBinding` identifies the planet. `PlanetBinding` takes precedence when
+  both are present; the condition fails when neither resolves.
 
 ```xml
 <RollAgainstPopularSupport PlanetBinding="$planet" FactionInstanceID="FNALL1"/>
@@ -428,9 +430,10 @@ Compares one planet stat against an integer.
 - `Stat` — required planet stat.
 - `Comparison` — required comparison operator.
 - `Value` — required integer.
-- `PlanetInstanceID` — optional explicit planet ID.
-- `PlanetBinding` — optional binding containing a planet.
-- `PlanetInstanceID` and `PlanetBinding` are mutually exclusive.
+- `PlanetInstanceID` — explicit planet ID.
+- `PlanetBinding` — binding containing a planet.
+- `PlanetInstanceID` or `PlanetBinding` identifies the planet. `PlanetBinding` takes precedence when
+  both are present; the condition fails when neither resolves.
 
 ```xml
 <ComparePlanetStat PlanetInstanceID="NABOO"
@@ -446,8 +449,10 @@ Passes when the selected planet contains a completed building of the requested t
 **Options**
 
 - `Type` — required building type.
-- `PlanetInstanceID` — optional explicit planet ID.
-- `PlanetBinding` — optional binding containing a planet.
+- `PlanetInstanceID` — explicit planet ID.
+- `PlanetBinding` — binding containing a planet.
+- `PlanetInstanceID` or `PlanetBinding` identifies the planet. `PlanetBinding` takes precedence when
+  both are present; the condition fails when neither resolves.
 
 ```xml
 <Conditionals>
