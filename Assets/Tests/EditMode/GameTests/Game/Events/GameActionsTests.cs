@@ -48,16 +48,16 @@ namespace Rebellion.Tests.Game.Events
         }
 
         /// <summary>
-        /// Executes an action with a caller-supplied event activation context.
+        /// Executes an action with a caller-supplied event evaluation context.
         /// </summary>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventExecutionContext activation
+            GameEventEvaluationContext evaluation
         )
         {
-            GameActionContext context = new GameActionContext(game, random, activation);
+            GameActionContext context = new GameActionContext(game, random, evaluation);
             action.Execute(context);
             return context.Results;
         }
@@ -87,16 +87,16 @@ namespace Rebellion.Tests.Game.Events
         }
 
         /// <summary>
-        /// Executes an action with a caller-supplied event activation and returns its requests.
+        /// Executes an action with a caller-supplied event evaluation and returns its requests.
         /// </summary>
         internal static List<GameRequest> ExecuteRequests(
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventExecutionContext activation
+            GameEventEvaluationContext evaluation
         )
         {
-            GameActionContext context = new GameActionContext(game, random, activation);
+            GameActionContext context = new GameActionContext(game, random, evaluation);
             action.Execute(context);
             return context.Requests;
         }
@@ -564,7 +564,7 @@ namespace Rebellion.Tests.Game.Events
                 SecondOfficerInstanceID = "vader",
                 AudioPath = "encounter-voice",
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 completion
@@ -633,7 +633,7 @@ namespace Rebellion.Tests.Game.Events
                     new SelectOfficers { InstanceID = officer.InstanceID },
                 },
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
                 new GameEventState()
             );
@@ -747,7 +747,7 @@ namespace Rebellion.Tests.Game.Events
                 EncounteredOfficer = luke,
                 AudioPath = "selected-encounter-voice",
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 encounter,
@@ -1386,7 +1386,7 @@ namespace Rebellion.Tests.Game.Events
                 Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 null
             );
@@ -1413,7 +1413,7 @@ namespace Rebellion.Tests.Game.Events
                 Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 null
             );
@@ -1445,7 +1445,7 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
             GameEvent gameEvent = new GameEvent { InstanceID = "disaster" };
-            GameEventExecutionContext context = new GameEventExecutionContext(gameEvent, null);
+            GameEventEvaluationContext context = new GameEventEvaluationContext(gameEvent, null);
             context.Bind("target", planet);
 
             List<GameResult> results = action.Execute(game, new FixedRNG(0.99), context);
@@ -1505,10 +1505,12 @@ namespace Rebellion.Tests.Game.Events
                     new RecordPlanetIncidentAction { IncidentType = PlanetIncidentType.Disaster },
                 },
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(gameEvent, null);
+            GameEventEvaluationContext context = new GameEventEvaluationContext(gameEvent, null);
             context.Bind("target", planet);
 
-            List<GameResult> results = gameEvent.Execute(game, new FixedRNG(0.99), context).Results;
+            List<GameResult> results = gameEvent
+                .ExecuteActions(game, new FixedRNG(0.99), context)
+                .Results;
 
             Assert.IsFalse(planet.GetChildren<Building>().Contains(shipyard));
             Assert.AreSame(

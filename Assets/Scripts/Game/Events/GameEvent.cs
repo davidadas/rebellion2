@@ -22,7 +22,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Selects one scene node and exposes it under an authored activation-scoped binding name.
+    /// Selects one scene node and exposes it throughout one event evaluation.
     /// </summary>
     [PersistableObject(Name = "Bind")]
     public sealed class GameEventSelectionBinding
@@ -33,11 +33,11 @@ namespace Rebellion.Game.Events
         [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        /// <summary>Selects exactly one scene node and stores it in the activation context.</summary>
+        /// <summary>Selects exactly one scene node and stores it in the evaluation context.</summary>
         internal void Bind(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         )
         {
             if (Selectors.Count != 1)
@@ -65,10 +65,10 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int? MaximumActivations { get; set; }
 
-        public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
-        public GameEventScheduler Schedule { get; set; }
         public List<GameEventSelectionBinding> Bindings { get; set; } =
             new List<GameEventSelectionBinding>();
+        public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
+        public GameEventScheduler Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
@@ -94,12 +94,12 @@ namespace Rebellion.Game.Events
         }
 
         /// <summary>
-        /// Returns true if all conditions accept the supplied execution context.
+        /// Returns true if all conditions accept the supplied evaluation context.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <returns>True if every conditional is satisfied.</returns>
-        internal bool AreConditionsMet(GameRoot game, GameEventExecutionContext context)
+        internal bool AreConditionsMet(GameRoot game, GameEventEvaluationContext context)
         {
             foreach (GameConditional conditional in Conditionals)
             {
@@ -117,10 +117,10 @@ namespace Rebellion.Game.Events
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
         /// <returns>The context containing requests and results produced by the actions.</returns>
-        internal GameActionContext Execute(
+        internal GameActionContext ExecuteActions(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context,
+            GameEventEvaluationContext context,
             UnitFactory unitFactory = null
         )
         {

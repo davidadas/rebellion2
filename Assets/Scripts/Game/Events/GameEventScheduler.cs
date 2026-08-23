@@ -89,7 +89,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Schedules a one-shot event relative to the most recent execution of another event.
+    /// Schedules a one-shot event relative to the most recent activation of another event.
     /// </summary>
     [PersistableObject]
     public sealed class AfterEvent

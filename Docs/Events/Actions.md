@@ -585,4 +585,4 @@ Clears supplemental status text.
 
 ---
 
-<p align="center"><a href="Targets.md">← Targets</a> · <a href="Index.md">Event guide</a> · <a href="Examples.md">Examples →</a></p>
+<p align="center"><a href="Conditions.md">← Conditions</a> · <a href="Index.md">Event guide</a> · <a href="Examples.md">Examples →</a></p>

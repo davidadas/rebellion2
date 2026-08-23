@@ -2,6 +2,9 @@
 
 Schedules activate events from campaign time. A `Schedule` contains exactly one scheduling option and cannot be combined with `Triggers`.
 
+Top-level bindings are resolved before a schedule is evaluated. Consequently, `Until` may use the
+same bindings as the event's top-level conditionals and actions.
+
 ## At
 
 `At` makes an event eligible at one absolute campaign tick. It is inherently one-shot.
@@ -148,4 +151,4 @@ One-shot schedules do not require `MaximumActivations="1"`.
 
 ---
 
-<p align="center"><a href="Index.md">← Event guide</a> · <a href="Triggers.md">Triggers →</a></p>
+<p align="center"><a href="Targets.md">← Targets</a> · <a href="Index.md">Event guide</a> · <a href="Triggers.md">Triggers →</a></p>

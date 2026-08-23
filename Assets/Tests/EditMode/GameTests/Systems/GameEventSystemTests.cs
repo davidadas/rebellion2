@@ -152,7 +152,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_RecurringScheduleUntilMet_ExhaustsAndRemovesEvent()
+        public void ProcessEvents_RecurringScheduleUntilMet_CompletesAndRemovesEvent()
         {
             GameEvent gameEvent = CreateTickEvent("UNTIL_MET", targetTick: 0, repeatable: true);
             gameEvent.Schedule = new GameEventScheduler
@@ -181,7 +181,49 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_MaximumActivationsFive_ExecutesFiveTimes()
+        public void ProcessEvents_RecurringScheduleUntilMet_UsesEvaluationBinding()
+        {
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "BOUND_UNTIL",
+                Bindings = new List<GameEventSelectionBinding>
+                {
+                    new GameEventSelectionBinding
+                    {
+                        As = "planet",
+                        Selectors = new List<GameEventSelector>
+                        {
+                            new SelectPlanets { InstanceID = planet.InstanceID },
+                        },
+                    },
+                },
+                Schedule = new GameEventScheduler
+                {
+                    Every = new EveryTicks
+                    {
+                        Ticks = 5,
+                        Until = new List<GameConditional>
+                        {
+                            BindingEquals("planet.InstanceID", planet.InstanceID),
+                        },
+                    },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _system.ProcessEvents(_game.GetEventPool());
+
+            Assert.AreEqual(0, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
+            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
+            Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
+        }
+
+        [Test]
+        public void ProcessEvents_MaximumActivationsFive_ActivatesFiveTimes()
         {
             GameEvent gameEvent = CreateTickEvent("FIVE_RUNS", targetTick: 0, repeatable: false);
             gameEvent.MaximumActivations = 5;
@@ -195,7 +237,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_MaximumActivationsThree_ExecutesThreeTimes()
+        public void ProcessEvents_MaximumActivationsThree_ActivatesThreeTimes()
         {
             GameEvent gameEvent = CreateTickEvent("THREE_RUNS", targetTick: 0, repeatable: false);
             gameEvent.MaximumActivations = 3;
@@ -233,7 +275,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_RepeatDelay_PreventsExecutionUntilCooldownExpires()
+        public void ProcessEvents_RepeatDelay_PreventsActivationUntilCooldownExpires()
         {
             GameEvent gameEvent = CreateTickEvent("COOLDOWN", targetTick: 0, repeatable: true);
             gameEvent.Schedule = new GameEventScheduler { Every = new EveryTicks { Ticks = 5 } };
@@ -251,7 +293,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_AfterSchedule_DelaysFromPredecessorExecution()
+        public void ProcessEvents_AfterSchedule_DelaysFromPredecessorActivation()
         {
             GameEvent predecessor = CreateTickEvent("DEPARTURE", targetTick: 19, repeatable: false);
             GameEvent pending = CreateTickEvent("PENDING_RETURN", targetTick: 0, repeatable: false);
@@ -286,7 +328,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_AfterAllScheduleAtFinalDelay_ExecutesEvent()
+        public void ProcessEvents_AfterAllScheduleAtFinalDelay_ActivatesEvent()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ALL", afterAll: true);
             _game.GetEventPool().Add(pending);
@@ -310,7 +352,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_AfterAnyScheduleAtFirstDelay_ExecutesEvent()
+        public void ProcessEvents_AfterAnyScheduleAtFirstDelay_ActivatesEvent()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ANY", afterAll: false);
             _game.GetEventPool().Add(pending);
@@ -489,7 +531,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ProcessEvents_OneShotTarget_ExecutesTargetOnce()
+        public void ProcessEvents_OneShotTarget_ActivatesTargetOnce()
         {
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet { InstanceID = "planet" };
@@ -562,7 +604,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void HandleResults_MatchingEncounter_ExecutesResultTriggeredEventOnce()
+        public void HandleResults_MatchingEncounter_ActivatesResultTriggeredEventOnce()
         {
             Officer luke = new Officer { InstanceID = "luke" };
             Officer vader = new Officer { InstanceID = "vader" };
@@ -596,7 +638,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void HandleResults_StableTriggerId_ExecutesWithoutClrTypeName()
+        public void HandleResults_StableTriggerId_ActivatesWithoutClrTypeName()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -649,7 +691,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void HandleResults_MatchingOptionalSourceBinding_ExecutesEvent()
+        public void HandleResults_MatchingOptionalSourceBinding_ActivatesEvent()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -698,7 +740,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void HandleResults_RepeatableEncounterEffect_ExecutesForEveryEncounter()
+        public void HandleResults_RepeatableEncounterEffect_ActivatesForEveryEncounter()
         {
             Officer luke = new Officer { InstanceID = "luke" };
             Officer vader = new Officer { InstanceID = "vader" };
@@ -756,10 +798,10 @@ namespace Rebellion.Tests.Sectors
                 },
             };
 
-            gameEvent.Execute(
+            gameEvent.ExecuteActions(
                 _game,
                 _game.Random,
-                new GameEventExecutionContext(gameEvent, new GameEventState(), null)
+                new GameEventEvaluationContext(gameEvent, new GameEventState(), null)
             );
 
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("result.observed"));
@@ -825,7 +867,7 @@ namespace Rebellion.Tests.Sectors
             internal override void Execute(GameActionContext context)
             {
                 GameRoot game = context.Game;
-                Planet planet = context.Activation.GetBinding<Planet>("target");
+                Planet planet = context.Evaluation.GetBinding<Planet>("target");
                 game.EventRuntime.SetVariable(
                     $"scope.{planet.InstanceID}",
                     game.EventRuntime.GetVariable($"scope.{planet.InstanceID}") + 1
@@ -836,7 +878,7 @@ namespace Rebellion.Tests.Sectors
         private sealed class HasArrivalBindingsConditional : GameConditional
         {
             public override bool IsMet(GameConditionContext context) =>
-                context.Activation?.GetBinding<UnitArrivedResult>("arrival")
+                context.Evaluation?.GetBinding<UnitArrivedResult>("arrival")
                     is { Unit: Officer, Destination: Planet };
         }
 
@@ -850,7 +892,7 @@ namespace Rebellion.Tests.Sectors
         {
             internal override void Execute(GameActionContext context)
             {
-                if (context.Activation.Results.Any())
+                if (context.Evaluation.Results.Any())
                     context.Game.EventRuntime.SetVariable("result.observed", 1);
             }
         }

@@ -63,7 +63,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns owned nodes located at the selected planet.
         /// </summary>
-        protected IEnumerable<T> SelectLocated(GameRoot game, GameEventExecutionContext context) =>
+        protected IEnumerable<T> SelectLocated(GameRoot game, GameEventEvaluationContext context) =>
             SelectOwned(game)
                 .Where(node => MatchesLocation(node, context, PlanetInstanceID, PlanetBinding));
     }
@@ -85,7 +85,7 @@ namespace Rebellion.Game.Events
         /// </summary>
         protected IEnumerable<T> SelectManufacturable(
             GameRoot game,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) =>
             SelectLocated(game, context)
                 .Where(unit => string.IsNullOrWhiteSpace(TypeID) || unit.TypeID == TypeID)
@@ -114,7 +114,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) =>
             SelectOwned(game)
                 .Where(planet => !planet.IsDestroyed)
@@ -142,7 +142,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) =>
             Active<PlanetSector>(game)
                 .Where(sector =>
@@ -173,7 +173,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         )
         {
             IEnumerable<Officer> officers = IncludeInactive
@@ -197,7 +197,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) => SelectLocated(game, context);
     }
 
@@ -213,7 +213,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) => SelectLocated(game, context);
     }
 
@@ -229,7 +229,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) => SelectLocated(game, context);
     }
 
@@ -245,7 +245,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) => SelectManufacturable(game, context);
     }
 
@@ -261,7 +261,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) => SelectManufacturable(game, context);
     }
 
@@ -277,7 +277,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) => SelectManufacturable(game, context);
     }
 
@@ -306,7 +306,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) => SelectManufacturable(game, context).Where(MatchesCategory);
 
         /// <summary>
@@ -351,7 +351,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         )
         {
             Planet boundPlanet = !string.IsNullOrWhiteSpace(PlanetBinding)
@@ -405,7 +405,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         )
         {
             if (ChancePercent < 0 || ChancePercent > 100)
@@ -465,7 +465,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) => SelectCandidates(game, provider, context).Take(1);
 
         /// <summary>
@@ -474,7 +474,7 @@ namespace Rebellion.Game.Events
         internal IEnumerable<ISceneNode> SelectCandidates(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) => Selectors.SelectMany(selector => selector.Select(game, provider, context)).Distinct();
     }
 
@@ -493,7 +493,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         )
         {
             if (context?.TryGetBindingReference(Binding, out object value) != true)
@@ -545,7 +545,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         ) =>
             Selectors
                 .SelectMany(selector => selector.Select(game, provider, context))
@@ -572,7 +572,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         )
         {
             bool hasInstanceID = !string.IsNullOrWhiteSpace(UnitInstanceID);

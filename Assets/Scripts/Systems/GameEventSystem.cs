@@ -238,7 +238,7 @@ namespace Rebellion.Systems
                 if (HasResultTrigger(gameEvent))
                     continue;
 
-                if (TryProcessEvent(gameEvent, null, null, out List<GameResult> globalResults))
+                if (TryActivateEvent(gameEvent, null, null, out List<GameResult> globalResults))
                     allResults.AddRange(globalResults);
                 if (_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete)
                     eventsToRemove.Add(gameEvent);
@@ -279,7 +279,7 @@ namespace Rebellion.Systems
                         continue;
                     processedEvents.Add(gameEvent);
                     if (
-                        !TryProcessEvent(
+                        !TryActivateEvent(
                             gameEvent,
                             trigger,
                             triggerResult,
@@ -324,14 +324,14 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Executes a single game event if its conditions are met.
+        /// Evaluates a single game event and activates it when every requirement is met.
         /// </summary>
         /// <param name="gameEvent">The event to process.</param>
         /// <param name="trigger">The trigger definition that matched the result, if any.</param>
         /// <param name="triggerResult">The simulation result that activated the event, if any.</param>
         /// <param name="results">Receives results produced by the event.</param>
         /// <returns>True when the event activated; otherwise false.</returns>
-        private bool TryProcessEvent(
+        private bool TryActivateEvent(
             GameEvent gameEvent,
             GameEventTrigger trigger,
             GameResult triggerResult,
@@ -345,19 +345,21 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            GameEventExecutionContext context = new GameEventExecutionContext(
-                gameEvent,
-                state,
-                triggerResult,
-                trigger
-            );
-            if (ShouldEndSchedule(gameEvent, state, context))
+            if (!InitializeSchedule(gameEvent, state))
             {
                 results = new List<GameResult>();
                 return false;
             }
 
-            if (!InitializeSchedule(gameEvent, state))
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                gameEvent,
+                state,
+                triggerResult,
+                trigger
+            );
+            foreach (GameEventSelectionBinding binding in gameEvent.Bindings)
+                binding.Bind(_game, _provider, context);
+            if (ShouldCompleteSchedule(gameEvent, state, context))
             {
                 results = new List<GameResult>();
                 return false;
@@ -368,16 +370,14 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            foreach (GameEventSelectionBinding binding in gameEvent.Bindings)
-                binding.Bind(_game, _provider, context);
             if (!gameEvent.AreConditionsMet(_game, context))
             {
                 results = new List<GameResult>();
                 return false;
             }
 
-            GameLogger.Log($"Executing game event: {gameEvent.InstanceID}");
-            GameActionContext actionContext = gameEvent.Execute(
+            GameLogger.Log($"Activating game event: {gameEvent.InstanceID}");
+            GameActionContext actionContext = gameEvent.ExecuteActions(
                 _game,
                 _provider,
                 context,
@@ -397,7 +397,7 @@ namespace Rebellion.Systems
             state.LastActivationTick = _game.CurrentTick;
             if (gameEvent.Schedule is { IsRecurring: false })
                 state.IsComplete = true;
-            bool isComplete = ReachedMaximumActivations(gameEvent, state);
+            bool isComplete = HasReachedMaximumActivations(gameEvent, state);
             if (!isComplete)
             {
                 GetRepeatRange(gameEvent, out int minimum, out int maximum);
@@ -409,10 +409,10 @@ namespace Rebellion.Systems
         /// <summary>
         /// Permanently completes a recurring schedule when all of its terminal conditions are met.
         /// </summary>
-        private bool ShouldEndSchedule(
+        private bool ShouldCompleteSchedule(
             GameEvent gameEvent,
             GameEventState state,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         )
         {
             if (state.IsComplete)
@@ -427,7 +427,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>Marks an event complete after it reaches its authored activation limit.</summary>
-        private static bool ReachedMaximumActivations(GameEvent gameEvent, GameEventState state)
+        private static bool HasReachedMaximumActivations(GameEvent gameEvent, GameEventState state)
         {
             int? maximum = gameEvent.MaximumActivations;
             if (maximum.HasValue && state.ActivationCount >= maximum.Value)
@@ -499,7 +499,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Gets the inclusive tick range for an event's first execution.
+        /// Gets the inclusive tick range for an event's first activation.
         /// </summary>
         /// <param name="gameEvent">The event whose schedule is evaluated.</param>
         /// <param name="minimum">Receives the minimum delay in ticks.</param>

@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Game.Events
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = emperor.InstanceID,
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 null
@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Game.Events
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = empirePlanet.InstanceID,
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 null
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.Game.Events
                 Comparison = comparison,
                 CompareTo = "EXPECTED_SOURCE",
             };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 null
@@ -107,12 +107,10 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void IsEventComplete_LoadedCountAtLimit_ReturnsTrueBeforeEventProcessing()
+        public void IsEventComplete_PersistedCompletionState_ReturnsTrue()
         {
             GameRoot game = BuildGame(out _, out _);
-            game.GetEventPool()
-                .Add(new GameEvent { InstanceID = "limited", MaximumActivations = 2 });
-            game.EventRuntime.GetState("limited").ActivationCount = 2;
+            game.EventRuntime.GetState("limited").IsComplete = true;
             IsEventCompleteConditional conditional = new IsEventCompleteConditional
             {
                 EventInstanceID = "limited",

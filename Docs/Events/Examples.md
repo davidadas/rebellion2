@@ -57,9 +57,6 @@ This repeating event selects one Alliance-owned core planet and adds a raw-resou
 ```xml
 <GameEvent MaximumActivations="5">
   <InstanceID>MOD_RESOURCE_DISCOVERY</InstanceID>
-  <Schedule>
-    <RandomInterval MinimumTicks="100" MaximumTicks="300"/>
-  </Schedule>
   <Bindings>
     <Bind As="planet">
       <From>
@@ -72,6 +69,9 @@ This repeating event selects one Alliance-owned core planet and adds a raw-resou
       </From>
     </Bind>
   </Bindings>
+  <Schedule>
+    <RandomInterval MinimumTicks="100" MaximumTicks="300"/>
+  </Schedule>
   <Actions>
     <ChangePlanetStat Stat="RawResourceNodes" PlanetBinding="$planet">
       <Amount>1</Amount>
@@ -132,9 +132,6 @@ records the changes as an incident, and sends a message.
 ```xml
 <GameEvent>
   <InstanceID>MOD_PLANETARY_ATTACK</InstanceID>
-  <Schedule>
-    <RandomInterval MinimumTicks="100" MaximumTicks="300"/>
-  </Schedule>
   <Bindings>
     <Bind As="planet">
       <From>
@@ -146,6 +143,9 @@ records the changes as an incident, and sends a message.
       </From>
     </Bind>
   </Bindings>
+  <Schedule>
+    <RandomInterval MinimumTicks="100" MaximumTicks="300"/>
+  </Schedule>
   <Conditionals>
     <!-- Omitting FactionInstanceID means any non-neutral owner is accepted. -->
     <IsOwned PlanetBinding="$planet"/>

@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Events
                     FactionInstanceID = "faction",
                     PlanetBinding = "$target",
                 };
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
                 new GameEventState()
             );

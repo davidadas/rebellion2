@@ -10,8 +10,10 @@ when no optional filter is supplied.
 
 ## Bindings
 
-Each `Bind` selects exactly one scene node and exposes it under its `As` name. Zero results or
-multiple results fail the activation.
+Each `Bind` selects exactly one scene node and exposes it under its `As` name for the complete event
+evaluation. Bindings are resolved before schedules, so recurring `Until` conditions can consume
+them. In a triggered event, bindings follow `Triggers` and may consume the matched result. Zero
+results or multiple results fail the evaluation.
 
 **Options**
 
@@ -308,4 +310,4 @@ collection of `PlaceUnits`; placement attaches the resulting units to their dest
 
 ---
 
-<p align="center"><a href="Conditions.md">← Conditions</a> · <a href="Index.md">Event guide</a> · <a href="Actions.md">Actions →</a></p>
+<p align="center"><a href="Index.md">← Event guide</a> · <a href="Schedules.md">Schedules →</a></p>

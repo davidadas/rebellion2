@@ -56,7 +56,7 @@ namespace Rebellion.Tests.Game.Events
             DuelResult result = new DuelResult();
             DuelCompletedTrigger trigger = new DuelCompletedTrigger { As = "duel" };
 
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 new GameEventState(),
                 result,

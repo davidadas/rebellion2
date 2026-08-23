@@ -187,19 +187,12 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string EventInstanceID { get; set; }
 
+        /// <summary>Checks the persisted completion state for the referenced event.</summary>
+        /// <param name="context">The context providing event runtime state.</param>
+        /// <returns>True when the referenced event is permanently complete.</returns>
         public override bool IsMet(GameConditionContext context)
         {
-            GameEventState state = context.Game.EventRuntime.GetState(EventInstanceID);
-            if (state.IsComplete)
-                return true;
-
-            GameEvent definition = context
-                .Game.GetEventPool()
-                .Find(gameEvent =>
-                    string.Equals(gameEvent.InstanceID, EventInstanceID, StringComparison.Ordinal)
-                );
-            int? maximumActivations = definition?.MaximumActivations;
-            return maximumActivations.HasValue && state.ActivationCount >= maximumActivations.Value;
+            return context.Game.EventRuntime.GetState(EventInstanceID).IsComplete;
         }
     }
 
@@ -244,8 +237,8 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             if (
-                context.Activation == null
-                || !context.Activation.TryGetBindingReference(Binding, out object actual)
+                context.Evaluation == null
+                || !context.Evaluation.TryGetBindingReference(Binding, out object actual)
             )
                 return false;
 
@@ -320,8 +313,8 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             if (
-                context.Activation == null
-                || !context.Activation.TryGetBindingReference(Binding, out object actual)
+                context.Evaluation == null
+                || !context.Evaluation.TryGetBindingReference(Binding, out object actual)
                 || actual is not IEnumerable values
             )
                 return false;
@@ -498,7 +491,7 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             if (planet == null)
                 return false;
@@ -522,7 +515,7 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             return planet
                     ?.GetChildren<Building>()
@@ -553,7 +546,7 @@ namespace Rebellion.Game.Events
             GameRoot game = context.Game;
             Planet planet = string.IsNullOrWhiteSpace(PlanetBinding)
                 ? game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID)
-                : context.Activation?.GetBindingReference<Planet>(PlanetBinding);
+                : context.Evaluation?.GetBindingReference<Planet>(PlanetBinding);
             if (planet?.IsDestroyed != false)
                 return false;
 
@@ -585,7 +578,7 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             if (planet == null || string.IsNullOrWhiteSpace(FactionInstanceID))
                 return false;

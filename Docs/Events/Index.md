@@ -8,14 +8,16 @@ This guide explains the event lifecycle, where events are authored, and how each
 
 Event definitions are loaded with the rest of the game data when a campaign begins. Before play, the game validates event IDs, schedules, trigger contracts, bindings, and dependencies. Runtime state is stored by `InstanceID`, including how many times an event has activated and when it may activate again.
 
-An event activation follows this pipeline:
+Events with schedules are considered on each campaign tick. Events with triggers enter evaluation
+after a matching simulation result is produced. Once selected, an event follows this pipeline:
 
-1. A schedule becomes eligible or a gameplay trigger receives a matching result.
-2. `MaximumActivations` and a recurring schedule's `Until` determine whether the event is complete.
-3. Top-level bindings select and retain any required scene nodes.
-4. Every top-level conditional must pass.
-5. Actions execute from top to bottom.
-6. The activation count, last activation tick, and next eligible tick are persisted.
+1. The event confirms that it is not already complete and initializes its schedule.
+2. A matched trigger exposes its result, then top-level bindings select any required scene nodes.
+3. A recurring schedule's `Until` conditions may permanently complete the event.
+4. The schedule becomes eligible or a gameplay trigger receives a matching result.
+5. Every top-level conditional must pass.
+6. Actions execute from top to bottom.
+7. The activation count, last activation tick, and next eligible tick are persisted.
 
 An event with a `Schedule` is driven by campaign time. An event with `Triggers` reacts to typed simulation results. Every event requires exactly one of those activation sources.
 
@@ -54,12 +56,15 @@ A complete event uses the following high-level shape. Most events only need some
 <GameEvent MaximumActivations="3">
   <InstanceID>UNIQUE_EVENT_ID</InstanceID>
 
-  <!-- Choose Schedule or Triggers, never both. -->
-  <Schedule>...</Schedule>
-  <!-- <Triggers>...</Triggers> -->
-
-  <!-- Optional activation-scoped selections and gates. -->
+  <!-- Scheduled events put bindings before their schedule. -->
   <Bindings>...</Bindings>
+  <Schedule>...</Schedule>
+
+  <!-- Triggered events instead put Triggers before optional Bindings. -->
+  <!-- <Triggers>...</Triggers> -->
+  <!-- <Bindings>...</Bindings> -->
+
+  <!-- Optional activation gates. -->
   <Conditionals>...</Conditionals>
 
   <!-- Required behavior. -->
@@ -75,6 +80,13 @@ Required stable identity used by runtime state, saves, and dependent events.
 
 Optional maximum number of successful activations. Omission means unlimited.
 
+### Bindings
+
+Optionally select scene nodes and expose them throughout the current event evaluation. Scheduled
+events declare bindings before `Schedule`, allowing recurring `Until` conditions to consume them.
+Triggered events declare `Triggers` first, allowing selections to consume trigger-result bindings.
+Top-level conditionals and actions may consume either kind. See [Targets and selectors](Targets.md).
+
 ### Schedule
 
 Optionally activates the event according to campaign time or another event. See
@@ -84,11 +96,6 @@ Optionally activates the event according to campaign time or another event. See
 
 Optionally activates the event in response to gameplay results and exposes result data. See
 [Triggers and bindings](Triggers.md). An event cannot combine `Triggers` with `Schedule`.
-
-### Bindings
-
-Optionally select scene nodes and expose them under activation-scoped names. See
-[Targets and selectors](Targets.md).
 
 ### Conditionals
 
@@ -102,14 +109,14 @@ Required collection of game changes performed in authored order. See [Actions](A
 
 ## Guide
 
-1. [Schedules](Schedules.md)
-2. [Triggers and bindings](Triggers.md)
-3. [Conditions](Conditions.md)
-4. [Targets and selectors](Targets.md)
+1. [Targets and selectors](Targets.md)
+2. [Schedules](Schedules.md)
+3. [Triggers and bindings](Triggers.md)
+4. [Conditions](Conditions.md)
 5. [Actions and messages](Actions.md)
 6. [Complete examples](Examples.md)
 7. [Testing and troubleshooting](Testing.md)
 
 ---
 
-<p align="center"><a href="Schedules.md">Schedules →</a></p>
+<p align="center"><a href="Targets.md">Targets →</a></p>

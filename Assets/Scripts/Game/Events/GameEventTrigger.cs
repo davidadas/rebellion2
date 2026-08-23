@@ -26,7 +26,7 @@ namespace Rebellion.Game.Events
         internal abstract bool Matches(GameResult result);
 
         /// <summary>Exposes the complete matched result when an authored alias is present.</summary>
-        internal void Bind(GameEventExecutionContext context, GameResult result)
+        internal void Bind(GameEventEvaluationContext context, GameResult result)
         {
             if (!string.IsNullOrWhiteSpace(As))
                 context.Bind(As, result);

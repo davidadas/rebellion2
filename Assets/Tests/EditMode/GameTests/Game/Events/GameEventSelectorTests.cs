@@ -129,7 +129,7 @@ namespace Rebellion.Tests.Game.Events
             Officer canonical = EntityFactory.CreateOfficer("han", "faction");
             game.AttachNode(canonical, origin);
             Officer stale = EntityFactory.CreateOfficer(canonical.InstanceID, "faction");
-            GameEventExecutionContext context = new GameEventExecutionContext(
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 null,
                 null

@@ -19,7 +19,7 @@ namespace Rebellion.Game.Events
         internal abstract IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         );
 
         /// <summary>
@@ -36,7 +36,7 @@ namespace Rebellion.Game.Events
         /// </summary>
         protected static bool MatchesLocation(
             ISceneNode node,
-            GameEventExecutionContext context,
+            GameEventEvaluationContext context,
             string planetInstanceID,
             string planetBinding
         )

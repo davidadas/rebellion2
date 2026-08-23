@@ -7,10 +7,10 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Describes one concrete execution of a data-defined event.
+    /// Holds the trigger result, state, and bindings available during one event evaluation.
     /// Scoped events receive the entity whose independent schedule activated them.
     /// </summary>
-    public sealed class GameEventExecutionContext
+    public sealed class GameEventEvaluationContext
     {
         private readonly Dictionary<string, object> _bindings = new Dictionary<string, object>(
             StringComparer.Ordinal
@@ -23,13 +23,13 @@ namespace Rebellion.Game.Events
         public IReadOnlyList<GameResult> Results => _results;
 
         /// <summary>
-        /// Creates the runtime context for one event activation.
+        /// Creates the runtime context for one event evaluation.
         /// </summary>
         /// <param name="gameEvent">The event definition being activated.</param>
-        /// <param name="state">Persistent scheduling state for this activation scope.</param>
+        /// <param name="state">Persistent scheduling state for this event.</param>
         /// <param name="triggerResult">The result that activated this event, if any.</param>
         /// <param name="trigger">The trigger definition that matched the result, if any.</param>
-        public GameEventExecutionContext(
+        public GameEventEvaluationContext(
             GameEvent gameEvent,
             GameEventState state,
             GameResult triggerResult = null,
@@ -43,7 +43,7 @@ namespace Rebellion.Game.Events
         }
 
         /// <summary>
-        /// Stores a named value for subsequent actions in this activation.
+        /// Stores a named value for subsequent evaluation stages.
         /// </summary>
         /// <param name="name">The stable binding name.</param>
         /// <param name="value">The value to expose, including null when a typed trigger argument has no value.</param>
@@ -118,7 +118,7 @@ namespace Rebellion.Game.Events
             return reference.Substring(1);
         }
 
-        /// <summary>Resolves a binding and optional public property path from the activation context.</summary>
+        /// <summary>Resolves a binding and optional public property path from the evaluation context.</summary>
         private object ResolveBindingReference(string reference)
         {
             string path = GetBindingName(reference);
@@ -141,7 +141,7 @@ namespace Rebellion.Game.Events
         }
 
         /// <summary>
-        /// Records a result emitted during this activation for later actions to inspect.
+        /// Records a result emitted during this evaluation for later actions to inspect.
         /// </summary>
         /// <param name="result">The emitted result; null values are ignored.</param>
         public void AddResult(GameResult result)

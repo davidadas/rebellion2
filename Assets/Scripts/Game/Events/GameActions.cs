@@ -41,7 +41,7 @@ namespace Rebellion.Game.Events
                 .Where(outcome =>
                     outcome.Weight > 0
                     && outcome.Conditionals.All(condition =>
-                        condition.IsMet(context.Game, context.Activation)
+                        condition.IsMet(context.Game, context.Evaluation)
                     )
                 )
                 .ToList();
@@ -78,7 +78,7 @@ namespace Rebellion.Game.Events
         internal override void Execute(GameActionContext context)
         {
             IEnumerable<GameAction> selected = Conditionals.TrueForAll(condition =>
-                condition.IsMet(context.Game, context.Activation)
+                condition.IsMet(context.Game, context.Evaluation)
             )
                 ? Actions
                 : Else;
@@ -147,7 +147,7 @@ namespace Rebellion.Game.Events
             Faction recipient = context.Game.GetFactionByOwnerInstanceID(FactionInstanceID);
             List<ISceneNode> observations = Targets
                 .SelectMany(selector =>
-                    selector.Select(context.Game, context.Random, context.Activation)
+                    selector.Select(context.Game, context.Random, context.Evaluation)
                 )
                 .Distinct()
                 .ToList();
@@ -237,7 +237,7 @@ namespace Rebellion.Game.Events
             GameRoot game = context.Game;
             IRandomNumberProvider provider = context.Random;
             ISceneNode subject = !string.IsNullOrWhiteSpace(SubjectBinding)
-                ? context.Activation?.GetBindingReference<ISceneNode>(SubjectBinding)
+                ? context.Evaluation?.GetBindingReference<ISceneNode>(SubjectBinding)
                 : game.GetSceneNodeByInstanceID<ISceneNode>(
                     SubjectInstanceID,
                     includeDisabled: true
@@ -259,7 +259,7 @@ namespace Rebellion.Game.Events
 
             Faction recipient = game.GetFactionByOwnerInstanceID(recipientId);
             Planet location = !string.IsNullOrWhiteSpace(LocationBinding)
-                ? context.Activation?.GetBindingReference<Planet>(LocationBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(LocationBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
             if (location == null && subject != null)
                 location = subject as Planet ?? subject.GetParentOfType<Planet>();
@@ -267,7 +267,7 @@ namespace Rebellion.Game.Events
             string bodyTemplate = Body ?? string.Empty;
             GameConditionContext conditionContext = new GameConditionContext(
                 game,
-                context.Activation
+                context.Evaluation
             );
             foreach (ConditionalMessageBody segment in ConditionalBodies)
                 bodyTemplate += segment.Resolve(conditionContext) ?? string.Empty;
@@ -343,7 +343,7 @@ namespace Rebellion.Game.Events
         {
             if (!string.IsNullOrWhiteSpace(path))
                 return path;
-            if (context.Activation?.TryGetBindingReference(binding, out string boundPath) == true)
+            if (context.Evaluation?.TryGetBindingReference(binding, out string boundPath) == true)
                 return boundPath;
             throw new InvalidOperationException(
                 $"Message media could not resolve binding '{binding}'."
@@ -389,7 +389,7 @@ namespace Rebellion.Game.Events
                     "SetCaptureStatus cannot specify CaptorFactionInstanceID when releasing officers."
                 );
             IEnumerable<ISceneNode> selectedNodes = Selectors.SelectMany(selector =>
-                selector.Select(game, context.Random, context.Activation)
+                selector.Select(game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
@@ -530,7 +530,7 @@ namespace Rebellion.Game.Events
         {
             GameRoot game = context.Game;
             IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
-                selector.Select(game, context.Random, context.Activation)
+                selector.Select(game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
@@ -626,7 +626,7 @@ namespace Rebellion.Game.Events
             }
 
             IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
-                selector.Select(game, context.Random, context.Activation)
+                selector.Select(game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
@@ -995,7 +995,7 @@ namespace Rebellion.Game.Events
                     $"TriggerDuel could not resolve officers '{FirstOfficerInstanceID}' and '{SecondOfficerInstanceID}'."
                 );
 
-            if (context.Activation?.TriggerResult is MissionCompletedResult completion)
+            if (context.Evaluation?.TriggerResult is MissionCompletedResult completion)
             {
                 bool firstParticipated = completion.Participants.Contains(first);
                 bool secondParticipated = completion.Participants.Contains(second);
@@ -1041,7 +1041,7 @@ namespace Rebellion.Game.Events
             IEnumerable<ISceneNode> selected = (
                 selectors ?? Enumerable.Empty<GameEventSelector>()
             ).SelectMany(selector =>
-                selector.Select(context.Game, context.Random, context.Activation)
+                selector.Select(context.Game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(targetInstanceID))
             {
@@ -1209,10 +1209,10 @@ namespace Rebellion.Game.Events
                     "ChangePlanetStat requires exactly one adjustment value."
                 );
             IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
-                selector.Select(game, context.Random, context.Activation)
+                selector.Select(game, context.Random, context.Evaluation)
             );
             Planet explicitPlanet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             if (explicitPlanet != null)
                 selected = new ISceneNode[] { explicitPlanet }.Concat(selected);
@@ -1294,7 +1294,7 @@ namespace Rebellion.Game.Events
         {
             GameRoot game = context.Game;
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             if (planet == null)
                 throw new InvalidOperationException("ReducePlanetStats requires a planet.");
@@ -1424,17 +1424,17 @@ namespace Rebellion.Game.Events
         internal override void Execute(GameActionContext context)
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             if (planet == null)
                 throw new InvalidOperationException("RecordPlanetIncident requires a planet.");
 
             List<PlanetStatChangedResult> statChanges = context
-                .Activation.Results.OfType<PlanetStatChangedResult>()
+                .Evaluation.Results.OfType<PlanetStatChangedResult>()
                 .Where(result => result.Planet == planet)
                 .ToList();
             List<IGameEntity> destroyed = context
-                .Activation.Results.OfType<GameObjectDestroyedResult>()
+                .Evaluation.Results.OfType<GameObjectDestroyedResult>()
                 .Where(result => result.Context == planet)
                 .Select(result => result.DestroyedObject)
                 .Where(result => result != null)
@@ -1481,7 +1481,7 @@ namespace Rebellion.Game.Events
             if (Selectors.Count == 0)
                 throw new InvalidOperationException("DestroyUnits requires at least one selector.");
             HashSet<ISceneNode> selected = Selectors
-                .SelectMany(selector => selector.Select(game, context.Random, context.Activation))
+                .SelectMany(selector => selector.Select(game, context.Random, context.Evaluation))
                 .ToHashSet();
             List<ISceneNode> destroyedRoots = selected
                 .Where(unit => !HasSelectedAncestor(unit, selected))
@@ -1495,7 +1495,7 @@ namespace Rebellion.Game.Events
             }
 
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
 
             context.Record(
@@ -1550,7 +1550,7 @@ namespace Rebellion.Game.Events
             Faction faction = context.Game.GetFactionByOwnerInstanceID(FactionInstanceID);
             List<ISceneNode> selected = (hasPlanets ? Planets : Units)
                 .SelectMany(selector =>
-                    selector.Select(context.Game, context.Random, context.Activation)
+                    selector.Select(context.Game, context.Random, context.Evaluation)
                 )
                 .Distinct()
                 .ToList();
@@ -1621,7 +1621,7 @@ namespace Rebellion.Game.Events
                 .ToList();
             IEnumerable<ISceneNode> selected = sources
                 .Where(source => source is not SpawnUnits)
-                .SelectMany(selector => selector.Select(game, context.Random, context.Activation));
+                .SelectMany(selector => selector.Select(game, context.Random, context.Evaluation));
             if (!string.IsNullOrWhiteSpace(unitInstanceID))
             {
                 ISceneNode direct = includeDisabled
@@ -1683,10 +1683,10 @@ namespace Rebellion.Game.Events
                 ? ((SelectFirst)destinationSelectors[0]).SelectCandidates(
                     game,
                     context.Random,
-                    context.Activation
+                    context.Evaluation
                 )
                 : destinationSelectors.SelectMany(selector =>
-                    selector.Select(game, context.Random, context.Activation)
+                    selector.Select(game, context.Random, context.Evaluation)
                 );
             if (!string.IsNullOrWhiteSpace(destinationInstanceID))
             {
@@ -1825,7 +1825,7 @@ namespace Rebellion.Game.Events
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventExecutionContext context
+            GameEventEvaluationContext context
         )
         {
             throw new InvalidOperationException(
@@ -1889,7 +1889,7 @@ namespace Rebellion.Game.Events
         internal override void Execute(GameActionContext context)
         {
             IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
-                selector.Select(context.Game, context.Random, context.Activation)
+                selector.Select(context.Game, context.Random, context.Evaluation)
             );
             ISceneNode explicitNode = string.IsNullOrWhiteSpace(InstanceID)
                 ? null

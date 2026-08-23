@@ -631,7 +631,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void SaveAndLoadGame_GameWithExhaustedEvents_PreservesEventStates()
+        public void SaveAndLoadGame_GameWithCompletedEvents_PreservesEventStates()
         {
             GameSummary summary = new GameSummary
             {
