@@ -874,7 +874,7 @@ internal sealed class StrategyStatusInfoBuilder
             return;
 
         Planet producer = game.GetSceneNodeByInstanceID<Planet>(manufacturable.ProducerPlanetID);
-        int? completionTicks = ManufacturingSystem.EstimateItemCompletionTicks(
+        int? completionTicks = ManufacturingSystem.EstimateCompletionTicks(
             producer,
             manufacturable
         );

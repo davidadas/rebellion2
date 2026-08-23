@@ -4456,7 +4456,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void EstimateItemCompletionTicks_IncludesEarlierQueuedWorkAndCurrentProgress()
+        public void EstimateCompletionTicks_IncludesEarlierQueuedWorkAndCurrentProgress()
         {
             GameRoot game = CreateOrderTestGame();
             Planet planet = CreateOrderTestPlanet(game, "p1", "empire");
@@ -4476,13 +4476,13 @@ namespace Rebellion.Tests.Systems
             planet.AddToManufacturingQueue(first);
             planet.AddToManufacturingQueue(second);
 
-            int? estimate = ManufacturingSystem.EstimateItemCompletionTicks(planet, second);
+            int? estimate = ManufacturingSystem.EstimateCompletionTicks(planet, second);
 
             Assert.AreEqual(42, estimate);
         }
 
         [Test]
-        public void EstimateItemCompletionTicks_ActiveFacilityCycle_UsesRemainingCycleTime()
+        public void EstimateCompletionTicks_ActiveFacilityCycle_UsesRemainingCycleTime()
         {
             GameRoot game = CreateOrderTestGame();
             Planet planet = CreateOrderTestPlanet(game, "p1", "empire");
@@ -4497,7 +4497,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(item, planet);
             planet.AddToManufacturingQueue(item);
 
-            int? estimate = ManufacturingSystem.EstimateItemCompletionTicks(planet, item);
+            int? estimate = ManufacturingSystem.EstimateCompletionTicks(planet, item);
 
             Assert.AreEqual(3, estimate);
         }

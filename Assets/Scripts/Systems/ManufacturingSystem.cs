@@ -403,7 +403,7 @@ namespace Rebellion.Systems
         /// <param name="producer">The planet performing the manufacturing.</param>
         /// <param name="item">The queued item to inspect.</param>
         /// <returns>The estimated remaining ticks through the item, or null when unavailable.</returns>
-        public static int? EstimateItemCompletionTicks(Planet producer, IManufacturable item)
+        public static int? EstimateCompletionTicks(Planet producer, IManufacturable item)
         {
             if (
                 producer == null
@@ -485,6 +485,7 @@ namespace Rebellion.Systems
             )
                 return int.MaxValue;
 
+            // Each pass strictly shrinks this int-sized interval, so it converges within 31 passes.
             while (low < high)
             {
                 long middle = low + (high - low) / 2;
