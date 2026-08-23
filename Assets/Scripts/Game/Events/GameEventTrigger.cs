@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Serialization;
 
@@ -16,11 +19,8 @@ namespace Rebellion.Game.Events
     [PersistableObject]
     public abstract class GameEventTrigger
     {
-        /// <summary>
-        /// Optional name under which the complete matched result is exposed to the event.
-        /// </summary>
-        [PersistableAttribute]
-        public string As { get; set; }
+        /// <summary>Gets or sets the trigger arguments explicitly exposed to the event.</summary>
+        public List<GameEventBinding> Bindings { get; set; } = new List<GameEventBinding>();
 
         /// <summary>Gets the concrete simulation-result type consumed by this trigger.</summary>
         internal abstract Type ResultType { get; }
@@ -28,12 +28,22 @@ namespace Rebellion.Game.Events
         /// <summary>Returns whether the supplied result satisfies the authored predicate.</summary>
         internal abstract bool Matches(GameResult result);
 
-        /// <summary>Exposes the complete matched result when an authored alias is present.</summary>
+        /// <summary>Exposes the explicitly authored result arguments under their binding names.</summary>
         internal void Bind(GameEventEvaluationContext context, GameResult result)
         {
-            if (!string.IsNullOrWhiteSpace(As))
-                context.Bind(As, result);
+            foreach (GameEventBinding binding in Bindings)
+            {
+                GameEventTriggerArgument argument = GameEventTriggerArguments.Get(
+                    ResultType,
+                    binding.Argument
+                );
+                context.Bind(binding.As, argument.Resolve(result));
+            }
         }
+
+        /// <summary>Gets the declared value type for one authored trigger argument.</summary>
+        internal Type GetBindingType(string argument) =>
+            GameEventTriggerArguments.Get(ResultType, argument).ValueType;
 
         /// <summary>Matches an optional authored instance ID against an actual value.</summary>
         protected static bool MatchesInstanceID(string expected, string actual) =>
@@ -43,6 +53,324 @@ namespace Rebellion.Game.Events
         /// <summary>Matches an optional authored source-event ID against a result.</summary>
         protected static bool MatchesSource(string expected, GameResult result) =>
             MatchesInstanceID(expected, result?.SourceEventInstanceID);
+    }
+
+    /// <summary>
+    /// Describes one stable value that a trigger may expose without reflecting over result objects.
+    /// </summary>
+    internal sealed class GameEventTriggerArgument
+    {
+        private readonly Func<GameResult, object> _resolve;
+
+        internal Type ValueType { get; }
+
+        private GameEventTriggerArgument(Type valueType, Func<GameResult, object> resolve)
+        {
+            ValueType = valueType;
+            _resolve = resolve;
+        }
+
+        /// <summary>Resolves the argument value from the matched result.</summary>
+        internal object Resolve(GameResult result) => _resolve(result);
+
+        /// <summary>Creates a strongly typed trigger-argument accessor.</summary>
+        internal static GameEventTriggerArgument Create<TResult, TValue>(
+            Func<TResult, TValue> resolve
+        )
+            where TResult : GameResult =>
+            new GameEventTriggerArgument(typeof(TValue), result => resolve((TResult)result));
+    }
+
+    /// <summary>
+    /// Defines the stable arguments exposed by each supported trigger-result contract.
+    /// </summary>
+    internal static class GameEventTriggerArguments
+    {
+        private static readonly IReadOnlyDictionary<(Type, string), GameEventTriggerArgument> _all =
+            Build();
+
+        /// <summary>Gets one declared argument or rejects the unsupported authoring request.</summary>
+        internal static GameEventTriggerArgument Get(Type resultType, string argument)
+        {
+            if (
+                string.IsNullOrWhiteSpace(argument)
+                || !_all.TryGetValue((resultType, argument), out GameEventTriggerArgument value)
+            )
+                throw new InvalidOperationException(
+                    $"Trigger result '{resultType?.Name}' does not expose argument '{argument}'."
+                );
+            return value;
+        }
+
+        /// <summary>Builds the explicit result-to-argument contract used by event bindings.</summary>
+        private static IReadOnlyDictionary<(Type, string), GameEventTriggerArgument> Build()
+        {
+            Dictionary<(Type, string), GameEventTriggerArgument> arguments = new();
+            Add<PlanetOwnershipChangedResult, Planet>(arguments, "Planet", result => result.Planet);
+            Add<PlanetOwnershipChangedResult, Faction>(
+                arguments,
+                "PreviousOwner",
+                result => result.PreviousOwner
+            );
+            Add<PlanetOwnershipChangedResult, Faction>(
+                arguments,
+                "NewOwner",
+                result => result.NewOwner
+            );
+            Add<PlanetOwnershipChangedResult, PlanetOwnershipChangeReason>(
+                arguments,
+                "Reason",
+                result => result.Reason
+            );
+            Add<PlanetStatChangedResult, Planet>(arguments, "Planet", result => result.Planet);
+            Add<PlanetStatChangedResult, Faction>(arguments, "Faction", result => result.Faction);
+            Add<PlanetStatChangedResult, PlanetChangeCategory>(
+                arguments,
+                "Category",
+                result => result.Category
+            );
+            Add<PlanetStatChangedResult, int>(
+                arguments,
+                "PreviousValue",
+                result => result.OldValue
+            );
+            Add<PlanetStatChangedResult, int>(arguments, "CurrentValue", result => result.NewValue);
+            Add<BlockadeChangedResult, Planet>(arguments, "Planet", result => result.Planet);
+            Add<BlockadeChangedResult, Fleet>(
+                arguments,
+                "BlockadingFleet",
+                result => result.BlockadingFleet
+            );
+            Add<BlockadeChangedResult, bool>(arguments, "IsBlockaded", result => result.Blockaded);
+            Add<PlanetUprisingStartedResult, Planet>(arguments, "Planet", result => result.Planet);
+            Add<PlanetUprisingStartedResult, Faction>(
+                arguments,
+                "InstigatorFaction",
+                result => result.InstigatorFaction
+            );
+            Add<PlanetUprisingEndedResult, Planet>(arguments, "Planet", result => result.Planet);
+            Add<PlanetUprisingEndedResult, Faction>(arguments, "Faction", result => result.Faction);
+            Add<ResearchOrderedResult, Faction>(arguments, "Faction", result => result.Faction);
+            Add<ResearchOrderedResult, ResearchDiscipline>(
+                arguments,
+                "Discipline",
+                result => result.Discipline
+            );
+            Add<ResearchOrderedResult, int>(
+                arguments,
+                "ResearchOrder",
+                result => result.ResearchOrder
+            );
+            Add<ResearchOrderedResult, int>(arguments, "Capacity", result => result.Capacity);
+            Add<ResearchOrderedResult, Technology>(
+                arguments,
+                "Technology",
+                result => result.Technology
+            );
+            Add<MissionCompletedResult, Mission>(arguments, "Mission", result => result.Mission);
+            Add<MissionCompletedResult, string>(
+                arguments,
+                "MissionName",
+                result => result.MissionName
+            );
+            Add<MissionCompletedResult, string>(
+                arguments,
+                "MissionTypeID",
+                result => result.MissionTypeID
+            );
+            Add<MissionCompletedResult, string>(
+                arguments,
+                "TargetName",
+                result => result.TargetName
+            );
+            Add<MissionCompletedResult, Planet>(arguments, "Location", result => result.Location);
+            Add<MissionCompletedResult, ContainerNode>(
+                arguments,
+                "ReturnDestination",
+                result => result.ReturnDestination
+            );
+            Add<MissionCompletedResult, List<IMissionParticipant>>(
+                arguments,
+                "Participants",
+                result => result.Participants
+            );
+            Add<MissionCompletedResult, MissionOutcome>(
+                arguments,
+                "Outcome",
+                result => result.Outcome
+            );
+            Add<MissionCompletedResult, MissionCompletionReason>(
+                arguments,
+                "CompletionReason",
+                result => result.CompletionReason
+            );
+            Add<MissionCompletedResult, bool>(
+                arguments,
+                "CanContinue",
+                result => result.CanContinue
+            );
+            Add<OfficerCaptureStateResult, Officer>(
+                arguments,
+                "Officer",
+                result => result.TargetOfficer
+            );
+            Add<OfficerCaptureStateResult, bool>(
+                arguments,
+                "IsCaptured",
+                result => result.IsCaptured
+            );
+            Add<OfficerCaptureStateResult, Officer>(
+                arguments,
+                "LinkedOfficer",
+                result => result.LinkedOfficer
+            );
+            Add<OfficerCaptureStateResult, IGameEntity>(
+                arguments,
+                "Context",
+                result => result.Context
+            );
+            Add<OfficerKilledResult, Officer>(arguments, "Officer", result => result.TargetOfficer);
+            Add<OfficerKilledResult, IGameEntity>(arguments, "Assassin", result => result.Assassin);
+            Add<OfficerKilledResult, IGameEntity>(arguments, "Context", result => result.Context);
+            Add<OfficerInjuredResult, Officer>(arguments, "Officer", result => result.Officer);
+            Add<OfficerInjuredResult, int>(arguments, "Severity", result => result.Severity);
+            Add<OfficerRecruitedResult, Officer>(arguments, "Officer", result => result.Officer);
+            Add<OfficerRecruitedResult, Faction>(arguments, "Faction", result => result.Faction);
+            Add<OfficerRecruitedResult, Planet>(arguments, "Planet", result => result.Planet);
+            Add<UnitOwnershipChangedResult, ISceneNode>(arguments, "Unit", result => result.Unit);
+            Add<UnitOwnershipChangedResult, Faction>(
+                arguments,
+                "PreviousOwner",
+                result => result.PreviousOwner
+            );
+            Add<UnitOwnershipChangedResult, Faction>(
+                arguments,
+                "NewOwner",
+                result => result.NewOwner
+            );
+            Add<GameObjectCreatedResult, IGameEntity>(
+                arguments,
+                "Unit",
+                result => result.GameObject
+            );
+            Add<GameObjectDestroyedResult, IGameEntity>(
+                arguments,
+                "Unit",
+                result => result.DestroyedObject
+            );
+            Add<GameObjectDestroyedResult, IGameEntity>(
+                arguments,
+                "DestroyedBy",
+                result => result.DestroyedBy
+            );
+            Add<GameObjectDestroyedResult, IGameEntity>(
+                arguments,
+                "Context",
+                result => result.Context
+            );
+            Add<UnitArrivedResult, IGameEntity>(arguments, "Unit", result => result.Unit);
+            Add<UnitArrivedResult, Planet>(arguments, "Destination", result => result.Destination);
+            Add<UnitArrivedResult, string>(
+                arguments,
+                "MovementGroupID",
+                result => result.MovementGroupID
+            );
+            Add<SpaceCombatResult, Fleet>(
+                arguments,
+                "AttackerFleet",
+                result => result.AttackerFleet
+            );
+            Add<SpaceCombatResult, Fleet>(
+                arguments,
+                "DefenderFleet",
+                result => result.DefenderFleet
+            );
+            Add<SpaceCombatResult, Planet>(arguments, "Planet", result => result.Planet);
+            Add<SpaceCombatResult, CombatSide>(arguments, "Winner", result => result.Winner);
+            Add<BombardmentResult, Planet>(arguments, "Planet", result => result.Planet);
+            Add<BombardmentResult, Faction>(
+                arguments,
+                "AttackingFaction",
+                result => result.AttackingFaction
+            );
+            Add<BombardmentResult, BombardmentType>(arguments, "Type", result => result.Type);
+            Add<BombardmentResult, bool>(
+                arguments,
+                "PlanetDestroyed",
+                result => result.PlanetDestroyed
+            );
+            Add<PlanetaryAssaultResult, Planet>(arguments, "Planet", result => result.Planet);
+            Add<PlanetaryAssaultResult, Faction>(
+                arguments,
+                "AttackingFaction",
+                result => result.AttackingFaction
+            );
+            Add<PlanetaryAssaultResult, bool>(arguments, "Success", result => result.Success);
+            Add<PlanetaryAssaultResult, bool>(
+                arguments,
+                "BlockedByShields",
+                result => result.BlockedByShields
+            );
+            Add<DuelResult, Officer>(
+                arguments,
+                "FirstOfficer",
+                result => result.EncounteredOfficer
+            );
+            Add<DuelResult, Officer>(arguments, "SecondOfficer", result => result.OpposingOfficer);
+            Add<DuelResult, string>(
+                arguments,
+                "FirstOfficerInstanceID",
+                result => result.EncounteredOfficer?.InstanceID
+            );
+            Add<DuelResult, string>(
+                arguments,
+                "SecondOfficerInstanceID",
+                result => result.OpposingOfficer?.InstanceID
+            );
+            Add<DuelResult, Planet>(arguments, "Location", result => result.Location);
+            Add<DuelResult, bool>(
+                arguments,
+                "FirstOfficerCaptured",
+                result => result.EncounteredOfficerCaptured
+            );
+            Add<DuelResult, int>(
+                arguments,
+                "FirstOfficerInjury",
+                result => result.EncounteredOfficerInjury
+            );
+            Add<DuelResult, int>(
+                arguments,
+                "SecondOfficerInjury",
+                result => result.OpposingOfficerInjury
+            );
+            Add<DuelResult, string>(arguments, "ImagePath", result => result.ImagePath);
+            Add<DuelResult, string>(arguments, "AudioPath", result => result.AudioPath);
+            Add<ManufacturingDeployedResult, Faction>(
+                arguments,
+                "Faction",
+                result => result.Faction
+            );
+            Add<ManufacturingDeployedResult, IGameEntity>(
+                arguments,
+                "DeployedObject",
+                result => result.DeployedObject
+            );
+            Add<ManufacturingDeployedResult, IGameEntity>(
+                arguments,
+                "Location",
+                result => result.Location
+            );
+            return arguments;
+        }
+
+        /// <summary>Adds one strongly typed argument to the trigger contract.</summary>
+        private static void Add<TResult, TValue>(
+            IDictionary<(Type, string), GameEventTriggerArgument> arguments,
+            string name,
+            Func<TResult, TValue> resolve
+        )
+            where TResult : GameResult =>
+            arguments.Add((typeof(TResult), name), GameEventTriggerArgument.Create(resolve));
     }
 
     #region Planet

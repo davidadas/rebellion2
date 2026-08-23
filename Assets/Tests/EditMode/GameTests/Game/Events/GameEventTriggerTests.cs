@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Game.Events
     public class GameEventTriggerTests
     {
         [Test]
-        public void Triggers_AuthoredAliases_RoundTripConcreteTypes()
+        public void Triggers_AuthoredContracts_RoundTripConcreteTypesAndBindings()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -26,7 +26,13 @@ namespace Rebellion.Tests.Game.Events
                     new OfficerCaptureChangedTrigger(),
                     new UnitOwnershipChangedTrigger(),
                     new SpaceCombatCompletedTrigger(),
-                    new ManufacturingCompletedTrigger(),
+                    new ManufacturingCompletedTrigger
+                    {
+                        Bindings = new List<GameEventBinding>
+                        {
+                            new GameEventBinding { Argument = "DeployedObject", As = "unit" },
+                        },
+                    },
                 },
             };
 
@@ -37,6 +43,9 @@ namespace Rebellion.Tests.Game.Events
                 gameEvent.Triggers.Select(trigger => trigger.GetType()),
                 restored.Triggers.Select(trigger => trigger.GetType())
             );
+            GameEventBinding binding = restored.Triggers.Last().Bindings.Single();
+            Assert.AreEqual("DeployedObject", binding.Argument);
+            Assert.AreEqual("unit", binding.As);
             Assert.IsFalse(xml.Contains("Trigger>"));
         }
 
@@ -158,10 +167,17 @@ namespace Rebellion.Tests.Game.Events
         #endregion
 
         [Test]
-        public void Bind_TriggerWithAlias_ExposesCompleteResult()
+        public void Bind_TriggerArgument_ExposesOnlyAuthoredValue()
         {
-            DuelResult result = new DuelResult();
-            DuelCompletedTrigger trigger = new DuelCompletedTrigger { As = "duel" };
+            Officer officer = new Officer { InstanceID = "luke" };
+            DuelResult result = new DuelResult { EncounteredOfficer = officer };
+            DuelCompletedTrigger trigger = new DuelCompletedTrigger
+            {
+                Bindings = new List<GameEventBinding>
+                {
+                    new GameEventBinding { Argument = "FirstOfficer", As = "officer" },
+                },
+            };
 
             GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
@@ -170,7 +186,21 @@ namespace Rebellion.Tests.Game.Events
                 trigger
             );
 
-            Assert.AreSame(result, context.GetBinding<DuelResult>("duel"));
+            Assert.AreSame(officer, context.GetBinding<Officer>("officer"));
+        }
+
+        [Test]
+        public void GetBindingReference_PropertyTraversal_ThrowsInvalidOperationException()
+        {
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState()
+            );
+            context.Bind("officer", new Officer { InstanceID = "luke" });
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                context.GetBindingReference<string>("$officer.InstanceID")
+            );
         }
     }
 }

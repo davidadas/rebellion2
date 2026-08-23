@@ -734,9 +734,14 @@ namespace Rebellion.Tests.Game.Events
                 new GameEvent(),
                 new GameEventState(),
                 encounter,
-                new DuelCompletedTrigger { As = "duel" }
+                new DuelCompletedTrigger
+                {
+                    Bindings = new List<GameEventBinding>
+                    {
+                        new GameEventBinding { Argument = "AudioPath", As = "audioPath" },
+                    },
+                }
             );
-            context.Bind("audioPath", encounter.AudioPath);
 
             MessageDeliveryRequest result = action
                 .ExecuteRequests(game, game.Random, context)

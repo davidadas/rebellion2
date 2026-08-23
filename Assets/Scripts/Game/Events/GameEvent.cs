@@ -22,11 +22,16 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Selects one scene node and exposes it throughout one event evaluation.
+    /// Assigns an explicitly selected value to an event-local binding name.
     /// </summary>
     [PersistableObject(Name = "Bind")]
-    public sealed class GameEventSelectionBinding
+    public sealed class GameEventBinding
     {
+        /// <summary>Gets or sets the stable trigger argument to expose.</summary>
+        [PersistableAttribute]
+        public string Argument { get; set; }
+
+        /// <summary>Gets or sets the event-local name assigned to the value.</summary>
         [PersistableAttribute]
         public string As { get; set; }
 
@@ -65,8 +70,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int? MaximumActivations { get; set; }
 
-        public List<GameEventSelectionBinding> Bindings { get; set; } =
-            new List<GameEventSelectionBinding>();
+        public List<GameEventBinding> Bindings { get; set; } = new List<GameEventBinding>();
         public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
         public GameEventScheduler Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();

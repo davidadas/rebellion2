@@ -82,37 +82,46 @@ namespace Rebellion.Systems
                     );
 
                 Dictionary<string, Type> aliases = new(StringComparer.Ordinal);
-                string sharedTriggerAlias = null;
-                bool hasTriggerAliasContract = false;
+                Dictionary<string, Type> sharedTriggerBindings = null;
                 foreach (GameEventTrigger trigger in gameEvent.Triggers)
                 {
                     _ = trigger.ResultType;
-                    string triggerAlias = string.IsNullOrWhiteSpace(trigger.As) ? null : trigger.As;
-                    if (!hasTriggerAliasContract)
-                    {
-                        sharedTriggerAlias = triggerAlias;
-                        hasTriggerAliasContract = true;
-                    }
-                    else if (
-                        !string.Equals(sharedTriggerAlias, triggerAlias, StringComparison.Ordinal)
-                    )
-                        throw new InvalidOperationException(
-                            $"Event '{gameEvent.InstanceID}' must expose the same result alias on every trigger path."
-                        );
-                    if (triggerAlias != null)
+                    Dictionary<string, Type> triggerBindings = new(StringComparer.Ordinal);
+                    foreach (GameEventBinding binding in trigger.Bindings)
                     {
                         if (
-                            aliases.TryGetValue(triggerAlias, out Type existingType)
-                            && existingType != trigger.ResultType
+                            string.IsNullOrWhiteSpace(binding.Argument)
+                            || string.IsNullOrWhiteSpace(binding.As)
+                            || !triggerBindings.TryAdd(
+                                binding.As,
+                                trigger.GetBindingType(binding.Argument)
+                            )
                         )
                             throw new InvalidOperationException(
-                                $"Event '{gameEvent.InstanceID}' binds '{triggerAlias}' with incompatible result types."
+                                $"Event '{gameEvent.InstanceID}' has an invalid or duplicate trigger binding alias '{binding.As}'."
                             );
-                        aliases[triggerAlias] = trigger.ResultType;
+                    }
+                    if (sharedTriggerBindings == null)
+                        sharedTriggerBindings = triggerBindings;
+                    else if (!HaveSameBindings(sharedTriggerBindings, triggerBindings))
+                        throw new InvalidOperationException(
+                            $"Event '{gameEvent.InstanceID}' must expose the same trigger bindings and value types on every trigger path."
+                        );
+                }
+                foreach (
+                    KeyValuePair<string, Type> triggerBinding in sharedTriggerBindings
+                        ?? new Dictionary<string, Type>()
+                )
+                {
+                    if (!aliases.TryAdd(triggerBinding.Key, triggerBinding.Value))
+                    {
+                        throw new InvalidOperationException(
+                            $"Event '{gameEvent.InstanceID}' has duplicate binding alias '{triggerBinding.Key}'."
+                        );
                     }
                 }
 
-                foreach (GameEventSelectionBinding binding in gameEvent.Bindings)
+                foreach (GameEventBinding binding in gameEvent.Bindings)
                 {
                     if (
                         string.IsNullOrWhiteSpace(binding.As)
@@ -142,6 +151,16 @@ namespace Rebellion.Systems
                 }
             }
         }
+
+        /// <summary>Returns whether two alternative triggers expose the same binding contract.</summary>
+        private static bool HaveSameBindings(
+            IReadOnlyDictionary<string, Type> first,
+            IReadOnlyDictionary<string, Type> second
+        ) =>
+            first.Count == second.Count
+            && first.All(pair =>
+                second.TryGetValue(pair.Key, out Type valueType) && valueType == pair.Value
+            );
 
         /// <summary>
         /// Validates the immutable scheduling contract for one event before gameplay begins.
@@ -357,7 +376,7 @@ namespace Rebellion.Systems
                 triggerResult,
                 trigger
             );
-            foreach (GameEventSelectionBinding binding in gameEvent.Bindings)
+            foreach (GameEventBinding binding in gameEvent.Bindings)
                 binding.Bind(_game, _provider, context);
             if (ShouldCompleteSchedule(gameEvent, state, context))
             {

@@ -256,18 +256,18 @@ checks candidates in authored order and uses the first one that accepts the unit
 
 ### SelectBinding
 
-Returns the scene node or scene-node collection stored by an event binding or reachable through a
-trigger-result property path. Its runtime type must be valid for the consumer.
+Returns the scene node or scene-node collection stored by an explicit event binding. Its runtime
+type must be valid for the consumer.
 
 **Required options**
 
 - `Binding` **[Required]:** `$alias` reference.
 
 ```xml
-<!-- Given <MissionCompleted As="mission"/> in this event's Triggers. -->
+<!-- Given a MissionCompleted trigger that binds Participants as missionParticipants. -->
 <RevealToFaction FactionInstanceID="FNALL1">
   <Targets>
-    <SelectBinding Binding="$mission.Participants"/>
+    <SelectBinding Binding="$missionParticipants"/>
   </Targets>
 </RevealToFaction>
 ```

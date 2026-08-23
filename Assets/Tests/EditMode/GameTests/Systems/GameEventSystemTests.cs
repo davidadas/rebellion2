@@ -65,11 +65,11 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "INVALID_BINDING",
-                Triggers = new List<GameEventTrigger> { new UnitArrivedTrigger { As = "target" } },
-                Bindings = new List<GameEventSelectionBinding>
+                Triggers = new List<GameEventTrigger>
                 {
-                    new GameEventSelectionBinding { As = "target" },
+                    new UnitArrivedTrigger { Bindings = TriggerBindings(("Unit", "target")) },
                 },
+                Bindings = new List<GameEventBinding> { new GameEventBinding { As = "target" } },
             };
 
             TestDelegate validate = () => _system.ValidateEvents(new[] { gameEvent });
@@ -85,7 +85,7 @@ namespace Rebellion.Tests.Sectors
                 InstanceID = "MULTI_TRIGGER",
                 Triggers = new List<GameEventTrigger>
                 {
-                    new UnitArrivedTrigger { As = "result" },
+                    new UnitArrivedTrigger { Bindings = TriggerBindings(("Unit", "result")) },
                     new DuelCompletedTrigger(),
                 },
             };
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Sectors
                 _system.ValidateEvents(new[] { gameEvent })
             );
 
-            StringAssert.Contains("same binding aliases", exception.Message);
+            StringAssert.Contains("same trigger bindings and value types", exception.Message);
         }
 
         [Test]
@@ -104,8 +104,16 @@ namespace Rebellion.Tests.Sectors
                 InstanceID = "MULTI_TRIGGER",
                 Triggers = new List<GameEventTrigger>
                 {
-                    new UnitArrivedTrigger { UnitInstanceID = "first", As = "arrival" },
-                    new UnitArrivedTrigger { UnitInstanceID = "second", As = "arrival" },
+                    new UnitArrivedTrigger
+                    {
+                        UnitInstanceID = "first",
+                        Bindings = TriggerBindings(("Unit", "arrival")),
+                    },
+                    new UnitArrivedTrigger
+                    {
+                        UnitInstanceID = "second",
+                        Bindings = TriggerBindings(("Unit", "arrival")),
+                    },
                 },
             };
 
@@ -190,9 +198,9 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "BOUND_UNTIL",
-                Bindings = new List<GameEventSelectionBinding>
+                Bindings = new List<GameEventBinding>
                 {
-                    new GameEventSelectionBinding
+                    new GameEventBinding
                     {
                         As = "planet",
                         Selectors = new List<GameEventSelector>
@@ -208,7 +216,13 @@ namespace Rebellion.Tests.Sectors
                         Ticks = 5,
                         Until = new List<GameConditional>
                         {
-                            BindingEquals("planet.InstanceID", planet.InstanceID),
+                            new ComparePlanetStatConditional
+                            {
+                                PlanetBinding = "$planet",
+                                Stat = PlanetStat.RawResourceNodes,
+                                Comparison = ComparisonOperator.Equal,
+                                Value = 0,
+                            },
                         },
                     },
                 },
@@ -400,9 +414,9 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "SCOPED",
 
-                Bindings = new List<GameEventSelectionBinding>
+                Bindings = new List<GameEventBinding>
                 {
-                    new GameEventSelectionBinding
+                    new GameEventBinding
                     {
                         As = "target",
                         Selectors = new List<GameEventSelector>
@@ -449,9 +463,9 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "OWNED_ONLY",
 
-                Bindings = new List<GameEventSelectionBinding>
+                Bindings = new List<GameEventBinding>
                 {
-                    new GameEventSelectionBinding
+                    new GameEventBinding
                     {
                         As = "target",
                         Selectors = new List<GameEventSelector> { new SelectPlanets() },
@@ -496,9 +510,9 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "OWNED_ONLY",
 
-                Bindings = new List<GameEventSelectionBinding>
+                Bindings = new List<GameEventBinding>
                 {
-                    new GameEventSelectionBinding
+                    new GameEventBinding
                     {
                         As = "target",
                         Selectors = new List<GameEventSelector> { new SelectPlanets() },
@@ -541,9 +555,9 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "ONE_SHOT_PER_PLANET",
                 MaximumActivations = 1,
-                Bindings = new List<GameEventSelectionBinding>
+                Bindings = new List<GameEventBinding>
                 {
-                    new GameEventSelectionBinding
+                    new GameEventBinding
                     {
                         As = "target",
                         Selectors = new List<GameEventSelector> { new SelectPlanets() },
@@ -574,9 +588,9 @@ namespace Rebellion.Tests.Sectors
                 InstanceID = "DELAYED_RANDOM_TARGET",
                 MaximumActivations = 1,
                 Schedule = new GameEventScheduler { At = new AtTick { Tick = 10 } },
-                Bindings = new List<GameEventSelectionBinding>
+                Bindings = new List<GameEventBinding>
                 {
-                    new GameEventSelectionBinding
+                    new GameEventBinding
                     {
                         As = "target",
                         Selectors = new List<GameEventSelector>
@@ -615,8 +629,8 @@ namespace Rebellion.Tests.Sectors
                 Triggers = EncounterTrigger(),
                 Conditionals = new List<GameConditional>
                 {
-                    BindingEquals("duel.EncounteredOfficer.InstanceID", luke.InstanceID),
-                    BindingEquals("duel.OpposingOfficer.InstanceID", vader.InstanceID),
+                    BindingEquals("firstOfficerInstanceID", luke.InstanceID),
+                    BindingEquals("secondOfficerInstanceID", vader.InstanceID),
                 },
                 Actions = new List<GameAction>
                 {
@@ -643,7 +657,16 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "ARRIVAL_REACTION",
-                Triggers = new List<GameEventTrigger> { new UnitArrivedTrigger { As = "arrival" } },
+                Triggers = new List<GameEventTrigger>
+                {
+                    new UnitArrivedTrigger
+                    {
+                        Bindings = TriggerBindings(
+                            ("Unit", "arrivedUnit"),
+                            ("Destination", "arrivalDestination")
+                        ),
+                    },
+                },
                 Conditionals = new List<GameConditional> { new HasArrivalBindingsConditional() },
                 Actions = new List<GameAction>
                 {
@@ -751,8 +774,8 @@ namespace Rebellion.Tests.Sectors
                 Triggers = EncounterTrigger(),
                 Conditionals = new List<GameConditional>
                 {
-                    BindingEquals("duel.EncounteredOfficer.InstanceID", luke.InstanceID),
-                    BindingEquals("duel.OpposingOfficer.InstanceID", vader.InstanceID),
+                    BindingEquals("firstOfficerInstanceID", luke.InstanceID),
+                    BindingEquals("secondOfficerInstanceID", vader.InstanceID),
                 },
                 Actions = new List<GameAction>
                 {
@@ -852,7 +875,29 @@ namespace Rebellion.Tests.Sectors
         }
 
         private static List<GameEventTrigger> EncounterTrigger() =>
-            new List<GameEventTrigger> { new DuelCompletedTrigger { As = "duel" } };
+            new List<GameEventTrigger>
+            {
+                new DuelCompletedTrigger
+                {
+                    Bindings = TriggerBindings(
+                        ("FirstOfficer", "firstOfficer"),
+                        ("SecondOfficer", "secondOfficer"),
+                        ("FirstOfficerInstanceID", "firstOfficerInstanceID"),
+                        ("SecondOfficerInstanceID", "secondOfficerInstanceID")
+                    ),
+                },
+            };
+
+        private static List<GameEventBinding> TriggerBindings(
+            params (string Argument, string As)[] bindings
+        ) =>
+            bindings
+                .Select(binding => new GameEventBinding
+                {
+                    Argument = binding.Argument,
+                    As = binding.As,
+                })
+                .ToList();
 
         private static EvaluateBindingConditional BindingEquals(string name, string value) =>
             new EvaluateBindingConditional
@@ -878,8 +923,8 @@ namespace Rebellion.Tests.Sectors
         private sealed class HasArrivalBindingsConditional : GameConditional
         {
             public override bool IsMet(GameConditionContext context) =>
-                context.Evaluation?.GetBinding<UnitArrivedResult>("arrival")
-                    is { Unit: Officer, Destination: Planet };
+                context.Evaluation?.GetBinding<IGameEntity>("arrivedUnit") is Officer
+                && context.Evaluation.GetBinding<Planet>("arrivalDestination") != null;
         }
 
         private sealed class EmitTestResultAction : GameAction

@@ -86,6 +86,7 @@ namespace Rebellion.Game.Events
         public bool TryGetBinding(string name, out object value) =>
             _bindings.TryGetValue(name, out value);
 
+        /// <summary>Attempts to resolve one explicit binding reference as the requested type.</summary>
         public bool TryGetBindingReference<T>(string reference, out T value)
         {
             object resolved = ResolveBindingReference(reference);
@@ -98,17 +99,20 @@ namespace Rebellion.Game.Events
             return false;
         }
 
+        /// <summary>Attempts to resolve one explicit binding reference without a type constraint.</summary>
         public bool TryGetBindingReference(string reference, out object value)
         {
             value = ResolveBindingReference(reference);
             return value != null;
         }
 
+        /// <summary>Gets one explicit binding reference as the requested type.</summary>
         public T GetBindingReference<T>(string reference)
         {
             return TryGetBindingReference(reference, out T value) ? value : default;
         }
 
+        /// <summary>Removes the required dollar-sign prefix from a binding reference.</summary>
         private static string GetBindingName(string reference)
         {
             if (string.IsNullOrWhiteSpace(reference) || reference[0] != '$')
@@ -116,30 +120,15 @@ namespace Rebellion.Game.Events
             return reference.Substring(1);
         }
 
-        /// <summary>Resolves a binding and optional public property path from the evaluation context.</summary>
+        /// <summary>Resolves one explicitly authored binding from the evaluation context.</summary>
         private object ResolveBindingReference(string reference)
         {
-            string path = GetBindingName(reference);
-            string[] segments = path.Split('.');
-            if (!_bindings.TryGetValue(segments[0], out object value))
-                return null;
-
-            for (int index = 1; index < segments.Length && value != null; index++)
-            {
-                System.Reflection.PropertyInfo property = value
-                    .GetType()
-                    .GetProperty(
-                        segments[index],
-                        System.Reflection.BindingFlags.Instance
-                            | System.Reflection.BindingFlags.Public
-                    );
-                if (property == null)
-                    throw new InvalidOperationException(
-                        $"Binding '{reference}' references unknown property '{segments[index]}'."
-                    );
-                value = property.GetValue(value);
-            }
-            return value;
+            string name = GetBindingName(reference);
+            if (name.Contains("."))
+                throw new InvalidOperationException(
+                    "Binding references cannot traverse object properties. Bind the required trigger argument explicitly."
+                );
+            return _bindings.TryGetValue(name, out object value) ? value : null;
         }
 
         /// <summary>

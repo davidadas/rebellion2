@@ -40,22 +40,28 @@ runtime authoring error.
 
 ## Trigger bindings
 
-Every trigger accepts an optional `As` attribute. It binds the complete matched gameplay result,
-including the result's typed properties, before top-level selection bindings and conditionals are
-evaluated.
+Every trigger accepts an optional `Bindings` collection. Each `Bind` selects one argument from the
+trigger's documented contract and assigns it a name before top-level selection bindings and
+conditionals are evaluated.
 
-**Optional options**
+**Required options**
 
-- `As` **[Optional]:** The unique name assigned to the complete result matched by the trigger.
+- `Argument` **[Required]:** The trigger argument to expose. Each trigger documents its supported arguments.
+- `As` **[Required]:** The unique name assigned to that argument's value.
 
 ```xml
 <Triggers>
-  <UnitArrived UnitInstanceID="EMPEROR_PALPATINE" As="arrival"/>
+  <UnitArrived UnitInstanceID="EMPEROR_PALPATINE">
+    <Bindings>
+      <Bind Argument="Unit" As="unit"/>
+      <Bind Argument="Destination" As="destination"/>
+    </Bindings>
+  </UnitArrived>
 </Triggers>
 ```
 
-Multiple triggers are alternatives. If they use `As`, every trigger must use the same name and
-expose the same result type so later XML always receives the same contract.
+Multiple triggers are alternatives. Every alternative must expose the same binding names and value
+types so later XML always receives the same contract.
 
 ## Binding references
 
@@ -65,19 +71,21 @@ Prefix a binding name with `$` wherever an option accepts a binding reference:
 <SelectBinding Binding="$planet"/>
 ```
 
-Trigger bindings expose result objects rather than individual scalar values. Append public property
-names to traverse the result:
+Trigger bindings expose the selected argument directly:
 
 ```xml
-<Conditionals>
-  <EvaluateBinding Binding="$arrival.Destination.InstanceID"
-                   Comparison="Equal"
-                   CompareTo="CORUSCANT"/>
-</Conditionals>
+<Actions>
+  <SendMessage RecipientFactionInstanceID="FNALL1"
+               SubjectBinding="$unit"
+               LocationBinding="$destination">
+    <Subject>Unit Arrived</Subject>
+    <Body>{subject} arrived at {location}.</Body>
+  </SendMessage>
+</Actions>
 ```
 
-The example resolves the `Destination` property from the bound `UnitArrivedResult`, then resolves
-that destination's `InstanceID`. An unknown property name raises a runtime authoring error.
+Binding references never traverse C# properties. An unsupported trigger argument is rejected during
+event validation instead of failing later through reflection.
 
 Binding names must be unique within one evaluation. A trigger binding and a selection binding
 cannot use the same name.
