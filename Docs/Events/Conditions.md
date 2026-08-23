@@ -29,7 +29,7 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 **Options**
 
-- Child conditions — optional; siblings are combined using AND.
+- Child conditions *[Optional]:* siblings are combined using AND.
 
 ```xml
 <Conditionals>
@@ -43,7 +43,7 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 **Options**
 
-- Child conditions — one or more; every child must pass.
+- Child conditions *[Required]:* one or more; every child must pass.
 
 ```xml
 <All>
@@ -58,7 +58,7 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 **Options**
 
-- Child conditions — one or more; at least one child must pass.
+- Child conditions *[Required]:* one or more; at least one child must pass.
 
 ```xml
 <Any>
@@ -73,7 +73,7 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 **Options**
 
-- Child conditions — one or more; every child must fail.
+- Child conditions *[Required]:* one or more; every child must fail.
 
 ```xml
 <Not>
@@ -88,7 +88,7 @@ conditions and passes when all of them pass. An empty collection does not block 
 
 **Options**
 
-- Child conditions — one or more; exactly one child must pass.
+- Child conditions *[Required]:* one or more; exactly one child must pass.
 
 ```xml
 <Xor>
@@ -105,8 +105,8 @@ Compares the current campaign tick.
 
 **Options**
 
-- `Comparison` — required comparison operator.
-- `Ticks` — required non-negative integer.
+- `Comparison` *[Required]:* comparison operator.
+- `Ticks` *[Required]:* non-negative integer.
 
 ```xml
 <TickCount Comparison="GreaterThanOrEqual" Ticks="500"/>
@@ -118,7 +118,7 @@ Passes after the referenced event has activated at least once.
 
 **Options**
 
-- `EventInstanceID` — required event ID.
+- `EventInstanceID` *[Required]:* event ID.
 
 ```xml
 <HasEventActivated EventInstanceID="EVENT_A"/>
@@ -131,7 +131,7 @@ matched a recurring schedule's `Until`, or completed a one-shot schedule.
 
 **Options**
 
-- `EventInstanceID` — required event ID.
+- `EventInstanceID` *[Required]:* event ID.
 
 ```xml
 <IsEventComplete EventInstanceID="EVENT_B"/>
@@ -143,9 +143,9 @@ Compares a saved integer event variable.
 
 **Options**
 
-- `Key` — required variable key.
-- `Comparison` — required comparison operator.
-- `CompareTo` — required integer value.
+- `Key` *[Required]:* variable key.
+- `Comparison` *[Required]:* comparison operator.
+- `CompareTo` *[Required]:* integer value.
 
 ```xml
 <EvaluateEventVariable Key="naboo.attacks"
@@ -162,9 +162,9 @@ binding.
 
 **Options**
 
-- `Binding` — required `$alias` reference.
-- `Comparison` — required comparison operator.
-- `CompareTo` — required value.
+- `Binding` *[Required]:* `$alias` reference.
+- `Comparison` *[Required]:* comparison operator.
+- `CompareTo` *[Required]:* value.
 
 ```xml
 <!-- Given <MissionCompleted As="mission"/> in this event's Triggers. -->
@@ -177,8 +177,8 @@ Passes when a bound collection contains the named unit.
 
 **Options**
 
-- `Binding` — required `$alias` reference to a collection.
-- `UnitInstanceID` — required unit ID.
+- `Binding` *[Required]:* `$alias` reference to a collection.
+- `UnitInstanceID` *[Required]:* unit ID.
 
 ```xml
 <!-- Given <MissionCompleted As="mission"/> in this event's Triggers. -->
@@ -194,11 +194,9 @@ specific owner.
 
 **Options**
 
-- `PlanetInstanceID` — explicit planet ID.
-- `PlanetBinding` — binding containing a planet.
-- `FactionInstanceID` — optional required owner.
-- `PlanetInstanceID` or `PlanetBinding` identifies the planet. `PlanetBinding` takes precedence when
-  both are present; the condition fails when neither resolves.
+- `PlanetInstanceID` or `PlanetBinding` *[Required]:* planet source. `PlanetBinding` takes precedence
+  when both are present; the condition fails when neither resolves.
+- `FactionInstanceID` *[Optional]:* required owner.
 
 ```xml
 <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
@@ -210,11 +208,9 @@ Rolls a random percentage against the selected faction's current support on a pl
 
 **Options**
 
-- `FactionInstanceID` — required faction ID.
-- `PlanetInstanceID` — explicit planet ID.
-- `PlanetBinding` — binding containing a planet.
-- `PlanetInstanceID` or `PlanetBinding` identifies the planet. `PlanetBinding` takes precedence when
-  both are present; the condition fails when neither resolves.
+- `FactionInstanceID` *[Required]:* faction ID.
+- `PlanetInstanceID` or `PlanetBinding` *[Required]:* planet source. `PlanetBinding` takes precedence
+  when both are present; the condition fails when neither resolves.
 
 ```xml
 <RollAgainstPopularSupport PlanetBinding="$planet" FactionInstanceID="FNALL1"/>
@@ -228,8 +224,8 @@ Passes when the unit is the location itself or is contained anywhere beneath it.
 
 **Options**
 
-- `UnitInstanceID` — required child element.
-- `LocationInstanceID` — required child element.
+- `UnitInstanceID` *[Required]:* child element.
+- `LocationInstanceID` *[Required]:* child element.
 
 ```xml
 <IsAtLocation>
@@ -244,8 +240,8 @@ Passes when every listed unit has the exact same immediate parent.
 
 **Options**
 
-- `Units` — required child containing at least two `Unit` elements.
-- `UnitInstanceID` — required attribute on each `Unit`.
+- `Units` *[Required]:* child containing at least two `Unit` elements.
+- `UnitInstanceID` *[Required]:* attribute on each `Unit`.
 
 ```xml
 <ShareParent>
@@ -262,9 +258,9 @@ Passes when every listed unit shares the same nearest ancestor of the requested 
 
 **Options**
 
-- `Type` — required: `Galaxy`, `PlanetSector`, `Planet`, `Fleet`, `Mission`, or `CapitalShip`.
-- `Units` — required child containing at least two `Unit` elements.
-- `UnitInstanceID` — required attribute on each `Unit`.
+- `Type` *[Required]:* `Galaxy`, `PlanetSector`, `Planet`, `Fleet`, `Mission`, or `CapitalShip`.
+- `Units` *[Required]:* child containing at least two `Unit` elements.
+- `UnitInstanceID` *[Required]:* attribute on each `Unit`.
 
 ```xml
 <ShareAncestor Type="Planet">
@@ -281,7 +277,7 @@ Passes when exactly two supplied units exist and have different owners.
 
 **Options**
 
-- `UnitInstanceIDs` — required child containing exactly two `String` unit IDs.
+- `UnitInstanceIDs` *[Required]:* child containing exactly two `String` unit IDs.
 
 ```xml
 <AreOnOpposingFactions>
@@ -300,7 +296,7 @@ Passes when the unit has a mission parent.
 
 **Options**
 
-- `UnitInstanceID` — required unit ID.
+- `UnitInstanceID` *[Required]:* unit ID.
 
 ```xml
 <IsOnMission UnitInstanceID="HAN_SOLO"/>
@@ -312,7 +308,7 @@ Passes when the unit currently has movement state.
 
 **Options**
 
-- `UnitInstanceID` — required unit ID.
+- `UnitInstanceID` *[Required]:* unit ID.
 
 ```xml
 <IsInTransit UnitInstanceID="HAN_SOLO"/>
@@ -325,8 +321,8 @@ matters.
 
 **Options**
 
-- `OfficerInstanceID` — required officer ID.
-- `CaptorFactionInstanceID` — optional capturing-faction filter.
+- `OfficerInstanceID` *[Required]:* officer ID.
+- `CaptorFactionInstanceID` *[Optional]:* capturing-faction filter.
 
 ```xml
 <IsCaptured OfficerInstanceID="HAN_SOLO"/>
@@ -339,7 +335,7 @@ Passes when the officer is killed.
 
 **Options**
 
-- `OfficerInstanceID` — required officer ID.
+- `OfficerInstanceID` *[Required]:* officer ID.
 
 ```xml
 <IsKilled OfficerInstanceID="HAN_SOLO"/>
@@ -351,7 +347,7 @@ Passes when the officer is injured.
 
 **Options**
 
-- `OfficerInstanceID` — required officer ID.
+- `OfficerInstanceID` *[Required]:* officer ID.
 
 ```xml
 <IsInjured OfficerInstanceID="HAN_SOLO"/>
@@ -363,7 +359,7 @@ Passes when the officer is eligible to use and develop Force ability.
 
 **Options**
 
-- `OfficerInstanceID` — required officer ID.
+- `OfficerInstanceID` *[Required]:* officer ID.
 
 ```xml
 <IsForceEligible OfficerInstanceID="LUKE_SKYWALKER"/>
@@ -377,9 +373,9 @@ Compares an officer's effective Force rank against a named rank.
 
 **Options**
 
-- `OfficerInstanceID` — required officer ID.
-- `Comparison` — required comparison operator.
-- `Rank` — required Force rank.
+- `OfficerInstanceID` *[Required]:* officer ID.
+- `Comparison` *[Required]:* comparison operator.
+- `Rank` *[Required]:* Force rank.
 
 ```xml
 <HasForceRank OfficerInstanceID="LUKE_SKYWALKER"
@@ -393,10 +389,10 @@ Compares one effective officer rating against an integer.
 
 **Options**
 
-- `OfficerInstanceID` — required officer ID.
-- `Rating` — required officer rating.
-- `Comparison` — required comparison operator.
-- `Value` — required integer.
+- `OfficerInstanceID` *[Required]:* officer ID.
+- `Rating` *[Required]:* officer rating.
+- `Comparison` *[Required]:* comparison operator.
+- `Value` *[Required]:* integer.
 
 ```xml
 <CompareOfficerRating OfficerInstanceID="HAN_SOLO"
@@ -411,9 +407,9 @@ Compares an officer's effective Force value against an integer.
 
 **Options**
 
-- `OfficerInstanceID` — required officer ID.
-- `Comparison` — required comparison operator.
-- `Value` — required integer.
+- `OfficerInstanceID` *[Required]:* officer ID.
+- `Comparison` *[Required]:* comparison operator.
+- `Value` *[Required]:* integer.
 
 ```xml
 <CompareOfficerForce OfficerInstanceID="LUKE_SKYWALKER"
@@ -427,13 +423,11 @@ Compares one planet stat against an integer.
 
 **Options**
 
-- `Stat` — required planet stat.
-- `Comparison` — required comparison operator.
-- `Value` — required integer.
-- `PlanetInstanceID` — explicit planet ID.
-- `PlanetBinding` — binding containing a planet.
-- `PlanetInstanceID` or `PlanetBinding` identifies the planet. `PlanetBinding` takes precedence when
-  both are present; the condition fails when neither resolves.
+- `Stat` *[Required]:* planet stat.
+- `Comparison` *[Required]:* comparison operator.
+- `Value` *[Required]:* integer.
+- `PlanetInstanceID` or `PlanetBinding` *[Required]:* planet source. `PlanetBinding` takes precedence
+  when both are present; the condition fails when neither resolves.
 
 ```xml
 <ComparePlanetStat PlanetInstanceID="NABOO"
@@ -448,11 +442,9 @@ Passes when the selected planet contains a completed building of the requested t
 
 **Options**
 
-- `Type` — required building type.
-- `PlanetInstanceID` — explicit planet ID.
-- `PlanetBinding` — binding containing a planet.
-- `PlanetInstanceID` or `PlanetBinding` identifies the planet. `PlanetBinding` takes precedence when
-  both are present; the condition fails when neither resolves.
+- `Type` *[Required]:* building type.
+- `PlanetInstanceID` or `PlanetBinding` *[Required]:* planet source. `PlanetBinding` takes precedence
+  when both are present; the condition fails when neither resolves.
 
 ```xml
 <Conditionals>
