@@ -2276,7 +2276,7 @@ namespace Rebellion.Game.Messages
             };
             MessageDeliveryRequest message = BuildCombatMessage(definition, faction, values);
             SetCombatLocation(message, result.Planet, GetFleet(faction, result));
-            AttachCombatReport(message, result, faction);
+            SetCombatReport(message, result, faction);
             return message;
         }
 
@@ -2304,7 +2304,7 @@ namespace Rebellion.Game.Messages
                     : AdvisorNotificationType.Bombardment
             );
             SetCombatLocation(message, result.Planet, result.Planet);
-            AttachCombatReport(message, result, faction);
+            SetCombatReport(message, result, faction);
             return message;
         }
 
@@ -2332,7 +2332,7 @@ namespace Rebellion.Game.Messages
                     : AdvisorNotificationType.PlanetaryAssault
             );
             SetCombatLocation(message, result.Planet, result.Planet);
-            AttachCombatReport(message, result, faction);
+            SetCombatReport(message, result, faction);
             return message;
         }
 
@@ -2484,25 +2484,25 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Captures a completed combat result and stores the resulting report on a message.
+        /// Creates the combat report delivered by a combat-result request.
         /// </summary>
-        /// <param name="message">The message that receives the combat report.</param>
+        /// <param name="request">The delivery request that receives the combat report.</param>
         /// <param name="result">The completed combat result to capture.</param>
         /// <param name="recipient">The faction whose perspective the report represents.</param>
-        private static void AttachCombatReport(
-            MessageDeliveryRequest message,
+        private static void SetCombatReport(
+            MessageDeliveryRequest request,
             GameResult result,
             Faction recipient
         )
         {
-            if (message == null)
+            if (request == null)
                 return;
 
-            message.CombatReport = CombatReport.Capture(
+            request.Message = CombatReport.Capture(
                 result,
                 recipient?.InstanceID,
-                message.Subject,
-                message.Body
+                request.Subject,
+                request.Body
             );
         }
 
@@ -3589,6 +3589,7 @@ namespace Rebellion.Game.Messages
             message.NavigationTargetInstanceID = result.SubjectNode?.InstanceID;
 
             MessageDeliveryRequest delivery = message;
+            delivery.Message = result.Message;
             delivery.AdvisorNotification = result.AdvisorNotification;
             delivery.NotificationType = result.NotificationType;
             delivery.AdvisorSubjectNotification = result.AdvisorSubjectNotification;

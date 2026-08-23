@@ -104,6 +104,21 @@ namespace Rebellion.Tests.Util.Serialization
         }
     }
 
+    [PersistableObject]
+    public abstract class PolymorphicItem
+    {
+        public string Name { get; set; }
+    }
+
+    [PersistableObject(Name = nameof(PolymorphicItem))]
+    public sealed class ConcretePolymorphicItem : PolymorphicItem { }
+
+    [PersistableObject]
+    public sealed class PolymorphicItemCollection
+    {
+        public List<PolymorphicItem> Items { get; set; } = new List<PolymorphicItem>();
+    }
+
     public class SimpleItemCollection : List<SimpleItem> { }
 
     [PersistableObject]
@@ -515,6 +530,29 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml.Trim(),
                 "Serialized XML should match expected XML."
             );
+        }
+
+        [Test]
+        public void Serialize_AbstractCollectionWithAliasedElement_RoundTripsConcreteType()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(PolymorphicItemCollection));
+            PolymorphicItemCollection collection = new PolymorphicItemCollection
+            {
+                Items = new List<PolymorphicItem>
+                {
+                    new ConcretePolymorphicItem { Name = "Concrete item" },
+                },
+            };
+
+            string xml = SerializeToString(serializer, collection);
+            PolymorphicItemCollection restored = (PolymorphicItemCollection)DeserializeFromString(
+                serializer,
+                xml
+            );
+
+            StringAssert.Contains("<PolymorphicItem>", xml);
+            Assert.IsInstanceOf<ConcretePolymorphicItem>(restored.Items.Single());
+            Assert.AreEqual("Concrete item", restored.Items.Single().Name);
         }
 
         [Test]

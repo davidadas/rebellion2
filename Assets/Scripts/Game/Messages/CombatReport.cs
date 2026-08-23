@@ -9,7 +9,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Messages
 {
     /// <summary>
-    /// Identifies the completed encounter represented by a durable combat message.
+    /// Identifies the completed encounter represented by a combat report.
     /// </summary>
     public enum CombatReportType
     {
@@ -94,20 +94,18 @@ namespace Rebellion.Game.Messages
     }
 
     /// <summary>
-    /// Durable, self-contained outcome saved with a fleet-engagement, bombardment, or assault message.
+    /// Represents a durable fleet-engagement, bombardment, or planetary-assault report.
     /// </summary>
     [PersistableObject]
-    public sealed class CombatReport
+    public sealed class CombatReport : Message
     {
-        public CombatReportType Type { get; set; }
+        public CombatReportType CombatType { get; set; }
         public string PerspectiveOwnerInstanceID { get; set; }
         public string PlanetInstanceID { get; set; }
         public string PlanetName { get; set; }
         public string PlanetOwnerInstanceID { get; set; }
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
-        public string Title { get; set; }
-        public string Summary { get; set; }
         public CombatSide Winner { get; set; }
         public SpaceCombatSideOutcome AttackerOutcome { get; set; }
         public SpaceCombatSideOutcome DefenderOutcome { get; set; }
@@ -137,13 +135,13 @@ namespace Rebellion.Game.Messages
         public List<CombatReportStrike> Strikes { get; set; } = new List<CombatReportStrike>();
 
         /// <summary>
-        /// Captures a completed combat result as detached state suitable for a saved message.
+        /// Captures a completed combat result as a durable report for faction message history.
         /// </summary>
         /// <param name="result">The completed result to capture.</param>
         /// <param name="perspectiveOwnerInstanceID">The faction receiving the message.</param>
         /// <param name="title">The resolved message title.</param>
         /// <param name="summary">The resolved outcome summary.</param>
-        /// <returns>The detached report, or null for an unsupported result.</returns>
+        /// <returns>The combat report, or null for an unsupported result.</returns>
         public static CombatReport Capture(
             GameResult result,
             string perspectiveOwnerInstanceID,
@@ -162,8 +160,9 @@ namespace Rebellion.Game.Messages
                 return null;
 
             report.PerspectiveOwnerInstanceID = perspectiveOwnerInstanceID;
+            report.Type = MessageType.Conflict;
             report.Title = title;
-            report.Summary = summary;
+            report.Body = summary;
             return report;
         }
 
@@ -174,7 +173,7 @@ namespace Rebellion.Game.Messages
         {
             return new CombatReport
             {
-                Type = CombatReportType.SpaceBattle,
+                CombatType = CombatReportType.SpaceBattle,
                 PlanetInstanceID = result.Planet?.InstanceID,
                 PlanetName = result.Planet?.GetDisplayName(),
                 PlanetOwnerInstanceID = result.PlanetOwnerInstanceID,
@@ -223,7 +222,7 @@ namespace Rebellion.Game.Messages
         {
             return new CombatReport
             {
-                Type = CombatReportType.Bombardment,
+                CombatType = CombatReportType.Bombardment,
                 PlanetInstanceID = result.Planet?.InstanceID,
                 PlanetName = result.Planet?.GetDisplayName(),
                 PlanetOwnerInstanceID = result.Planet?.OwnerInstanceID,
@@ -272,7 +271,7 @@ namespace Rebellion.Game.Messages
         {
             return new CombatReport
             {
-                Type = CombatReportType.PlanetaryAssault,
+                CombatType = CombatReportType.PlanetaryAssault,
                 PlanetInstanceID = result.Planet?.InstanceID,
                 PlanetName = result.Planet?.GetDisplayName(),
                 PlanetOwnerInstanceID =

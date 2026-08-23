@@ -12,7 +12,7 @@ using UnityEngine.EventSystems;
 public interface IMessagesWindowActions
 {
     /// <summary>
-    /// Opens the full completed outcome retained by a combat message.
+    /// Opens a combat report in the battle-result view.
     /// </summary>
     /// <param name="report">The durable combat report.</param>
     void OpenCombatReport(CombatReport report);
@@ -658,11 +658,11 @@ public sealed class MessagesWindowController
     /// <returns>True when a combat report was opened.</returns>
     private bool TryOpenCombatReport(MessagesWindowSession session, Message message)
     {
-        if (message?.CombatReport == null)
+        if (message is not CombatReport report)
             return false;
 
         closeWindow(session.Window);
-        actions.OpenCombatReport(message.CombatReport);
+        actions.OpenCombatReport(report);
         markDirty();
         return true;
     }

@@ -88,23 +88,29 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="request">The semantic and presentation data to persist.</param>
         /// <returns>The message ready to attach to the recipient faction.</returns>
-        private Message CreateMessage(MessageDeliveryRequest request) =>
-            new Message(request.MessageType, request.Subject, request.Body)
-            {
-                ResultType = request.ResultType,
-                DisplayName = request.Subject,
-                BackgroundImageKey = request.BackgroundImageKey,
-                DisplayImagePath = request.BackgroundImagePath,
-                OverlayImagePath = request.OverlayImagePath,
-                BackgroundAudioPath = request.BackgroundAudioPath,
-                OfficerVoicePath = request.OfficerVoicePath,
-                EventLocationInstanceID = request.EventLocationInstanceID,
-                NavigationTargetInstanceID = request.NavigationTargetInstanceID,
-                NavigationSecondaryTargetInstanceID = request.NavigationSecondaryTargetInstanceID,
-                MissionInstanceID = request.MissionInstanceID,
-                CombatReport = request.CombatReport,
-                CreatedTick = _game.CurrentTick,
-            };
+        private Message CreateMessage(MessageDeliveryRequest request)
+        {
+            Message message =
+                request.Message
+                ?? new StatusMessage(request.MessageType, request.Subject, request.Body);
+            message.Type = request.MessageType;
+            message.ResultType = request.ResultType;
+            message.Title = request.Subject;
+            message.Body = request.Body;
+            message.DisplayName = request.Subject;
+            message.BackgroundImageKey = request.BackgroundImageKey;
+            message.DisplayImagePath = request.BackgroundImagePath;
+            message.OverlayImagePath = request.OverlayImagePath;
+            message.BackgroundAudioPath = request.BackgroundAudioPath;
+            message.OfficerVoicePath = request.OfficerVoicePath;
+            message.EventLocationInstanceID = request.EventLocationInstanceID;
+            message.NavigationTargetInstanceID = request.NavigationTargetInstanceID;
+            message.NavigationSecondaryTargetInstanceID =
+                request.NavigationSecondaryTargetInstanceID;
+            message.MissionInstanceID = request.MissionInstanceID;
+            message.CreatedTick = _game.CurrentTick;
+            return message;
+        }
 
         /// <summary>
         /// Advances time-based message lifecycle state for the current game tick.

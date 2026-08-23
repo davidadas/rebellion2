@@ -2012,7 +2012,7 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Opens the complete combat outcome retained by a delivered message.
+    /// Opens a durable combat report.
     /// </summary>
     /// <param name="report">The durable combat report.</param>
     void IMessagesWindowActions.OpenCombatReport(CombatReport report)

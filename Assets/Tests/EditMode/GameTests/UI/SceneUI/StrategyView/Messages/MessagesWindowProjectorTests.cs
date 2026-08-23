@@ -38,7 +38,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void GetHeader_MessageWithTitle_ReturnsTitle()
         {
-            Message message = new Message(
+            Message message = new StatusMessage(
                 MessageType.Mission,
                 "Diplomacy Mission Report",
                 "The diplomacy mission failed.\nMore text."
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void GetHeader_MessageWithoutTitle_ReturnsFirstBodyLine()
         {
-            Message message = new Message(
+            Message message = new StatusMessage(
                 MessageType.Mission,
                 null,
                 "First body line\nSecond line"
@@ -69,19 +69,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(string.Empty, MessagesWindowProjector.GetHeader(null));
             Assert.AreEqual(
                 string.Empty,
-                MessagesWindowProjector.GetHeader(new Message(MessageType.Fleet, null, null))
+                MessagesWindowProjector.GetHeader(new StatusMessage(MessageType.Fleet, null, null))
             );
         }
 
         [Test]
         public void CreateIndexRows_StoredMessages_ReturnsNewestFirstWithoutMutatingReadState()
         {
-            Message first = new Message(MessageType.Fleet, "First")
+            Message first = new StatusMessage(MessageType.Fleet, "First")
             {
                 InstanceID = "first",
                 Read = true,
             };
-            Message second = new Message(MessageType.Fleet, "Second")
+            Message second = new StatusMessage(MessageType.Fleet, "Second")
             {
                 InstanceID = "second",
                 Read = false,
@@ -135,12 +135,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void Project_IndexPanel_ReturnsCompleteThemedPresentation()
         {
-            Message first = new Message(MessageType.Fleet, "First")
+            Message first = new StatusMessage(MessageType.Fleet, "First")
             {
                 InstanceID = "first",
                 Read = true,
             };
-            Message second = new Message(MessageType.Fleet, "Second")
+            Message second = new StatusMessage(MessageType.Fleet, "Second")
             {
                 InstanceID = "second",
                 Read = false,
@@ -268,7 +268,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Message first = CreateMessage("first", "First", MessageType.Fleet);
             Message second = CreateMessage("second", "Second", MessageType.Advice);
             Message third = CreateMessage("third", "Third", MessageType.Mission);
-            second.Text = "Second body";
+            second.Body = "Second body";
             second.DisplayImagePath = _imagePath;
             second.OverlayImagePath = _imagePath;
 
@@ -428,7 +428,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
         private static Message CreateMessage(string instanceId, string title, MessageType type)
         {
-            return new Message(type, title) { InstanceID = instanceId };
+            return new StatusMessage(type, title) { InstanceID = instanceId };
         }
 
         private static SourceRectLayout CreateSourceLayout(int x, int y, int width, int height)

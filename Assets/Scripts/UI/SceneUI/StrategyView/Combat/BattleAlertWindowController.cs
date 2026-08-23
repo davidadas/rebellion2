@@ -226,7 +226,7 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
-    /// Opens the completed outcome retained by a delivered combat message.
+    /// Opens a durable combat report.
     /// </summary>
     /// <param name="report">The durable report to display.</param>
     internal void OpenReport(CombatReport report)

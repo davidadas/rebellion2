@@ -118,7 +118,7 @@ internal sealed class BattleResultTableProjector
     }
 
     /// <summary>
-    /// Creates result-table presentation from the detached outcome stored by a combat message.
+    /// Creates result-table presentation from a durable combat report.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="report">The saved completed encounter.</param>
@@ -138,7 +138,7 @@ internal sealed class BattleResultTableProjector
             return CreateEmptyTable();
 
         bool withdrawing =
-            report.Type == CombatReportType.SpaceBattle
+            report.CombatType == CombatReportType.SpaceBattle
             && (
                 attacker
                     ? report.AttackerOutcome == SpaceCombatSideOutcome.Withdrawn
@@ -199,7 +199,7 @@ internal sealed class BattleResultTableProjector
     }
 
     /// <summary>
-    /// Creates category rows from units detached into a durable combat report.
+    /// Creates category rows from units captured in a durable combat report.
     /// </summary>
     private static BattleResultTableRenderData ProjectReportUnits(
         UIContext uiContext,

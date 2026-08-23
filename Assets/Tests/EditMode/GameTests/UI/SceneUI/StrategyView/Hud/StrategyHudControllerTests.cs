@@ -146,10 +146,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 {
                     [MessageType.Fleet] = new List<Message>
                     {
-                        new Message { Read = true },
-                        new Message { Read = false },
+                        new StatusMessage { Read = true },
+                        new StatusMessage { Read = false },
                     },
-                    [MessageType.Mission] = new List<Message> { new Message { Read = true } },
+                    [MessageType.Mission] = new List<Message> { new StatusMessage { Read = true } },
                     [MessageType.Resource] = null,
                 },
             };

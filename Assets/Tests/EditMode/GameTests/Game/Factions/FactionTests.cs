@@ -419,7 +419,7 @@ namespace Rebellion.Tests.Game.Factions
                 MessageType messageType in Enum.GetValues(typeof(MessageType)).Cast<MessageType>()
             )
             {
-                Message message = new Message(messageType, "Message text");
+                Message message = new StatusMessage(messageType, "Message text");
 
                 _faction.AddMessage(message);
 
@@ -435,7 +435,7 @@ namespace Rebellion.Tests.Game.Factions
         public void AddMessage_MissingMessageBucket_CreatesBucketAndAddsMessage()
         {
             _faction.Messages.Remove(MessageType.Manufacturing);
-            Message message = new Message(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
 
             _faction.AddMessage(message);
 
@@ -446,7 +446,7 @@ namespace Rebellion.Tests.Game.Factions
         public void AddMessage_NullMessageDictionary_CreatesDictionaryAndAddsMessage()
         {
             _faction.Messages = null;
-            Message message = new Message(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
 
             _faction.AddMessage(message);
 
@@ -456,7 +456,7 @@ namespace Rebellion.Tests.Game.Factions
         [Test]
         public void RemoveMessage_ExistingMessage_RemovesFromList()
         {
-            Message message = new Message(MessageType.Mission, "Mission completed");
+            Message message = new StatusMessage(MessageType.Mission, "Mission completed");
             _faction.AddMessage(message);
 
             _faction.RemoveMessage(message);
@@ -471,7 +471,7 @@ namespace Rebellion.Tests.Game.Factions
         public void RemoveMessage_MissingMessageBucket_DoesNotThrow()
         {
             _faction.Messages.Remove(MessageType.Manufacturing);
-            Message message = new Message(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
 
             Assert.DoesNotThrow(() => _faction.RemoveMessage(message));
         }
@@ -480,7 +480,7 @@ namespace Rebellion.Tests.Game.Factions
         public void RemoveMessage_NullMessageDictionary_DoesNotThrow()
         {
             _faction.Messages = null;
-            Message message = new Message(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
 
             Assert.DoesNotThrow(() => _faction.RemoveMessage(message));
         }
@@ -615,7 +615,7 @@ namespace Rebellion.Tests.Game.Factions
         {
             _faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, 3);
             _faction.AddOwnedUnit(_planet1);
-            _faction.AddMessage(new Message(MessageType.Resource, "Test message"));
+            _faction.AddMessage(new StatusMessage(MessageType.Resource, "Test message"));
             _faction.ToggleAdvisorMessageNotification(MessageType.Fleet);
             _faction.TranslateCounterpart = false;
             _faction.AgentAdvice = false;

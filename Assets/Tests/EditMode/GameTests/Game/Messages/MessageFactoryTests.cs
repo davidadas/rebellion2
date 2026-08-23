@@ -3769,10 +3769,10 @@ namespace Rebellion.Tests.Game.Messages
                 }
             );
 
-            CombatReport report = FirstDeliveryFor(deliveries, alliance).CombatReport;
+            CombatReport report = FirstDeliveryFor(deliveries, alliance).Message as CombatReport;
 
             Assert.IsNotNull(report);
-            Assert.AreEqual(CombatReportType.SpaceBattle, report.Type);
+            Assert.AreEqual(CombatReportType.SpaceBattle, report.CombatType);
             Assert.AreEqual(target.InstanceID, report.PlanetInstanceID);
             Assert.AreEqual(CombatSide.Attacker, report.Winner);
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, report.DefenderOutcome);
@@ -3890,8 +3890,8 @@ namespace Rebellion.Tests.Game.Messages
                 AdvisorNotificationType.Bombardment,
                 DeliveryFor(defendingMessage).NotificationType
             );
-            CombatReport report = DeliveryFor(defendingMessage).CombatReport;
-            Assert.AreEqual(CombatReportType.Bombardment, report.Type);
+            CombatReport report = DeliveryFor(defendingMessage).Message as CombatReport;
+            Assert.AreEqual(CombatReportType.Bombardment, report.CombatType);
             Assert.AreEqual(target.InstanceID, report.PlanetInstanceID);
             Assert.AreEqual(alliance.InstanceID, report.AttackerOwnerInstanceID);
             Assert.AreEqual(empire.InstanceID, report.DefenderOwnerInstanceID);
@@ -3971,8 +3971,8 @@ namespace Rebellion.Tests.Game.Messages
                 AdvisorNotificationType.PlanetaryAssault,
                 DeliveryFor(defenderMessage).NotificationType
             );
-            CombatReport report = DeliveryFor(defenderMessage).CombatReport;
-            Assert.AreEqual(CombatReportType.PlanetaryAssault, report.Type);
+            CombatReport report = DeliveryFor(defenderMessage).Message as CombatReport;
+            Assert.AreEqual(CombatReportType.PlanetaryAssault, report.CombatType);
             Assert.AreEqual(target.InstanceID, report.PlanetInstanceID);
             Assert.AreEqual(alliance.InstanceID, report.AttackerOwnerInstanceID);
             Assert.AreEqual(empire.InstanceID, report.DefenderOwnerInstanceID);
@@ -4030,21 +4030,24 @@ namespace Rebellion.Tests.Game.Messages
             if (_messagesByDelivery.TryGetValue(request, out Message existing))
                 return existing;
 
-            Message message = new Message(request.MessageType, request.Subject, request.Body)
-            {
-                ResultType = request.ResultType,
-                DisplayName = request.Subject,
-                BackgroundImageKey = request.BackgroundImageKey,
-                DisplayImagePath = request.BackgroundImagePath,
-                OverlayImagePath = request.OverlayImagePath,
-                BackgroundAudioPath = request.BackgroundAudioPath,
-                OfficerVoicePath = request.OfficerVoicePath,
-                EventLocationInstanceID = request.EventLocationInstanceID,
-                NavigationTargetInstanceID = request.NavigationTargetInstanceID,
-                NavigationSecondaryTargetInstanceID = request.NavigationSecondaryTargetInstanceID,
-                MissionInstanceID = request.MissionInstanceID,
-                CombatReport = request.CombatReport,
-            };
+            Message message =
+                request.Message
+                ?? new StatusMessage(request.MessageType, request.Subject, request.Body);
+            message.Type = request.MessageType;
+            message.ResultType = request.ResultType;
+            message.Title = request.Subject;
+            message.Body = request.Body;
+            message.DisplayName = request.Subject;
+            message.BackgroundImageKey = request.BackgroundImageKey;
+            message.DisplayImagePath = request.BackgroundImagePath;
+            message.OverlayImagePath = request.OverlayImagePath;
+            message.BackgroundAudioPath = request.BackgroundAudioPath;
+            message.OfficerVoicePath = request.OfficerVoicePath;
+            message.EventLocationInstanceID = request.EventLocationInstanceID;
+            message.NavigationTargetInstanceID = request.NavigationTargetInstanceID;
+            message.NavigationSecondaryTargetInstanceID =
+                request.NavigationSecondaryTargetInstanceID;
+            message.MissionInstanceID = request.MissionInstanceID;
             _messagesByDelivery.Add(request, message);
             return message;
         }

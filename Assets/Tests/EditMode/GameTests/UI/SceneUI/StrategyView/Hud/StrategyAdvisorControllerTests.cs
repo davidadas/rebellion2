@@ -229,7 +229,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.Notify(
                     new MessageDeliveredResult
                     {
-                        Message = new Message(MessageType.Fleet, "Fleet arrived"),
+                        Message = new StatusMessage(MessageType.Fleet, "Fleet arrived"),
                         NotificationType = AdvisorNotificationType.PositivePopularSupport,
                     },
                     0,
@@ -285,7 +285,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.Notify(
                     new MessageDeliveredResult
                     {
-                        Message = new Message(MessageType.Advice, "Custom"),
+                        Message = new StatusMessage(MessageType.Advice, "Custom"),
                         AdvisorNotification = new AdvisorNotification
                         {
                             LifetimeTicks = 20,

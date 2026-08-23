@@ -57,7 +57,7 @@ internal abstract class BattleResultPresentation
     }
 
     /// <summary>
-    /// Creates a presentation adapter for an outcome detached into a saved message.
+    /// Creates a presentation adapter for a durable combat report.
     /// </summary>
     /// <param name="report">The saved completed encounter.</param>
     /// <returns>The durable report presentation.</returns>
@@ -530,7 +530,7 @@ internal abstract class BattleResultPresentation
     }
 
     /// <summary>
-    /// Adapts the detached completed outcome persisted by a combat message.
+    /// Adapts a durable combat report to the shared battle-result presentation.
     /// </summary>
     private sealed class SavedCombatReportPresentation : BattleResultPresentation
     {
@@ -545,7 +545,7 @@ internal abstract class BattleResultPresentation
         }
 
         internal override BattleResultCategory DefaultCategory =>
-            report.Type == CombatReportType.PlanetaryAssault
+            report.CombatType == CombatReportType.PlanetaryAssault
                 ? BattleResultCategory.Troops
                 : BattleResultCategory.CapitalShips;
 
@@ -554,14 +554,15 @@ internal abstract class BattleResultPresentation
         internal override string DefenderOwnerInstanceID => report.DefenderOwnerInstanceID;
 
         internal override string SoundEffectPath =>
-            report.Type == CombatReportType.PlanetaryAssault
+            report.CombatType == CombatReportType.PlanetaryAssault
                 ? StrategyUISoundPaths.PlanetaryAssault
                 : null;
 
         internal override string Title =>
-            FirstNonBlank(report.Title, GetDefaultTitle(report.Type, report.PlanetName));
+            FirstNonBlank(report.Title, GetDefaultTitle(report.CombatType, report.PlanetName));
 
-        internal override bool UsesPlanetaryLayout => report.Type != CombatReportType.SpaceBattle;
+        internal override bool UsesPlanetaryLayout =>
+            report.CombatType != CombatReportType.SpaceBattle;
 
         /// <summary>
         /// Resolves the report location against current game state without making the report depend on it.
@@ -578,7 +579,7 @@ internal abstract class BattleResultPresentation
         /// </summary>
         internal override string GetMusicPath(BattleAlertWindowTheme theme, string playerFactionId)
         {
-            if (theme == null || report.Type != CombatReportType.SpaceBattle)
+            if (theme == null || report.CombatType != CombatReportType.SpaceBattle)
                 return null;
             if (report.Winner == CombatSide.Draw)
                 return FirstNonBlank(theme.ResultDrawMusicPath, theme.ResultMusicPath);
@@ -594,7 +595,7 @@ internal abstract class BattleResultPresentation
         /// </summary>
         internal override string GetSummary(UIContext uiContext, string playerFactionId)
         {
-            return report.Summary ?? string.Empty;
+            return report.Body ?? string.Empty;
         }
 
         /// <summary>
@@ -605,7 +606,7 @@ internal abstract class BattleResultPresentation
             BattleAlertWindowTheme theme
         )
         {
-            return report.Type switch
+            return report.CombatType switch
             {
                 CombatReportType.SpaceBattle => GetSpaceSummaryImagePath(uiContext, theme),
                 CombatReportType.Bombardment => GetBombardmentSummaryImagePath(theme),
