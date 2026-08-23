@@ -194,8 +194,8 @@ specific owner.
 
 **Options**
 
-- `PlanetInstanceID` or `PlanetBinding` **[Required]:** planet source. `PlanetBinding` takes precedence
-  when both are present; the condition fails when neither resolves.
+- `PlanetInstanceID` **[Optional]:** direct planet source.
+- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`; the condition fails when neither source resolves.
 - `FactionInstanceID` **[Optional]:** required owner.
 
 ```xml
@@ -209,8 +209,8 @@ Rolls a random percentage against the selected faction's current support on a pl
 **Options**
 
 - `FactionInstanceID` **[Required]:** faction ID.
-- `PlanetInstanceID` or `PlanetBinding` **[Required]:** planet source. `PlanetBinding` takes precedence
-  when both are present; the condition fails when neither resolves.
+- `PlanetInstanceID` **[Optional]:** direct planet source.
+- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`; the condition fails when neither source resolves.
 
 ```xml
 <RollAgainstPopularSupport PlanetBinding="$planet" FactionInstanceID="FNALL1"/>
@@ -426,8 +426,8 @@ Compares one planet stat against an integer.
 - `Stat` **[Required]:** planet stat.
 - `Comparison` **[Required]:** comparison operator.
 - `Value` **[Required]:** integer.
-- `PlanetInstanceID` or `PlanetBinding` **[Required]:** planet source. `PlanetBinding` takes precedence
-  when both are present; the condition fails when neither resolves.
+- `PlanetInstanceID` **[Optional]:** direct planet source.
+- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`; the condition fails when neither source resolves.
 
 ```xml
 <ComparePlanetStat PlanetInstanceID="NABOO"
@@ -443,8 +443,8 @@ Passes when the selected planet contains a completed building of the requested t
 **Options**
 
 - `Type` **[Required]:** building type.
-- `PlanetInstanceID` or `PlanetBinding` **[Required]:** planet source. `PlanetBinding` takes precedence
-  when both are present; the condition fails when neither resolves.
+- `PlanetInstanceID` **[Optional]:** direct planet source.
+- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`; the condition fails when neither source resolves.
 
 ```xml
 <Conditionals>

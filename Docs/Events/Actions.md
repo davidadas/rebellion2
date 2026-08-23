@@ -183,14 +183,20 @@ recorded individually.
 **Options**
 
 - `RecipientFactionInstanceID` **[Required]:** recipient faction.
-- `SubjectInstanceID` or `SubjectBinding` **[Optional]:** message subject. When both are present,
-  `SubjectBinding` takes precedence.
+- `SubjectInstanceID` **[Optional]:** message subject instance ID.
+- `SubjectBinding` **[Optional]:** message subject binding. Takes precedence over `SubjectInstanceID`.
 - `RelatedSubjectInstanceID` **[Optional]:** secondary subject.
-- `LocationInstanceID` or `LocationBinding` **[Optional]:** location. When both are present,
-  `LocationBinding` takes precedence.
+- `LocationInstanceID` **[Optional]:** message location instance ID.
+- `LocationBinding` **[Optional]:** message location binding. Takes precedence over `LocationInstanceID`.
 - `Type` **[Optional]:** message type; defaults to `Advice`.
-- `Subject`, `Body`, and `ConditionalBodies` **[Optional]:** authored text.
-- `BackgroundImage`, `OverlayImage`, `BackgroundAudio`, `OfficerVoice`, and `AdvisorNotification` **[Optional]:** presentation.
+- `Subject` **[Optional]:** message subject text.
+- `Body` **[Optional]:** message body text.
+- `ConditionalBodies` **[Optional]:** conditional message body segments.
+- `BackgroundImage` **[Optional]:** message background image.
+- `OverlayImage` **[Optional]:** message overlay image.
+- `BackgroundAudio` **[Optional]:** message background audio.
+- `OfficerVoice` **[Optional]:** officer voice line.
+- `AdvisorNotification` **[Optional]:** advisor presentation.
 
 ```xml
 <SendMessage RecipientFactionInstanceID="FNALL1"
@@ -246,10 +252,11 @@ Choose exactly one adjustment mode: signed `Amount` or signed `PercentOfCurrent`
 **Options**
 
 - `Stat` **[Required]:** planet stat.
-- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** direct planet source. When both are present,
-  `PlanetBinding` takes precedence.
+- `PlanetInstanceID` **[Optional]:** direct planet source.
+- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`.
 - `Planets` **[Optional]:** planet selector collection.
-- `Amount` or `PercentOfCurrent` **[Required]:** exactly one signed adjustment.
+- `Amount` **[Optional]:** signed fixed adjustment. Mutually exclusive with `PercentOfCurrent`.
+- `PercentOfCurrent` **[Optional]:** signed percentage adjustment. Mutually exclusive with `Amount`.
 
 ```xml
 <ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
@@ -267,8 +274,8 @@ zero.
 
 **Options**
 
-- `PlanetInstanceID` or `PlanetBinding` **[Required]:** planet source. When both are present,
-  `PlanetBinding` takes precedence.
+- `PlanetInstanceID` **[Optional]:** direct planet source.
+- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`.
 - `LossProbabilityPerResource` **[Required]:** probability from `0` through `1`, applied independently
   to each existing point.
 - `MinimumTotalLoss` **[Required]:** minimum combined loss.
@@ -298,8 +305,8 @@ recorded for that planet.
 **Options**
 
 - `Type` **[Required]:** `Uprising`, `Intelligence`, `Disaster`, or `Resource` incident type.
-- `PlanetInstanceID` or `PlanetBinding` **[Required]:** incident location. When both are present,
-  `PlanetBinding` takes precedence.
+- `PlanetInstanceID` **[Optional]:** direct incident location.
+- `PlanetBinding` **[Optional]:** bound incident location. Takes precedence over `PlanetInstanceID`.
 
 ```xml
 <Actions>
@@ -329,9 +336,8 @@ double-delete the child.
 **Options**
 
 - `Units` **[Required]:** unit selector collection.
-- `PlanetInstanceID` or `PlanetBinding` **[Optional]:** result context. When both are present,
-  `PlanetBinding` takes precedence. These values
-  do not filter the selected units.
+- `PlanetInstanceID` **[Optional]:** direct result context. Does not filter the selected units.
+- `PlanetBinding` **[Optional]:** bound result context. Takes precedence over `PlanetInstanceID` and does not filter the selected units.
 
 ```xml
 <DestroyUnits>
@@ -356,7 +362,8 @@ unless they are also selected.
 **Options**
 
 - `FactionInstanceID` **[Required]:** new owner.
-- `Planets` or `Units` **[Required]:** exactly one selector collection.
+- `Planets` **[Optional]:** planet selector collection. Mutually exclusive with `Units`.
+- `Units` **[Optional]:** unit selector collection. Mutually exclusive with `Planets`.
 
 ```xml
 <ChangeOwner FactionInstanceID="FNALL1">
@@ -373,8 +380,10 @@ unless they are also selected.
 
 **Options**
 
-- `UnitInstanceID` or `Units` **[Required]:** at least one direct unit, selected unit, or `SpawnUnits` source must resolve.
-- `DestinationInstanceID` or `Destination` **[Required]:** exactly one valid destination must resolve.
+- `UnitInstanceID` **[Optional]:** direct unit source.
+- `Units` **[Optional]:** selected units and `SpawnUnits` sources. At least one unit source must resolve.
+- `DestinationInstanceID` **[Optional]:** direct destination.
+- `Destination` **[Optional]:** destination selector collection. Exactly one destination must resolve.
 
 ```xml
 <PlaceUnits DestinationInstanceID="NABOO">
@@ -394,8 +403,10 @@ unless they are also selected.
 
 **Options**
 
-- `UnitInstanceID` or `Units` **[Required]:** at least one direct or selected existing unit must resolve.
-- `DestinationInstanceID` or `Destination` **[Required]:** exactly one valid destination must resolve.
+- `UnitInstanceID` **[Optional]:** direct existing-unit source.
+- `Units` **[Optional]:** existing-unit selector collection. At least one unit source must resolve.
+- `DestinationInstanceID` **[Optional]:** direct destination.
+- `Destination` **[Optional]:** destination selector collection. Exactly one destination must resolve.
 
 ```xml
 <SendUnits UnitInstanceID="DARTH_VADER" DestinationInstanceID="YAVIN"/>
@@ -416,7 +427,8 @@ Reactivate a returning unit before placing or sending it.
 **Options**
 
 - `IsActive` **[Required]:** state.
-- `InstanceID` or `Nodes` **[Required]:** at least one direct or selected scene node must resolve.
+- `InstanceID` **[Optional]:** direct scene-node ID.
+- `Nodes` **[Optional]:** scene-node selector collection. At least one node source must resolve.
 
 ```xml
 <SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="false"/>
@@ -439,7 +451,8 @@ properties only; it does not move or deactivate the officer.
 **Options**
 
 - `IsCaptured` **[Required]:** state.
-- `OfficerInstanceID` or `Officers` **[Required]:** at least one direct or selected officer must resolve.
+- `OfficerInstanceID` **[Optional]:** direct officer ID.
+- `Officers` **[Optional]:** officer selector collection. At least one officer source must resolve.
 - `CaptorFactionInstanceID` **[Required]:** when capturing and forbidden when releasing.
 - `CanEscape` **[Optional]:** state used when capturing; defaults to `true`. Releasing always resets it
   to `true`.
@@ -458,10 +471,14 @@ Choose exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `Per
 **Options**
 
 - `Rating` **[Required]:** officer rating.
-- `OfficerInstanceID` or `Officers` **[Required]:** at least one direct or selected officer must resolve.
+- `OfficerInstanceID` **[Optional]:** direct officer ID.
+- `Officers` **[Optional]:** officer selector collection. At least one officer source must resolve.
 - `ReferenceOfficerInstanceID` **[Required]:** by `PercentOfPositiveGap`.
 - `MinimumAmount` **[Optional]:** non-negative lower bound used only with `PercentOfPositiveGap`.
-- `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` **[Required]:** exactly one adjustment mode.
+- `Amount` **[Optional]:** signed fixed adjustment.
+- `PercentOfStored` **[Optional]:** signed percentage of the stored rating.
+- `PercentOfEffective` **[Optional]:** signed percentage of the effective rating.
+- `PercentOfPositiveGap` **[Optional]:** non-negative percentage of the gap to the reference officer.
 
 ```xml
 <ChangeOfficerRating OfficerInstanceID="LUKE_SKYWALKER" Rating="Combat">
@@ -480,10 +497,14 @@ This uses the same calculation modes as `ChangeOfficerRating`, but every configu
 
 **Options**
 
-- `OfficerInstanceID` or `Officers` **[Required]:** at least one direct or selected officer must resolve.
+- `OfficerInstanceID` **[Optional]:** direct officer ID.
+- `Officers` **[Optional]:** officer selector collection. At least one officer source must resolve.
 - `ReferenceOfficerInstanceID` **[Required]:** by `PercentOfPositiveGap`.
 - `MinimumAmount` **[Optional]:** non-negative lower bound used only with `PercentOfPositiveGap`.
-- `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap` **[Required]:** exactly one positive adjustment mode.
+- `Amount` **[Optional]:** positive fixed adjustment.
+- `PercentOfStored` **[Optional]:** positive percentage of the stored Force rating.
+- `PercentOfEffective` **[Optional]:** positive percentage of the effective Force rating.
+- `PercentOfPositiveGap` **[Optional]:** positive percentage of the gap to the reference officer.
 
 ```xml
 <IncreaseOfficerForce OfficerInstanceID="LUKE_SKYWALKER"
@@ -569,7 +590,10 @@ Image paths are merged into the officer's active image set, so omitted paths rem
 **Options**
 
 - `OfficerInstanceID` **[Required]:** officer ID.
-- `DisplayImagePath`, `SmallDisplayImagePath`, `MessageImagePath`, and `EncyclopediaImagePath` **[Optional]:** paths. An empty action makes no image changes.
+- `DisplayImagePath` **[Optional]:** display image path.
+- `SmallDisplayImagePath` **[Optional]:** small display image path.
+- `MessageImagePath` **[Optional]:** message image path.
+- `EncyclopediaImagePath` **[Optional]:** encyclopedia image path.
 
 ```xml
 <SetOfficerImages OfficerInstanceID="LUKE_SKYWALKER">
@@ -587,12 +611,18 @@ Replaces authored categories in the officer's active voice set. Omitted categori
 **Options**
 
 - `OfficerInstanceID` **[Required]:** officer ID.
-- Voice-category children **[Optional]:** each contains `Path` elements. A category with no paths
-  makes no change to that category.
-
-Voice categories are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFailure`, `MissionAbort`,
-`Released`, `Recovered`, `EnemyDetected`, `ForceGrowth`, `ForceUserDiscovered`,
-`TraitorDiscovered`, and `RescueAttempt`.
+- `Order` **[Optional]:** order voice-line paths.
+- `PersonnelArrived` **[Optional]:** personnel-arrival voice-line paths.
+- `MissionSuccess` **[Optional]:** mission-success voice-line paths.
+- `MissionFailure` **[Optional]:** mission-failure voice-line paths.
+- `MissionAbort` **[Optional]:** mission-abort voice-line paths.
+- `Released` **[Optional]:** release voice-line paths.
+- `Recovered` **[Optional]:** recovery voice-line paths.
+- `EnemyDetected` **[Optional]:** enemy-detection voice-line paths.
+- `ForceGrowth` **[Optional]:** Force-growth voice-line paths.
+- `ForceUserDiscovered` **[Optional]:** Force-user-discovery voice-line paths.
+- `TraitorDiscovered` **[Optional]:** traitor-discovery voice-line paths.
+- `RescueAttempt` **[Optional]:** rescue-attempt voice-line paths.
 
 ```xml
 <SetOfficerVoiceSet OfficerInstanceID="LUKE_SKYWALKER">
