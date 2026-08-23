@@ -246,7 +246,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DiploBeforeIncite_DiploCanceledAfterUprisingFires()
+        public void UpdateMission_DiploBeforeIncite_DiploAbortsOnNextLifecycleStep()
         {
             (
                 GameRoot game,
@@ -264,16 +264,24 @@ namespace Rebellion.Tests.Sectors
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Last();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
-            Assert.IsNull(diplomacyMission.GetParent());
+            Assert.AreEqual(planet, diplomacyMission.GetParent());
             Assert.IsTrue(planet.IsInUprising);
             Assert.AreEqual(
                 leadershipBefore,
                 participant.GetEffectiveRating(OfficerRating.Leadership)
             );
+
+            List<GameResult> diplomacyResults = missionSystem.UpdateMission(diplomacyMission);
+
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                diplomacyResults.OfType<MissionCompletedResult>().Single().CompletionReason
+            );
+            Assert.IsNull(diplomacyMission.GetParent());
         }
 
         [Test]
-        public void UpdateMission_InciteBeforeDiplo_DiploCanceledImmediately()
+        public void UpdateMission_InciteBeforeDiplo_DiploAbortsWhenAdvanced()
         {
             (
                 GameRoot game,
@@ -285,8 +293,15 @@ namespace Rebellion.Tests.Sectors
             List<GameResult> results = missionSystem.UpdateMission(inciteMission);
 
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
+            Assert.IsNotNull(diplomacyMission.GetParent());
+
+            List<GameResult> diplomacyResults = missionSystem.UpdateMission(diplomacyMission);
+
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                diplomacyResults.OfType<MissionCompletedResult>().Single().CompletionReason
+            );
             Assert.IsNull(diplomacyMission.GetParent());
-            Assert.IsEmpty(missionSystem.UpdateMission(diplomacyMission));
         }
 
         [Test]
@@ -318,7 +333,11 @@ namespace Rebellion.Tests.Sectors
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(faction);
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };
+            PlanetSector planetSector = new PlanetSector
+            {
+                InstanceID = "sector",
+                SectorType = PlanetSectorType.OuterRim,
+            };
             game.AttachNode(planetSector, game.Galaxy);
             Planet origin = new Planet
             {
@@ -346,6 +365,8 @@ namespace Rebellion.Tests.Sectors
             {
                 { -200, 100 },
             };
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
             MovementSystem movement = new MovementSystem(
                 game,
                 new FogOfWarSystem(game),
@@ -419,7 +440,7 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             game.AttachNode(traveler, mission);
@@ -494,20 +515,141 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_RatingBasedFoilScore_DetectsMission()
+        public void UpdateMission_DiplomacyOnNeutralPlanetWithHostileDetector_CanBeFoiled()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+            planet.OwnerInstanceID = null;
+            planet.PopularSupport["empire"] = 50;
+            planet.AddVisitor("empire");
+
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Diplomacy,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { spy },
+                new List<IMissionParticipant>()
+            );
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            DisableCaptureEvasionInjury(game);
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+            mission.Initiate(0);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
+        }
+
+        [Test]
+        public void UpdateMission_RecruitmentOnFriendlyPlanetWithHostileDetector_CanBeFoiled()
+        {
+            (GameRoot game, Planet planet, Officer recruiter, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            planet.OwnerInstanceID = "empire";
+            recruiter.IsMain = true;
+            Officer candidate = EntityFactory.CreateOfficer("candidate", "rebels");
+            candidate.RecruitingFactionInstanceIDs = new List<string> { "empire" };
+            game.GetUnrecruitedOfficers().Add(candidate);
+
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Recruitment,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { recruiter }
+            );
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            DisableCaptureEvasionInjury(game);
+            game.AttachNode(mission, planet);
+            game.MoveNode(recruiter, mission);
+            mission.Initiate(2);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
+        }
+
+        [Test]
+        public void UpdateMission_RecruitmentOnFriendlyPlanetWithSuccessfulDecoy_Continues()
+        {
+            (GameRoot game, Planet planet, Officer recruiter, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            planet.OwnerInstanceID = "empire";
+            recruiter.IsMain = true;
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            Officer candidate = EntityFactory.CreateOfficer("candidate", "rebels");
+            candidate.RecruitingFactionInstanceIDs = new List<string> { "empire" };
+            game.GetUnrecruitedOfficers().Add(candidate);
+
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Recruitment,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { recruiter },
+                new List<IMissionParticipant> { decoy }
+            );
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            game.AttachNode(mission, planet);
+            game.MoveNode(recruiter, mission);
+            game.AttachNode(decoy, mission);
+            mission.Initiate(2);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
+            Assert.AreEqual(1, mission.CurrentProgress);
+            Assert.IsFalse(recruiter.IsCaptured);
+        }
+
+        [Test]
+        public void UpdateMission_FoilScore_UsesEspionageInsteadOfMissionRating()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
             spy.SetBaseRating(OfficerRating.Diplomacy, 200);
+            spy.SetBaseRating(OfficerRating.Espionage, 0);
             defender.SetBaseRating(OfficerRating.Espionage, 10);
-            planet.GetChildren<Regiment>().Single().DefenseRating = 10;
+            planet.GetChildren<Regiment>().Single().DetectionRating = 10;
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 35;
             game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = -1;
-            SetFoilTable(game, new Dictionary<int, int> { { 0, 0 }, { 50, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetFoilTable(game, new Dictionary<int, int> { { -100, 100 }, { 50, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
 
@@ -528,31 +670,184 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_FoilSupport_DetectsMission()
+        public void RollFoilCheck_DetectorRatingAndRank_SelectMatchingCommander()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer general, MovementSystem _) =
+                BuildDetectionScene();
+            general.SetBaseRating(OfficerRating.Espionage, 40);
+            Officer admiral = EntityFactory.CreateOfficer("admiral", "rebels");
+            admiral.CurrentRank = OfficerRank.Admiral;
+            admiral.SetBaseRating(OfficerRating.Espionage, 100);
+            game.AttachNode(admiral, planet);
+            Regiment detector = planet.GetChildren<Regiment>().Single();
+            detector.DefenseRating = 999;
+            detector.DetectionRating = 17;
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            SetFoilTable(game, new Dictionary<int, int> { { -10000, 100 } });
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+
+            MissionDetector selectedDetector = mission.GetDetectors().Single();
+            bool foiled = mission.RollFoilCheck(new FixedRNG(0.0), game, selectedDetector);
+
+            Assert.IsTrue(foiled);
+            Assert.AreEqual(17, selectedDetector.Rating);
+            Assert.AreSame(general, selectedDetector.Commander);
+        }
+
+        [Test]
+        public void UpdateMission_FirstDetectorFailsSecondDetectorFoilsMission()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+            spy.SetBaseRating(OfficerRating.Espionage, 0);
+            defender.SetBaseRating(OfficerRating.Espionage, 0);
+            planet.GetChildren<Regiment>().Single().DetectionRating = 0;
+            game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "r2",
+                    OwnerInstanceID = "rebels",
+                    DetectionRating = 100,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = -1;
+            SetFoilTable(game, new Dictionary<int, int> { { -100, 100 }, { 1, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
+            DisableCaptureEvasionInjury(game);
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
+            Assert.IsFalse(spy.IsCaptured);
+        }
+
+        [Test]
+        public void UpdateMission_CompletedBuilding_DoesNotDetectMission()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            game.DeleteNode(planet.GetChildren<Regiment>().Single());
+            planet.EnergyCapacity = 1;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "building",
+                    OwnerInstanceID = "rebels",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.SetExecutionTick(5);
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
+            Assert.AreEqual(1, mission.CurrentProgress);
+        }
+
+        [Test]
+        public void UpdateMission_FleetDetector_UsesFleetDecoyTable()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            game.DeleteNode(planet.GetChildren<Regiment>().Single());
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(capitalShip, fleet);
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            decoy.SetBaseRating(OfficerRating.Espionage, 200);
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.SetExecutionTick(5);
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            game.Config.ProbabilityTables.Mission.PlanetaryDecoy = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            game.Config.ProbabilityTables.Mission.FleetDecoy = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+            mission.AddDecoyParticipant(decoy);
+            game.AttachNode(decoy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
+            Assert.AreEqual(1, mission.CurrentProgress);
+        }
+
+        [Test]
+        public void UpdateMission_MainSpecialForces_ReducesFoilScore()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
-            spy.SetBaseRating(OfficerRating.Diplomacy, 100);
+            spy.SetBaseRating(OfficerRating.Espionage, 0);
             defender.SetBaseRating(OfficerRating.Espionage, 0);
-            planet.GetChildren<Regiment>().Single().DefenseRating = 0;
+            planet.GetChildren<Regiment>().Single().DetectionRating = 0;
 
             SpecialForces support = new SpecialForces
             {
                 InstanceID = "sf1",
-                OwnerInstanceID = "rebels",
+                OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            support.SetBaseRating(OfficerRating.Espionage, 100);
-            game.AttachNode(support, planet);
+            support.SetBaseRating(OfficerRating.Espionage, 0);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 35;
             game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = -1;
-            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 }, { 2, 0 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 }, { 1, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
+            game.AttachNode(support, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
                 game,
@@ -571,14 +866,15 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DetectionSucceedsHighCapture_CapturesParticipant()
+        public void UpdateMission_EvasionFails_CapturesParticipant()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
 
@@ -625,7 +921,6 @@ namespace Rebellion.Tests.Sectors
             );
             Assert.IsNotNull(mission);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
 
@@ -683,14 +978,15 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DetectionSucceedsHighCapture_MovesCaptiveToMissionPlanet()
+        public void UpdateMission_EvasionFails_MovesCaptiveToMissionPlanet()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
 
@@ -715,14 +1011,15 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DetectionSucceedsLowCapture_KillsParticipant()
+        public void UpdateMission_EvasionSucceeds_ReturnsParticipant()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
+            DisableCaptureEvasionInjury(game);
             mission.SetExecutionTick(5);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -735,21 +1032,11 @@ namespace Rebellion.Tests.Sectors
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(spy.IsKilled, "Officer should be killed when capture probability is 0");
-            Assert.IsFalse(spy.IsActive(), "Killed officer should be inactive");
-            Assert.AreSame(
-                planet,
-                spy.GetParent(),
-                "Killed officer should remain retained at the mission planet"
-            );
-            Assert.AreSame(
-                spy,
-                game.GetSceneNodeByInstanceID<Officer>(spy.InstanceID, includeDisabled: true)
-            );
-            Assert.IsTrue(
-                results.Any(r => r is OfficerKilledResult),
-                "Should produce OfficerKilledResult"
-            );
+            Assert.IsFalse(spy.IsKilled);
+            Assert.IsFalse(spy.IsCaptured);
+            Assert.AreEqual("empire-home", spy.GetParent()?.GetInstanceID());
+            Assert.IsFalse(results.Any(result => result is OfficerKilledResult));
+            Assert.IsFalse(results.Any(result => result is OfficerCaptureStateResult));
         }
 
         [Test]
@@ -776,16 +1063,17 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DetectionSucceedsWithoutCaptureTable_UsesConfiguredDefault()
+        public void UpdateMission_DetectionWithoutEvasionTable_UsesConfiguredDefault()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
-            game.Config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability = 100;
+            game.Config.ProbabilityTables.Mission.DefaultEvasionProbability = 0;
+            DisableCaptureEvasionInjury(game);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int>());
+            SetEvasionTable(game, new Dictionary<int, int>());
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
 
@@ -797,7 +1085,7 @@ namespace Rebellion.Tests.Sectors
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(spy.IsCaptured, "Officer should use default capture probability");
+            Assert.IsTrue(spy.IsCaptured, "Officer should use the default evasion probability");
             Assert.IsTrue(
                 results.Any(r => r is OfficerCaptureStateResult),
                 "Should produce OfficerCaptureStateResult"
@@ -828,7 +1116,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_NoDefender_DoesNotFoil()
+        public void UpdateMission_DetectorWithoutCommander_CanFoil()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
@@ -837,7 +1125,8 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
             mission.SetExecutionTick(5);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -851,13 +1140,13 @@ namespace Rebellion.Tests.Sectors
             List<GameResult> results = system.UpdateMission(mission);
 
             Assert.IsFalse(spy.IsKilled);
-            Assert.IsFalse(spy.IsCaptured);
-            Assert.IsFalse(
+            Assert.IsTrue(spy.IsCaptured);
+            Assert.IsTrue(
                 results
                     .OfType<MissionCompletedResult>()
                     .Any(result => result.Outcome == MissionOutcome.Foiled)
             );
-            Assert.AreEqual(1, mission.CurrentProgress);
+            Assert.AreEqual(0, mission.CurrentProgress);
         }
 
         [Test]
@@ -871,9 +1160,9 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            mission.DecoyParticipantRating = OfficerRating.Espionage;
+
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             mission.AddDecoyParticipant(decoy);
@@ -891,13 +1180,11 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DetectionWithDecoySkill_UsesConfiguredSkill()
+        public void UpdateMission_DecoyCheck_AlwaysUsesEspionage()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
-            // Decoy has Espionage=0 but Combat=200. DecoyParticipantRating is set to Combat.
-            // If the system incorrectly uses Espionage, the decoy fails and the spy is captured.
             Officer decoy = new Officer
             {
                 InstanceID = "decoy",
@@ -913,9 +1200,10 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            mission.DecoyParticipantRating = OfficerRating.Combat;
+
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             mission.AddDecoyParticipant(decoy);
@@ -929,26 +1217,24 @@ namespace Rebellion.Tests.Sectors
 
             system.UpdateMission(mission);
 
-            Assert.IsFalse(
-                spy.IsCaptured,
-                "Decoy should use DecoyParticipantRating (Combat=80) not always Espionage"
-            );
+            Assert.IsTrue(spy.IsCaptured);
         }
 
         [Test]
-        public void UpdateMission_DetectionWithStrongDefense_DecoyFails()
+        public void UpdateMission_HighDetectorRating_DecoyFails()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
-            // High defense score makes decoy probability very low.
+            // A high detector rating makes decoy probability very low.
             for (int i = 0; i < 5; i++)
             {
                 Regiment regiment = new Regiment
                 {
                     InstanceID = $"extra_r{i}",
                     OwnerInstanceID = "rebels",
-                    DefenseRating = 50,
+                    DetectionRating = 50,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
                 };
                 game.AttachNode(regiment, planet);
             }
@@ -957,9 +1243,10 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            mission.DecoyParticipantRating = OfficerRating.Espionage;
+
             SetDecoyTable(game, new Dictionary<int, int> { { -200, 0 }, { 200, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             mission.AddDecoyParticipant(decoy);
@@ -975,7 +1262,7 @@ namespace Rebellion.Tests.Sectors
 
             Assert.IsTrue(
                 spy.IsCaptured,
-                "Strong target defense should make decoy fail, allowing capture"
+                "A high detector rating should make the decoy fail, allowing capture"
             );
         }
 
@@ -996,9 +1283,10 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            mission.DecoyParticipantRating = OfficerRating.Espionage;
+
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             mission.AddDecoyParticipant(weakDecoy);
@@ -1030,7 +1318,8 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             game.AttachNode(secondSpy, mission);
@@ -1062,10 +1351,12 @@ namespace Rebellion.Tests.Sectors
                 BuildDetectionScene();
 
             SpecialForces sf = new SpecialForces { InstanceID = "sf1", OwnerInstanceID = "empire" };
+            sf.MissionReturnParentInstanceID = spy.MissionReturnParentInstanceID;
+            sf.MissionReturnLocationInstanceID = spy.MissionReturnLocationInstanceID;
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             game.AttachNode(mission, planet);
             mission.AddChild(sf);
             sf.SetParent(mission);
@@ -1087,6 +1378,124 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(
                 results.All(result => result.MissionInstanceID == missionInstanceId),
                 "Every result produced while advancing a mission should identify that mission"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_SpecialForcesEvadesDetector_IsNotDestroyed()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                MissionReturnParentInstanceID = spy.MissionReturnParentInstanceID,
+                MissionReturnLocationInstanceID = spy.MissionReturnLocationInstanceID,
+            };
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            game.AttachNode(mission, planet);
+            game.AttachNode(specialForces, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.AreSame(
+                specialForces,
+                game.GetSceneNodeByInstanceID<SpecialForces>(specialForces.InstanceID)
+            );
+            Assert.IsFalse(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Any(result => result.DestroyedObject == specialForces)
+            );
+        }
+
+        [Test]
+        public void UpdateMission_OfficerEvadesDetector_StillAppliesCaptureEvasionInjury()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            spy.IsMain = true;
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 100;
+            game.Config.DuelResolution.MinimumInjuryChance = 100;
+            game.Config.DuelResolution.InjuryBase = 1;
+            game.Config.DuelResolution.InjurySecondaryRollMaximum = 0;
+            game.Config.Recovery.MaxInjuryPoints = 100;
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(spy.IsCaptured);
+            Assert.Greater(spy.InjuryPoints, 0);
+            Assert.IsTrue(results.OfType<OfficerInjuredResult>().Any());
+        }
+
+        [Test]
+        public void UpdateMission_FailedDecoyInjuryKillsMinor_DoesNotReuseDecoy()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            spy.IsMain = true;
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 100;
+            game.Config.DuelResolution.MinimumInjuryChance = 100;
+            game.Config.DuelResolution.InjuryBase = 1;
+            game.Config.DuelResolution.InjurySecondaryRollMaximum = 0;
+            game.Config.Recovery.MaxInjuryPoints = 100;
+            game.Config.Assassination.KillProbability = 100;
+            game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "r2",
+                    OwnerInstanceID = "rebels",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+            mission.AddDecoyParticipant(decoy);
+            game.AttachNode(decoy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(decoy.IsKilled);
+            Assert.IsFalse(decoy.IsActive());
+            Assert.AreSame(planet, decoy.GetParent());
+            Assert.AreEqual(
+                1,
+                results.OfType<OfficerKilledResult>().Count(result => result.TargetOfficer == decoy)
             );
         }
 
@@ -1268,6 +1677,89 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void UpdateMission_StaleMissingViewTarget_WaitsForArrivalThenFailsAndTearsDown()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            Planet viewPlanet = new Planet { InstanceID = targetPlanet.InstanceID };
+            Officer viewTarget = EntityFactory.CreateOfficer(target.InstanceID, "rebels");
+            viewTarget.SetParent(viewPlanet);
+            game.DetachNode(target);
+
+            bool created = missions.InitiateMission(
+                CreateRequest(
+                    MissionTypeIDs.Assassination,
+                    participant,
+                    viewPlanet,
+                    selectedTarget: viewTarget
+                )
+            );
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+
+            List<GameResult> travellingResults = missions.UpdateMission(mission);
+
+            Assert.IsTrue(created);
+            Assert.IsTrue(participant.Movement != null);
+            Assert.IsEmpty(travellingResults);
+            Assert.AreEqual(1, game.GetSceneNodesByType<Mission>().Count);
+
+            participant.Movement = null;
+            List<GameResult> arrivalResults = missions.UpdateMission(mission);
+
+            MissionCompletedResult completed = arrivalResults
+                .OfType<MissionCompletedResult>()
+                .Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
+        }
+
+        [Test]
+        public void UpdateMission_TargetPlanetDestroyedDuringTravel_WaitsForArrivalThenFails()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            missions.InitiateMission(
+                CreateRequest(
+                    MissionTypeIDs.Assassination,
+                    participant,
+                    targetPlanet,
+                    selectedTarget: target
+                )
+            );
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            targetPlanet.IsDestroyed = true;
+
+            List<GameResult> travellingResults = missions.UpdateMission(mission);
+
+            Assert.IsTrue(participant.Movement != null);
+            Assert.IsEmpty(travellingResults);
+            Assert.AreEqual(mission, game.GetSceneNodesByType<Mission>().Single());
+
+            participant.Movement = null;
+            List<GameResult> arrivalResults = missions.UpdateMission(mission);
+
+            MissionCompletedResult completed = arrivalResults
+                .OfType<MissionCompletedResult>()
+                .Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
+        }
+
+        [Test]
         public void UpdateMission_AssassinationTargetCapturedBeforeArrival_FailsAndTearsDown()
         {
             (
@@ -1444,7 +1936,6 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = CreateMission(game, planet, officer);
 
-            mission.OriginInstanceID = ship.InstanceID;
             officer.MissionReturnParentInstanceID = ship.InstanceID;
             officer.MissionReturnLocationInstanceID = planet.InstanceID;
             game.DetachNode(officer);
@@ -1535,7 +2026,6 @@ namespace Rebellion.Tests.Sectors
             game.AttachNode(officer, ship);
 
             StubMission mission = CreateMission(game, planetA, officer);
-            mission.OriginInstanceID = ship.InstanceID;
             officer.MissionReturnParentInstanceID = ship.InstanceID;
             officer.MissionReturnLocationInstanceID = planetA.InstanceID;
             game.DetachNode(officer);
@@ -1824,7 +2314,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void Execute_WithSpecialForcesParticipant_AppearsInParticipants()
+        public void UpdateMission_WithSpecialForcesParticipant_AppearsInParticipants()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -1839,12 +2329,13 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.AddChild(sf);
+            game.AttachNode(sf, mission);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new StubRNG());
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+            List<GameResult> results = system.UpdateMission(mission);
             MissionCompletedResult completedResult = results
                 .OfType<MissionCompletedResult>()
                 .First();
@@ -1856,7 +2347,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void Execute_WithDecoyParticipant_DecoyAppearsInParticipants()
+        public void UpdateMission_WithDecoyParticipant_DecoyAppearsInParticipants()
         {
             // Both main and decoy participants should appear in MissionCompletedResult.Participants.
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
@@ -1873,13 +2364,15 @@ namespace Rebellion.Tests.Sectors
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
-            mission.AddChild(officer);
+            game.MoveNode(officer, mission);
             mission.AddDecoyParticipant(decoy);
+            game.AttachNode(decoy, mission);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new StubRNG());
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+            List<GameResult> results = system.UpdateMission(mission);
             MissionCompletedResult completedResult = results
                 .OfType<MissionCompletedResult>()
                 .First();
@@ -1897,7 +2390,6 @@ namespace Rebellion.Tests.Sectors
                 factionOwnsPlanet: true
             );
             StubMission mission = CreateMission(game, planet, officer);
-            mission.OriginInstanceID = planet.InstanceID;
             game.MoveNode(officer, mission);
             mission.Initiate(1);
             MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
@@ -2100,7 +2592,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void InitiateMission_StaleCompletedViewTarget_ReturnsFalse()
+        public void InitiateMission_StaleCompletedViewTarget_CreatesMissionFromObservedState()
         {
             (
                 GameRoot game,
@@ -2128,8 +2620,8 @@ namespace Rebellion.Tests.Sectors
                 )
             );
 
-            Assert.IsFalse(created);
-            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
+            Assert.IsTrue(created);
+            Assert.AreEqual(1, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
@@ -2449,7 +2941,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void CanCreateMission_StaleCompletedViewTarget_ReturnsFalse()
+        public void CanCreateMission_StaleCompletedViewTarget_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -2477,12 +2969,12 @@ namespace Rebellion.Tests.Sectors
                 )
             );
 
-            Assert.IsFalse(canCreate);
+            Assert.IsTrue(canCreate);
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
-        public void CanCreateMission_StaleStationaryOfficerViewWithLiveTransit_ReturnsFalse()
+        public void CanCreateMission_StaleStationaryOfficerViewWithLiveTransit_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -2506,7 +2998,7 @@ namespace Rebellion.Tests.Sectors
                 )
             );
 
-            Assert.IsFalse(canCreate);
+            Assert.IsTrue(canCreate);
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
@@ -2603,12 +3095,19 @@ namespace Rebellion.Tests.Sectors
 
         private static void SetDecoyTable(GameRoot game, Dictionary<int, int> table)
         {
-            game.Config.ProbabilityTables.Mission.Decoy = table;
+            game.Config.ProbabilityTables.Mission.PlanetaryDecoy = table;
+            game.Config.ProbabilityTables.Mission.FleetDecoy = table;
         }
 
-        private static void SetKillOrCaptureTable(GameRoot game, Dictionary<int, int> table)
+        private static void SetEvasionTable(GameRoot game, Dictionary<int, int> table)
         {
-            game.Config.ProbabilityTables.Mission.KillOrCapture = table;
+            game.Config.ProbabilityTables.Mission.Evasion = table;
+        }
+
+        private static void DisableCaptureEvasionInjury(GameRoot game)
+        {
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 0;
+            game.Config.DuelResolution.MinimumInjuryChance = 0;
         }
 
         private static Regiment CreateCompletedRegiment(string id, string ownerInstanceID)
@@ -2630,6 +3129,17 @@ namespace Rebellion.Tests.Sectors
                     InstanceID = "shipyard",
                     OwnerInstanceID = planet.OwnerInstanceID,
                     ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "training-facility",
+                    OwnerInstanceID = planet.OwnerInstanceID,
+                    ProductionType = ManufacturingType.Troop,
                     ProcessRate = 1,
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 },
@@ -2682,9 +3192,8 @@ namespace Rebellion.Tests.Sectors
             {
                 MissionTypeID = missionTypeId,
                 Location = target,
-                TargetOfficer = targetOfficer,
                 Discipline = discipline,
-                SelectedTarget = selectedTarget,
+                SelectedTarget = targetOfficer ?? selectedTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
             };
@@ -2698,7 +3207,7 @@ namespace Rebellion.Tests.Sectors
             MovementSystem movement
         ) BuildDetectionScene()
         {
-            GameConfig config = TestConfig.Create();
+            GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -2738,13 +3247,15 @@ namespace Rebellion.Tests.Sectors
             spy.MissionReturnLocationInstanceID = homePlanet.InstanceID;
             game.AttachNode(spy, homePlanet);
             Officer defender = EntityFactory.CreateOfficer("defender", "rebels");
+            defender.CurrentRank = OfficerRank.General;
             game.AttachNode(defender, planet);
 
             Regiment regiment = new Regiment
             {
                 InstanceID = "r1",
                 OwnerInstanceID = "rebels",
-                DefenseRating = 100,
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(regiment, planet);
 
@@ -2974,7 +3485,8 @@ namespace Rebellion.Tests.Sectors
 
             protected override List<GameResult> OnSuccess(
                 GameRoot game,
-                IRandomNumberProvider provider
+                IRandomNumberProvider provider,
+                IMissionParticipant successfulParticipant
             ) =>
                 new List<GameResult>
                 {

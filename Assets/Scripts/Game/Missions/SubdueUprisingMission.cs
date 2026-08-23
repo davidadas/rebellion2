@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Missions
@@ -77,9 +78,9 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The abort reason, or null when the mission may advance.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 
@@ -89,30 +90,25 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns false if the uprising has ended on the target planet before execution.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the planet is still in uprising.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
-        {
-            return GetParent() is Planet p && p.IsInUprising;
-        }
-
-        /// <summary>
         /// Subdue Uprising missions are never foiled — they target own planets.
         /// </summary>
-        /// <param name="defenseScore">The defense score, unused because subdue uprising cannot be foiled.</param>
+        /// <param name="detectorRating">The detector rating, unused because subdue uprising cannot be foiled.</param>
+        /// <param name="defender">The defender, unused because subdue uprising cannot be foiled.</param>
         /// <param name="game">The current game state, unused because subdue uprising cannot be foiled.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
+        protected override double GetFoilProbability(
+            int detectorRating,
+            Officer defender,
+            GameRoot game
+        ) => 0;
 
         /// <summary>
-        /// Returns a participant's probability of subduing the target uprising.
+        /// Returns a participant's raw score for subduing the target uprising.
         /// </summary>
         /// <param name="agent">The participant attempting to subdue the uprising.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>The configured success probability.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
+        /// <returns>The participant's raw subdue-uprising score.</returns>
+        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
             if (!(GetParent() is Planet planet))
                 throw new InvalidOperationException(
@@ -122,21 +118,21 @@ namespace Rebellion.Game.Missions
             int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
                 game?.Config?.Uprising?.ResistanceRegimentTypeID
             );
-            int score =
-                uprisingResistanceRegimentCount
+            return uprisingResistanceRegimentCount
                 - planet.GetOpposingPopularSupport(OwnerInstanceID)
                 + agent.GetEffectiveRating(OfficerRating.Leadership);
-            return LookupSuccessProbability(game, score);
         }
 
         /// <summary>
-        /// Subdue Uprising missions do not repeat after one attempt.
+        /// Subdue Uprising missions continue until the uprising has ended.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>Always false.</returns>
+        /// <returns>True while the owned target planet remains in uprising.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
-            return false;
+            return !GetMissionInvalidationReason(game).HasValue
+                && GetParent() is Planet planet
+                && planet.GetOwnerInstanceID() == OwnerInstanceID;
         }
     }
 }

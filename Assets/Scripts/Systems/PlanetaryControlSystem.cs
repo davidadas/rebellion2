@@ -3,7 +3,6 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -348,6 +347,37 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Applies the original weak-support reduction to a shift on a core sector.
+        /// </summary>
+        /// <param name="planet">The planet receiving the support shift.</param>
+        /// <param name="faction">The faction whose support is changing.</param>
+        /// <param name="shift">The unadjusted signed support shift.</param>
+        /// <param name="divisor">The configured weak-support divisor.</param>
+        /// <returns>The support shift after any core-sector reduction.</returns>
+        internal static int ApplyCoreWeakSupportPenalty(
+            Planet planet,
+            Faction faction,
+            int shift,
+            int divisor
+        )
+        {
+            if (
+                shift == 0
+                || divisor <= 0
+                || planet?.GetParentOfType<PlanetSector>()?.SectorType != PlanetSectorType.Core
+            )
+                return shift;
+
+            bool penaltyApplies = faction?.Settings?.SupportResistance switch
+            {
+                SupportChange.Increase => shift > 0,
+                SupportChange.Decrease => shift < 0,
+                _ => false,
+            };
+            return penaltyApplies ? shift / divisor : shift;
+        }
+
+        /// <summary>
         /// Transfers or clears planet ownership when the resolved controller changes.
         /// </summary>
         /// <param name="planet">The planet whose control is changing.</param>
@@ -386,7 +416,6 @@ namespace Rebellion.Systems
                     newOwner
                 );
 
-                CancelCompetingMissions(planet, newOwnerId);
                 if (newOwner != null)
                     TransferBuildings(planet, newOwner);
 
@@ -661,31 +690,6 @@ namespace Rebellion.Systems
                 return;
 
             _fogOfWarSystem.CaptureSnapshot(faction, planet, sector, _game.CurrentTick);
-        }
-
-        /// <summary>
-        /// Cancels missions targeting this planet that belong to factions other than the new owner.
-        /// </summary>
-        /// <param name="planet">The planet changing ownership.</param>
-        /// <param name="newOwnerID">The instance ID of the new owning faction.</param>
-        private void CancelCompetingMissions(Planet planet, string newOwnerID)
-        {
-            List<Mission> competing = _game
-                .GetSceneNodesByType<Mission>()
-                .Where(m =>
-                    m.CanceledOnOwnershipChange
-                    && m.OwnerInstanceID != newOwnerID
-                    && m.GetParentOfType<Planet>() == planet
-                )
-                .ToList();
-
-            foreach (Mission mission in competing)
-            {
-                foreach (IMissionParticipant participant in mission.GetAllParticipants())
-                    _movementSystem.EvacuateToNearestFriendlyPlanet(participant);
-
-                _game.DetachNode(mission);
-            }
         }
 
         /// <summary>

@@ -32,11 +32,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
-
-        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public AbductionMission()
@@ -45,7 +40,6 @@ namespace Rebellion.Game.Missions
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Combat;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -73,7 +67,6 @@ namespace Rebellion.Game.Missions
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -87,7 +80,7 @@ namespace Rebellion.Game.Missions
             if (!(ctx.Location is Planet planet))
                 return null;
 
-            Officer target = ctx.TargetOfficer;
+            Officer target = ctx.SelectedTarget as Officer;
             Planet targetPlanet = target?.GetParentOfType<Planet>();
             if (
                 target == null
@@ -112,9 +105,9 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 
@@ -122,14 +115,19 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns false if the target officer has already been captured or has moved
-        /// away from the mission's planet before execution.
+        /// Returns the attacker's raw combat advantage over the abduction target.
         /// </summary>
+        /// <param name="agent">The participant attempting the abduction.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the target is still free and on the mission planet.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
+        /// <returns>The raw combat advantage, or null when the target cannot be resolved.</returns>
+        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
-            return HasValidTarget(game);
+            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+            if (target == null)
+                return null;
+
+            return agent.GetEffectiveRating(OfficerRating.Combat)
+                - target.GetEffectiveRating(OfficerRating.Combat);
         }
 
         /// <summary>
@@ -146,30 +144,97 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Marks the target officer as captured and assigns the captor faction.
+        /// Resolves every participant attempt while applying the capture operation immediately
+        /// after each successful attempt, as in the original mission dispatcher.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider (unused for abduction).</param>
-        /// <returns>One OfficerCaptureStateResult, or an empty list if the target was already removed.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        /// <param name="provider">RNG provider for success, injury, and death rolls.</param>
+        /// <returns>The abduction effects followed by the terminal mission result.</returns>
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
+        {
+            List<GameResult> results = new List<GameResult>();
+            bool targetKilled = false;
+            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
+                provider,
+                game,
+                participant =>
+                {
+                    if (targetKilled)
+                        return true;
+
+                    List<GameResult> attemptResults = OnSuccess(game, provider, participant);
+                    results.AddRange(attemptResults);
+                    targetKilled = attemptResults.Exists(result => result is OfficerKilledResult);
+                    return true;
+                }
+            );
+
+            MissionOutcome outcome;
+            MissionCompletionReason completionReason;
+            if (successfulParticipants.Count == 0)
+            {
+                outcome = MissionOutcome.Failed;
+                completionReason = MissionCompletionReason.Failure;
+                results.AddRange(OnFailed(game, provider));
+            }
+            else
+            {
+                outcome = MissionOutcome.Success;
+                completionReason = MissionCompletionReason.Success;
+            }
+
+            results.Add(BuildCompletedResult(outcome, completionReason, game));
+            return results;
+        }
+
+        /// <summary>
+        /// Applies the original capture injury check, then captures the target if they survive.
+        /// Minor personnel can die from the injury; main characters cannot.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">RNG provider for injury and post-injury death rolls.</param>
+        /// <param name="successfulParticipant">The participant whose abduction attempt succeeded.</param>
+        /// <returns>The injury, death, and capture results produced by the attempt.</returns>
+        protected override List<GameResult> OnSuccess(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IMissionParticipant successfulParticipant
+        )
         {
             Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             if (target == null)
                 return new List<GameResult>();
+
+            List<GameResult> results = new List<GameResult>();
+            if (
+                ApplyCaptureEvasionInjury(
+                    target,
+                    successfulParticipant,
+                    GetParent() as Planet,
+                    game,
+                    provider,
+                    results
+                )
+            )
+                return results;
+
             target.IsCaptured = true;
             target.CaptorInstanceID = OwnerInstanceID;
             target.CanEscape = true;
 
-            return new List<GameResult>
-            {
+            results.Add(
                 new OfficerCaptureStateResult
                 {
                     TargetOfficer = target,
                     IsCaptured = true,
                     Context = GetParent() as Planet,
                     Tick = game.CurrentTick,
-                },
-            };
+                }
+            );
+            return results;
         }
 
         /// <summary>

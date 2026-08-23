@@ -1,9 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Research;
-using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Missions
 {
@@ -145,11 +144,13 @@ namespace Rebellion.Game.Missions
                 SelectedTarget = context.SelectedTarget,
                 MainParticipants = context.MainParticipants ?? new List<IMissionParticipant>(),
                 DecoyParticipants = context.DecoyParticipants ?? new List<IMissionParticipant>(),
-                TargetOfficer = context.TargetOfficer ?? context.SelectedTarget as Officer,
                 Discipline = context.Discipline,
             };
 
             if (resolvedContext.MainParticipants.Count == 0)
+                return false;
+
+            if (!HasUniqueParticipants(resolvedContext))
                 return false;
 
             Faction faction = _game
@@ -159,9 +160,6 @@ namespace Rebellion.Game.Missions
                 return false;
 
             if (faction.DisallowedMissionTypeIDs.Contains(resolvedContext.MissionTypeID))
-                return false;
-
-            if (!HasOperationalTarget(resolvedContext))
                 return false;
 
             foreach (
@@ -184,22 +182,20 @@ namespace Rebellion.Game.Missions
             return mission != null;
         }
 
-        private bool HasOperationalTarget(MissionContext context)
+        /// <summary>
+        /// Ensures an assignment does not contain the same participant more than once or use one
+        /// participant as both a primary agent and a decoy.
+        /// </summary>
+        private static bool HasUniqueParticipants(MissionContext context)
         {
-            ISceneNode target = context.MissionTypeID switch
-            {
-                SabotageMission.MissionTypeID => context.SelectedTarget ?? context.Location,
-                AbductionMission.MissionTypeID
-                or AssassinationMission.MissionTypeID
-                or RescueMission.MissionTypeID => context.TargetOfficer
-                    ?? context.SelectedTarget as Officer,
-                _ => null,
-            };
-            if (target == null)
-                return true;
-
-            ISceneNode liveTarget = _game.GetSceneNodeByInstanceID<ISceneNode>(target.InstanceID);
-            return Mission.IsOperationalTarget(liveTarget);
+            HashSet<string> participantIds = new HashSet<string>(StringComparer.Ordinal);
+            return context
+                .MainParticipants.Concat(context.DecoyParticipants)
+                .All(participant =>
+                    participant != null
+                    && !string.IsNullOrEmpty(participant.InstanceID)
+                    && participantIds.Add(participant.InstanceID)
+                );
         }
 
         /// <summary>
@@ -222,7 +218,6 @@ namespace Rebellion.Game.Missions
                 SelectedTarget = context.SelectedTarget,
                 MainParticipants = context.MainParticipants,
                 DecoyParticipants = context.DecoyParticipants,
-                TargetOfficer = context.TargetOfficer,
                 Discipline = option.Discipline,
             };
         }

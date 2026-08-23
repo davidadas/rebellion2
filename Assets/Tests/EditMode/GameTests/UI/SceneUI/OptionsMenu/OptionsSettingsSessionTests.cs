@@ -12,6 +12,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
     {
         private AudioManager _audioManager;
         private DisplayManager _displayManager;
+        private int _displayApplicationCount;
+        private Vector2Int _appliedResolution;
+        private FullScreenMode _appliedFullScreenMode;
         private GameObject _inputRoot;
         private InputManager _inputManager;
         private string _settingsPath;
@@ -31,7 +34,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 () =>
                     new List<Vector2Int> { new Vector2Int(1280, 720), new Vector2Int(1920, 1080) },
                 () => new Vector2Int(1920, 1080),
-                (_, _, _) => { }
+                (width, height, mode) =>
+                {
+                    _displayApplicationCount++;
+                    _appliedResolution = new Vector2Int(width, height);
+                    _appliedFullScreenMode = mode;
+                }
             );
             _settingsPath = Path.Combine(
                 Path.GetTempPath(),
@@ -51,6 +59,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 _inputManager
             );
             _session.Begin();
+            _displayApplicationCount = 0;
         }
 
         /// <summary>
@@ -100,6 +109,30 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(_session.IsDirty);
             _session.ToggleTactical(UserTacticalOption.Starfield);
             Assert.IsFalse(_session.IsDirty);
+        }
+
+        /// <summary>
+        /// Verifies display selections remain staged until the settings session is committed.
+        /// </summary>
+        [Test]
+        public void DisplayChanges_ApplyOnlyWhenCommitted()
+        {
+            _session.StepResolution(-1);
+            _session.StepFullScreen(1);
+
+            Assert.AreEqual(0, _displayApplicationCount);
+
+            _session.Revert();
+
+            Assert.AreEqual(0, _displayApplicationCount);
+
+            _session.StepResolution(-1);
+            _session.StepFullScreen(1);
+            _session.Commit();
+
+            Assert.AreEqual(1, _displayApplicationCount);
+            Assert.AreEqual(new Vector2Int(1280, 720), _appliedResolution);
+            Assert.AreEqual(FullScreenMode.FullScreenWindow, _appliedFullScreenMode);
         }
 
         /// <summary>

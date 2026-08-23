@@ -200,6 +200,63 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ResolveObjective_FirstHitSurvivedAndSecondHitKills_CreditsSecondAssassin()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer firstAssassin,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer secondAssassin = EntityFactory.CreateOfficer("second-assassin", "empire");
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = false;
+            game.AttachNode(target, enemyPlanet);
+            firstAssassin.SetBaseRating(OfficerRating.Combat, 100);
+            secondAssassin.SetBaseRating(OfficerRating.Combat, 100);
+            target.SetBaseRating(OfficerRating.Combat, 0);
+            int firstRating = firstAssassin.GetBaseRating(OfficerRating.Combat);
+            int secondRating = secondAssassin.GetBaseRating(OfficerRating.Combat);
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { 0, 100 },
+                { 100, 100 },
+            };
+            game.Config.Assassination.KillProbability = 50;
+
+            Mission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { firstAssassin, secondAssassin },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = mission.ResolveObjective(
+                game,
+                new SequenceRNG(
+                    intValues: new[] { 0, 0, 99, 0, 0, 0 },
+                    doubleValues: new[] { 0.0, 0.0 }
+                )
+            );
+
+            Assert.AreEqual(2, results.OfType<OfficerInjuredResult>().Count());
+            Assert.AreSame(secondAssassin, results.OfType<OfficerKilledResult>().Single().Assassin);
+            Assert.AreEqual(firstRating, firstAssassin.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(secondRating + 1, secondAssassin.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [Test]
         public void TryCreate_TargetAlreadyKilled_ReturnsNull()
         {
             (
@@ -255,7 +312,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessKillCheckPasses_KillsTargetWithInjury()
+        public void ResolveObjective_SpecialForcesSucceedsAndKillCheckPasses_CreditsSpecialForces()
         {
             (
                 GameRoot game,
@@ -267,12 +324,25 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
+            officer.SetBaseRating(OfficerRating.Combat, 0);
+            target.SetBaseRating(OfficerRating.Combat, 0);
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "empire",
+            };
+            specialForces.SetBaseRating(OfficerRating.Combat, 100);
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { 0, 0 },
+                { 100, 100 },
+            };
 
             Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
-                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant> { officer, specialForces },
                 new List<IMissionParticipant>(),
                 target
             );
@@ -282,7 +352,7 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             Assert.IsTrue(
                 results.Any(r => r is OfficerInjuredResult),
@@ -292,14 +362,18 @@ namespace Rebellion.Tests.Game.Missions
             OfficerKilledResult killed = results.OfType<OfficerKilledResult>().First();
             Assert.AreEqual("target", killed.TargetOfficer.InstanceID);
             Assert.AreEqual(
-                officer.InstanceID,
+                specialForces.InstanceID,
                 killed.Assassin.InstanceID,
-                "Assassin should be the main participant"
+                "Assassin should be the participant whose attempt succeeded"
+            );
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
             );
         }
 
         [Test]
-        public void Execute_SuccessKillCheckFails_TargetSurvivesWithInjury()
+        public void ResolveObjective_SuccessKillCheckFails_TargetSurvivesWithInjury()
         {
             (
                 GameRoot game,
@@ -311,6 +385,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
+            int originalCombat = officer.GetBaseRating(OfficerRating.Combat);
 
             Mission mission = CreateAssassinationMission(
                 game,
@@ -330,7 +405,10 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+            List<GameResult> results = mission.ResolveObjective(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 0, 99 }, doubleValues: new[] { 0.0 })
+            );
 
             Assert.IsFalse(target.IsKilled, "Target should survive when kill check fails");
             Assert.Greater(target.InjuryPoints, 0, "Target should have injury points");
@@ -342,10 +420,93 @@ namespace Rebellion.Tests.Game.Missions
                 results.Any(r => r is OfficerKilledResult),
                 "Should not produce OfficerKilledResult when target survives"
             );
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreEqual(
+                originalCombat,
+                officer.GetBaseRating(OfficerRating.Combat),
+                "A hit that the target survives must not improve the assassin"
+            );
         }
 
         [Test]
-        public void Execute_TargetAlreadyKilled_ReturnsFailed()
+        public void ResolveObjective_MainCharacterHit_TargetSurvivesAndMissionFails()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = true;
+            game.AttachNode(target, enemyPlanet);
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { 0, 100 },
+            };
+            Mission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0));
+
+            Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.IsEmpty(results.OfType<OfficerKilledResult>());
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [Test]
+        public void ResolveObjective_MinorCharacterKilled_ImprovesSuccessfulAssassinCombat()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+            int originalCombat = officer.GetBaseRating(OfficerRating.Combat);
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { 0, 100 },
+            };
+            Mission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0));
+
+            Assert.IsNotEmpty(results.OfType<OfficerKilledResult>());
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreEqual(originalCombat + 1, officer.GetBaseRating(OfficerRating.Combat));
+        }
+
+        [Test]
+        public void UpdateMission_TargetAlreadyKilled_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -372,9 +533,14 @@ namespace Rebellion.Tests.Game.Missions
             // Target is killed after mission creation but before execution
             target.IsKilled = true;
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -385,7 +551,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetMovedToDifferentPlanet_ReturnsFailed()
+        public void UpdateMission_TargetMovedToDifferentPlanet_DoesNotRollOrImproveParticipant()
         {
             (
                 GameRoot game,
@@ -420,24 +586,28 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
+            int originalCombat = officer.GetBaseRating(OfficerRating.Combat);
 
             // Target moves to a different planet before mission executes
             game.MoveNode(target, anotherEnemyPlanet);
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
-            Assert.AreEqual(
-                MissionOutcome.Failed,
-                completed.Outcome,
-                "Mission should fail when target officer has moved to a different planet before execution"
-            );
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.AreEqual(originalCombat, officer.GetBaseRating(OfficerRating.Combat));
         }
 
         [Test]
-        public void Execute_TargetRemovedFromScene_ReturnsFailed()
+        public void ResolveObjective_TargetRemovedFromScene_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -465,7 +635,7 @@ namespace Rebellion.Tests.Game.Missions
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -473,6 +643,50 @@ namespace Rebellion.Tests.Game.Missions
                 completed.Outcome,
                 "Mission should fail when target has left the scene before execution"
             );
+        }
+
+        [Test]
+        public void RollParticipantSuccess_SubtractsTargetCombatFromParticipantCombat()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+            officer.SetBaseRating(OfficerRating.Combat, 80);
+            target.SetBaseRating(OfficerRating.Combat, 60);
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { 0, 0 },
+                { 20, 100 },
+            };
+            Mission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            bool advantageSucceeded = mission.RollParticipantSuccess(
+                officer,
+                new FixedRNG(0.5),
+                game
+            );
+            target.SetBaseRating(OfficerRating.Combat, 80);
+            bool equalCombatSucceeded = mission.RollParticipantSuccess(
+                officer,
+                new FixedRNG(0),
+                game
+            );
+
+            Assert.IsTrue(advantageSucceeded);
+            Assert.IsFalse(equalCombatSucceeded);
         }
 
         [Test]

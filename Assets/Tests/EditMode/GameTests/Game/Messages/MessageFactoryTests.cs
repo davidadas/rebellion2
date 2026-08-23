@@ -1456,7 +1456,7 @@ namespace Rebellion.Tests.Game.Messages
             RecruitmentMission mission = new RecruitmentMission
             {
                 OwnerInstanceID = alliance.InstanceID,
-                TargetOfficerInstanceID = recruit.InstanceID,
+                RecruitedOfficerInstanceID = recruit.InstanceID,
             };
             game.AttachNode(recruit, origin);
             game.AttachNode(mission, origin);
@@ -2002,7 +2002,7 @@ namespace Rebellion.Tests.Game.Messages
                 ConfigKey = MissionTypeIDs.Recruitment,
                 DisplayName = "Recruitment",
                 OwnerInstanceID = alliance.InstanceID,
-                TargetOfficerInstanceID = "target-officer",
+                RecruitedOfficerInstanceID = "target-officer",
             };
             Officer participant = new Officer
             {

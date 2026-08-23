@@ -16,11 +16,6 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "Reconnaissance";
 
-        /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
-
         /// <summary>Creates an empty reconnaissance mission copy.</summary>
         /// <returns>An empty reconnaissance mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new ReconnaissanceMission();
@@ -34,7 +29,6 @@ namespace Rebellion.Game.Missions
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Espionage;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -89,10 +83,7 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Espionage
-            )
-        {
-            DecoyParticipantRating = OfficerRating.Espionage;
-        }
+            ) { }
 
         /// <summary>
         /// Returns whether a primary participant can perform reconnaissance.
@@ -105,46 +96,19 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns true while the mission remains attached to a planet target.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission is still attached to a planet.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
-        {
-            return GetParent() is Planet;
-        }
-
-        /// <summary>
-        /// Reconnaissance is not interrupted by detection checks.
-        /// </summary>
-        /// <param name="defenseScore">Unused defense score.</param>
-        /// <param name="game">Current game state.</param>
-        /// <returns>Always zero.</returns>
-        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
-
-        /// <summary>
         /// Resolves reconnaissance without a success roll.
         /// </summary>
         /// <param name="game">Current game state.</param>
         /// <param name="provider">RNG provider.</param>
         /// <returns>All results produced by the mission.</returns>
-        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
         {
             List<GameResult> results = new List<GameResult>();
 
-            if (!IsMissionSatisfied(game))
-            {
-                results.Add(
-                    BuildCompletedResult(
-                        MissionOutcome.Failed,
-                        MissionCompletionReason.TargetUnavailable,
-                        game
-                    )
-                );
-                return results;
-            }
-
-            results.AddRange(OnSuccess(game, provider));
+            results.AddRange(OnSuccess(game, provider, GetMainParticipants().FirstOrDefault()));
             results.Add(
                 BuildCompletedResult(MissionOutcome.Success, MissionCompletionReason.Success, game)
             );
@@ -152,17 +116,17 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Reconnaissance does not award mission rating improvements.
-        /// </summary>
-        protected override void ImproveMissionParticipantRatings() { }
-
-        /// <summary>
         /// Marks the target as visited for the mission owner and records the observed planet state.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider.</param>
+        /// <param name="successfulParticipant">The participant assigned to the reconnaissance mission.</param>
         /// <returns>An empty result list.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        protected override List<GameResult> OnSuccess(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IMissionParticipant successfulParticipant
+        )
         {
             Planet planet = GetParent() as Planet;
             if (planet == null)

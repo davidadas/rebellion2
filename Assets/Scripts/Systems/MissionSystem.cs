@@ -13,11 +13,10 @@ using Rebellion.Util.Common;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Manages the lifecycle of missions each tick.
-    /// Mission creation and scene graph attachment are delegated to MissionFactory.
-    /// Participant movement and mission initiation are orchestrated here.
+    /// Orchestrates mission creation, participant travel, and external execution services.
+    /// Each mission owns its post-arrival lifecycle.
     /// </summary>
-    public class MissionSystem : IGameResultHandler<PlanetUprisingStartedResult>
+    public class MissionSystem : IMissionExecutionRuntime
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -79,27 +78,6 @@ namespace Rebellion.Systems
 
             AddRecruitmentExhaustedResults(results, recruitmentAvailabilityBefore);
             return results;
-        }
-
-        /// <summary>
-        /// Aborts missions invalidated by uprisings reported in a result batch.
-        /// </summary>
-        /// <param name="results">The result batch to inspect.</param>
-        /// <returns>The terminal results produced by aborted missions.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<PlanetUprisingStartedResult> results)
-        {
-            List<GameResult> missionResults = new List<GameResult>();
-            if (results == null)
-                return missionResults;
-
-            IEnumerable<Planet> affectedPlanets = results
-                .Select(result => result.Planet)
-                .Where(planet => planet != null)
-                .Distinct();
-            foreach (Planet planet in affectedPlanets)
-                missionResults.AddRange(AbortInvalidMissions(planet));
-
-            return missionResults;
         }
 
         /// <summary>
@@ -263,39 +241,27 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Aborts active missions whose target conditions became invalid on a planet.
+        /// Adds the originating mission to interruption results before returning them to the pipeline.
         /// </summary>
-        /// <param name="planet">The planet whose missions must be re-evaluated.</param>
-        /// <returns>The terminal mission results produced by the aborted missions.</returns>
-        internal List<GameResult> AbortInvalidMissions(Planet planet)
+        /// <param name="mission">The mission producing the results.</param>
+        /// <param name="source">The results to stamp.</param>
+        /// <param name="destination">The collection receiving stamped results.</param>
+        private static void AddMissionResults(
+            Mission mission,
+            IEnumerable<GameResult> source,
+            ICollection<GameResult> destination
+        )
         {
-            List<GameResult> results = new List<GameResult>();
-            if (planet == null)
-                return results;
+            if (source == null)
+                return;
 
-            List<Mission> missions = _game
-                .GetSceneNodesByType<Mission>()
-                .Where(mission => mission.GetParentOfType<Planet>() == planet)
-                .ToList();
-            foreach (Mission mission in missions)
+            foreach (GameResult result in source.Where(result => result != null))
             {
-                MissionCompletionReason? reason = mission.GetAbortReason(_game);
-                if (!reason.HasValue)
-                    continue;
-
-                MissionCompletedResult result = BuildTerminatingMissionResult(
-                    mission,
-                    MissionOutcome.Failed,
-                    reason.Value,
-                    mission.GetAllParticipants()
-                );
                 result.MissionInstanceID = mission.InstanceID;
-                AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
-                results.Add(result);
-                TearDownMission(mission, null, results);
+                if (string.IsNullOrEmpty(result.SourceEventInstanceID))
+                    result.SourceEventInstanceID = mission.SourceEventInstanceID;
+                destination.Add(result);
             }
-
-            return results;
         }
 
         /// <summary>
@@ -323,8 +289,6 @@ namespace Rebellion.Systems
             if (mainParticipants == null || decoyParticipants == null)
                 return null;
 
-            Officer targetOfficer = request.TargetOfficer ?? request.SelectedTarget as Officer;
-
             return new MissionContext
             {
                 Game = _game,
@@ -334,7 +298,6 @@ namespace Rebellion.Systems
                 SelectedTarget = request.SelectedTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
-                TargetOfficer = targetOfficer,
                 Discipline = request.Discipline,
             };
         }
@@ -408,7 +371,10 @@ namespace Rebellion.Systems
             if (mission == null || mission.GetParent() == null)
                 return new List<GameResult>();
 
-            List<GameResult> results = AdvanceMission(mission);
+            if (mission.IsWaitingForParticipants())
+                return new List<GameResult>();
+
+            List<GameResult> results = mission.Execute(_game, _provider, this);
             foreach (GameResult result in results)
                 result.MissionInstanceID = mission.InstanceID;
 
@@ -416,76 +382,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Advances a single mission through one lifecycle step.
+        /// Resolves this tick's mission detection through the mission system's external services.
         /// </summary>
-        /// <param name="mission">The mission to advance.</param>
-        /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
-        private List<GameResult> AdvanceMission(Mission mission)
+        /// <param name="mission">The mission executing its lifecycle.</param>
+        /// <param name="results">The result collection receiving detection consequences.</param>
+        /// <returns>True when detection foils the mission.</returns>
+        bool IMissionExecutionRuntime.ResolveDetection(Mission mission, List<GameResult> results)
         {
-            List<GameResult> results = new List<GameResult>();
-
-            if (mission.IsWaitingForParticipants())
-                return results;
-
-            MissionCompletionReason? abortReason = mission.GetAbortReason(_game);
-            if (abortReason.HasValue)
-            {
-                AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
-                results.Add(
-                    BuildTerminatingMissionResult(
-                        mission,
-                        MissionOutcome.Failed,
-                        abortReason.Value,
-                        mission.GetAllParticipants()
-                    )
-                );
-                TearDownMission(mission, null, results);
-                return results;
-            }
-
-            results.AddRange(ResolveDetectionInterruption(mission));
-            if (FinishMissionIfCompleted(mission, results))
-                return results;
-
-            mission.IncrementProgress();
-            if (!mission.IsComplete())
-                return results;
-
-            results.AddRange(ExecuteMission(mission));
-            FinishMissionIfCompleted(mission, results);
-            return results;
+            bool missionFoiled = ResolveDetection(mission, results);
+            ApplyOfficerDeaths(results);
+            return missionFoiled;
         }
 
         /// <summary>
-        /// Adds the originating mission to interruption results before returning them to the pipeline.
+        /// Resolves betrayal or the objective for a mission that completed its progress.
         /// </summary>
-        /// <param name="mission">The mission producing the results.</param>
-        /// <param name="source">The results to stamp.</param>
-        /// <param name="destination">The collection receiving stamped results.</param>
-        private static void AddMissionResults(
-            Mission mission,
-            IEnumerable<GameResult> source,
-            List<GameResult> destination
-        )
-        {
-            if (source == null)
-                return;
-
-            foreach (GameResult result in source.Where(result => result != null))
-            {
-                result.MissionInstanceID = mission.InstanceID;
-                if (string.IsNullOrEmpty(result.SourceEventInstanceID))
-                    result.SourceEventInstanceID = mission.SourceEventInstanceID;
-                destination.Add(result);
-            }
-        }
-
-        /// <summary>
-        /// Executes a completed mission through its appropriate resolution system.
-        /// </summary>
-        /// <param name="mission">The mission ready to execute.</param>
+        /// <param name="mission">The mission resolving its completed objective.</param>
         /// <returns>The results produced by mission resolution.</returns>
-        private List<GameResult> ExecuteMission(Mission mission)
+        List<GameResult> IMissionExecutionRuntime.ResolveCompletedObjective(Mission mission)
         {
             List<GameResult> results;
             if (
@@ -498,15 +412,9 @@ namespace Rebellion.Systems
                 betrayalResults.AddRange(mission.ResolveBetrayedMission(_game, _provider));
                 results = betrayalResults;
             }
-            else if (_uprisingSystem.TryExecuteMission(mission, out results))
+            else if (!_uprisingSystem.TryExecuteMission(mission, out results))
             {
-                results.AddRange(
-                    HandleResults(results.OfType<PlanetUprisingStartedResult>().ToList())
-                );
-            }
-            else
-            {
-                results = mission.Execute(_game, _provider);
+                results = mission.ResolveObjective(_game, _provider);
             }
 
             ApplyOfficerDeaths(results);
@@ -530,80 +438,23 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves mission detection before a mission advances progress.
-        /// </summary>
-        /// <param name="mission">The mission to inspect.</param>
-        /// <returns>Detection results, including a mission completion result when detection ends the mission.</returns>
-        private List<GameResult> ResolveDetectionInterruption(Mission mission)
-        {
-            List<GameResult> results = new List<GameResult>();
-            List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
-            bool missionFoiled = ResolveDetection(mission, results);
-
-            if (!missionFoiled)
-                return results;
-
-            AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
-            results.Add(
-                BuildTerminatingMissionResult(
-                    mission,
-                    MissionOutcome.Foiled,
-                    MissionCompletionReason.Foiled,
-                    participantsBeforeDetection
-                )
-            );
-            return results;
-        }
-
-        /// <summary>
-        /// Returns the mission completion result for a terminal mission state.
-        /// </summary>
-        /// <param name="mission">The mission being terminated.</param>
-        /// <param name="outcome">The mission outcome to report.</param>
-        /// <param name="completionReason">The mission completion reason to report.</param>
-        /// <param name="participants">Participants captured before teardown side effects.</param>
-        /// <returns>A non-continuing mission completion result.</returns>
-        private MissionCompletedResult BuildTerminatingMissionResult(
-            Mission mission,
-            MissionOutcome outcome,
-            MissionCompletionReason completionReason,
-            List<IMissionParticipant> participants
-        )
-        {
-            MissionCompletedResult result = mission.BuildCompletedResult(
-                outcome,
-                completionReason,
-                _game,
-                participants
-            );
-            result.CanContinue = false;
-            return result;
-        }
-
-        /// <summary>
-        /// Repeats or tears down a mission when the results include a completion result.
+        /// Repeats or tears down a mission after its lifecycle reaches a terminal state.
         /// </summary>
         /// <param name="mission">The mission to finish.</param>
+        /// <param name="completedResult">The terminal result, or null for an invalid mission.</param>
         /// <param name="results">Results produced by this mission tick.</param>
-        /// <returns>True if the mission completed this tick.</returns>
-        private bool FinishMissionIfCompleted(Mission mission, List<GameResult> results)
+        void IMissionExecutionRuntime.FinishMission(
+            Mission mission,
+            MissionCompletedResult completedResult,
+            List<GameResult> results
+        )
         {
-            MissionCompletedResult completedResult = results
-                .OfType<MissionCompletedResult>()
-                .LastOrDefault();
             if (completedResult == null)
-                return false;
-
-            if (completedResult.CanContinue)
-            {
+                TearDownMission(mission, null, results);
+            else if (completedResult.CanContinue)
                 BeginMission(mission);
-            }
             else
-            {
                 TearDownMission(mission, completedResult, results);
-            }
-
-            return true;
         }
 
         /// <summary>
@@ -782,81 +633,132 @@ namespace Rebellion.Systems
         /// <returns>True if the mission was foiled.</returns>
         private bool ResolveDetection(Mission mission, List<GameResult> results)
         {
-            if (!mission.RollFoilCheck(_provider, _game))
+            if (mission.GetParent() is not Planet planet)
                 return false;
 
-            if (mission.RollDecoyCheck(_provider, _game))
+            List<MissionDetector> activeDetectors = mission.GetDetectors();
+            if (activeDetectors.Count == 0)
+                return false;
+
+            ResolveDecoys(mission, activeDetectors, planet, results);
+
+            MissionDetector foilingDetector = activeDetectors.FirstOrDefault(detector =>
+                mission.RollFoilCheck(_provider, _game, detector)
+            );
+            if (foilingDetector == null)
                 return false;
 
             if (!mission.AppliesFoiledParticipantConsequences)
                 return true;
 
-            int defenderCombat = GetFoilDefenderCombatSkill(mission);
-            Planet planet = mission.GetParent() as Planet;
-
             foreach (IMissionParticipant participant in mission.GetMainParticipants().ToList())
-                ResolveFoiledParticipant(participant, defenderCombat, planet, results);
+                ResolveFoiledParticipant(participant, activeDetectors, planet, results);
 
             return true;
         }
 
         /// <summary>
-        /// Gets the combat value used by the mission foil consequence roll.
+        /// Lets mission decoys confront detectors before any detector can foil the mission.
+        /// A successful decoy removes that detector from this tick's remaining traversal.
         /// </summary>
-        /// <param name="mission">The detected mission.</param>
-        /// <returns>The defender's combat rating, or 0 when no defender is present.</returns>
-        private static int GetFoilDefenderCombatSkill(Mission mission)
-        {
-            Officer defender = mission.FindDefender();
-            return defender != null ? defender.GetEffectiveRating(OfficerRating.Combat) : 0;
-        }
-
-        /// <summary>
-        /// Applies detection consequences to one mission participant.
-        /// </summary>
-        /// <param name="participant">The detected participant.</param>
-        /// <param name="defenderCombat">The defender combat value.</param>
-        /// <param name="planet">The mission planet.</param>
-        /// <param name="results">Collection to append generated results to.</param>
-        /// <returns>True if the participant state changed.</returns>
-        private bool ResolveFoiledParticipant(
-            IMissionParticipant participant,
-            int defenderCombat,
+        /// <param name="mission">The mission being checked.</param>
+        /// <param name="activeDetectors">The detectors that have not been diverted.</param>
+        /// <param name="planet">The planet where detection occurs.</param>
+        /// <param name="results">The result collection receiving confrontation outcomes.</param>
+        private void ResolveDecoys(
+            Mission mission,
+            List<MissionDetector> activeDetectors,
             Planet planet,
             List<GameResult> results
         )
         {
-            if (participant is Officer officer)
+            foreach (MissionDetector detector in activeDetectors.ToList())
             {
-                if (officer.IsCaptured || officer.IsKilled)
-                    return false;
+                List<IMissionParticipant> decoys = mission
+                    .GetDecoyParticipants()
+                    .Where(IsFreeParticipant)
+                    .ToList();
+                if (decoys.Count == 0)
+                    return;
 
-                results.AddRange(ResolveKillOrCapture(officer, defenderCombat, planet));
-                return true;
+                IMissionParticipant decoy = decoys[_provider.NextInt(0, decoys.Count)];
+                if (mission.RollDecoyCheck(_provider, _game, decoy, detector))
+                {
+                    activeDetectors.Remove(detector);
+                    continue;
+                }
+
+                ResolveEvasion(decoy, detector, planet, results);
             }
+        }
+
+        /// <summary>
+        /// Applies the post-foil confrontation to one mission participant.
+        /// </summary>
+        /// <param name="participant">The exposed participant.</param>
+        /// <param name="detectors">The detectors that were not diverted.</param>
+        /// <param name="planet">The mission planet.</param>
+        /// <param name="results">Collection to append generated results to.</param>
+        private void ResolveFoiledParticipant(
+            IMissionParticipant participant,
+            IReadOnlyList<MissionDetector> detectors,
+            Planet planet,
+            List<GameResult> results
+        )
+        {
+            if (!IsFreeParticipant(participant))
+                return;
+
+            MissionDetector detector = Mission.SelectDetector(detectors, _provider);
+            if (detector != null)
+                ResolveEvasion(participant, detector, planet, results);
+        }
+
+        /// <summary>
+        /// Resolves whether a participant evades the detector that confronted them.
+        /// </summary>
+        /// <param name="participant">The participant attempting to evade.</param>
+        /// <param name="detector">The detector confronting the participant.</param>
+        /// <param name="planet">The planet where the confrontation occurs.</param>
+        /// <param name="results">The result collection receiving capture or destruction outcomes.</param>
+        private void ResolveEvasion(
+            IMissionParticipant participant,
+            MissionDetector detector,
+            Planet planet,
+            List<GameResult> results
+        )
+        {
+            int defenderCombat = detector.Commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
+            int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
+            bool evaded = _provider.NextDouble() * 100 < GetEvasionProbability(score);
 
             if (participant is SpecialForces specialForces)
             {
-                DestroyDetectedSpecialForces(specialForces, planet, results);
-                return true;
+                if (!evaded)
+                    DestroySpecialForces(specialForces, planet, results);
+                return;
             }
 
-            return false;
-        }
+            if (participant is not Officer officer || officer.IsCaptured || officer.IsKilled)
+                return;
 
-        /// <summary>
-        /// Destroys a detected special-forces unit.
-        /// </summary>
-        /// <param name="specialForces">The unit to destroy.</param>
-        /// <param name="planet">The mission planet.</param>
-        /// <param name="results">Collection to append generated results to.</param>
-        private void DestroyDetectedSpecialForces(
-            SpecialForces specialForces,
-            Planet planet,
-            List<GameResult> results
-        )
-        {
-            DestroySpecialForces(specialForces, planet, results);
+            if (
+                Mission.ApplyCaptureEvasionInjury(
+                    officer,
+                    detector.Unit,
+                    planet,
+                    _game,
+                    _provider,
+                    results
+                )
+            )
+            {
+                _personnelSystem.KillOfficer(officer);
+                return;
+            }
+
+            if (!evaded)
+                CaptureOfficer(officer, planet, results);
         }
 
         /// <summary>
@@ -883,44 +785,6 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves whether a detected officer is killed or captured.
-        /// </summary>
-        /// <param name="officer">The officer who was detected.</param>
-        /// <param name="defenderCombat">The defending officer's combat rating.</param>
-        /// <param name="planet">The planet where the mission takes place.</param>
-        /// <returns>One capture or kill result.</returns>
-        private List<GameResult> ResolveKillOrCapture(
-            Officer officer,
-            int defenderCombat,
-            Planet planet
-        )
-        {
-            List<GameResult> results = new List<GameResult>();
-
-            int delta = defenderCombat - officer.GetEffectiveRating(OfficerRating.Combat);
-            double captureProbability = GetKillOrCaptureProbability(delta);
-
-            if (_provider.NextDouble() * 100 < captureProbability)
-            {
-                CaptureOfficer(officer, planet, results);
-            }
-            else
-            {
-                _personnelSystem.KillOfficer(officer);
-                results.Add(
-                    new OfficerKilledResult
-                    {
-                        TargetOfficer = officer,
-                        Context = planet,
-                        Tick = _game.CurrentTick,
-                    }
-                );
-            }
-
-            return results;
-        }
-
-        /// <summary>
         /// Marks an officer captured at a planet and records the capture state change.
         /// </summary>
         /// <param name="officer">The officer being captured.</param>
@@ -943,17 +807,17 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the configured capture probability for a foiled officer.
+        /// Returns the configured evasion probability for a confronted participant.
         /// </summary>
-        /// <param name="score">The kill-or-capture score.</param>
-        /// <returns>The configured capture probability.</returns>
-        private double GetKillOrCaptureProbability(int score)
+        /// <param name="score">The participant combat rating minus commander combat rating.</param>
+        /// <returns>The configured evasion probability.</returns>
+        private double GetEvasionProbability(int score)
         {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
             return LookupProbability(
-                missionTables.KillOrCapture,
+                missionTables.Evasion,
                 score,
-                missionTables.DefaultKillOrCaptureProbability
+                missionTables.DefaultEvasionProbability
             );
         }
 
@@ -968,11 +832,7 @@ namespace Rebellion.Systems
             foreach (IMissionParticipant participant in mission.GetAllParticipants())
             {
                 if (participant.GetParent() != mission)
-                {
-                    if (mission.OriginInstanceID == null)
-                        mission.OriginInstanceID = participant.GetParent()?.GetInstanceID();
                     _movementManager.SendToMission(participant, mission);
-                }
             }
 
             mission.Initiate(RollMissionDuration(mission));

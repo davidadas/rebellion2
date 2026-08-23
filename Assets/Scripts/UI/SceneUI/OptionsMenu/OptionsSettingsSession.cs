@@ -107,7 +107,6 @@ internal sealed class OptionsSettingsSession
         _inputManager.LoadBindingOverrides(_snapshotBindingOverrides);
         _inputDiffersFromSnapshot = false;
         ApplyAllVolumes();
-        ApplyResolution();
         RebuildResolutions();
         IsDirty = false;
     }
@@ -127,7 +126,6 @@ internal sealed class OptionsSettingsSession
                 Video.ResolutionHeight = 0;
                 Video.FullScreenMode = (int)FullScreenMode.ExclusiveFullScreen;
                 Video.RestoreTacticalDefaults();
-                ApplyResolution();
                 RebuildResolutions();
                 break;
             case OptionsMenuTab.Audio:
@@ -219,7 +217,7 @@ internal sealed class OptionsSettingsSession
     }
 
     /// <summary>
-    /// Selects and immediately applies an adjacent supported resolution.
+    /// Stages an adjacent supported resolution.
     /// </summary>
     internal void StepResolution(int delta)
     {
@@ -232,12 +230,11 @@ internal sealed class OptionsSettingsSession
         Vector2Int resolution = _resolutions[_resolutionIndex];
         Video.ResolutionWidth = resolution.x;
         Video.ResolutionHeight = resolution.y;
-        _displayManager.Apply(Video);
         RefreshDirtyState();
     }
 
     /// <summary>
-    /// Selects and immediately applies an adjacent fullscreen mode.
+    /// Stages an adjacent fullscreen mode.
     /// </summary>
     internal void StepFullScreen(int delta)
     {
@@ -248,7 +245,6 @@ internal sealed class OptionsSettingsSession
             ((current + delta) % _fullScreenModes.Length + _fullScreenModes.Length)
             % _fullScreenModes.Length;
         Video.FullScreenMode = _fullScreenModes[next];
-        ApplyResolution();
         RefreshDirtyState();
     }
 
@@ -376,14 +372,6 @@ internal sealed class OptionsSettingsSession
         Video.ResolutionWidth = current.x;
         Video.ResolutionHeight = current.y;
         _resolutionIndex = _resolutions.IndexOf(current);
-    }
-
-    /// <summary>
-    /// Delegates the current video settings to the display owner.
-    /// </summary>
-    private void ApplyResolution()
-    {
-        _displayManager.Apply(Video);
     }
 
     /// <summary>

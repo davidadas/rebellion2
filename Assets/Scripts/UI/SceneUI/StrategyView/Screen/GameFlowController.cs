@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Generation;
+using Rebellion.Util.Common;
 using UnityEngine;
 
 /// <summary>
@@ -21,6 +23,9 @@ public sealed class GameFlowController : MonoBehaviour
     private FactionThemeLibrary themeLibrary;
     private UIContext uiContext;
     private bool campaignEnding;
+    private bool cutscenePlaying;
+    private bool finishCampaignAfterCutscenes;
+    private readonly Queue<string> cutsceneQueue = new Queue<string>();
 
     /// <summary>
     /// Resolves composed scene dependencies.
@@ -99,7 +104,10 @@ public sealed class GameFlowController : MonoBehaviour
     private void OnDestroy()
     {
         if (activeGameManager != null)
+        {
+            activeGameManager.HeadquartersLost -= HandleHeadquartersLost;
             activeGameManager.VictoryDeclared -= HandleVictoryDeclared;
+        }
     }
 
     /// <summary>
@@ -215,12 +223,30 @@ public sealed class GameFlowController : MonoBehaviour
         );
 
         if (activeGameManager != null)
+        {
+            activeGameManager.HeadquartersLost -= HandleHeadquartersLost;
             activeGameManager.VictoryDeclared -= HandleVictoryDeclared;
+        }
+        gameManager.HeadquartersLost += HandleHeadquartersLost;
         gameManager.VictoryDeclared += HandleVictoryDeclared;
 
         GameStartupTrace.Log("StrategyController initialization started.");
         strategyController.Initialize(gameManager, uiContext);
         GameStartupTrace.Log("StrategyController initialization complete.");
+    }
+
+    /// <summary>
+    /// Queues the losing faction's headquarters movie when its headquarters is captured or destroyed.
+    /// </summary>
+    /// <param name="result">The headquarters loss that selected the movie.</param>
+    private void HandleHeadquartersLost(HeadquartersLostResult result)
+    {
+        string cutscenePath = GetHeadquartersDestroyedCutscenePath(themeLibrary, result);
+        if (string.IsNullOrWhiteSpace(cutscenePath))
+            return;
+
+        cutsceneQueue.Enqueue(cutscenePath);
+        PlayNextQueuedCutscene();
     }
 
     /// <summary>
@@ -266,17 +292,63 @@ public sealed class GameFlowController : MonoBehaviour
         campaignEnding = true;
         activeGameManager.SetGameSpeed(TickSpeed.Paused);
 
-        try
-        {
-            FactionTheme theme = themeLibrary.GetTheme(playerFaction.InstanceID);
-            string cutscenePath = GetCampaignEndingCutscenePath(theme, playerFaction, result);
-            AppBootstrap.EnsureExists().GetCutsceneManager().Play(cutscenePath, FinishCampaign);
-        }
-        catch (Exception exception)
-        {
-            Debug.LogException(exception);
-            FinishCampaign();
-        }
+        string cutscenePath = null;
+        if (
+            TryGetOptionalCutsceneTheme(
+                themeLibrary,
+                playerFaction.InstanceID,
+                out FactionTheme theme
+            )
+        )
+            cutscenePath = GetCampaignEndingCutscenePath(theme, playerFaction, result);
+        if (!string.IsNullOrWhiteSpace(cutscenePath))
+            cutsceneQueue.Enqueue(cutscenePath);
+        finishCampaignAfterCutscenes = true;
+        PlayNextQueuedCutscene();
+    }
+
+    /// <summary>
+    /// Selects the headquarters movie from the faction that lost the headquarters.
+    /// </summary>
+    internal static string GetHeadquartersDestroyedCutscenePath(
+        FactionThemeLibrary themes,
+        HeadquartersLostResult result
+    )
+    {
+        if (themes == null || result?.Defender == null)
+            return null;
+
+        return TryGetOptionalCutsceneTheme(
+            themes,
+            result.Defender.InstanceID,
+            out FactionTheme theme
+        )
+            ? theme.HeadquartersDestroyedCutscenePath
+            : null;
+    }
+
+    /// <summary>
+    /// Resolves an optional cutscene theme without allowing missing presentation data to interrupt
+    /// headquarters or campaign-completion result handling.
+    /// </summary>
+    /// <param name="themes">The available faction themes.</param>
+    /// <param name="factionInstanceId">The faction whose optional movie is being selected.</param>
+    /// <param name="theme">The resolved faction theme, when configured.</param>
+    /// <returns>True when the faction has a configured theme; otherwise false.</returns>
+    private static bool TryGetOptionalCutsceneTheme(
+        FactionThemeLibrary themes,
+        string factionInstanceId,
+        out FactionTheme theme
+    )
+    {
+        if (themes?.TryGetTheme(factionInstanceId, out theme) == true)
+            return true;
+
+        theme = null;
+        GameLogger.Warning(
+            $"Skipping optional campaign cutscene because faction '{factionInstanceId}' has no theme."
+        );
+        return false;
     }
 
     /// <summary>
@@ -294,6 +366,46 @@ public sealed class GameFlowController : MonoBehaviour
         return result.Winner?.InstanceID == playerFaction.InstanceID
             ? theme.VictoryCutscenePath
             : theme.DefeatCutscenePath;
+    }
+
+    /// <summary>
+    /// Plays queued event and campaign-ending movies in their result order.
+    /// </summary>
+    private void PlayNextQueuedCutscene()
+    {
+        if (cutscenePlaying)
+            return;
+
+        if (cutsceneQueue.Count == 0)
+        {
+            if (finishCampaignAfterCutscenes)
+                FinishCampaign();
+            return;
+        }
+
+        string cutscenePath = cutsceneQueue.Dequeue();
+        cutscenePlaying = true;
+        try
+        {
+            AppBootstrap
+                .EnsureExists()
+                .GetCutsceneManager()
+                .Play(cutscenePath, HandleQueuedCutsceneFinished);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            HandleQueuedCutsceneFinished();
+        }
+    }
+
+    /// <summary>
+    /// Advances the ordered event and campaign-ending movie queue.
+    /// </summary>
+    private void HandleQueuedCutsceneFinished()
+    {
+        cutscenePlaying = false;
+        PlayNextQueuedCutscene();
     }
 
     /// <summary>

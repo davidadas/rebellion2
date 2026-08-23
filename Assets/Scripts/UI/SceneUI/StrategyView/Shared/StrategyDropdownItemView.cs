@@ -17,6 +17,9 @@ public sealed class StrategyDropdownItemView : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI itemTextField;
 
+    [SerializeField]
+    private bool preserveAuthoredImageRect;
+
     private RectInt imageSlot;
     private bool hasImageSlot;
 
@@ -69,7 +72,10 @@ public sealed class StrategyDropdownItemView : MonoBehaviour
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
-        UILayout.SetHorizontallyCenteredImage(itemImage, data.Texture, imageSlot);
+        if (preserveAuthoredImageRect)
+            UILayout.SetImageTexture(itemImage, data.Texture);
+        else
+            UILayout.SetHorizontallyCenteredImage(itemImage, data.Texture, imageSlot);
         UILayout.SetTextContent(itemTextField, data.Label, data.LabelColor);
         gameObject.SetActive(true);
     }

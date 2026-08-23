@@ -18,9 +18,10 @@ namespace Rebellion.Game.Missions
         public const string MissionTypeID = "Recruitment";
 
         /// <summary>
-        /// Instance ID of the officer selected as the recruitment target.
+        /// Instance ID of the officer produced by the most recent successful recruitment attempt.
+        /// The mission target itself is always the planet identified by LocationInstanceID.
         /// </summary>
-        public string TargetOfficerInstanceID { get; set; }
+        public string RecruitedOfficerInstanceID { get; set; }
 
         /// <summary>Creates an empty recruitment mission copy.</summary>
         /// <returns>An empty recruitment mission.</returns>
@@ -31,7 +32,8 @@ namespace Rebellion.Game.Missions
         protected override void CopyStateTo(BaseSceneNode destination)
         {
             base.CopyStateTo(destination);
-            ((RecruitmentMission)destination).TargetOfficerInstanceID = TargetOfficerInstanceID;
+            ((RecruitmentMission)destination).RecruitedOfficerInstanceID =
+                RecruitedOfficerInstanceID;
         }
 
         /// <summary>
@@ -46,19 +48,17 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Initializes a recruitment mission with its current selected recruit.
+        /// Initializes a recruitment mission at its target planet.
         /// </summary>
         /// <param name="ownerInstanceId">Faction that owns the mission.</param>
         /// <param name="target">Planet where the mission occurs.</param>
         /// <param name="mainParticipants">Primary mission participants.</param>
         /// <param name="decoyParticipants">Decoy mission participants.</param>
-        /// <param name="targetOfficerInstanceId">Officer selected as the recruit, or null before selection.</param>
         private RecruitmentMission(
             string ownerInstanceId,
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants,
-            string targetOfficerInstanceId
+            List<IMissionParticipant> decoyParticipants
         )
             : base(
                 MissionTypeID,
@@ -67,15 +67,12 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Leadership
-            )
-        {
-            TargetOfficerInstanceID = targetOfficerInstanceId;
-        }
+            ) { }
 
         /// <summary>
         /// Returns a new RecruitmentMission when this faction has at least one recruitable officer on an owned planet.
         /// </summary>
-        /// <param name="ctx">Mission context; must include a valid target.</param>
+        /// <param name="ctx">Mission context containing the target planet and participants.</param>
         /// <returns>A configured mission, or null if no unrecruited officers exist.</returns>
         public static RecruitmentMission TryCreate(MissionContext ctx)
         {
@@ -96,8 +93,7 @@ namespace Rebellion.Game.Missions
                 ctx.OwnerInstanceId,
                 ctx.Location,
                 ctx.MainParticipants,
-                ctx.DecoyParticipants,
-                null
+                ctx.DecoyParticipants
             );
         }
 
@@ -115,57 +111,117 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns false when this faction no longer has an unrecruited officer available.
+        /// Returns why recruitment can no longer continue at the mission planet.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if at least one unrecruited officer is available.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
+        /// <returns>
+        /// The target-unavailable reason when the planet is no longer friendly or no candidate
+        /// remains; otherwise null.
+        /// </returns>
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            return game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0;
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
+            if (reason.HasValue)
+                return reason;
+
+            return
+                GetParent() is Planet planet
+                && planet.GetOwnerInstanceID() == OwnerInstanceID
+                && game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0
+                ? null
+                : MissionCompletionReason.TargetUnavailable;
         }
 
         /// <summary>
-        /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
-        /// </summary>
-        /// <param name="defenseScore">The defense score, unused because recruitment cannot be foiled.</param>
-        /// <param name="game">The current game state, unused because recruitment cannot be foiled.</param>
-        /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
-
-        /// <summary>
-        /// Looks up the recruitment success chance for a participant at the mission planet.
+        /// Returns the participant's raw recruitment score at the mission planet.
         /// </summary>
         /// <param name="agent">The participant whose leadership rating is evaluated.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>Success probability from the recruitment table.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
+        /// <returns>The participant's raw recruitment score.</returns>
+        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
             if (!(GetParent() is Planet planet))
-                return base.GetAgentProbability(agent, game);
+                return base.GetAgentScore(agent, game);
 
             int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
-            int score = agent.GetEffectiveRating(OfficerRating.Leadership) - opposingSupport;
-            return LookupSuccessProbability(game, score);
+            return agent.GetEffectiveRating(OfficerRating.Leadership) - opposingSupport;
         }
 
         /// <summary>
-        /// Transfers the target officer to this faction and moves them to the mission planet.
+        /// Attempts recruiters from lowest to highest success probability and stops when one
+        /// successfully recruits a candidate.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider used to select the recruited officer.</param>
+        /// <param name="provider">RNG provider for success and candidate-selection rolls.</param>
+        /// <returns>The recruitment result followed by the terminal mission result.</returns>
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
+        {
+            RecruitedOfficerInstanceID = null;
+            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
+                provider,
+                game,
+                _ =>
+                {
+                    List<Officer> targets = game.GetUnrecruitedOfficers(OwnerInstanceID);
+                    if (targets.Count == 0)
+                        return false;
+
+                    Officer recruitedOfficer = targets.RandomElement(provider);
+                    RecruitedOfficerInstanceID = recruitedOfficer.InstanceID;
+                    return true;
+                },
+                stopAfterFirstSuccess: true
+            );
+
+            List<GameResult> results;
+            MissionOutcome outcome;
+            MissionCompletionReason completionReason;
+            if (!string.IsNullOrEmpty(RecruitedOfficerInstanceID))
+            {
+                outcome = MissionOutcome.Success;
+                completionReason = MissionCompletionReason.Success;
+                results = OnSuccess(game, provider, successfulParticipants[0]);
+            }
+            else
+            {
+                outcome = MissionOutcome.Failed;
+                completionReason =
+                    successfulParticipants.Count > 0
+                        ? MissionCompletionReason.TargetUnavailable
+                        : MissionCompletionReason.Failure;
+                results = OnFailed(game, provider);
+            }
+
+            results.Add(BuildCompletedResult(outcome, completionReason, game));
+            return results;
+        }
+
+        /// <summary>
+        /// Transfers the recruited officer to this faction and moves them to the target planet.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">RNG provider used during mission execution.</param>
+        /// <param name="successfulParticipant">The participant whose recruitment attempt succeeded.</param>
         /// <returns>One OfficerRecruitedResult, or an empty list if the target or planet is missing.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        protected override List<GameResult> OnSuccess(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IMissionParticipant successfulParticipant
+        )
         {
             Planet planet = GetParent() as Planet;
-            if (provider == null || planet == null)
+            if (planet == null)
                 return new List<GameResult>();
 
-            Officer target = game.GetUnrecruitedOfficers(OwnerInstanceID).RandomElement(provider);
+            Officer target = game.GetUnrecruitedOfficers(OwnerInstanceID)
+                .FirstOrDefault(officer => officer.InstanceID == RecruitedOfficerInstanceID);
             if (target == null)
                 return new List<GameResult>();
 
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
-            TargetOfficerInstanceID = target.InstanceID;
             target.OwnerInstanceID = OwnerInstanceID;
             game.RemoveUnrecruitedOfficer(target);
             game.AttachNode(target, planet);

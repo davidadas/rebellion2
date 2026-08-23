@@ -138,14 +138,36 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A mobile headquarters was destroyed when its planet fell to an enemy faction.
+    /// Ownership of one unit changed hands.
     /// </summary>
-    public class HeadquartersDestroyedResult : GameResult
+    public sealed class UnitOwnershipChangedResult : GameResult
     {
-        public Building Headquarters { get; set; }
+        public ISceneNode Unit { get; set; }
+        public Faction PreviousOwner { get; set; }
+        public Faction NewOwner { get; set; }
+    }
+
+    /// <summary>
+    /// A faction lost its headquarters to an opposing faction.
+    /// </summary>
+    public abstract class HeadquartersLostResult : GameResult
+    {
         public Planet Planet { get; set; }
         public Faction Defender { get; set; }
         public Faction Attacker { get; set; }
+    }
+
+    /// <summary>
+    /// A fixed headquarters planet was captured by an opposing faction.
+    /// </summary>
+    public sealed class HeadquartersCapturedResult : HeadquartersLostResult { }
+
+    /// <summary>
+    /// A mobile headquarters was destroyed when its planet fell to an opposing faction.
+    /// </summary>
+    public sealed class HeadquartersDestroyedResult : HeadquartersLostResult
+    {
+        public Building Headquarters { get; set; }
     }
 
     /// <summary>

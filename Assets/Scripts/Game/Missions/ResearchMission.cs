@@ -92,19 +92,20 @@ namespace Rebellion.Game.Missions
             if (!HasResearchFacility(planet, discipline))
                 return null;
 
-            Officer researcher = ctx.MainParticipants?.FirstOrDefault() as Officer;
-            if (researcher == null || researcher.GetBaseRating(discipline) <= 0)
+            List<IMissionParticipant> actingParticipants = ctx.MainParticipants;
+            if (
+                actingParticipants == null
+                || actingParticipants.Count == 0
+                || actingParticipants.Any(participant =>
+                    participant is not Officer officer || officer.GetBaseRating(discipline) <= 0
+                )
+            )
                 return null;
-
-            List<IMissionParticipant> actingParticipants = new List<IMissionParticipant>
-            {
-                researcher,
-            };
 
             return new ResearchMission(
                 ctx.OwnerInstanceId,
                 ctx.Location,
-                actingParticipants,
+                new List<IMissionParticipant>(actingParticipants),
                 ctx.DecoyParticipants,
                 discipline
             );
@@ -128,29 +129,20 @@ namespace Rebellion.Game.Missions
 
         /// <summary>
         /// Resolves whether research can execute after participants arrive.
+        /// A matching facility is required to issue the mission, but the original game does not
+        /// cancel active research if that facility is subsequently destroyed.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The failure reason, or null when research can advance.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 
-            Planet planet = GetParent() as Planet;
-            if (IsMissionSatisfied(game) && HasResearchFacility(planet, Discipline))
-                return null;
-
-            if (
-                planet != null
-                && planet.GetOwnerInstanceID() == OwnerInstanceID
-                && !HasResearchFacility(planet, Discipline)
-            )
-            {
-                return MissionCompletionReason.NoResearchFacilities;
-            }
-
-            return MissionCompletionReason.TargetUnavailable;
+            return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID
+                ? null
+                : MissionCompletionReason.TargetUnavailable;
         }
 
         /// <summary>
@@ -168,42 +160,29 @@ namespace Rebellion.Game.Missions
             {
                 ResearchDiscipline.ShipDesign => planet
                     .GetProductionFacilities(ManufacturingType.Ship)
-                    .Count > 0
-                    || planet.GetProductionFacilities(ManufacturingType.Troop).Count > 0,
+                    .Count > 0,
                 ResearchDiscipline.TroopTraining => planet
                     .GetProductionFacilities(ManufacturingType.Troop)
-                    .Count > 0
-                    || planet.GetProductionFacilities(ManufacturingType.Building).Count > 0,
+                    .Count > 0,
                 ResearchDiscipline.FacilityDesign => planet
                     .GetProductionFacilities(ManufacturingType.Building)
-                    .Count > 0
-                    || planet
-                        .GetAllBuildings()
-                        .Any(building =>
-                            building.BuildingType == BuildingType.Mine
-                            && building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                        ),
+                    .Count > 0,
                 _ => false,
             };
         }
 
         /// <summary>
-        /// Checks whether the mission target planet is still owned by the mission's faction.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the parent planet is owned by this faction.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
-        {
-            return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
-        }
-
-        /// <summary>
         /// Research missions target own planets and are never foiled.
         /// </summary>
-        /// <param name="defenseScore">The defense score (unused).</param>
+        /// <param name="detectorRating">The detector rating (unused).</param>
+        /// <param name="defender">The defender (unused).</param>
         /// <param name="game">The current game state, unused because research cannot be foiled.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
+        protected override double GetFoilProbability(
+            int detectorRating,
+            Officer defender,
+            GameRoot game
+        ) => 0;
 
         /// <summary>
         /// Resolves one mission execution: each main participant rolls independently;
@@ -213,20 +192,16 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for chance rolls and reward rolls.</param>
         /// <returns>Transition results, with a MissionCompletedResult appended.</returns>
-        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
-            MissionCompletionReason completionReason =
-                GetAbortReason(game) ?? MissionCompletionReason.TargetUnavailable;
+            MissionCompletionReason completionReason = MissionCompletionReason.TargetUnavailable;
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
-            Planet planet = GetParent() as Planet;
-
-            if (
-                faction != null
-                && IsMissionSatisfied(game)
-                && HasResearchFacility(planet, Discipline)
-            )
+            if (faction != null)
             {
                 int earnedPoints = AccumulatePointsFromParticipants(game.Config.Research, provider);
                 if (earnedPoints > 0)
@@ -266,9 +241,19 @@ namespace Rebellion.Game.Missions
                     continue;
 
                 earnedPoints += RollReward(config, provider);
-                officer.IncrementBaseRating(Discipline);
+                ImproveMissionParticipantRating(participant);
             }
             return earnedPoints;
+        }
+
+        /// <summary>
+        /// Improves the successful officer's rating for this mission's research discipline.
+        /// </summary>
+        /// <param name="participant">The research participant whose attempt succeeded.</param>
+        internal override void ImproveMissionParticipantRating(IMissionParticipant participant)
+        {
+            if (participant is Officer officer && participant.CanImproveMissionRating)
+                officer.IncrementBaseRating(Discipline);
         }
 
         /// <summary>
@@ -372,7 +357,7 @@ namespace Rebellion.Game.Missions
         /// <returns>True if the mission should repeat.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
-            if (!IsMissionSatisfied(game))
+            if (GetMissionInvalidationReason(game).HasValue)
                 return false;
 
             Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);

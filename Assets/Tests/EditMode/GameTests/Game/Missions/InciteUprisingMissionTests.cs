@@ -124,7 +124,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_PlanetAlreadyInUprising_ReturnsNull()
+        public void TryCreate_PlanetAlreadyInUprising_ReturnsMission()
         {
             (
                 GameRoot game,
@@ -135,15 +135,66 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
             enemyPlanet.BeginUprising();
 
-            Assert.IsNull(
+            Assert.IsNotNull(
                 CreateInciteUprisingMission(
                     "empire",
                     enemyPlanet,
                     new List<IMissionParticipant> { officer },
                     new List<IMissionParticipant>()
-                ),
-                "TryCreate should return null when target planet is already in uprising"
+                )
             );
+        }
+
+        [Test]
+        public void ShouldRepeatAfterCompletion_NeutralPlanetWithoutFriendlyTroops_ReturnsFalse()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+            Mission mission = CreateInciteUprisingMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            enemyPlanet.OwnerInstanceID = null;
+
+            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(game));
+        }
+
+        [Test]
+        public void ShouldRepeatAfterCompletion_EnemyControlsPlanet_ReturnsTrue()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+            Mission mission = CreateInciteUprisingMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            Assert.IsTrue(mission.ShouldRepeatAfterCompletion(game));
+        }
+
+        [Test]
+        public void ShouldRepeatAfterCompletion_NeutralPlanetWithFriendlyTroops_ReturnsTrue()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+            enemyPlanet.OwnerInstanceID = "empire";
+            Regiment regiment = EntityFactory.CreateRegiment("friendly-regiment", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, enemyPlanet);
+            enemyPlanet.OwnerInstanceID = "rebels";
+            Mission mission = CreateInciteUprisingMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            enemyPlanet.OwnerInstanceID = null;
+
+            Assert.IsTrue(mission.ShouldRepeatAfterCompletion(game));
         }
 
         [Test]

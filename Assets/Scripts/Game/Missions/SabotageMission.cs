@@ -13,6 +13,7 @@ namespace Rebellion.Game.Missions
     public class SabotageMission : Mission
     {
         public const string MissionTypeID = "Sabotage";
+        private const string _deathStarSabotageConfigKey = "DeathStarSabotage";
 
         /// <summary>
         /// Instance ID of the selected sabotage target.
@@ -32,11 +33,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
-
-        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public SabotageMission()
@@ -45,7 +41,6 @@ namespace Rebellion.Game.Missions
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Combat;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -73,7 +68,6 @@ namespace Rebellion.Game.Missions
             )
         {
             SabotageTargetInstanceID = selectedTarget.GetInstanceID();
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -118,9 +112,9 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 
@@ -128,37 +122,45 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns false if the selected target can no longer be sabotaged before execution.
+        /// Returns the participant's raw sabotage score from averaged espionage and combat.
         /// </summary>
+        /// <param name="agent">The participant whose espionage and combat ratings are evaluated.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the selected target is still eligible.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
+        /// <returns>The participant's raw sabotage score.</returns>
+        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
-            return HasValidTarget(game);
+            return (
+                    agent.GetEffectiveRating(OfficerRating.Espionage)
+                    + agent.GetEffectiveRating(OfficerRating.Combat)
+                ) / 2;
         }
 
         /// <summary>
-        /// Uses the dedicated success table for planet-destroying capital ships.
+        /// Returns the configured sabotage probability for the participant's raw score.
+        /// Planet-destroying capital ships use their dedicated probability table.
         /// </summary>
-        /// <param name="agent">The participant whose combat rating is evaluated.</param>
+        /// <param name="agent">The participant whose score is evaluated.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>The configured sabotage success probability.</returns>
         protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
+            int? score = GetAgentScore(agent, game);
+            if (!score.HasValue)
+                return 0;
+
             ISceneNode target = GetSabotageTarget(game);
             if (target is not CapitalShip { CanDestroyPlanets: true })
-                return base.GetAgentProbability(agent, game);
+                return LookupSuccessProbability(game, score.Value);
 
-            int score = agent.GetEffectiveRating(ParticipantRating);
             Dictionary<int, int> table = game
                 ?.Config
                 ?.ProbabilityTables
                 ?.Mission
                 ?.DeathStarSabotage;
             if (table == null || table.Count == 0)
-                return base.GetAgentProbability(agent, game);
+                return LookupSuccessProbability(game, score.Value);
 
-            return new ProbabilityTable(table).Lookup(score);
+            return LookupSuccessProbability(game, score.Value, _deathStarSabotageConfigKey);
         }
 
         /// <summary>
@@ -179,17 +181,30 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Sabotage does not award mission rating improvements.
+        /// Improves both ratings used by a successful officer's sabotage attempt.
         /// </summary>
-        protected override void ImproveMissionParticipantRatings() { }
+        /// <param name="participant">The participant whose sabotage attempt succeeded.</param>
+        internal override void ImproveMissionParticipantRating(IMissionParticipant participant)
+        {
+            if (participant is not Officer officer || !participant.CanImproveMissionRating)
+                return;
+
+            officer.IncrementBaseRating(OfficerRating.Espionage);
+            officer.IncrementBaseRating(OfficerRating.Combat);
+        }
 
         /// <summary>
         /// Destroys the selected sabotage target.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider (unused for sabotage).</param>
+        /// <param name="successfulParticipant">The participant whose sabotage attempt succeeded.</param>
         /// <returns>One GameObjectSabotagedResult.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        protected override List<GameResult> OnSuccess(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IMissionParticipant successfulParticipant
+        )
         {
             Planet planet = GetParent() as Planet;
             ISceneNode target = GetSabotageTarget(game);
@@ -211,7 +226,7 @@ namespace Rebellion.Game.Missions
                 new GameObjectSabotagedResult
                 {
                     SabotagedObject = target,
-                    Saboteur = GetMainParticipants().Count > 0 ? GetMainParticipants()[0] : null,
+                    Saboteur = successfulParticipant,
                     Context = planet,
                     Tick = game.CurrentTick,
                 },

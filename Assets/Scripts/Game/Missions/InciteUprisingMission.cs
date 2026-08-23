@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Missions
@@ -11,11 +13,6 @@ namespace Rebellion.Game.Missions
     public class InciteUprisingMission : Mission
     {
         public const string MissionTypeID = "InciteUprising";
-
-        /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
 
         /// <summary>Creates an empty incite-uprising mission copy.</summary>
         /// <returns>An empty incite-uprising mission.</returns>
@@ -30,7 +27,6 @@ namespace Rebellion.Game.Missions
             ConfigKey = MissionTypeID;
             DisplayName = "Incite Uprising";
             ParticipantRating = OfficerRating.Leadership;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -54,23 +50,20 @@ namespace Rebellion.Game.Missions
                 decoyParticipants,
                 OfficerRating.Leadership,
                 displayName: "Incite Uprising"
-            )
-        {
-            DecoyParticipantRating = OfficerRating.Espionage;
-        }
+            ) { }
 
         /// <summary>
-        /// Returns a new InciteUprisingMission if the target is an enemy planet not in uprising, or null.
+        /// Returns a new InciteUprisingMission if the target is an enemy planet, or null.
         /// </summary>
         /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
-        /// <returns>A configured mission, or null if the planet is neutral, owned by this faction, or already in uprising.</returns>
+        /// <returns>A configured mission, or null if the planet is neutral or owned by this faction.</returns>
         public static InciteUprisingMission TryCreate(MissionContext ctx)
         {
             if (!(ctx.Location is Planet planet))
                 return null;
 
             string owner = planet.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(owner) || owner == ctx.OwnerInstanceId || planet.IsInUprising)
+            if (string.IsNullOrEmpty(owner) || owner == ctx.OwnerInstanceId)
                 return null;
 
             return new InciteUprisingMission(
@@ -82,12 +75,12 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the participant's chance to incite the target planet.
+        /// Returns the participant's raw score for inciting the target planet.
         /// </summary>
         /// <param name="agent">The participant whose leadership rating is evaluated.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>The participant's uprising success probability.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
+        /// <returns>The participant's raw incite-uprising score.</returns>
+        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
             if (!(GetParent() is Planet planet))
                 throw new InvalidOperationException(
@@ -99,18 +92,31 @@ namespace Rebellion.Game.Missions
             int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
                 game?.Config?.Uprising?.ResistanceRegimentTypeID
             );
-            int score = leadershipSkill - enemySupport - uprisingResistanceRegimentCount;
-            return LookupSuccessProbability(game, score);
+            return leadershipSkill - enemySupport - uprisingResistanceRegimentCount;
         }
 
         /// <summary>
-        /// Incite Uprising missions do not repeat after one attempt.
+        /// Incite Uprising missions continue while the opposing faction still controls the target
+        /// or the mission faction has troops present there.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>Always false.</returns>
+        /// <returns>True while the original mission executor would leave the task active.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
-            return false;
+            if (GetParent() is not Planet planet)
+                return false;
+
+            bool opposingFactionControlsPlanet =
+                !string.IsNullOrEmpty(planet.OwnerInstanceID)
+                && planet.OwnerInstanceID != OwnerInstanceID;
+            bool missionFactionHasTroops = planet
+                .GetAllRegiments()
+                .Any(regiment =>
+                    regiment.OwnerInstanceID == OwnerInstanceID
+                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                );
+            return opposingFactionControlsPlanet || missionFactionHasTroops;
         }
     }
 }

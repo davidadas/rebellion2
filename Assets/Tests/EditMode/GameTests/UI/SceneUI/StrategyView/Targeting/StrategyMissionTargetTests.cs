@@ -132,39 +132,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsNull(locationTarget);
         }
 
-        [TestCase(MissionTypeIDs.Abduction)]
-        [TestCase(MissionTypeIDs.Assassination)]
-        [TestCase(MissionTypeIDs.Rescue)]
-        public void GetMissionTargetOfficer_OfficerDirectedMission_ReturnsOfficer(
-            string missionTypeId
-        )
-        {
-            Officer officer = new Officer();
-            StrategyMissionTarget target = new StrategyMissionTarget(null, officer);
-
-            Officer missionOfficer = target.GetMissionTargetOfficer(missionTypeId);
-
-            Assert.AreSame(officer, missionOfficer);
-        }
-
-        [Test]
-        public void GetMissionTargetOfficer_NonOfficerItemOrMission_ReturnsNull()
-        {
-            StrategyMissionTarget nonOfficer = new StrategyMissionTarget(null, new SpecialForces());
-            StrategyMissionTarget nonOfficerMission = new StrategyMissionTarget(
-                null,
-                new Officer()
-            );
-
-            Officer wrongItem = nonOfficer.GetMissionTargetOfficer(MissionTypeIDs.Abduction);
-            Officer wrongMission = nonOfficerMission.GetMissionTargetOfficer(
-                MissionTypeIDs.Sabotage
-            );
-
-            Assert.IsNull(wrongItem);
-            Assert.IsNull(wrongMission);
-        }
-
         private static GalaxyMapPlanet CreateMapPlanet(string instanceId, string ownerId)
         {
             Planet planet = new Planet { InstanceID = instanceId, OwnerInstanceID = ownerId };

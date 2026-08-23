@@ -217,7 +217,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_PlanetWithActiveMissions_CancelsCompetingMissions()
+        public void TransferPlanet_PlanetWithActiveMissions_PreservesMissionsForLifecycleValidation()
         {
             StubMission empireMission = EntityFactory.CreateMission(
                 "m1",
@@ -228,11 +228,11 @@ namespace Rebellion.Tests.Systems
 
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
 
-            Assert.IsNull(empireMission.GetParent(), "Competing mission should be detached");
+            Assert.AreEqual(_targetPlanet, empireMission.GetParent());
         }
 
         [Test]
-        public void TransferPlanet_PlanetWithCanceledMission_ReturnsParticipants()
+        public void TransferPlanet_PlanetWithActiveMission_DoesNotMoveMissionParticipants()
         {
             _game.ChangeOwnership(_targetPlanet, "empire");
 
@@ -245,15 +245,12 @@ namespace Rebellion.Tests.Systems
                 _targetPlanet.InstanceID
             );
             _game.AttachNode(empireMission, _targetPlanet);
-            empireMission.AddChild(officer);
+            _game.MoveNode(officer, empireMission);
 
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
 
-            Assert.IsNotNull(
-                officer.Movement,
-                "Participant should be in transit after mission canceled"
-            );
-            Assert.AreEqual(_empirePlanet, officer.GetParentOfType<Planet>());
+            Assert.IsNull(officer.Movement);
+            Assert.AreEqual(empireMission, officer.GetParent());
         }
 
         [Test]
@@ -295,24 +292,6 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(_targetPlanet, diplomacyMission.GetParent());
             Assert.IsTrue(diplomacyMission.ShouldRepeatAfterCompletion(_game));
-        }
-
-        [Test]
-        public void TransferPlanet_PlanetWithUncancelableMissions_PreservesThem()
-        {
-            UncancelableMission mission = new UncancelableMission(
-                "empire",
-                _targetPlanet.InstanceID
-            );
-            mission.InstanceID = "m1";
-            _game.AttachNode(mission, _targetPlanet);
-
-            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
-
-            Assert.IsNotNull(
-                mission.GetParent(),
-                "Mission with CanceledOnOwnershipChange=false should survive"
-            );
         }
 
         [Test]
@@ -544,7 +523,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ClearPlanetOwnership_ActiveDiplomacyMission_CancelsMission()
+        public void ClearPlanetOwnership_ActiveDiplomacyMission_PreservesMission()
         {
             _game.ChangeOwnership(_targetPlanet, _rebels.InstanceID);
             _targetPlanet.PopularSupport = new Dictionary<string, int>
@@ -552,16 +531,6 @@ namespace Rebellion.Tests.Systems
                 { _rebels.InstanceID, 70 },
             };
             _targetPlanet.AddVisitor(_rebels.InstanceID);
-
-            Planet returnPlanet = new Planet
-            {
-                InstanceID = "rebel-home",
-                OwnerInstanceID = _rebels.InstanceID,
-                IsColonized = true,
-                PositionX = 200,
-                PositionY = 0,
-            };
-            _game.AttachNode(returnPlanet, _targetPlanet.GetParent());
 
             Officer officer = EntityFactory.CreateOfficer("diplomat", _rebels.InstanceID);
             Mission diplomacyMission = MissionTestFactory.TryCreate(
@@ -577,9 +546,9 @@ namespace Rebellion.Tests.Systems
 
             _ownershipSystem.ClearPlanetOwnership(_targetPlanet);
 
-            Assert.IsNull(diplomacyMission.GetParent());
-            Assert.IsNotNull(officer.Movement);
-            Assert.AreSame(returnPlanet, officer.GetParent());
+            Assert.AreSame(_targetPlanet, diplomacyMission.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.AreSame(diplomacyMission, officer.GetParent());
         }
 
         [Test]
@@ -667,7 +636,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_LastStationedRegiment_CancelsFormerOwnerDiplomacyMission()
+        public void HandleResults_LastStationedRegiment_PreservesMissionForLifecycleValidation()
         {
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.PopularSupport = new Dictionary<string, int>
@@ -711,9 +680,9 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.AreEqual(_rebels.InstanceID, _targetPlanet.GetOwnerInstanceID());
-            Assert.IsNull(diplomacyMission.GetParent());
-            Assert.IsNotNull(officer.Movement);
-            Assert.AreSame(_empirePlanet, officer.GetParent());
+            Assert.AreSame(_targetPlanet, diplomacyMission.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.AreSame(diplomacyMission, officer.GetParent());
         }
 
         [Test]
@@ -1066,14 +1035,6 @@ namespace Rebellion.Tests.Systems
         {
             PlanetSector planetSector = planet.GetParentOfType<PlanetSector>();
             return faction.Fog.Snapshots[planetSector.InstanceID].Planets[planet.InstanceID];
-        }
-
-        private class UncancelableMission : StubMission
-        {
-            public UncancelableMission(string ownerInstanceId, string locationInstanceId)
-                : base(ownerInstanceId, locationInstanceId) { }
-
-            public override bool CanceledOnOwnershipChange => false;
         }
     }
 }

@@ -137,14 +137,28 @@ internal sealed class ConstructionWindowProjector
     }
 
     /// <summary>
-    /// Resolves a build template's primary display texture.
+    /// Resolves the original build selector's full-size status artwork.
     /// </summary>
     /// <param name="uiContext">The current strategy presentation context.</param>
     /// <param name="item">The build template.</param>
     /// <returns>The resolved display texture, or null.</returns>
     private static Texture2D GetItemTexture(UIContext uiContext, IManufacturable item)
     {
-        return item is ISceneNode node ? uiContext.GetEntityTexture(node, true) : null;
+        if (item is CapitalShip capitalShip)
+        {
+            Texture2D battleResultTexture = uiContext.GetTexture(capitalShip.BattleResultImagePath);
+            if (battleResultTexture != null)
+                return battleResultTexture;
+        }
+
+        if (item is Starfighter starfighter)
+        {
+            Texture2D battleResultTexture = uiContext.GetTexture(starfighter.BattleResultImagePath);
+            if (battleResultTexture != null)
+                return battleResultTexture;
+        }
+
+        return item is ISceneNode node ? uiContext.GetEntityTexture(node, false) : null;
     }
 
     /// <summary>

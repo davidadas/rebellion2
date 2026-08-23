@@ -32,11 +32,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether this mission should cancel when the target planet changes owner.
-        /// </summary>
-        public override bool CanceledOnOwnershipChange => false;
-
-        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public AssassinationMission()
@@ -45,7 +40,6 @@ namespace Rebellion.Game.Missions
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Combat;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -73,7 +67,6 @@ namespace Rebellion.Game.Missions
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
-            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -87,7 +80,7 @@ namespace Rebellion.Game.Missions
             if (!(ctx.Location is Planet planet))
                 return null;
 
-            Officer target = ctx.TargetOfficer;
+            Officer target = ctx.SelectedTarget as Officer;
             Planet targetPlanet = target?.GetParentOfType<Planet>();
             if (
                 target == null
@@ -113,9 +106,9 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        protected override MissionCompletionReason? GetMissionInvalidationReason(GameRoot game)
         {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
+            MissionCompletionReason? reason = base.GetMissionInvalidationReason(game);
             if (reason.HasValue)
                 return reason;
 
@@ -123,14 +116,19 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns false if the target officer has already been killed or has moved
-        /// away from the mission's planet before execution.
+        /// Returns the attacker's raw combat advantage over the assassination target.
         /// </summary>
+        /// <param name="agent">The participant attempting the assassination.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the target is still alive and on the mission planet.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
+        /// <returns>The raw combat advantage, or null when the target cannot be resolved.</returns>
+        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
-            return HasValidTarget(game);
+            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+            if (target == null)
+                return null;
+
+            return agent.GetEffectiveRating(OfficerRating.Combat)
+                - target.GetEffectiveRating(OfficerRating.Combat);
         }
 
         /// <summary>
@@ -148,13 +146,64 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Applies assassination injury to the target. The target may survive with injury
-        /// or die outright based on a probabilistic kill check.
+        /// Resolves an assassination hit and reports success only when the target dies.
+        /// Main characters survive the injury and therefore produce a failed mission report.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">RNG provider for all probability rolls.</param>
+        /// <returns>The hit effects followed by the terminal mission result.</returns>
+        internal override List<GameResult> ResolveObjective(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
+        {
+            List<GameResult> results = new List<GameResult>();
+            MissionOutcome outcome = MissionOutcome.Failed;
+            MissionCompletionReason completionReason = MissionCompletionReason.Failure;
+
+            bool targetKilled = false;
+            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
+                provider,
+                game,
+                participant =>
+                {
+                    if (targetKilled)
+                        return true;
+
+                    List<GameResult> attemptResults = OnSuccess(game, provider, participant);
+                    results.AddRange(attemptResults);
+                    if (attemptResults.Exists(result => result is OfficerKilledResult))
+                        targetKilled = true;
+                    return targetKilled;
+                }
+            );
+            if (successfulParticipants.Count == 0)
+            {
+                results.AddRange(OnFailed(game, provider));
+            }
+            else if (targetKilled)
+            {
+                outcome = MissionOutcome.Success;
+                completionReason = MissionCompletionReason.Success;
+            }
+
+            results.Add(BuildCompletedResult(outcome, completionReason, game));
+            return results;
+        }
+
+        /// <summary>
+        /// Applies assassination injury to the target. Only minor personnel receive the
+        /// original post-injury death roll; main characters always survive the hit.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for injury dice and kill check.</param>
+        /// <param name="successfulParticipant">The participant whose assassination attempt succeeded.</param>
         /// <returns>An OfficerInjuredResult and optionally an OfficerKilledResult.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        protected override List<GameResult> OnSuccess(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IMissionParticipant successfulParticipant
+        )
         {
             Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             if (target == null)
@@ -174,14 +223,13 @@ namespace Rebellion.Game.Missions
                 }
             );
 
-            if (RollKillCheck(game.Config.Assassination, provider))
+            if (RollPostInjuryDeath(target, provider, game.Config.Assassination.KillProbability))
             {
                 results.Add(
                     new OfficerKilledResult
                     {
                         TargetOfficer = target,
-                        Assassin =
-                            GetMainParticipants().Count > 0 ? GetMainParticipants()[0] : null,
+                        Assassin = successfulParticipant,
                         Context = planet,
                         Tick = game.CurrentTick,
                     }
@@ -205,20 +253,6 @@ namespace Rebellion.Game.Missions
             return config.BaseInjury
                 + provider.NextInt(0, config.PrimaryInjuryRange + 1)
                 + provider.NextInt(0, config.SecondaryInjuryRange + 1);
-        }
-
-        /// <summary>
-        /// Rolls whether the assassination hit kills the target outright.
-        /// </summary>
-        /// <param name="config">Assassination configuration.</param>
-        /// <param name="provider">RNG provider.</param>
-        /// <returns>True if the target is killed.</returns>
-        private static bool RollKillCheck(
-            GameConfig.AssassinationConfig config,
-            IRandomNumberProvider provider
-        )
-        {
-            return provider.NextDouble() * 100 <= config.KillProbability;
         }
 
         /// <summary>

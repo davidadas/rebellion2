@@ -199,8 +199,6 @@ public sealed class ConstructionWindowView
     [SerializeField]
     private Texture2D cancelButtonDownTexture;
 
-    private RectInt selectedItemSlotRect;
-    private bool hasSelectedItemSlotRect;
     private bool renderedAnyDropdownItems;
     private bool renderedDropdownOpen;
     private ConstructionWindowRenderData lastData;
@@ -468,20 +466,10 @@ public sealed class ConstructionWindowView
     /// <param name="data">The current presentation snapshot.</param>
     private void RenderSelectedItem(ConstructionWindowRenderData data)
     {
-        if (!hasSelectedItemSlotRect)
-        {
-            selectedItemSlotRect = UILayout.GetSourceRect(selectedItemImage.rectTransform);
-            hasSelectedItemSlotRect = true;
-        }
-
         bool visible = data.HasSelection;
         selectedItemImage.gameObject.SetActive(visible && data.SelectedTexture != null);
         if (visible && data.SelectedTexture != null)
-            UILayout.SetHorizontallyCenteredImage(
-                selectedItemImage,
-                data.SelectedTexture,
-                selectedItemSlotRect
-            );
+            UILayout.SetImageTexture(selectedItemImage, data.SelectedTexture);
 
         selectedNameTextField.gameObject.SetActive(visible);
         if (visible)

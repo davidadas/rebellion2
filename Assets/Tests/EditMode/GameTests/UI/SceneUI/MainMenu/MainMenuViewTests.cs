@@ -138,6 +138,26 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         /// <summary>
+        /// Verifies the planet rig composites its authored day/night terminator after other layers.
+        /// </summary>
+        [Test]
+        public void AuthoredPrefab_PlanetRig_UsesDayNightShade()
+        {
+            Transform shade = _prefabRoot.transform.Find("PlanetRig/DayNightShade");
+            Assert.IsNotNull(shade);
+            Assert.AreEqual(Vector3.one * 2.04f, shade.localScale);
+
+            RuntimeMaterialBinding binding = shade.GetComponent<RuntimeMaterialBinding>();
+            Assert.IsNotNull(binding);
+            Assert.AreEqual(
+                "Custom/PlanetDayNightShade",
+                typeof(RuntimeMaterialBinding)
+                    .GetField("shaderName", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(binding)
+            );
+        }
+
+        /// <summary>
         /// Verifies the view exclusively controls Options overlay visibility.
         /// </summary>
         [Test]

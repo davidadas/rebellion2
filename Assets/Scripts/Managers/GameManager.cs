@@ -72,6 +72,7 @@ public sealed class GameManager
     public event Action GameSpeedChanged;
     public event Action TickCompleted;
     public event Action<GameRoot> GameReplaced;
+    public event Action<HeadquartersLostResult> HeadquartersLost;
     public event Action<VictoryResult> VictoryDeclared;
     public event Action<MessageDeliveredResult> MessageDelivered;
     public event Action<BombardmentResult> BombardmentCompleted;
@@ -400,10 +401,9 @@ public sealed class GameManager
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_officerLoyaltySystem);
-        _resultProcessor.Subscribe<HeadquartersDestroyedResult>(_victorySystem);
+        _resultProcessor.Subscribe<HeadquartersLostResult>(_victorySystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
-        _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
         _resultProcessor.Subscribe<IntelligenceRevealedResult>(_fogOfWarSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
@@ -467,6 +467,10 @@ public sealed class GameManager
         if (processMessages)
             ProcessMessageReactions(resolvedResults);
 
+        foreach (
+            HeadquartersLostResult headquarters in resolvedResults.OfType<HeadquartersLostResult>()
+        )
+            HeadquartersLost?.Invoke(headquarters);
         foreach (VictoryResult victory in resolvedResults.OfType<VictoryResult>())
             VictoryDeclared?.Invoke(victory);
         return resolvedResults;
