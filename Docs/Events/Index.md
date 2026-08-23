@@ -67,7 +67,7 @@ A complete event uses the following high-level shape. Most events only need some
   <!-- Optional activation gates. -->
   <Conditionals>...</Conditionals>
 
-  <!-- Required behavior. -->
+  <!-- Optional authored behavior. -->
   <Actions>...</Actions>
 </GameEvent>
 ```
@@ -105,7 +105,8 @@ conditions. See [Conditions](Conditions.md).
 
 ### Actions
 
-Required collection of game changes performed in authored order. See [Actions](Actions.md).
+Optional collection of game changes performed in authored order. An event without actions can still
+serve as a persistent timing or completion marker. See [Actions](Actions.md).
 
 ## Guide
 

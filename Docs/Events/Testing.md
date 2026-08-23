@@ -5,12 +5,12 @@ invalid elements, attributes, nesting, and enum values.
 
 ```bash
 cd /path/to/rebellion2-media
-./build.sh
+./build.sh all
 ```
 
 Copy or install the updated content into `rebellion2/Assets/Content`, open the project in Unity, and
-start a new campaign using that content pack. For quick testing, temporarily use a small `At` tick or
-short `Random` range, then restore the intended schedule before committing.
+start a new campaign using that content pack. For quick testing, temporarily use a small `At` tick,
+`RandomDelay`, or `RandomInterval`, then restore the intended schedule before committing.
 
 If an event does not run:
 
@@ -19,7 +19,7 @@ If an event does not run:
 - Confirm every `InstanceID`, referenced event, faction, planet, unit, and media path exists.
 - Confirm the event does not combine `Schedule` with `Triggers`.
 - Confirm trigger argument names and `$binding` aliases match exactly.
-- Confirm the target selector returns exactly one node.
+- Confirm every top-level `Bind` resolves exactly one node.
 - Confirm conditions can pass in the tested game state.
 - Confirm the event has not reached `MaximumActivations` or matched its recurring schedule's `Until`.
 

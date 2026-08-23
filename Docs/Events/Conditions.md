@@ -1,7 +1,3 @@
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 # Conditions
 
 Conditions inspect game state without changing it. The XML collection is named `Conditionals`, but
@@ -300,27 +296,17 @@ Passes when the unit currently has movement state.
 
 ### IsCaptured
 
-Passes when the officer is captured.
+Passes when the officer is captured. Add `CaptorFactionInstanceID` when the capturing faction also
+matters.
 
 **Options**
 
 - `OfficerInstanceID` — required officer ID.
+- `CaptorFactionInstanceID` — optional capturing-faction filter.
 
 ```xml
 <IsCaptured OfficerInstanceID="HAN_SOLO"/>
-```
-
-### IsCapturedBy
-
-Passes when the officer is captured by the specified faction.
-
-**Options**
-
-- `OfficerInstanceID` — required officer ID.
-- `CaptorFactionInstanceID` — required capturing faction ID.
-
-```xml
-<IsCapturedBy OfficerInstanceID="HAN_SOLO" CaptorFactionInstanceID="FNEMP1"/>
+<IsCaptured OfficerInstanceID="HAN_SOLO" CaptorFactionInstanceID="FNEMP1"/>
 ```
 
 ### IsKilled

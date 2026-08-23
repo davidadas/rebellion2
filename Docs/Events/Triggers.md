@@ -57,7 +57,7 @@ Use multiple triggers when any of several units should activate the event:
 </Triggers>
 ```
 
-The former nested `Units` filter is intentionally unsupported. Multiple triggers express the OR relationship directly and cannot conflict with a singular `UnitInstanceID` filter.
+Multiple triggers express the OR relationship directly.
 
 ## DuelCompleted
 

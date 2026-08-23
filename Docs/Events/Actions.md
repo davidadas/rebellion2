@@ -1,7 +1,3 @@
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
-/Users/davidadams/.zshenv:.:1: no such file or directory: /tmp/reb2-rust.Fq5aMf/cargo/env
 # Actions
 
 Actions change game state. They execute from top to bottom against one shared context, so a later action can observe changes and results produced by an earlier action.
@@ -348,15 +344,18 @@ Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use 
 
 Both `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `DestinationInstanceID` attributes or typed `Units` and `Destination` selector collections. A destination collection must resolve exactly one destination unless it explicitly uses `SelectFirst`.
 
-### SetActive
+### SetNodeActive
 
-`SetActive` controls whether retained units participate in gameplay. Inactive units remain attached to the scene graph and save normally, but ordinary gameplay queries ignore them. Set `IsActive="true"` before placing or sending a returning unit.
+`SetNodeActive` controls whether retained scene nodes participate in gameplay. Inactive nodes remain
+attached to the scene graph and are preserved in saves, but ordinary gameplay queries ignore them.
+Reactivate a returning unit before placing or sending it.
 
 **Options**
 
+- `InstanceID` — optional direct scene-node ID.
 - `IsActive` — required state.
-- `UnitInstanceID` — optional direct unit ID, accepted as an attribute or child element.
-- `Units` — optional unit selector collection.
+- `Nodes` — optional selector collection.
+- At least one direct node or selected node must resolve.
 
 ```xml
 <SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="false"/>
