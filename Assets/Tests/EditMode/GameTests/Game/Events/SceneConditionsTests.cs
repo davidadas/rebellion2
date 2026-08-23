@@ -136,6 +136,43 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void IsActive_InactiveOfficer_ReturnsFalseWithoutLosingIdentity()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, planet);
+            officer.IsEnabled = false;
+            IsActiveConditional condition = new IsActiveConditional
+            {
+                NodeInstanceID = officer.InstanceID,
+            };
+
+            bool isMet = condition.IsMet(game);
+
+            Assert.IsFalse(isMet);
+            Assert.AreSame(
+                officer,
+                game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID, includeDisabled: true)
+            );
+        }
+
+        [Test]
+        public void IsActive_ActiveOfficer_ReturnsTrue()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, planet);
+            IsActiveConditional condition = new IsActiveConditional
+            {
+                NodeInstanceID = officer.InstanceID,
+            };
+
+            bool isMet = condition.IsMet(game);
+
+            Assert.IsTrue(isMet);
+        }
+
+        [Test]
         public void HasForceRank_ConfiguredSemanticRank_UsesConfiguredMinimum()
         {
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);

@@ -729,6 +729,26 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Tests whether a retained scene node participates in normal gameplay queries.
+    /// </summary>
+    [PersistableObject(Name = "IsActive")]
+    public sealed class IsActiveConditional : GameConditional
+    {
+        [PersistableAttribute]
+        public string NodeInstanceID { get; set; }
+
+        /// <summary>Returns whether the referenced node is active in its hierarchy.</summary>
+        public override bool IsMet(GameConditionContext context)
+        {
+            ISceneNode node = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
+                NodeInstanceID,
+                includeDisabled: true
+            );
+            return node?.IsActive() == true;
+        }
+    }
+
+    /// <summary>
     /// Tests whether a movable unit currently has an active movement state.
     /// </summary>
     [PersistableObject(Name = "IsInTransit")]

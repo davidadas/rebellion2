@@ -291,6 +291,18 @@ Passes when exactly two supplied units exist and have different owners.
 
 ## Unit and officer state
 
+### IsActive
+
+Passes when the scene node participates in normal gameplay queries. Inactive nodes remain retained and can still be inspected by conditionals that explicitly support them.
+
+**Required options**
+
+- `NodeInstanceID` **[Required]:** The `InstanceID` of the scene node to evaluate.
+
+```xml
+<IsActive NodeInstanceID="DARTH_VADER"/>
+```
+
 ### IsOnMission
 
 Passes when the unit has a mission parent.

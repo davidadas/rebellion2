@@ -63,6 +63,26 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void IsActive_AuthoredNodeInstanceID_RoundTrips()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                Conditionals = new List<GameConditional>
+                {
+                    new IsActiveConditional { NodeInstanceID = "DARTH_VADER" },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize(gameEvent);
+            GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
+
+            StringAssert.Contains("<IsActive NodeInstanceID=\"DARTH_VADER\">", xml);
+            IsActiveConditional conditional = restored.Conditionals.Single() as IsActiveConditional;
+            Assert.IsNotNull(conditional);
+            Assert.AreEqual("DARTH_VADER", conditional.NodeInstanceID);
+        }
+
+        [Test]
         public void CompositeConditionals_RoundTripWithoutCollectionWrappers()
         {
             GameEvent gameEvent = new GameEvent
