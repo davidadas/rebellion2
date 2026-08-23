@@ -156,20 +156,6 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
     }
 
-    /// <summary>
-    /// A scripted incident occurred at a planet.
-    /// </summary>
-    public class PlanetIncidentResult : GameResult
-    {
-        public Planet Planet { get; set; }
-        public PlanetIncidentType IncidentType { get; set; }
-        public int Severity { get; set; }
-        public PlanetChangeCategory ChangedStat { get; set; }
-        public int OldValue { get; set; }
-        public int NewValue { get; set; }
-        public List<IGameEntity> DestroyedObjects { get; set; } = new List<IGameEntity>();
-    }
-
     #endregion
 
     #region Faction

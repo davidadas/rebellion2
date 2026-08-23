@@ -111,7 +111,6 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
-            AddIncidentMessages(batch.OfType<PlanetIncidentResult>(), game, deliveries);
             AddBlockadeMessages(
                 batch.OfType<BlockadeChangedResult>(),
                 batch.OfType<EvacuationLossesResult>(),
@@ -3380,65 +3379,6 @@ namespace Rebellion.Game.Messages
                     SetStrategicLocation(message, result.Planet, result.Headquarters);
                     AddDelivery(deliveries, recipient, message);
                 }
-            }
-        }
-
-        private void AddIncidentMessages(
-            IEnumerable<PlanetIncidentResult> results,
-            GameRoot game,
-            ICollection<MessageDeliveryRequest> deliveries
-        )
-        {
-            foreach (PlanetIncidentResult result in results)
-            {
-                Faction recipient = GetStrategicFaction(game, result.Planet?.OwnerInstanceID);
-                if (recipient == null)
-                    continue;
-                MessageResultType resultType = result.IncidentType switch
-                {
-                    PlanetIncidentType.Disaster => MessageResultType.NaturalDisaster,
-                    PlanetIncidentType.Resource when result.NewValue > result.OldValue =>
-                        MessageResultType.NewResources,
-                    PlanetIncidentType.Resource => MessageResultType.ResourcesDepleted,
-                    _ => MessageResultType.None,
-                };
-                if (resultType == MessageResultType.None)
-                    continue;
-
-                bool hasDestroyedObjects = result.DestroyedObjects.Count > 0;
-                MessageDefinition definition = _definitions.FirstOrDefault(candidate =>
-                    candidate.ResultType == resultType
-                    && (
-                        resultType == MessageResultType.NaturalDisaster
-                            ? candidate.HasDestroyedObjects == hasDestroyedObjects
-                            : candidate.PlanetChange == result.ChangedStat
-                    )
-                );
-                if (definition == null)
-                    continue;
-
-                MessageDeliveryRequest message = BuildStrategicMessage(
-                    definition,
-                    recipient,
-                    new Dictionary<string, string>
-                    {
-                        { "system", result.Planet.GetDisplayName() },
-                        {
-                            "destroyedObjects",
-                            string.Join(
-                                Environment.NewLine,
-                                result.DestroyedObjects.Select(entity => entity.GetDisplayName())
-                            )
-                        },
-                    },
-                    recipient
-                );
-                SetStrategicLocation(
-                    message,
-                    result.Planet,
-                    result.DestroyedObjects.OfType<ISceneNode>().FirstOrDefault()
-                );
-                AddDelivery(deliveries, recipient, message);
             }
         }
 

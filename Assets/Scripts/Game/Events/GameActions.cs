@@ -1366,57 +1366,6 @@ namespace Rebellion.Game.Events
         public PlanetStat Stat { get; set; }
     }
 
-    [PersistableObject(Name = "RecordPlanetIncident")]
-    public sealed class RecordPlanetIncidentAction : GameAction
-    {
-        [PersistableAttribute(Name = "Type")]
-        public PlanetIncidentType IncidentType { get; set; }
-
-        [PersistableAttribute]
-        public string PlanetInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public string PlanetBinding { get; set; }
-
-        /// <summary>
-        /// Records the authored incident against the event's target planet.
-        /// </summary>
-        internal override void Execute(GameActionContext context)
-        {
-            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
-            if (planet == null)
-                throw new InvalidOperationException("RecordPlanetIncident requires a planet.");
-
-            List<PlanetStatChangedResult> statChanges = context
-                .Evaluation.Results.OfType<PlanetStatChangedResult>()
-                .Where(result => result.Planet == planet)
-                .ToList();
-            List<IGameEntity> destroyed = context
-                .Evaluation.Results.OfType<GameObjectDestroyedResult>()
-                .Where(result => result.Context == planet)
-                .Select(result => result.DestroyedObject)
-                .Where(result => result != null)
-                .ToList();
-            int severity =
-                statChanges.Sum(change => Math.Abs(change.NewValue - change.OldValue))
-                + destroyed.Count;
-            if (severity == 0)
-                return;
-
-            context.Record(
-                new PlanetIncidentResult
-                {
-                    Planet = planet,
-                    IncidentType = IncidentType,
-                    Severity = severity,
-                    DestroyedObjects = destroyed,
-                    Tick = context.Game.CurrentTick,
-                }
-            );
-        }
-    }
     #endregion
 
     #region UnitActions

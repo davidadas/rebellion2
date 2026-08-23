@@ -17,9 +17,6 @@ namespace Rebellion.Systems
     /// </summary>
     public class UprisingSystem : IGameResultHandler<PlanetGarrisonChangedResult>
     {
-        private const int _buildingDestroyedSeverity = 1;
-        private const int _regimentDestroyedSeverity = 2;
-
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly PlanetaryControlSystem _planetaryControl;
@@ -940,7 +937,7 @@ namespace Rebellion.Systems
                 )
                 .ToList();
 
-            DestroyRandomIncidentTarget(facilities, planet, _buildingDestroyedSeverity, results);
+            DestroyRandomUprisingTarget(facilities, planet, results);
         }
 
         /// <summary>
@@ -964,7 +961,7 @@ namespace Rebellion.Systems
                 )
                 .ToList();
 
-            if (DestroyRandomIncidentTarget(regiments, planet, _regimentDestroyedSeverity, results))
+            if (DestroyRandomUprisingTarget(regiments, planet, results))
             {
                 results.Add(
                     new PlanetGarrisonChangedResult { Planet = planet, Tick = _game.CurrentTick }
@@ -973,18 +970,16 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Destroys a random incident target and records the incident.
+        /// Destroys a random uprising target and records its destruction.
         /// </summary>
         /// <typeparam name="T">Type of scene node that can be destroyed.</typeparam>
         /// <param name="candidates">Possible incident targets.</param>
         /// <param name="planet">Planet where the incident occurs.</param>
-        /// <param name="severity">Incident severity to report.</param>
         /// <param name="results">Result list to append events to.</param>
         /// <returns>True when a target was destroyed.</returns>
-        private bool DestroyRandomIncidentTarget<T>(
+        private bool DestroyRandomUprisingTarget<T>(
             List<T> candidates,
             Planet planet,
-            int severity,
             List<GameResult> results
         )
             where T : class, ISceneNode
@@ -995,11 +990,10 @@ namespace Rebellion.Systems
             ISceneNode destroyed = candidates[_provider.NextInt(0, candidates.Count)];
             _game.DeleteNode(destroyed);
             results.Add(
-                new PlanetIncidentResult
+                new GameObjectDestroyedResult
                 {
-                    Planet = planet,
-                    IncidentType = PlanetIncidentType.Uprising,
-                    Severity = severity,
+                    DestroyedObject = destroyed,
+                    Context = planet,
                     Tick = _game.CurrentTick,
                 }
             );

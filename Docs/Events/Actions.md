@@ -1,7 +1,7 @@
 # Actions
 
 Actions change game state. They execute from top to bottom against one shared context, so later
-actions observe earlier state changes. Specialized actions, such as `RecordPlanetIncident`, can
+actions observe earlier state changes. Actions such as `SendMessage` can
 also inspect results recorded earlier in the same activation.
 
 Requests and results produced by event actions retain the source event's `InstanceID`. They can
@@ -290,38 +290,6 @@ zero.
   </Stats>
 </ReducePlanetStats>
 ```
-
-### RecordPlanetIncident
-
-This action requires a planet instance ID or planet binding. It records an incident from planet-stat
-changes and destroyed units already produced earlier in the same evaluation. It records nothing
-when those earlier actions made no change.
-
-Incident severity is the sum of absolute planet-stat changes plus the number of destroyed objects
-recorded for that planet.
-
-**Options**
-
-- `Type` **[Required]:** `Uprising`, `Intelligence`, `Disaster`, or `Resource` incident type.
-- `PlanetInstanceID` **[Optional]:** direct incident location.
-- `PlanetBinding` **[Optional]:** bound incident location. Takes precedence over `PlanetInstanceID`.
-
-```xml
-<Actions>
-  <DestroyUnits PlanetBinding="$planet">
-    <Units>
-      <SelectRandom Count="1">
-        <From>
-          <SelectBuildings PlanetBinding="$planet" Category="PlanetaryDefense"/>
-        </From>
-      </SelectRandom>
-    </Units>
-  </DestroyUnits>
-  <RecordPlanetIncident Type="Disaster" PlanetBinding="$planet"/>
-</Actions>
-```
-
-Incident types are `Uprising`, `Intelligence`, `Disaster`, and `Resource`.
 
 ## Units and ownership
 

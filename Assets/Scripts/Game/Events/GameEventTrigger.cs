@@ -169,28 +169,6 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, ended);
     }
 
-    /// <summary>Activates when a data-defined planet incident is recorded.</summary>
-    [PersistableObject(Name = "PlanetIncident")]
-    public sealed class PlanetIncidentTrigger : GameEventTrigger
-    {
-        [PersistableAttribute]
-        public string PlanetInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public PlanetIncidentType? Type { get; set; }
-
-        [PersistableAttribute]
-        public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(PlanetIncidentResult);
-
-        internal override bool Matches(GameResult result) =>
-            result is PlanetIncidentResult incident
-            && MatchesInstanceID(PlanetInstanceID, incident.Planet?.InstanceID)
-            && (!Type.HasValue || incident.IncidentType == Type.Value)
-            && MatchesSource(SourceEventInstanceID, incident);
-    }
-
     #endregion
 
     #region Faction

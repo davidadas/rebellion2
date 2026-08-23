@@ -103,23 +103,6 @@ Activates when an uprising ends.
 </Triggers>
 ```
 
-### PlanetIncident
-
-Activates when an event records a planet incident.
-
-**Options**
-
-- `PlanetInstanceID` **[Optional]:** limits the trigger to one planet.
-- `Type` **[Optional]:** accepts `Uprising`, `Intelligence`, `Disaster`, or `Resource`.
-- `SourceEventInstanceID` **[Optional]:** limits the trigger to results from one event.
-- `As` **[Optional]:** binds the complete `PlanetIncidentResult`.
-
-```xml
-<Triggers>
-  <PlanetIncident PlanetInstanceID="NABOO" Type="Disaster"/>
-</Triggers>
-```
-
 ## Faction
 
 ### ResearchAdvanced

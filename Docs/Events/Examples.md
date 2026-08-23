@@ -158,7 +158,6 @@ units, records the changes as an incident, and sends a message to the Alliance.
         </SelectRandom>
       </Units>
     </DestroyUnits>
-    <RecordPlanetIncident Type="Uprising" PlanetBinding="$planet"/>
     <SendMessage RecipientFactionInstanceID="FNALL1"
                  LocationBinding="$planet"
                  Type="Defense">
