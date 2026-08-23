@@ -480,9 +480,7 @@ namespace Rebellion.Systems
 
             long low = 1;
             long high = Math.Min(fastestUpperBound, int.MaxValue);
-            if (
-                GetProductionProgressAtTick(facilities, high, requiredProgress) < requiredProgress
-            )
+            if (GetProductionProgressAtTick(facilities, high, requiredProgress) < requiredProgress)
                 return int.MaxValue;
 
             // Each pass strictly shrinks this int-sized interval, so it converges within 31 passes.

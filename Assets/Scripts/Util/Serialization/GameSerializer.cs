@@ -620,12 +620,19 @@ namespace Rebellion.Util.Serialization
             }
 
             int startDepth = reader.Depth;
+            IDictionary<string, Type> persistableMap = ReflectionHelper.GetPersistableObjectMap();
+
             reader.ReadStartElement();
             while (reader.Depth > startDepth)
             {
                 if (reader.NodeType == XmlNodeType.Element)
                 {
-                    Type actualElementType = ResolveCollectionElementType(elementType, reader.Name);
+                    string elementName = reader.Name;
+
+                    Type actualElementType = persistableMap.ContainsKey(elementName)
+                        ? persistableMap[elementName]
+                        : elementType;
+
                     object value = ReadValue(actualElementType, reader);
                     collection.Add(value);
                 }
@@ -640,31 +647,6 @@ namespace Rebellion.Util.Serialization
             {
                 reader.ReadEndElement();
             }
-        }
-
-        /// <summary>
-        /// Resolves a concrete collection element type without accepting an unrelated type that
-        /// happens to share the same persisted element name.
-        /// </summary>
-        /// <param name="elementType">The collection's declared element type.</param>
-        /// <param name="elementName">The persisted element name.</param>
-        /// <returns>The matching concrete type, or the declared type when no subtype matches.</returns>
-        private static Type ResolveCollectionElementType(Type elementType, string elementName)
-        {
-            Type[] candidates = ReflectionHelper
-                .GetPersistableTypes(elementName)
-                .Where(candidate =>
-                    !candidate.IsAbstract
-                    && !candidate.IsInterface
-                    && elementType.IsAssignableFrom(candidate)
-                )
-                .ToArray();
-            if (candidates.Length > 1)
-                throw new InvalidOperationException(
-                    $"XML element '{elementName}' is ambiguous for collection element type '{elementType.Name}'."
-                );
-
-            return candidates.SingleOrDefault() ?? elementType;
         }
 
         /// <summary>
@@ -783,11 +765,7 @@ namespace Rebellion.Util.Serialization
 
             Type[] candidates = ReflectionHelper
                 .GetPersistableTypes(actualTypeName)
-                .Where(candidate =>
-                    !candidate.IsAbstract
-                    && !candidate.IsInterface
-                    && objType.IsAssignableFrom(candidate)
-                )
+                .Where(objType.IsAssignableFrom)
                 .ToArray();
             if (candidates.Length > 1)
                 throw new InvalidOperationException(
@@ -892,7 +870,7 @@ namespace Rebellion.Util.Serialization
             | BindingFlags.Instance
             | BindingFlags.Static;
 
-        private static IDictionary<string, IReadOnlyList<Type>> _persistableTypesByName;
+        private static IDictionary<string, Type> _persistableObjectMap;
 
         // Reflection metadata is expensive to compute and stable per type, so it is memoized.
         private static readonly Dictionary<
@@ -1177,28 +1155,44 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
-        /// Gets every persistable type registered for an XML element name.
+        /// Gets a dictionary mapping type names to Type objects for all persistable types in the current AppDomain.
         /// </summary>
-        /// <param name="elementName">The XML element name to resolve.</param>
-        /// <returns>The registered persistable types.</returns>
-        public static IEnumerable<Type> GetPersistableTypes(string elementName)
+        /// <returns>A dictionary mapping type names to Type objects.</returns>
+        public static IDictionary<string, Type> GetPersistableObjectMap()
         {
-            EnsurePersistableTypeMaps();
-            return _persistableTypesByName.TryGetValue(elementName, out IReadOnlyList<Type> types)
-                ? types
-                : Array.Empty<Type>();
+            if (_persistableObjectMap != null)
+                return _persistableObjectMap;
+
+            Dictionary<string, Type> persistableMap = new Dictionary<string, Type>();
+
+            foreach (
+                Type type in AppDomain
+                    .CurrentDomain.GetAssemblies()
+                    .SelectMany(a =>
+                    {
+                        try
+                        {
+                            return a.GetTypes();
+                        }
+                        catch (ReflectionTypeLoadException e)
+                        {
+                            return e.Types.Where(t => t != null);
+                        }
+                    })
+                    .Where(type => Attribute.IsDefined(type, typeof(PersistableObjectAttribute)))
+            )
+            {
+                AddPersistableTypeName(persistableMap, GetPersistableElementName(type), type);
+                AddPersistableTypeName(persistableMap, type.Name, type);
+            }
+
+            _persistableObjectMap = persistableMap;
+            return _persistableObjectMap;
         }
 
-        /// <summary>
-        /// Builds the persistable type indexes used for concrete and polymorphic lookup.
-        /// </summary>
-        private static void EnsurePersistableTypeMaps()
+        public static IEnumerable<Type> GetPersistableTypes(string elementName)
         {
-            if (_persistableTypesByName != null)
-                return;
-
-            Dictionary<string, List<Type>> typesByName = new Dictionary<string, List<Type>>();
-            IEnumerable<Type> persistableTypes = AppDomain
+            return AppDomain
                 .CurrentDomain.GetAssemblies()
                 .SelectMany(assembly =>
                 {
@@ -1211,18 +1205,12 @@ namespace Rebellion.Util.Serialization
                         return exception.Types.Where(type => type != null);
                     }
                 })
-                .Where(type => Attribute.IsDefined(type, typeof(PersistableObjectAttribute)));
-
-            foreach (Type type in persistableTypes)
-            {
-                AddPersistableTypeName(typesByName, GetPersistableElementName(type), type);
-                AddPersistableTypeName(typesByName, type.Name, type);
-            }
-
-            _persistableTypesByName = typesByName.ToDictionary(
-                pair => pair.Key,
-                pair => (IReadOnlyList<Type>)pair.Value
-            );
+                .Where(type =>
+                    Attribute.IsDefined(type, typeof(PersistableObjectAttribute))
+                    && !type.IsAbstract
+                    && !type.IsInterface
+                    && (type.Name == elementName || GetPersistableElementName(type) == elementName)
+                );
         }
 
         /// <summary>
@@ -1239,13 +1227,13 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
-        /// Adds a persistable type to the lookup for one persisted name.
+        /// Adds a persistable type name mapping when the name is populated and unused.
         /// </summary>
-        /// <param name="typesByName">The map retaining every type registered under each name.</param>
+        /// <param name="persistableMap">The map receiving the type name.</param>
         /// <param name="name">The name that can resolve the type.</param>
         /// <param name="type">The type resolved by the name.</param>
         private static void AddPersistableTypeName(
-            IDictionary<string, List<Type>> typesByName,
+            IDictionary<string, Type> persistableMap,
             string name,
             Type type
         )
@@ -1253,14 +1241,17 @@ namespace Rebellion.Util.Serialization
             if (string.IsNullOrWhiteSpace(name))
                 return;
 
-            if (!typesByName.TryGetValue(name, out List<Type> types))
+            if (
+                !persistableMap.TryGetValue(name, out Type existingType)
+                || (
+                    (existingType.IsAbstract || existingType.IsInterface)
+                    && !type.IsAbstract
+                    && !type.IsInterface
+                )
+            )
             {
-                types = new List<Type>();
-                typesByName.Add(name, types);
+                persistableMap[name] = type;
             }
-
-            if (!types.Contains(type))
-                types.Add(type);
         }
 
         /// <summary>
