@@ -415,7 +415,7 @@ Activates when a manufactured unit is deployed.
 </Conditionals>
 ```
 
-Use top-level [`Bindings`](Bindings.md#bindings) when an event must select and retain a scene node independently of a gameplay result.
+Use top-level [`Bindings`](Bindings.md#bind) when an event must select and retain a scene node independently of a gameplay result.
 
 ---
 

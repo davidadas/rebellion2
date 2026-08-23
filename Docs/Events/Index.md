@@ -105,7 +105,8 @@ cannot specify a value greater than one.
 Optionally select scene nodes and expose them throughout the current event evaluation. Scheduled
 events declare bindings before `Schedule`, allowing recurring `Until` conditionals to consume them.
 Triggered events declare `Triggers` first, allowing selections to consume trigger-result bindings.
-Top-level conditionals and actions may consume either kind. See [Bindings and selectors](Bindings.md).
+Top-level conditionals and actions may consume either kind. See [Bindings](Bindings.md) and
+[Selectors](Selectors.md).
 
 ### Schedule
 
@@ -130,4 +131,4 @@ serve as a persistent timing or completion marker. See [Actions](Actions.md).
 
 ---
 
-<p align="center"><a href="Bindings.md">Bindings →</a></p>
+<p align="center"><a href="Selectors.md">Selectors →</a></p>
