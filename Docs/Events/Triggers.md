@@ -10,6 +10,8 @@ All triggers support:
 - `SourceEventInstanceID` **[Optional]:** Accepts only results produced by that authored event.
 
 When multiple triggers use `As`, they must use the same alias and expose the same result type.
+See [Bindings](Bindings.md#trigger-bindings) for binding scope, result-property references, and
+evaluation order.
 
 ## Planet
 
@@ -399,23 +401,6 @@ Activates when a manufactured unit is deployed.
                           As="production"/>
 </Triggers>
 ```
-
-## Trigger bindings
-
-`As` binds the complete matched result. Prefix the alias with `$` and traverse its public properties from conditionals or actions:
-
-```xml
-<Triggers>
-  <UnitArrived UnitInstanceID="EMPEROR_PALPATINE" As="arrival"/>
-</Triggers>
-<Conditionals>
-  <EvaluateBinding Binding="$arrival.Destination.InstanceID"
-                   Comparison="Equal"
-                   CompareTo="CORUSCANT"/>
-</Conditionals>
-```
-
-Use top-level [`Bindings`](Bindings.md#bind) when an event must select and retain a scene node independently of a gameplay result.
 
 ---
 
