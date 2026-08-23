@@ -36,7 +36,7 @@ results or multiple results raise a runtime authoring error.
 
 ### SelectPlanets
 
-Selects active, non-destroyed planets. All filters are optional and combine using AND.
+Selects active, non-destroyed planets.
 
 **Options**
 
@@ -65,7 +65,7 @@ Selects planet sectors.
 
 ### SelectOfficers
 
-Selects officers. Inactive officers are excluded unless explicitly requested.
+Selects officers.
 
 **Options**
 
@@ -321,8 +321,8 @@ Returns a unit's registered `LastParentInstanceID` when that node still resolves
 
 **Options**
 
-- `UnitInstanceID` **[Optional]:** direct unit source. Mutually exclusive with `UnitBinding`.
-- `UnitBinding` **[Optional]:** bound unit source. Mutually exclusive with `UnitInstanceID`.
+- `UnitInstanceID` **[Required]:** direct unit source; use either this or `UnitBinding`.
+- `UnitBinding` **[Required]:** bound unit source; use either this or `UnitInstanceID`.
 
 ```xml
 <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>
@@ -330,14 +330,16 @@ Returns a unit's registered `LastParentInstanceID` when that node still resolves
 
 ### SpawnUnits
 
-Creates detached units from an existing unit definition. It is valid only inside the `Units`
-collection of `PlaceUnits`; placement attaches the resulting units to their destination.
+Creates detached units from an existing unit definition.
 
 **Options**
 
-- `TypeID` **[Required]:** unit-definition ID.
+- `TypeID` **[Required]:** unit-definition ID; manufacturing access does not restrict event spawning or later ownership transfers.
 - `OwnerFactionInstanceID` **[Required]:** owner faction.
 - `Count` **[Optional]:** positive quantity; defaults to `1`.
+
+`SpawnUnits` is valid only inside the `Units` collection of `PlaceUnits`; placement attaches the
+resulting units to their destination.
 
 ```xml
 <SpawnUnits TypeID="SFAL02" OwnerFactionInstanceID="FNALL1" Count="3"/>

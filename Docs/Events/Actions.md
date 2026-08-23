@@ -1,8 +1,7 @@
 # Actions
 
 Actions change game state. They execute from top to bottom against one shared context, so later
-actions observe earlier state changes. Actions such as `SendMessage` can
-also inspect results recorded earlier in the same activation.
+actions observe earlier state changes.
 
 Requests and results produced by event actions retain the source event's `InstanceID`. They can
 activate other result-triggered events, but they do not generate automatic strategy messages.
@@ -28,7 +27,7 @@ Every action belongs inside an event's `Actions` collection:
 
 ### If
 
-`If` evaluates its nested conditions when execution reaches it. It runs `Actions` when every condition passes and otherwise runs the optional `Else` list.
+`If` conditionally executes one action collection.
 
 **Options**
 
@@ -55,9 +54,7 @@ Every action belongs inside an event's `Actions` collection:
 
 ### RollRandom
 
-`RollRandom` first removes outcomes whose `Conditionals` fail, then selects one remaining outcome by
-`Weight`. Weights are relative: weights `30` and `70` produce a 30/70 split. If no outcome remains
-eligible, the action does nothing.
+`RollRandom` executes one randomly selected eligible outcome.
 
 **Options**
 
@@ -65,6 +62,9 @@ eligible, the action does nothing.
 - `Weight` **[Required]:** positive attribute on each `Outcome`.
 - `Conditionals` **[Optional]:** conditions for making an outcome eligible.
 - `Actions` **[Required]:** actions for each outcome.
+
+Outcomes whose conditions fail are excluded. Weights are relative, so weights `30` and `70` produce
+a 30/70 split. The action does nothing when no outcome remains eligible.
 
 ```xml
 <RollRandom>
@@ -90,16 +90,19 @@ eligible, the action does nothing.
 
 ### PerformSkillCheck
 
-`PerformSkillCheck` looks up the named mission probability table using the officer's effective rating multiplied by `RatingMultiplier`. It executes exactly one of `OnSuccess` or `OnFailure`; it does not emit a separate skill-check result.
+`PerformSkillCheck` executes success or failure actions from an officer rating check.
 
 **Options**
 
 - `OfficerInstanceID` **[Required]:** officer ID.
-- `Rating` **[Required]:** officer rating.
+- `Rating` **[Required]:** `Diplomacy`, `Espionage`, `Combat`, `Leadership`, `ShipResearch`, `TroopResearch`, or `FacilityResearch`.
 - `ProbabilityTable` **[Required]:** probability-table name.
 - `RatingMultiplier` **[Optional]:** nonzero multiplier; defaults to `1`.
 - `OnSuccess` **[Optional]:** actions run after a successful check.
 - `OnFailure` **[Optional]:** actions run after a failed check.
+
+The check looks up the named mission probability table using the officer's effective rating
+multiplied by `RatingMultiplier`. It does not emit a separate result.
 
 ```xml
 <PerformSkillCheck OfficerInstanceID="HAN_SOLO"
@@ -122,11 +125,9 @@ eligible, the action does nothing.
 </PerformSkillCheck>
 ```
 
-Officer ratings are `Diplomacy`, `Espionage`, `Combat`, `Leadership`, `ShipResearch`, `TroopResearch`, and `FacilityResearch`.
-
 ### SetEventVariable
 
-Event variables are saved integers shared by all events. Operations are `Set`, `Add`, `Minimum`, and `Maximum`.
+`SetEventVariable` updates a saved integer shared by all events.
 
 **Options**
 
@@ -178,24 +179,24 @@ recorded individually.
 
 ### SendMessage
 
-`SendMessage` delivers a normal strategy message to an explicitly identified faction. Subject and location may use instance IDs or trigger bindings.
+`SendMessage` delivers a strategy message to an explicitly identified faction.
 
 **Options**
 
 - `RecipientFactionInstanceID` **[Required]:** recipient faction.
-- `SubjectInstanceID` **[Optional]:** message subject instance ID.
-- `SubjectBinding` **[Optional]:** message subject binding. Takes precedence over `SubjectInstanceID`.
+- `SubjectInstanceID` **[Optional]:** message subject instance ID; `SubjectBinding` takes precedence when both are provided.
+- `SubjectBinding` **[Optional]:** message subject binding; takes precedence over `SubjectInstanceID`.
 - `RelatedSubjectInstanceID` **[Optional]:** secondary subject.
-- `LocationInstanceID` **[Optional]:** message location instance ID.
-- `LocationBinding` **[Optional]:** message location binding. Takes precedence over `LocationInstanceID`.
-- `Type` **[Optional]:** message type; defaults to `Advice`.
-- `Subject` **[Optional]:** message subject text.
-- `Body` **[Optional]:** message body text.
-- `BackgroundImage` **[Optional]:** message background image.
-- `OverlayImage` **[Optional]:** message overlay image.
-- `BackgroundAudio` **[Optional]:** message background audio.
-- `OfficerVoice` **[Optional]:** officer voice line.
-- `AdvisorNotification` **[Optional]:** advisor presentation.
+- `LocationInstanceID` **[Optional]:** message location instance ID; `LocationBinding` takes precedence when both are provided.
+- `LocationBinding` **[Optional]:** message location binding; takes precedence over `LocationInstanceID`.
+- `Type` **[Optional]:** `PopularSupport`, `Fleet`, `Mission`, `Resource`, `Manufacturing`, `Defense`, `Conflict`, `Chat`, or `Advice`; defaults to `Advice`.
+- `Subject` **[Optional]:** message subject text; supports context tokens such as `{subject}` and `{location}`.
+- `Body` **[Optional]:** message body text; supports context tokens such as `{subject}` and `{location}`.
+- `BackgroundImage` **[Optional]:** exactly one `Key`, `Path`, or string-valued `Binding`.
+- `OverlayImage` **[Optional]:** `Path`; when omitted, an officer subject supplies its current message image.
+- `BackgroundAudio` **[Optional]:** exactly one `Path` or string-valued `Binding`.
+- `OfficerVoice` **[Optional]:** explicit `Path` or `Preset`; presets are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFailure`, `MissionAbort`, `Released`, `Recovered`, `EnemyDetected`, `ForceGrowth`, `ForceUserDiscovered`, `TraitorDiscovered`, and `RescueAttempt`, and require an officer subject.
+- `AdvisorNotification` **[Optional]:** optional `LifetimeTicks`, `Droid`, and `Protocol` settings plus a `Preset` of `None`, `PositivePopularSupport`, `NegativePopularSupport`, `Manufacturing`, `Research`, `FleetArrived`, `UnitsArrived`, `CapitalShipRepaired`, `StarfighterRepaired`, `Maintenance`, `BlockadeInitiated`, `BlockadeDetected`, `FieldPersonnel`, `AgentReport`, `PlanetaryStatus`, `PrisonerEscaped`, `InterceptedCommunication`, `Bombardment`, `PlanetaryAssault`, `SubjectReport`, `SubjectCaptured`, or `SubjectReleased`.
 
 ```xml
 <SendMessage RecipientFactionInstanceID="FNALL1"
@@ -212,49 +213,20 @@ recorded individually.
 </SendMessage>
 ```
 
-Message types are `PopularSupport`, `Fleet`, `Mission`, `Resource`, `Manufacturing`, `Defense`, `Conflict`, `Chat`, and `Advice`.
-
-Message text supports context tokens such as `{subject}` and `{location}`. Use an `If` action to
-select between messages based on game state.
-
-Presentation sources have distinct contracts:
-
-- `BackgroundImage` **[Optional]:** exactly one `Key`, `Path`, or string-valued `Binding`.
-- `OverlayImage` **[Optional]:** `Path`. When omitted, an officer subject supplies its current message
-  image.
-- `BackgroundAudio` **[Optional]:** exactly one `Path` or string-valued `Binding`.
-- `OfficerVoice` **[Optional]:** explicit `Path` or officer voice-line `Preset`; do not combine them. A
-  preset requires an officer subject, and an empty element produces no voice line.
-- `AdvisorNotification` **[Optional]:** `Preset`, `LifetimeTicks`, `Droid`, and `Protocol`. `Droid` and
-  `Protocol` accept `Animation`, `AnimationPath`, `FrameCount`, `Audio`, `AudioPath`,
-  `DelayBeforeSeconds`, and `RequiresAnnouncementsEnabled` overrides.
-
-XML permits presentation properties as attributes or child elements where the schema declares
-both forms. Do not provide the same property in both forms.
-
-Officer voice presets are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFailure`,
-`MissionAbort`, `Released`, `Recovered`, `EnemyDetected`, `ForceGrowth`, `ForceUserDiscovered`,
-`TraitorDiscovered`, and `RescueAttempt`. Advisor presets are `None`, `PositivePopularSupport`,
-`NegativePopularSupport`, `Manufacturing`, `Research`, `FleetArrived`, `UnitsArrived`,
-`CapitalShipRepaired`, `StarfighterRepaired`, `Maintenance`, `BlockadeInitiated`,
-`BlockadeDetected`, `FieldPersonnel`, `AgentReport`, `PlanetaryStatus`, `PrisonerEscaped`,
-`InterceptedCommunication`, `Bombardment`, `PlanetaryAssault`, `SubjectReport`,
-`SubjectCaptured`, and `SubjectReleased`.
-
 ## Planets and resources
 
 ### ChangePlanetStat
 
-Choose exactly one adjustment mode: signed `Amount` or signed `PercentOfCurrent`. The action can address a planet by instance ID, binding, or selectors.
+`ChangePlanetStat` adjusts one stat on one or more planets.
 
 **Options**
 
-- `Stat` **[Required]:** planet stat.
-- `PlanetInstanceID` **[Optional]:** direct planet source.
-- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`.
-- `Planets` **[Optional]:** planet selector collection.
-- `Amount` **[Optional]:** signed fixed adjustment. Mutually exclusive with `PercentOfCurrent`.
-- `PercentOfCurrent` **[Optional]:** signed percentage adjustment. Mutually exclusive with `Amount`.
+- `Stat` **[Required]:** `RawResourceNodes` or `EnergyCapacity`.
+- `PlanetInstanceID` **[Required]:** direct planet source; at least one planet source must be provided, and `PlanetBinding` takes precedence when both attributes are present.
+- `PlanetBinding` **[Required]:** bound planet source; at least one planet source must be provided, and this takes precedence over `PlanetInstanceID`.
+- `Planets` **[Required]:** planet selector collection; at least one planet source must be provided, and selected planets are combined with the direct or bound planet.
+- `Amount` **[Required]:** signed fixed adjustment; use either this or `PercentOfCurrent`.
+- `PercentOfCurrent` **[Required]:** signed percentage adjustment; use either this or `Amount`.
 
 ```xml
 <ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
@@ -262,21 +234,18 @@ Choose exactly one adjustment mode: signed `Amount` or signed `PercentOfCurrent`
 </ChangePlanetStat>
 ```
 
-Supported stats are `RawResourceNodes` and `EnergyCapacity`. Values cannot fall below zero.
+Values cannot fall below zero.
 
 ### ReducePlanetStats
 
-This action requires a planet instance ID or planet binding. It independently rolls `LossProbabilityPerResource` once for every current point in the selected stats, then enforces `MinimumTotalLoss`.
-The minimum loss is capped by the total number of available points, and stats never fall below
-zero.
+`ReducePlanetStats` randomly removes points from selected planet stats without reducing them below zero.
 
 **Options**
 
-- `PlanetInstanceID` **[Optional]:** direct planet source.
-- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`.
-- `LossProbabilityPerResource` **[Required]:** probability from `0` through `1`, applied independently
-  to each existing point.
-- `MinimumTotalLoss` **[Required]:** minimum combined loss.
+- `PlanetInstanceID` **[Required]:** direct planet source; use either this or `PlanetBinding`.
+- `PlanetBinding` **[Required]:** bound planet source; use either this or `PlanetInstanceID`.
+- `LossProbabilityPerResource` **[Required]:** probability from `0` through `1`, rolled independently for each current point.
+- `MinimumTotalLoss` **[Required]:** minimum combined loss, capped by the total available points.
 - `Stats` **[Required]:** child containing one or more `Stat` elements.
 - `Name` **[Required]:** planet-stat attribute on each `Stat`.
 
@@ -295,9 +264,7 @@ zero.
 
 ### DestroyUnits
 
-`DestroyUnits` permanently deletes every selected unit. Selecting a container such as a fleet or
-capital ship also deletes its contained subtree. Selecting both a parent and its child does not
-double-delete the child.
+`DestroyUnits` permanently deletes every selected unit and the contents of selected containers.
 
 **Options**
 
@@ -320,16 +287,16 @@ double-delete the child.
 
 ### ChangeOwner
 
-Choose exactly one ownership domain: `Planets` or `Units`. Planet transfers use planetary-control
-rules. Unit transfers update the ownership indexes while leaving the unit at its current scene
-location. Only selected nodes change owner; contained descendants retain their existing owners
-unless they are also selected.
+`ChangeOwner` transfers selected planets or units to another faction.
 
 **Options**
 
 - `FactionInstanceID` **[Required]:** new owner.
-- `Planets` **[Optional]:** planet selector collection. Mutually exclusive with `Units`.
-- `Units` **[Optional]:** unit selector collection. Mutually exclusive with `Planets`.
+- `Planets` **[Required]:** planet selector collection; use either this or `Units`.
+- `Units` **[Required]:** unit selector collection; use either this or `Planets`.
+
+Planet transfers use planetary-control rules. Unit transfers leave units at their current scene
+locations. Only selected nodes change owner.
 
 ```xml
 <ChangeOwner FactionInstanceID="FNALL1">
@@ -342,14 +309,14 @@ unless they are also selected.
 
 ### PlaceUnits
 
-`PlaceUnits` bypasses transit and requests immediate placement at one valid destination. It accepts existing-unit selectors and any number of `SpawnUnits` sources. Each spawned unit receives a new runtime instance ID and starts complete and stationary.
+`PlaceUnits` immediately places existing or newly spawned units at one valid destination.
 
 **Options**
 
-- `UnitInstanceID` **[Optional]:** direct unit source.
-- `Units` **[Optional]:** selected units and `SpawnUnits` sources. At least one unit source must resolve.
-- `DestinationInstanceID` **[Optional]:** direct destination.
-- `Destination` **[Optional]:** destination selector collection. Exactly one destination must resolve.
+- `UnitInstanceID` **[Required]:** direct unit source; at least one unit source must be provided and this may be combined with `Units`.
+- `Units` **[Required]:** selected units and `SpawnUnits` sources; at least one unit source must be provided and this may be combined with `UnitInstanceID`.
+- `DestinationInstanceID` **[Required]:** direct destination; use either this or `Destination`.
+- `Destination` **[Required]:** destination selector collection; use either this or `DestinationInstanceID` and resolve exactly one destination.
 
 ```xml
 <PlaceUnits DestinationInstanceID="NABOO">
@@ -361,7 +328,7 @@ unless they are also selected.
 </PlaceUnits>
 ```
 
-`SpawnUnits` requires a `TypeID` from the unit data. `ManufacturingFactionInstanceIDs` controls which factions may manufacture a definition; an empty collection leaves it available to scenarios and events without adding it to production. Officer recruitment uses `RecruitingFactionInstanceIDs`. Neither collection restricts later ownership transfers.
+Each spawned unit receives a new runtime instance ID and starts complete and stationary.
 
 ### SendUnits
 
@@ -369,16 +336,14 @@ unless they are also selected.
 
 **Options**
 
-- `UnitInstanceID` **[Optional]:** direct existing-unit source.
-- `Units` **[Optional]:** existing-unit selector collection. At least one unit source must resolve.
-- `DestinationInstanceID` **[Optional]:** direct destination.
-- `Destination` **[Optional]:** destination selector collection. Exactly one destination must resolve.
+- `UnitInstanceID` **[Required]:** direct existing-unit source; at least one unit source must be provided and this may be combined with `Units`.
+- `Units` **[Required]:** existing-unit selector collection; at least one unit source must be provided and this may be combined with `UnitInstanceID`.
+- `DestinationInstanceID` **[Required]:** direct destination; use either this or `Destination`.
+- `Destination` **[Required]:** destination selector collection; use either this or `DestinationInstanceID` and resolve exactly one destination.
 
 ```xml
 <SendUnits UnitInstanceID="DARTH_VADER" DestinationInstanceID="YAVIN"/>
 ```
-
-Both `PlaceUnits` and `SendUnits` accept direct `UnitInstanceID` and `DestinationInstanceID` attributes or typed `Units` and `Destination` selector collections. A destination collection must resolve exactly one destination unless it explicitly uses `SelectFirst`.
 
 Transfer actions submit requests to the normal movement rules. If no destination accepts the whole
 group, existing units remain where they were and newly spawned units are not retained; the event
@@ -393,8 +358,8 @@ Reactivate a returning unit before placing or sending it.
 **Options**
 
 - `IsActive` **[Required]:** state.
-- `InstanceID` **[Optional]:** direct scene-node ID.
-- `Nodes` **[Optional]:** scene-node selector collection. At least one node source must resolve.
+- `InstanceID` **[Required]:** direct scene-node ID; at least one node source must be provided and this may be combined with `Nodes`.
+- `Nodes` **[Required]:** scene-node selector collection; at least one node source must be provided and this may be combined with `InstanceID`.
 
 ```xml
 <SetNodeActive InstanceID="LUKE_SKYWALKER" IsActive="false"/>
@@ -411,15 +376,14 @@ Reactivate a returning unit before placing or sending it.
 
 ### SetCaptureStatus
 
-Capturing requires `CaptorFactionInstanceID`. Releasing must omit it. This action changes capture
-properties only; it does not move or deactivate the officer.
+`SetCaptureStatus` captures or releases one or more officers without moving them.
 
 **Options**
 
 - `IsCaptured` **[Required]:** state.
-- `OfficerInstanceID` **[Optional]:** direct officer ID.
-- `Officers` **[Optional]:** officer selector collection. At least one officer source must resolve.
-- `CaptorFactionInstanceID` **[Required]:** when capturing and forbidden when releasing.
+- `OfficerInstanceID` **[Required]:** direct officer ID; at least one officer source must be provided and this may be combined with `Officers`.
+- `Officers` **[Required]:** officer selector collection; at least one officer source must be provided and this may be combined with `OfficerInstanceID`.
+- `CaptorFactionInstanceID` **[Required]:** capturing faction when `IsCaptured` is `true`; omit when releasing.
 - `CanEscape` **[Optional]:** state used when capturing; defaults to `true`. Releasing always resets it
   to `true`.
 
@@ -432,19 +396,19 @@ properties only; it does not move or deactivate the officer.
 
 ### ChangeOfficerRating
 
-Choose exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `PercentOfPositiveGap`. Percentage-of-gap changes also require `ReferenceOfficerInstanceID`.
+`ChangeOfficerRating` adjusts one rating for one or more officers.
 
 **Options**
 
 - `Rating` **[Required]:** officer rating.
-- `OfficerInstanceID` **[Optional]:** direct officer ID.
-- `Officers` **[Optional]:** officer selector collection. At least one officer source must resolve.
-- `ReferenceOfficerInstanceID` **[Required]:** by `PercentOfPositiveGap`.
+- `OfficerInstanceID` **[Required]:** direct officer ID; at least one officer source must be provided and this may be combined with `Officers`.
+- `Officers` **[Required]:** officer selector collection; at least one officer source must be provided and this may be combined with `OfficerInstanceID`.
+- `ReferenceOfficerInstanceID` **[Required]:** reference officer when using `PercentOfPositiveGap`.
 - `MinimumAmount` **[Optional]:** non-negative lower bound used only with `PercentOfPositiveGap`.
-- `Amount` **[Optional]:** signed fixed adjustment.
-- `PercentOfStored` **[Optional]:** signed percentage of the stored rating.
-- `PercentOfEffective` **[Optional]:** signed percentage of the effective rating.
-- `PercentOfPositiveGap` **[Optional]:** non-negative percentage of the gap to the reference officer.
+- `Amount` **[Required]:** signed integer added to the stored rating; use exactly one adjustment option.
+- `PercentOfStored` **[Required]:** signed change calculated from the stored rating; use exactly one adjustment option.
+- `PercentOfEffective` **[Required]:** signed change calculated from the effective rating and applied to the stored rating; use exactly one adjustment option.
+- `PercentOfPositiveGap` **[Required]:** non-negative percentage of the effective-rating gap to `ReferenceOfficerInstanceID`; use exactly one adjustment option.
 
 ```xml
 <ChangeOfficerRating OfficerInstanceID="LUKE_SKYWALKER" Rating="Combat">
@@ -452,25 +416,20 @@ Choose exactly one of `Amount`, `PercentOfStored`, `PercentOfEffective`, or `Per
 </ChangeOfficerRating>
 ```
 
-`Amount` adds a signed integer to the stored rating. `PercentOfStored` calculates a signed change
-from the stored rating. `PercentOfEffective` calculates it from the current effective rating, then
-applies that change to the stored rating. `PercentOfPositiveGap` adds a non-negative percentage of
-the effective-rating gap between the reference officer and each target.
-
 ### IncreaseOfficerForce
 
-This uses the same calculation modes as `ChangeOfficerRating`, but every configured and calculated change must increase Force progression.
+`IncreaseOfficerForce` increases Force progression for one or more officers.
 
 **Options**
 
-- `OfficerInstanceID` **[Optional]:** direct officer ID.
-- `Officers` **[Optional]:** officer selector collection. At least one officer source must resolve.
-- `ReferenceOfficerInstanceID` **[Required]:** by `PercentOfPositiveGap`.
+- `OfficerInstanceID` **[Required]:** direct officer ID; at least one officer source must be provided and this may be combined with `Officers`.
+- `Officers` **[Required]:** officer selector collection; at least one officer source must be provided and this may be combined with `OfficerInstanceID`.
+- `ReferenceOfficerInstanceID` **[Required]:** reference officer when using `PercentOfPositiveGap`.
 - `MinimumAmount` **[Optional]:** non-negative lower bound used only with `PercentOfPositiveGap`.
-- `Amount` **[Optional]:** positive fixed adjustment.
-- `PercentOfStored` **[Optional]:** positive percentage of the stored Force rating.
-- `PercentOfEffective` **[Optional]:** positive percentage of the effective Force rating.
-- `PercentOfPositiveGap` **[Optional]:** positive percentage of the gap to the reference officer.
+- `Amount` **[Required]:** positive fixed adjustment; use exactly one adjustment option.
+- `PercentOfStored` **[Required]:** positive change calculated from `ForceValue`; use exactly one adjustment option.
+- `PercentOfEffective` **[Required]:** positive change calculated from the effective `ForceRank`; use exactly one adjustment option.
+- `PercentOfPositiveGap` **[Required]:** positive percentage of the effective-rank gap to `ReferenceOfficerInstanceID`; use exactly one adjustment option.
 
 ```xml
 <IncreaseOfficerForce OfficerInstanceID="LUKE_SKYWALKER"
@@ -479,10 +438,6 @@ This uses the same calculation modes as `ChangeOfficerRating`, but every configu
   <PercentOfPositiveGap>25</PercentOfPositiveGap>
 </IncreaseOfficerForce>
 ```
-
-For Force, `PercentOfStored` uses `ForceValue`, `PercentOfEffective` uses the current effective
-`ForceRank`, and `PercentOfPositiveGap` uses the positive effective-rank gap to the reference
-officer. The calculated increase must be greater than zero.
 
 ### SetForceSensitive
 
@@ -530,7 +485,7 @@ The action rolls an inclusive injury value and records the standard officer-inju
 
 ### TriggerDuel
 
-`TriggerDuel` requests normal duel resolution between two active officers. `ImagePath` and `AudioPath` optionally override the presentation used for this duel.
+`TriggerDuel` requests normal duel resolution between two active officers.
 
 **Options**
 
@@ -604,9 +559,6 @@ Replaces authored categories in the officer's active voice set. Omitted categori
 
 ## Display metadata
 
-These actions accept one direct `TargetInstanceID` or a `Targets` selector collection.
-At least one direct or selected target must resolve.
-
 ### SetDisplayName
 
 Sets a node's authored display name.
@@ -614,8 +566,8 @@ Sets a node's authored display name.
 **Options**
 
 - `Name` **[Required]:** display name.
-- `TargetInstanceID` **[Optional]:** direct target.
-- `Targets` **[Optional]:** selector collection.
+- `TargetInstanceID` **[Required]:** direct target; at least one target source must be provided and this may be combined with `Targets`.
+- `Targets` **[Required]:** selector collection; at least one target source must be provided and this may be combined with `TargetInstanceID`.
 
 ```xml
 <SetDisplayName TargetInstanceID="LUKE_SKYWALKER" Name="Luke Skywalker (Jedi)"/>
@@ -628,8 +580,8 @@ Sets supplemental status text without changing gameplay state.
 **Options**
 
 - `Status` **[Required]:** display text.
-- `TargetInstanceID` **[Optional]:** direct target.
-- `Targets` **[Optional]:** selector collection.
+- `TargetInstanceID` **[Required]:** direct target; at least one target source must be provided and this may be combined with `Targets`.
+- `Targets` **[Required]:** selector collection; at least one target source must be provided and this may be combined with `TargetInstanceID`.
 
 ```xml
 <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER" Status="On Mission (Dagobah)"/>
@@ -641,8 +593,8 @@ Clears supplemental status text.
 
 **Options**
 
-- `TargetInstanceID` **[Optional]:** direct target.
-- `Targets` **[Optional]:** selector collection.
+- `TargetInstanceID` **[Required]:** direct target; at least one target source must be provided and this may be combined with `Targets`.
+- `Targets` **[Required]:** selector collection; at least one target source must be provided and this may be combined with `TargetInstanceID`.
 
 ```xml
 <ClearDisplayStatus TargetInstanceID="LUKE_SKYWALKER"/>

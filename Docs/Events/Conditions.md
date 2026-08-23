@@ -105,7 +105,7 @@ Compares the current campaign tick.
 
 **Options**
 
-- `Comparison` **[Required]:** comparison operator.
+- `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
 - `Ticks` **[Required]:** non-negative integer.
 
 ```xml
@@ -144,7 +144,7 @@ Compares a saved integer event variable.
 **Options**
 
 - `Key` **[Required]:** variable key.
-- `Comparison` **[Required]:** comparison operator.
+- `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
 - `CompareTo` **[Required]:** integer value.
 
 ```xml
@@ -163,7 +163,7 @@ binding.
 **Options**
 
 - `Binding` **[Required]:** `$alias` reference.
-- `Comparison` **[Required]:** comparison operator.
+- `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
 - `CompareTo` **[Required]:** value.
 
 ```xml
@@ -189,13 +189,12 @@ Passes when a bound collection contains the named unit.
 
 ### IsOwned
 
-Passes when the selected planet has a non-neutral owner. Supply `FactionInstanceID` to require a
-specific owner.
+Passes when the selected planet has a non-neutral owner.
 
 **Options**
 
-- `PlanetInstanceID` **[Optional]:** direct planet source.
-- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`; the condition fails when neither source resolves.
+- `PlanetInstanceID` **[Required]:** direct planet source; use either this or `PlanetBinding`.
+- `PlanetBinding` **[Required]:** bound planet source; use either this or `PlanetInstanceID`.
 - `FactionInstanceID` **[Optional]:** required owner.
 
 ```xml
@@ -209,8 +208,8 @@ Rolls a random percentage against the selected faction's current support on a pl
 **Options**
 
 - `FactionInstanceID` **[Required]:** faction ID.
-- `PlanetInstanceID` **[Optional]:** direct planet source.
-- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`; the condition fails when neither source resolves.
+- `PlanetInstanceID` **[Required]:** direct planet source; use either this or `PlanetBinding`.
+- `PlanetBinding` **[Required]:** bound planet source; use either this or `PlanetInstanceID`.
 
 ```xml
 <RollAgainstPopularSupport PlanetBinding="$planet" FactionInstanceID="FNALL1"/>
@@ -316,8 +315,7 @@ Passes when the unit currently has movement state.
 
 ### IsCaptured
 
-Passes when the officer is captured. Add `CaptorFactionInstanceID` when the capturing faction also
-matters.
+Passes when the officer is captured.
 
 **Options**
 
@@ -374,8 +372,8 @@ Compares an officer's effective Force rank against a named rank.
 **Options**
 
 - `OfficerInstanceID` **[Required]:** officer ID.
-- `Comparison` **[Required]:** comparison operator.
-- `Rank` **[Required]:** Force rank.
+- `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
+- `Rank` **[Required]:** `None`, `Novice`, `Trainee`, `ForceStudent`, `ForceKnight`, or `ForceMaster`.
 
 ```xml
 <HasForceRank OfficerInstanceID="LUKE_SKYWALKER"
@@ -390,8 +388,8 @@ Compares one effective officer rating against an integer.
 **Options**
 
 - `OfficerInstanceID` **[Required]:** officer ID.
-- `Rating` **[Required]:** officer rating.
-- `Comparison` **[Required]:** comparison operator.
+- `Rating` **[Required]:** `Diplomacy`, `Espionage`, `Combat`, `Leadership`, `ShipResearch`, `TroopResearch`, or `FacilityResearch`.
+- `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
 - `Value` **[Required]:** integer.
 
 ```xml
@@ -408,7 +406,7 @@ Compares an officer's effective Force value against an integer.
 **Options**
 
 - `OfficerInstanceID` **[Required]:** officer ID.
-- `Comparison` **[Required]:** comparison operator.
+- `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
 - `Value` **[Required]:** integer.
 
 ```xml
@@ -423,11 +421,11 @@ Compares one planet stat against an integer.
 
 **Options**
 
-- `Stat` **[Required]:** planet stat.
-- `Comparison` **[Required]:** comparison operator.
+- `Stat` **[Required]:** `RawResourceNodes` or `EnergyCapacity`.
+- `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
 - `Value` **[Required]:** integer.
-- `PlanetInstanceID` **[Optional]:** direct planet source.
-- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`; the condition fails when neither source resolves.
+- `PlanetInstanceID` **[Required]:** direct planet source; use either this or `PlanetBinding`.
+- `PlanetBinding` **[Required]:** bound planet source; use either this or `PlanetInstanceID`.
 
 ```xml
 <ComparePlanetStat PlanetInstanceID="NABOO"
@@ -442,24 +440,15 @@ Passes when the selected planet contains a completed building of the requested t
 
 **Options**
 
-- `Type` **[Required]:** building type.
-- `PlanetInstanceID` **[Optional]:** direct planet source.
-- `PlanetBinding` **[Optional]:** bound planet source. Takes precedence over `PlanetInstanceID`; the condition fails when neither source resolves.
+- `Type` **[Required]:** `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `ConstructionFacility`, `Defense`, `Weapon`, or `Headquarters`.
+- `PlanetInstanceID` **[Required]:** direct planet source; use either this or `PlanetBinding`.
+- `PlanetBinding` **[Required]:** bound planet source; use either this or `PlanetInstanceID`.
 
 ```xml
 <Conditionals>
   <HasBuildingType Type="Defense" PlanetInstanceID="NABOO"/>
 </Conditionals>
 ```
-
-## Allowed values
-
-Comparisons are `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, and
-`LessThanOrEqual`. Officer ratings are `Diplomacy`, `Espionage`, `Combat`, `Leadership`,
-`ShipResearch`, `TroopResearch`, and `FacilityResearch`. Planet stats are `RawResourceNodes` and
-`EnergyCapacity`. Force ranks are `None`, `Novice`, `Trainee`, `ForceStudent`, `ForceKnight`, and
-`ForceMaster`. Building types are `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`,
-`ConstructionFacility`, `Defense`, `Weapon`, and `Headquarters`.
 
 ---
 
