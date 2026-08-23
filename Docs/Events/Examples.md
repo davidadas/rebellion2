@@ -1,6 +1,6 @@
 # Game Event Examples
 
-These complete examples show common event patterns. Replace the sample IDs, text, and media paths
+These complete examples show common event patterns. Replace the sample `InstanceID` and `TypeID` values, text, and media paths
 with values from the content you are editing.
 
 ## Send a message on a specific tick

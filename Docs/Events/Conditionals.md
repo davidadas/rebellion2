@@ -278,7 +278,7 @@ Passes when exactly two supplied units exist and have different owners.
 
 **Required options**
 
-- `UnitInstanceIDs` **[Required]:** Child containing exactly two `String` unit IDs.
+- `UnitInstanceIDs` **[Required]:** Contains exactly two `String` values, each holding a unit `InstanceID`.
 
 ```xml
 <AreOnOpposingFactions>
@@ -325,7 +325,7 @@ Passes when the officer is captured.
 
 **Optional options**
 
-- `CaptorFactionInstanceID` **[Optional]:** Capturing-faction filter.
+- `CaptorFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have captured the officer.
 
 ```xml
 <IsCaptured OfficerInstanceID="HAN_SOLO"/>

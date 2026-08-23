@@ -11,8 +11,8 @@ Selects active, non-destroyed planets.
 
 **Optional options**
 
-- `InstanceID` **[Optional]:** Select one specific planet.
-- `OwnerFactionInstanceID` **[Optional]:** Require the current owner.
+- `InstanceID` **[Optional]:** The `InstanceID` of the planet to select.
+- `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must currently own the planet.
 - `SectorType` **[Optional]:** Require `Core` or `OuterRim`.
 
 ```xml
@@ -25,7 +25,7 @@ Selects planet sectors.
 
 **Optional options**
 
-- `InstanceID` **[Optional]:** Specific sector ID.
+- `InstanceID` **[Optional]:** The `InstanceID` of the planet sector to select.
 - `SectorType` **[Optional]:** `Core` or `OuterRim` filter.
 
 ```xml
@@ -40,11 +40,11 @@ Selects officers.
 
 **Optional options**
 
-- `InstanceID` **[Optional]:** Officer ID.
-- `OwnerFactionInstanceID` **[Optional]:** Owner filter.
+- `InstanceID` **[Optional]:** The `InstanceID` of the officer to select.
+- `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the officer.
 - `IsCaptured` **[Optional]:** Capture-state filter.
 - `IncludeInactive` **[Optional]:** Include inactive officers; defaults to `false`.
-- `PlanetInstanceID` **[Optional]:** Direct location.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the officer must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
 
 ```xml
@@ -59,10 +59,10 @@ Selects special-forces units.
 
 **Optional options**
 
-- `InstanceID` **[Optional]:** Unit ID.
-- `PlanetInstanceID` **[Optional]:** Direct location.
+- `InstanceID` **[Optional]:** The `InstanceID` of the special-forces unit to select.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the unit must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
-- `OwnerFactionInstanceID` **[Optional]:** Owner filter.
+- `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the unit.
 
 ```xml
 <SelectSpecialForces PlanetInstanceID="NABOO" OwnerFactionInstanceID="FNALL1"/>
@@ -74,10 +74,10 @@ Selects missions.
 
 **Optional options**
 
-- `InstanceID` **[Optional]:** Mission ID.
-- `PlanetInstanceID` **[Optional]:** Direct location.
+- `InstanceID` **[Optional]:** The `InstanceID` of the mission to select.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the mission must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
-- `OwnerFactionInstanceID` **[Optional]:** Owner filter.
+- `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the mission.
 
 ```xml
 <SelectMissions PlanetBinding="$planet" OwnerFactionInstanceID="FNEMP1"/>
@@ -91,10 +91,10 @@ Selects fleets.
 
 **Optional options**
 
-- `InstanceID` **[Optional]:** Fleet ID.
-- `PlanetInstanceID` **[Optional]:** Direct location.
+- `InstanceID` **[Optional]:** The `InstanceID` of the fleet to select.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the fleet must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
-- `OwnerFactionInstanceID` **[Optional]:** Owner filter.
+- `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the fleet.
 
 ```xml
 <SelectFleets PlanetInstanceID="NABOO" OwnerFactionInstanceID="FNALL1"/>
@@ -106,11 +106,11 @@ Selects capital ships.
 
 **Optional options**
 
-- `InstanceID` **[Optional]:** Ship ID.
-- `PlanetInstanceID` **[Optional]:** Direct location.
+- `InstanceID` **[Optional]:** The `InstanceID` of the capital ship to select.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the capital ship must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
-- `OwnerFactionInstanceID` **[Optional]:** Owner filter.
-- `TypeID` **[Optional]:** Unit-definition ID.
+- `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the capital ship.
+- `TypeID` **[Optional]:** The `TypeID` of the capital-ship definition to select.
 - `ManufacturingStatus` **[Optional]:** `Building` or `Complete` filter.
 
 ```xml
@@ -123,11 +123,11 @@ Selects starfighters. It supports the same filters as `SelectCapitalShips`.
 
 **Optional options**
 
-- `InstanceID` **[Optional]:** Starfighter ID.
-- `PlanetInstanceID` **[Optional]:** Direct location.
+- `InstanceID` **[Optional]:** The `InstanceID` of the starfighter to select.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the starfighter must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
-- `OwnerFactionInstanceID` **[Optional]:** Owner filter.
-- `TypeID` **[Optional]:** Unit-definition ID.
+- `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the starfighter.
+- `TypeID` **[Optional]:** The `TypeID` of the starfighter definition to select.
 - `ManufacturingStatus` **[Optional]:** `Building` or `Complete` filter.
 
 ```xml
@@ -142,11 +142,11 @@ Selects regiments. It supports the same filters as `SelectCapitalShips`.
 
 **Optional options**
 
-- `InstanceID` **[Optional]:** Regiment ID.
-- `PlanetInstanceID` **[Optional]:** Direct location.
+- `InstanceID` **[Optional]:** The `InstanceID` of the regiment to select.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the regiment must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
-- `OwnerFactionInstanceID` **[Optional]:** Owner filter.
-- `TypeID` **[Optional]:** Unit-definition ID.
+- `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the regiment.
+- `TypeID` **[Optional]:** The `TypeID` of the regiment definition to select.
 - `ManufacturingStatus` **[Optional]:** `Building` or `Complete` filter.
 
 ```xml
@@ -159,11 +159,11 @@ Selects buildings.
 
 **Optional options**
 
-- `InstanceID` **[Optional]:** Building ID.
-- `PlanetInstanceID` **[Optional]:** Direct location.
+- `InstanceID` **[Optional]:** The `InstanceID` of the building to select.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the building must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
-- `OwnerFactionInstanceID` **[Optional]:** Owner filter.
-- `TypeID` **[Optional]:** Unit-definition ID.
+- `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the building.
+- `TypeID` **[Optional]:** The `TypeID` of the building definition to select.
 - `ManufacturingStatus` **[Optional]:** `Building` or `Complete` filter.
 - `Category` **[Optional]:** `Any`, `PlanetaryDefense`, or `ManufacturingFacility` filter.
 
@@ -180,9 +180,9 @@ Selects queued manufacturing items.
 
 **Optional options**
 
-- `PlanetInstanceID` **[Optional]:** Direct location.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet whose manufacturing orders are selected.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
-- `OwnerFactionInstanceID` **[Optional]:** Filter on the planet that owns the queue.
+- `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the manufacturing planet.
 - `ManufacturingType` **[Optional]:** `Ship`, `Building`, or `Troop` filter.
 
 ```xml
@@ -295,7 +295,7 @@ Returns a unit's registered `LastParentInstanceID` when that node still resolves
 
 **Required options**
 
-- `UnitInstanceID` **[Required]:** Direct unit source; use either this or `UnitBinding`.
+- `UnitInstanceID` **[Required]:** The `InstanceID` of the unit whose previous location is selected; use either this or `UnitBinding`.
 - `UnitBinding` **[Required]:** Bound unit source; use either this or `UnitInstanceID`.
 
 ```xml
@@ -308,8 +308,8 @@ Creates detached units from an existing unit definition.
 
 **Required options**
 
-- `TypeID` **[Required]:** Unit-definition ID; manufacturing access does not restrict event spawning or later ownership transfers.
-- `OwnerFactionInstanceID` **[Required]:** Owner faction.
+- `TypeID` **[Required]:** The `TypeID` of the unit definition to spawn; manufacturing access does not restrict event spawning or later ownership transfers.
+- `OwnerFactionInstanceID` **[Required]:** The `InstanceID` of the faction that will own the spawned units.
 
 **Optional options**
 

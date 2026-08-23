@@ -6,7 +6,7 @@ If the event's top-level conditionals fail, that opportunity is discarded. The e
 
 All triggers support:
 
-- `SourceEventInstanceID` **[Optional]:** Accepts only results produced by that authored event.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Contains explicit trigger-argument bindings. Each trigger lists its supported arguments below.
 
 Alternative triggers must expose the same binding aliases and value types.
@@ -21,11 +21,11 @@ Activates after a planet changes owner.
 
 **Optional options**
 
-- `PlanetInstanceID` **[Optional]:** Limits the trigger to one planet.
-- `PreviousOwnerFactionInstanceID` **[Optional]:** Limits the trigger by previous owner.
-- `NewOwnerFactionInstanceID` **[Optional]:** Limits the trigger by new owner.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet that must have changed ownership.
+- `PreviousOwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have previously owned the planet.
+- `NewOwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must now own the planet.
 - `Reason` **[Optional]:** Accepts `None` or `PopularSupport`.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Planet`, `PreviousOwner`, `NewOwner`, and `Reason`.
 
 ```xml
@@ -41,10 +41,10 @@ Activates after a recorded planet value changes.
 
 **Optional options**
 
-- `PlanetInstanceID` **[Optional]:** Limits the trigger to one planet.
-- `FactionInstanceID` **[Optional]:** Limits the trigger to a faction-specific value.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet whose statistic must have changed.
+- `FactionInstanceID` **[Optional]:** The `InstanceID` of the faction associated with the changed statistic.
 - `Category` **[Optional]:** Accepts `Energy`, `EnergyAllocated`, `Loyalty`, `ProductionModifier`, `RawMaterial`, `RawMaterialAllocated`, `Smuggling`, `TroopWithdrawPercent`, `TroopSurplus`, `TroopRequired`, or `ControlUprising`.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Planet`, `Faction`, `Category`, `PreviousValue`, and `CurrentValue`.
 
 ```xml
@@ -59,9 +59,9 @@ Activates when a blockade begins or ends.
 
 **Optional options**
 
-- `PlanetInstanceID` **[Optional]:** Limits the trigger to one planet.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet whose blockade state must have changed.
 - `IsBlockaded` **[Optional]:** Use `true` for a new blockade or `false` for a lifted blockade.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Planet`, `BlockadingFleet`, and `IsBlockaded`.
 
 ```xml
@@ -76,9 +76,9 @@ Activates when an uprising starts.
 
 **Optional options**
 
-- `PlanetInstanceID` **[Optional]:** Limits the trigger to one planet.
-- `InstigatorFactionInstanceID` **[Optional]:** Limits the trigger by the instigating faction.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the uprising must have started.
+- `InstigatorFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have instigated the uprising.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Planet` and `InstigatorFaction`.
 
 ```xml
@@ -93,9 +93,9 @@ Activates when an uprising ends.
 
 **Optional options**
 
-- `PlanetInstanceID` **[Optional]:** Limits the trigger to one planet.
-- `FactionInstanceID` **[Optional]:** Limits the trigger by the affected faction.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the uprising must have ended.
+- `FactionInstanceID` **[Optional]:** The `InstanceID` of the faction associated with the ended uprising.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Planet` and `Faction`.
 
 ```xml
@@ -112,10 +112,10 @@ Activates when a faction advances a research discipline.
 
 **Optional options**
 
-- `FactionInstanceID` **[Optional]:** Limits the trigger to one faction.
+- `FactionInstanceID` **[Optional]:** The `InstanceID` of the faction whose research must have advanced.
 - `Discipline` **[Optional]:** Accepts `None`, `ShipDesign`, `FacilityDesign`, or `TroopTraining`.
-- `TechnologyTypeID` **[Optional]:** Limits the trigger to one technology type.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `TechnologyTypeID` **[Optional]:** The `TypeID` of the technology that must have been researched.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Faction`, `Discipline`, `ResearchOrder`, `Capacity`, and `Technology`.
 
 ```xml
@@ -133,10 +133,10 @@ Activates when a mission completes.
 
 **Optional options**
 
-- `MissionTypeID` **[Optional]:** Limits the trigger to one mission type.
+- `MissionTypeID` **[Optional]:** The `TypeID` of the mission that must have completed.
 - `Outcome` **[Optional]:** Accepts `Success`, `Failed`, or `Foiled`.
 - `CompletionReason` **[Optional]:** Accepts `None`, `Success`, `Failure`, `Foiled`, `TargetUnavailable`, `NoResearchFacilities`, `ResearchProgress`, or `ResearchBreakthrough`.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Mission`, `MissionName`, `MissionTypeID`, `TargetName`, `Location`, `ReturnDestination`, `Participants`, `Outcome`, `CompletionReason`, and `CanContinue`.
 - `Participants` **[Optional]:** Optionally requires `Any` or `All` listed units to have participated.
 
@@ -161,9 +161,9 @@ Activates when an officer becomes captured or is released.
 
 **Optional options**
 
-- `OfficerInstanceID` **[Optional]:** Limits the trigger to one officer.
+- `OfficerInstanceID` **[Optional]:** The `InstanceID` of the officer whose capture state must have changed.
 - `IsCaptured` **[Optional]:** Use `true` for capture or `false` for release.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Officer`, `IsCaptured`, `LinkedOfficer`, and `Context`.
 
 ```xml
@@ -178,8 +178,8 @@ Activates when an officer is killed.
 
 **Optional options**
 
-- `OfficerInstanceID` **[Optional]:** Limits the trigger to one officer.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `OfficerInstanceID` **[Optional]:** The `InstanceID` of the officer who must have been killed.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Officer`, `Assassin`, and `Context`.
 
 ```xml
@@ -194,8 +194,8 @@ Activates when an officer is injured.
 
 **Optional options**
 
-- `OfficerInstanceID` **[Optional]:** Limits the trigger to one officer.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `OfficerInstanceID` **[Optional]:** The `InstanceID` of the officer who must have been injured.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Officer` and `Severity`.
 
 ```xml
@@ -210,10 +210,10 @@ Activates when an officer is recruited.
 
 **Optional options**
 
-- `OfficerInstanceID` **[Optional]:** Limits the trigger to one officer.
-- `FactionInstanceID` **[Optional]:** Limits the trigger to one recruiting faction.
-- `PlanetInstanceID` **[Optional]:** Limits the trigger to one recruitment planet.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `OfficerInstanceID` **[Optional]:** The `InstanceID` of the officer who must have been recruited.
+- `FactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have recruited the officer.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where recruitment must have occurred.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Officer`, `Faction`, and `Planet`.
 
 ```xml
@@ -230,10 +230,10 @@ Activates after a unit changes owner.
 
 **Optional options**
 
-- `UnitInstanceID` **[Optional]:** Limits the trigger to one unit.
-- `PreviousOwnerFactionInstanceID` **[Optional]:** Limits the trigger by previous owner.
-- `NewOwnerFactionInstanceID` **[Optional]:** Limits the trigger by new owner.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `UnitInstanceID` **[Optional]:** The `InstanceID` of the unit whose ownership must have changed.
+- `PreviousOwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have previously owned the unit.
+- `NewOwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must now own the unit.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Unit`, `PreviousOwner`, and `NewOwner`.
 
 ```xml
@@ -249,8 +249,8 @@ Activates when a unit is created.
 
 **Optional options**
 
-- `UnitInstanceID` **[Optional]:** Limits the trigger to one unit.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `UnitInstanceID` **[Optional]:** The `InstanceID` of the unit that must have been created.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Unit`.
 
 ```xml
@@ -265,8 +265,8 @@ Activates when a unit is destroyed.
 
 **Optional options**
 
-- `UnitInstanceID` **[Optional]:** Limits the trigger to one unit.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `UnitInstanceID` **[Optional]:** The `InstanceID` of the unit that must have been destroyed.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Unit`, `DestroyedBy`, and `Context`.
 
 ```xml
@@ -281,9 +281,9 @@ Activates when a unit finishes movement.
 
 **Optional options**
 
-- `UnitInstanceID` **[Optional]:** Limits the trigger to one arriving unit.
-- `DestinationInstanceID` **[Optional]:** Limits the trigger to one destination.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `UnitInstanceID` **[Optional]:** The `InstanceID` of the unit that must have arrived.
+- `DestinationInstanceID` **[Optional]:** The `InstanceID` of the destination where the unit must have arrived.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Unit`, `Destination`, and `MovementGroupID`.
 
 ```xml
@@ -301,11 +301,11 @@ Activates after a space battle resolves.
 
 **Optional options**
 
-- `PlanetInstanceID` **[Optional]:** Limits the trigger to combat at one planet.
-- `AttackerFactionInstanceID` **[Optional]:** Limits the trigger by attacker.
-- `DefenderFactionInstanceID` **[Optional]:** Limits the trigger by defender.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where combat must have occurred.
+- `AttackerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have attacked.
+- `DefenderFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have defended.
 - `Winner` **[Optional]:** Accepts `Attacker`, `Defender`, or `Draw`.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `AttackerFleet`, `DefenderFleet`, `Planet`, and `Winner`.
 
 ```xml
@@ -320,12 +320,12 @@ Activates after bombardment resolves.
 
 **Optional options**
 
-- `PlanetInstanceID` **[Optional]:** Limits the trigger to one planet.
-- `AttackerFactionInstanceID` **[Optional]:** Limits the trigger by attacker.
-- `DefenderFactionInstanceID` **[Optional]:** Limits the trigger by defender.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet that must have been bombarded.
+- `AttackerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have bombarded the planet.
+- `DefenderFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have defended the planet.
 - `Type` **[Optional]:** Accepts `Military`, `Civilian`, `General`, or `DestroyPlanet`.
 - `PlanetDestroyed` **[Optional]:** Limits the trigger by whether the planet was destroyed.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Planet`, `AttackingFaction`, `Type`, and `PlanetDestroyed`.
 
 ```xml
@@ -342,12 +342,12 @@ Activates after a planetary assault resolves.
 
 **Optional options**
 
-- `PlanetInstanceID` **[Optional]:** Limits the trigger to one planet.
-- `AttackerFactionInstanceID` **[Optional]:** Limits the trigger by attacker.
-- `DefenderFactionInstanceID` **[Optional]:** Limits the trigger by defender.
+- `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the assault must have occurred.
+- `AttackerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have launched the assault.
+- `DefenderFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have defended against the assault.
 - `Success` **[Optional]:** Limits the trigger by assault success.
 - `BlockedByShields` **[Optional]:** Limits the trigger by whether shields prevented the assault.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Planet`, `AttackingFaction`, `Success`, and `BlockedByShields`.
 
 ```xml
@@ -364,9 +364,9 @@ Activates after a duel resolves.
 
 **Optional options**
 
-- `FirstOfficerInstanceID` **[Optional]:** Limits the first officer.
-- `SecondOfficerInstanceID` **[Optional]:** Limits the second officer.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `FirstOfficerInstanceID` **[Optional]:** The `InstanceID` of the first officer who must have participated in the duel.
+- `SecondOfficerInstanceID` **[Optional]:** The `InstanceID` of the second officer who must have participated in the duel.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `FirstOfficer`, `SecondOfficer`, `FirstOfficerInstanceID`, `SecondOfficerInstanceID`, `Location`, `FirstOfficerCaptured`, `FirstOfficerInjury`, `SecondOfficerInjury`, `ImagePath`, and `AudioPath`.
 
 ```xml
@@ -389,10 +389,10 @@ Activates when a manufactured unit is deployed.
 
 **Optional options**
 
-- `FactionInstanceID` **[Optional]:** Limits the trigger to one manufacturing faction.
-- `UnitInstanceID` **[Optional]:** Limits the trigger to one deployed unit.
-- `LocationInstanceID` **[Optional]:** Limits the trigger to one deployment location.
-- `SourceEventInstanceID` **[Optional]:** Limits the trigger to results from one event.
+- `FactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must have completed manufacturing.
+- `UnitInstanceID` **[Optional]:** The `InstanceID` of the unit that must have been deployed.
+- `LocationInstanceID` **[Optional]:** The `InstanceID` of the location where the unit must have been deployed.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Faction`, `DeployedObject`, and `Location`.
 
 ```xml

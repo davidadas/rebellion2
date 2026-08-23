@@ -101,7 +101,7 @@ the schedule.
 
 **Required options**
 
-- `EventInstanceID` **[Required]:** ID of an event in the loaded catalog.
+- `EventInstanceID` **[Required]:** The `InstanceID` of the event in the loaded catalog.
 - `DelayTicks` **[Required]:** Non-negative delay after that activation.
 
 ```xml
@@ -117,7 +117,7 @@ the schedule.
 **Required options**
 
 - `DelayTicks` **[Required]:** Non-negative delay.
-- `Events` **[Required]:** Collection containing one or more unique event IDs.
+- `Events` **[Required]:** Contains one or more unique event `InstanceID` values.
 
 ```xml
 <Schedule>
@@ -139,7 +139,7 @@ ticks.
 **Required options**
 
 - `DelayTicks` **[Required]:** Non-negative delay.
-- `Events` **[Required]:** Collection containing one or more unique event IDs.
+- `Events` **[Required]:** Contains one or more unique event `InstanceID` values.
 
 ```xml
 <Schedule>

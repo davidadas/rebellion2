@@ -90,8 +90,9 @@ Faction files point to capital ships, starfighters, regiments, special forces, o
 data, themes, and encyclopedia entries. Pack-level definitions include planet sectors, buildings,
 events, and messages.
 
-IDs must be present and unique within their definition type. References between files use those
-IDs, so renaming one requires updating every reference to it. Event and message catalogs are
+`TypeID` and `InstanceID` values must be present and unique within their respective scopes.
+References between files use the appropriate identifier, so renaming one requires updating every
+reference to it. Event and message catalogs are
 separate files selected by `GameEventsPath` and `MessageDefinitionsPath` in `pack.xml`.
 
 ### UI appearance

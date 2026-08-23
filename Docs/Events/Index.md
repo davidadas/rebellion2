@@ -6,7 +6,7 @@ This guide explains the event lifecycle, where events are authored, and how each
 
 ## How events work
 
-Event definitions are loaded with the rest of the game data when a campaign begins. Before play, the game validates event IDs, schedules, trigger contracts, bindings, and dependencies. Runtime state is stored by `InstanceID`, including how many times an event has activated and when it may activate again.
+Event definitions are loaded with the rest of the game data when a campaign begins. Before play, the game validates event `InstanceID` values, schedules, trigger contracts, bindings, and dependencies. Runtime state is stored by `InstanceID`, including how many times an event has activated and when it may activate again.
 
 Events with schedules are considered on each campaign tick. Events with triggers enter evaluation
 after a matching simulation result is produced. Once selected, an event follows this pipeline:
