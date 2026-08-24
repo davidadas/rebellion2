@@ -239,16 +239,6 @@ namespace Rebellion.Tests.Util.Serialization
     public class GameSerializerTests
     {
         [Test]
-        public void GetPersistableTypes_RepeatedLookup_ReturnsCachedTypes()
-        {
-            IReadOnlyList<Type> first = ReflectionHelper.GetPersistableTypes(nameof(SimpleItem));
-            IReadOnlyList<Type> second = ReflectionHelper.GetPersistableTypes(nameof(SimpleItem));
-
-            Assert.AreSame(first, second);
-            CollectionAssert.Contains(first, typeof(SimpleItem));
-        }
-
-        [Test]
         public void Serialize_NamedScalarCollectionItems_RoundTripsConfiguredElementName()
         {
             GameSerializer serializer = new GameSerializer(typeof(ItemWithNamedCollectionItems));

@@ -947,7 +947,6 @@ namespace Rebellion.Util.Serialization
             | BindingFlags.Static;
 
         private static IDictionary<string, Type> _persistableObjectMap;
-        private static IDictionary<string, IReadOnlyList<Type>> _persistableTypesByName;
 
         // Reflection metadata is expensive to compute and stable per type, so it is memoized.
         private static readonly Dictionary<
@@ -1308,93 +1307,53 @@ namespace Rebellion.Util.Serialization
                 return _persistableObjectMap;
 
             Dictionary<string, Type> persistableMap = new Dictionary<string, Type>();
-            foreach (KeyValuePair<string, IReadOnlyList<Type>> entry in GetPersistableTypeMap())
+
+            foreach (
+                Type type in AppDomain
+                    .CurrentDomain.GetAssemblies()
+                    .SelectMany(a =>
+                    {
+                        try
+                        {
+                            return a.GetTypes();
+                        }
+                        catch (ReflectionTypeLoadException e)
+                        {
+                            return e.Types.Where(t => t != null);
+                        }
+                    })
+                    .Where(type => Attribute.IsDefined(type, typeof(PersistableObjectAttribute)))
+            )
             {
-                foreach (Type type in entry.Value)
-                    AddPersistableTypeName(persistableMap, entry.Key, type);
+                AddPersistableTypeName(persistableMap, GetPersistableElementName(type), type);
+                AddPersistableTypeName(persistableMap, type.Name, type);
             }
 
             _persistableObjectMap = persistableMap;
             return _persistableObjectMap;
         }
 
-        /// <summary>
-        /// Gets the concrete persistable types registered for an XML element name.
-        /// </summary>
-        /// <param name="elementName">The XML element name used to resolve the types.</param>
-        /// <returns>The matching concrete types.</returns>
-        public static IReadOnlyList<Type> GetPersistableTypes(string elementName)
+        public static IEnumerable<Type> GetPersistableTypes(string elementName)
         {
-            return GetPersistableTypeMap().TryGetValue(elementName, out IReadOnlyList<Type> types)
-                ? types
-                : Array.Empty<Type>();
-        }
-
-        /// <summary>
-        /// Gets the cached index of concrete persistable types by XML element name.
-        /// </summary>
-        /// <returns>The persistable type index.</returns>
-        private static IDictionary<string, IReadOnlyList<Type>> GetPersistableTypeMap()
-        {
-            if (_persistableTypesByName != null)
-                return _persistableTypesByName;
-
-            Dictionary<string, List<Type>> typesByName = new Dictionary<string, List<Type>>();
-            foreach (
-                Type type in AppDomain
-                    .CurrentDomain.GetAssemblies()
-                    .SelectMany(assembly =>
+            return AppDomain
+                .CurrentDomain.GetAssemblies()
+                .SelectMany(assembly =>
+                {
+                    try
                     {
-                        try
-                        {
-                            return assembly.GetTypes();
-                        }
-                        catch (ReflectionTypeLoadException exception)
-                        {
-                            return exception.Types.Where(candidate => candidate != null);
-                        }
-                    })
-                    .Where(type =>
-                        Attribute.IsDefined(type, typeof(PersistableObjectAttribute))
-                        && !type.IsAbstract
-                        && !type.IsInterface
-                    )
-            )
-            {
-                AddPersistableType(typesByName, GetPersistableElementName(type), type);
-                AddPersistableType(typesByName, type.Name, type);
-            }
-
-            _persistableTypesByName = typesByName.ToDictionary(
-                entry => entry.Key,
-                entry => (IReadOnlyList<Type>)entry.Value.ToArray()
-            );
-            return _persistableTypesByName;
-        }
-
-        /// <summary>
-        /// Adds a concrete persistable type to a named lookup without duplicating aliases.
-        /// </summary>
-        /// <param name="typesByName">The lookup receiving the type.</param>
-        /// <param name="name">The XML element name that resolves the type.</param>
-        /// <param name="type">The concrete persistable type.</param>
-        private static void AddPersistableType(
-            IDictionary<string, List<Type>> typesByName,
-            string name,
-            Type type
-        )
-        {
-            if (string.IsNullOrWhiteSpace(name))
-                return;
-
-            if (!typesByName.TryGetValue(name, out List<Type> types))
-            {
-                types = new List<Type>();
-                typesByName[name] = types;
-            }
-
-            if (!types.Contains(type))
-                types.Add(type);
+                        return assembly.GetTypes();
+                    }
+                    catch (ReflectionTypeLoadException exception)
+                    {
+                        return exception.Types.Where(type => type != null);
+                    }
+                })
+                .Where(type =>
+                    Attribute.IsDefined(type, typeof(PersistableObjectAttribute))
+                    && !type.IsAbstract
+                    && !type.IsInterface
+                    && (type.Name == elementName || GetPersistableElementName(type) == elementName)
+                );
         }
 
         /// <summary>
