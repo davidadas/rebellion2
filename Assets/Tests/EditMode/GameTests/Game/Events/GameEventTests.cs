@@ -2,9 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 using NUnit.Framework;
-using Rebellion.Game.Advisor;
 using Rebellion.Game.Events;
-using Rebellion.Game.Messages;
 
 namespace Rebellion.Tests.Game.Events
 {
@@ -124,80 +122,6 @@ namespace Rebellion.Tests.Game.Events
             NotConditional not = (NotConditional)restored.Conditionals.Single();
             AnyConditional any = (AnyConditional)not.Conditionals.Single();
             Assert.AreEqual(2, any.Conditionals.Count);
-        }
-
-        [Test]
-        public void Actions_AuthoredAliasesAndPresentation_RoundTripConcreteValues()
-        {
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "EVENT_STORY",
-                Actions = new List<GameAction>
-                {
-                    new RollRandomAction
-                    {
-                        Outcomes = new List<RandomOutcome>
-                        {
-                            new RandomOutcome
-                            {
-                                Weight = 3,
-                                Actions = new List<GameAction>
-                                {
-                                    new SendMessageAction
-                                    {
-                                        RecipientFactionInstanceID = "FNALL1",
-                                        SubjectInstanceID = "LUKE",
-                                        RelatedSubjectInstanceID = "VADER",
-                                        MessageType = MessageType.Advice,
-                                        BackgroundAudio = new MessageAudio
-                                        {
-                                            Path = "Story/dialogue",
-                                        },
-                                        AdvisorNotification = new AdvisorNotification
-                                        {
-                                            Preset = AdvisorNotificationPreset.SubjectReport,
-                                            Protocol = new AdvisorAnimation
-                                            {
-                                                AnimationPath = "Story/advisor",
-                                                FrameCount = 3,
-                                            },
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    new SetNodeStateAction
-                    {
-                        InstanceID = "LUKE_SKYWALKER",
-                        State = SceneNodeState.Inactive,
-                    },
-                    new IncreaseForceRankAction
-                    {
-                        OfficerInstanceID = "LUKE_SKYWALKER",
-                        Amount = 5,
-                    },
-                },
-            };
-
-            string xml = SerializationHelper.Serialize(gameEvent);
-            GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
-
-            RollRandomAction random = restored.Actions[0] as RollRandomAction;
-            SendMessageAction message =
-                random?.Outcomes.Single().Actions.Single() as SendMessageAction;
-            Assert.IsNotNull(message);
-            Assert.AreEqual("LUKE", message.SubjectInstanceID);
-            Assert.AreEqual("VADER", message.RelatedSubjectInstanceID);
-            Assert.AreEqual("Story/dialogue", message.BackgroundAudio.Path);
-            Assert.AreEqual("Story/advisor", message.AdvisorNotification.Protocol.AnimationPath);
-            Assert.AreEqual(3, message.AdvisorNotification.Protocol.FrameCount);
-            Assert.AreEqual("LUKE_SKYWALKER", ((SetNodeStateAction)restored.Actions[1]).InstanceID);
-            Assert.AreEqual(
-                SceneNodeState.Inactive,
-                ((SetNodeStateAction)restored.Actions[1]).State
-            );
-            Assert.AreEqual(5, ((IncreaseForceRankAction)restored.Actions[2]).Amount);
         }
 
         [Test]

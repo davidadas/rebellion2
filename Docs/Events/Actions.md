@@ -55,7 +55,7 @@ Conditionally executes one action collection.
 </If>
 ```
 
-### RollRandom
+### RollOutcome
 
 Executes one randomly selected eligible outcome.
 
@@ -73,13 +73,13 @@ Outcomes whose conditionals fail are excluded. Weights are relative, so weights 
 a 30/70 split. The action does nothing when no outcome remains eligible.
 
 ```xml
-<RollRandom>
+<RollOutcome>
   <Outcomes>
     <Outcome Weight="30">
       <Actions>
-        <ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
+        <ChangeRawResourceNodes PlanetInstanceID="NABOO">
           <Amount>1</Amount>
-        </ChangePlanetStat>
+        </ChangeRawResourceNodes>
       </Actions>
     </Outcome>
     <Outcome Weight="70">
@@ -91,7 +91,29 @@ a 30/70 split. The action does nothing when no outcome remains eligible.
       </Actions>
     </Outcome>
   </Outcomes>
-</RollRandom>
+</RollOutcome>
+```
+
+### RollChance
+
+Executes an action collection when one probability roll succeeds.
+
+**Required options**
+
+- `Probability` **[Required]:** A fixed probability from `0` through `1`; use this, `ProbabilityBinding`, or `RollDouble`.
+- `ProbabilityBinding` **[Required]:** A binding containing a probability from `0` through `1`; use this, `Probability`, or `RollDouble`.
+- `RollDouble` **[Required]:** Generates the probability from its inclusive `Minimum` and exclusive `Maximum`; use this, `Probability`, or `ProbabilityBinding`.
+- `Actions` **[Required]:** The actions executed when the probability roll succeeds.
+
+```xml
+<RollChance Probability="0.25">
+  <Actions>
+    <SendMessage RecipientFactionInstanceID="FNALL1" Type="Advice">
+      <Subject>Discovery</Subject>
+      <Body>Scouts discovered something useful.</Body>
+    </SendMessage>
+  </Actions>
+</RollChance>
 ```
 
 ### PerformSkillCheck
@@ -141,7 +163,9 @@ Updates a saved integer shared by all events.
 **Required options**
 
 - `Key` **[Required]:** The persistent key identifying the event variable.
-- `Operand` **[Required]:** The integer used by the selected operation.
+- `Operand` **[Required]:** The fixed integer used by the selected operation; use this, `OperandBinding`, or `RollInteger`.
+- `OperandBinding` **[Required]:** A binding containing the operation's integer; use this, `Operand`, or `RollInteger`.
+- `RollInteger` **[Required]:** Generates the operation's integer from its inclusive `Minimum` and `Maximum`; use this, `Operand`, or `OperandBinding`.
 
 **Optional options**
 
@@ -230,49 +254,97 @@ Delivers a strategy message to an explicitly identified faction.
 
 ## Planets and resources
 
-### ChangePlanetStat
+### ChangeEnergyCapacity
 
-Adjusts one stat on one or more planets.
+Adjusts the energy capacity of one or more planets without reducing it below zero.
 
 **Required options**
 
-- `Stat` **[Required]:** The planet stat to adjust: `RawResourceNodes` or `EnergyCapacity`.
 - `PlanetInstanceID` **[Required]:** The `InstanceID` of a planet to adjust; at least one planet source must be provided, and `PlanetBinding` takes precedence when both attributes are present.
 - `PlanetBinding` **[Required]:** A binding that resolves a planet to adjust; at least one planet source must be provided, and this takes precedence over `PlanetInstanceID`.
 - `Planets` **[Required]:** The selectors identifying planets to adjust; at least one planet source must be provided, and these may be combined with the direct or bound planet.
-- `Amount` **[Required]:** Signed fixed adjustment; use either this or `PercentOfCurrent`.
-- `PercentOfCurrent` **[Required]:** Signed percentage adjustment; use either this or `Amount`.
+- `Amount` **[Required]:** A signed fixed adjustment; use this, `AmountBinding`, `RollInteger`, or `PercentOfCurrent`.
+- `AmountBinding` **[Required]:** A binding containing a signed adjustment; use this, `Amount`, `RollInteger`, or `PercentOfCurrent`.
+- `RollInteger` **[Required]:** Generates a signed adjustment from its inclusive `Minimum` and `Maximum`; use this, `Amount`, `AmountBinding`, or `PercentOfCurrent`.
+- `PercentOfCurrent` **[Required]:** A signed percentage of the current value; use this, `Amount`, `AmountBinding`, or `RollInteger`.
 
 ```xml
-<ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
-  <Amount>5</Amount>
-</ChangePlanetStat>
+<ChangeEnergyCapacity PlanetInstanceID="NABOO">
+  <RollInteger Minimum="1" Maximum="3"/>
+</ChangeEnergyCapacity>
 ```
 
-Values cannot fall below zero.
+### ChangePopularSupport
 
-### DamagePlanetStats
+Adjusts one faction's popular support on one or more planets and applies the planet's normal support-rebalancing rules.
 
-Randomly removes points from selected planet stats without reducing them below zero.
+**Required options**
+
+- `FactionInstanceID` **[Required]:** The `InstanceID` of the faction whose support changes.
+- `PlanetInstanceID` **[Required]:** The `InstanceID` of a planet to adjust; use this, `PlanetBinding`, or `Planets`.
+- `PlanetBinding` **[Required]:** A binding that resolves a planet to adjust; use this, `PlanetInstanceID`, or `Planets`.
+- `Planets` **[Required]:** The selectors identifying planets to adjust; use this, `PlanetInstanceID`, or `PlanetBinding`.
+- `Amount` **[Required]:** A signed fixed adjustment; use this, `AmountBinding`, `RollInteger`, or `PercentOfCurrent`.
+- `AmountBinding` **[Required]:** A binding containing a signed adjustment; use this, `Amount`, `RollInteger`, or `PercentOfCurrent`.
+- `RollInteger` **[Required]:** Generates a signed adjustment from its inclusive `Minimum` and `Maximum`; use this, `Amount`, `AmountBinding`, or `PercentOfCurrent`.
+- `PercentOfCurrent` **[Required]:** A signed percentage of the faction's current support; use this, `Amount`, `AmountBinding`, or `RollInteger`.
+
+```xml
+<ChangePopularSupport PlanetInstanceID="NABOO" FactionInstanceID="FNALL1">
+  <Amount>10</Amount>
+</ChangePopularSupport>
+```
+
+### ChangeRawResourceNodes
+
+Adjusts the raw-resource nodes of one or more planets without reducing them below zero. It supports the same planet targets and adjustment modes as `ChangeEnergyCapacity`.
+
+```xml
+<ChangeRawResourceNodes PlanetBinding="$planet">
+  <Amount>1</Amount>
+</ChangeRawResourceNodes>
+```
+
+### DamagePlanetResources
+
+Randomly removes raw-resource nodes and energy capacity without reducing either below zero.
 
 **Required options**
 
 - `PlanetInstanceID` **[Required]:** The `InstanceID` of the affected planet; use either this or `PlanetBinding`.
 - `PlanetBinding` **[Required]:** A binding that resolves the affected planet; use either this or `PlanetInstanceID`.
-- `LossProbabilityPerResource` **[Required]:** Probability from `0` through `1`, rolled independently for each current point.
-- `MinimumTotalLoss` **[Required]:** Minimum combined loss, capped by the total available points.
-- `Stats` **[Required]:** One or more planet stats from which points may be removed.
-- `Name` **[Required]:** The stat selected by each `Stat` element: `RawResourceNodes` or `EnergyCapacity`.
+- `LossProbabilityPerResource` **[Required]:** A fixed probability from `0` through `1`, rolled independently for each current point; use this, `ProbabilityBinding`, or `RollDouble`.
+- `ProbabilityBinding` **[Required]:** A binding containing the per-point probability; use this, `LossProbabilityPerResource`, or `RollDouble`.
+- `RollDouble` **[Required]:** Generates the per-point probability from its inclusive `Minimum` and exclusive `Maximum`; use this, `LossProbabilityPerResource`, or `ProbabilityBinding`.
+
+**Optional options**
+
+- `MinimumTotalLoss` **[Optional]:** The minimum combined loss, capped by the available points; defaults to `1`.
 
 ```xml
-<DamagePlanetStats PlanetInstanceID="NABOO"
-                   LossProbabilityPerResource="0.05"
-                   MinimumTotalLoss="1">
-  <Stats>
-    <Stat Name="RawResourceNodes"/>
-    <Stat Name="EnergyCapacity"/>
-  </Stats>
-</DamagePlanetStats>
+<DamagePlanetResources PlanetInstanceID="NABOO"
+                       LossProbabilityPerResource="0.05"
+                       MinimumTotalLoss="1"/>
+```
+
+### SetPopularSupport
+
+Sets one faction's popular support on one or more planets to an absolute value and applies the planet's normal support-rebalancing rules.
+
+**Required options**
+
+- `FactionInstanceID` **[Required]:** The `InstanceID` of the faction whose support is set.
+- `PlanetInstanceID` **[Required]:** The `InstanceID` of a planet to update; use this, `PlanetBinding`, or `Planets`.
+- `PlanetBinding` **[Required]:** A binding that resolves a planet to update; use this, `PlanetInstanceID`, or `Planets`.
+- `Planets` **[Required]:** The selectors identifying planets to update; use this, `PlanetInstanceID`, or `PlanetBinding`.
+- `Support` **[Required]:** A fixed support value; use this, `SupportBinding`, or `RollInteger`.
+- `SupportBinding` **[Required]:** A binding containing the support value; use this, `Support`, or `RollInteger`.
+- `RollInteger` **[Required]:** Generates the support value from its inclusive `Minimum` and `Maximum`; use this, `Support`, or `SupportBinding`.
+
+```xml
+<SetPopularSupport PlanetInstanceID="NABOO" FactionInstanceID="FNALL1">
+  <Support>50</Support>
+</SetPopularSupport>
 ```
 
 ## Units and ownership
@@ -432,6 +504,8 @@ Adjusts one rating for one or more officers.
 - `Officers` **[Required]:** The selectors identifying officers to adjust; at least one officer source must be provided and this may be combined with `OfficerInstanceID`.
 - `ReferenceOfficerInstanceID` **[Required]:** The `InstanceID` of the comparison officer when using `PercentOfPositiveGap`.
 - `Amount` **[Required]:** Signed integer added to the stored rating; use exactly one adjustment option.
+- `AmountBinding` **[Required]:** A binding containing the signed integer added to the stored rating; use exactly one adjustment option.
+- `RollInteger` **[Required]:** Generates the signed integer adjustment from its inclusive `Minimum` and `Maximum`; use exactly one adjustment option.
 - `PercentOfStored` **[Required]:** Signed change calculated from the stored rating; use exactly one adjustment option.
 - `PercentOfEffective` **[Required]:** Signed change calculated from the effective rating and applied to the stored rating; use exactly one adjustment option.
 - `PercentOfPositiveGap` **[Required]:** Non-negative percentage of the effective-rating gap to `ReferenceOfficerInstanceID`; use exactly one adjustment option.
@@ -456,6 +530,8 @@ Increases Force progression for one or more officers.
 - `Officers` **[Required]:** The selectors identifying officers whose Force progression will increase; at least one officer source must be provided and this may be combined with `OfficerInstanceID`.
 - `ReferenceOfficerInstanceID` **[Required]:** The `InstanceID` of the comparison officer when using `PercentOfPositiveGap`.
 - `Amount` **[Required]:** Positive fixed adjustment; use exactly one adjustment option.
+- `AmountBinding` **[Required]:** A binding containing the positive fixed adjustment; use exactly one adjustment option.
+- `RollInteger` **[Required]:** Generates the positive adjustment from its inclusive `Minimum` and `Maximum`; use exactly one adjustment option.
 - `PercentOfStored` **[Required]:** Positive change calculated from `ForceValue`; use exactly one adjustment option.
 - `PercentOfEffective` **[Required]:** Positive change calculated from the effective `ForceRank`; use exactly one adjustment option.
 - `PercentOfPositiveGap` **[Required]:** Positive percentage of the effective-rank gap to `ReferenceOfficerInstanceID`; use exactly one adjustment option.

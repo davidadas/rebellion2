@@ -27,29 +27,57 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Bind")]
     public sealed class GameEventBinding
     {
-        /// <summary>Gets or sets the stable trigger argument to expose.</summary>
+        // Trigger Source.
         [PersistableAttribute]
         public string Argument { get; set; }
 
-        /// <summary>Gets or sets the event-local name assigned to the value.</summary>
+        // Binding Alias.
         [PersistableAttribute]
         public string As { get; set; }
 
+        // Event Source.
         [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
-        /// <summary>Selects exactly one scene node and stores it in the evaluation context.</summary>
+        public RollInteger RollInteger { get; set; }
+        public RollDouble RollDouble { get; set; }
+
+        /// <summary>
+        /// Resolves the authored source and stores its value in the evaluation context.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">The random-number provider used by selectors and rolls.</param>
+        /// <param name="context">The event evaluation context that receives the binding.</param>
         internal void Bind(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventEvaluationContext context
         )
         {
+            int modeCount =
+                (Selectors.Count > 0 ? 1 : 0)
+                + (RollInteger != null ? 1 : 0)
+                + (RollDouble != null ? 1 : 0);
+            if (modeCount != 1)
+                throw new InvalidOperationException(
+                    $"Binding '{As}' requires exactly one selector, RollInteger, or RollDouble."
+                );
+
+            if (RollInteger != null)
+            {
+                context.Bind(As, RollInteger.Roll(provider));
+                return;
+            }
+            if (RollDouble != null)
+            {
+                context.Bind(As, RollDouble.Roll(provider));
+                return;
+            }
+
             if (Selectors.Count != 1)
                 throw new InvalidOperationException(
                     $"Selection binding '{As}' requires exactly one selector."
                 );
-
             ISceneNode[] values = Selectors[0].Select(game, provider, context).Distinct().ToArray();
             if (values.Length != 1)
                 throw new InvalidOperationException(
@@ -76,7 +104,11 @@ namespace Rebellion.Game.Events
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
-        /// <summary>Returns whether the event remains below its authored activation limit.</summary>
+        /// <summary>
+        /// Returns whether the event remains below its authored activation limit.
+        /// </summary>
+        /// <param name="state">The persisted runtime state for the event.</param>
+        /// <returns>True when the event may activate again.</returns>
         internal bool CanActivate(GameEventState state) =>
             !state.IsComplete
             && (!MaximumActivations.HasValue || state.ActivationCount < MaximumActivations.Value);
