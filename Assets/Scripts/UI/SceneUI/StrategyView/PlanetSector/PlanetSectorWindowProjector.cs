@@ -294,6 +294,11 @@ internal sealed class PlanetSectorWindowProjector
         if (planet?.IsPopulated() != true)
             return CreateHiddenBar();
 
+        string opposingFactionId = GetOpposingFactionID(uiContext);
+        int opposingSupport = string.IsNullOrEmpty(opposingFactionId)
+            ? 0
+            : planet.GetPopularSupport(opposingFactionId);
+
         return new PlanetSectorBarRenderData(
             true,
             0,
@@ -301,6 +306,8 @@ internal sealed class PlanetSectorWindowProjector
             support / 100f,
             uiContext.GetPlayerFactionTheme()?.GetPrimaryColor() ?? Color.white,
             Color.clear,
+            Color.black,
+            opposingSupport / 100f,
             GetOpposingSupportColor(uiContext)
         );
     }
@@ -343,14 +350,24 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>The opposing faction color.</returns>
     private static Color32 GetOpposingSupportColor(UIContext uiContext)
     {
+        string opposingFactionId = GetOpposingFactionID(uiContext);
+        return uiContext.GetTheme(opposingFactionId)?.GetPrimaryColor() ?? Color.white;
+    }
+
+    /// <summary>
+    /// Gets the faction displayed opposite the player in the popular-support bar.
+    /// </summary>
+    /// <param name="uiContext">The current strategy presentation context.</param>
+    /// <returns>The opposing faction instance ID, or null when none exists.</returns>
+    private static string GetOpposingFactionID(UIContext uiContext)
+    {
         string playerFactionId = uiContext.GetPlayerFactionInstanceID();
-        string opposingFactionId = uiContext
+        return uiContext
             .Game?.GetFactions()
             ?.FirstOrDefault(faction =>
                 !string.Equals(faction.InstanceID, playerFactionId, StringComparison.Ordinal)
             )
             ?.InstanceID;
-        return uiContext.GetTheme(opposingFactionId)?.GetPrimaryColor() ?? Color.white;
     }
 
     /// <summary>

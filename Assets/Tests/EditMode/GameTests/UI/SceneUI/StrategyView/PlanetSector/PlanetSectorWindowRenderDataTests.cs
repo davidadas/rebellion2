@@ -21,9 +21,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 0.5f,
                 new Color32(1, 2, 3, 4),
                 new Color32(5, 6, 7, 8),
-                new Color32(9, 10, 11, 12)
+                new Color32(9, 10, 11, 12),
+                0.25f,
+                new Color32(13, 14, 15, 16)
             );
             _texture = new Texture2D(1, 1);
+        }
+
+        [Test]
+        public void Bar_SecondaryFill_PreservesRatioAndColor()
+        {
+            Assert.AreEqual(0.25f, _bar.SecondaryFillRatio);
+            Assert.AreEqual(new Color32(13, 14, 15, 16), _bar.SecondaryFillColor);
         }
 
         [TearDown]

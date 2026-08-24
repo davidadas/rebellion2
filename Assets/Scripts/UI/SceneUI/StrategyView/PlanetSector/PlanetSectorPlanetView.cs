@@ -85,6 +85,9 @@ public sealed class PlanetSectorPlanetView
     [SerializeField]
     private Image supportBarFillImage;
 
+    [SerializeField]
+    private Image supportBarSecondaryFillImage;
+
     private PlanetSectorBarView energyBar;
     private PlanetSectorPlanetRenderData lastRenderData;
     private PlanetSectorBarView rawBar;
@@ -587,7 +590,8 @@ public sealed class PlanetSectorPlanetView
             supportBarRoot,
             supportBarBackgroundImage,
             supportBarFillImage,
-            Array.Empty<Image>()
+            Array.Empty<Image>(),
+            supportBarSecondaryFillImage
         );
     }
 
@@ -626,7 +630,11 @@ public sealed class PlanetSectorPlanetView
         if (rawBarBackgroundImage == null || rawBarFillImage == null)
             throw new MissingReferenceException($"{name}/RawBar images are missing.");
         VerifySegmentedBarReferences("RawBar", rawBarCellImages);
-        if (supportBarBackgroundImage == null || supportBarFillImage == null)
+        if (
+            supportBarBackgroundImage == null
+            || supportBarFillImage == null
+            || supportBarSecondaryFillImage == null
+        )
             throw new MissingReferenceException($"{name}/SupportBar images are missing.");
     }
 
@@ -665,6 +673,8 @@ public sealed class PlanetSectorPlanetView
         private readonly RectInt fillTemplate;
         private readonly RectTransform root;
         private readonly RectInt rootTemplate;
+        private readonly Image secondaryFill;
+        private readonly RectInt secondaryFillTemplate;
 
         /// <summary>
         /// Creates a bar renderer from authored child components.
@@ -673,20 +683,27 @@ public sealed class PlanetSectorPlanetView
         /// <param name="background">The authored background image.</param>
         /// <param name="fill">The authored continuous fill image.</param>
         /// <param name="cells">The authored segmented cells.</param>
+        /// <param name="secondaryFill">The optional secondary continuous fill image.</param>
         public PlanetSectorBarView(
             RectTransform root,
             Image background,
             Image fill,
-            IReadOnlyList<Image> cells
+            IReadOnlyList<Image> cells,
+            Image secondaryFill = null
         )
         {
             this.root = root;
             this.background = background;
             this.fill = fill;
             this.cells = cells ?? Array.Empty<Image>();
+            this.secondaryFill = secondaryFill;
             rootTemplate = UILayout.GetSourceRect(root);
             backgroundTemplate = UILayout.GetSourceRect(background.rectTransform);
             fillTemplate = UILayout.GetSourceRect(fill.rectTransform);
+            secondaryFillTemplate =
+                secondaryFill == null
+                    ? default
+                    : UILayout.GetSourceRect(secondaryFill.rectTransform);
             cellTemplate = default;
             cellStride = 0;
             if (this.cells.Count >= 2)
@@ -758,16 +775,38 @@ public sealed class PlanetSectorPlanetView
             int fillWidth = Mathf.RoundToInt(Mathf.Clamp01(data.FillRatio) * continuousWidth);
             bool visible = fillWidth > 0 && data.FillColor.a > 0;
             fill.gameObject.SetActive(visible);
-            if (!visible)
+            if (visible)
+            {
+                fill.color = data.FillColor;
+                UILayout.SetSourceRect(
+                    fill.rectTransform,
+                    fillTemplate.x,
+                    fillTemplate.y,
+                    fillWidth,
+                    fillTemplate.height
+                );
+            }
+
+            if (secondaryFill == null)
                 return;
 
-            fill.color = data.FillColor;
+            int maximumSecondaryWidth = continuousWidth - fillWidth;
+            int secondaryFillWidth = Mathf.Min(
+                Mathf.RoundToInt(Mathf.Clamp01(data.SecondaryFillRatio) * continuousWidth),
+                maximumSecondaryWidth
+            );
+            bool secondaryVisible = secondaryFillWidth > 0 && data.SecondaryFillColor.a > 0;
+            secondaryFill.gameObject.SetActive(secondaryVisible);
+            if (!secondaryVisible)
+                return;
+
+            secondaryFill.color = data.SecondaryFillColor;
             UILayout.SetSourceRect(
-                fill.rectTransform,
-                fillTemplate.x,
-                fillTemplate.y,
-                fillWidth,
-                fillTemplate.height
+                secondaryFill.rectTransform,
+                secondaryFillTemplate.x + continuousWidth - secondaryFillWidth,
+                secondaryFillTemplate.y,
+                secondaryFillWidth,
+                secondaryFillTemplate.height
             );
         }
 

@@ -192,9 +192,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 (Color32)playerTheme.GetPrimaryColor(),
                 presentation.SupportBar.FillColor
             );
+            Assert.AreEqual((Color32)Color.black, presentation.SupportBar.BackgroundColor);
+            Assert.AreEqual(0.25f, presentation.SupportBar.SecondaryFillRatio);
             Assert.AreEqual(
                 (Color32)opposingTheme.GetPrimaryColor(),
-                presentation.SupportBar.BackgroundColor
+                presentation.SupportBar.SecondaryFillColor
             );
         }
 

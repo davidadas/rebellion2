@@ -61,7 +61,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 PlanetIcon.Mission,
                 CreateSegmentedBar(true, 4, 2),
                 CreateSegmentedBar(false, 0, 0),
-                CreateContinuousBar(true, 0.5f)
+                CreateContinuousBar(true, 0.5f, 0.25f)
             );
             RectInt planetTemplate = GetSourceRect(GetField<RawImage>("planetImage").transform);
 
@@ -108,11 +108,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             RawImage planetImage = GetField<RawImage>("planetImage");
             Image supportFill = GetField<Image>("supportBarFillImage");
+            Image supportSecondaryFill = GetField<Image>("supportBarSecondaryFillImage");
+            RectInt supportBarBounds = GetSourceRect(
+                GetField<Image>("supportBarBackgroundImage").transform
+            );
             Assert.IsTrue(GetField<RectTransform>("supportBarRoot").gameObject.activeSelf);
             Assert.IsTrue(supportFill.gameObject.activeSelf);
+            Assert.IsTrue(supportSecondaryFill.gameObject.activeSelf);
             Assert.AreEqual(
                 Mathf.RoundToInt(planetTemplate.width * 0.5f),
                 GetSourceRect(supportFill.transform).width
+            );
+            RectInt secondaryFillBounds = GetSourceRect(supportSecondaryFill.transform);
+            Assert.AreEqual(
+                Mathf.RoundToInt(planetTemplate.width * 0.25f),
+                secondaryFillBounds.width
+            );
+            Assert.AreEqual(
+                supportBarBounds.xMax - secondaryFillBounds.width,
+                secondaryFillBounds.x
             );
             Assert.IsTrue(_view.gameObject.activeSelf);
             Assert.IsTrue(planetImage.raycastTarget);
@@ -134,6 +148,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(GetField<Image>("energyBarFillImage").gameObject.activeSelf);
             Assert.IsFalse(GetField<Image>("rawBarFillImage").gameObject.activeSelf);
             Assert.IsFalse(GetField<Image>("supportBarFillImage").gameObject.activeSelf);
+            Assert.IsFalse(GetField<Image>("supportBarSecondaryFillImage").gameObject.activeSelf);
+        }
+
+        [Test]
+        public void Render_SecondaryContinuousFillWithoutPrimaryFill_RendersFromRight()
+        {
+            PlanetSectorPlanetRenderData data = CreateData(
+                PlanetIcon.None,
+                PlanetIcon.None,
+                CreateContinuousBar(true, 0f),
+                CreateContinuousBar(true, 0f),
+                CreateContinuousBar(true, 0f, 0.4f)
+            );
+            RectInt template = GetSourceRect(
+                GetField<Image>("supportBarBackgroundImage").transform
+            );
+
+            _view.Render(data, new Vector2Int(200, 150));
+
+            Assert.IsFalse(GetField<Image>("supportBarFillImage").gameObject.activeSelf);
+            Image secondaryFill = GetField<Image>("supportBarSecondaryFillImage");
+            Assert.IsTrue(secondaryFill.gameObject.activeSelf);
+            RectInt bounds = GetSourceRect(secondaryFill.transform);
+            Assert.AreEqual(Mathf.RoundToInt(template.width * 0.4f), bounds.width);
+            Assert.AreEqual(template.xMax - bounds.width, bounds.x);
         }
 
         [Test]
@@ -335,7 +374,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
-        private static PlanetSectorBarRenderData CreateContinuousBar(bool visible, float ratio)
+        private static PlanetSectorBarRenderData CreateContinuousBar(
+            bool visible,
+            float ratio,
+            float secondaryRatio = 0f
+        )
         {
             return new PlanetSectorBarRenderData(
                 visible,
@@ -344,7 +387,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 ratio,
                 new Color32(0, 255, 0, 255),
                 default,
-                new Color32(0, 0, 0, 255)
+                new Color32(0, 0, 0, 255),
+                secondaryRatio,
+                new Color32(255, 0, 0, 255)
             );
         }
 

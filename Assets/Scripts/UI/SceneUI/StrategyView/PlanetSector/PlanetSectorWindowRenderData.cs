@@ -158,6 +158,8 @@ public sealed class PlanetSectorBarRenderData
     /// <param name="fillColor">The occupied or continuous fill color.</param>
     /// <param name="emptyColor">The unoccupied segmented cell color.</param>
     /// <param name="backgroundColor">The bar background color.</param>
+    /// <param name="secondaryFillRatio">The normalized secondary continuous fill ratio.</param>
+    /// <param name="secondaryFillColor">The secondary continuous fill color.</param>
     public PlanetSectorBarRenderData(
         bool visible,
         int cellCount,
@@ -165,7 +167,9 @@ public sealed class PlanetSectorBarRenderData
         float fillRatio,
         Color32 fillColor,
         Color32 emptyColor,
-        Color32 backgroundColor
+        Color32 backgroundColor,
+        float secondaryFillRatio = 0f,
+        Color32 secondaryFillColor = default
     )
     {
         Visible = visible;
@@ -175,6 +179,8 @@ public sealed class PlanetSectorBarRenderData
         FillColor = fillColor;
         EmptyColor = emptyColor;
         BackgroundColor = backgroundColor;
+        SecondaryFillRatio = secondaryFillRatio;
+        SecondaryFillColor = secondaryFillColor;
     }
 
     public Color32 BackgroundColor { get; }
@@ -188,6 +194,10 @@ public sealed class PlanetSectorBarRenderData
     public float FillRatio { get; }
 
     public int LitCells { get; }
+
+    public Color32 SecondaryFillColor { get; }
+
+    public float SecondaryFillRatio { get; }
 
     public bool Visible { get; }
 }

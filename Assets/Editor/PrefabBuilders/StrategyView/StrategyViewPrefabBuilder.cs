@@ -7235,6 +7235,7 @@ public static class StrategyViewPrefabBuilder
         AssignReferenceArray(planetView, "rawBarCellImages", rawBar.Cells);
         AssignReference(planetView, "supportBarBackgroundImage", supportBar.Background);
         AssignReference(planetView, "supportBarFillImage", supportBar.Fill);
+        AssignReference(planetView, "supportBarSecondaryFillImage", supportBar.SecondaryFill);
 
         root.SetActive(true);
         GameObject saved = SaveGeneratedPrefabAsset(root, _planetSectorPlanetPrefabPath);
@@ -7974,7 +7975,7 @@ public static class StrategyViewPrefabBuilder
             cells.Add(cell);
         }
 
-        return new BarPrefabParts(root, background, fill, cells);
+        return new BarPrefabParts(root, background, fill, null, cells);
     }
 
     /// <summary>
@@ -8037,13 +8038,16 @@ public static class StrategyViewPrefabBuilder
         RectTransform root = CreateChildLayer(name, parent);
         SetSourceRect(root, 10, y, _planetPreviewWidth, 3);
         Image background = CreateImage("BackgroundImage", root);
-        background.color = Color.green;
+        background.color = Color.black;
         SetSourceRect(background.rectTransform, 0, 0, _planetPreviewWidth, 3);
 
         Image fill = CreateImage("FillImage", root);
         fill.color = color;
         SetSourceRect(fill.rectTransform, 0, 0, 24, 3);
-        return new BarPrefabParts(root, background, fill, new List<Image>());
+
+        Image secondaryFill = CreateImage("SecondaryFillImage", root);
+        SetSourceRect(secondaryFill.rectTransform, 0, 0, 24, 3);
+        return new BarPrefabParts(root, background, fill, secondaryFill, new List<Image>());
     }
 
     /// <summary>
@@ -8525,17 +8529,20 @@ public static class StrategyViewPrefabBuilder
         /// <param name="root">The bar root.</param>
         /// <param name="background">The background image.</param>
         /// <param name="fill">The fill image.</param>
+        /// <param name="secondaryFill">The optional secondary fill image.</param>
         /// <param name="cells">The optional segmented cell images.</param>
         public BarPrefabParts(
             RectTransform root,
             Image background,
             Image fill,
+            Image secondaryFill,
             IReadOnlyList<Image> cells
         )
         {
             Root = root;
             Background = background;
             Fill = fill;
+            SecondaryFill = secondaryFill;
             Cells = cells;
         }
 
@@ -8544,6 +8551,8 @@ public static class StrategyViewPrefabBuilder
         public Image Background { get; }
 
         public Image Fill { get; }
+
+        public Image SecondaryFill { get; }
 
         public IReadOnlyList<Image> Cells { get; }
     }
