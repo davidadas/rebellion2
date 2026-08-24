@@ -32,27 +32,17 @@ namespace Rebellion.AI.Phases
             if (context?.Proposals == null)
                 return selectedProposals;
 
-            HashSet<string> claimedKeys = new HashSet<string>(StringComparer.Ordinal);
-            int selectedMaintenanceCost = 0;
+            AIProposalSelectionPolicy selectionPolicy = new AIProposalSelectionPolicy();
             float minimumSelectableScore = GetMinimumSelectableScore(context);
             foreach (AIProposal proposal in GetSortedProposals(context.Proposals))
             {
                 if (!proposal.HasScore || proposal.Score <= minimumSelectableScore)
                     continue;
 
-                if (proposal?.CanSelect(context) != true)
+                if (!selectionPolicy.TrySelect(context, proposal))
                     continue;
 
-                IReadOnlyList<string> claimKeys = proposal.GetClaimKeys() ?? Array.Empty<string>();
-                if (HasClaimConflict(claimedKeys, claimKeys))
-                    continue;
-
-                if (WouldExceedMaintenanceHeadroom(context, proposal, selectedMaintenanceCost))
-                    continue;
-
-                ClaimKeys(claimedKeys, claimKeys);
                 selectedProposals.Add(proposal);
-                selectedMaintenanceCost += GetMaintenanceCost(proposal);
             }
 
             return selectedProposals;
@@ -74,73 +64,13 @@ namespace Rebellion.AI.Phases
         /// </summary>
         /// <param name="proposals">The proposals to sort.</param>
         /// <returns>Sorted proposals.</returns>
-        private IEnumerable<AIProposal> GetSortedProposals(IEnumerable<AIProposal> proposals)
+        private static IEnumerable<AIProposal> GetSortedProposals(IEnumerable<AIProposal> proposals)
         {
             return proposals
                 .Where(proposal => proposal != null)
                 .OrderByDescending(proposal => proposal.Score)
                 .ThenBy(proposal => proposal.GetType().Name, StringComparer.Ordinal)
                 .ThenBy(proposal => proposal.GetSortKey(), StringComparer.Ordinal);
-        }
-
-        /// <summary>
-        /// Returns whether any proposal claim is already held.
-        /// </summary>
-        /// <param name="claimedKeys">Claims already selected this turn.</param>
-        /// <param name="claimKeys">Claims requested by a proposal.</param>
-        /// <returns>True if any requested claim is already held.</returns>
-        private bool HasClaimConflict(HashSet<string> claimedKeys, IEnumerable<string> claimKeys)
-        {
-            return claimKeys.Any(claimedKeys.Contains);
-        }
-
-        /// <summary>
-        /// Adds proposal claims to the selected claim set.
-        /// </summary>
-        /// <param name="claimedKeys">Claims already selected this turn.</param>
-        /// <param name="claimKeys">Claims requested by a proposal.</param>
-        private void ClaimKeys(HashSet<string> claimedKeys, IEnumerable<string> claimKeys)
-        {
-            foreach (string claimKey in claimKeys)
-                claimedKeys.Add(claimKey);
-        }
-
-        /// <summary>
-        /// Returns whether selecting a proposal would exceed maintenance reserve limits.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to inspect.</param>
-        /// <param name="selectedMaintenanceCost">Maintenance already selected this turn.</param>
-        /// <returns>True if the proposal would exceed the reserve limit.</returns>
-        private bool WouldExceedMaintenanceHeadroom(
-            AITurnContext context,
-            AIProposal proposal,
-            int selectedMaintenanceCost
-        )
-        {
-            int maintenanceCost = GetMaintenanceCost(proposal);
-            if (maintenanceCost <= 0)
-                return false;
-
-            int minimumHeadroom = context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor;
-            int projectedHeadroom =
-                context.Faction.ProjectedMaintenanceHeadroom
-                - selectedMaintenanceCost
-                - maintenanceCost;
-
-            return projectedHeadroom < minimumHeadroom;
-        }
-
-        /// <summary>
-        /// Returns the maintenance cost added by a proposal.
-        /// </summary>
-        /// <param name="proposal">The proposal to inspect.</param>
-        /// <returns>The proposal maintenance cost.</returns>
-        private int GetMaintenanceCost(AIProposal proposal)
-        {
-            return proposal is AIManufactureProposal manufactureProposal
-                ? manufactureProposal.GetMaintenanceCost()
-                : 0;
         }
     }
 }

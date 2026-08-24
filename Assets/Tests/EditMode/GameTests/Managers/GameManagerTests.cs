@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -107,7 +109,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
+        public void ProcessTick_VictoryConditionMet_DoesNotEvaluateVictory()
         {
             GameRoot game = new GameRoot(TestConfig.Create())
             {
@@ -138,9 +140,57 @@ namespace Rebellion.Tests.Managers
             manager.ProcessTick();
             manager.ProcessTick();
 
-            Assert.AreEqual(1, declarations.Count);
-            Assert.AreSame(alliance, declarations[0].Winner);
-            Assert.AreSame(empire, declarations[0].Loser);
+            Assert.IsEmpty(declarations);
+        }
+
+        [Test]
+        public void ProcessTick_PlanetaryAssaultResult_RaisesResolvedEvent()
+        {
+            GameRoot game = new GameRoot();
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "EVENT_PLANETARY_ASSAULT",
+                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Actions = new List<GameAction>
+                        {
+                            new EmitResultAction(new PlanetaryAssaultResult()),
+                        },
+                    }
+                );
+            GameManager manager = TestContent.CreateGameManager(game);
+            IReadOnlyList<PlanetaryAssaultResult> observedResults = null;
+            manager.PlanetaryAssaultsResolved += results => observedResults = results;
+
+            manager.ProcessTick();
+
+            Assert.That(observedResults, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void ProcessTick_VictoryResult_RaisesResolvedEvent()
+        {
+            GameRoot game = new GameRoot();
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "EVENT_VICTORY",
+                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Actions = new List<GameAction>
+                        {
+                            new EmitResultAction(new VictoryResult()),
+                        },
+                    }
+                );
+            GameManager manager = TestContent.CreateGameManager(game);
+            IReadOnlyList<VictoryResult> observedResults = null;
+            manager.VictoriesResolved += results => observedResults = results;
+
+            manager.ProcessTick();
+
+            Assert.That(observedResults, Has.Count.EqualTo(1));
         }
 
         [Test]
@@ -587,6 +637,21 @@ namespace Rebellion.Tests.Managers
 
             Assert.AreEqual(0, game.CurrentTick);
             Assert.AreEqual(0, completedTicks);
+        }
+
+        [Test]
+        public void ProcessTickIncrementally_DisposedBeforeCompletion_AllowsNextTick()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "AI", DisplayName = "AI" });
+            GameManager manager = TestContent.CreateGameManager(game);
+            IEnumerator tick = manager.ProcessTickIncrementally();
+            Assert.IsTrue(tick.MoveNext());
+
+            (tick as IDisposable)?.Dispose();
+            manager.ProcessTick();
+
+            Assert.AreEqual(2, game.CurrentTick);
         }
 
         [Test]

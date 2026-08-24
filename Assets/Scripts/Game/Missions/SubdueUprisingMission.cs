@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
@@ -109,7 +110,11 @@ namespace Rebellion.Game.Missions
         /// <returns>The participant's raw subdue-uprising score.</returns>
         protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
-            Planet planet = GetParent() as Planet;
+            Planet planet = GetMissionPlanet(game);
+            if (planet == null)
+                throw new InvalidOperationException(
+                    "SubdueUprisingMission must be attached to a Planet."
+                );
 
             int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
                 game?.Config?.Uprising?.ResistanceRegimentTypeID

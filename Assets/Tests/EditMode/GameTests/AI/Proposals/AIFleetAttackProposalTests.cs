@@ -1,9 +1,11 @@
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
 
@@ -13,7 +15,7 @@ namespace Rebellion.Tests.AI.Proposals
     public class AIFleetAttackProposalTests
     {
         [Test]
-        public void Execute_WithFleetNotReady_AssignsStagingOrder()
+        public void Execute_WithFleetNotReady_AssignsBuildingOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
@@ -42,7 +44,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             Assert.IsNotNull(fleet.Order);
             Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
-            Assert.AreEqual(FleetOrderStatus.Staging, fleet.Order.Status);
+            Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
             Assert.AreEqual(enemy.InstanceID, fleet.Order.TargetPlanetId);
         }
 
@@ -112,6 +114,37 @@ namespace Rebellion.Tests.AI.Proposals
             bool canExecute = proposal.CanExecute(context);
 
             Assert.IsFalse(canExecute);
+        }
+
+        [Test]
+        public void Execute_WithExposedDefendingRegiment_BombardsBeforeAssaulting()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
+            fleet.GetChildren<CapitalShip>().Single().Bombardment = 10;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("defender", rebels.InstanceID),
+                target
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Ready,
+                target
+            );
+
+            proposal.Execute(context);
+
+            Assert.AreEqual(1, context.Results.OfType<BombardmentResult>().Count());
         }
 
         private static Fleet AddBattleFleet(GameRoot game, Planet planet, string ownerInstanceId)

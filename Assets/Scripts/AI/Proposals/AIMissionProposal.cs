@@ -1,22 +1,30 @@
-using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.AI.Proposals
 {
     /// <summary>
-    /// Proposal to start a mission for one participant.
+    /// Proposal to start a mission for a participant team.
     /// </summary>
     public sealed class AIMissionProposal : AIProposal
     {
         /// <summary>
-        /// Participant assigned to the mission.
+        /// Participants assigned to the mission.
         /// </summary>
-        public IMissionParticipant Participant { get; }
+        public IReadOnlyList<IMissionParticipant> Participants { get; }
+
+        public IReadOnlyList<IMissionParticipant> MainParticipants { get; }
+
+        public IReadOnlyList<IMissionParticipant> DecoyParticipants { get; }
+
+        public IMissionParticipant Participant => MainParticipants.FirstOrDefault();
 
         /// <summary>
         /// Mission type ID to start.
@@ -33,6 +41,8 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         public Officer TargetOfficer { get; }
 
+        public ISceneNode SelectedTarget { get; }
+
         /// <summary>
         /// Research discipline advanced by the mission.
         /// </summary>
@@ -41,65 +51,33 @@ namespace Rebellion.AI.Proposals
         /// <summary>
         /// Creates a mission proposal.
         /// </summary>
-        /// <param name="participant">Participant assigned to the mission.</param>
+        /// <param name="mainParticipants">Participants assigned to execute the mission.</param>
         /// <param name="missionTypeId">Mission type ID to start.</param>
         /// <param name="targetPlanet">Planet targeted by the mission.</param>
-        public AIMissionProposal(
-            IMissionParticipant participant,
-            string missionTypeId,
-            Planet targetPlanet
-        )
-            : this(participant, missionTypeId, targetPlanet, null, null) { }
-
-        /// <summary>
-        /// Creates a mission proposal with an officer target.
-        /// </summary>
-        /// <param name="participant">Participant assigned to the mission.</param>
-        /// <param name="missionTypeId">Mission type ID to start.</param>
-        /// <param name="targetPlanet">Planet targeted by the mission.</param>
-        /// <param name="targetOfficer">Officer targeted by the mission.</param>
-        public AIMissionProposal(
-            IMissionParticipant participant,
-            string missionTypeId,
-            Planet targetPlanet,
-            Officer targetOfficer
-        )
-            : this(participant, missionTypeId, targetPlanet, targetOfficer, null) { }
-
-        /// <summary>
-        /// Creates a research mission proposal.
-        /// </summary>
-        /// <param name="officer">Officer assigned to the research mission.</param>
-        /// <param name="missionTypeId">Mission type ID to start.</param>
-        /// <param name="targetPlanet">Planet targeted by the mission.</param>
-        /// <param name="discipline">Research discipline advanced by the mission.</param>
-        public AIMissionProposal(
-            Officer officer,
-            string missionTypeId,
-            Planet targetPlanet,
-            ResearchDiscipline discipline
-        )
-            : this(officer, missionTypeId, targetPlanet, null, discipline) { }
-
-        /// <summary>
-        /// Creates a mission proposal.
-        /// </summary>
-        /// <param name="participant">Participant assigned to the mission.</param>
-        /// <param name="missionTypeId">Mission type ID to start.</param>
-        /// <param name="targetPlanet">Planet targeted by the mission.</param>
+        /// <param name="selectedTarget">Object selected inside the mission planet.</param>
         /// <param name="targetOfficer">Officer targeted by the mission.</param>
         /// <param name="discipline">Research discipline advanced by the mission.</param>
-        private AIMissionProposal(
-            IMissionParticipant participant,
+        /// <param name="decoyParticipants">Participants assigned to distract mission defenders.</param>
+        public AIMissionProposal(
+            IEnumerable<IMissionParticipant> mainParticipants,
             string missionTypeId,
             Planet targetPlanet,
-            Officer targetOfficer,
-            ResearchDiscipline? discipline
+            ISceneNode selectedTarget = null,
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null,
+            IEnumerable<IMissionParticipant> decoyParticipants = null
         )
         {
-            Participant = participant;
+            MainParticipants =
+                mainParticipants?.Where(participant => participant != null).ToList()
+                ?? new List<IMissionParticipant>();
+            DecoyParticipants =
+                decoyParticipants?.Where(participant => participant != null).ToList()
+                ?? new List<IMissionParticipant>();
+            Participants = MainParticipants.Concat(DecoyParticipants).ToList();
             MissionTypeID = missionTypeId;
             TargetPlanet = targetPlanet;
+            SelectedTarget = selectedTarget;
             TargetOfficer = targetOfficer;
             Discipline = discipline;
         }
@@ -110,7 +88,9 @@ namespace Rebellion.AI.Proposals
         /// <returns>Claim keys for this proposal.</returns>
         public override IReadOnlyList<string> GetClaimKeys()
         {
-            List<string> claimKeys = new List<string> { $"mission:actor:{Participant.InstanceID}" };
+            List<string> claimKeys = Participants
+                .Select(participant => AIClaimKeys.MissionActor(participant.InstanceID))
+                .ToList();
 
             AddMissionSpecificClaims(claimKeys);
 
@@ -125,23 +105,31 @@ namespace Rebellion.AI.Proposals
         {
             if (MissionTypeID == MissionTypeIDs.Recruitment)
             {
-                claimKeys.Add($"mission:recruitment:{Participant.OwnerInstanceID}");
+                claimKeys.Add(AIClaimKeys.MissionRecruitment(Participant.OwnerInstanceID));
                 return;
             }
 
             if (MissionTypeID == MissionTypeIDs.Research && Discipline.HasValue)
             {
-                claimKeys.Add($"mission:research:{Participant.OwnerInstanceID}:{Discipline.Value}");
+                claimKeys.Add(
+                    AIClaimKeys.MissionResearch(Participant.OwnerInstanceID, Discipline.Value)
+                );
                 return;
             }
 
             if (TargetOfficer != null)
             {
-                claimKeys.Add($"mission:officer:{TargetOfficer.InstanceID}");
+                claimKeys.Add(AIClaimKeys.MissionOfficer(TargetOfficer.InstanceID));
                 return;
             }
 
-            claimKeys.Add($"mission:{MissionTypeID}:planet:{TargetPlanet.InstanceID}");
+            if (SelectedTarget != null)
+            {
+                claimKeys.Add(AIClaimKeys.MissionTarget(SelectedTarget.InstanceID));
+                return;
+            }
+
+            claimKeys.Add(AIClaimKeys.MissionAtPlanet(MissionTypeID, TargetPlanet.InstanceID));
         }
 
         /// <summary>
@@ -156,8 +144,10 @@ namespace Rebellion.AI.Proposals
                 MissionTypeID,
                 TargetPlanet?.InstanceID,
                 TargetOfficer?.InstanceID,
+                SelectedTarget?.InstanceID,
                 Discipline?.ToString(),
-                Participant?.InstanceID
+                string.Join(",", MainParticipants.Select(participant => participant.InstanceID)),
+                string.Join(",", DecoyParticipants.Select(participant => participant.InstanceID))
             );
         }
 
@@ -181,16 +171,7 @@ namespace Rebellion.AI.Proposals
             if (context?.Missions == null || !IsStillValid())
                 return false;
 
-            return context.Missions.CanCreateMission(
-                new MissionStartRequest
-                {
-                    MissionTypeID = MissionTypeID,
-                    Location = TargetPlanet,
-                    SelectedTarget = TargetOfficer,
-                    Discipline = Discipline,
-                    MainParticipants = new List<IMissionParticipant> { Participant },
-                }
-            );
+            return context.Missions.CanCreateMission(CreateRequest());
         }
 
         /// <summary>
@@ -202,23 +183,7 @@ namespace Rebellion.AI.Proposals
             if (!CanExecute(context))
                 return;
 
-            try
-            {
-                context.Missions.InitiateMission(
-                    new MissionStartRequest
-                    {
-                        MissionTypeID = MissionTypeID,
-                        Location = TargetPlanet,
-                        SelectedTarget = TargetOfficer,
-                        Discipline = Discipline,
-                        MainParticipants = new List<IMissionParticipant> { Participant },
-                    }
-                );
-            }
-            catch (InvalidOperationException)
-            {
-                return;
-            }
+            context.Missions.InitiateMission(CreateRequest());
         }
 
         /// <summary>
@@ -227,23 +192,14 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the proposal is still valid.</returns>
         private bool IsStillValid()
         {
-            if (Participant == null || TargetPlanet == null)
+            if (MainParticipants.Count == 0 || TargetPlanet == null)
                 return false;
 
-            if (!Participant.IsMovable() || Participant.IsOnMission())
-                return false;
-
-            if (Participant is Officer officer && (officer.IsCaptured || officer.IsKilled))
-                return false;
-
-            if (
-                Participant is SpecialForces specialForces
-                && specialForces.ManufacturingStatus != ManufacturingStatus.Complete
-            )
-                return false;
-
-            if (!Participant.CanPerformMission(MissionTypeID))
-                return false;
+            foreach (IMissionParticipant participant in Participants)
+            {
+                if (!IsParticipantAvailable(participant))
+                    return false;
+            }
 
             if (MissionTypeID == MissionTypeIDs.Research && !Discipline.HasValue)
                 return false;
@@ -251,7 +207,10 @@ namespace Rebellion.AI.Proposals
             if (RequiresTargetOfficer() && TargetOfficer == null)
                 return false;
 
-            return TargetOfficer == null || !TargetOfficer.IsCaptured && !TargetOfficer.IsKilled;
+            if (MissionTypeID == MissionTypeIDs.Sabotage && SelectedTarget == null)
+                return false;
+
+            return IsTargetOfficerAvailable();
         }
 
         /// <summary>
@@ -261,7 +220,55 @@ namespace Rebellion.AI.Proposals
         private bool RequiresTargetOfficer()
         {
             return MissionTypeID == MissionTypeIDs.Abduction
-                || MissionTypeID == MissionTypeIDs.Assassination;
+                || MissionTypeID == MissionTypeIDs.Assassination
+                || MissionTypeID == MissionTypeIDs.Rescue;
+        }
+
+        internal MissionStartRequest CreateRequest()
+        {
+            return new MissionStartRequest
+            {
+                MissionTypeID = MissionTypeID,
+                Location = TargetPlanet,
+                SelectedTarget = SelectedTarget,
+                Discipline = Discipline,
+                MainParticipants = MainParticipants.ToList(),
+                DecoyParticipants = DecoyParticipants.ToList(),
+            };
+        }
+
+        private bool IsParticipantAvailable(IMissionParticipant participant)
+        {
+            if (
+                participant?.IsMovable() != true
+                || participant.IsOnMission()
+                || participant.GetTransitMovement() != null
+            )
+                return false;
+
+            if (participant is Officer officer && (officer.IsCaptured || officer.IsKilled))
+                return false;
+
+            if (
+                participant is SpecialForces specialForces
+                && specialForces.ManufacturingStatus != ManufacturingStatus.Complete
+            )
+                return false;
+
+            return participant.CanPerformMission(MissionTypeID);
+        }
+
+        private bool IsTargetOfficerAvailable()
+        {
+            if (TargetOfficer == null)
+                return true;
+
+            if (TargetOfficer.IsKilled)
+                return false;
+
+            return MissionTypeID == MissionTypeIDs.Rescue
+                ? TargetOfficer.IsCaptured
+                : !TargetOfficer.IsCaptured;
         }
     }
 }

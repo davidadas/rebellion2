@@ -136,6 +136,17 @@ namespace Rebellion.Game.Units
             return ProcessRate;
         }
 
+        public bool IsProductionUpgradeFor(Building current)
+        {
+            return current != null
+                && BuildingType == current.BuildingType
+                && ProductionType == current.ProductionType
+                && ResearchOrder > current.ResearchOrder
+                && ProcessRate > 0
+                && current.ProcessRate > 0
+                && ProcessRate < current.ProcessRate;
+        }
+
         /// <summary>
         /// Returns the type of production this building is capable of.
         /// </summary>

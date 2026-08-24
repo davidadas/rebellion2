@@ -7,8 +7,17 @@ namespace Rebellion.Game.Units
     /// </summary>
     public enum FleetOrderType
     {
+        /// <summary>Captures an enemy planet.</summary>
         Attack,
+
+        /// <summary>Claims an unowned planet.</summary>
+        Colonize,
+
+        /// <summary>Protects a friendly planet.</summary>
         Defend,
+
+        /// <summary>Destroys a known hostile fleet without committing to an invasion.</summary>
+        Engage,
     }
 
     /// <summary>
@@ -20,6 +29,9 @@ namespace Rebellion.Game.Units
         Staging,
         Readying,
         Ready,
+
+        /// <summary>The fleet is returning to friendly territory.</summary>
+        Returning,
     }
 
     /// <summary>
@@ -35,6 +47,9 @@ namespace Rebellion.Game.Units
 
         public string TargetPlanetId { get; set; } = string.Empty;
 
+        /// <summary>Gets or sets the friendly planet from which a temporary engagement departed.</summary>
+        public string OriginPlanetId { get; set; } = string.Empty;
+
         /// <summary>
         /// Creates an independent copy of this fleet order.
         /// </summary>
@@ -45,6 +60,7 @@ namespace Rebellion.Game.Units
                 OrderType = OrderType,
                 Status = Status,
                 TargetPlanetId = TargetPlanetId,
+                OriginPlanetId = OriginPlanetId,
             };
     }
 }

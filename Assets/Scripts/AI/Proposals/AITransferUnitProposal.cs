@@ -18,7 +18,7 @@ namespace Rebellion.AI.Proposals
         /// <param name="destination">Container that should receive the unit.</param>
         /// <param name="unit">Unit to transfer.</param>
         /// <param name="targetFleet">Fleet being reinforced.</param>
-        /// <param name="targetPlanet">Attack target associated with the transfer.</param>
+        /// <param name="targetPlanet">Strategic target associated with the receiving fleet.</param>
         public AITransferUnitProposal(
             ContainerNode sourceContainer,
             ContainerNode destination,
@@ -60,7 +60,7 @@ namespace Rebellion.AI.Proposals
                 claimKeys.Add($"container:transfer-source:{SourceContainer.InstanceID}");
 
                 if (SourceContainer is Fleet sourceFleet)
-                    claimKeys.Add($"fleet:order:{sourceFleet.InstanceID}");
+                    claimKeys.Add(AIClaimKeys.FleetOrder(sourceFleet.InstanceID));
             }
 
             if (Destination != null)
@@ -68,7 +68,13 @@ namespace Rebellion.AI.Proposals
                 claimKeys.Add($"container:transfer-target:{Destination.InstanceID}");
 
                 if (Destination is Fleet targetFleet)
-                    claimKeys.Add($"fleet:transfer-target:{targetFleet.InstanceID}");
+                {
+                    claimKeys.Add(AIClaimKeys.FleetTransferTarget(targetFleet.InstanceID));
+                    if (Unit is CapitalShip)
+                        claimKeys.Add(
+                            AIClaimKeys.FleetCapitalReinforcement(targetFleet.InstanceID)
+                        );
+                }
             }
 
             return claimKeys;
@@ -134,6 +140,7 @@ namespace Rebellion.AI.Proposals
                 || SourceContainer == null
                 || Destination == null
                 || Unit == null
+                || TargetFleet == null
                 || TargetPlanet == null
             )
                 return false;
@@ -159,12 +166,10 @@ namespace Rebellion.AI.Proposals
             if (SourceContainer is Fleet sourceFleet && !CanMoveFromSourceFleet(sourceFleet))
                 return false;
 
-            if (TargetFleet != null && !CanMoveToTargetFleet())
+            if (!CanMoveToTargetFleet(context))
                 return false;
 
-            string targetOwnerId = TargetPlanet.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(targetOwnerId)
-                && targetOwnerId != context.Faction.InstanceID;
+            return true;
         }
 
         /// <summary>
@@ -183,16 +188,25 @@ namespace Rebellion.AI.Proposals
         /// <summary>
         /// Returns whether the target fleet can receive this transfer.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <returns>True if the target fleet can receive the unit.</returns>
-        private bool CanMoveToTargetFleet()
+        private bool CanMoveToTargetFleet(AITurnContext context)
         {
             if (TargetFleet.Movement != null || TargetFleet.IsInCombat)
                 return false;
 
-            if (TargetFleet.Order?.OrderType != FleetOrderType.Attack)
+            FleetOrder order = TargetFleet.Order;
+            if (order == null || order.TargetPlanetId != TargetPlanet.InstanceID)
                 return false;
 
-            return TargetFleet.Order.TargetPlanetId == TargetPlanet.InstanceID;
+            if (order.OrderType == FleetOrderType.Defend)
+                return context.Assessment.IsOwnedPlanet(TargetPlanet)
+                    && context.Assessment.GetRequiredDefenseStrength(TargetPlanet) > 0;
+
+            string targetOwnerId = TargetPlanet.GetOwnerInstanceID();
+            return order.OrderType == FleetOrderType.Attack
+                && !string.IsNullOrEmpty(targetOwnerId)
+                && targetOwnerId != context.Faction.InstanceID;
         }
     }
 }

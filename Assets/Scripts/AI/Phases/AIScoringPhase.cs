@@ -66,6 +66,9 @@ namespace Rebellion.AI.Phases
             if (proposal == null)
                 return;
 
+            if (proposal.HasScore)
+                return;
+
             foreach (IAIProposalScorer proposalScorer in _proposalScorers)
             {
                 if (!proposalScorer.CanScore(proposal))

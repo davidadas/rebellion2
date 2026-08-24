@@ -4240,6 +4240,30 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void CanAcceptManufacturingOrder_WithoutMaintenanceHeadroom_ReturnsTrue()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                1
+            );
+
+            bool canAccept = manager.CanAcceptManufacturingOrder(
+                planet,
+                template,
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canAccept);
+            Assert.IsFalse(manager.CanStartManufacturing(planet, template, planet, 1, "empire"));
+        }
+
+        [Test]
         public void StartManufacturing_CapitalShips_CreatesOneDestinationFleet()
         {
             GameRoot game = CreateOrderTestGame();

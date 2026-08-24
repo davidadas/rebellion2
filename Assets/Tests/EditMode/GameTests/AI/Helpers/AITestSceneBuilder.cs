@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -109,14 +110,16 @@ namespace Rebellion.Tests.AI.Helpers
             int starfighterCapacity = 1
         )
         {
+            int durabilityStrength = System.Math.Max(1, combatStrength);
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = instanceId,
                 DisplayName = instanceId,
+                ManufacturingFactionInstanceIDs = new List<string> { ownerInstanceId },
                 OwnerInstanceID = ownerInstanceId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                MaxHullStrength = 100,
-                CurrentHullStrength = 100,
+                MaxHullStrength = durabilityStrength,
+                CurrentHullStrength = durabilityStrength,
                 RegimentCapacity = regimentCapacity,
                 StarfighterCapacity = starfighterCapacity,
             };
@@ -142,6 +145,51 @@ namespace Rebellion.Tests.AI.Helpers
             };
         }
 
+        public static Starfighter CreateStarfighter(
+            string instanceId,
+            string ownerInstanceId,
+            int laserCannon = 1,
+            int ionCannon = 0,
+            int torpedoes = 0,
+            int maintenanceCost = 0,
+            int constructionCost = 1
+        )
+        {
+            return new Starfighter
+            {
+                InstanceID = instanceId,
+                TypeID = instanceId,
+                DisplayName = instanceId,
+                ManufacturingFactionInstanceIDs = new List<string> { ownerInstanceId },
+                OwnerInstanceID = ownerInstanceId,
+                ConstructionCost = constructionCost,
+                MaintenanceCost = maintenanceCost,
+                BaseBuildSpeed = 1,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                LaserCannon = laserCannon,
+                IonCannon = ionCannon,
+                Torpedoes = torpedoes,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        public static SpecialForces CreateSpecialForces(string typeId, string ownerInstanceId)
+        {
+            SpecialForces specialForces = new SpecialForces
+            {
+                TypeID = typeId,
+                DisplayName = typeId,
+                ManufacturingFactionInstanceIDs = new List<string> { ownerInstanceId },
+                OwnerInstanceID = ownerInstanceId,
+                ConstructionCost = 1,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            return specialForces;
+        }
+
         public static AITurnContext CreateContext(
             GameRoot game,
             Faction faction,
@@ -155,13 +203,23 @@ namespace Rebellion.Tests.AI.Helpers
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
             FogOfWarSystem fog = new FogOfWarSystem(game);
-            MovementSystem movementSystem =
-                movement ?? new MovementSystem(game, fog, new FleetSystem(game));
+            FleetSystem fleetSystem = new FleetSystem(game);
+            MovementSystem movementSystem = movement ?? new MovementSystem(game, fog, fleetSystem);
             MissionSystem missionSystem =
                 missions ?? TestSystems.CreateMissionSystem(game, provider, movementSystem);
             ManufacturingSystem manufacturingSystem =
-                manufacturing
-                ?? new ManufacturingSystem(game, new FleetSystem(game), movementSystem);
+                manufacturing ?? new ManufacturingSystem(game, fleetSystem, movementSystem);
+            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
+                game,
+                movementSystem,
+                manufacturingSystem,
+                fog
+            );
+            BombardmentSystem bombardmentSystem =
+                bombardment
+                ?? new BombardmentSystem(game, provider, movementSystem, planetaryControl);
+            PlanetaryAssaultSystem planetaryAssaultSystem =
+                planetaryAssault ?? new PlanetaryAssaultSystem(game, provider, planetaryControl);
 
             return new AITurnContext(
                 game,
@@ -169,10 +227,17 @@ namespace Rebellion.Tests.AI.Helpers
                 missionSystem,
                 movementSystem,
                 manufacturingSystem,
-                bombardment,
-                planetaryAssault,
-                provider
+                bombardmentSystem,
+                planetaryAssaultSystem,
+                provider,
+                fog
             );
+        }
+
+        public static void RevealPlanet(GameRoot game, Faction faction, Planet planet)
+        {
+            PlanetSector system = planet.GetParentOfType<PlanetSector>();
+            new FogOfWarSystem(game).CaptureSnapshot(faction, planet, system, game.CurrentTick);
         }
     }
 }

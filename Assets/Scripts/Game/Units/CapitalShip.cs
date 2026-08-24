@@ -285,11 +285,37 @@ namespace Rebellion.Game.Units
             if (ManufacturingStatus != ManufacturingStatus.Complete || Movement != null)
                 return 0;
 
+            if (MaxHullStrength > 0 && CurrentHullStrength <= 0)
+                return 0;
+
+            return CalculateCombatValue(CurrentHullStrength);
+        }
+
+        internal int GetProjectedCombatValue()
+        {
+            if (
+                ManufacturingStatus == ManufacturingStatus.Complete
+                && MaxHullStrength > 0
+                && CurrentHullStrength <= 0
+            )
+                return 0;
+
+            int hullStrength =
+                ManufacturingStatus == ManufacturingStatus.Complete
+                    ? CurrentHullStrength
+                    : MaxHullStrength;
+            return CalculateCombatValue(hullStrength);
+        }
+
+        private int CalculateCombatValue(int hullStrength)
+        {
             int attackStrength = GetPrimaryWeaponStrength();
-            if (MaxHullStrength <= 0)
+            long durability = Math.Max(0L, hullStrength) + Math.Max(0L, MaxShieldStrength);
+            if (attackStrength <= 0 || durability <= 0)
                 return attackStrength;
 
-            return attackStrength * CurrentHullStrength / MaxHullStrength;
+            double combatValue = Math.Sqrt(attackStrength * (double)durability);
+            return combatValue >= int.MaxValue ? int.MaxValue : (int)combatValue;
         }
 
         /// <summary>

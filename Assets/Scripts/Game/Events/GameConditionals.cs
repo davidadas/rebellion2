@@ -353,6 +353,15 @@ namespace Rebellion.Game.Events
         protected abstract bool Evaluate(Officer officer);
     }
 
+    /// <summary>
+    /// Tests whether an officer remains registered in the game.
+    /// </summary>
+    [PersistableObject(Name = "OfficerExists")]
+    public sealed class OfficerExistsConditional : OfficerBooleanConditional
+    {
+        protected override bool Evaluate(Officer officer) => true;
+    }
+
     [PersistableObject(Name = "IsCaptured")]
     public sealed class IsCapturedConditional : OfficerBooleanConditional
     {

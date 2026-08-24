@@ -513,6 +513,57 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void GetCombatValue_ImperialStarDestroyerAndCorvette_ValuesDurability()
+        {
+            CapitalShip starDestroyer = CreateCombatShip(480, 2750, 300);
+            CapitalShip corvette = CreateCombatShip(450, 500, 200);
+
+            Assert.AreEqual(1209, starDestroyer.GetCombatValue());
+            Assert.AreEqual(561, corvette.GetCombatValue());
+            Assert.Greater(starDestroyer.GetCombatValue(), corvette.GetCombatValue() * 2);
+        }
+
+        [Test]
+        public void GetCombatValue_WithShieldStrength_IncreasesValue()
+        {
+            CapitalShip unshielded = CreateCombatShip(100, 100, 0);
+            CapitalShip shielded = CreateCombatShip(100, 100, 100);
+
+            Assert.AreEqual(100, unshielded.GetCombatValue());
+            Assert.AreEqual(141, shielded.GetCombatValue());
+        }
+
+        [Test]
+        public void GetCombatValue_WithHullDamage_UsesRemainingDurability()
+        {
+            CapitalShip ship = CreateCombatShip(100, 100, 0);
+            ship.CurrentHullStrength = 25;
+
+            Assert.AreEqual(50, ship.GetCombatValue());
+        }
+
+        [Test]
+        public void GetCombatValue_WithNoRemainingHull_ReturnsZero()
+        {
+            CapitalShip ship = CreateCombatShip(100, 100, 100);
+            ship.CurrentHullStrength = 0;
+
+            Assert.Zero(ship.GetCombatValue());
+            Assert.Zero(ship.GetProjectedCombatValue());
+        }
+
+        [Test]
+        public void GetProjectedCombatValue_BuildingShip_UsesMaximumDurability()
+        {
+            CapitalShip ship = CreateCombatShip(100, 100, 0);
+            ship.ManufacturingStatus = ManufacturingStatus.Building;
+            ship.CurrentHullStrength = 0;
+
+            Assert.Zero(ship.GetCombatValue());
+            Assert.AreEqual(100, ship.GetProjectedCombatValue());
+        }
+
+        [Test]
         public void WeaponRecharge_DefaultCapitalShip_ReturnsExpectedValue()
         {
             Assert.AreEqual(12, _capitalShip.WeaponRecharge);
@@ -588,6 +639,23 @@ namespace Rebellion.Tests.Game.Units
         public void DetectionRating_DefaultCapitalShip_ReturnsExpectedValue()
         {
             Assert.AreEqual(25, _capitalShip.DetectionRating);
+        }
+
+        private static CapitalShip CreateCombatShip(
+            int attackStrength,
+            int hullStrength,
+            int shieldStrength
+        )
+        {
+            CapitalShip ship = new CapitalShip
+            {
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = hullStrength,
+                CurrentHullStrength = hullStrength,
+                MaxShieldStrength = shieldStrength,
+            };
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = attackStrength;
+            return ship;
         }
     }
 } // namespace Rebellion.Tests.Game.Units

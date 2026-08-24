@@ -99,7 +99,12 @@ namespace Rebellion.Systems
                 CombatUnitSnapshot.CapturePlanetUnits(defendingPlanet, defenderId)
             );
 
-            if (IsBlockedByShields(defendingPlanet))
+            if (
+                IsBlockedByShields(
+                    defendingPlanet,
+                    _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                )
+            )
             {
                 result.BlockedByShields = true;
                 return result;
@@ -161,7 +166,10 @@ namespace Rebellion.Systems
         public bool CanExecute(IReadOnlyList<Fleet> fleets, Planet planet)
         {
             return CanAssault(fleets, planet)
-                && !IsBlockedByShields(planet)
+                && !IsBlockedByShields(
+                    planet,
+                    _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                )
                 && SnapshotAttackers(fleets).Count > 0;
         }
 
@@ -234,16 +242,20 @@ namespace Rebellion.Systems
         /// Determines whether active planetary shields prevent an assault.
         /// </summary>
         /// <param name="planet">Planet whose shield facilities are evaluated.</param>
+        /// <param name="shieldGeneratorLimit">Active shield count that blocks an assault.</param>
         /// <returns>True when the active shield count meets the configured limit.</returns>
-        private bool IsBlockedByShields(Planet planet)
+        public static bool IsBlockedByShields(Planet planet, int shieldGeneratorLimit)
         {
+            if (planet == null)
+                return false;
+
             int activeShieldCount = planet
                 .GetAllBuildings()
                 .Count(building =>
                     IsActiveAssaultUnit(building)
                     && building.DefenseFacilityClass == DefenseFacilityClass.Shield
                 );
-            return activeShieldCount >= _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            return activeShieldCount >= shieldGeneratorLimit;
         }
 
         /// <summary>
@@ -350,18 +362,18 @@ namespace Rebellion.Systems
         {
             GameConfig.PlanetaryAssaultConfig config = _game.Config.Combat.PlanetaryAssault;
             Fleet fleet = attacker.Ship.GetParentOfType<Fleet>();
-            int attackerLeadership = GetAssaultLeadership(
+            int attackerBonus = GetLeadershipBonus(
                 fleet?.GetOfficers(),
                 OfficerRank.General,
-                fleet?.GetOwnerInstanceID()
+                fleet?.GetOwnerInstanceID(),
+                config
             );
-            int defenderLeadership = GetAssaultLeadership(
+            int defenderBonus = GetLeadershipBonus(
                 planet.GetAllOfficers(),
                 OfficerRank.General,
-                planet.GetOwnerInstanceID()
+                planet.GetOwnerInstanceID(),
+                config
             );
-            int attackerBonus = attackerLeadership / config.GeneralLeadershipDivisor;
-            int defenderBonus = defenderLeadership / config.GeneralLeadershipDivisor;
             int roll = _provider.NextInt(0, config.ContestRollMaximum + 1);
             return roll
                 + attacker.Regiment.AttackRating
@@ -564,19 +576,213 @@ namespace Rebellion.Systems
         /// <param name="officers">Officers to search.</param>
         /// <param name="rank">Required command rank.</param>
         /// <param name="ownerId">Required faction instance ID.</param>
-        /// <returns>The commander's leadership rating, or zero when none is eligible.</returns>
-        private static int GetAssaultLeadership(
+        /// <param name="config">Planetary assault configuration.</param>
+        /// <returns>The commander's leadership bonus, or zero when none is eligible.</returns>
+        public static int GetLeadershipBonus(
             IEnumerable<Officer> officers,
             OfficerRank rank,
-            string ownerId
+            string ownerId,
+            GameConfig.PlanetaryAssaultConfig config
         )
         {
+            if (config == null)
+                return 0;
+
             Officer commander = officers?.FirstOrDefault(officer =>
                 officer.CurrentRank == rank
                 && officer.GetOwnerInstanceID() == ownerId
                 && !officer.IsKilled
             );
-            return commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
+            int leadership = commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
+            return leadership / config.GeneralLeadershipDivisor;
+        }
+
+        /// <summary>
+        /// Estimates the chance that an immediate planetary assault captures its target.
+        /// </summary>
+        /// <param name="fleets">Fleets supplying the assault force.</param>
+        /// <param name="planet">Planet being assaulted.</param>
+        /// <param name="config">Planetary assault rules.</param>
+        /// <returns>The estimated success chance from zero through one hundred.</returns>
+        public static int EstimateSuccessPercent(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            GameConfig.PlanetaryAssaultConfig config
+        )
+        {
+            if (fleets?.Any() != true || planet == null || config == null)
+                return 0;
+
+            List<AssaultTroop> attackers = SnapshotAttackers(fleets);
+            if (attackers.Count == 0)
+                return 0;
+
+            string defenderId = planet.GetOwnerInstanceID();
+            List<Regiment> defenders = GetActiveDefenders(planet, defenderId);
+            List<Building> defenseFacilities = planet
+                .GetAllBuildings()
+                .Where(building =>
+                    IsActiveAssaultUnit(building) && IsAssaultDefenseFacility(building)
+                )
+                .ToList();
+            double[] casualtyProbabilities = CalculateDefenseFireCasualtyProbabilities(
+                attackers.Count,
+                defenseFacilities,
+                config
+            );
+            int defenderBonus = GetLeadershipBonus(
+                planet.GetAllOfficers(),
+                OfficerRank.General,
+                defenderId,
+                config
+            );
+            List<double> attackerWinProbabilities = attackers
+                .Select(attacker =>
+                    GetMinimumContestWinProbability(attacker, defenders, defenderBonus, config)
+                )
+                .OrderBy(probability => probability)
+                .ToList();
+
+            double successProbability = 0;
+            for (int casualties = 0; casualties < casualtyProbabilities.Length; casualties++)
+            {
+                int survivorCount = attackers.Count - casualties;
+                if (survivorCount <= 0 || casualtyProbabilities[casualties] <= 0)
+                    continue;
+
+                double groundSuccessProbability = CalculateGroundSuccessProbability(
+                    attackerWinProbabilities.Take(survivorCount),
+                    defenders.Count
+                );
+                successProbability += casualtyProbabilities[casualties] * groundSuccessProbability;
+            }
+
+            return Math.Clamp((int)Math.Floor(successProbability * 100), 0, 100);
+        }
+
+        /// <summary>
+        /// Calculates the probability distribution for casualties caused by defense facilities.
+        /// </summary>
+        /// <param name="attackerCount">Number of regiments attempting to land.</param>
+        /// <param name="facilities">Facilities firing on the landing force.</param>
+        /// <param name="config">Planetary assault rules.</param>
+        /// <returns>The probability of suffering each possible casualty count.</returns>
+        private static double[] CalculateDefenseFireCasualtyProbabilities(
+            int attackerCount,
+            IEnumerable<Building> facilities,
+            GameConfig.PlanetaryAssaultConfig config
+        )
+        {
+            double[] probabilities = new double[attackerCount + 1];
+            probabilities[0] = 1;
+            foreach (Building facility in facilities)
+            {
+                double fireChance =
+                    Math.Clamp(facility.WeaponPower / config.DefenseFireDivisor, 0, 100) / 100.0;
+                double[] next = new double[attackerCount + 1];
+                for (int casualties = 0; casualties <= attackerCount; casualties++)
+                {
+                    double stateProbability = probabilities[casualties];
+                    if (stateProbability <= 0)
+                        continue;
+
+                    double targetChance = (double)(attackerCount - casualties) / attackerCount;
+                    double killChance = fireChance * targetChance;
+                    next[casualties] += stateProbability * (1 - killChance);
+                    if (casualties < attackerCount)
+                        next[casualties + 1] += stateProbability * killChance;
+                }
+
+                probabilities = next;
+            }
+
+            return probabilities;
+        }
+
+        /// <summary>
+        /// Calculates an attacker's lowest win probability against the available defenders.
+        /// </summary>
+        /// <param name="attacker">Attacking regiment and its transport.</param>
+        /// <param name="defenders">Regiments defending the planet.</param>
+        /// <param name="defenderBonus">Leadership bonus applied to every defender.</param>
+        /// <param name="config">Planetary assault rules.</param>
+        /// <returns>The attacker's lowest contest win probability.</returns>
+        private static double GetMinimumContestWinProbability(
+            AssaultTroop attacker,
+            IReadOnlyList<Regiment> defenders,
+            int defenderBonus,
+            GameConfig.PlanetaryAssaultConfig config
+        )
+        {
+            if (defenders.Count == 0)
+                return 1;
+
+            Fleet fleet = attacker.Ship.GetParentOfType<Fleet>();
+            int attackerBonus = GetLeadershipBonus(
+                fleet?.GetOfficers(),
+                OfficerRank.General,
+                fleet?.GetOwnerInstanceID(),
+                config
+            );
+            int possibleRolls = config.ContestRollMaximum + 1;
+            return defenders.Min(defender =>
+            {
+                int minimumWinningRoll =
+                    config.AttackerWinsMinimum
+                    - attacker.Regiment.AttackRating
+                    - attackerBonus
+                    + defender.DefenseRating
+                    + defenderBonus;
+                int winningRolls = Math.Clamp(
+                    possibleRolls - Math.Max(0, minimumWinningRoll),
+                    0,
+                    possibleRolls
+                );
+                return (double)winningRolls / possibleRolls;
+            });
+        }
+
+        /// <summary>
+        /// Calculates the probability that the surviving attackers defeat every defender.
+        /// </summary>
+        /// <param name="attackerWinProbabilities">Contest win probability for each attacker.</param>
+        /// <param name="defenderCount">Number of defending regiments.</param>
+        /// <returns>The probability of defeating every defender.</returns>
+        private static double CalculateGroundSuccessProbability(
+            IEnumerable<double> attackerWinProbabilities,
+            int defenderCount
+        )
+        {
+            if (defenderCount == 0)
+                return 1;
+
+            double[] probabilities = new double[defenderCount + 1];
+            probabilities[0] = 1;
+            foreach (double contestWinProbability in attackerWinProbabilities)
+            {
+                double[] next = new double[defenderCount + 1];
+                for (int defeated = 0; defeated <= defenderCount; defeated++)
+                {
+                    double stateProbability = probabilities[defeated];
+                    if (stateProbability <= 0)
+                        continue;
+
+                    if (defeated == defenderCount)
+                    {
+                        next[defeated] += stateProbability;
+                        continue;
+                    }
+
+                    double targetChance = (double)(defenderCount - defeated) / defenderCount;
+                    double defeatChance = contestWinProbability * targetChance;
+                    next[defeated] += stateProbability * (1 - defeatChance);
+                    next[defeated + 1] += stateProbability * defeatChance;
+                }
+
+                probabilities = next;
+            }
+
+            return probabilities[defenderCount];
         }
 
         /// <summary>

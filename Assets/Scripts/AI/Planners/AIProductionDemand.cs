@@ -10,16 +10,42 @@ namespace Rebellion.AI.Planners
     public enum AIProductionDemandKind
     {
         None,
+        Colony,
         Mine,
         Refinery,
         ConstructionFacility,
         Shipyard,
         TrainingFacility,
+        PlanetaryDefense,
+        PlanetaryStarfighterReserve,
         FleetCapitalShip,
         FleetStarfighter,
         FleetRegiment,
-        LocalStarfighterReserve,
         GarrisonRegimentReserve,
+        SpecialForces,
+        FleetSeedCapitalShip,
+        BuildingUpgrade,
+    }
+
+    /// <summary>
+    /// Strategic roles that a capital ship can fill for a production demand.
+    /// </summary>
+    public enum AICapitalShipProductionRole
+    {
+        /// <summary>No specialized role is required.</summary>
+        None,
+
+        /// <summary>The ship contributes general fleet combat power.</summary>
+        General,
+
+        /// <summary>The ship transports regiments for planetary assaults.</summary>
+        TroopTransport,
+
+        /// <summary>The ship can bombard planetary defenses.</summary>
+        Bombardment,
+
+        /// <summary>The ship prevents hostile fleets from retreating.</summary>
+        Interdiction,
     }
 
     /// <summary>
@@ -37,6 +63,8 @@ namespace Rebellion.AI.Planners
         /// <param name="destination">Container receiving the produced item.</param>
         /// <param name="quantityNeeded">Amount of demand still needed.</param>
         /// <param name="pressure">Demand pressure used for scoring.</param>
+        /// <param name="productTypeId">Exact product type required by the demand.</param>
+        /// <param name="capitalShipRole">Capital ship role required by the demand.</param>
         public AIProductionDemand(
             string id,
             AIProductionDemandKind kind,
@@ -44,7 +72,9 @@ namespace Rebellion.AI.Planners
             BuildingType buildingType,
             ContainerNode destination,
             int quantityNeeded,
-            double pressure
+            double pressure,
+            string productTypeId = null,
+            AICapitalShipProductionRole capitalShipRole = AICapitalShipProductionRole.None
         )
         {
             Id = id;
@@ -54,16 +84,45 @@ namespace Rebellion.AI.Planners
             Destination = destination;
             QuantityNeeded = quantityNeeded;
             Pressure = pressure;
+            ProductTypeId = productTypeId;
+            CapitalShipRole = capitalShipRole;
         }
 
+        // Demand Identity.
         public string Id { get; }
         public AIProductionDemandKind Kind { get; }
+
+        // Production Requirements.
         public ManufacturingType ManufacturingType { get; }
         public BuildingType BuildingType { get; }
+        public string ProductTypeId { get; }
+        public AICapitalShipProductionRole CapitalShipRole { get; }
+        public Building ReplacementBuilding { get; set; }
+
+        // Destination.
         public ContainerNode Destination { get; }
         public Planet DestinationPlanet => Destination as Planet;
         public Fleet DestinationFleet => Destination as Fleet;
+
+        // Priority.
         public int QuantityNeeded { get; }
         public double Pressure { get; }
+
+        // Reserve Policy.
+        public bool CanUseRefinedMaterialReserve =>
+            Kind
+                is AIProductionDemandKind.Mine
+                    or AIProductionDemandKind.Refinery
+                    or AIProductionDemandKind.TrainingFacility
+                    or AIProductionDemandKind.FleetRegiment
+                    or AIProductionDemandKind.GarrisonRegimentReserve;
+
+        public bool UsesDefensiveReserve =>
+            Kind
+                is AIProductionDemandKind.PlanetaryDefense
+                    or AIProductionDemandKind.PlanetaryStarfighterReserve
+                    or AIProductionDemandKind.GarrisonRegimentReserve
+                    or AIProductionDemandKind.TrainingFacility
+                    or AIProductionDemandKind.BuildingUpgrade;
     }
 }

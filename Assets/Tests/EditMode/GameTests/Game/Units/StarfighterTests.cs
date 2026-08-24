@@ -52,6 +52,36 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void GetWeaponStrength_WithConfiguredWeapons_ReturnsCombinedStrength()
+        {
+            int weaponStrength = _starfighter.GetWeaponStrength();
+
+            Assert.AreEqual(45, weaponStrength);
+        }
+
+        [Test]
+        public void GetCombatValue_WithPartialSquadron_ReturnsScaledWeaponStrength()
+        {
+            _starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            _starfighter.CurrentSquadronSize = 6;
+
+            int combatValue = _starfighter.GetCombatValue();
+
+            Assert.AreEqual(270, combatValue);
+        }
+
+        [Test]
+        public void GetCombatValue_WhenUnavailable_ReturnsZero()
+        {
+            _starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            _starfighter.Movement = new MovementState();
+
+            int combatValue = _starfighter.GetCombatValue();
+
+            Assert.AreEqual(0, combatValue);
+        }
+
+        [Test]
         public void IsMovable_WhenInTransit_ReturnsFalse()
         {
             _starfighter.Movement = new MovementState();

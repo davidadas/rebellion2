@@ -200,24 +200,50 @@ namespace Rebellion.Systems
         )
         {
             if (
-                producer == null
-                || template == null
-                || destination == null
-                || count <= 0
-                || string.IsNullOrEmpty(ownerInstanceId)
-                || !string.Equals(
-                    producer.GetOwnerInstanceID(),
-                    ownerInstanceId,
-                    StringComparison.Ordinal
+                !CanAcceptManufacturingOrder(
+                    producer,
+                    template,
+                    destination,
+                    count,
+                    ownerInstanceId
                 )
-                || !IManufacturable.CanBeManufacturedBy(template, ownerInstanceId)
-                || producer.GetProductionFacilityCount(template.GetManufacturingType()) <= 0
-                || !HasDestinationCapacity(producer, destination, template, count)
             )
                 return false;
 
             Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
             return HasMaintenanceHeadroom(faction, template, count);
+        }
+
+        /// <summary>
+        /// Determines whether a producer and destination can structurally accept a manufacturing order.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the order is structurally valid without considering maintenance.</returns>
+        public bool CanAcceptManufacturingOrder(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            return producer != null
+                && template != null
+                && destination != null
+                && count > 0
+                && !string.IsNullOrEmpty(ownerInstanceId)
+                && string.Equals(
+                    producer.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+                && IManufacturable.CanBeManufacturedBy(template, ownerInstanceId)
+                && producer.GetProductionFacilityCount(template.GetManufacturingType()) > 0
+                && HasDestinationCapacity(producer, destination, template, count);
         }
 
         /// <summary>
@@ -343,7 +369,9 @@ namespace Rebellion.Systems
             item.ManufacturingStatus = ManufacturingStatus.Building;
             item.ManufacturingProgress = 0;
             if (item is IMovable movable)
+            {
                 movable.Movement = null;
+            }
 
             return sceneNode;
         }

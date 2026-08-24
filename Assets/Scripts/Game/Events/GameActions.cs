@@ -276,6 +276,8 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     "BackgroundImage requires exactly one of Key, Path, or Binding."
                 );
+            if (!string.IsNullOrWhiteSpace(image.Key))
+                return null;
             return ResolvePath(image.Path, image.Binding, context);
         }
 
