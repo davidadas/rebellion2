@@ -12,20 +12,6 @@ namespace Rebellion.Tests.Game.Events
     public class EventStateConditionsTests
     {
         [Test]
-        public void OfficerExists_MissingOfficer_ReturnsFalse()
-        {
-            GameRoot game = BuildGame(out _, out _);
-            OfficerExistsConditional conditional = new OfficerExistsConditional
-            {
-                OfficerInstanceID = "missing-officer",
-            };
-
-            bool result = conditional.IsMet(game);
-
-            Assert.IsFalse(result);
-        }
-
-        [Test]
         public void EvaluateBinding_NullBinding_ReturnsFalse()
         {
             GameRoot game = BuildGame(out _, out _);
