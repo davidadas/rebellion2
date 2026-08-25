@@ -193,17 +193,9 @@ namespace Rebellion.Game.Missions
             GameConfig.RandomCountConfig countConfig = config.CoreSectorBonus;
             bool includeOuterRim = false;
 
-            if (
-                OwnerInstanceID == config.CapitalObserverFactionInstanceID
-                && targetPlanet.InstanceID == config.CapitalPlanetInstanceID
-            )
+            if (IsOpposingHeadquartersTarget(game, targetPlanet))
             {
-                countConfig = config.CapitalBonus;
-                includeOuterRim = true;
-            }
-            else if (IsMobileHeadquartersTarget(game, targetPlanet))
-            {
-                countConfig = config.MobileHeadquartersBonus;
+                countConfig = config.HeadquartersBonus;
                 includeOuterRim = true;
             }
 
@@ -230,14 +222,13 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether the target currently hosts its owner's opposing mobile headquarters.
+        /// Returns whether the target is currently another faction's headquarters planet.
         /// </summary>
-        private bool IsMobileHeadquartersTarget(GameRoot game, Planet targetPlanet)
+        private bool IsOpposingHeadquartersTarget(GameRoot game, Planet targetPlanet)
         {
             Faction owner = game.GetFactionByOwnerInstanceID(targetPlanet.OwnerInstanceID);
             return owner != null
                 && owner.InstanceID != OwnerInstanceID
-                && owner.Settings.Headquarters.IsMobile
                 && owner.HQInstanceID == targetPlanet.InstanceID;
         }
 

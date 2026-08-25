@@ -1048,23 +1048,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns the number of completed, stationary regiments of a given type.
-        /// </summary>
-        /// <param name="regimentTypeID">The regiment type to count.</param>
-        /// <returns>The active regiment count.</returns>
-        public int GetActiveRegimentCount(string regimentTypeID)
-        {
-            if (string.IsNullOrEmpty(regimentTypeID))
-                return 0;
-
-            return _regiments.Count(regiment =>
-                regiment.TypeID == regimentTypeID
-                && regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                && regiment.Movement == null
-            );
-        }
-
-        /// <summary>
         /// Returns the number of starfighters on the planet.
         /// </summary>
         /// <returns>The count of starfighters currently on this planet.</returns>

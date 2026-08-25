@@ -23,6 +23,7 @@ public static class ContentPackLoader
     private const string _catalogFileName = "catalog.xml";
     private const string _contentDirectoryName = "Content";
     private const string _contentPathArgument = "-contentPath";
+    private const string _applicationGameConfigRelativePath = "Application/Rules/game.xml";
     private const string _gameConfigSchemaRelativePath = "Application/Schemas/game-config.xsd";
     private const string _generationConfigSchemaRelativePath =
         "Application/Schemas/generation-config.xsd";
@@ -219,12 +220,7 @@ public static class ContentPackLoader
         ContentScenarioDefinition scenario
     )
     {
-        GameConfig gameConfig = DeserializeGameData<GameConfig>(
-            packRoot,
-            pack.GameConfigPath,
-            nameof(GameConfig),
-            ResolveSafePath(contentRootPath, _gameConfigSchemaRelativePath)
-        );
+        GameConfig gameConfig = LoadGameConfig(contentRootPath, packRoot, pack.GameConfigPath);
         GameGenerationConfig generationConfig = DeserializeGameData<GameGenerationConfig>(
             packRoot,
             scenario.GenerationConfigPath,
@@ -336,6 +332,66 @@ public static class ContentPackLoader
             encyclopediaEntries,
             themes
         );
+    }
+
+    /// <summary>
+    /// Loads the application game-config defaults, applies the pack's optional
+    /// sparse override, and validates the merged configuration.
+    /// </summary>
+    /// <param name="contentRootPath">The absolute application content root.</param>
+    /// <param name="packRoot">The absolute selected pack root.</param>
+    /// <param name="packGameConfigPath">The optional pack-relative override path.</param>
+    /// <returns>The merged, schema-validated game configuration.</returns>
+    internal static GameConfig LoadGameConfig(
+        string contentRootPath,
+        string packRoot,
+        string packGameConfigPath
+    )
+    {
+        XmlDocument merged = LoadXmlDocument(
+            ResolveSafePath(contentRootPath, _applicationGameConfigRelativePath)
+        );
+        if (!string.IsNullOrWhiteSpace(packGameConfigPath))
+        {
+            ContentXmlMerger.ApplyOverrides(
+                merged,
+                LoadXmlDocument(ResolveSafePath(packRoot, packGameConfigPath))
+            );
+        }
+
+        XmlSchemaSet schemas = new XmlSchemaSet();
+        using (
+            XmlReader schemaReader = XmlReader.Create(
+                ResolveSafePath(contentRootPath, _gameConfigSchemaRelativePath)
+            )
+        )
+            schemas.Add(null, schemaReader);
+
+        GameSerializer serializer = new GameSerializer(
+            typeof(GameConfig),
+            new GameSerializerSettings { RootName = nameof(GameConfig), Schemas = schemas }
+        );
+        using MemoryStream stream = new MemoryStream();
+        merged.Save(stream);
+        stream.Position = 0;
+        return serializer.Deserialize(stream) as GameConfig
+            ?? throw new InvalidDataException("Failed to deserialize the merged game config.");
+    }
+
+    /// <summary>
+    /// Loads one XML content file into a document.
+    /// </summary>
+    /// <param name="filePath">The absolute XML file path.</param>
+    /// <returns>The loaded document.</returns>
+    private static XmlDocument LoadXmlDocument(string filePath)
+    {
+        if (!File.Exists(filePath))
+            throw new FileNotFoundException($"Content definition not found: {filePath}");
+
+        XmlDocument document = new XmlDocument();
+        using XmlReader reader = XmlReader.Create(filePath);
+        document.Load(reader);
+        return document;
     }
 
     /// <summary>

@@ -65,6 +65,8 @@ namespace Rebellion.Tests.Systems
                         {
                             InvertSupportShift = true,
                             SupportResistance = SupportChange.Decrease,
+                            CivilianBombardmentCoreSupportPenalty = -3,
+                            CivilianBombardmentOuterRimSupportPenalty = -1,
                             Headquarters = new HeadquartersSettings { IsBombardable = false },
                         },
                     }
@@ -79,6 +81,8 @@ namespace Rebellion.Tests.Systems
                         {
                             InvertSupportShift = false,
                             SupportResistance = SupportChange.Increase,
+                            CivilianBombardmentCoreSupportPenalty = -4,
+                            CivilianBombardmentOuterRimSupportPenalty = -2,
                             Headquarters = new HeadquartersSettings { IsBombardable = true },
                         },
                     }
