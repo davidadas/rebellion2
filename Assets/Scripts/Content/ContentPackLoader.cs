@@ -353,7 +353,7 @@ public static class ContentPackLoader
         );
         if (!string.IsNullOrWhiteSpace(packGameConfigPath))
         {
-            ContentXmlMerger.ApplyOverrides(
+            XmlOverlay.Apply(
                 merged,
                 LoadXmlDocument(ResolveSafePath(packRoot, packGameConfigPath))
             );
@@ -371,10 +371,7 @@ public static class ContentPackLoader
             typeof(GameConfig),
             new GameSerializerSettings { RootName = nameof(GameConfig), Schemas = schemas }
         );
-        using MemoryStream stream = new MemoryStream();
-        merged.Save(stream);
-        stream.Position = 0;
-        return serializer.Deserialize(stream) as GameConfig
+        return serializer.Deserialize(merged) as GameConfig
             ?? throw new InvalidDataException("Failed to deserialize the merged game config.");
     }
 

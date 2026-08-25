@@ -1,11 +1,12 @@
 using System.IO;
 using System.Xml;
 using NUnit.Framework;
+using Rebellion.Util.Serialization;
 
-namespace Rebellion.Tests.Content
+namespace Rebellion.Tests.Util.Serialization
 {
     [TestFixture]
-    public sealed class ContentXmlMergerTests
+    public sealed class XmlOverlayTests
     {
         [Test]
         public void ApplyOverrides_MatchedLeaf_ReplacesDefaultValue()
@@ -13,7 +14,7 @@ namespace Rebellion.Tests.Content
             XmlDocument defaults = Load("<Config><Speed>10</Speed><Size>5</Size></Config>");
             XmlDocument overrides = Load("<Config><Speed>20</Speed></Config>");
 
-            ContentXmlMerger.ApplyOverrides(defaults, overrides);
+            XmlOverlay.Apply(defaults, overrides);
 
             Assert.AreEqual("20", SelectText(defaults, "/Config/Speed"));
             Assert.AreEqual("5", SelectText(defaults, "/Config/Size"));
@@ -27,7 +28,7 @@ namespace Rebellion.Tests.Content
             );
             XmlDocument overrides = Load("<Config><Combat><Range>12</Range></Combat></Config>");
 
-            ContentXmlMerger.ApplyOverrides(defaults, overrides);
+            XmlOverlay.Apply(defaults, overrides);
 
             Assert.AreEqual("3", SelectText(defaults, "/Config/Combat/Rolls"));
             Assert.AreEqual("12", SelectText(defaults, "/Config/Combat/Range"));
@@ -39,7 +40,7 @@ namespace Rebellion.Tests.Content
             XmlDocument defaults = Load("<Config><Speed>10</Speed></Config>");
             XmlDocument overrides = Load("<Config><Jedi><Threshold>80</Threshold></Jedi></Config>");
 
-            ContentXmlMerger.ApplyOverrides(defaults, overrides);
+            XmlOverlay.Apply(defaults, overrides);
 
             Assert.AreEqual("10", SelectText(defaults, "/Config/Speed"));
             Assert.AreEqual("80", SelectText(defaults, "/Config/Jedi/Threshold"));
@@ -53,7 +54,7 @@ namespace Rebellion.Tests.Content
             );
             XmlDocument overrides = Load("<Config><Table><Entry>9</Entry></Table></Config>");
 
-            ContentXmlMerger.ApplyOverrides(defaults, overrides);
+            XmlOverlay.Apply(defaults, overrides);
 
             XmlNodeList entries = defaults.SelectNodes("/Config/Table/Entry");
             Assert.AreEqual(1, entries.Count);
@@ -68,7 +69,7 @@ namespace Rebellion.Tests.Content
                 "<Config><Table><Entry>7</Entry><Entry>8</Entry></Table></Config>"
             );
 
-            ContentXmlMerger.ApplyOverrides(defaults, overrides);
+            XmlOverlay.Apply(defaults, overrides);
 
             XmlNodeList entries = defaults.SelectNodes("/Config/Table/Entry");
             Assert.AreEqual(2, entries.Count);
@@ -82,9 +83,7 @@ namespace Rebellion.Tests.Content
             XmlDocument defaults = Load("<Config><Speed>10</Speed></Config>");
             XmlDocument overrides = Load("<Other><Speed>20</Speed></Other>");
 
-            Assert.Throws<InvalidDataException>(() =>
-                ContentXmlMerger.ApplyOverrides(defaults, overrides)
-            );
+            Assert.Throws<InvalidDataException>(() => XmlOverlay.Apply(defaults, overrides));
         }
 
         private static XmlDocument Load(string xml)

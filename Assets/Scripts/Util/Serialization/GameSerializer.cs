@@ -86,6 +86,22 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
+        /// Deserializes an object from an in-memory XML document.
+        /// </summary>
+        /// <param name="document">The document to read the serialized object from.</param>
+        /// <returns>The deserialized object.</returns>
+        public object Deserialize(XmlDocument document)
+        {
+            using (XmlReader nodeReader = new XmlNodeReader(document))
+            using (
+                XmlReader reader = XmlReader.Create(nodeReader, _settings.CreateReaderSettings())
+            )
+            {
+                return DeserializeFromXmlReader(reader);
+            }
+        }
+
+        /// <summary>
         /// Deserializes the first XML element matching <paramref name="elementName"/> from the given stream.
         /// When <paramref name="elementName"/> is null, falls back to the type name of <typeparamref name="T"/>.
         /// Use an explicit name when the element is stored under a member name that differs from the type
