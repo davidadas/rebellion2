@@ -444,7 +444,9 @@ namespace Rebellion.Tests.Util.Serialization
         {
             GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
             XmlDocument defaults = LoadDocument("<SimpleItem><Name>base</Name></SimpleItem>");
-            XmlDocument overlay = LoadDocument("<NestedItem><Identifier>x</Identifier></NestedItem>");
+            XmlDocument overlay = LoadDocument(
+                "<NestedItem><Identifier>x</Identifier></NestedItem>"
+            );
 
             Assert.Throws<InvalidDataException>(() => serializer.Deserialize(defaults, overlay));
         }
