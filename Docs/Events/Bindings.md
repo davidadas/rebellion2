@@ -20,11 +20,12 @@ runtime authoring error.
 **Required options**
 
 - `As` **[Required]:** The unique name assigned to the resolved value.
-- `From` **[Required]:** Contains exactly one supported selector; use this, `RollInteger`, or `RollDouble`. The schema currently accepts
-  direct planet, officer, special-forces, fleet, mission, ship, regiment, building, and
-  manufacturing-order selectors, plus `SelectRandom` and `SelectBinding`.
-- `RollInteger` **[Required]:** Produces an integer from its inclusive `Minimum` and `Maximum`; use this, `From`, or `RollDouble`.
-- `RollDouble` **[Required]:** Produces a double from its inclusive `Minimum` and exclusive `Maximum`; use this, `From`, or `RollInteger`.
+- Binding source **[Required]:** Provide exactly one:
+  - `From`: Contains exactly one supported selector. The schema currently accepts direct planet,
+    officer, special-forces, fleet, mission, ship, regiment, building, and manufacturing-order
+    selectors, plus `SelectRandom` and `SelectBinding`.
+  - `RollInteger`: Produces an integer from its inclusive `Minimum` and `Maximum`.
+  - `RollDouble`: Produces a double from its inclusive `Minimum` and exclusive `Maximum`.
 
 ```xml
 <Bindings>
