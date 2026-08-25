@@ -37,9 +37,7 @@ namespace Rebellion.Tests.Content
         public void ApplyOverrides_UnmatchedElement_AppendsToDefaults()
         {
             XmlDocument defaults = Load("<Config><Speed>10</Speed></Config>");
-            XmlDocument overrides = Load(
-                "<Config><Jedi><Threshold>80</Threshold></Jedi></Config>"
-            );
+            XmlDocument overrides = Load("<Config><Jedi><Threshold>80</Threshold></Jedi></Config>");
 
             ContentXmlMerger.ApplyOverrides(defaults, overrides);
 

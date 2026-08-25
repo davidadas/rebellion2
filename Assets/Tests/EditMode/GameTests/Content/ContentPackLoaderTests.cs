@@ -40,6 +40,7 @@ namespace Rebellion.Tests.Content
         private const string _fixtureCompleteDefaultsXml =
             "<GameConfig><Movement><DistanceScale>12</DistanceScale></Movement>"
             + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research></GameConfig>";
+
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents")]
         [TestCase(RuntimePlatform.LinuxPlayer, "Game_Data")]
@@ -323,18 +324,12 @@ namespace Rebellion.Tests.Content
                 Directory.CreateDirectory(schemasRoot);
                 Directory.CreateDirectory(Path.Combine(packRoot, "Rules"));
                 File.WriteAllText(Path.Combine(rulesRoot, "game.xml"), applicationDefaultsXml);
-                File.WriteAllText(
-                    Path.Combine(schemasRoot, "game-config.xsd"),
-                    _fixtureSchemaXml
-                );
+                File.WriteAllText(Path.Combine(schemasRoot, "game-config.xsd"), _fixtureSchemaXml);
                 string packOverridePath = null;
                 if (packOverrideXml != null)
                 {
                     packOverridePath = "Rules/game.xml";
-                    File.WriteAllText(
-                        Path.Combine(packRoot, "Rules", "game.xml"),
-                        packOverrideXml
-                    );
+                    File.WriteAllText(Path.Combine(packRoot, "Rules", "game.xml"), packOverrideXml);
                 }
 
                 return ContentPackLoader.LoadGameConfig(contentRoot, packRoot, packOverridePath);
