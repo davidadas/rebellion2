@@ -443,7 +443,7 @@ namespace Rebellion.AI.Planners
                 .ToList();
             Building replacement = activeFacilities
                 .Where(current =>
-                    unlockedFacilities.Any(candidate => candidate.IsProductionUpgradeFor(current))
+                    unlockedFacilities.Any(candidate => current.CanUpgradeTo(candidate))
                 )
                 .OrderByDescending(building => building.GetProcessRate())
                 .ThenBy(building => building.ResearchOrder)

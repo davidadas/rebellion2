@@ -389,7 +389,7 @@ namespace Rebellion.AI.Planners
         private static bool IsEligibleBuildingUpgrade(AIProductionDemand demand, Building building)
         {
             return demand.Kind != AIProductionDemandKind.BuildingUpgrade
-                || building.IsProductionUpgradeFor(demand.ReplacementBuilding);
+                || demand.ReplacementBuilding.CanUpgradeTo(building);
         }
 
         private static int GetBuildingMaintenanceCost(AIProductionDemand demand, Building building)

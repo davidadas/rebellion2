@@ -852,6 +852,7 @@ namespace Rebellion.Tests.AI.Proposals
                 );
                 facility.ResearchOrder = 0;
                 facility.MaintenanceCost = existingMaintenance;
+                facility.Upgrades.Add("advanced-shipyard");
                 replacement ??= facility;
                 if (index > 0)
                     remaining = facility;
@@ -862,6 +863,7 @@ namespace Rebellion.Tests.AI.Proposals
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
+            advancedShipyard.TypeID = "advanced-shipyard";
             advancedShipyard.ProcessRate = 2;
             advancedShipyard.ResearchOrder = 5;
             advancedShipyard.MaintenanceCost = upgradeMaintenance;

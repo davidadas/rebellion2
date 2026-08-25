@@ -194,17 +194,11 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithoutFasterFacilityUpgrade_DoesNotAddUpgrade()
+        public void Plan_WithoutAuthoredFacilityUpgrade_DoesNotAddUpgrade()
         {
-            (
-                GameRoot game,
-                Faction empire,
-                Planet _,
-                Building _,
-                Building advancedShipyard,
-                int _
-            ) = CreateFacilityUpgradeScene(0);
-            advancedShipyard.ProcessRate = 4;
+            (GameRoot game, Faction empire, Planet _, Building replacement, Building _, int _) =
+                CreateFacilityUpgradeScene(0);
+            replacement.Upgrades.Clear();
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
@@ -2335,6 +2329,8 @@ namespace Rebellion.Tests.AI.Planners
             );
             replacement.MaintenanceCost = 10;
             remaining.MaintenanceCost = 10;
+            replacement.Upgrades.Add("advanced-shipyard");
+            remaining.Upgrades.Add("advanced-shipyard");
             AddMaintenanceCapacity(game, planet, 1);
 
             int reserve =
@@ -2349,6 +2345,7 @@ namespace Rebellion.Tests.AI.Planners
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
+            advancedShipyard.TypeID = "advanced-shipyard";
             advancedShipyard.ProcessRate = 2;
             advancedShipyard.ResearchOrder = 5;
             advancedShipyard.MaintenanceCost =

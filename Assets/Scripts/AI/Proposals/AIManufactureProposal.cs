@@ -529,7 +529,7 @@ namespace Rebellion.AI.Proposals
                 || replacement.GetOwnerInstanceID() != context.Faction.InstanceID
                 || replacement.GetManufacturingStatus() != ManufacturingStatus.Complete
                 || replacement.Movement != null
-                || !building.IsProductionUpgradeFor(replacement)
+                || !replacement.CanUpgradeTo(building)
                 || !IManufacturable.CanBeManufacturedBy(building, context.Faction.InstanceID)
                 || destinationPlanet.GetEnergyUsed() > destinationPlanet.GetEnergyCapacity()
             )

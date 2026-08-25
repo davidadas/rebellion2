@@ -55,6 +55,7 @@ namespace Rebellion.Game.Units
         public int WeaponPower { get; set; }
         public DefenseFacilityClass DefenseFacilityClass { get; set; }
         public int ProductionModifier { get; set; }
+        public List<string> Upgrades { get; set; } = new List<string>();
 
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
@@ -103,6 +104,7 @@ namespace Rebellion.Game.Units
             copy.WeaponPower = WeaponPower;
             copy.DefenseFacilityClass = DefenseFacilityClass;
             copy.ProductionModifier = ProductionModifier;
+            copy.Upgrades = Upgrades == null ? new List<string>() : new List<string>(Upgrades);
             copy.ProducerOwnerID = ProducerOwnerID;
             copy.ProducerPlanetID = ProducerPlanetID;
             copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
@@ -136,15 +138,14 @@ namespace Rebellion.Game.Units
             return ProcessRate;
         }
 
-        public bool IsProductionUpgradeFor(Building current)
+        /// <summary>
+        /// Determines whether this building can be replaced by the specified upgrade.
+        /// </summary>
+        /// <param name="upgrade">The proposed replacement building.</param>
+        /// <returns>True when the replacement is an authored upgrade for this building.</returns>
+        public bool CanUpgradeTo(Building upgrade)
         {
-            return current != null
-                && BuildingType == current.BuildingType
-                && ProductionType == current.ProductionType
-                && ResearchOrder > current.ResearchOrder
-                && ProcessRate > 0
-                && current.ProcessRate > 0
-                && ProcessRate < current.ProcessRate;
+            return upgrade != null && Upgrades?.Contains(upgrade.TypeID) == true;
         }
 
         /// <summary>

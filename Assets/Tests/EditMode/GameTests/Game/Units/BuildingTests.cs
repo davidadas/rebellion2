@@ -157,6 +157,24 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void CanUpgradeTo_AuthoredUpgrade_ReturnsTrue()
+        {
+            Building building = new Building { Upgrades = { "advanced-shipyard" } };
+            Building upgrade = new Building { TypeID = "advanced-shipyard" };
+
+            Assert.IsTrue(building.CanUpgradeTo(upgrade));
+        }
+
+        [Test]
+        public void CanUpgradeTo_UnlistedBuilding_ReturnsFalse()
+        {
+            Building building = new Building { Upgrades = { "advanced-shipyard" } };
+            Building upgrade = new Building { TypeID = "specialized-shipyard" };
+
+            Assert.IsFalse(building.CanUpgradeTo(upgrade));
+        }
+
+        [Test]
         public void GetProductionType_ValidProductionType_ReturnsCorrectType()
         {
             Building building = new Building { ProductionType = ManufacturingType.Building };
@@ -263,6 +281,7 @@ namespace Rebellion.Tests.Game.Units
                 ProductionInputReserved = true,
                 ResourceMaintenanceAllocation = 12,
                 ResourceStartupCyclePending = false,
+                Upgrades = { "advanced-building" },
                 Movement = null,
             };
 
@@ -315,6 +334,7 @@ namespace Rebellion.Tests.Game.Units
                 building.ResourceStartupCyclePending,
                 deserializedBuilding.ResourceStartupCyclePending
             );
+            CollectionAssert.AreEqual(building.Upgrades, deserializedBuilding.Upgrades);
             Assert.AreEqual(building.GetPosition().X, deserializedBuilding.GetPosition().X);
             Assert.AreEqual(building.GetPosition().Y, deserializedBuilding.GetPosition().Y);
             Assert.AreEqual(building.Movement, deserializedBuilding.Movement);

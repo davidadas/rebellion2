@@ -366,6 +366,8 @@ namespace Rebellion.Tests.AI.Planners
             );
             first.ResearchOrder = 0;
             second.ResearchOrder = 0;
+            first.Upgrades.Add("advanced-shipyard");
+            second.Upgrades.Add("advanced-shipyard");
             AddUnlockedShipyardUpgrade(empire);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -390,7 +392,7 @@ namespace Rebellion.Tests.AI.Planners
                 "shipyard-world",
                 empire.InstanceID
             );
-            AITestSceneBuilder.AddProductionFacility(
+            Building shipyard = AITestSceneBuilder.AddProductionFacility(
                 game,
                 planet,
                 "only-shipyard",
@@ -398,6 +400,7 @@ namespace Rebellion.Tests.AI.Planners
                 ManufacturingType.Ship,
                 processRate: 4
             );
+            shipyard.Upgrades.Add("advanced-shipyard");
             AddUnlockedShipyardUpgrade(empire);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -427,7 +430,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             for (int index = 0; index < 2; index++)
             {
-                AITestSceneBuilder.AddProductionFacility(
+                Building pendingFacility = AITestSceneBuilder.AddProductionFacility(
                     game,
                     pendingPlanet,
                     $"pending-legacy-{index}",
@@ -435,7 +438,8 @@ namespace Rebellion.Tests.AI.Planners
                     ManufacturingType.Ship,
                     processRate: 4
                 );
-                AITestSceneBuilder.AddProductionFacility(
+                pendingFacility.Upgrades.Add("advanced-shipyard");
+                Building eligibleFacility = AITestSceneBuilder.AddProductionFacility(
                     game,
                     eligiblePlanet,
                     $"eligible-legacy-{index}",
@@ -443,6 +447,7 @@ namespace Rebellion.Tests.AI.Planners
                     ManufacturingType.Ship,
                     processRate: 4
                 );
+                eligibleFacility.Upgrades.Add("advanced-shipyard");
             }
             Building pendingUpgrade = AITestSceneBuilder.CreateBuildingTemplate(
                 "pending-upgrade",
@@ -2318,6 +2323,7 @@ namespace Rebellion.Tests.AI.Planners
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
+            advancedShipyard.TypeID = "advanced-shipyard";
             advancedShipyard.ProcessRate = 2;
             advancedShipyard.ResearchOrder = 5;
             faction.ResearchQueue[ManufacturingType.Building] = new List<Technology>
