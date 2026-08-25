@@ -9,18 +9,18 @@ namespace Rebellion.AI.Proposals
 {
     public sealed class AIColonizationProposal : AIProposal
     {
+        public Fleet Fleet { get; }
+
+        public FleetOrderStatus Status { get; }
+
+        public Planet TargetPlanet { get; }
+
         public AIColonizationProposal(Fleet fleet, FleetOrderStatus status, Planet targetPlanet)
         {
             Fleet = fleet;
             Status = status;
             TargetPlanet = targetPlanet;
         }
-
-        public Fleet Fleet { get; }
-
-        public FleetOrderStatus Status { get; }
-
-        public Planet TargetPlanet { get; }
 
         public override IReadOnlyList<string> GetClaimKeys()
         {

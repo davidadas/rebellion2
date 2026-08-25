@@ -7,15 +7,15 @@ namespace Rebellion.AI.Proposals
 {
     public sealed class AIFleetDefenseProposal : AIProposal
     {
+        public Fleet Fleet { get; }
+
+        public Planet TargetPlanet { get; }
+
         public AIFleetDefenseProposal(Fleet fleet, Planet targetPlanet)
         {
             Fleet = fleet;
             TargetPlanet = targetPlanet;
         }
-
-        public Fleet Fleet { get; }
-
-        public Planet TargetPlanet { get; }
 
         public override IReadOnlyList<string> GetClaimKeys()
         {

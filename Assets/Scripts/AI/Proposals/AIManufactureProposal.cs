@@ -52,6 +52,9 @@ namespace Rebellion.AI.Proposals
 
         internal bool DistributesDemand { get; }
 
+        internal bool UsesSharedProducerCapacity =>
+            !IsFacilityExpansionDemand() && !DistributesDemand;
+
         /// <summary>
         /// Creates a manufacture proposal.
         /// </summary>
@@ -580,9 +583,6 @@ namespace Rebellion.AI.Proposals
         {
             return IsCountedManufacturingDemand() ? Demand?.QuantityNeeded ?? 0 : 1;
         }
-
-        internal bool UsesSharedProducerCapacity =>
-            !IsFacilityExpansionDemand() && !DistributesDemand;
 
         private bool IsCountedManufacturingDemand()
         {

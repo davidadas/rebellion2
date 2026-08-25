@@ -8,13 +8,13 @@ namespace Rebellion.AI.Proposals
     {
         private readonly FleetOrder _expectedOrder;
 
+        public Fleet Fleet { get; }
+
         public AIClearFleetOrderProposal(Fleet fleet, FleetOrder expectedOrder)
         {
             Fleet = fleet;
             _expectedOrder = expectedOrder;
         }
-
-        public Fleet Fleet { get; }
 
         public override IReadOnlyList<string> GetClaimKeys()
         {

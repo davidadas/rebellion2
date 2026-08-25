@@ -25,30 +25,6 @@ namespace Rebellion.SceneGraph
             set => _instanceId = value;
         }
 
-        public static void SetInstanceIdSeed(int? seed)
-        {
-            lock (_instanceIdLock)
-                _deterministicInstanceIdProvider = seed.HasValue ? new Random(seed.Value) : null;
-        }
-
-        private static string CreateInstanceId()
-        {
-            lock (_instanceIdLock)
-            {
-                if (_deterministicInstanceIdProvider == null)
-                    return Guid.NewGuid().ToString("N");
-
-                byte[] bytes = new byte[16];
-                _deterministicInstanceIdProvider.NextBytes(bytes);
-                return new Guid(bytes).ToString("N");
-            }
-        }
-
-        internal string PeekInstanceID()
-        {
-            return _instanceId ?? string.Empty;
-        }
-
         public string TypeID { get; set; }
         public string DisplayName { get; set; }
         public string DisplayStatus { get; set; }
@@ -74,6 +50,30 @@ namespace Rebellion.SceneGraph
             !string.IsNullOrEmpty(EncyclopediaImagePath)
             || !string.IsNullOrEmpty(EncyclopediaDescription)
             || EncyclopediaStats?.Count > 0;
+
+        public static void SetInstanceIdSeed(int? seed)
+        {
+            lock (_instanceIdLock)
+                _deterministicInstanceIdProvider = seed.HasValue ? new Random(seed.Value) : null;
+        }
+
+        private static string CreateInstanceId()
+        {
+            lock (_instanceIdLock)
+            {
+                if (_deterministicInstanceIdProvider == null)
+                    return Guid.NewGuid().ToString("N");
+
+                byte[] bytes = new byte[16];
+                _deterministicInstanceIdProvider.NextBytes(bytes);
+                return new Guid(bytes).ToString("N");
+            }
+        }
+
+        internal string PeekInstanceID()
+        {
+            return _instanceId ?? string.Empty;
+        }
 
         /// <summary>
         /// Returns the instance ID of the entity.

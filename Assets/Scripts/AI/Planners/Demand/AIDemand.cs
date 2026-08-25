@@ -75,6 +75,23 @@ namespace Rebellion.AI.Planners.Demand
         public int QuantityNeeded { get; }
         public double Pressure { get; }
 
+        // Reserve Policy.
+        public bool CanUseRefinedMaterialReserve =>
+            Kind
+                is AIDemandKind.Mine
+                    or AIDemandKind.Refinery
+                    or AIDemandKind.TrainingFacility
+                    or AIDemandKind.FleetRegiment
+                    or AIDemandKind.GarrisonRegimentReserve;
+
+        public bool UsesDefensiveReserve =>
+            Kind
+                is AIDemandKind.PlanetaryDefense
+                    or AIDemandKind.PlanetaryStarfighterReserve
+                    or AIDemandKind.GarrisonRegimentReserve
+                    or AIDemandKind.TrainingFacility
+                    or AIDemandKind.BuildingUpgrade;
+
         /// <summary>
         /// Creates a production demand.
         /// </summary>
@@ -109,23 +126,6 @@ namespace Rebellion.AI.Planners.Demand
             ProductTypeId = productTypeId;
             CapitalShipRole = capitalShipRole;
         }
-
-        // Reserve Policy.
-        public bool CanUseRefinedMaterialReserve =>
-            Kind
-                is AIDemandKind.Mine
-                    or AIDemandKind.Refinery
-                    or AIDemandKind.TrainingFacility
-                    or AIDemandKind.FleetRegiment
-                    or AIDemandKind.GarrisonRegimentReserve;
-
-        public bool UsesDefensiveReserve =>
-            Kind
-                is AIDemandKind.PlanetaryDefense
-                    or AIDemandKind.PlanetaryStarfighterReserve
-                    or AIDemandKind.GarrisonRegimentReserve
-                    or AIDemandKind.TrainingFacility
-                    or AIDemandKind.BuildingUpgrade;
 
         /// <summary>
         /// Builds the canonical demand identifier for a faction, kind, and key parts.
