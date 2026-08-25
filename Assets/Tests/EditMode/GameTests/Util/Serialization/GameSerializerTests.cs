@@ -1901,6 +1901,11 @@ namespace Rebellion.Tests.Util.Serialization
             });
         }
 
+        /// <summary>
+        /// Loads an XML string into a document.
+        /// </summary>
+        /// <param name="xml">The XML content to load.</param>
+        /// <returns>The loaded document.</returns>
         private static XmlDocument LoadDocument(string xml)
         {
             XmlDocument document = new XmlDocument();
