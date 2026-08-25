@@ -20,6 +20,10 @@ public enum PlanetIcon
 /// </summary>
 public sealed class GalaxyMapSector
 {
+    public PlanetSector PlanetSector { get; }
+
+    public IReadOnlyList<GalaxyMapPlanet> Planets { get; }
+
     /// <summary>
     /// Creates a visible galaxy-map sector for one planet sector.
     /// </summary>
@@ -30,10 +34,6 @@ public sealed class GalaxyMapSector
         PlanetSector = planetSector;
         Planets = CreatePlanetSnapshot(planets);
     }
-
-    public PlanetSector PlanetSector { get; }
-
-    public IReadOnlyList<GalaxyMapPlanet> Planets { get; }
 
     /// <summary>
     /// Copies visible planets into an immutable sector-owned snapshot.
@@ -64,6 +64,16 @@ public sealed class GalaxyMapSector
 /// </summary>
 public sealed class GalaxyMapPlanet
 {
+    public GalaxyMapSector Sector { get; private set; }
+
+    public PlanetSector PlanetSector { get; }
+
+    public Planet Planet { get; }
+
+    public string PlanetIconPath { get; }
+
+    public string OwnerFactionId => Planet?.OwnerInstanceID;
+
     /// <summary>
     /// Creates a visible galaxy-map planet snapshot.
     /// </summary>
@@ -76,16 +86,6 @@ public sealed class GalaxyMapPlanet
         Planet = planet;
         PlanetIconPath = planetIconPath ?? string.Empty;
     }
-
-    public GalaxyMapSector Sector { get; private set; }
-
-    public PlanetSector PlanetSector { get; }
-
-    public Planet Planet { get; }
-
-    public string PlanetIconPath { get; }
-
-    public string OwnerFactionId => Planet?.OwnerInstanceID;
 
     /// <summary>
     /// Associates this planet snapshot with its immutable owning sector.

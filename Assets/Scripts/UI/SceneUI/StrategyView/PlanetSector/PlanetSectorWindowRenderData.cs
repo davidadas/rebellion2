@@ -7,6 +7,14 @@ using UnityEngine;
 /// </summary>
 public sealed class PlanetSectorWindowRenderData
 {
+    public IReadOnlyList<PlanetSectorPlanetRenderData> Planets { get; }
+
+    public string Title { get; }
+
+    public IReadOnlyList<PlanetSectorWaypointSegmentRenderData> WaypointSegments { get; }
+
+    public IReadOnlyList<PlanetSectorWaypointRenderData> Waypoints { get; }
+
     /// <summary>
     /// Creates a planet-sector window presentation.
     /// </summary>
@@ -26,14 +34,6 @@ public sealed class PlanetSectorWindowRenderData
         WaypointSegments = Copy(waypointSegments);
         Waypoints = Copy(waypoints);
     }
-
-    public IReadOnlyList<PlanetSectorPlanetRenderData> Planets { get; }
-
-    public string Title { get; }
-
-    public IReadOnlyList<PlanetSectorWaypointSegmentRenderData> WaypointSegments { get; }
-
-    public IReadOnlyList<PlanetSectorWaypointRenderData> Waypoints { get; }
 
     /// <summary>
     /// Copies a presentation collection into immutable window-owned storage.
@@ -96,6 +96,46 @@ public readonly struct PlanetSectorWaypointRenderData
 /// </summary>
 public sealed class PlanetSectorPlanetRenderData
 {
+    public Texture2D DefensePressedTexture { get; }
+
+    public Texture2D DefenseTexture { get; }
+
+    public PlanetSectorBarRenderData EnergyBar { get; }
+
+    public Texture2D FacilityPressedTexture { get; }
+
+    public Texture2D FacilityTexture { get; }
+
+    public Texture2D FleetPressedTexture { get; }
+
+    public Texture2D FleetTexture { get; }
+
+    public Texture2D HeadquartersTexture { get; }
+
+    public PlanetIcon HoveredIcon { get; }
+
+    public Texture2D MissionPressedTexture { get; }
+
+    public Texture2D MissionTexture { get; }
+
+    public string Name { get; }
+
+    public Color32 NameColor { get; }
+
+    public Texture2D PlanetTexture { get; }
+
+    public int PlanetIndex { get; }
+
+    public Vector2Int GalaxyOffset { get; }
+
+    public PlanetSectorBarRenderData RawResourceBar { get; }
+
+    public PlanetIcon SelectedIcon { get; }
+
+    public PlanetSectorBarRenderData SupportBar { get; }
+
+    public Texture2D UprisingTexture { get; }
+
     /// <summary>
     /// Creates a planet presentation.
     /// </summary>
@@ -163,46 +203,6 @@ public sealed class PlanetSectorPlanetRenderData
         RawResourceBar = rawResourceBar ?? throw new ArgumentNullException(nameof(rawResourceBar));
         SupportBar = supportBar ?? throw new ArgumentNullException(nameof(supportBar));
     }
-
-    public Texture2D DefensePressedTexture { get; }
-
-    public Texture2D DefenseTexture { get; }
-
-    public PlanetSectorBarRenderData EnergyBar { get; }
-
-    public Texture2D FacilityPressedTexture { get; }
-
-    public Texture2D FacilityTexture { get; }
-
-    public Texture2D FleetPressedTexture { get; }
-
-    public Texture2D FleetTexture { get; }
-
-    public Texture2D HeadquartersTexture { get; }
-
-    public PlanetIcon HoveredIcon { get; }
-
-    public Texture2D MissionPressedTexture { get; }
-
-    public Texture2D MissionTexture { get; }
-
-    public string Name { get; }
-
-    public Color32 NameColor { get; }
-
-    public Texture2D PlanetTexture { get; }
-
-    public int PlanetIndex { get; }
-
-    public Vector2Int GalaxyOffset { get; }
-
-    public PlanetSectorBarRenderData RawResourceBar { get; }
-
-    public PlanetIcon SelectedIcon { get; }
-
-    public PlanetSectorBarRenderData SupportBar { get; }
-
-    public Texture2D UprisingTexture { get; }
 }
 
 /// <summary>
@@ -210,6 +210,20 @@ public sealed class PlanetSectorPlanetRenderData
 /// </summary>
 public sealed class PlanetSectorBarRenderData
 {
+    public Color32 BackgroundColor { get; }
+
+    public int CellCount { get; }
+
+    public Color32 EmptyColor { get; }
+
+    public Color32 FillColor { get; }
+
+    public float FillRatio { get; }
+
+    public int LitCells { get; }
+
+    public bool Visible { get; }
+
     /// <summary>
     /// Creates a planet status-bar presentation.
     /// </summary>
@@ -238,20 +252,6 @@ public sealed class PlanetSectorBarRenderData
         EmptyColor = emptyColor;
         BackgroundColor = backgroundColor;
     }
-
-    public Color32 BackgroundColor { get; }
-
-    public int CellCount { get; }
-
-    public Color32 EmptyColor { get; }
-
-    public Color32 FillColor { get; }
-
-    public float FillRatio { get; }
-
-    public int LitCells { get; }
-
-    public bool Visible { get; }
 }
 
 /// <summary>
@@ -259,6 +259,12 @@ public sealed class PlanetSectorBarRenderData
 /// </summary>
 public sealed class PlanetSectorWindowElement
 {
+    public PlanetIcon Icon { get; }
+
+    public int PlanetIndex { get; }
+
+    public bool PlanetImage { get; }
+
     /// <summary>
     /// Creates a semantic planet-sector presentation element.
     /// </summary>
@@ -271,10 +277,4 @@ public sealed class PlanetSectorWindowElement
         Icon = icon;
         PlanetImage = planetImage;
     }
-
-    public PlanetIcon Icon { get; }
-
-    public int PlanetIndex { get; }
-
-    public bool PlanetImage { get; }
 }

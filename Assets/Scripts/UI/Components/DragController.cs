@@ -7,6 +7,8 @@ using UnityEngine;
 /// </summary>
 public sealed class DragRequest
 {
+    public object Source { get; }
+
     /// <summary>
     /// Creates a drag request for a non-null source model.
     /// </summary>
@@ -15,8 +17,6 @@ public sealed class DragRequest
     {
         Source = source ?? throw new ArgumentNullException(nameof(source));
     }
-
-    public object Source { get; }
 }
 
 /// <summary>
@@ -25,37 +25,6 @@ public sealed class DragRequest
 public sealed class DragPreview
 {
     private readonly IReadOnlyList<DragPreviewImage> images;
-
-    /// <summary>
-    /// Creates immutable drag-preview presentation data.
-    /// </summary>
-    /// <param name="texture">The preview texture.</param>
-    /// <param name="width">The source-space width.</param>
-    /// <param name="height">The source-space height.</param>
-    /// <param name="offsetX">The horizontal pointer offset.</param>
-    /// <param name="offsetY">The vertical pointer offset.</param>
-    public DragPreview(Texture texture, int width, int height, int offsetX, int offsetY)
-        : this(
-            new[] { new DragPreviewImage(texture, new RectInt(-offsetX, -offsetY, width, height)) },
-            0,
-            0
-        ) { }
-
-    /// <summary>
-    /// Creates immutable drag-preview presentation data from ordered image layers.
-    /// </summary>
-    /// <param name="images">The image layers in rendering order.</param>
-    /// <param name="hotspotX">The source-space horizontal pointer coordinate.</param>
-    /// <param name="hotspotY">The source-space vertical pointer coordinate.</param>
-    public DragPreview(IReadOnlyList<DragPreviewImage> images, int hotspotX, int hotspotY)
-    {
-        if (images == null)
-            throw new ArgumentNullException(nameof(images));
-
-        this.images = new List<DragPreviewImage>(images).AsReadOnly();
-        HotspotX = hotspotX;
-        HotspotY = hotspotY;
-    }
 
     /// <summary>
     /// Gets the immutable image layers in rendering order.
@@ -99,6 +68,37 @@ public sealed class DragPreview
             return false;
         }
     }
+
+    /// <summary>
+    /// Creates immutable drag-preview presentation data.
+    /// </summary>
+    /// <param name="texture">The preview texture.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <param name="offsetX">The horizontal pointer offset.</param>
+    /// <param name="offsetY">The vertical pointer offset.</param>
+    public DragPreview(Texture texture, int width, int height, int offsetX, int offsetY)
+        : this(
+            new[] { new DragPreviewImage(texture, new RectInt(-offsetX, -offsetY, width, height)) },
+            0,
+            0
+        ) { }
+
+    /// <summary>
+    /// Creates immutable drag-preview presentation data from ordered image layers.
+    /// </summary>
+    /// <param name="images">The image layers in rendering order.</param>
+    /// <param name="hotspotX">The source-space horizontal pointer coordinate.</param>
+    /// <param name="hotspotY">The source-space vertical pointer coordinate.</param>
+    public DragPreview(IReadOnlyList<DragPreviewImage> images, int hotspotX, int hotspotY)
+    {
+        if (images == null)
+            throw new ArgumentNullException(nameof(images));
+
+        this.images = new List<DragPreviewImage>(images).AsReadOnly();
+        HotspotX = hotspotX;
+        HotspotY = hotspotY;
+    }
 }
 
 /// <summary>
@@ -106,6 +106,16 @@ public sealed class DragPreview
 /// </summary>
 public readonly struct DragPreviewImage
 {
+    /// <summary>
+    /// Gets the displayed texture.
+    /// </summary>
+    public Texture Texture { get; }
+
+    /// <summary>
+    /// Gets the source-space layer bounds.
+    /// </summary>
+    public RectInt Bounds { get; }
+
     /// <summary>
     /// Creates one drag-preview image layer.
     /// </summary>
@@ -116,16 +126,6 @@ public readonly struct DragPreviewImage
         Texture = texture;
         Bounds = bounds;
     }
-
-    /// <summary>
-    /// Gets the displayed texture.
-    /// </summary>
-    public Texture Texture { get; }
-
-    /// <summary>
-    /// Gets the source-space layer bounds.
-    /// </summary>
-    public RectInt Bounds { get; }
 }
 
 /// <summary>
@@ -142,6 +142,14 @@ public sealed class DragController
     private int currentX;
     private int currentY;
 
+    public bool HasCandidate => candidateRequest != null;
+
+    public bool IsDragging => activeRequest != null;
+
+    public DragRequest CandidateRequest => candidateRequest;
+
+    public DragRequest ActiveRequest => activeRequest;
+
     /// <summary>
     /// Creates a drag controller with a non-negative activation distance.
     /// </summary>
@@ -153,14 +161,6 @@ public sealed class DragController
 
         this.startDistance = startDistance;
     }
-
-    public bool HasCandidate => candidateRequest != null;
-
-    public bool IsDragging => activeRequest != null;
-
-    public DragRequest CandidateRequest => candidateRequest;
-
-    public DragRequest ActiveRequest => activeRequest;
 
     /// <summary>
     /// Starts a potential drag at a source-space pointer position.

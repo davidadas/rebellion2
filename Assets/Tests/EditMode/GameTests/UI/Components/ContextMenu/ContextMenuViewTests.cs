@@ -416,15 +416,15 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
 
         private sealed class TestCommand : IContextMenuCommand
         {
+            public string Text { get; }
+
+            public bool Enabled { get; }
+
             public TestCommand(string text, bool enabled)
             {
                 Text = text;
                 Enabled = enabled;
             }
-
-            public string Text { get; }
-
-            public bool Enabled { get; }
         }
     }
 }

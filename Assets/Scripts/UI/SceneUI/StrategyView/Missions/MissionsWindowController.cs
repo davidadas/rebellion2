@@ -716,18 +716,6 @@ internal sealed class MissionsWindowSession
     private string selectedMissionInstanceId;
     private int selectedMissionIndexHint = -1;
 
-    /// <summary>
-    /// Creates a Missions-window session for one planet projection.
-    /// </summary>
-    /// <param name="planet">The represented strategy planet.</param>
-    /// <param name="window">The owning window shell.</param>
-    public MissionsWindowSession(GalaxyMapPlanet planet, UIWindow window)
-    {
-        Planet = planet ?? throw new ArgumentNullException(nameof(planet));
-        Window = window ?? throw new ArgumentNullException(nameof(window));
-        ReconcileSelection();
-    }
-
     public GalaxyMapPlanet Planet { get; private set; }
 
     public UIWindow Window { get; }
@@ -779,6 +767,18 @@ internal sealed class MissionsWindowSession
                 ? participants[ContextParticipantIndex]
                 : null;
         }
+    }
+
+    /// <summary>
+    /// Creates a Missions-window session for one planet projection.
+    /// </summary>
+    /// <param name="planet">The represented strategy planet.</param>
+    /// <param name="window">The owning window shell.</param>
+    public MissionsWindowSession(GalaxyMapPlanet planet, UIWindow window)
+    {
+        Planet = planet ?? throw new ArgumentNullException(nameof(planet));
+        Window = window ?? throw new ArgumentNullException(nameof(window));
+        ReconcileSelection();
     }
 
     /// <summary>

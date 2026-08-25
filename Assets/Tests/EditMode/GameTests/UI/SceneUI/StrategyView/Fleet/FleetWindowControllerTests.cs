@@ -580,16 +580,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {
+            public GameResult LastBattleResult { get; private set; }
+
+            public int RefreshCount { get; private set; }
+
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
 
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
             ) { }
-
-            public GameResult LastBattleResult { get; private set; }
-
-            public int RefreshCount { get; private set; }
 
             public void OpenFleetBattleResult(GameResult result)
             {

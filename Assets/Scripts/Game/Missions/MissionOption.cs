@@ -8,6 +8,12 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public sealed class MissionOption
     {
+        public string MissionTypeID { get; }
+        public string DisplayName { get; }
+        public OfficerRating ParticipantRating { get; }
+        public OfficerRating DecoyParticipantRating { get; }
+        public ResearchDiscipline? Discipline { get; }
+
         /// <summary>
         /// Creates a selectable mission option.
         /// </summary>
@@ -33,11 +39,5 @@ namespace Rebellion.Game.Missions
             DecoyParticipantRating = decoyParticipantRating;
             Discipline = discipline;
         }
-
-        public string MissionTypeID { get; }
-        public string DisplayName { get; }
-        public OfficerRating ParticipantRating { get; }
-        public OfficerRating DecoyParticipantRating { get; }
-        public ResearchDiscipline? Discipline { get; }
     }
 }

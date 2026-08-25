@@ -13,15 +13,6 @@ internal sealed class MessagesWindowSession
     );
     private string selectedMessageId;
 
-    /// <summary>
-    /// Creates one Messages window session.
-    /// </summary>
-    /// <param name="window">The owning Messages window.</param>
-    public MessagesWindowSession(UIWindow window)
-    {
-        Window = window ?? throw new ArgumentNullException(nameof(window));
-    }
-
     public MessagesTab ActiveTab { get; private set; } = MessagesTab.All;
 
     public bool DetailVisible { get; private set; }
@@ -31,6 +22,15 @@ internal sealed class MessagesWindowSession
     public string SelectedMessageId => selectedMessageId;
 
     public UIWindow Window { get; }
+
+    /// <summary>
+    /// Creates one Messages window session.
+    /// </summary>
+    /// <param name="window">The owning Messages window.</param>
+    public MessagesWindowSession(UIWindow window)
+    {
+        Window = window ?? throw new ArgumentNullException(nameof(window));
+    }
 
     /// <summary>
     /// Selects a semantic tab and clears state that does not carry between categories.

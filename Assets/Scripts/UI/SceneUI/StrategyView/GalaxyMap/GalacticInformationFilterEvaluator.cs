@@ -13,6 +13,12 @@ using Rebellion.Util.Extensions;
 /// </summary>
 public readonly struct GalacticInformationMarker
 {
+    public int Index { get; }
+
+    public string FactionInstanceId { get; }
+
+    public bool Mixed { get; }
+
     /// <summary>
     /// Creates an immutable evaluated marker result.
     /// </summary>
@@ -25,12 +31,6 @@ public readonly struct GalacticInformationMarker
         FactionInstanceId = factionInstanceId;
         Mixed = mixed;
     }
-
-    public int Index { get; }
-
-    public string FactionInstanceId { get; }
-
-    public bool Mixed { get; }
 }
 
 /// <summary>

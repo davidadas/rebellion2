@@ -263,6 +263,10 @@ public sealed class AdvisorReportWindowController
     /// </summary>
     private sealed class AdvisorReportWindowSession
     {
+        public AdvisorReportMode Mode { get; private set; }
+
+        public UIWindow Window { get; }
+
         /// <summary>
         /// Creates one advisor-report session.
         /// </summary>
@@ -273,10 +277,6 @@ public sealed class AdvisorReportWindowController
             Window = window ?? throw new ArgumentNullException(nameof(window));
             Mode = mode;
         }
-
-        public AdvisorReportMode Mode { get; private set; }
-
-        public UIWindow Window { get; }
 
         /// <summary>
         /// Selects the report mode displayed by this session.

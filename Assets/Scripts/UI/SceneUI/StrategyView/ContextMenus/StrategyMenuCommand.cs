@@ -12,6 +12,24 @@ using Rebellion.Util.Extensions;
 /// </summary>
 public sealed class StrategyMenuCommand : IContextMenuParentCommand
 {
+    public StrategyMenuAction Action { get; }
+
+    public string Text { get; }
+
+    public bool Enabled { get; }
+
+    public int IconKey { get; }
+
+    public IReadOnlyList<StrategyMenuCommand> SubmenuCommands { get; }
+
+    public IReadOnlyList<IContextMenuCommand> ChildCommands => SubmenuCommands;
+
+    public bool HasIcon => IconKey != StrategyContextMenuIconKeys.None;
+
+    public bool IsSubmenu { get; }
+
+    public bool UsesIconColumn { get; }
+
     /// <summary>
     /// Creates one strategy context-menu command.
     /// </summary>
@@ -51,24 +69,6 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
         IReadOnlyList<StrategyMenuCommand> submenuCommands
     )
         : this(StrategyMenuAction.None, text, enabled, 0, submenuCommands) { }
-
-    public StrategyMenuAction Action { get; }
-
-    public string Text { get; }
-
-    public bool Enabled { get; }
-
-    public int IconKey { get; }
-
-    public IReadOnlyList<StrategyMenuCommand> SubmenuCommands { get; }
-
-    public IReadOnlyList<IContextMenuCommand> ChildCommands => SubmenuCommands;
-
-    public bool HasIcon => IconKey != StrategyContextMenuIconKeys.None;
-
-    public bool IsSubmenu { get; }
-
-    public bool UsesIconColumn { get; }
 }
 
 /// <summary>

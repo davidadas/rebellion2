@@ -30,6 +30,10 @@ public enum FacilityWindowTabState
 /// </summary>
 public sealed class FacilityWindowTabRenderData
 {
+    public FacilityWindowTab Tab { get; }
+
+    public FacilityWindowTabState State { get; }
+
     /// <summary>
     /// Creates one facility-tab presentation snapshot.
     /// </summary>
@@ -40,10 +44,6 @@ public sealed class FacilityWindowTabRenderData
         Tab = tab;
         State = state;
     }
-
-    public FacilityWindowTab Tab { get; }
-
-    public FacilityWindowTabState State { get; }
 }
 
 /// <summary>
@@ -51,6 +51,10 @@ public sealed class FacilityWindowTabRenderData
 /// </summary>
 public sealed class FacilityInventoryItemRenderData
 {
+    public Texture Texture { get; }
+
+    public bool Selected { get; }
+
     /// <summary>
     /// Creates an inventory item presentation.
     /// </summary>
@@ -61,10 +65,6 @@ public sealed class FacilityInventoryItemRenderData
         Texture = texture;
         Selected = selected;
     }
-
-    public Texture Texture { get; }
-
-    public bool Selected { get; }
 }
 
 /// <summary>
@@ -72,6 +72,26 @@ public sealed class FacilityInventoryItemRenderData
 /// </summary>
 public sealed class ManufacturingLaneCardRenderData
 {
+    public Texture2D StateTexture { get; }
+
+    public Texture EntityTexture { get; }
+
+    public int ManufacturingProgress { get; }
+
+    public int ManufacturingCost { get; }
+
+    public string Title { get; }
+
+    public string EmptyText { get; }
+
+    public string CurrentName { get; }
+
+    public string CurrentCount { get; }
+
+    public string DestinationText { get; }
+
+    public string FacilityCount { get; }
+
     /// <summary>
     /// Creates a manufacturing lane presentation.
     /// </summary>
@@ -109,26 +129,6 @@ public sealed class ManufacturingLaneCardRenderData
         DestinationText = destinationText ?? string.Empty;
         FacilityCount = facilityCount ?? string.Empty;
     }
-
-    public Texture2D StateTexture { get; }
-
-    public Texture EntityTexture { get; }
-
-    public int ManufacturingProgress { get; }
-
-    public int ManufacturingCost { get; }
-
-    public string Title { get; }
-
-    public string EmptyText { get; }
-
-    public string CurrentName { get; }
-
-    public string CurrentCount { get; }
-
-    public string DestinationText { get; }
-
-    public string FacilityCount { get; }
 }
 
 /// <summary>
@@ -151,6 +151,32 @@ public sealed class FacilityWindowRenderData
     public static int TabCount => _orderedTabs.Length;
 
     public static IReadOnlyList<FacilityWindowTab> OrderedTabs => _readOnlyOrderedTabs;
+
+    public int X { get; }
+
+    public int Y { get; }
+
+    public Texture2D TitleTexture { get; }
+
+    public string Caption { get; }
+
+    public FacilityWindowTab ActiveTab { get; }
+
+    public IReadOnlyList<FacilityWindowTabRenderData> Tabs { get; }
+
+    public Texture2D ControlTabTexture { get; }
+
+    public Texture2D ControlTabPressedTexture { get; }
+
+    public IReadOnlyList<ManufacturingLaneCardRenderData> ManufacturingCards { get; }
+
+    public string InventoryTitle { get; }
+
+    public IReadOnlyList<FacilityInventoryItemRenderData> InventoryItems { get; }
+
+    public Texture2D InventorySelectionTexture { get; }
+
+    public bool ShowManufacturing => ManufacturingCards.Count > 0;
 
     /// <summary>
     /// Creates a complete facility-window presentation snapshot.
@@ -195,32 +221,6 @@ public sealed class FacilityWindowRenderData
         InventoryItems = Copy(inventoryItems);
         InventorySelectionTexture = inventorySelectionTexture;
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public Texture2D TitleTexture { get; }
-
-    public string Caption { get; }
-
-    public FacilityWindowTab ActiveTab { get; }
-
-    public IReadOnlyList<FacilityWindowTabRenderData> Tabs { get; }
-
-    public Texture2D ControlTabTexture { get; }
-
-    public Texture2D ControlTabPressedTexture { get; }
-
-    public IReadOnlyList<ManufacturingLaneCardRenderData> ManufacturingCards { get; }
-
-    public string InventoryTitle { get; }
-
-    public IReadOnlyList<FacilityInventoryItemRenderData> InventoryItems { get; }
-
-    public Texture2D InventorySelectionTexture { get; }
-
-    public bool ShowManufacturing => ManufacturingCards.Count > 0;
 
     /// <summary>
     /// Copies presentation items into an immutable list.

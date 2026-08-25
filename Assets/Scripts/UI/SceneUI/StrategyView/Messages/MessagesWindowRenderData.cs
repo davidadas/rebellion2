@@ -8,6 +8,18 @@ using UnityEngine;
 /// </summary>
 public sealed class MessagesWindowRenderData
 {
+    public bool DetailVisible { get; }
+
+    public Vector2Int FramePosition { get; }
+
+    public Texture OverlayFrameTexture { get; }
+
+    public MessagesCommandBarRenderData CommandBar { get; }
+
+    public MessagesIndexPanelRenderData IndexPanel { get; }
+
+    public MessagesDetailPanelRenderData DetailPanel { get; }
+
     /// <summary>
     /// Creates a messages window presentation snapshot.
     /// </summary>
@@ -37,18 +49,6 @@ public sealed class MessagesWindowRenderData
         IndexPanel = indexPanel;
         DetailPanel = detailPanel;
     }
-
-    public bool DetailVisible { get; }
-
-    public Vector2Int FramePosition { get; }
-
-    public Texture OverlayFrameTexture { get; }
-
-    public MessagesCommandBarRenderData CommandBar { get; }
-
-    public MessagesIndexPanelRenderData IndexPanel { get; }
-
-    public MessagesDetailPanelRenderData DetailPanel { get; }
 }
 
 /// <summary>
@@ -56,6 +56,20 @@ public sealed class MessagesWindowRenderData
 /// </summary>
 public sealed class MessagesCommandBarRenderData
 {
+    public Texture ButtonStripTexture { get; }
+
+    public MessagesCommandButtonRenderData CloseButton { get; }
+
+    public MessagesCommandButtonRenderData DisplayButton { get; }
+
+    public MessagesCommandButtonRenderData IndexButton { get; }
+
+    public MessagesCommandButtonRenderData SignalButton { get; }
+
+    public MessagesCommandButtonRenderData SignalTargetButton { get; }
+
+    public MessagesCommandButtonRenderData ChatButton { get; }
+
     /// <summary>
     /// Creates a command-bar presentation snapshot.
     /// </summary>
@@ -85,20 +99,6 @@ public sealed class MessagesCommandBarRenderData
             signalTargetButton ?? throw new ArgumentNullException(nameof(signalTargetButton));
         ChatButton = chatButton ?? throw new ArgumentNullException(nameof(chatButton));
     }
-
-    public Texture ButtonStripTexture { get; }
-
-    public MessagesCommandButtonRenderData CloseButton { get; }
-
-    public MessagesCommandButtonRenderData DisplayButton { get; }
-
-    public MessagesCommandButtonRenderData IndexButton { get; }
-
-    public MessagesCommandButtonRenderData SignalButton { get; }
-
-    public MessagesCommandButtonRenderData SignalTargetButton { get; }
-
-    public MessagesCommandButtonRenderData ChatButton { get; }
 }
 
 /// <summary>
@@ -106,6 +106,16 @@ public sealed class MessagesCommandBarRenderData
 /// </summary>
 public sealed class MessagesCommandButtonRenderData
 {
+    public Texture Texture { get; }
+
+    public Texture PressedTexture { get; }
+
+    public RectInt? SourceBounds { get; }
+
+    public bool Visible { get; }
+
+    public bool Enabled { get; }
+
     /// <summary>
     /// Creates a messages command-button presentation snapshot.
     /// </summary>
@@ -128,16 +138,6 @@ public sealed class MessagesCommandButtonRenderData
         Visible = visible;
         Enabled = enabled;
     }
-
-    public Texture Texture { get; }
-
-    public Texture PressedTexture { get; }
-
-    public RectInt? SourceBounds { get; }
-
-    public bool Visible { get; }
-
-    public bool Enabled { get; }
 }
 
 /// <summary>
@@ -145,6 +145,14 @@ public sealed class MessagesCommandButtonRenderData
 /// </summary>
 public sealed class MessagesIndexPanelRenderData
 {
+    public MessagesTab ActiveTab { get; }
+
+    public string Title { get; }
+
+    public IReadOnlyList<MessagesTabRenderData> Tabs { get; }
+
+    public IReadOnlyList<MessageWindowRowRenderData> Rows { get; }
+
     /// <summary>
     /// Creates a messages index presentation snapshot.
     /// </summary>
@@ -164,14 +172,6 @@ public sealed class MessagesIndexPanelRenderData
         Tabs = Copy(tabs);
         Rows = Copy(rows);
     }
-
-    public MessagesTab ActiveTab { get; }
-
-    public string Title { get; }
-
-    public IReadOnlyList<MessagesTabRenderData> Tabs { get; }
-
-    public IReadOnlyList<MessageWindowRowRenderData> Rows { get; }
 
     /// <summary>
     /// Copies a nullable read-only list into an immutable snapshot array.
@@ -196,6 +196,12 @@ public sealed class MessagesIndexPanelRenderData
 /// </summary>
 public sealed class MessagesTabRenderData
 {
+    public MessagesTab Tab { get; }
+
+    public Texture Texture { get; }
+
+    public Texture PressedTexture { get; }
+
     /// <summary>
     /// Creates a messages tab presentation snapshot.
     /// </summary>
@@ -208,12 +214,6 @@ public sealed class MessagesTabRenderData
         Texture = texture;
         PressedTexture = pressedTexture;
     }
-
-    public MessagesTab Tab { get; }
-
-    public Texture Texture { get; }
-
-    public Texture PressedTexture { get; }
 }
 
 /// <summary>
@@ -221,6 +221,24 @@ public sealed class MessagesTabRenderData
 /// </summary>
 public sealed class MessageWindowRowRenderData
 {
+    public string MessageId { get; }
+
+    public string Header { get; }
+
+    public MessageType Type { get; }
+
+    public bool Selected { get; }
+
+    public bool Unread { get; }
+
+    public Texture SelectionTexture { get; }
+
+    public Texture SelectedIconTexture { get; }
+
+    public Texture NormalIconTexture { get; }
+
+    public Color32 HeaderColor { get; }
+
     /// <summary>
     /// Creates a semantic message-row snapshot without resolved artwork.
     /// </summary>
@@ -272,24 +290,6 @@ public sealed class MessageWindowRowRenderData
         NormalIconTexture = normalIconTexture;
         HeaderColor = headerColor;
     }
-
-    public string MessageId { get; }
-
-    public string Header { get; }
-
-    public MessageType Type { get; }
-
-    public bool Selected { get; }
-
-    public bool Unread { get; }
-
-    public Texture SelectionTexture { get; }
-
-    public Texture SelectedIconTexture { get; }
-
-    public Texture NormalIconTexture { get; }
-
-    public Color32 HeaderColor { get; }
 }
 
 /// <summary>
@@ -297,6 +297,22 @@ public sealed class MessageWindowRowRenderData
 /// </summary>
 public sealed class MessagesDetailPanelRenderData
 {
+    public string MessageId { get; }
+
+    public string Header { get; }
+
+    public string Text { get; }
+
+    public Texture CardTexture { get; }
+
+    public Texture OverlayTexture { get; }
+
+    public Texture IconTexture { get; }
+
+    public bool PreviousDisabled { get; }
+
+    public bool NextDisabled { get; }
+
     /// <summary>
     /// Creates a message-detail presentation snapshot.
     /// </summary>
@@ -328,20 +344,4 @@ public sealed class MessagesDetailPanelRenderData
         PreviousDisabled = previousDisabled;
         NextDisabled = nextDisabled;
     }
-
-    public string MessageId { get; }
-
-    public string Header { get; }
-
-    public string Text { get; }
-
-    public Texture CardTexture { get; }
-
-    public Texture OverlayTexture { get; }
-
-    public Texture IconTexture { get; }
-
-    public bool PreviousDisabled { get; }
-
-    public bool NextDisabled { get; }
 }

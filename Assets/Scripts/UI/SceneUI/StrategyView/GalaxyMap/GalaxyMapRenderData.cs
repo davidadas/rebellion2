@@ -8,6 +8,20 @@ using UnityEngine;
 /// </summary>
 public sealed class StrategyBriefingMapPresentation
 {
+    public StrategyBriefingMapMode Mode { get; }
+
+    public string Label { get; }
+
+    public string TargetSectorInstanceID { get; }
+
+    public string TargetPlanetInstanceID { get; }
+
+    public string PlayerFactionInstanceID { get; }
+
+    public string OpponentFactionInstanceID { get; }
+
+    public bool DimBackground { get; }
+
     /// <summary>
     /// Creates one immutable briefing map cue.
     /// </summary>
@@ -36,20 +50,6 @@ public sealed class StrategyBriefingMapPresentation
         OpponentFactionInstanceID = opponentFactionInstanceID;
         DimBackground = dimBackground;
     }
-
-    public StrategyBriefingMapMode Mode { get; }
-
-    public string Label { get; }
-
-    public string TargetSectorInstanceID { get; }
-
-    public string TargetPlanetInstanceID { get; }
-
-    public string PlayerFactionInstanceID { get; }
-
-    public string OpponentFactionInstanceID { get; }
-
-    public bool DimBackground { get; }
 }
 
 /// <summary>
@@ -57,6 +57,18 @@ public sealed class StrategyBriefingMapPresentation
 /// </summary>
 public sealed class GalaxyMapRenderData
 {
+    public Texture2D BackgroundTexture { get; }
+
+    public RectInt? BackgroundBounds { get; }
+
+    public Color BackgroundColor { get; }
+
+    public GalaxyMapActiveFilterLabelRenderData ActiveFilterLabel { get; }
+
+    public IReadOnlyList<GalaxyMapClusterRenderData> Clusters { get; }
+
+    public IReadOnlyList<GalaxyMapWaypointRouteRenderData> WaypointRoutes { get; }
+
     /// <summary>
     /// Creates a galaxy-map presentation snapshot.
     /// </summary>
@@ -83,18 +95,6 @@ public sealed class GalaxyMapRenderData
         WaypointRoutes = Copy(waypointRoutes);
     }
 
-    public Texture2D BackgroundTexture { get; }
-
-    public RectInt? BackgroundBounds { get; }
-
-    public Color BackgroundColor { get; }
-
-    public GalaxyMapActiveFilterLabelRenderData ActiveFilterLabel { get; }
-
-    public IReadOnlyList<GalaxyMapClusterRenderData> Clusters { get; }
-
-    public IReadOnlyList<GalaxyMapWaypointRouteRenderData> WaypointRoutes { get; }
-
     /// <summary>
     /// Copies a collection into an isolated read-only snapshot.
     /// </summary>
@@ -119,6 +119,12 @@ public sealed class GalaxyMapRenderData
 /// </summary>
 public sealed class GalaxyMapWaypointRouteRenderData
 {
+    public string FleetInstanceId { get; }
+
+    public Vector2Int Origin { get; }
+
+    public IReadOnlyList<GalaxyMapWaypointRenderData> Waypoints { get; }
+
     /// <summary>
     /// Creates one immutable waypoint route.
     /// </summary>
@@ -135,12 +141,6 @@ public sealed class GalaxyMapWaypointRouteRenderData
         Origin = origin;
         Waypoints = GalaxyMapRenderData.Copy(waypoints);
     }
-
-    public string FleetInstanceId { get; }
-
-    public Vector2Int Origin { get; }
-
-    public IReadOnlyList<GalaxyMapWaypointRenderData> Waypoints { get; }
 }
 
 /// <summary>
@@ -148,6 +148,10 @@ public sealed class GalaxyMapWaypointRouteRenderData
 /// </summary>
 public readonly struct GalaxyMapWaypointRenderData
 {
+    public int Order { get; }
+
+    public Vector2Int Position { get; }
+
     /// <summary>
     /// Creates one waypoint marker.
     /// </summary>
@@ -158,10 +162,6 @@ public readonly struct GalaxyMapWaypointRenderData
         Order = order;
         Position = position;
     }
-
-    public int Order { get; }
-
-    public Vector2Int Position { get; }
 }
 
 /// <summary>
@@ -169,6 +169,19 @@ public readonly struct GalaxyMapWaypointRenderData
 /// </summary>
 public readonly struct GalaxyMapActiveFilterLabelRenderData
 {
+    /// <summary>
+    /// Gets whether the active filter label is visible.
+    /// </summary>
+    public bool Visible => !string.IsNullOrEmpty(Text);
+
+    public string Text { get; }
+
+    public Color Color { get; }
+
+    public RectInt Bounds { get; }
+
+    public int FontSize { get; }
+
     /// <summary>
     /// Creates active galactic-information label presentation data.
     /// </summary>
@@ -188,19 +201,6 @@ public readonly struct GalaxyMapActiveFilterLabelRenderData
         Bounds = bounds;
         FontSize = fontSize;
     }
-
-    /// <summary>
-    /// Gets whether the active filter label is visible.
-    /// </summary>
-    public bool Visible => !string.IsNullOrEmpty(Text);
-
-    public string Text { get; }
-
-    public Color Color { get; }
-
-    public RectInt Bounds { get; }
-
-    public int FontSize { get; }
 }
 
 /// <summary>
@@ -208,6 +208,18 @@ public readonly struct GalaxyMapActiveFilterLabelRenderData
 /// </summary>
 public sealed class GalaxyMapClusterRenderData
 {
+    public string SectorInstanceId { get; }
+
+    public int SourceX { get; }
+
+    public int SourceY { get; }
+
+    public string Label { get; }
+
+    public bool ShowLabel { get; }
+
+    public IReadOnlyList<GalaxyMapStarRenderData> Stars { get; }
+
     /// <summary>
     /// Creates immutable planet-sector cluster presentation data.
     /// </summary>
@@ -239,18 +251,6 @@ public sealed class GalaxyMapClusterRenderData
         ShowLabel = showLabel;
         Stars = GalaxyMapRenderData.Copy(stars);
     }
-
-    public string SectorInstanceId { get; }
-
-    public int SourceX { get; }
-
-    public int SourceY { get; }
-
-    public string Label { get; }
-
-    public bool ShowLabel { get; }
-
-    public IReadOnlyList<GalaxyMapStarRenderData> Stars { get; }
 }
 
 /// <summary>
@@ -258,6 +258,16 @@ public sealed class GalaxyMapClusterRenderData
 /// </summary>
 public sealed class GalaxyMapStarRenderData
 {
+    public string PlanetInstanceId { get; }
+
+    public int SourceX { get; }
+
+    public int SourceY { get; }
+
+    public Texture2D StarTexture { get; }
+
+    public Texture2D HeadquartersTexture { get; }
+
     /// <summary>
     /// Creates immutable planet-marker presentation data.
     /// </summary>
@@ -280,14 +290,4 @@ public sealed class GalaxyMapStarRenderData
         StarTexture = starTexture;
         HeadquartersTexture = headquartersTexture;
     }
-
-    public string PlanetInstanceId { get; }
-
-    public int SourceX { get; }
-
-    public int SourceY { get; }
-
-    public Texture2D StarTexture { get; }
-
-    public Texture2D HeadquartersTexture { get; }
 }

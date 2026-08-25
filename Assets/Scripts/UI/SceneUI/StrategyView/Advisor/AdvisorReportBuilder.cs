@@ -29,6 +29,14 @@ public enum AdvisorReportMode
 /// </summary>
 public sealed class AdvisorReportRow
 {
+    public ISceneNode Item { get; }
+
+    public string ImagePath { get; }
+
+    public string PrimaryText { get; }
+
+    public string SecondaryText { get; }
+
     /// <summary>
     /// Creates one advisor-report row projection.
     /// </summary>
@@ -48,14 +56,6 @@ public sealed class AdvisorReportRow
         PrimaryText = primaryText ?? string.Empty;
         SecondaryText = secondaryText ?? string.Empty;
     }
-
-    public ISceneNode Item { get; }
-
-    public string ImagePath { get; }
-
-    public string PrimaryText { get; }
-
-    public string SecondaryText { get; }
 }
 
 /// <summary>

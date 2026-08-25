@@ -3,6 +3,14 @@
 /// </summary>
 public sealed class BookmarkEntry
 {
+    public PlanetIcon Icon { get; }
+
+    public int X { get; }
+
+    public int Y { get; }
+
+    public GalaxyMapPlanet Planet { get; private set; }
+
     /// <summary>
     /// Creates a bookmark for one planet feature window.
     /// </summary>
@@ -17,14 +25,6 @@ public sealed class BookmarkEntry
         Y = y;
         Planet = planet;
     }
-
-    public PlanetIcon Icon { get; }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public GalaxyMapPlanet Planet { get; private set; }
 
     /// <summary>
     /// Replaces the stale galaxy-map projection while preserving bookmark identity and placement.

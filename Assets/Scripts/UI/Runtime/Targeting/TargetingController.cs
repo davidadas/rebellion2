@@ -38,6 +38,14 @@ public interface ITargetingCursor
 /// </summary>
 public sealed class TargetingRequest
 {
+    public string Prompt { get; }
+
+    public object Source { get; }
+
+    public ITargetingReceiver Receiver { get; }
+
+    public bool RemainsActiveAfterSelection { get; }
+
     /// <summary>
     /// Creates a targeting request.
     /// </summary>
@@ -59,14 +67,6 @@ public sealed class TargetingRequest
         Receiver = receiver ?? throw new ArgumentNullException(nameof(receiver));
         RemainsActiveAfterSelection = remainsActiveAfterSelection;
     }
-
-    public string Prompt { get; }
-
-    public object Source { get; }
-
-    public ITargetingReceiver Receiver { get; }
-
-    public bool RemainsActiveAfterSelection { get; }
 }
 
 /// <summary>
@@ -123,6 +123,10 @@ public sealed class TargetingController : ICancelable
     private TargetingRequest activeRequest;
     private bool cursorVisible;
 
+    public bool IsTargeting => activeRequest != null;
+
+    public TargetingRequest ActiveRequest => activeRequest;
+
     /// <summary>
     /// Creates a targeting controller with an optional cursor presenter.
     /// </summary>
@@ -131,10 +135,6 @@ public sealed class TargetingController : ICancelable
     {
         this.cursor = cursor;
     }
-
-    public bool IsTargeting => activeRequest != null;
-
-    public TargetingRequest ActiveRequest => activeRequest;
 
     /// <summary>
     /// Starts a targeting request without showing a cursor.

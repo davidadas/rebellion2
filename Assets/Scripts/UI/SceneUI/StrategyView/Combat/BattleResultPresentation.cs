@@ -18,13 +18,6 @@ internal abstract class BattleResultPresentation
     internal abstract string DefenderOwnerInstanceID { get; }
 
     /// <summary>
-    /// Resolves the live planet represented by this result when it remains available.
-    /// </summary>
-    /// <param name="uiContext">The current strategy UI context.</param>
-    /// <returns>The live planet, or null when it no longer exists.</returns>
-    internal abstract Planet GetPlanet(UIContext uiContext);
-
-    /// <summary>
     /// Returns the sound effect played when this result opens.
     /// </summary>
     internal virtual string SoundEffectPath => null;
@@ -38,6 +31,13 @@ internal abstract class BattleResultPresentation
     /// Returns whether this result uses planetary categories and layouts.
     /// </summary>
     internal abstract bool UsesPlanetaryLayout { get; }
+
+    /// <summary>
+    /// Resolves the live planet represented by this result when it remains available.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <returns>The live planet, or null when it no longer exists.</returns>
+    internal abstract Planet GetPlanet(UIContext uiContext);
 
     /// <summary>
     /// Creates a presentation adapter for a supported combat result.
@@ -285,6 +285,17 @@ internal abstract class BattleResultPresentation
     {
         private readonly SpaceCombatResult result;
 
+        internal override BattleResultCategory DefaultCategory => BattleResultCategory.CapitalShips;
+
+        internal override string AttackerOwnerInstanceID => result.AttackerOwnerInstanceID;
+
+        internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
+
+        internal override string Title =>
+            $"Battle at {BattleAlertWindowProjector.GetPlanetName(result.Planet)}";
+
+        internal override bool UsesPlanetaryLayout => false;
+
         /// <summary>
         /// Creates a space-combat presentation adapter.
         /// </summary>
@@ -294,18 +305,7 @@ internal abstract class BattleResultPresentation
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
 
-        internal override BattleResultCategory DefaultCategory => BattleResultCategory.CapitalShips;
-
-        internal override string AttackerOwnerInstanceID => result.AttackerOwnerInstanceID;
-
-        internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
-
         internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
-
-        internal override string Title =>
-            $"Battle at {BattleAlertWindowProjector.GetPlanetName(result.Planet)}";
-
-        internal override bool UsesPlanetaryLayout => false;
 
         /// <summary>
         /// Returns completed space-combat music from the player's perspective.
@@ -382,6 +382,17 @@ internal abstract class BattleResultPresentation
     {
         private readonly BombardmentResult result;
 
+        internal override BattleResultCategory DefaultCategory => BattleResultCategory.CapitalShips;
+
+        internal override string AttackerOwnerInstanceID => result.AttackerOwnerInstanceID;
+
+        internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
+
+        internal override string Title =>
+            $"Orbital bombardment of {BattleAlertWindowProjector.GetPlanetName(result.Planet)}";
+
+        internal override bool UsesPlanetaryLayout => true;
+
         /// <summary>
         /// Creates an orbital-bombardment presentation adapter.
         /// </summary>
@@ -391,18 +402,7 @@ internal abstract class BattleResultPresentation
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
 
-        internal override BattleResultCategory DefaultCategory => BattleResultCategory.CapitalShips;
-
-        internal override string AttackerOwnerInstanceID => result.AttackerOwnerInstanceID;
-
-        internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
-
         internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
-
-        internal override string Title =>
-            $"Orbital bombardment of {BattleAlertWindowProjector.GetPlanetName(result.Planet)}";
-
-        internal override bool UsesPlanetaryLayout => true;
 
         /// <summary>
         /// Builds the completed orbital-bombardment summary.
@@ -455,6 +455,19 @@ internal abstract class BattleResultPresentation
     {
         private readonly PlanetaryAssaultResult result;
 
+        internal override BattleResultCategory DefaultCategory => BattleResultCategory.Troops;
+
+        internal override string AttackerOwnerInstanceID => result.AttackerOwnerInstanceID;
+
+        internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
+
+        internal override string SoundEffectPath => StrategyUISoundPaths.PlanetaryAssault;
+
+        internal override string Title =>
+            $"Assault on {BattleAlertWindowProjector.GetPlanetName(result.Planet)}";
+
+        internal override bool UsesPlanetaryLayout => true;
+
         /// <summary>
         /// Creates a planetary-assault presentation adapter.
         /// </summary>
@@ -464,20 +477,7 @@ internal abstract class BattleResultPresentation
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
 
-        internal override BattleResultCategory DefaultCategory => BattleResultCategory.Troops;
-
-        internal override string AttackerOwnerInstanceID => result.AttackerOwnerInstanceID;
-
-        internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
-
         internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
-
-        internal override string SoundEffectPath => StrategyUISoundPaths.PlanetaryAssault;
-
-        internal override string Title =>
-            $"Assault on {BattleAlertWindowProjector.GetPlanetName(result.Planet)}";
-
-        internal override bool UsesPlanetaryLayout => true;
 
         /// <summary>
         /// Builds the completed planetary-assault summary.
@@ -536,14 +536,6 @@ internal abstract class BattleResultPresentation
     {
         private readonly CombatReport report;
 
-        /// <summary>
-        /// Creates presentation for one durable combat report.
-        /// </summary>
-        internal SavedCombatReportPresentation(CombatReport report)
-        {
-            this.report = report ?? throw new ArgumentNullException(nameof(report));
-        }
-
         internal override BattleResultCategory DefaultCategory =>
             report.CombatType == CombatReportType.PlanetaryAssault
                 ? BattleResultCategory.Troops
@@ -563,6 +555,14 @@ internal abstract class BattleResultPresentation
 
         internal override bool UsesPlanetaryLayout =>
             report.CombatType != CombatReportType.SpaceBattle;
+
+        /// <summary>
+        /// Creates presentation for one durable combat report.
+        /// </summary>
+        internal SavedCombatReportPresentation(CombatReport report)
+        {
+            this.report = report ?? throw new ArgumentNullException(nameof(report));
+        }
 
         /// <summary>
         /// Resolves the report location against current game state without making the report depend on it.

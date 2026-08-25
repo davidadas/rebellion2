@@ -48,6 +48,11 @@ public sealed class MessagesWindowController
     private IMessagesWindowActions actions;
 
     /// <summary>
+    /// Gets whether a Messages window is currently registered.
+    /// </summary>
+    public bool IsOpen => FindWindow() != null;
+
+    /// <summary>
     /// Creates the Messages feature controller with current presentation-resource access.
     /// </summary>
     /// <param name="playSfx">Plays a strategy sound effect path.</param>
@@ -136,11 +141,6 @@ public sealed class MessagesWindowController
         session.SelectTab(MessagesTabCatalog.Clamp((int)tab));
         RefreshSession(session);
     }
-
-    /// <summary>
-    /// Gets whether a Messages window is currently registered.
-    /// </summary>
-    public bool IsOpen => FindWindow() != null;
 
     /// <summary>
     /// Toggles the exclusive Messages window on a requested tab.

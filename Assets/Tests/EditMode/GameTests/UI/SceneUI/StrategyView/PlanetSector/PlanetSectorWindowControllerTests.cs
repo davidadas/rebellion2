@@ -640,14 +640,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {
-            public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
-
             public int RefreshCount { get; private set; }
             public int TargetedCommandCount { get; private set; }
             public GameResult LastBattleResult { get; private set; }
             public IReadOnlyList<ISceneNode> LastItems { get; private set; }
             public StrategyMissionTarget LastTarget { get; private set; }
             public StrategyWindowTargetingSource LastTargetingSource { get; private set; }
+
+            public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
 
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,

@@ -14,6 +14,18 @@ public enum FinderWindowTabKind
 /// </summary>
 public sealed class FinderWindowTab
 {
+    public FinderWindowTabKind Kind { get; }
+
+    public bool IsAll => Kind == FinderWindowTabKind.All;
+
+    public bool IsNeutral => Kind == FinderWindowTabKind.Neutral;
+
+    public bool IsUnexplored => Kind == FinderWindowTabKind.Unexplored;
+
+    public string FactionInstanceId { get; }
+
+    public string FactionDisplayName { get; }
+
     /// <summary>
     /// Creates one Finder tab.
     /// </summary>
@@ -30,18 +42,6 @@ public sealed class FinderWindowTab
         FactionInstanceId = factionInstanceId;
         FactionDisplayName = factionDisplayName;
     }
-
-    public FinderWindowTabKind Kind { get; }
-
-    public bool IsAll => Kind == FinderWindowTabKind.All;
-
-    public bool IsNeutral => Kind == FinderWindowTabKind.Neutral;
-
-    public bool IsUnexplored => Kind == FinderWindowTabKind.Unexplored;
-
-    public string FactionInstanceId { get; }
-
-    public string FactionDisplayName { get; }
 
     /// <summary>
     /// Creates the all-results tab.

@@ -241,12 +241,12 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
 
         private sealed class StubTargetable : ITargetable
         {
+            public object Target { get; }
+
             public StubTargetable(object target)
             {
                 Target = target;
             }
-
-            public object Target { get; }
         }
 
         private sealed class RecordingCursor : ITargetingCursor

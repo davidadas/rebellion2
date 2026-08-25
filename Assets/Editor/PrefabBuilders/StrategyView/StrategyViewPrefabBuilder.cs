@@ -8532,6 +8532,14 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     private readonly struct BarPrefabParts
     {
+        public RectTransform Root { get; }
+
+        public Image Background { get; }
+
+        public Image Fill { get; }
+
+        public IReadOnlyList<Image> Cells { get; }
+
         /// <summary>
         /// Creates one complete status-bar reference set.
         /// </summary>
@@ -8551,14 +8559,6 @@ public static class StrategyViewPrefabBuilder
             Fill = fill;
             Cells = cells;
         }
-
-        public RectTransform Root { get; }
-
-        public Image Background { get; }
-
-        public Image Fill { get; }
-
-        public IReadOnlyList<Image> Cells { get; }
     }
 
     /// <summary>

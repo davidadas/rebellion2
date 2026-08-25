@@ -16,6 +16,12 @@ public enum MissionCreateWindowTab
 /// </summary>
 public sealed class MissionCreateTabRenderData
 {
+    public MissionCreateWindowTab Tab { get; }
+
+    public Texture Texture { get; }
+
+    public Texture PressedTexture { get; }
+
     /// <summary>
     /// Creates one complete mission-creation tab snapshot.
     /// </summary>
@@ -32,12 +38,6 @@ public sealed class MissionCreateTabRenderData
         Texture = texture;
         PressedTexture = pressedTexture;
     }
-
-    public MissionCreateWindowTab Tab { get; }
-
-    public Texture Texture { get; }
-
-    public Texture PressedTexture { get; }
 }
 
 /// <summary>
@@ -56,6 +56,40 @@ public sealed class MissionCreateWindowRenderData
     public static int TabCount => _orderedTabs.Length;
 
     public static IReadOnlyList<MissionCreateWindowTab> OrderedTabs => _readOnlyOrderedTabs;
+
+    public int X { get; }
+
+    public int Y { get; }
+
+    public MissionCreateWindowTab ActiveTab { get; }
+
+    public bool DropdownOpen { get; }
+
+    public bool CanConfirm { get; }
+
+    public Texture TitleTexture { get; }
+
+    public string MissionName { get; }
+
+    public Texture SelectedMissionTexture { get; }
+
+    public string TargetName { get; }
+
+    public Texture TargetTexture { get; }
+
+    public bool UsePlanetTargetPreview { get; }
+
+    public Texture AgentsHeaderTexture { get; }
+
+    public Texture DecoysHeaderTexture { get; }
+
+    public IReadOnlyList<MissionCreateTabRenderData> Tabs { get; }
+
+    public IReadOnlyList<StrategyDropdownItemRenderData> DropdownItems { get; }
+
+    public IReadOnlyList<MissionParticipantRowRenderData> AgentRows { get; }
+
+    public IReadOnlyList<MissionParticipantRowRenderData> DecoyRows { get; }
 
     /// <summary>
     /// Creates one complete Mission Create presentation snapshot.
@@ -115,40 +149,6 @@ public sealed class MissionCreateWindowRenderData
         AgentRows = Copy(agentRows, nameof(agentRows));
         DecoyRows = Copy(decoyRows, nameof(decoyRows));
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public MissionCreateWindowTab ActiveTab { get; }
-
-    public bool DropdownOpen { get; }
-
-    public bool CanConfirm { get; }
-
-    public Texture TitleTexture { get; }
-
-    public string MissionName { get; }
-
-    public Texture SelectedMissionTexture { get; }
-
-    public string TargetName { get; }
-
-    public Texture TargetTexture { get; }
-
-    public bool UsePlanetTargetPreview { get; }
-
-    public Texture AgentsHeaderTexture { get; }
-
-    public Texture DecoysHeaderTexture { get; }
-
-    public IReadOnlyList<MissionCreateTabRenderData> Tabs { get; }
-
-    public IReadOnlyList<StrategyDropdownItemRenderData> DropdownItems { get; }
-
-    public IReadOnlyList<MissionParticipantRowRenderData> AgentRows { get; }
-
-    public IReadOnlyList<MissionParticipantRowRenderData> DecoyRows { get; }
 
     /// <summary>
     /// Copies a required presentation collection into an isolated read-only snapshot.

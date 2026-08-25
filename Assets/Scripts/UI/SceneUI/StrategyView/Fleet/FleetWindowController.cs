@@ -1268,6 +1268,14 @@ public sealed class FleetWindowController
     /// </summary>
     private sealed class FleetContextMenuSource : IStrategyContextMenuSource
     {
+        public int HotspotX { get; }
+
+        public int HotspotY { get; }
+
+        public IReadOnlyList<ISceneNode> Items { get; }
+
+        public UIWindow Window { get; }
+
         /// <summary>
         /// Creates one fleet context-menu source snapshot.
         /// </summary>
@@ -1287,13 +1295,5 @@ public sealed class FleetWindowController
             HotspotY = hotspotY;
             Items = new List<ISceneNode>(items ?? Array.Empty<ISceneNode>()).AsReadOnly();
         }
-
-        public int HotspotX { get; }
-
-        public int HotspotY { get; }
-
-        public IReadOnlyList<ISceneNode> Items { get; }
-
-        public UIWindow Window { get; }
     }
 }

@@ -6,6 +6,16 @@ using UnityEngine;
 /// </summary>
 public readonly struct GalacticInformationDisplayState
 {
+    public bool Visible { get; }
+
+    public int ActiveCategoryIndex { get; }
+
+    public int HoveredFilterIndex { get; }
+
+    public bool DisplayOffHovered { get; }
+
+    public GalacticInformationFilterMode SelectedFilterMode { get; }
+
     /// <summary>
     /// Creates an immutable galactic-information interaction-state snapshot.
     /// </summary>
@@ -28,16 +38,6 @@ public readonly struct GalacticInformationDisplayState
         DisplayOffHovered = displayOffHovered;
         SelectedFilterMode = selectedFilterMode;
     }
-
-    public bool Visible { get; }
-
-    public int ActiveCategoryIndex { get; }
-
-    public int HoveredFilterIndex { get; }
-
-    public bool DisplayOffHovered { get; }
-
-    public GalacticInformationFilterMode SelectedFilterMode { get; }
 }
 
 /// <summary>
@@ -45,6 +45,18 @@ public readonly struct GalacticInformationDisplayState
 /// </summary>
 public sealed class GalacticInformationDisplayRenderData
 {
+    public bool Visible { get; }
+
+    public RectInt SelectorBounds { get; }
+
+    public Color BackgroundColor { get; }
+
+    public GalacticInformationFrameRenderData Frame { get; }
+
+    public IReadOnlyList<GalacticInformationCategoryRenderData> Categories { get; }
+
+    public GalacticInformationTextRowRenderData DisplayOffRow { get; }
+
     /// <summary>
     /// Creates immutable selector presentation data.
     /// </summary>
@@ -70,18 +82,6 @@ public sealed class GalacticInformationDisplayRenderData
         Categories = GalaxyMapRenderData.Copy(categories);
         DisplayOffRow = displayOffRow;
     }
-
-    public bool Visible { get; }
-
-    public RectInt SelectorBounds { get; }
-
-    public Color BackgroundColor { get; }
-
-    public GalacticInformationFrameRenderData Frame { get; }
-
-    public IReadOnlyList<GalacticInformationCategoryRenderData> Categories { get; }
-
-    public GalacticInformationTextRowRenderData DisplayOffRow { get; }
 }
 
 /// <summary>
@@ -89,6 +89,18 @@ public sealed class GalacticInformationDisplayRenderData
 /// </summary>
 public sealed class GalacticInformationCategoryRenderData
 {
+    public bool Visible { get; }
+
+    public RectInt HitBounds { get; }
+
+    public GalacticInformationImageRenderData Icon { get; }
+
+    public GalacticInformationImageRenderData Arrow { get; }
+
+    public GalacticInformationTextRenderData Label { get; }
+
+    public GalacticInformationSubmenuRenderData Submenu { get; }
+
     /// <summary>
     /// Creates immutable category presentation data.
     /// </summary>
@@ -114,18 +126,6 @@ public sealed class GalacticInformationCategoryRenderData
         Label = label;
         Submenu = submenu;
     }
-
-    public bool Visible { get; }
-
-    public RectInt HitBounds { get; }
-
-    public GalacticInformationImageRenderData Icon { get; }
-
-    public GalacticInformationImageRenderData Arrow { get; }
-
-    public GalacticInformationTextRenderData Label { get; }
-
-    public GalacticInformationSubmenuRenderData Submenu { get; }
 }
 
 /// <summary>
@@ -133,6 +133,16 @@ public sealed class GalacticInformationCategoryRenderData
 /// </summary>
 public sealed class GalacticInformationSubmenuRenderData
 {
+    public bool Visible { get; }
+
+    public RectInt Bounds { get; }
+
+    public Color BackgroundColor { get; }
+
+    public GalacticInformationFrameRenderData Frame { get; }
+
+    public IReadOnlyList<GalacticInformationFilterRenderData> Filters { get; }
+
     /// <summary>
     /// Creates immutable submenu presentation data.
     /// </summary>
@@ -155,16 +165,6 @@ public sealed class GalacticInformationSubmenuRenderData
         Frame = frame;
         Filters = GalaxyMapRenderData.Copy(filters);
     }
-
-    public bool Visible { get; }
-
-    public RectInt Bounds { get; }
-
-    public Color BackgroundColor { get; }
-
-    public GalacticInformationFrameRenderData Frame { get; }
-
-    public IReadOnlyList<GalacticInformationFilterRenderData> Filters { get; }
 }
 
 /// <summary>
@@ -172,6 +172,18 @@ public sealed class GalacticInformationSubmenuRenderData
 /// </summary>
 public sealed class GalacticInformationFilterRenderData
 {
+    public GalacticInformationFilterMode Mode { get; }
+
+    public bool Visible { get; }
+
+    public RectInt HitBounds { get; }
+
+    public GalacticInformationImageRenderData CheckMark { get; }
+
+    public GalacticInformationImageRenderData Icon { get; }
+
+    public GalacticInformationTextRenderData Label { get; }
+
     /// <summary>
     /// Creates immutable filter-row presentation data.
     /// </summary>
@@ -197,18 +209,6 @@ public sealed class GalacticInformationFilterRenderData
         Icon = icon;
         Label = label;
     }
-
-    public GalacticInformationFilterMode Mode { get; }
-
-    public bool Visible { get; }
-
-    public RectInt HitBounds { get; }
-
-    public GalacticInformationImageRenderData CheckMark { get; }
-
-    public GalacticInformationImageRenderData Icon { get; }
-
-    public GalacticInformationTextRenderData Label { get; }
 }
 
 /// <summary>
@@ -216,6 +216,10 @@ public sealed class GalacticInformationFilterRenderData
 /// </summary>
 public readonly struct GalacticInformationImageRenderData
 {
+    public Texture2D Texture { get; }
+
+    public RectInt Bounds { get; }
+
     /// <summary>
     /// Creates immutable image presentation data.
     /// </summary>
@@ -226,10 +230,6 @@ public readonly struct GalacticInformationImageRenderData
         Texture = texture;
         Bounds = bounds;
     }
-
-    public Texture2D Texture { get; }
-
-    public RectInt Bounds { get; }
 }
 
 /// <summary>
@@ -237,6 +237,12 @@ public readonly struct GalacticInformationImageRenderData
 /// </summary>
 public readonly struct GalacticInformationTextRenderData
 {
+    public string Text { get; }
+
+    public Color Color { get; }
+
+    public RectInt Bounds { get; }
+
     /// <summary>
     /// Creates immutable text presentation data.
     /// </summary>
@@ -249,12 +255,6 @@ public readonly struct GalacticInformationTextRenderData
         Color = color;
         Bounds = bounds;
     }
-
-    public string Text { get; }
-
-    public Color Color { get; }
-
-    public RectInt Bounds { get; }
 }
 
 /// <summary>
@@ -262,6 +262,14 @@ public readonly struct GalacticInformationTextRenderData
 /// </summary>
 public readonly struct GalacticInformationTextRowRenderData
 {
+    public bool Visible { get; }
+
+    public RectInt HitBounds { get; }
+
+    public GalacticInformationImageRenderData CheckMark { get; }
+
+    public GalacticInformationTextRenderData Label { get; }
+
     /// <summary>
     /// Creates immutable text-row presentation data.
     /// </summary>
@@ -281,14 +289,6 @@ public readonly struct GalacticInformationTextRowRenderData
         CheckMark = checkMark;
         Label = label;
     }
-
-    public bool Visible { get; }
-
-    public RectInt HitBounds { get; }
-
-    public GalacticInformationImageRenderData CheckMark { get; }
-
-    public GalacticInformationTextRenderData Label { get; }
 }
 
 /// <summary>
@@ -296,6 +296,12 @@ public readonly struct GalacticInformationTextRowRenderData
 /// </summary>
 public sealed class GalacticInformationFrameRenderData
 {
+    public int Width { get; }
+
+    public int Height { get; }
+
+    public IReadOnlyList<Texture2D> Textures { get; }
+
     /// <summary>
     /// Creates immutable frame presentation data.
     /// </summary>
@@ -312,12 +318,6 @@ public sealed class GalacticInformationFrameRenderData
         Height = height;
         Textures = GalaxyMapRenderData.Copy(textures);
     }
-
-    public int Width { get; }
-
-    public int Height { get; }
-
-    public IReadOnlyList<Texture2D> Textures { get; }
 }
 
 /// <summary>
@@ -325,6 +325,18 @@ public sealed class GalacticInformationFrameRenderData
 /// </summary>
 public sealed class GalacticInformationLegendRenderData
 {
+    public RectInt Bounds { get; }
+
+    public Texture2D Texture { get; }
+
+    public GalacticInformationFrameRenderData Frame { get; }
+
+    public RectInt CloseBounds { get; }
+
+    public Texture2D CloseTexture { get; }
+
+    public Texture2D ClosePressedTexture { get; }
+
     /// <summary>
     /// Creates immutable legend presentation data.
     /// </summary>
@@ -350,16 +362,4 @@ public sealed class GalacticInformationLegendRenderData
         CloseTexture = closeTexture;
         ClosePressedTexture = closePressedTexture;
     }
-
-    public RectInt Bounds { get; }
-
-    public Texture2D Texture { get; }
-
-    public GalacticInformationFrameRenderData Frame { get; }
-
-    public RectInt CloseBounds { get; }
-
-    public Texture2D CloseTexture { get; }
-
-    public Texture2D ClosePressedTexture { get; }
 }

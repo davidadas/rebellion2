@@ -6,6 +6,12 @@ using Rebellion.SceneGraph;
 /// </summary>
 public sealed class StrategyStatusTarget
 {
+    public GalaxyMapPlanet Planet { get; }
+
+    public ISceneNode Item { get; }
+
+    public ManufacturingType? ManufacturingType { get; }
+
     /// <summary>
     /// Creates one status target.
     /// </summary>
@@ -22,10 +28,4 @@ public sealed class StrategyStatusTarget
         Item = item;
         ManufacturingType = manufacturingType;
     }
-
-    public GalaxyMapPlanet Planet { get; }
-
-    public ISceneNode Item { get; }
-
-    public ManufacturingType? ManufacturingType { get; }
 }

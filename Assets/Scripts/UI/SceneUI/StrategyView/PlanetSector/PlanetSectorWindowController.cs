@@ -1224,6 +1224,16 @@ public sealed class PlanetSectorWindowController
     /// </summary>
     private sealed class PlanetSectorContextMenuSource : IStrategyContextMenuSource
     {
+        public int HotspotX { get; }
+
+        public int HotspotY { get; }
+
+        public IReadOnlyList<ISceneNode> Items { get; }
+
+        public StrategyStatusTarget Target { get; }
+
+        public UIWindow Window { get; }
+
         /// <summary>
         /// Creates one planet-sector context-menu source snapshot.
         /// </summary>
@@ -1246,16 +1256,6 @@ public sealed class PlanetSectorWindowController
             Items = new List<ISceneNode>(items ?? Array.Empty<ISceneNode>()).AsReadOnly();
             Target = target;
         }
-
-        public int HotspotX { get; }
-
-        public int HotspotY { get; }
-
-        public IReadOnlyList<ISceneNode> Items { get; }
-
-        public StrategyStatusTarget Target { get; }
-
-        public UIWindow Window { get; }
     }
 
     /// <summary>
@@ -1266,15 +1266,6 @@ public sealed class PlanetSectorWindowController
         private PlanetIcon contextIcon;
         private bool contextPlanetImage;
         private string contextPlanetInstanceId;
-
-        /// <summary>
-        /// Creates a planet-sector session for one window shell.
-        /// </summary>
-        /// <param name="window">The owning window shell.</param>
-        public PlanetSectorWindowSession(UIWindow window)
-        {
-            Window = window ?? throw new ArgumentNullException(nameof(window));
-        }
 
         public PlanetIcon HoveredIcon { get; private set; }
 
@@ -1289,6 +1280,15 @@ public sealed class PlanetSectorWindowController
         public int SectorPosition { get; private set; }
 
         public UIWindow Window { get; }
+
+        /// <summary>
+        /// Creates a planet-sector session for one window shell.
+        /// </summary>
+        /// <param name="window">The owning window shell.</param>
+        public PlanetSectorWindowSession(UIWindow window)
+        {
+            Window = window ?? throw new ArgumentNullException(nameof(window));
+        }
 
         /// <summary>
         /// Initializes the strategy identity and authored placement owned by the session.
@@ -1524,6 +1524,19 @@ public sealed class PlanetSectorWindowController
 /// </summary>
 public sealed class PlanetSectorWindowHit
 {
+    public PlanetSectorWindowElement Element =>
+        new PlanetSectorWindowElement(PlanetIndex, Icon, PlanetImage);
+
+    public GalaxyMapPlanet GalaxyMapPlanet { get; }
+
+    public PlanetIcon Icon { get; }
+
+    public Planet Planet => GalaxyMapPlanet?.Planet;
+
+    public int PlanetIndex { get; }
+
+    public bool PlanetImage { get; }
+
     /// <summary>
     /// Creates a semantic planet-sector hit.
     /// </summary>
@@ -1552,17 +1565,4 @@ public sealed class PlanetSectorWindowHit
         Icon = icon;
         PlanetImage = planetImage;
     }
-
-    public PlanetSectorWindowElement Element =>
-        new PlanetSectorWindowElement(PlanetIndex, Icon, PlanetImage);
-
-    public GalaxyMapPlanet GalaxyMapPlanet { get; }
-
-    public PlanetIcon Icon { get; }
-
-    public Planet Planet => GalaxyMapPlanet?.Planet;
-
-    public int PlanetIndex { get; }
-
-    public bool PlanetImage { get; }
 }
