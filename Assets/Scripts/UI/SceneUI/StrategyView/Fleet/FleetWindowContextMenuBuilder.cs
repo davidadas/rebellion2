@@ -93,7 +93,7 @@ internal static class FleetWindowContextMenuBuilder
 
         if (fleetCount == itemCount)
         {
-            bool hasWaypoints = items.OfType<Fleet>().Any(fleet => fleet.Waypoints.Count > 0);
+            bool hasWaypoints = items.OfType<Fleet>().Any(fleet => fleet.HasWaypoints());
             bool allFleetsAreMoving = items.OfType<Fleet>().All(fleet => fleet.Movement != null);
             commands.Add(
                 new StrategyMenuCommand(

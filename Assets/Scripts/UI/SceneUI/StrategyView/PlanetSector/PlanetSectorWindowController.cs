@@ -589,7 +589,8 @@ public sealed class PlanetSectorWindowController
             case StrategyMenuAction.Scrap:
                 confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
                 break;
-            case StrategyMenuAction.WaypointMove when HasWaypoints(source.Items):
+            case StrategyMenuAction.WaypointMove
+                when source.Items?.OfType<Fleet>().Any(fleet => fleet.HasWaypoints()) == true:
                 targetingController.Cancel();
                 commandActions.ClearFleetWaypoints(source.Items);
                 break;
@@ -1069,16 +1070,6 @@ public sealed class PlanetSectorWindowController
                 is StrategyMenuAction.Move
                     or StrategyMenuAction.MoveConfirm
                     or StrategyMenuAction.WaypointMove;
-    }
-
-    /// <summary>
-    /// Returns whether a fleet selection contains queued or active waypoint route entries.
-    /// </summary>
-    /// <param name="items">The selected fleets or their visible snapshots.</param>
-    /// <returns>True when at least one selected fleet has waypoints.</returns>
-    private static bool HasWaypoints(IReadOnlyList<ISceneNode> items)
-    {
-        return items?.OfType<Fleet>().Any(fleet => fleet.Waypoints.Count > 0) == true;
     }
 
     /// <summary>

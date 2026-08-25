@@ -124,6 +124,8 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     /// <summary>
     /// Renders route segments and numbered stops over the planets visible in this window.
     /// </summary>
+    /// <param name="segments">The route segments to draw.</param>
+    /// <param name="waypoints">The numbered route stops to draw.</param>
     internal void RenderWaypointRoutes(
         IReadOnlyList<PlanetSectorWaypointSegmentRenderData> segments,
         IReadOnlyList<PlanetSectorWaypointRenderData> waypoints
@@ -162,6 +164,9 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     /// <summary>
     /// Gets the center of one rendered planet image in window source coordinates.
     /// </summary>
+    /// <param name="planetIndex">The index of the rendered planet.</param>
+    /// <param name="center">The rendered planet's center when found.</param>
+    /// <returns>True when the planet is currently rendered.</returns>
     private bool TryGetPlanetCenter(int planetIndex, out Vector2Int center)
     {
         PlanetSectorPlanetView planetView = GetActivePlanetView(planetIndex);

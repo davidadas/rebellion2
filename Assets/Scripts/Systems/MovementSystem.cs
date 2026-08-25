@@ -168,7 +168,7 @@ namespace Rebellion.Systems
             )
             {
                 if (
-                    TryRequestMoveGroup(
+                    TryExecuteNormalMoveGroup(
                         units.ToList(),
                         destination,
                         reactions,
@@ -343,7 +343,7 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
-            TryRequestMoveGroup(units, destination, _pendingResults, sourceEventInstanceID);
+            TryExecuteNormalMoveGroup(units, destination, _pendingResults, sourceEventInstanceID);
         }
 
         /// <summary>
@@ -599,7 +599,7 @@ namespace Rebellion.Systems
             }
 
             List<GameResult> results = new List<GameResult>();
-            bool accepted = TryRequestMoveGroup(movables, liveDestination, results);
+            bool accepted = TryExecuteNormalMoveGroup(movables, liveDestination, results);
             if (accepted)
             {
                 foreach (Fleet sourceFleet in sourceFleets.Distinct())
@@ -673,11 +673,10 @@ namespace Rebellion.Systems
                 return true;
 
             List<GameResult> results = new List<GameResult>();
-            bool accepted = TryRequestMoveGroup(
+            bool accepted = TryExecuteMoveGroup(
                 fleets.Cast<IMovable>().ToList(),
                 destinations[0],
-                results,
-                preserveFleetWaypoints: true
+                results
             );
             if (!accepted)
             {
@@ -704,7 +703,7 @@ namespace Rebellion.Systems
             bool cleared = false;
             foreach (Fleet fleet in fleets)
             {
-                if (fleet.Waypoints.Count == 0)
+                if (!fleet.HasWaypoints())
                     continue;
 
                 fleet.Waypoints.Clear();
@@ -734,7 +733,7 @@ namespace Rebellion.Systems
                     continue;
                 }
 
-                if (fleet.Movement != null || fleet.IsInCombat || fleet.Waypoints.Count == 0)
+                if (fleet.Movement != null || fleet.IsInCombat || !fleet.HasWaypoints())
                     continue;
 
                 TryStartNextFleetWaypoint(fleet, results);
@@ -1014,22 +1013,42 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Executes a validated movement group through the existing movement pipeline.
+        /// Submits a normal movement group and replaces any existing fleet waypoint routes.
         /// </summary>
         /// <param name="units">The movable units in execution order.</param>
         /// <param name="destination">The shared destination.</param>
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
-        /// <param name="preserveFleetWaypoints">
-        /// Whether this movement is a waypoint leg that must retain the fleet's route.
-        /// </param>
         /// <returns>True when the movement group was accepted.</returns>
-        private bool TryRequestMoveGroup(
+        private bool TryExecuteNormalMoveGroup(
             List<IMovable> units,
             ContainerNode destination,
             ICollection<GameResult> results,
-            string sourceEventInstanceID = null,
-            bool preserveFleetWaypoints = false
+            string sourceEventInstanceID = null
+        )
+        {
+            if (!TryExecuteMoveGroup(units, destination, results, sourceEventInstanceID))
+                return false;
+
+            foreach (Fleet fleet in units.OfType<Fleet>())
+                fleet.Waypoints.Clear();
+
+            return true;
+        }
+
+        /// <summary>
+        /// Validates and executes a movement group without applying command-specific route policy.
+        /// </summary>
+        /// <param name="units">The movable units in execution order.</param>
+        /// <param name="destination">The shared destination.</param>
+        /// <param name="results">The collection receiving movement results.</param>
+        /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
+        /// <returns>True when the movement group was accepted.</returns>
+        private bool TryExecuteMoveGroup(
+            List<IMovable> units,
+            ContainerNode destination,
+            ICollection<GameResult> results,
+            string sourceEventInstanceID = null
         )
         {
             if (units == null || units.Count == 0 || destination == null || results == null)
@@ -1038,12 +1057,6 @@ namespace Rebellion.Systems
             destination = ResolveLiveContainer(destination);
             if (!TryPlanMoveGroup(units, destination, out List<ContainerNode> destinations))
                 return false;
-
-            if (!preserveFleetWaypoints)
-            {
-                foreach (Fleet fleet in units.OfType<Fleet>())
-                    fleet.Waypoints.Clear();
-            }
 
             string movementGroupID = Guid.NewGuid().ToString("N");
             for (int index = 0; index < units.Count; index++)
@@ -1267,8 +1280,8 @@ namespace Rebellion.Systems
                 fleets.Any(fleet =>
                     fleet.IsInCombat
                     || !fleet.HasOperationalCapitalShips()
-                    || fleet.Waypoints.Count > 0
-                    || (fleet.Movement != null) != fleetsAreMoving
+                    || fleet.HasWaypoints()
+                    || fleet.Movement != null != fleetsAreMoving
                     || fleet.GetParentOfType<Planet>() == null
                 )
             )
@@ -1803,8 +1816,7 @@ namespace Rebellion.Systems
         private static bool ConsumeReachedFleetWaypoint(Fleet fleet, Planet destinationPlanet)
         {
             if (
-                fleet?.Waypoints == null
-                || fleet.Waypoints.Count == 0
+                fleet?.HasWaypoints() != true
                 || destinationPlanet == null
                 || !string.Equals(
                     fleet.Waypoints[0],
@@ -1815,7 +1827,7 @@ namespace Rebellion.Systems
                 return false;
 
             fleet.Waypoints.RemoveAt(0);
-            return fleet.Waypoints.Count == 0;
+            return !fleet.HasWaypoints();
         }
 
         /// <summary>
@@ -1840,11 +1852,10 @@ namespace Rebellion.Systems
                     continue;
                 }
 
-                bool accepted = TryRequestMoveGroup(
+                bool accepted = TryExecuteMoveGroup(
                     new List<IMovable> { fleet },
                     destination,
-                    results,
-                    preserveFleetWaypoints: true
+                    results
                 );
                 if (!accepted)
                     fleet.Waypoints.Clear();

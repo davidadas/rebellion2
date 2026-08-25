@@ -38,6 +38,9 @@ public sealed class PlanetSectorWindowRenderData
     /// <summary>
     /// Copies a presentation collection into immutable window-owned storage.
     /// </summary>
+    /// <typeparam name="T">The collection element type.</typeparam>
+    /// <param name="source">The source collection.</param>
+    /// <returns>An isolated read-only copy.</returns>
     private static IReadOnlyList<T> Copy<T>(IReadOnlyList<T> source)
     {
         return source == null || source.Count == 0
@@ -51,15 +54,20 @@ public sealed class PlanetSectorWindowRenderData
 /// </summary>
 public readonly struct PlanetSectorWaypointSegmentRenderData
 {
+    public int StartPlanetIndex { get; }
+
+    public int EndPlanetIndex { get; }
+
+    /// <summary>
+    /// Creates a route segment between two displayed planet indices.
+    /// </summary>
+    /// <param name="startPlanetIndex">The starting planet index.</param>
+    /// <param name="endPlanetIndex">The ending planet index.</param>
     public PlanetSectorWaypointSegmentRenderData(int startPlanetIndex, int endPlanetIndex)
     {
         StartPlanetIndex = startPlanetIndex;
         EndPlanetIndex = endPlanetIndex;
     }
-
-    public int EndPlanetIndex { get; }
-
-    public int StartPlanetIndex { get; }
 }
 
 /// <summary>
@@ -67,15 +75,20 @@ public readonly struct PlanetSectorWaypointSegmentRenderData
 /// </summary>
 public readonly struct PlanetSectorWaypointRenderData
 {
+    public int Order { get; }
+
+    public int PlanetIndex { get; }
+
+    /// <summary>
+    /// Creates a numbered route stop for one displayed planet.
+    /// </summary>
+    /// <param name="order">The one-based waypoint order.</param>
+    /// <param name="planetIndex">The displayed planet index.</param>
     public PlanetSectorWaypointRenderData(int order, int planetIndex)
     {
         Order = order;
         PlanetIndex = planetIndex;
     }
-
-    public int Order { get; }
-
-    public int PlanetIndex { get; }
 }
 
 /// <summary>

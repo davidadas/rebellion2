@@ -9,15 +9,20 @@ using UnityEngine.UI;
 /// </summary>
 internal readonly struct WaypointRouteLineRenderData
 {
+    public Vector2Int Start { get; }
+
+    public Vector2Int End { get; }
+
+    /// <summary>
+    /// Creates a route segment between two source-space positions.
+    /// </summary>
+    /// <param name="start">The segment's starting position.</param>
+    /// <param name="end">The segment's ending position.</param>
     public WaypointRouteLineRenderData(Vector2Int start, Vector2Int end)
     {
         Start = start;
         End = end;
     }
-
-    public Vector2Int End { get; }
-
-    public Vector2Int Start { get; }
 }
 
 /// <summary>
@@ -25,15 +30,20 @@ internal readonly struct WaypointRouteLineRenderData
 /// </summary>
 internal readonly struct WaypointRouteMarkerRenderData
 {
+    public int Order { get; }
+
+    public Vector2Int Position { get; }
+
+    /// <summary>
+    /// Creates a numbered waypoint marker at one source-space position.
+    /// </summary>
+    /// <param name="order">The one-based waypoint order.</param>
+    /// <param name="position">The marker position.</param>
     public WaypointRouteMarkerRenderData(int order, Vector2Int position)
     {
         Order = order;
         Position = position;
     }
-
-    public int Order { get; }
-
-    public Vector2Int Position { get; }
 }
 
 /// <summary>
@@ -46,12 +56,12 @@ internal sealed class WaypointRouteOverlay
     private const int _markerOffsetY = -10;
     private const int _markerSize = 11;
 
-    private readonly RectTransform lineLayer;
-    private readonly List<Image> lines = new List<Image>();
-    private readonly RectTransform markerLayer;
-    private readonly List<Image> markers = new List<Image>();
-    private readonly List<TextMeshProUGUI> numberLabels = new List<TextMeshProUGUI>();
-    private readonly TextMeshProUGUI textTemplate;
+    private readonly RectTransform _lineLayer;
+    private readonly List<Image> _lines = new List<Image>();
+    private readonly RectTransform _markerLayer;
+    private readonly List<Image> _markers = new List<Image>();
+    private readonly List<TextMeshProUGUI> _numberLabels = new List<TextMeshProUGUI>();
+    private readonly TextMeshProUGUI _textTemplate;
 
     /// <summary>
     /// Creates waypoint presentation layers under one source-space map root.
@@ -63,9 +73,9 @@ internal sealed class WaypointRouteOverlay
         if (parent == null)
             throw new ArgumentNullException(nameof(parent));
 
-        this.textTemplate = textTemplate ?? throw new ArgumentNullException(nameof(textTemplate));
-        lineLayer = CreateLayer(parent, "WaypointLines");
-        markerLayer = CreateLayer(parent, "WaypointMarkers");
+        _textTemplate = textTemplate ?? throw new ArgumentNullException(nameof(textTemplate));
+        _lineLayer = CreateLayer(parent, "WaypointLines");
+        _markerLayer = CreateLayer(parent, "WaypointMarkers");
         SetPresentationOrder();
     }
 
@@ -82,15 +92,15 @@ internal sealed class WaypointRouteOverlay
         int lineCount = lineData?.Count ?? 0;
         for (int index = 0; index < lineCount; index++)
             RenderLine(GetOrCreateLine(index), lineData[index]);
-        HideUnused(lines, lineCount);
+        HideUnused(_lines, lineCount);
 
         int markerCount = markerData?.Count ?? 0;
         for (int index = 0; index < markerCount; index++)
         {
             Image marker = GetOrCreateMarker(index);
-            RenderMarker(marker, numberLabels[index], markerData[index]);
+            RenderMarker(marker, _numberLabels[index], markerData[index]);
         }
-        HideUnused(markers, markerCount);
+        HideUnused(_markers, markerCount);
     }
 
     /// <summary>
@@ -98,13 +108,16 @@ internal sealed class WaypointRouteOverlay
     /// </summary>
     public void SetPresentationOrder()
     {
-        lineLayer.SetAsFirstSibling();
-        markerLayer.SetAsLastSibling();
+        _lineLayer.SetAsFirstSibling();
+        _markerLayer.SetAsLastSibling();
     }
 
     /// <summary>
     /// Creates one full-map, non-interactive presentation layer.
     /// </summary>
+    /// <param name="parent">The map root that owns the layer.</param>
+    /// <param name="name">The layer object name.</param>
+    /// <returns>The created layer.</returns>
     private static RectTransform CreateLayer(RectTransform parent, string name)
     {
         GameObject layerObject = new GameObject(name, typeof(RectTransform));
@@ -121,48 +134,52 @@ internal sealed class WaypointRouteOverlay
     /// <summary>
     /// Gets or creates one pooled white route line.
     /// </summary>
+    /// <param name="index">The requested pool index.</param>
+    /// <returns>The reusable route line.</returns>
     private Image GetOrCreateLine(int index)
     {
-        int missingCount = index - lines.Count + 1;
+        int missingCount = index - _lines.Count + 1;
         for (int missingIndex = 0; missingIndex < missingCount; missingIndex++)
         {
             GameObject lineObject = new GameObject(
-                $"WaypointLine{lines.Count + 1}",
+                $"WaypointLine{_lines.Count + 1}",
                 typeof(RectTransform),
                 typeof(CanvasRenderer),
                 typeof(Image)
             );
-            lineObject.transform.SetParent(lineLayer, false);
+            lineObject.transform.SetParent(_lineLayer, false);
             Image line = lineObject.GetComponent<Image>();
             line.color = Color.white;
             line.raycastTarget = false;
-            lines.Add(line);
+            _lines.Add(line);
         }
 
-        return lines[index];
+        return _lines[index];
     }
 
     /// <summary>
     /// Gets or creates one pooled numbered route marker.
     /// </summary>
+    /// <param name="index">The requested pool index.</param>
+    /// <returns>The reusable waypoint marker.</returns>
     private Image GetOrCreateMarker(int index)
     {
-        int missingCount = index - markers.Count + 1;
+        int missingCount = index - _markers.Count + 1;
         for (int missingIndex = 0; missingIndex < missingCount; missingIndex++)
         {
             GameObject markerObject = new GameObject(
-                $"WaypointMarker{markers.Count + 1}",
+                $"WaypointMarker{_markers.Count + 1}",
                 typeof(RectTransform),
                 typeof(CanvasRenderer),
                 typeof(Image)
             );
-            markerObject.transform.SetParent(markerLayer, false);
+            markerObject.transform.SetParent(_markerLayer, false);
             Image marker = markerObject.GetComponent<Image>();
             marker.color = new Color(0f, 0f, 0f, 0.8f);
             marker.raycastTarget = false;
 
             TextMeshProUGUI label = UnityEngine.Object.Instantiate(
-                textTemplate,
+                _textTemplate,
                 markerObject.transform
             );
             label.name = "Number";
@@ -174,16 +191,18 @@ internal sealed class WaypointRouteOverlay
             label.raycastTarget = false;
             UILayout.SetSourceRect(label.rectTransform, 0, 0, _markerSize, _markerSize);
 
-            markers.Add(marker);
-            numberLabels.Add(label);
+            _markers.Add(marker);
+            _numberLabels.Add(label);
         }
 
-        return markers[index];
+        return _markers[index];
     }
 
     /// <summary>
     /// Places and rotates one line between two source-space coordinates.
     /// </summary>
+    /// <param name="line">The line to position.</param>
+    /// <param name="data">The source-space line endpoints.</param>
     private static void RenderLine(Image line, WaypointRouteLineRenderData data)
     {
         Vector2 delta = new Vector2(data.End.x - data.Start.x, data.End.y - data.Start.y);
@@ -200,6 +219,9 @@ internal sealed class WaypointRouteOverlay
     /// <summary>
     /// Places one numbered marker beside its waypoint.
     /// </summary>
+    /// <param name="marker">The marker image to position.</param>
+    /// <param name="label">The marker's number label.</param>
+    /// <param name="data">The waypoint number and source-space position.</param>
     private static void RenderMarker(
         Image marker,
         TextMeshProUGUI label,
@@ -220,6 +242,8 @@ internal sealed class WaypointRouteOverlay
     /// <summary>
     /// Hides pooled images at and after one used count.
     /// </summary>
+    /// <param name="images">The pooled images.</param>
+    /// <param name="usedCount">The number of active entries.</param>
     private static void HideUnused(List<Image> images, int usedCount)
     {
         for (int index = usedCount; index < images.Count; index++)

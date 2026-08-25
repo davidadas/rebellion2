@@ -84,14 +84,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 new GalaxyMapPlanet(_planetSector, secondDestination, string.Empty),
             };
 
-            PlanetSectorWindowProjector.ProjectWaypointRoutes(
-                _game,
-                _playerFactionId,
-                visiblePlanets,
+            _projector.ProjectWaypointRoutes(
+                new GalaxyMapSector(_planetSector, visiblePlanets),
                 null,
                 out List<PlanetSectorWaypointSegmentRenderData> segments,
                 out List<PlanetSectorWaypointRenderData> waypoints,
-                new[] { playerFleet.InstanceID }
+                new[] { playerFleet.InstanceID, opposingFleet.InstanceID }
             );
 
             Assert.AreEqual(2, segments.Count);
@@ -122,19 +120,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 new GalaxyMapPlanet(_planetSector, origin, string.Empty),
                 new GalaxyMapPlanet(_planetSector, destination, string.Empty),
             };
+            GalaxyMapSector mapSector = new GalaxyMapSector(_planetSector, visiblePlanets);
 
-            PlanetSectorWindowProjector.ProjectWaypointRoutes(
-                _game,
-                _playerFactionId,
-                visiblePlanets,
+            _projector.ProjectWaypointRoutes(
+                mapSector,
                 null,
                 out List<PlanetSectorWaypointSegmentRenderData> defaultSegments,
                 out List<PlanetSectorWaypointRenderData> defaultWaypoints
             );
-            PlanetSectorWindowProjector.ProjectWaypointRoutes(
-                _game,
-                _playerFactionId,
-                visiblePlanets,
+            _projector.ProjectWaypointRoutes(
+                mapSector,
                 null,
                 out List<PlanetSectorWaypointSegmentRenderData> allSegments,
                 out List<PlanetSectorWaypointRenderData> allWaypoints,
@@ -171,10 +166,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 new GalaxyMapPlanet(_planetSector, destination, string.Empty),
             };
 
-            PlanetSectorWindowProjector.ProjectWaypointRoutes(
-                _game,
-                _playerFactionId,
-                visiblePlanets,
+            _projector.ProjectWaypointRoutes(
+                new GalaxyMapSector(_planetSector, visiblePlanets),
                 plan,
                 out List<PlanetSectorWaypointSegmentRenderData> segments,
                 out List<PlanetSectorWaypointRenderData> waypoints

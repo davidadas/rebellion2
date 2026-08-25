@@ -314,6 +314,24 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void HasWaypoints_WaypointAdded_ReturnsTrue()
+        {
+            _fleet.Waypoints.Add("PLANET1");
+
+            bool hasWaypoints = _fleet.HasWaypoints();
+
+            Assert.IsTrue(hasWaypoints);
+        }
+
+        [Test]
+        public void HasWaypoints_NoWaypoints_ReturnsFalse()
+        {
+            bool hasWaypoints = _fleet.HasWaypoints();
+
+            Assert.IsFalse(hasWaypoints);
+        }
+
+        [Test]
         public void GetStarfighters_FleetWithStarfighters_ReturnsAllStarfightersAcrossFleet()
         {
             Starfighter starfighter1 = new Starfighter();

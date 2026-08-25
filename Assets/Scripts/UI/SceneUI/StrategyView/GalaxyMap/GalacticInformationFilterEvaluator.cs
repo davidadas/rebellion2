@@ -229,7 +229,7 @@ public static class GalacticInformationFilterEvaluator
         Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (Fleet fleet in planet.GetChildren<Fleet>())
         {
-            if (fleet.Waypoints.Count > 0)
+            if (fleet.HasWaypoints())
                 Increment(counts, fleet.OwnerInstanceID);
         }
 

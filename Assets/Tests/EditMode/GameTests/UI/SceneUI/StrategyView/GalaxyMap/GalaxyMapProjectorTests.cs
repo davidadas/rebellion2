@@ -7,7 +7,6 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Movement;
-using Rebellion.Game.Units;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -68,12 +67,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             opposingFleet.Waypoints.Add(destination.InstanceID);
             _game.AttachNode(opposingFleet, origin);
 
-            List<GalaxyMapWaypointRouteRenderData> routes =
-                GalaxyMapProjector.ProjectWaypointRoutes(
-                    _game,
-                    _playerFactionId,
-                    selectedFleetInstanceIds: new[] { playerFleet.InstanceID }
-                );
+            List<GalaxyMapWaypointRouteRenderData> routes = _projector.ProjectWaypointRoutes(
+                _playerFactionId,
+                selectedFleetInstanceIds: new[] { playerFleet.InstanceID, opposingFleet.InstanceID }
+            );
 
             Assert.AreEqual(1, routes.Count);
             Assert.AreEqual(playerFleet.InstanceID, routes[0].FleetInstanceId);
@@ -96,14 +93,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             fleet.Waypoints.Add(destination.InstanceID);
             _game.AttachNode(fleet, origin);
 
-            List<GalaxyMapWaypointRouteRenderData> defaultRoutes =
-                GalaxyMapProjector.ProjectWaypointRoutes(_game, _playerFactionId);
-            List<GalaxyMapWaypointRouteRenderData> allRoutes =
-                GalaxyMapProjector.ProjectWaypointRoutes(
-                    _game,
-                    _playerFactionId,
-                    showAllRoutes: true
-                );
+            List<GalaxyMapWaypointRouteRenderData> defaultRoutes = _projector.ProjectWaypointRoutes(
+                _playerFactionId
+            );
+            List<GalaxyMapWaypointRouteRenderData> allRoutes = _projector.ProjectWaypointRoutes(
+                _playerFactionId,
+                showAllRoutes: true
+            );
 
             Assert.IsEmpty(defaultRoutes);
             Assert.AreEqual(1, allRoutes.Count);
@@ -130,8 +126,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
             plan.TryAppendWaypoint(destination.InstanceID);
 
-            List<GalaxyMapWaypointRouteRenderData> routes =
-                GalaxyMapProjector.ProjectWaypointRoutes(_game, _playerFactionId, plan);
+            List<GalaxyMapWaypointRouteRenderData> routes = _projector.ProjectWaypointRoutes(
+                _playerFactionId,
+                plan
+            );
 
             Assert.AreEqual(1, routes.Count);
             Assert.AreEqual(new Vector2Int(18, 28), routes[0].Origin);

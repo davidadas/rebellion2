@@ -105,7 +105,7 @@ internal static class PlanetSectorWindowContextMenuBuilder
         );
         bool canShowSingleFleetInfo = fleetItems?.Count == 1;
         bool hasWaypoints =
-            fleetItems?.Exists(fleet => fleet is Fleet routeFleet && routeFleet.Waypoints.Count > 0)
+            fleetItems?.Exists(fleet => fleet is Fleet routeFleet && routeFleet.HasWaypoints())
             == true;
         bool allFleetsAreMoving =
             fleetItems?.Count > 0

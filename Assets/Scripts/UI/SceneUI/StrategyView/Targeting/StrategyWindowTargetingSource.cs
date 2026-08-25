@@ -8,7 +8,19 @@ using Rebellion.SceneGraph;
 /// </summary>
 public sealed class StrategyWindowTargetingSource
 {
-    private readonly List<string> waypointPlanetIds = new List<string>();
+    private readonly List<string> _waypointPlanetIds = new List<string>();
+
+    public UIWindow Window { get; }
+
+    public StrategyMenuAction Action { get; }
+
+    public int SourceX { get; }
+
+    public int SourceY { get; }
+
+    public IReadOnlyList<ISceneNode> Items { get; }
+
+    public IReadOnlyList<string> WaypointPlanetIds => _waypointPlanetIds;
 
     /// <summary>
     /// Creates one strategy-window targeting source snapshot.
@@ -33,18 +45,6 @@ public sealed class StrategyWindowTargetingSource
         Items = items?.ToList() ?? new List<ISceneNode>();
     }
 
-    public UIWindow Window { get; }
-
-    public StrategyMenuAction Action { get; }
-
-    public int SourceX { get; }
-
-    public int SourceY { get; }
-
-    public IReadOnlyList<ISceneNode> Items { get; }
-
-    public IReadOnlyList<string> WaypointPlanetIds => waypointPlanetIds;
-
     /// <summary>
     /// Appends one planet identifier to this session's uncommitted waypoint plan.
     /// </summary>
@@ -55,7 +55,7 @@ public sealed class StrategyWindowTargetingSource
         if (string.IsNullOrEmpty(planetInstanceId))
             return false;
 
-        waypointPlanetIds.Add(planetInstanceId);
+        _waypointPlanetIds.Add(planetInstanceId);
         return true;
     }
 
@@ -65,10 +65,10 @@ public sealed class StrategyWindowTargetingSource
     /// <returns>True when a waypoint was removed.</returns>
     internal bool TryRemoveLastWaypoint()
     {
-        if (waypointPlanetIds.Count == 0)
+        if (_waypointPlanetIds.Count == 0)
             return false;
 
-        waypointPlanetIds.RemoveAt(waypointPlanetIds.Count - 1);
+        _waypointPlanetIds.RemoveAt(_waypointPlanetIds.Count - 1);
         return true;
     }
 
