@@ -461,7 +461,7 @@ namespace Rebellion.AI.Planners
                 1,
                 GetProductionFacilityUpgradePressure(context, planet)
             );
-            demand.ReplacementBuilding = replacement;
+            demand.BuildingToReplace = replacement;
             demands.Add(demand);
         }
 

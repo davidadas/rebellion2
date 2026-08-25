@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
@@ -81,6 +83,7 @@ public sealed class GameDataCatalog
         Factions = factions ?? throw new ArgumentNullException(nameof(factions));
         PlanetSectors = planetSectors ?? throw new ArgumentNullException(nameof(planetSectors));
         Buildings = buildings ?? throw new ArgumentNullException(nameof(buildings));
+        ValidateBuildingUpgrades(Buildings);
         CapitalShips = capitalShips ?? throw new ArgumentNullException(nameof(capitalShips));
         Starfighters = starfighters ?? throw new ArgumentNullException(nameof(starfighters));
         Regiments = regiments ?? throw new ArgumentNullException(nameof(regiments));
@@ -92,5 +95,88 @@ public sealed class GameDataCatalog
         EncyclopediaEntries =
             encyclopediaEntries ?? throw new ArgumentNullException(nameof(encyclopediaEntries));
         FactionThemes = factionThemes ?? throw new ArgumentNullException(nameof(factionThemes));
+    }
+
+    /// <summary>
+    /// Validates authored building upgrade references and rejects cyclic upgrade paths.
+    /// </summary>
+    /// <param name="buildings">The building templates to validate.</param>
+    internal static void ValidateBuildingUpgrades(IReadOnlyCollection<Building> buildings)
+    {
+        if (buildings == null)
+            throw new ArgumentNullException(nameof(buildings));
+
+        Dictionary<string, Building> buildingsByTypeID = new Dictionary<string, Building>(
+            StringComparer.Ordinal
+        );
+        foreach (Building building in buildings)
+        {
+            if (building == null || string.IsNullOrWhiteSpace(building.TypeID))
+                throw new InvalidDataException("Every building requires a TypeID.");
+            if (!buildingsByTypeID.TryAdd(building.TypeID, building))
+                throw new InvalidDataException($"Duplicate building TypeID '{building.TypeID}'.");
+        }
+
+        foreach (Building building in buildings)
+        {
+            HashSet<string> discoveredUpgrades = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string upgradeTypeID in building.Upgrades ?? new List<string>())
+            {
+                if (string.IsNullOrWhiteSpace(upgradeTypeID))
+                    throw new InvalidDataException(
+                        $"Building '{building.TypeID}' contains a blank upgrade TypeID."
+                    );
+                if (!buildingsByTypeID.ContainsKey(upgradeTypeID))
+                    throw new InvalidDataException(
+                        $"Building '{building.TypeID}' references missing upgrade '{upgradeTypeID}'."
+                    );
+                if (upgradeTypeID == building.TypeID)
+                    throw new InvalidDataException(
+                        $"Building '{building.TypeID}' cannot upgrade to itself."
+                    );
+                if (!discoveredUpgrades.Add(upgradeTypeID))
+                    throw new InvalidDataException(
+                        $"Building '{building.TypeID}' contains duplicate upgrade '{upgradeTypeID}'."
+                    );
+            }
+        }
+
+        HashSet<string> visited = new HashSet<string>(StringComparer.Ordinal);
+        HashSet<string> activePath = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Building building in buildings)
+            ValidateBuildingUpgradePath(building, buildingsByTypeID, visited, activePath);
+    }
+
+    /// <summary>
+    /// Validates one building upgrade path using depth-first graph traversal.
+    /// </summary>
+    /// <param name="building">The building whose upgrade path is being traversed.</param>
+    /// <param name="buildingsByTypeID">The building templates indexed by type identifier.</param>
+    /// <param name="visited">The building types whose complete paths have been validated.</param>
+    /// <param name="activePath">The building types in the current traversal path.</param>
+    private static void ValidateBuildingUpgradePath(
+        Building building,
+        IReadOnlyDictionary<string, Building> buildingsByTypeID,
+        ISet<string> visited,
+        ISet<string> activePath
+    )
+    {
+        if (visited.Contains(building.TypeID))
+            return;
+        if (!activePath.Add(building.TypeID))
+            throw new InvalidDataException(
+                $"Building upgrade paths contain a cycle at '{building.TypeID}'."
+            );
+
+        foreach (string upgradeTypeID in building.Upgrades ?? new List<string>())
+            ValidateBuildingUpgradePath(
+                buildingsByTypeID[upgradeTypeID],
+                buildingsByTypeID,
+                visited,
+                activePath
+            );
+
+        activePath.Remove(building.TypeID);
+        visited.Add(building.TypeID);
     }
 }

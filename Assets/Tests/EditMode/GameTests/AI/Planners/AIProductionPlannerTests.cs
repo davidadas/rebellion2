@@ -172,7 +172,7 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .Single(item => item.Demand.Kind == AIProductionDemandKind.BuildingUpgrade);
 
-            Assert.AreSame(replacement, proposal.Demand.ReplacementBuilding);
+            Assert.AreSame(replacement, proposal.Demand.BuildingToReplace);
             Assert.AreSame(advancedShipyard, proposal.Product.GetReference());
             Assert.AreEqual(maintenanceBudget, proposal.GetMaintenanceCost());
         }

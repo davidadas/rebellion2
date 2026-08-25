@@ -377,7 +377,7 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.AreSame(planet, demand.DestinationPlanet);
             Assert.AreEqual(BuildingType.Shipyard, demand.BuildingType);
-            Assert.AreSame(first, demand.ReplacementBuilding);
+            Assert.AreSame(first, demand.BuildingToReplace);
             Assert.AreEqual(1, demand.QuantityNeeded);
         }
 

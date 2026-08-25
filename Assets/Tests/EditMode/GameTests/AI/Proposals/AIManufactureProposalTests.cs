@@ -876,7 +876,7 @@ namespace Rebellion.Tests.AI.Proposals
                 1,
                 100
             );
-            demand.ReplacementBuilding = replacement;
+            demand.BuildingToReplace = replacement;
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,

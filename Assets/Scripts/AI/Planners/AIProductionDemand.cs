@@ -97,7 +97,7 @@ namespace Rebellion.AI.Planners
         public BuildingType BuildingType { get; }
         public string ProductTypeId { get; }
         public AICapitalShipProductionRole CapitalShipRole { get; }
-        public Building ReplacementBuilding { get; set; }
+        public Building BuildingToReplace { get; set; }
 
         // Destination.
         public ContainerNode Destination { get; }

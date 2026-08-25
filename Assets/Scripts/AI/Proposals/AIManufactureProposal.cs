@@ -140,9 +140,9 @@ namespace Rebellion.AI.Proposals
                     AIClaimKeys.ProductionBuildingDestination(destinationPlanet.InstanceID)
                 );
 
-            if (Demand?.ReplacementBuilding != null)
+            if (Demand?.BuildingToReplace != null)
                 claimKeys.Add(
-                    AIClaimKeys.ProductionBuildingReplacement(Demand.ReplacementBuilding.InstanceID)
+                    AIClaimKeys.ProductionBuildingReplacement(Demand.BuildingToReplace.InstanceID)
                 );
 
             if (Demand?.Kind == AIProductionDemandKind.ConstructionFacility)
@@ -299,12 +299,12 @@ namespace Rebellion.AI.Proposals
             int maintenanceCost = Product?.GetReference()?.GetMaintenanceCost() ?? 0;
             if (
                 Demand?.Kind == AIProductionDemandKind.BuildingUpgrade
-                && Demand.ReplacementBuilding != null
+                && Demand.BuildingToReplace != null
             )
             {
                 maintenanceCost = System.Math.Max(
                     0,
-                    maintenanceCost - Demand.ReplacementBuilding.MaintenanceCost
+                    maintenanceCost - Demand.BuildingToReplace.MaintenanceCost
                 );
             }
 
@@ -520,7 +520,7 @@ namespace Rebellion.AI.Proposals
             Building building
         )
         {
-            Building replacement = Demand.ReplacementBuilding;
+            Building replacement = Demand.BuildingToReplace;
             if (
                 replacement == null
                 || context.Game.GetSceneNodeByInstanceID<Building>(replacement.InstanceID)
@@ -555,7 +555,7 @@ namespace Rebellion.AI.Proposals
 
         private void ExecuteBuildingUpgrade(AITurnContext context)
         {
-            Building replacement = Demand.ReplacementBuilding;
+            Building replacement = Demand.BuildingToReplace;
             Planet destinationPlanet = Destination as Planet;
             context.Game.DetachNode(replacement);
 

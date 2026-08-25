@@ -318,7 +318,7 @@ namespace Rebellion.AI.Planners
                     ? demand.Destination?.InstanceID
                     : null,
                 demand.ProductTypeId,
-                demand.ReplacementBuilding?.GetTypeID()
+                demand.BuildingToReplace?.GetTypeID()
             );
             if (_selectedTechnologies.TryGetValue(key, out Technology selectedTechnology))
                 return selectedTechnology;
@@ -389,20 +389,20 @@ namespace Rebellion.AI.Planners
         private static bool IsEligibleBuildingUpgrade(AIProductionDemand demand, Building building)
         {
             return demand.Kind != AIProductionDemandKind.BuildingUpgrade
-                || demand.ReplacementBuilding.CanUpgradeTo(building);
+                || demand.BuildingToReplace.CanUpgradeTo(building);
         }
 
         private static int GetBuildingMaintenanceCost(AIProductionDemand demand, Building building)
         {
             if (
                 demand.Kind != AIProductionDemandKind.BuildingUpgrade
-                || demand.ReplacementBuilding == null
+                || demand.BuildingToReplace == null
             )
                 return building.MaintenanceCost;
 
             return System.Math.Max(
                 0,
-                building.MaintenanceCost - demand.ReplacementBuilding.MaintenanceCost
+                building.MaintenanceCost - demand.BuildingToReplace.MaintenanceCost
             );
         }
 
@@ -551,7 +551,7 @@ namespace Rebellion.AI.Planners
                 demand.ProductTypeId,
                 demand.CapitalShipRole
             );
-            proposalDemand.ReplacementBuilding = demand.ReplacementBuilding;
+            proposalDemand.BuildingToReplace = demand.BuildingToReplace;
             return proposalDemand;
         }
 
