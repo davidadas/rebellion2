@@ -22,18 +22,13 @@ Rebellion 2 is approximately **60% complete toward a feature-complete single-pla
 | Tactical AI | 0% |
 | Strategy Interface | 80% |
 | UI Upscaling | 40% |
-| Save Games* | 100% |
+| Save Games | 100% |
 | Settings | 10% |
 | Moddability | 65% |
 | Modding Tools | 0% |
 | Multiplayer | 0% |
 
-\* Save compatibility is not guaranteed between versions during development.
-
-Campaign generation, core strategy systems, missions, save games, and most of the Strategy
-interface are functional. Major remaining work includes story events, strategic AI depth, tactical
-AI, UI upscaling, settings, modding tools, tactical simulation, multiplayer, balance, and release
-polish.
+**NOTE: Save compatibility is not guaranteed between versions during development.**
 
 ## Playing the game
 
