@@ -523,6 +523,12 @@ public sealed class EncyclopediaDetailPanelView : MonoBehaviour, IContentInitial
     /// </summary>
     private readonly struct DetailTextRow
     {
+        public int IndentTabs { get; }
+
+        public IReadOnlyList<string> Cells { get; }
+
+        public bool IsTabbed { get; }
+
         /// <summary>
         /// Creates one parsed detail-text row.
         /// </summary>
@@ -535,11 +541,5 @@ public sealed class EncyclopediaDetailPanelView : MonoBehaviour, IContentInitial
             Cells = cells ?? Array.Empty<string>();
             IsTabbed = tabbed;
         }
-
-        public int IndentTabs { get; }
-
-        public IReadOnlyList<string> Cells { get; }
-
-        public bool IsTabbed { get; }
     }
 }

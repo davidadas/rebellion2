@@ -49,6 +49,14 @@ namespace Rebellion.Game.Missions
     /// </summary>
     internal sealed class MissionDetector
     {
+        internal ISceneNode Unit { get; }
+
+        internal Officer Commander { get; }
+
+        internal int Rating { get; }
+
+        internal bool IsFleetBased { get; }
+
         /// <summary>
         /// Creates a detector with its original detection context.
         /// </summary>
@@ -63,14 +71,6 @@ namespace Rebellion.Game.Missions
             Rating = rating;
             IsFleetBased = isFleetBased;
         }
-
-        internal ISceneNode Unit { get; }
-
-        internal Officer Commander { get; }
-
-        internal int Rating { get; }
-
-        internal bool IsFleetBased { get; }
     }
 
     /// <summary>
@@ -124,6 +124,16 @@ namespace Rebellion.Game.Missions
         // Mission progress.
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }
+
+        /// <summary>
+        /// Returns whether detected mission participants suffer capture, death, or destruction.
+        /// </summary>
+        internal virtual bool AppliesFoiledParticipantConsequences => true;
+
+        /// <summary>
+        /// Returns whether successful participants stay at the mission location regardless of ownership.
+        /// </summary>
+        internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
 
         /// <summary>
         /// Parameterless constructor for deserialization.
@@ -251,16 +261,6 @@ namespace Rebellion.Game.Missions
 
             return target is not IMovable movable || movable.GetTransitMovement() == null;
         }
-
-        /// <summary>
-        /// Returns whether detected mission participants suffer capture, death, or destruction.
-        /// </summary>
-        internal virtual bool AppliesFoiledParticipantConsequences => true;
-
-        /// <summary>
-        /// Returns whether successful participants stay at the mission location regardless of ownership.
-        /// </summary>
-        internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
 
         /// <summary>
         /// Returns why this mission must stop before advancing.

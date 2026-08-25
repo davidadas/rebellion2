@@ -91,6 +91,19 @@ internal static class FleetWindowContextMenuBuilder
             new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", canMove),
         };
 
+        if (fleetCount == itemCount)
+        {
+            bool hasWaypoints = items.OfType<Fleet>().Any(fleet => fleet.HasWaypoints());
+            bool allFleetsAreMoving = items.OfType<Fleet>().All(fleet => fleet.Movement != null);
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyMenuAction.WaypointMove,
+                    hasWaypoints ? "Clear Waypoints" : "Waypoint Move",
+                    playerControlsItems && (canMove || allFleetsAreMoving || hasWaypoints)
+                )
+            );
+        }
+
         if (fleetCount > 0 && shipCount == 0)
         {
             commands.Add(

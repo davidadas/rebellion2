@@ -44,6 +44,35 @@ public interface IStrategyWindowCommandActions
         StrategyMissionTarget target,
         IReadOnlyList<ISceneNode> items
     );
+
+    /// <summary>
+    /// Appends a planet to an uncommitted waypoint plan.
+    /// </summary>
+    /// <param name="source">The active waypoint targeting session.</param>
+    /// <param name="target">The selected waypoint planet.</param>
+    /// <returns>True when the waypoint was added to the plan.</returns>
+    bool TryAppendFleetWaypoint(StrategyWindowTargetingSource source, StrategyMissionTarget target);
+
+    /// <summary>
+    /// Commits an active waypoint plan and starts stationary fleets along its first leg.
+    /// </summary>
+    /// <param name="source">The active waypoint targeting session.</param>
+    /// <returns>True when the complete route was committed.</returns>
+    bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source);
+
+    /// <summary>
+    /// Removes the newest stop from an active waypoint plan.
+    /// </summary>
+    /// <param name="source">The active waypoint targeting session.</param>
+    /// <returns>True when waypoints remain and targeting should stay active.</returns>
+    bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source);
+
+    /// <summary>
+    /// Clears queued waypoint continuation for selected fleets without stopping active transit.
+    /// </summary>
+    /// <param name="items">The selected fleets or their visible snapshots.</param>
+    /// <returns>True when at least one waypoint was cleared.</returns>
+    bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items);
 }
 
 /// <summary>

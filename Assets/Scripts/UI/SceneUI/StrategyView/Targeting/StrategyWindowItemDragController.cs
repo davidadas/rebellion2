@@ -49,6 +49,10 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
     private DragPreview candidatePreview;
     private bool candidateHasPreview;
 
+    public bool HasCandidate => dragController.HasCandidate;
+
+    public bool SourceDragActive => dragController.IsDragging;
+
     /// <summary>
     /// Creates the strategy-window item-drag controller.
     /// </summary>
@@ -84,10 +88,6 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
             getPlayerFactionID ?? throw new ArgumentNullException(nameof(getPlayerFactionID));
         this.commands = commands ?? throw new ArgumentNullException(nameof(commands));
     }
-
-    public bool HasCandidate => dragController.HasCandidate;
-
-    public bool SourceDragActive => dragController.IsDragging;
 
     /// <summary>
     /// Captures one source-window selection as a possible item drag.

@@ -69,22 +69,6 @@ public sealed class AudioManager : MonoBehaviour
     private bool _activeTrackLoop;
 
     /// <summary>
-    /// Binds this manager to the application-owned external content assets.
-    /// </summary>
-    /// <param name="contentAssets">The active content asset store.</param>
-    internal void InitializeContent(ContentAssets contentAssets)
-    {
-        if (contentAssets == null)
-            throw new ArgumentNullException(nameof(contentAssets));
-        if (_contentAssets != null && _contentAssets != contentAssets)
-            throw new InvalidOperationException(
-                "AudioManager is already bound to a content asset store."
-            );
-
-        _contentAssets = contentAssets;
-    }
-
-    /// <summary>
     /// Gets the active global audio manager instance.
     /// </summary>
     public static AudioManager Instance { get; private set; }
@@ -118,6 +102,22 @@ public sealed class AudioManager : MonoBehaviour
     /// Gets the ambience channel volume.
     /// </summary>
     public float AmbienceVolume => ambienceVolume;
+
+    /// <summary>
+    /// Binds this manager to the application-owned external content assets.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset store.</param>
+    internal void InitializeContent(ContentAssets contentAssets)
+    {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+        if (_contentAssets != null && _contentAssets != contentAssets)
+            throw new InvalidOperationException(
+                "AudioManager is already bound to a content asset store."
+            );
+
+        _contentAssets = contentAssets;
+    }
 
     /// <summary>
     /// Returns the global audio manager, creating one when the scene does not already contain it.

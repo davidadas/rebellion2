@@ -38,24 +38,35 @@ public interface ITargetingCursor
 /// </summary>
 public sealed class TargetingRequest
 {
+    public string Prompt { get; }
+
+    public object Source { get; }
+
+    public ITargetingReceiver Receiver { get; }
+
+    public bool RemainsActiveAfterSelection { get; }
+
     /// <summary>
     /// Creates a targeting request.
     /// </summary>
     /// <param name="prompt">The prompt associated with the operation.</param>
     /// <param name="source">The feature state that initiated targeting.</param>
     /// <param name="receiver">The targeting completion receiver.</param>
-    public TargetingRequest(string prompt, object source, ITargetingReceiver receiver)
+    /// <param name="remainsActiveAfterSelection">
+    /// Whether the request remains active so it can receive additional selections.
+    /// </param>
+    public TargetingRequest(
+        string prompt,
+        object source,
+        ITargetingReceiver receiver,
+        bool remainsActiveAfterSelection = false
+    )
     {
         Prompt = prompt ?? string.Empty;
         Source = source;
         Receiver = receiver ?? throw new ArgumentNullException(nameof(receiver));
+        RemainsActiveAfterSelection = remainsActiveAfterSelection;
     }
-
-    public string Prompt { get; }
-
-    public object Source { get; }
-
-    public ITargetingReceiver Receiver { get; }
 }
 
 /// <summary>
@@ -78,6 +89,32 @@ public interface ITargetingReceiver
 }
 
 /// <summary>
+/// Receives explicit submission of a multi-selection targeting request.
+/// </summary>
+public interface ITargetingSubmissionReceiver
+{
+    /// <summary>
+    /// Attempts to commit the current targeting session.
+    /// </summary>
+    /// <param name="request">The active targeting request.</param>
+    /// <returns>True when the request was committed and targeting should end.</returns>
+    bool TrySubmitTargeting(TargetingRequest request);
+}
+
+/// <summary>
+/// Receives incremental cancellation before a targeting request is canceled completely.
+/// </summary>
+public interface ITargetingUndoReceiver
+{
+    /// <summary>
+    /// Attempts to undo one step while keeping the targeting request active.
+    /// </summary>
+    /// <param name="request">The active targeting request.</param>
+    /// <returns>True when one step was undone and targeting should remain active.</returns>
+    bool TryUndoTargeting(TargetingRequest request);
+}
+
+/// <summary>
 /// Owns the lifecycle of the current targeting request and its optional cursor.
 /// </summary>
 public sealed class TargetingController : ICancelable
@@ -85,6 +122,10 @@ public sealed class TargetingController : ICancelable
     private readonly ITargetingCursor cursor;
     private TargetingRequest activeRequest;
     private bool cursorVisible;
+
+    public bool IsTargeting => activeRequest != null;
+
+    public TargetingRequest ActiveRequest => activeRequest;
 
     /// <summary>
     /// Creates a targeting controller with an optional cursor presenter.
@@ -94,10 +135,6 @@ public sealed class TargetingController : ICancelable
     {
         this.cursor = cursor;
     }
-
-    public bool IsTargeting => activeRequest != null;
-
-    public TargetingRequest ActiveRequest => activeRequest;
 
     /// <summary>
     /// Starts a targeting request without showing a cursor.
@@ -149,10 +186,31 @@ public sealed class TargetingController : ICancelable
             return false;
 
         TargetingRequest request = activeRequest;
-        activeRequest = null;
-        HideCursor();
+        if (!request.RemainsActiveAfterSelection)
+        {
+            activeRequest = null;
+            HideCursor();
+        }
 
         request.Receiver.OnTargetSelected(request, targetable.Target);
+        return true;
+    }
+
+    /// <summary>
+    /// Tries to submit an active multi-selection targeting request.
+    /// </summary>
+    /// <returns>True when the receiver committed the request.</returns>
+    public bool TrySubmit()
+    {
+        if (
+            activeRequest == null
+            || activeRequest.Receiver is not ITargetingSubmissionReceiver receiver
+            || !receiver.TrySubmitTargeting(activeRequest)
+        )
+            return false;
+
+        activeRequest = null;
+        HideCursor();
         return true;
     }
 
@@ -179,6 +237,12 @@ public sealed class TargetingController : ICancelable
     {
         if (activeRequest == null)
             return false;
+
+        if (
+            activeRequest.Receiver is ITargetingUndoReceiver receiver
+            && receiver.TryUndoTargeting(activeRequest)
+        )
+            return true;
 
         Cancel();
         return true;

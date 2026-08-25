@@ -7,6 +7,12 @@ using System.Linq;
 /// </summary>
 public sealed class ContextMenuRequest
 {
+    public object Source { get; }
+
+    public IReadOnlyList<IContextMenuCommand> Commands { get; }
+
+    public IContextMenuReceiver Receiver { get; }
+
     /// <summary>
     /// Creates a context-menu request.
     /// </summary>
@@ -23,12 +29,6 @@ public sealed class ContextMenuRequest
         Commands = commands?.ToList() ?? new List<IContextMenuCommand>();
         Receiver = receiver ?? throw new ArgumentNullException(nameof(receiver));
     }
-
-    public object Source { get; }
-
-    public IReadOnlyList<IContextMenuCommand> Commands { get; }
-
-    public IContextMenuReceiver Receiver { get; }
 }
 
 /// <summary>

@@ -7,6 +7,10 @@ using UnityEngine;
 /// </summary>
 public sealed class StatusWindowRowRenderData
 {
+    public string Left { get; }
+
+    public string Right { get; }
+
     /// <summary>
     /// Creates one status detail row.
     /// </summary>
@@ -17,10 +21,6 @@ public sealed class StatusWindowRowRenderData
         Left = left ?? string.Empty;
         Right = right ?? string.Empty;
     }
-
-    public string Left { get; }
-
-    public string Right { get; }
 }
 
 /// <summary>
@@ -28,6 +28,24 @@ public sealed class StatusWindowRowRenderData
 /// </summary>
 public sealed class StatusWindowRenderData
 {
+    public int X { get; }
+
+    public int Y { get; }
+
+    public Texture2D BackgroundTexture { get; }
+
+    public bool CenterImage { get; }
+
+    public bool InfoDisabled { get; }
+
+    public string Header { get; }
+
+    public IReadOnlyList<Texture2D> ImageTextures { get; }
+
+    public string Label { get; }
+
+    public IReadOnlyList<StatusWindowRowRenderData> Rows { get; }
+
     /// <summary>
     /// Creates a complete status-window presentation snapshot.
     /// </summary>
@@ -62,24 +80,6 @@ public sealed class StatusWindowRenderData
         Label = label ?? string.Empty;
         Rows = Copy(rows, nameof(rows));
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public Texture2D BackgroundTexture { get; }
-
-    public bool CenterImage { get; }
-
-    public bool InfoDisabled { get; }
-
-    public string Header { get; }
-
-    public IReadOnlyList<Texture2D> ImageTextures { get; }
-
-    public string Label { get; }
-
-    public IReadOnlyList<StatusWindowRowRenderData> Rows { get; }
 
     /// <summary>
     /// Copies a required presentation collection into a read-only snapshot.

@@ -19,6 +19,16 @@ public enum ConfirmDialogKind
 /// </summary>
 public sealed class ConfirmDialogWindowRenderData
 {
+    public int X { get; }
+
+    public int Y { get; }
+
+    public Texture2D BackgroundTexture { get; }
+
+    public Texture2D TitleTexture { get; }
+
+    public IReadOnlyList<string> Lines { get; }
+
     /// <summary>
     /// Creates a complete confirmation-dialog presentation snapshot.
     /// </summary>
@@ -43,14 +53,4 @@ public sealed class ConfirmDialogWindowRenderData
             lines ?? throw new ArgumentNullException(nameof(lines))
         ).AsReadOnly();
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public Texture2D BackgroundTexture { get; }
-
-    public Texture2D TitleTexture { get; }
-
-    public IReadOnlyList<string> Lines { get; }
 }

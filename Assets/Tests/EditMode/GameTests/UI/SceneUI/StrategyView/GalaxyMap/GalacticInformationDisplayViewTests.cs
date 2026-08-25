@@ -301,6 +301,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new GalacticInformationTextRowRenderData(
                     displayOffVisible,
                     new RectInt(8, 136, 130, 18),
+                    default,
                     new GalacticInformationTextRenderData(
                         "Display Off",
                         Color.cyan,
@@ -321,6 +322,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 GalacticInformationFilterMode.PopularSupport,
                 true,
                 new RectInt(7, 9, 82, 14),
+                default,
                 new GalacticInformationImageRenderData(_texture, new RectInt(7, 9, 14, 14)),
                 new GalacticInformationTextRenderData(
                     "Popular Support",

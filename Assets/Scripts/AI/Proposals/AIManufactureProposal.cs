@@ -16,6 +16,14 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIManufactureProposal : AIProposal
     {
+        public AIProductionDemand Demand { get; }
+
+        public Planet ProducerPlanet { get; }
+
+        public Technology Product { get; }
+
+        public ContainerNode Destination => Demand?.Destination;
+
         /// <summary>
         /// Creates a manufacture proposal.
         /// </summary>
@@ -32,14 +40,6 @@ namespace Rebellion.AI.Proposals
             ProducerPlanet = producerPlanet;
             Product = product;
         }
-
-        public AIProductionDemand Demand { get; }
-
-        public Planet ProducerPlanet { get; }
-
-        public Technology Product { get; }
-
-        public ContainerNode Destination => Demand?.Destination;
 
         /// <summary>
         /// Returns claims that prevent incompatible production proposals.

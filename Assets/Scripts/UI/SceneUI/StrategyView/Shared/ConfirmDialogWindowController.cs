@@ -442,6 +442,16 @@ public sealed class ConfirmDialogWindowController
     /// </summary>
     private sealed class ConfirmDialogSession
     {
+        public UIWindow DialogWindow { get; }
+
+        public ConfirmDialogKind Kind { get; }
+
+        public IReadOnlyList<ISceneNode> Items { get; }
+
+        public Action ConfirmedAction { get; }
+
+        public int TransitTimeInDays { get; }
+
         /// <summary>
         /// Creates one immutable confirmation session.
         /// </summary>
@@ -467,15 +477,5 @@ public sealed class ConfirmDialogWindowController
             ConfirmedAction =
                 confirmedAction ?? throw new ArgumentNullException(nameof(confirmedAction));
         }
-
-        public UIWindow DialogWindow { get; }
-
-        public ConfirmDialogKind Kind { get; }
-
-        public IReadOnlyList<ISceneNode> Items { get; }
-
-        public Action ConfirmedAction { get; }
-
-        public int TransitTimeInDays { get; }
     }
 }

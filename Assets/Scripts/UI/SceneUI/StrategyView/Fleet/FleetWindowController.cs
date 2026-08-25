@@ -44,7 +44,9 @@ public interface IFleetWindowActions
 public sealed class FleetWindowController
     : IStrategyContextMenuProvider,
         IContextMenuReceiver,
-        ITargetingReceiver
+        ITargetingReceiver,
+        ITargetingSubmissionReceiver,
+        ITargetingUndoReceiver
 {
     private readonly HashSet<FleetWindowView> boundViews = new HashSet<FleetWindowView>();
     private readonly StrategyFleetCommandController fleetCommandController;
@@ -53,6 +55,7 @@ public sealed class FleetWindowController
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
     private readonly FleetWindowProjector projector;
+    private readonly Action renderSelectionRoutes;
     private readonly Dictionary<FleetWindowView, FleetWindowSession> sessions =
         new Dictionary<FleetWindowView, FleetWindowSession>();
     private readonly TargetingController targetingController;
@@ -76,6 +79,7 @@ public sealed class FleetWindowController
     /// <param name="getWindowPosition">Clamps a requested fleet-window placement.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
+    /// <param name="renderSelectionRoutes">Refreshes waypoint overlays after fleet selection changes.</param>
     public FleetWindowController(
         StrategyFleetCommandController fleetCommandController,
         Func<UIContext> getUIContext,
@@ -84,7 +88,8 @@ public sealed class FleetWindowController
         UIWindowManager windowManager,
         Func<int, int, Vector2Int> getWindowPosition,
         Action markDirty,
-        Func<SelectionModifierState> getSelectionModifiers = null
+        Func<SelectionModifierState> getSelectionModifiers = null,
+        Action renderSelectionRoutes = null
     )
     {
         this.fleetCommandController =
@@ -101,6 +106,7 @@ public sealed class FleetWindowController
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
+        this.renderSelectionRoutes = renderSelectionRoutes ?? (() => { });
     }
 
     /// <summary>
@@ -313,6 +319,28 @@ public sealed class FleetWindowController
     }
 
     /// <summary>
+    /// Gets the fleet identities selected across the open fleet windows.
+    /// </summary>
+    /// <returns>The selected fleet instance identifiers.</returns>
+    public IReadOnlyCollection<string> GetSelectedFleetInstanceIds()
+    {
+        HashSet<string> fleetInstanceIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (FleetWindowSession session in sessions.Values)
+        {
+            foreach (int index in session.SelectedFleetItems)
+            {
+                if (index >= 0 && index < session.Fleets.Count)
+                    fleetInstanceIds.Add(session.Fleets[index].InstanceID);
+            }
+
+            if (session.SelectedFleet != null)
+                fleetInstanceIds.Add(session.SelectedFleet.InstanceID);
+        }
+
+        return fleetInstanceIds;
+    }
+
+    /// <summary>
     /// Gets the scene nodes targeted by the current context or drag selection.
     /// </summary>
     /// <param name="window">The source fleet window.</param>
@@ -509,9 +537,15 @@ public sealed class FleetWindowController
             case StrategyMenuAction.CreateFleet:
                 TryCreateFleetFromCapitalShips(source.Window, source.Items);
                 break;
+            case StrategyMenuAction.WaypointMove
+                when source.Items?.OfType<Fleet>().Any(fleet => fleet.HasWaypoints()) == true:
+                targetingController.Cancel();
+                commandActions.ClearFleetWaypoints(source.Items);
+                break;
             case StrategyMenuAction.CreateMission:
             case StrategyMenuAction.Move:
             case StrategyMenuAction.MoveConfirm:
+            case StrategyMenuAction.WaypointMove:
                 targetingController.Begin(
                     new TargetingRequest(
                         StrategyWindowTargetingSource.GetPrompt(menuCommand.Action),
@@ -522,7 +556,9 @@ public sealed class FleetWindowController
                             source.HotspotY,
                             source.Items
                         ),
-                        this
+                        this,
+                        remainsActiveAfterSelection: menuCommand.Action
+                            == StrategyMenuAction.WaypointMove
                     ),
                     source.HotspotX,
                     source.HotspotY
@@ -631,6 +667,28 @@ public sealed class FleetWindowController
     /// </summary>
     /// <param name="request">The canceled targeting request.</param>
     public void OnTargetingCancelled(TargetingRequest request) { }
+
+    /// <summary>
+    /// Commits the active fleet waypoint plan when Enter is pressed.
+    /// </summary>
+    /// <param name="request">The active targeting request.</param>
+    /// <returns>True when the complete route was committed.</returns>
+    public bool TrySubmitTargeting(TargetingRequest request)
+    {
+        return request?.Source is StrategyWindowTargetingSource source
+            && commandActions.TryCommitFleetWaypointPlan(source);
+    }
+
+    /// <summary>
+    /// Removes the newest planned fleet waypoint when Escape is pressed.
+    /// </summary>
+    /// <param name="request">The active targeting request.</param>
+    /// <returns>True when targeting should remain active after the undo.</returns>
+    public bool TryUndoTargeting(TargetingRequest request)
+    {
+        return request?.Source is StrategyWindowTargetingSource source
+            && commandActions.TryUndoFleetWaypointPlan(source);
+    }
 
     /// <summary>
     /// Subscribes to one authored fleet view exactly once.
@@ -749,7 +807,7 @@ public sealed class FleetWindowController
         )
             return;
 
-        HandleItemReleased(session, fleet, eventData);
+        HandleItemReleased(view, session, fleet, eventData);
     }
 
     /// <summary>
@@ -810,7 +868,7 @@ public sealed class FleetWindowController
         )
             return;
 
-        HandleItemReleased(session, item, eventData);
+        HandleItemReleased(view, session, item, eventData);
     }
 
     /// <summary>
@@ -870,6 +928,11 @@ public sealed class FleetWindowController
             return;
 
         bool canStartDrag = session.PrepareDragSelection(item);
+        bool hasSelectionModifier = SelectableListSelection.HasSelectionModifier(
+            getSelectionModifiers()
+        );
+        if (hasSelectionModifier || item is not Fleet)
+            RenderSelection(view, session, item);
         bool containsDragSource =
             item is Fleet
                 ? view.FleetRowContainsDragSource(itemIndex, eventData)
@@ -883,17 +946,17 @@ public sealed class FleetWindowController
             startItemDrag(session.Window, eventData);
             return;
         }
-
-        markDirty();
     }
 
     /// <summary>
     /// Handles a fleet or detail item release and resolves targeting or final selection.
     /// </summary>
+    /// <param name="view">The source fleet view.</param>
     /// <param name="session">The controller-owned fleet session.</param>
     /// <param name="item">The released fleet or detail item.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandleItemReleased(
+        FleetWindowView view,
         FleetWindowSession session,
         ISceneNode item,
         PointerEventData eventData
@@ -907,7 +970,28 @@ public sealed class FleetWindowController
             return;
 
         session.SelectItem(item);
-        markDirty();
+        RenderSelection(view, session, item);
+    }
+
+    /// <summary>
+    /// Renders only the presentation affected by one changed fleet-window selection.
+    /// </summary>
+    /// <param name="view">The changed fleet view.</param>
+    /// <param name="session">The controller-owned fleet session.</param>
+    /// <param name="item">The fleet row or detail item whose selection changed.</param>
+    private void RenderSelection(FleetWindowView view, FleetWindowSession session, ISceneNode item)
+    {
+        if (item is Fleet)
+        {
+            RenderWindow(view, session.Window, session.Window.ActiveWindow);
+            renderSelectionRoutes();
+            return;
+        }
+
+        view.RenderDetailSelection(
+            session.SelectedDetailItems,
+            projector.GetDetailSelectionTexture(session)
+        );
     }
 
     /// <summary>
@@ -1184,6 +1268,14 @@ public sealed class FleetWindowController
     /// </summary>
     private sealed class FleetContextMenuSource : IStrategyContextMenuSource
     {
+        public int HotspotX { get; }
+
+        public int HotspotY { get; }
+
+        public IReadOnlyList<ISceneNode> Items { get; }
+
+        public UIWindow Window { get; }
+
         /// <summary>
         /// Creates one fleet context-menu source snapshot.
         /// </summary>
@@ -1203,13 +1295,5 @@ public sealed class FleetWindowController
             HotspotY = hotspotY;
             Items = new List<ISceneNode>(items ?? Array.Empty<ISceneNode>()).AsReadOnly();
         }
-
-        public int HotspotX { get; }
-
-        public int HotspotY { get; }
-
-        public IReadOnlyList<ISceneNode> Items { get; }
-
-        public UIWindow Window { get; }
     }
 }

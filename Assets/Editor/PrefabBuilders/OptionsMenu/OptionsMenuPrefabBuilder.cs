@@ -140,7 +140,6 @@ public static class OptionsMenuPrefabBuilder
         header.color = textColor;
         header.fontSize = 22;
         header.alignment = TextAlignmentOptions.Midline;
-        ApplyOptionsDisplayFont(header);
         SetSourceRect(header.rectTransform, 41, 32, 155, 26);
 
         TextMeshProUGUI pageTitle = CreateTextLabel("PageTitleTextField", contentRoot);
@@ -148,7 +147,6 @@ public static class OptionsMenuPrefabBuilder
         pageTitle.color = accent;
         pageTitle.fontSize = 14;
         pageTitle.alignment = TextAlignmentOptions.Midline;
-        ApplyOptionsDisplayFont(pageTitle);
         SetSourceRect(pageTitle.rectTransform, 240, 36, 357, 22);
 
         BuildTabNavigation(view, contentRoot, textColor);
@@ -254,7 +252,6 @@ public static class OptionsMenuPrefabBuilder
             tabLabel.color = textColor;
             tabLabel.fontSize = 13;
             tabLabel.alignment = TextAlignmentOptions.MidlineLeft;
-            ApplyOptionsDisplayFont(tabLabel);
             SetSourceRect(tabLabel.rectTransform, 14, 5, 140, 20);
             tabLabels[i] = tabLabel;
         }
@@ -573,7 +570,6 @@ public static class OptionsMenuPrefabBuilder
         slotNameTemplate.textWrappingMode = TextWrappingModes.NoWrap;
         slotNameTemplate.overflowMode = TextOverflowModes.Truncate;
         slotNameTemplate.raycastTarget = false;
-        ApplyOptionsDisplayFont(slotNameTemplate);
         SetSourceRect(slotNameTemplate.rectTransform, 34, 0, 271, 20);
         slotNameTemplate.gameObject.SetActive(false);
         TextMeshProUGUI slotMetaTemplate = CreateTextLabel("SlotDateTemplate", slotContent);
@@ -700,7 +696,6 @@ public static class OptionsMenuPrefabBuilder
         primaryColumnHeader.color = textDim;
         primaryColumnHeader.fontSize = 9;
         primaryColumnHeader.alignment = TextAlignmentOptions.Midline;
-        ApplyOptionsDisplayFont(primaryColumnHeader);
         SetSourceRect(primaryColumnHeader.rectTransform, 208, 2, 57, 12);
         TextMeshProUGUI secondaryColumnHeader = CreateTextLabel(
             "SecondaryColumnHeader",
@@ -710,7 +705,6 @@ public static class OptionsMenuPrefabBuilder
         secondaryColumnHeader.color = textDim;
         secondaryColumnHeader.fontSize = 9;
         secondaryColumnHeader.alignment = TextAlignmentOptions.Midline;
-        ApplyOptionsDisplayFont(secondaryColumnHeader);
         SetSourceRect(secondaryColumnHeader.rectTransform, 269, 2, 57, 12);
 
         Image bindingRowTemplate = CreateSlicedImage(
@@ -733,7 +727,6 @@ public static class OptionsMenuPrefabBuilder
         bindingHeaderTemplate.color = accent;
         bindingHeaderTemplate.fontSize = 12;
         bindingHeaderTemplate.alignment = TextAlignmentOptions.TopLeft;
-        ApplyOptionsDisplayFont(bindingHeaderTemplate);
         SetSourceRect(bindingHeaderTemplate.rectTransform, 0, 0, 220, 16);
         bindingHeaderTemplate.gameObject.SetActive(false);
         TextMeshProUGUI bindingActionTemplate = CreateTextLabel(
@@ -977,19 +970,6 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Applies the Options menu font.
-    /// </summary>
-    /// <param name="text">The text field to restyle.</param>
-    private static void ApplyOptionsDisplayFont(TextMeshProUGUI text)
-    {
-        TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
-            "Assets/TextMesh Pro/Examples & Extras/Resources/Fonts & Materials/Oswald Bold SDF.asset"
-        );
-        if (font != null)
-            text.font = font;
-    }
-
-    /// <summary>
     /// Creates an Options menu section header.
     /// </summary>
     /// <param name="parent">The page container.</param>
@@ -1011,7 +991,6 @@ public static class OptionsMenuPrefabBuilder
         headerField.color = accent;
         headerField.fontSize = 13;
         headerField.alignment = TextAlignmentOptions.MidlineLeft;
-        ApplyOptionsDisplayFont(headerField);
         SetSourceRect(headerField.rectTransform, 20, y, 200, 16);
         return headerField;
     }
@@ -1049,10 +1028,9 @@ public static class OptionsMenuPrefabBuilder
         TextMeshProUGUI text = CreateTextLabel("Label", button.transform);
         text.text = label;
         text.color = color;
-        text.fontSize = 13;
+        text.fontSize = 12;
         text.alignment = TextAlignmentOptions.MidlineLeft;
-        ApplyOptionsDisplayFont(text);
-        SetSourceRect(text.rectTransform, 14, 5, 140, 20);
+        SetSourceRect(text.rectTransform, 10, 5, 148, 20);
         ApplyOptionsSurfaceButtonFeedback(button, surface);
         AddOptionsButtonBorder(buttonFrame);
         return button;
@@ -1131,7 +1109,6 @@ public static class OptionsMenuPrefabBuilder
         text.color = color;
         text.fontSize = 11;
         text.alignment = TextAlignmentOptions.Midline;
-        ApplyOptionsDisplayFont(text);
         SetSourceRect(text.rectTransform, 0, 4, width, 14);
         ApplyOptionsSurfaceButtonFeedback(button, surface);
         AddOptionsButtonBorder(buttonFrame);

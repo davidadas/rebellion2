@@ -124,6 +124,12 @@ public sealed class BookmarkBarView : MonoBehaviour
 /// </summary>
 public sealed class BookmarkRenderData
 {
+    public bool Active { get; }
+
+    public string Label { get; }
+
+    public Texture2D IconTexture { get; }
+
     /// <summary>
     /// Creates one bookmark-slot presentation snapshot.
     /// </summary>
@@ -136,10 +142,4 @@ public sealed class BookmarkRenderData
         Label = label ?? string.Empty;
         IconTexture = iconTexture;
     }
-
-    public bool Active { get; }
-
-    public string Label { get; }
-
-    public Texture2D IconTexture { get; }
 }

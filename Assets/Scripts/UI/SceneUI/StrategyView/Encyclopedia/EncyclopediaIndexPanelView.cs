@@ -75,6 +75,27 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
     /// </summary>
     public event Action<EncyclopediaWindowTab> TabSelected;
 
+    private SelectableListView<EncyclopediaWindowRowView, EncyclopediaWindowRowRenderData> RowsList
+    {
+        get
+        {
+            rowsList ??= new SelectableListView<
+                EncyclopediaWindowRowView,
+                EncyclopediaWindowRowRenderData
+            >(
+                rowsScrollArea,
+                rowTemplate,
+                "EncyclopediaRow",
+                HandleRowSelected,
+                HandleRowActivated,
+                HandleRowContextRequested,
+                CanNavigateRows,
+                navigationScope
+            );
+            return rowsList;
+        }
+    }
+
     /// <summary>
     /// Validates authored references and binds controls.
     /// </summary>
@@ -318,27 +339,6 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
     private bool CanNavigateRows()
     {
         return activeWindow;
-    }
-
-    private SelectableListView<EncyclopediaWindowRowView, EncyclopediaWindowRowRenderData> RowsList
-    {
-        get
-        {
-            rowsList ??= new SelectableListView<
-                EncyclopediaWindowRowView,
-                EncyclopediaWindowRowRenderData
-            >(
-                rowsScrollArea,
-                rowTemplate,
-                "EncyclopediaRow",
-                HandleRowSelected,
-                HandleRowActivated,
-                HandleRowContextRequested,
-                CanNavigateRows,
-                navigationScope
-            );
-            return rowsList;
-        }
     }
 
     /// <summary>

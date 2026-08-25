@@ -136,10 +136,14 @@ public sealed class GalaxyMapController
     /// <param name="sectors">The visible sectors in render order.</param>
     /// <param name="playerFactionId">The viewing player's faction identifier.</param>
     /// <param name="filterMode">The active galactic-information filter.</param>
+    /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
+    /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
     public void Render(
         IReadOnlyList<GalaxyMapSector> sectors,
         string playerFactionId,
-        GalacticInformationFilterMode filterMode
+        GalacticInformationFilterMode filterMode,
+        StrategyWindowTargetingSource waypointPlan = null,
+        IReadOnlyCollection<string> selectedFleetInstanceIds = null
     )
     {
         RebuildDomainLookups(sectors);
@@ -150,7 +154,32 @@ public sealed class GalaxyMapController
                     playerFactionId,
                     filterMode,
                     hoveredSectorInstanceId,
-                    briefingPresentation
+                    briefingPresentation,
+                    waypointPlan,
+                    selectedFleetInstanceIds
+                )
+            );
+    }
+
+    /// <summary>
+    /// Reprojects only the fleet waypoint layer without rebuilding the galaxy presentation.
+    /// </summary>
+    /// <param name="filterMode">The active galactic-information filter.</param>
+    /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
+    /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
+    public void RenderWaypointRoutes(
+        GalacticInformationFilterMode filterMode,
+        StrategyWindowTargetingSource waypointPlan,
+        IReadOnlyCollection<string> selectedFleetInstanceIds
+    )
+    {
+        GetRequiredView()
+            .RenderWaypointRoutes(
+                projector.ProjectWaypointRoutes(
+                    playerFactionId,
+                    waypointPlan,
+                    selectedFleetInstanceIds,
+                    filterMode == GalacticInformationFilterMode.FleetWaypoints
                 )
             );
     }

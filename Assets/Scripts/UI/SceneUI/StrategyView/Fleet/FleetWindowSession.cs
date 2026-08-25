@@ -22,24 +22,6 @@ internal sealed class FleetWindowSession
     private Fleet selectedFleet;
     private int selectedFleetIndexHint = -1;
 
-    /// <summary>
-    /// Creates a fleet-window session for one planet and owning window.
-    /// </summary>
-    /// <param name="planet">The represented strategy planet.</param>
-    /// <param name="window">The owning window shell.</param>
-    /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
-    public FleetWindowSession(
-        GalaxyMapPlanet planet,
-        UIWindow window,
-        Func<SelectionModifierState> getSelectionModifiers = null
-    )
-    {
-        Planet = planet ?? throw new ArgumentNullException(nameof(planet));
-        Window = window ?? throw new ArgumentNullException(nameof(window));
-        this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
-        Reconcile();
-    }
-
     public FleetWindowTab ActiveTab { get; private set; } = FleetWindowTab.CapitalShips;
 
     public int ContextDetailItemIndex { get; private set; } = -1;
@@ -67,6 +49,24 @@ internal sealed class FleetWindowSession
     public Fleet SelectedFleet => selectedFleet;
 
     public UIWindow Window { get; }
+
+    /// <summary>
+    /// Creates a fleet-window session for one planet and owning window.
+    /// </summary>
+    /// <param name="planet">The represented strategy planet.</param>
+    /// <param name="window">The owning window shell.</param>
+    /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
+    public FleetWindowSession(
+        GalaxyMapPlanet planet,
+        UIWindow window,
+        Func<SelectionModifierState> getSelectionModifiers = null
+    )
+    {
+        Planet = planet ?? throw new ArgumentNullException(nameof(planet));
+        Window = window ?? throw new ArgumentNullException(nameof(window));
+        this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
+        Reconcile();
+    }
 
     /// <summary>
     /// Rebinds the session to a refreshed projection of its planet.

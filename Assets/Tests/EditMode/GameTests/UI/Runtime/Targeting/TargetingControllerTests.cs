@@ -126,6 +126,34 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
         }
 
         [Test]
+        public void TrySelectTarget_RepeatingRequest_RemainsActiveAndAcceptsSubsequentTargets()
+        {
+            object firstTarget = new object();
+            object secondTarget = new object();
+            RecordingCursor cursor = new RecordingCursor();
+            RecordingReceiver receiver = new RecordingReceiver();
+            TargetingRequest request = new TargetingRequest(
+                "Target",
+                null,
+                receiver,
+                remainsActiveAfterSelection: true
+            );
+            TargetingController controller = new TargetingController(cursor);
+            controller.Begin(request, 1, 2);
+
+            bool firstSelected = controller.TrySelectTarget(new StubTargetable(firstTarget));
+            bool secondSelected = controller.TrySelectTarget(new StubTargetable(secondTarget));
+
+            Assert.IsTrue(firstSelected);
+            Assert.IsTrue(secondSelected);
+            Assert.IsTrue(controller.IsTargeting);
+            Assert.AreSame(request, controller.ActiveRequest);
+            Assert.AreEqual(0, cursor.HideCount);
+            Assert.AreEqual(2, receiver.SelectedCount);
+            Assert.AreSame(secondTarget, receiver.LastTarget);
+        }
+
+        [Test]
         public void Cancel_ActiveRequest_CancelsAndHidesCursor()
         {
             RecordingCursor cursor = new RecordingCursor();
@@ -156,14 +184,69 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.IsTrue(activeResult);
         }
 
+        [Test]
+        public void TrySubmit_ReceiverAccepts_ClearsRequestAndHidesCursor()
+        {
+            RecordingCursor cursor = new RecordingCursor();
+            RecordingSubmissionReceiver receiver = new RecordingSubmissionReceiver
+            {
+                AcceptSubmission = true,
+            };
+            TargetingRequest request = new TargetingRequest("Target", null, receiver);
+            TargetingController controller = new TargetingController(cursor);
+            controller.Begin(request, 1, 2);
+
+            bool submitted = controller.TrySubmit();
+
+            Assert.IsTrue(submitted);
+            Assert.IsFalse(controller.IsTargeting);
+            Assert.AreEqual(1, receiver.SubmissionCount);
+            Assert.AreSame(request, receiver.LastRequest);
+            Assert.AreEqual(1, cursor.HideCount);
+        }
+
+        [Test]
+        public void TryCancel_UndoReceiverKeepsRequestActive_DoesNotCancelRequest()
+        {
+            RecordingSubmissionReceiver receiver = new RecordingSubmissionReceiver
+            {
+                KeepActiveAfterUndo = true,
+            };
+            TargetingRequest request = new TargetingRequest("Target", null, receiver);
+            TargetingController controller = new TargetingController();
+            controller.Begin(request);
+
+            bool canceled = controller.TryCancel();
+
+            Assert.IsTrue(canceled);
+            Assert.IsTrue(controller.IsTargeting);
+            Assert.AreEqual(1, receiver.UndoCount);
+            Assert.AreEqual(0, receiver.CanceledCount);
+        }
+
+        [Test]
+        public void TryCancel_UndoReceiverRejects_CancelsRequest()
+        {
+            RecordingSubmissionReceiver receiver = new RecordingSubmissionReceiver();
+            TargetingController controller = new TargetingController();
+            controller.Begin(new TargetingRequest("Target", null, receiver));
+
+            bool canceled = controller.TryCancel();
+
+            Assert.IsTrue(canceled);
+            Assert.IsFalse(controller.IsTargeting);
+            Assert.AreEqual(1, receiver.UndoCount);
+            Assert.AreEqual(1, receiver.CanceledCount);
+        }
+
         private sealed class StubTargetable : ITargetable
         {
+            public object Target { get; }
+
             public StubTargetable(object target)
             {
                 Target = target;
             }
-
-            public object Target { get; }
         }
 
         private sealed class RecordingCursor : ITargetingCursor
@@ -214,6 +297,41 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             {
                 CanceledCount++;
                 LastRequest = request;
+            }
+        }
+
+        private sealed class RecordingSubmissionReceiver
+            : ITargetingReceiver,
+                ITargetingSubmissionReceiver,
+                ITargetingUndoReceiver
+        {
+            public bool AcceptSubmission { get; set; }
+            public int CanceledCount { get; private set; }
+            public bool KeepActiveAfterUndo { get; set; }
+            public TargetingRequest LastRequest { get; private set; }
+            public int SubmissionCount { get; private set; }
+            public int UndoCount { get; private set; }
+
+            public void OnTargetSelected(TargetingRequest request, object target) { }
+
+            public void OnTargetingCancelled(TargetingRequest request)
+            {
+                CanceledCount++;
+                LastRequest = request;
+            }
+
+            public bool TrySubmitTargeting(TargetingRequest request)
+            {
+                SubmissionCount++;
+                LastRequest = request;
+                return AcceptSubmission;
+            }
+
+            public bool TryUndoTargeting(TargetingRequest request)
+            {
+                UndoCount++;
+                LastRequest = request;
+                return KeepActiveAfterUndo;
             }
         }
     }

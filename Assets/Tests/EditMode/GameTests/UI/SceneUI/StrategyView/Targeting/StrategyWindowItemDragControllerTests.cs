@@ -507,6 +507,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             ) { }
+
+            public bool TryAppendFleetWaypoint(
+                StrategyWindowTargetingSource source,
+                StrategyMissionTarget target
+            ) => false;
+
+            public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+
+            public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+
+            public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
         }
     }
 }

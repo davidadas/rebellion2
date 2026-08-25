@@ -65,6 +65,11 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
+            AddFleetWaypointCompletionMessages(
+                batch.OfType<FleetWaypointsCompletedResult>(),
+                game,
+                deliveries
+            );
             AddFacilityLossMessages(
                 batch.OfType<GameObjectDestroyedOnArrivalResult>(),
                 game,
@@ -1706,7 +1711,9 @@ namespace Rebellion.Game.Messages
                 .ToHashSet();
             UnitArrivedResult[] arrivalResults = arrivals
                 .Where(arrival =>
-                    arrival?.Unit != null && !deployedUnitIds.Contains(arrival.Unit.GetInstanceID())
+                    arrival?.Unit != null
+                    && arrival.Unit is not Officer { IsCaptured: true }
+                    && !deployedUnitIds.Contains(arrival.Unit.GetInstanceID())
                 )
                 .ToArray();
             var shipGroups =
@@ -1822,6 +1829,37 @@ namespace Rebellion.Game.Messages
             );
             SetArrivalLocation(message, destination, fleet);
             return WithAdvisorNotification(message, AdvisorNotificationType.FleetArrived);
+        }
+
+        /// <summary>
+        /// Creates a delivery for each fleet that completed its assigned waypoint route.
+        /// </summary>
+        /// <param name="results">The completed fleet waypoint results.</param>
+        /// <param name="game">The active game used to resolve receiving factions.</param>
+        /// <param name="deliveries">The collection receiving message delivery requests.</param>
+        private void AddFleetWaypointCompletionMessages(
+            IEnumerable<FleetWaypointsCompletedResult> results,
+            GameRoot game,
+            ICollection<MessageDeliveryRequest> deliveries
+        )
+        {
+            foreach (FleetWaypointsCompletedResult result in results)
+            {
+                if (result?.Fleet == null)
+                    continue;
+
+                Faction faction = GetArrivalFaction(game, result.Fleet.GetOwnerInstanceID());
+                MessageDeliveryRequest message = BuildArrivalMessage(
+                    MessageResultType.FleetWaypointsCompleted,
+                    faction,
+                    new Dictionary<string, string>
+                    {
+                        { "fleet", result.Fleet.GetDisplayName() ?? string.Empty },
+                    }
+                );
+                SetArrivalLocation(message, result.Destination, result.Fleet);
+                AddArrivalDelivery(deliveries, faction, message);
+            }
         }
 
         private MessageDeliveryRequest CreateShips(

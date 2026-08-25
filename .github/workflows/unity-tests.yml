@@ -177,6 +177,8 @@ jobs:
 
       - name: Install tools
         run: |
+          sudo apt-get update
+          sudo apt-get install --yes ripgrep
           dotnet tool restore
 
       - name: Format check

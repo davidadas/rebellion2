@@ -639,6 +639,31 @@ internal sealed class MissionCreateWindowSession
     private readonly HashSet<int> selectedAgents = new HashSet<int>();
     private readonly HashSet<int> selectedDecoys = new HashSet<int>();
 
+    public StrategyMissionTarget Target { get; }
+
+    public UIWindow Window { get; }
+
+    public IReadOnlyList<StrategyMissionChoice> Choices => readOnlyChoices;
+
+    public IReadOnlyList<IMissionParticipant> Agents => readOnlyAgents;
+
+    public IReadOnlyList<IMissionParticipant> Decoys => readOnlyDecoys;
+
+    public IReadOnlyCollection<int> SelectedAgents => selectedAgents;
+
+    public IReadOnlyCollection<int> SelectedDecoys => selectedDecoys;
+
+    public MissionCreateWindowTab ActiveTab { get; private set; } = MissionCreateWindowTab.Mission;
+
+    public int SelectedMissionIndex { get; private set; }
+
+    public bool DropdownOpen { get; private set; }
+
+    public StrategyMissionChoice SelectedChoice =>
+        SelectedMissionIndex >= 0 && SelectedMissionIndex < Choices.Count
+            ? Choices[SelectedMissionIndex]
+            : null;
+
     /// <summary>
     /// Creates a Mission Create session from validated target, choices, and participants.
     /// </summary>
@@ -665,31 +690,6 @@ internal sealed class MissionCreateWindowSession
         agents.AddRange(participants ?? throw new ArgumentNullException(nameof(participants)));
         SelectedMissionIndex = this.choices.Count > 0 ? 0 : -1;
     }
-
-    public StrategyMissionTarget Target { get; }
-
-    public UIWindow Window { get; }
-
-    public IReadOnlyList<StrategyMissionChoice> Choices => readOnlyChoices;
-
-    public IReadOnlyList<IMissionParticipant> Agents => readOnlyAgents;
-
-    public IReadOnlyList<IMissionParticipant> Decoys => readOnlyDecoys;
-
-    public IReadOnlyCollection<int> SelectedAgents => selectedAgents;
-
-    public IReadOnlyCollection<int> SelectedDecoys => selectedDecoys;
-
-    public MissionCreateWindowTab ActiveTab { get; private set; } = MissionCreateWindowTab.Mission;
-
-    public int SelectedMissionIndex { get; private set; }
-
-    public bool DropdownOpen { get; private set; }
-
-    public StrategyMissionChoice SelectedChoice =>
-        SelectedMissionIndex >= 0 && SelectedMissionIndex < Choices.Count
-            ? Choices[SelectedMissionIndex]
-            : null;
 
     /// <summary>
     /// Closes the mission dropdown when it is open.

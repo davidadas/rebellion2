@@ -19,16 +19,26 @@ namespace Rebellion.Game.Events
     [PersistableObject]
     public abstract class GameEventTrigger
     {
-        /// <summary>Gets or sets the trigger arguments explicitly exposed to the event.</summary>
+        // Trigger Bindings.
         public List<GameEventBinding> Bindings { get; set; } = new List<GameEventBinding>();
 
-        /// <summary>Gets the concrete simulation-result type consumed by this trigger.</summary>
+        /// <summary>
+        /// Identifies the simulation result consumed by the trigger.
+        /// </summary>
         internal abstract Type ResultType { get; }
 
-        /// <summary>Returns whether the supplied result satisfies the authored predicate.</summary>
+        /// <summary>
+        /// Checks whether a simulation result satisfies the trigger criteria.
+        /// </summary>
+        /// <param name="result">The simulation result being evaluated.</param>
+        /// <returns>True when the result satisfies the trigger criteria.</returns>
         internal abstract bool Matches(GameResult result);
 
-        /// <summary>Exposes the explicitly authored result arguments under their binding names.</summary>
+        /// <summary>
+        /// Adds the authored result arguments to the event evaluation context.
+        /// </summary>
+        /// <param name="context">The event evaluation context receiving the bindings.</param>
+        /// <param name="result">The matched simulation result.</param>
         internal void Bind(GameEventEvaluationContext context, GameResult result)
         {
             foreach (GameEventBinding binding in Bindings)
@@ -41,16 +51,30 @@ namespace Rebellion.Game.Events
             }
         }
 
-        /// <summary>Gets the declared value type for one authored trigger argument.</summary>
+        /// <summary>
+        /// Resolves the declared value type for an authored trigger argument.
+        /// </summary>
+        /// <param name="argument">The authored trigger argument name.</param>
+        /// <returns>The declared argument type.</returns>
         internal Type GetBindingType(string argument) =>
             GameEventTriggerArguments.Get(ResultType, argument).ValueType;
 
-        /// <summary>Matches an optional authored instance ID against an actual value.</summary>
+        /// <summary>
+        /// Compares an optional authored instance ID with an actual instance ID.
+        /// </summary>
+        /// <param name="expected">The optional authored instance ID.</param>
+        /// <param name="actual">The actual instance ID.</param>
+        /// <returns>True when no value was authored or the instance IDs match.</returns>
         protected static bool MatchesInstanceID(string expected, string actual) =>
             string.IsNullOrWhiteSpace(expected)
             || string.Equals(expected, actual, StringComparison.Ordinal);
 
-        /// <summary>Matches an optional authored source-event ID against a result.</summary>
+        /// <summary>
+        /// Compares an optional authored source-event ID with a simulation result.
+        /// </summary>
+        /// <param name="expected">The optional authored source-event ID.</param>
+        /// <param name="result">The simulation result.</param>
+        /// <returns>True when no source was authored or the source IDs match.</returns>
         protected static bool MatchesSource(string expected, GameResult result) =>
             MatchesInstanceID(expected, result?.SourceEventInstanceID);
     }
@@ -62,6 +86,7 @@ namespace Rebellion.Game.Events
     {
         private readonly Func<GameResult, object> _resolve;
 
+        // Argument Type.
         internal Type ValueType { get; }
 
         private GameEventTriggerArgument(Type valueType, Func<GameResult, object> resolve)
@@ -70,10 +95,20 @@ namespace Rebellion.Game.Events
             _resolve = resolve;
         }
 
-        /// <summary>Resolves the argument value from the matched result.</summary>
+        /// <summary>
+        /// Resolves the argument value from a matched simulation result.
+        /// </summary>
+        /// <param name="result">The matched simulation result.</param>
+        /// <returns>The exposed argument value.</returns>
         internal object Resolve(GameResult result) => _resolve(result);
 
-        /// <summary>Creates a strongly typed trigger-argument accessor.</summary>
+        /// <summary>
+        /// Creates a strongly typed trigger-argument accessor.
+        /// </summary>
+        /// <typeparam name="TResult">The supported simulation-result type.</typeparam>
+        /// <typeparam name="TValue">The exposed argument type.</typeparam>
+        /// <param name="resolve">The function that resolves the argument value.</param>
+        /// <returns>The trigger-argument accessor.</returns>
         internal static GameEventTriggerArgument Create<TResult, TValue>(
             Func<TResult, TValue> resolve
         )
@@ -89,7 +124,12 @@ namespace Rebellion.Game.Events
         private static readonly IReadOnlyDictionary<(Type, string), GameEventTriggerArgument> _all =
             Build();
 
-        /// <summary>Gets one declared argument or rejects the unsupported authoring request.</summary>
+        /// <summary>
+        /// Resolves a declared trigger argument.
+        /// </summary>
+        /// <param name="resultType">The simulation-result type.</param>
+        /// <param name="argument">The authored argument name.</param>
+        /// <returns>The declared trigger argument.</returns>
         internal static GameEventTriggerArgument Get(Type resultType, string argument)
         {
             if (
@@ -102,7 +142,10 @@ namespace Rebellion.Game.Events
             return value;
         }
 
-        /// <summary>Builds the explicit result-to-argument contract used by event bindings.</summary>
+        /// <summary>
+        /// Builds the result-to-argument contracts used by event bindings.
+        /// </summary>
+        /// <returns>The supported trigger arguments indexed by result type and argument name.</returns>
         private static IReadOnlyDictionary<(Type, string), GameEventTriggerArgument> Build()
         {
             Dictionary<(Type, string), GameEventTriggerArgument> arguments = new();
@@ -392,7 +435,14 @@ namespace Rebellion.Game.Events
             return arguments;
         }
 
-        /// <summary>Adds one strongly typed argument to the trigger contract.</summary>
+        /// <summary>
+        /// Adds a strongly typed argument to the trigger contract.
+        /// </summary>
+        /// <typeparam name="TResult">The supported simulation-result type.</typeparam>
+        /// <typeparam name="TValue">The exposed argument type.</typeparam>
+        /// <param name="arguments">The trigger contract being built.</param>
+        /// <param name="name">The authored argument name.</param>
+        /// <param name="resolve">The function that resolves the argument value.</param>
         private static void Add<TResult, TValue>(
             IDictionary<(Type, string), GameEventTriggerArgument> arguments,
             string name,
@@ -404,7 +454,9 @@ namespace Rebellion.Game.Events
 
     #region Planet
 
-    /// <summary>Activates when ownership of a planet changes.</summary>
+    /// <summary>
+    /// Activates when ownership of a planet changes.
+    /// </summary>
     [PersistableObject(Name = "PlanetOwnershipChanged")]
     public sealed class PlanetOwnershipChangedTrigger : GameEventTrigger
     {
@@ -434,7 +486,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, changed);
     }
 
-    /// <summary>Activates when a recorded planet statistic changes.</summary>
+    /// <summary>
+    /// Activates when a recorded planet statistic changes.
+    /// </summary>
     [PersistableObject(Name = "PlanetStatChanged")]
     public sealed class PlanetStatChangedTrigger : GameEventTrigger
     {
@@ -460,7 +514,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, changed);
     }
 
-    /// <summary>Activates when a planet's blockade state changes.</summary>
+    /// <summary>
+    /// Activates when a planet's blockade state changes.
+    /// </summary>
     [PersistableObject(Name = "BlockadeChanged")]
     public sealed class BlockadeChangedTrigger : GameEventTrigger
     {
@@ -482,7 +538,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, changed);
     }
 
-    /// <summary>Activates when an uprising begins on a planet.</summary>
+    /// <summary>
+    /// Activates when an uprising begins on a planet.
+    /// </summary>
     [PersistableObject(Name = "UprisingStarted")]
     public sealed class UprisingStartedTrigger : GameEventTrigger
     {
@@ -504,7 +562,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, started);
     }
 
-    /// <summary>Activates when an uprising ends on a planet.</summary>
+    /// <summary>
+    /// Activates when an uprising ends on a planet.
+    /// </summary>
     [PersistableObject(Name = "UprisingEnded")]
     public sealed class UprisingEndedTrigger : GameEventTrigger
     {
@@ -526,7 +586,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, ended);
     }
 
-    /// <summary>Activates when intelligence is revealed to a faction.</summary>
+    /// <summary>
+    /// Activates when intelligence is revealed to a faction.
+    /// </summary>
     [PersistableObject(Name = "IntelligenceRevealed")]
     public sealed class IntelligenceRevealedTrigger : GameEventTrigger
     {
@@ -553,7 +615,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, revealed);
     }
 
-    /// <summary>Activates when a faction cannot meet a maintenance obligation.</summary>
+    /// <summary>
+    /// Activates when a faction cannot meet a maintenance obligation.
+    /// </summary>
     [PersistableObject(Name = "MaintenanceRequired")]
     public sealed class MaintenanceRequiredTrigger : GameEventTrigger
     {
@@ -575,7 +639,9 @@ namespace Rebellion.Game.Events
 
     #region Faction
 
-    /// <summary>Activates when a faction advances one research discipline.</summary>
+    /// <summary>
+    /// Activates when a faction advances one research discipline.
+    /// </summary>
     [PersistableObject(Name = "ResearchAdvanced")]
     public sealed class ResearchAdvancedTrigger : GameEventTrigger
     {
@@ -620,14 +686,17 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Participants")]
     public sealed class MissionParticipantFilter
     {
-        /// <summary>Gets or sets whether any or all authored units must participate.</summary>
+        // Participant Matching.
         [PersistableAttribute]
         public ParticipantMatch Match { get; set; } = ParticipantMatch.Any;
 
-        /// <summary>Gets the authored unit identities tested against the result.</summary>
         public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
 
-        /// <summary>Returns whether the completed mission contains the authored participants.</summary>
+        /// <summary>
+        /// Checks whether a completed mission contains the authored participants.
+        /// </summary>
+        /// <param name="participants">The completed mission's participants.</param>
+        /// <returns>True when the participant filter is satisfied.</returns>
         internal bool Matches(IReadOnlyCollection<IMissionParticipant> participants)
         {
             if (Units.Count == 0)
@@ -684,7 +753,9 @@ namespace Rebellion.Game.Events
 
     #region Officer
 
-    /// <summary>Activates when an officer's capture state changes.</summary>
+    /// <summary>
+    /// Activates when an officer's capture state changes.
+    /// </summary>
     [PersistableObject(Name = "OfficerCaptureChanged")]
     public sealed class OfficerCaptureChangedTrigger : GameEventTrigger
     {
@@ -710,7 +781,9 @@ namespace Rebellion.Game.Events
         }
     }
 
-    /// <summary>Activates when an officer is killed.</summary>
+    /// <summary>
+    /// Activates when an officer is killed.
+    /// </summary>
     [PersistableObject(Name = "OfficerKilled")]
     public sealed class OfficerKilledTrigger : GameEventTrigger
     {
@@ -728,7 +801,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, killed);
     }
 
-    /// <summary>Activates when an officer is injured.</summary>
+    /// <summary>
+    /// Activates when an officer is injured.
+    /// </summary>
     [PersistableObject(Name = "OfficerInjured")]
     public sealed class OfficerInjuredTrigger : GameEventTrigger
     {
@@ -746,7 +821,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, injured);
     }
 
-    /// <summary>Activates when an officer recruitment result is produced.</summary>
+    /// <summary>
+    /// Activates when an officer recruitment result is produced.
+    /// </summary>
     [PersistableObject(Name = "OfficerRecruited")]
     public sealed class OfficerRecruitedTrigger : GameEventTrigger
     {
@@ -772,7 +849,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, recruited);
     }
 
-    /// <summary>Activates when an officer's Force discovery state changes.</summary>
+    /// <summary>
+    /// Activates when an officer's Force discovery state changes.
+    /// </summary>
     [PersistableObject(Name = "ForceDiscoveryChanged")]
     public sealed class ForceDiscoveryChangedTrigger : GameEventTrigger
     {
@@ -802,7 +881,9 @@ namespace Rebellion.Game.Events
 
     #region Unit Lifecycle
 
-    /// <summary>Activates when ownership of a unit changes.</summary>
+    /// <summary>
+    /// Activates when ownership of a unit changes.
+    /// </summary>
     [PersistableObject(Name = "UnitOwnershipChanged")]
     public sealed class UnitOwnershipChangedTrigger : GameEventTrigger
     {
@@ -828,7 +909,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, changed);
     }
 
-    /// <summary>Activates when a game unit is created.</summary>
+    /// <summary>
+    /// Activates when a game unit is created.
+    /// </summary>
     [PersistableObject(Name = "UnitCreated")]
     public sealed class UnitCreatedTrigger : GameEventTrigger
     {
@@ -846,7 +929,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, created);
     }
 
-    /// <summary>Activates when a game unit is destroyed.</summary>
+    /// <summary>
+    /// Activates when a game unit is destroyed.
+    /// </summary>
     [PersistableObject(Name = "UnitDestroyed")]
     public sealed class UnitDestroyedTrigger : GameEventTrigger
     {
@@ -899,7 +984,9 @@ namespace Rebellion.Game.Events
 
     #region Combat
 
-    /// <summary>Activates when a space battle is resolved.</summary>
+    /// <summary>
+    /// Activates when a space battle is resolved.
+    /// </summary>
     [PersistableObject(Name = "SpaceCombatCompleted")]
     public sealed class SpaceCombatCompletedTrigger : GameEventTrigger
     {
@@ -929,7 +1016,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, combat);
     }
 
-    /// <summary>Activates when orbital bombardment is resolved.</summary>
+    /// <summary>
+    /// Activates when orbital bombardment is resolved.
+    /// </summary>
     [PersistableObject(Name = "BombardmentCompleted")]
     public sealed class BombardmentCompletedTrigger : GameEventTrigger
     {
@@ -963,7 +1052,9 @@ namespace Rebellion.Game.Events
             && MatchesSource(SourceEventInstanceID, bombardment);
     }
 
-    /// <summary>Activates when a planetary assault is resolved.</summary>
+    /// <summary>
+    /// Activates when a planetary assault is resolved.
+    /// </summary>
     [PersistableObject(Name = "PlanetaryAssaultCompleted")]
     public sealed class PlanetaryAssaultCompletedTrigger : GameEventTrigger
     {
@@ -1028,7 +1119,9 @@ namespace Rebellion.Game.Events
 
     #region Manufacturing
 
-    /// <summary>Activates when a manufactured unit is deployed.</summary>
+    /// <summary>
+    /// Activates when a manufactured unit is deployed.
+    /// </summary>
     [PersistableObject(Name = "ManufacturingCompleted")]
     public sealed class ManufacturingCompletedTrigger : GameEventTrigger
     {

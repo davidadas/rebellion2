@@ -17,6 +17,10 @@ public sealed class UIContext
     private readonly FactionThemeLibrary themeLibrary;
     private readonly Func<string, Texture2D> loadTexture;
 
+    public GameRoot Game => game;
+
+    public EncyclopediaCatalog EncyclopediaCatalog { get; }
+
     /// <summary>
     /// Creates a presentation context for one active game.
     /// </summary>
@@ -48,8 +52,6 @@ public sealed class UIContext
         EncyclopediaCatalog = encyclopediaCatalog;
     }
 
-    public GameRoot Game => game;
-
     /// <summary>
     /// Replaces the game used for strategy projection after a hot load.
     /// </summary>
@@ -58,8 +60,6 @@ public sealed class UIContext
     {
         game = newGame ?? throw new ArgumentNullException(nameof(newGame));
     }
-
-    public EncyclopediaCatalog EncyclopediaCatalog { get; }
 
     /// <summary>
     /// Gets the configured theme for a faction identifier.

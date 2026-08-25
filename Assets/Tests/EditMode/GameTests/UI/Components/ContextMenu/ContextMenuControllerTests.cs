@@ -177,19 +177,25 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
 
         private sealed class TestCommand : IContextMenuCommand
         {
+            public string Text { get; }
+
+            public bool Enabled { get; }
+
             public TestCommand(string text, bool enabled)
             {
                 Text = text;
                 Enabled = enabled;
             }
-
-            public string Text { get; }
-
-            public bool Enabled { get; }
         }
 
         private sealed class TestParentCommand : IContextMenuParentCommand
         {
+            public string Text { get; }
+
+            public bool Enabled { get; }
+
+            public IReadOnlyList<IContextMenuCommand> ChildCommands { get; }
+
             public TestParentCommand(
                 string text,
                 bool enabled,
@@ -200,12 +206,6 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
                 Enabled = enabled;
                 ChildCommands = childCommands;
             }
-
-            public string Text { get; }
-
-            public bool Enabled { get; }
-
-            public IReadOnlyList<IContextMenuCommand> ChildCommands { get; }
         }
 
         private sealed class TestReceiver : IContextMenuReceiver

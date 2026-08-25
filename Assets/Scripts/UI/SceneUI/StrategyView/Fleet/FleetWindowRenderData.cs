@@ -18,6 +18,22 @@ public enum FleetWindowTab
 /// </summary>
 public sealed class FleetListRowRenderData
 {
+    public string Name { get; }
+
+    public Texture IconTexture { get; }
+
+    public Texture EnrouteOverlayTexture { get; }
+
+    public Texture DamagedOverlayTexture { get; }
+
+    public Texture StarfighterBadgeTexture { get; }
+
+    public Texture TroopBadgeTexture { get; }
+
+    public Texture PersonnelBadgeTexture { get; }
+
+    public Texture SelectionTexture { get; }
+
     /// <summary>
     /// Creates one complete fleet-list row snapshot.
     /// </summary>
@@ -49,22 +65,6 @@ public sealed class FleetListRowRenderData
         PersonnelBadgeTexture = personnelBadgeTexture;
         SelectionTexture = selectionTexture;
     }
-
-    public string Name { get; }
-
-    public Texture IconTexture { get; }
-
-    public Texture EnrouteOverlayTexture { get; }
-
-    public Texture DamagedOverlayTexture { get; }
-
-    public Texture StarfighterBadgeTexture { get; }
-
-    public Texture TroopBadgeTexture { get; }
-
-    public Texture PersonnelBadgeTexture { get; }
-
-    public Texture SelectionTexture { get; }
 }
 
 /// <summary>
@@ -72,6 +72,12 @@ public sealed class FleetListRowRenderData
 /// </summary>
 public sealed class FleetWindowTabRenderData
 {
+    public FleetWindowTab Tab { get; }
+
+    public Texture Texture { get; }
+
+    public Texture PressedTexture { get; }
+
     /// <summary>
     /// Creates one tab presentation snapshot.
     /// </summary>
@@ -84,12 +90,6 @@ public sealed class FleetWindowTabRenderData
         Texture = texture;
         PressedTexture = pressedTexture;
     }
-
-    public FleetWindowTab Tab { get; }
-
-    public Texture Texture { get; }
-
-    public Texture PressedTexture { get; }
 }
 
 /// <summary>
@@ -111,6 +111,50 @@ public sealed class FleetWindowRenderData
     public static int TabCount => _orderedTabs.Length;
 
     public static IReadOnlyList<FleetWindowTab> OrderedTabs => _readOnlyOrderedTabs;
+
+    public int X { get; }
+
+    public int Y { get; }
+
+    public Texture TitleTexture { get; }
+
+    public string Caption { get; }
+
+    public Texture DetailBackgroundTexture { get; }
+
+    public IReadOnlyList<FleetListRowRenderData> FleetRows { get; }
+
+    public FleetWindowTab ActiveTab { get; }
+
+    public int SelectedFleetIndex { get; }
+
+    public bool HasSelectedFleet { get; }
+
+    public Texture BannerTexture { get; }
+
+    public Texture BannerEnrouteOverlayTexture { get; }
+
+    public Texture BannerDamagedOverlayTexture { get; }
+
+    public string FleetName { get; }
+
+    public Color32 FleetNameColor { get; }
+
+    public bool ShowCapacity { get; }
+
+    public string CapacityLeft { get; }
+
+    public string CapacityRight { get; }
+
+    public IReadOnlyList<FleetWindowTabRenderData> Tabs { get; }
+
+    public IReadOnlyList<StrategyUnitCardRenderData> DetailItems { get; }
+
+    public int RenameFleetRowIndex { get; }
+
+    public int RenameDetailItemIndex { get; }
+
+    public string RenameText { get; }
 
     /// <summary>
     /// Creates one complete fleet-window presentation snapshot.
@@ -185,50 +229,6 @@ public sealed class FleetWindowRenderData
         RenameDetailItemIndex = renameDetailItemIndex;
         RenameText = renameText ?? string.Empty;
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public Texture TitleTexture { get; }
-
-    public string Caption { get; }
-
-    public Texture DetailBackgroundTexture { get; }
-
-    public IReadOnlyList<FleetListRowRenderData> FleetRows { get; }
-
-    public FleetWindowTab ActiveTab { get; }
-
-    public int SelectedFleetIndex { get; }
-
-    public bool HasSelectedFleet { get; }
-
-    public Texture BannerTexture { get; }
-
-    public Texture BannerEnrouteOverlayTexture { get; }
-
-    public Texture BannerDamagedOverlayTexture { get; }
-
-    public string FleetName { get; }
-
-    public Color32 FleetNameColor { get; }
-
-    public bool ShowCapacity { get; }
-
-    public string CapacityLeft { get; }
-
-    public string CapacityRight { get; }
-
-    public IReadOnlyList<FleetWindowTabRenderData> Tabs { get; }
-
-    public IReadOnlyList<StrategyUnitCardRenderData> DetailItems { get; }
-
-    public int RenameFleetRowIndex { get; }
-
-    public int RenameDetailItemIndex { get; }
-
-    public string RenameText { get; }
 
     /// <summary>
     /// Copies a required presentation collection into a read-only snapshot.

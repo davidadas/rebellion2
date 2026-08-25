@@ -67,7 +67,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 true,
                 -1,
                 -1,
-                false
+                false,
+                GalacticInformationFilterMode.DisplayOff
             );
 
             Assert.Throws<InvalidOperationException>(() => projector.Project(state));
@@ -84,7 +85,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 true,
                 0,
                 0,
-                false
+                false,
+                GalacticInformationFilterMode.DisplayOff
             );
 
             GalacticInformationDisplayRenderData data = _projector.Project(state);
@@ -141,7 +143,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 true,
                 -1,
                 -1,
-                true
+                true,
+                GalacticInformationFilterMode.DisplayOff
             );
 
             GalacticInformationDisplayRenderData data = _projector.Project(state);

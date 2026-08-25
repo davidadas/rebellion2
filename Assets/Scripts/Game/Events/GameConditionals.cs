@@ -187,7 +187,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string EventInstanceID { get; set; }
 
-        /// <summary>Checks the persisted completion state for the referenced event.</summary>
+        /// <summary>
+        /// Checks the persisted completion state for the referenced event.
+        /// </summary>
         /// <param name="context">The context providing event runtime state.</param>
         /// <returns>True when the referenced event is permanently complete.</returns>
         public override bool IsMet(GameConditionContext context)
@@ -211,7 +213,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int CompareTo { get; set; }
 
-        /// <summary>Compares the current event variable value with the authored integer.</summary>
+        /// <summary>
+        /// Compares the current event variable value with the authored integer.
+        /// </summary>
+        /// <param name="context">The context providing event runtime state.</param>
+        /// <returns>True when the variable comparison succeeds.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             int current = context.Game.EventRuntime.GetVariable(Key);
@@ -400,7 +406,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public ForceRankLabel Rank { get; set; }
 
-        /// <summary>Compares the officer's Force rank with the configured rank threshold.</summary>
+        /// <summary>
+        /// Compares the officer's Force rank with the configured rank threshold.
+        /// </summary>
+        /// <param name="context">The context providing the current game state.</param>
+        /// <returns>True when the Force-rank comparison succeeds.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
@@ -737,7 +747,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string NodeInstanceID { get; set; }
 
-        /// <summary>Returns whether the referenced node is active in its hierarchy.</summary>
+        /// <summary>
+        /// Checks whether the referenced node is active in its hierarchy.
+        /// </summary>
+        /// <param name="context">The context providing the current game state.</param>
+        /// <returns>True when the node and its ancestors are active.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             ISceneNode node = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
@@ -771,7 +785,11 @@ namespace Rebellion.Game.Events
         public string UnitInstanceID { get; set; }
         public string LocationInstanceID { get; set; }
 
-        /// <summary>Returns whether the configured unit is contained by the configured location.</summary>
+        /// <summary>
+        /// Checks whether the configured unit is contained by the configured location.
+        /// </summary>
+        /// <param name="context">The context providing the current game state.</param>
+        /// <returns>True when the unit is contained by the location.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             GameRoot game = context.Game;

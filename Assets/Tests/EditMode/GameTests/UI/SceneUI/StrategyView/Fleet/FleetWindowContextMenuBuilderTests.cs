@@ -49,6 +49,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 {
                     StrategyMenuAction.Move,
                     StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.WaypointMove,
                     StrategyMenuAction.PlanetaryBombardment,
                     StrategyMenuAction.PlanetaryAssault,
                     StrategyMenuAction.Rename,
@@ -63,6 +64,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 {
                     "Move",
                     "Confirmed Move",
+                    "Waypoint Move",
                     "Planetary Bombardment",
                     "Planetary Assault",
                     "Rename",
@@ -81,7 +83,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     StrategyMenuAction.GeneralBombardment,
                     StrategyMenuAction.DestroyPlanet,
                 },
-                commands[2].SubmenuCommands.Select(command => command.Action)
+                commands[3].SubmenuCommands.Select(command => command.Action)
             );
             CollectionAssert.AreEqual(
                 new[]
@@ -91,11 +93,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     "General Bombardment",
                     "Destroy Planet",
                 },
-                commands[2].SubmenuCommands.Select(command => command.Text)
+                commands[3].SubmenuCommands.Select(command => command.Text)
             );
             CollectionAssert.AreEqual(
                 new[] { true, true, true, false },
-                commands[2].SubmenuCommands.Select(command => command.Enabled)
+                commands[3].SubmenuCommands.Select(command => command.Enabled)
             );
         }
 
@@ -121,6 +123,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 {
                     StrategyMenuAction.Move,
                     StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.WaypointMove,
                     StrategyMenuAction.PlanetaryBombardment,
                     StrategyMenuAction.PlanetaryAssault,
                     StrategyMenuAction.Rename,
@@ -131,7 +134,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 commands.Select(command => command.Action)
             );
             CollectionAssert.AreEqual(
-                new[] { true, true, true, true, false, false, false, true },
+                new[] { true, true, true, true, true, false, false, false, true },
                 commands.Select(command => command.Enabled)
             );
             CollectionAssert.AreEqual(
@@ -142,8 +145,52 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     StrategyMenuAction.GeneralBombardment,
                     StrategyMenuAction.DestroyPlanet,
                 },
-                commands[2].SubmenuCommands.Select(command => command.Action)
+                commands[3].SubmenuCommands.Select(command => command.Action)
             );
+        }
+
+        [Test]
+        public void Build_FleetWithWaypoints_ReturnsEnabledClearWaypointsCommand()
+        {
+            GameFleet fleet = new GameFleet();
+            fleet.Waypoints.Add("destination");
+
+            List<StrategyMenuCommand> commands = FleetWindowContextMenuBuilder.Build(
+                new ISceneNode[] { fleet },
+                true,
+                false,
+                false,
+                false
+            );
+
+            StrategyMenuCommand command = commands.Single(candidate =>
+                candidate.Action == StrategyMenuAction.WaypointMove
+            );
+            Assert.AreEqual("Clear Waypoints", command.Text);
+            Assert.IsTrue(command.Enabled);
+        }
+
+        [Test]
+        public void Build_MovingFleetWithoutWaypoints_ReturnsEnabledWaypointMoveCommand()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                Movement = new Rebellion.Game.Movement.MovementState(),
+            };
+
+            List<StrategyMenuCommand> commands = FleetWindowContextMenuBuilder.Build(
+                new ISceneNode[] { fleet },
+                true,
+                false,
+                false,
+                false
+            );
+
+            StrategyMenuCommand command = commands.Single(candidate =>
+                candidate.Action == StrategyMenuAction.WaypointMove
+            );
+            Assert.AreEqual("Waypoint Move", command.Text);
+            Assert.IsTrue(command.Enabled);
         }
 
         [Test]

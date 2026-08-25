@@ -7,6 +7,12 @@ using UnityEngine;
 /// </summary>
 public sealed class AdvisorReportRowRenderData
 {
+    public Texture2D Texture { get; }
+
+    public string PrimaryText { get; }
+
+    public string SecondaryText { get; }
+
     /// <summary>
     /// Creates one advisor-report row presentation.
     /// </summary>
@@ -19,12 +25,6 @@ public sealed class AdvisorReportRowRenderData
         PrimaryText = primaryText ?? string.Empty;
         SecondaryText = secondaryText ?? string.Empty;
     }
-
-    public Texture2D Texture { get; }
-
-    public string PrimaryText { get; }
-
-    public string SecondaryText { get; }
 }
 
 /// <summary>
@@ -32,6 +32,20 @@ public sealed class AdvisorReportRowRenderData
 /// </summary>
 public sealed class AdvisorReportWindowRenderData
 {
+    public int X { get; }
+
+    public int Y { get; }
+
+    public AdvisorReportMode Mode { get; }
+
+    public Texture2D BackgroundTexture { get; }
+
+    public Texture2D GalaxyTexture { get; }
+
+    public string Title { get; }
+
+    public IReadOnlyList<AdvisorReportRowRenderData> Rows { get; }
+
     /// <summary>
     /// Creates a complete advisor-report presentation snapshot.
     /// </summary>
@@ -73,18 +87,4 @@ public sealed class AdvisorReportWindowRenderData
 
         Rows = rowSnapshot.AsReadOnly();
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public AdvisorReportMode Mode { get; }
-
-    public Texture2D BackgroundTexture { get; }
-
-    public Texture2D GalaxyTexture { get; }
-
-    public string Title { get; }
-
-    public IReadOnlyList<AdvisorReportRowRenderData> Rows { get; }
 }

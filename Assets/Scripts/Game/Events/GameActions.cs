@@ -15,7 +15,160 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
-    #region CompositeActions
+    #region RandomActions
+    /// <summary>
+    /// Defines an inclusive integer roll that may supply an action value or event binding.
+    /// </summary>
+    [PersistableObject(Name = "RollInteger")]
+    public sealed class RollInteger
+    {
+        // Range.
+        [PersistableAttribute]
+        public int Minimum { get; set; }
+
+        [PersistableAttribute]
+        public int Maximum { get; set; }
+
+        /// <summary>
+        /// Rolls one integer inside the authored inclusive range.
+        /// </summary>
+        /// <param name="provider">The random-number provider used for the roll.</param>
+        /// <returns>An integer from <see cref="Minimum"/> through <see cref="Maximum"/>.</returns>
+        internal int Roll(IRandomNumberProvider provider)
+        {
+            if (Minimum > Maximum)
+                throw new InvalidOperationException("RollInteger Minimum cannot exceed Maximum.");
+
+            long valueCount = (long)Maximum - Minimum + 1;
+            long offset = (long)Math.Floor(provider.NextDouble() * valueCount);
+            return checked((int)(Minimum + offset));
+        }
+    }
+
+    /// <summary>
+    /// Defines a double roll whose minimum is inclusive and maximum is exclusive.
+    /// </summary>
+    [PersistableObject(Name = "RollDouble")]
+    public sealed class RollDouble
+    {
+        // Range.
+        [PersistableAttribute]
+        public double Minimum { get; set; }
+
+        [PersistableAttribute]
+        public double Maximum { get; set; }
+
+        /// <summary>
+        /// Rolls one double inside the authored range.
+        /// </summary>
+        /// <param name="provider">The random-number provider used for the roll.</param>
+        /// <returns>A double no less than <see cref="Minimum"/> and less than <see cref="Maximum"/>.</returns>
+        internal double Roll(IRandomNumberProvider provider)
+        {
+            if (
+                double.IsNaN(Minimum)
+                || double.IsInfinity(Minimum)
+                || double.IsNaN(Maximum)
+                || double.IsInfinity(Maximum)
+                || Minimum >= Maximum
+            )
+                throw new InvalidOperationException(
+                    "RollDouble requires finite bounds with Minimum less than Maximum."
+                );
+
+            double sample = provider.NextDouble();
+            return Minimum * (1 - sample) + Maximum * sample;
+        }
+    }
+
+    /// <summary>
+    /// Resolves the mutually exclusive numeric value forms supported by event actions.
+    /// </summary>
+    internal static class GameActionNumericValue
+    {
+        /// <summary>
+        /// Resolves exactly one fixed, bound, or rolled integer.
+        /// </summary>
+        /// <param name="value">The fixed value, when authored.</param>
+        /// <param name="binding">The event binding reference, when authored.</param>
+        /// <param name="roll">The integer roll, when authored.</param>
+        /// <param name="context">The current action execution context.</param>
+        /// <param name="actionName">The XML action name used in validation errors.</param>
+        /// <param name="valueName">The XML value name used in validation errors.</param>
+        /// <returns>The resolved integer.</returns>
+        internal static int ResolveInteger(
+            int? value,
+            string binding,
+            RollInteger roll,
+            GameActionContext context,
+            string actionName,
+            string valueName
+        )
+        {
+            int modeCount =
+                (value.HasValue ? 1 : 0)
+                + (!string.IsNullOrWhiteSpace(binding) ? 1 : 0)
+                + (roll != null ? 1 : 0);
+            if (modeCount != 1)
+                throw new InvalidOperationException(
+                    $"{actionName} requires exactly one {valueName}, {valueName}Binding, or RollInteger."
+                );
+            if (!string.IsNullOrWhiteSpace(binding))
+            {
+                if (context.Evaluation?.TryGetBindingReference(binding, out int boundValue) != true)
+                    throw new InvalidOperationException(
+                        $"{actionName} could not resolve integer binding '{binding}'."
+                    );
+                return boundValue;
+            }
+            return value ?? roll.Roll(context.Random);
+        }
+
+        /// <summary>
+        /// Resolves exactly one fixed, bound, or rolled double.
+        /// </summary>
+        /// <param name="value">The fixed value, when authored.</param>
+        /// <param name="binding">The event binding reference, when authored.</param>
+        /// <param name="roll">The double roll, when authored.</param>
+        /// <param name="context">The current action execution context.</param>
+        /// <param name="actionName">The XML action name used in validation errors.</param>
+        /// <param name="valueName">The XML value name used in validation errors.</param>
+        /// <returns>The resolved double.</returns>
+        internal static double ResolveDouble(
+            double? value,
+            string binding,
+            RollDouble roll,
+            GameActionContext context,
+            string actionName,
+            string valueName
+        )
+        {
+            int modeCount =
+                (value.HasValue ? 1 : 0)
+                + (!string.IsNullOrWhiteSpace(binding) ? 1 : 0)
+                + (roll != null ? 1 : 0);
+            if (modeCount != 1)
+                throw new InvalidOperationException(
+                    $"{actionName} requires exactly one {valueName}, {valueName}Binding, or RollDouble."
+                );
+            if (!string.IsNullOrWhiteSpace(binding))
+            {
+                if (
+                    context.Evaluation?.TryGetBindingReference(binding, out double boundValue)
+                    != true
+                )
+                    throw new InvalidOperationException(
+                        $"{actionName} could not resolve double binding '{binding}'."
+                    );
+                return boundValue;
+            }
+            return value ?? roll.Roll(context.Random);
+        }
+    }
+
+    /// <summary>
+    /// Defines one conditionally eligible weighted outcome.
+    /// </summary>
     [PersistableObject(Name = "Outcome")]
     public sealed class RandomOutcome
     {
@@ -27,14 +180,18 @@ namespace Rebellion.Game.Events
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
     }
 
-    [PersistableObject(Name = "RollRandom")]
-    public sealed class RollRandomAction : GameAction
+    /// <summary>
+    /// Selects and executes exactly one eligible outcome using relative authored weights.
+    /// </summary>
+    [PersistableObject(Name = "RollOutcome")]
+    public sealed class RollOutcomeAction : GameAction
     {
         public List<RandomOutcome> Outcomes { get; set; } = new List<RandomOutcome>();
 
         /// <summary>
         /// Executes one eligible outcome selected by its authored weight.
         /// </summary>
+        /// <param name="context">The current action execution context.</param>
         internal override void Execute(GameActionContext context)
         {
             List<RandomOutcome> eligible = Outcomes
@@ -65,6 +222,59 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>
+    /// Executes authored actions when one normalized probability roll succeeds.
+    /// </summary>
+    [PersistableObject(Name = "RollChance")]
+    public sealed class RollChanceAction : GameAction
+    {
+        // Probability.
+        [PersistableAttribute]
+        public double? Probability { get; set; }
+
+        [PersistableAttribute]
+        public string ProbabilityBinding { get; set; }
+
+        public RollDouble RollDouble { get; set; }
+
+        public List<GameAction> Actions { get; set; } = new List<GameAction>();
+
+        /// <summary>
+        /// Executes the authored actions when the resolved probability accepts the random roll.
+        /// </summary>
+        /// <param name="context">The current action execution context.</param>
+        internal override void Execute(GameActionContext context)
+        {
+            double probability = ResolveProbability(context);
+            if (double.IsNaN(probability) || probability < 0 || probability > 1)
+                throw new InvalidOperationException(
+                    "RollChance Probability must be between zero and one."
+                );
+            if (context.Random.NextDouble() < probability)
+                GameAction.ExecuteAll(Actions, context);
+        }
+
+        /// <summary>
+        /// Resolves exactly one fixed, bound, or rolled probability.
+        /// </summary>
+        /// <param name="context">The current action execution context.</param>
+        /// <returns>The normalized probability.</returns>
+        private double ResolveProbability(GameActionContext context)
+        {
+            return GameActionNumericValue.ResolveDouble(
+                Probability,
+                ProbabilityBinding,
+                RollDouble,
+                context,
+                "RollChance",
+                "Probability"
+            );
+        }
+    }
+
+    #endregion
+
+    #region CompositeActions
     [PersistableObject(Name = "If")]
     public sealed class IfAction : GameAction
     {
@@ -102,20 +312,33 @@ namespace Rebellion.Game.Events
     {
         public string Key { get; set; }
         public EventVariableOperation Operation { get; set; }
-        public int Operand { get; set; }
+        public int? Operand { get; set; }
+
+        public string OperandBinding { get; set; }
+
+        public RollInteger RollInteger { get; set; }
 
         /// <summary>
         /// Applies the authored operation to one event-runtime variable.
         /// </summary>
+        /// <param name="context">The current action execution context.</param>
         internal override void Execute(GameActionContext context)
         {
+            int operand = GameActionNumericValue.ResolveInteger(
+                Operand,
+                OperandBinding,
+                RollInteger,
+                context,
+                "SetEventVariable",
+                "Operand"
+            );
             int previousValue = context.Game.EventRuntime.GetVariable(Key);
             int currentValue = Operation switch
             {
-                EventVariableOperation.Set => Operand,
-                EventVariableOperation.Add => checked(previousValue + Operand),
-                EventVariableOperation.Minimum => Math.Min(previousValue, Operand),
-                EventVariableOperation.Maximum => Math.Max(previousValue, Operand),
+                EventVariableOperation.Set => operand,
+                EventVariableOperation.Add => checked(previousValue + operand),
+                EventVariableOperation.Minimum => Math.Min(previousValue, operand),
+                EventVariableOperation.Maximum => Math.Max(previousValue, operand),
                 _ => throw new InvalidOperationException(
                     $"Unsupported event variable operation '{Operation}'."
                 ),
@@ -399,13 +622,18 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "ChangeOfficerRating")]
     public sealed class ChangeOfficerRatingAction : GameAction
     {
+        // Officer Targets.
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
 
+        // Rating.
         [PersistableAttribute]
         public OfficerRating Rating { get; set; }
 
+        // Adjustment.
         public int? Amount { get; set; }
+        public string AmountBinding { get; set; }
+        public RollInteger RollInteger { get; set; }
         public int? PercentOfStored { get; set; }
         public int? PercentOfEffective { get; set; }
         public int? PercentOfPositiveGap { get; set; }
@@ -416,22 +644,24 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int MinimumAmount { get; set; }
 
+        // Additional Officer Targets.
         [PersistableMember(Name = "Officers")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <summary>
         /// Applies the authored rating change to every selected officer.
         /// </summary>
+        /// <param name="context">The current action execution context.</param>
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            int modeCount = new int?[]
-            {
-                Amount,
-                PercentOfStored,
-                PercentOfEffective,
-                PercentOfPositiveGap,
-            }.Count(value => value.HasValue);
+            bool hasAmount =
+                Amount.HasValue || !string.IsNullOrWhiteSpace(AmountBinding) || RollInteger != null;
+            int modeCount =
+                (hasAmount ? 1 : 0)
+                + (PercentOfStored.HasValue ? 1 : 0)
+                + (PercentOfEffective.HasValue ? 1 : 0)
+                + (PercentOfPositiveGap.HasValue ? 1 : 0);
             if (modeCount != 1)
                 throw new InvalidOperationException(
                     "ChangeOfficerRating requires exactly one adjustment value."
@@ -460,9 +690,16 @@ namespace Rebellion.Game.Events
             {
                 int baseValue = officer.GetBaseRating(Rating);
                 int currentValue = officer.GetEffectiveRating(Rating);
-                int adjustment =
-                    Amount
-                    ?? (
+                int adjustment = hasAmount
+                    ? GameActionNumericValue.ResolveInteger(
+                        Amount,
+                        AmountBinding,
+                        RollInteger,
+                        context,
+                        "ChangeOfficerRating",
+                        "Amount"
+                    )
+                    : (
                         PercentOfStored.HasValue ? checked(baseValue * PercentOfStored.Value / 100)
                         : PercentOfEffective.HasValue
                             ? checked(currentValue * PercentOfEffective.Value / 100)
@@ -486,6 +723,8 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves and validates every officer targeted by this rating change.
         /// </summary>
+        /// <param name="context">The current action execution context.</param>
+        /// <returns>The distinct resolved officers.</returns>
         private List<Officer> ResolveOfficers(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -524,10 +763,14 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "IncreaseForceRank")]
     public sealed class IncreaseForceRankAction : GameAction
     {
+        // Officer Targets.
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
 
+        // Adjustment.
         public int? Amount { get; set; }
+        public string AmountBinding { get; set; }
+        public RollInteger RollInteger { get; set; }
         public int? PercentOfStored { get; set; }
         public int? PercentOfEffective { get; set; }
         public int? PercentOfPositiveGap { get; set; }
@@ -538,21 +781,23 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int MinimumAmount { get; set; }
 
+        // Additional Officer Targets.
         [PersistableMember(Name = "Officers")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <summary>
         /// Applies one positive Force increase mode to every explicitly named or selected officer.
         /// </summary>
+        /// <param name="context">The current action execution context.</param>
         internal override void Execute(GameActionContext context)
         {
-            int modeCount = new int?[]
-            {
-                Amount,
-                PercentOfStored,
-                PercentOfEffective,
-                PercentOfPositiveGap,
-            }.Count(value => value.HasValue);
+            bool hasAmount =
+                Amount.HasValue || !string.IsNullOrWhiteSpace(AmountBinding) || RollInteger != null;
+            int modeCount =
+                (hasAmount ? 1 : 0)
+                + (PercentOfStored.HasValue ? 1 : 0)
+                + (PercentOfEffective.HasValue ? 1 : 0)
+                + (PercentOfPositiveGap.HasValue ? 1 : 0);
             if (modeCount != 1)
                 throw new InvalidOperationException(
                     "IncreaseForceRank requires exactly one increase value."
@@ -615,9 +860,16 @@ namespace Rebellion.Game.Events
             {
                 int stored = officer.ForceValue;
                 int effective = officer.ForceRank;
-                int increase =
-                    Amount
-                    ?? (
+                int increase = hasAmount
+                    ? GameActionNumericValue.ResolveInteger(
+                        Amount,
+                        AmountBinding,
+                        RollInteger,
+                        context,
+                        "IncreaseForceRank",
+                        "Amount"
+                    )
+                    : (
                         PercentOfStored.HasValue ? checked(stored * PercentOfStored.Value / 100)
                         : PercentOfEffective.HasValue
                             ? checked(effective * PercentOfEffective.Value / 100)
@@ -1136,120 +1388,361 @@ namespace Rebellion.Game.Events
     }
     #endregion
 
-    #region ResourceActions
+    #region PlanetActions
     /// <summary>
-    /// Applies one explicit signed resource adjustment to the scoped planet.
+    /// Provides shared targeting and adjustment behavior for one concrete planet value.
     /// </summary>
-    [PersistableObject(Name = "ChangePlanetStat")]
-    public sealed class ChangePlanetStatAction : GameAction
+    public abstract class ChangePlanetValueAction : GameAction
     {
-        [PersistableAttribute]
-        public PlanetStat Stat { get; set; }
-
+        // Planet Targets.
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
 
         [PersistableAttribute]
         public string PlanetBinding { get; set; }
 
+        // Adjustment.
         public int? Amount { get; set; }
+        public string AmountBinding { get; set; }
+        public RollInteger RollInteger { get; set; }
         public int? PercentOfCurrent { get; set; }
 
+        // Additional Planet Targets.
         [PersistableMember(Name = "Planets")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
+        internal abstract PlanetChangeCategory Category { get; }
+
         /// <summary>
-        /// Applies one signed adjustment to the selected planet statistic.
+        /// Reads the concrete value changed by the action.
         /// </summary>
+        /// <param name="planet">The planet being changed.</param>
+        /// <returns>The current value.</returns>
+        internal abstract int GetValue(Planet planet);
+
+        /// <summary>
+        /// Writes the concrete value changed by the action.
+        /// </summary>
+        /// <param name="planet">The planet being changed.</param>
+        /// <param name="value">The replacement value.</param>
+        internal abstract void SetValue(Planet planet, int value);
+
+        /// <summary>
+        /// Applies one signed adjustment to every resolved planet.
+        /// </summary>
+        /// <param name="context">The current action execution context.</param>
         internal override void Execute(GameActionContext context)
         {
-            GameRoot game = context.Game;
-            if ((Amount.HasValue ? 1 : 0) + (PercentOfCurrent.HasValue ? 1 : 0) != 1)
+            bool hasAmount =
+                Amount.HasValue || !string.IsNullOrWhiteSpace(AmountBinding) || RollInteger != null;
+            if ((hasAmount ? 1 : 0) + (PercentOfCurrent.HasValue ? 1 : 0) != 1)
                 throw new InvalidOperationException(
-                    "ChangePlanetStat requires exactly one adjustment value."
-                );
-            IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
-                selector.Select(game, context.Random, context.Evaluation)
-            );
-            Planet explicitPlanet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
-            if (explicitPlanet != null)
-                selected = new ISceneNode[] { explicitPlanet }.Concat(selected);
-            List<ISceneNode> nodes = selected.Distinct().ToList();
-            if (nodes.Count == 0)
-                throw new InvalidOperationException(
-                    "ChangePlanetStat requires a planet, planet binding, or matching selector."
-                );
-            if (nodes.Any(node => node is not Planet))
-                throw new InvalidOperationException(
-                    "ChangePlanetStat selectors may return only planets."
+                    $"{GetType().Name} requires exactly one amount or percentage adjustment."
                 );
 
             List<GameResult> results = new List<GameResult>();
-            foreach (Planet planet in nodes.Cast<Planet>())
+            foreach (
+                Planet planet in PlanetActionTargets.Resolve(
+                    PlanetInstanceID,
+                    PlanetBinding,
+                    Selectors,
+                    context,
+                    GetType().Name
+                )
+            )
             {
-                int oldValue = planet.GetStatValue(Stat);
-                int adjustment = Amount ?? checked(oldValue * PercentOfCurrent.Value / 100);
+                int oldValue = GetValue(planet);
+                int adjustment = hasAmount
+                    ? GameActionNumericValue.ResolveInteger(
+                        Amount,
+                        AmountBinding,
+                        RollInteger,
+                        context,
+                        GetType().Name,
+                        "Amount"
+                    )
+                    : checked(oldValue * PercentOfCurrent.Value / 100);
                 int newValue = Math.Max(0, checked(oldValue + adjustment));
-                PlanetChangeCategory resultCategory;
-                if (Stat == PlanetStat.RawResourceNodes)
-                {
-                    resultCategory = PlanetChangeCategory.RawMaterial;
-                    planet.NumRawResourceNodes = newValue;
-                }
-                else
-                {
-                    resultCategory = PlanetChangeCategory.Energy;
-                    planet.EnergyCapacity = newValue;
-                }
-                Faction faction = FindOwner(game, planet);
+                SetValue(planet, newValue);
                 results.Add(
-                    new PlanetStatChangedResult
-                    {
-                        Planet = planet,
-                        Faction = faction,
-                        Category = resultCategory,
-                        OldValue = oldValue,
-                        NewValue = newValue,
-                        Tick = game.CurrentTick,
-                    }
+                    PlanetActionResults.Create(context.Game, planet, Category, oldValue, newValue)
                 );
             }
             context.Record(results);
         }
-
-        /// <summary>
-        /// Resolves the faction that currently owns the planet.
-        /// </summary>
-        private static Faction FindOwner(GameRoot game, Planet planet) =>
-            game.GetFactions()
-                .FirstOrDefault(faction => faction.InstanceID == planet.OwnerInstanceID);
     }
 
     /// <summary>
-    /// Reduces selected planet stats by independently rolling once for each current point.
+    /// Changes the number of raw-resource nodes available on selected planets.
     /// </summary>
-    [PersistableObject(Name = "DamagePlanetStats")]
-    public sealed class DamagePlanetStatsAction : GameAction
+    [PersistableObject(Name = "ChangeRawResourceNodes")]
+    public sealed class ChangeRawResourceNodesAction : ChangePlanetValueAction
     {
+        internal override PlanetChangeCategory Category => PlanetChangeCategory.RawMaterial;
+
+        /// <summary>
+        /// Returns the planet's current raw-resource node count.
+        /// </summary>
+        /// <param name="planet">The planet being changed.</param>
+        /// <returns>The current raw-resource node count.</returns>
+        internal override int GetValue(Planet planet) => planet.NumRawResourceNodes;
+
+        /// <summary>
+        /// Sets the planet's raw-resource node count.
+        /// </summary>
+        /// <param name="planet">The planet being changed.</param>
+        /// <param name="value">The replacement raw-resource node count.</param>
+        internal override void SetValue(Planet planet, int value) =>
+            planet.NumRawResourceNodes = value;
+    }
+
+    /// <summary>
+    /// Changes the energy capacity available on selected planets.
+    /// </summary>
+    [PersistableObject(Name = "ChangeEnergyCapacity")]
+    public sealed class ChangeEnergyCapacityAction : ChangePlanetValueAction
+    {
+        internal override PlanetChangeCategory Category => PlanetChangeCategory.Energy;
+
+        /// <summary>
+        /// Returns the planet's current energy capacity.
+        /// </summary>
+        /// <param name="planet">The planet being changed.</param>
+        /// <returns>The current energy capacity.</returns>
+        internal override int GetValue(Planet planet) => planet.EnergyCapacity;
+
+        /// <summary>
+        /// Sets the planet's energy capacity.
+        /// </summary>
+        /// <param name="planet">The planet being changed.</param>
+        /// <param name="value">The replacement energy capacity.</param>
+        internal override void SetValue(Planet planet, int value) => planet.EnergyCapacity = value;
+    }
+
+    /// <summary>
+    /// Changes one faction's popular support on selected planets by a signed amount.
+    /// </summary>
+    [PersistableObject(Name = "ChangePopularSupport")]
+    public sealed class ChangePopularSupportAction : GameAction
+    {
+        // Faction.
+        [PersistableAttribute]
+        public string FactionInstanceID { get; set; }
+
+        // Planet Targets.
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
 
         [PersistableAttribute]
         public string PlanetBinding { get; set; }
 
+        // Adjustment.
+        public int? Amount { get; set; }
+        public string AmountBinding { get; set; }
+        public RollInteger RollInteger { get; set; }
+        public int? PercentOfCurrent { get; set; }
+
+        // Additional Planet Targets.
+        [PersistableMember(Name = "Planets")]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+
+        /// <summary>
+        /// Applies the authored support change to every resolved planet.
+        /// </summary>
+        /// <param name="context">The current action execution context.</param>
+        internal override void Execute(GameActionContext context)
+        {
+            Faction faction = PopularSupportChange.ResolveFaction(
+                context.Game,
+                FactionInstanceID,
+                "ChangePopularSupport"
+            );
+            bool hasAmount =
+                Amount.HasValue || !string.IsNullOrWhiteSpace(AmountBinding) || RollInteger != null;
+            if ((hasAmount ? 1 : 0) + (PercentOfCurrent.HasValue ? 1 : 0) != 1)
+                throw new InvalidOperationException(
+                    "ChangePopularSupport requires exactly one amount or percentage adjustment."
+                );
+
+            foreach (
+                Planet planet in PlanetActionTargets.Resolve(
+                    PlanetInstanceID,
+                    PlanetBinding,
+                    Selectors,
+                    context,
+                    "ChangePopularSupport"
+                )
+            )
+            {
+                int oldValue = planet.GetPopularSupport(FactionInstanceID);
+                int adjustment = hasAmount
+                    ? GameActionNumericValue.ResolveInteger(
+                        Amount,
+                        AmountBinding,
+                        RollInteger,
+                        context,
+                        "ChangePopularSupport",
+                        "Amount"
+                    )
+                    : checked(oldValue * PercentOfCurrent.Value / 100);
+                PopularSupportChange.Apply(
+                    context,
+                    planet,
+                    faction,
+                    checked(oldValue + adjustment)
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets one faction's popular support on selected planets to an absolute value.
+    /// </summary>
+    [PersistableObject(Name = "SetPopularSupport")]
+    public sealed class SetPopularSupportAction : GameAction
+    {
+        // Faction.
+        [PersistableAttribute]
+        public string FactionInstanceID { get; set; }
+
+        // Planet Targets.
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
+        // Support Value.
+        public int? Support { get; set; }
+        public string SupportBinding { get; set; }
+        public RollInteger RollInteger { get; set; }
+
+        // Additional Planet Targets.
+        [PersistableMember(Name = "Planets")]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+
+        /// <summary>
+        /// Sets the authored faction support on every resolved planet.
+        /// </summary>
+        /// <param name="context">The current action execution context.</param>
+        internal override void Execute(GameActionContext context)
+        {
+            Faction faction = PopularSupportChange.ResolveFaction(
+                context.Game,
+                FactionInstanceID,
+                "SetPopularSupport"
+            );
+            int support = GameActionNumericValue.ResolveInteger(
+                Support,
+                SupportBinding,
+                RollInteger,
+                context,
+                "SetPopularSupport",
+                "Support"
+            );
+            foreach (
+                Planet planet in PlanetActionTargets.Resolve(
+                    PlanetInstanceID,
+                    PlanetBinding,
+                    Selectors,
+                    context,
+                    "SetPopularSupport"
+                )
+            )
+                PopularSupportChange.Apply(context, planet, faction, support);
+        }
+    }
+
+    /// <summary>
+    /// Applies faction support changes and records every value affected by rebalancing.
+    /// </summary>
+    internal static class PopularSupportChange
+    {
+        /// <summary>
+        /// Resolves an explicitly authored faction.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="factionInstanceID">The authored faction instance ID.</param>
+        /// <param name="actionName">The XML action name used in validation errors.</param>
+        /// <returns>The resolved faction.</returns>
+        internal static Faction ResolveFaction(
+            GameRoot game,
+            string factionInstanceID,
+            string actionName
+        ) =>
+            game.GetFactions().FirstOrDefault(faction => faction.InstanceID == factionInstanceID)
+            ?? throw new InvalidOperationException(
+                $"{actionName} could not resolve faction '{factionInstanceID}'."
+            );
+
+        /// <summary>
+        /// Applies support while recording every faction value changed by rebalancing.
+        /// </summary>
+        /// <param name="context">The current action execution context.</param>
+        /// <param name="planet">The planet whose support is changing.</param>
+        /// <param name="targetFaction">The faction receiving the authored support value.</param>
+        /// <param name="support">The requested support value.</param>
+        internal static void Apply(
+            GameActionContext context,
+            Planet planet,
+            Faction targetFaction,
+            int support
+        )
+        {
+            Dictionary<string, int> previous = context
+                .Game.GetFactions()
+                .ToDictionary(
+                    faction => faction.InstanceID,
+                    faction => planet.GetPopularSupport(faction.InstanceID)
+                );
+            planet.SetPopularSupport(targetFaction.InstanceID, support);
+            foreach (Faction faction in context.Game.GetFactions())
+            {
+                int oldValue = previous[faction.InstanceID];
+                int newValue = planet.GetPopularSupport(faction.InstanceID);
+                context.Record(
+                    PlanetActionResults.Create(
+                        context.Game,
+                        planet,
+                        PlanetChangeCategory.Loyalty,
+                        oldValue,
+                        newValue,
+                        faction
+                    )
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reduces raw-resource nodes and energy capacity using independent per-point rolls.
+    /// </summary>
+    [PersistableObject(Name = "DamagePlanetResources")]
+    public sealed class DamagePlanetResourcesAction : GameAction
+    {
+        // Planet Target.
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
+        // Damage Probability.
         [PersistableAttribute(Name = "LossProbabilityPerResource")]
-        public double LossProbabilityPerResource { get; set; } = 0.05;
+        public double? LossProbabilityPerResource { get; set; }
+
+        [PersistableAttribute]
+        public string ProbabilityBinding { get; set; }
+
+        public RollDouble RollDouble { get; set; }
 
         [PersistableAttribute(Name = "MinimumTotalLoss")]
         public int MinimumTotalLoss { get; set; } = 1;
 
-        public List<PlanetStatReference> Stats { get; set; } = new List<PlanetStatReference>();
-
         /// <summary>
-        /// Randomly reduces selected planet statistics while enforcing the minimum total loss.
+        /// Randomly reduces planet resources while enforcing the minimum total loss.
         /// </summary>
+        /// <param name="context">The current action execution context.</param>
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -1257,113 +1750,176 @@ namespace Rebellion.Game.Events
                 ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
             if (planet == null)
-                throw new InvalidOperationException("DamagePlanetStats requires a planet.");
+                throw new InvalidOperationException("DamagePlanetResources requires a planet.");
 
-            List<PlanetStat> selectedStats = Stats.Select(stat => stat.Stat).Distinct().ToList();
-            if (selectedStats.Count == 0)
-                throw new InvalidOperationException(
-                    "DamagePlanetStats requires at least one planet stat."
-                );
-            Dictionary<PlanetStat, int> oldValues = selectedStats.ToDictionary(
-                stat => stat,
-                stat => planet.GetStatValue(stat)
+            double probability = GameActionNumericValue.ResolveDouble(
+                LossProbabilityPerResource,
+                ProbabilityBinding,
+                RollDouble,
+                context,
+                "DamagePlanetResources",
+                "LossProbabilityPerResource"
             );
-            if (oldValues.Values.Sum() == 0)
-                return;
-
-            if (LossProbabilityPerResource < 0 || LossProbabilityPerResource > 1)
+            if (double.IsNaN(probability) || probability < 0 || probability > 1)
                 throw new InvalidOperationException(
-                    "DamagePlanetStats.LossProbabilityPerResource must be between zero and one."
+                    "DamagePlanetResources.LossProbabilityPerResource must be between zero and one."
                 );
             if (MinimumTotalLoss < 0)
                 throw new InvalidOperationException(
-                    "DamagePlanetStats.MinimumTotalLoss cannot be negative."
+                    "DamagePlanetResources.MinimumTotalLoss cannot be negative."
                 );
 
-            Dictionary<PlanetStat, int> losses = selectedStats.ToDictionary(stat => stat, _ => 0);
-            foreach (PlanetStat stat in selectedStats)
+            int previousRawResourceNodes = planet.NumRawResourceNodes;
+            int previousEnergyCapacity = planet.EnergyCapacity;
+            int availableResources = previousRawResourceNodes + previousEnergyCapacity;
+            if (availableResources == 0)
+                return;
+
+            int rawResourceLoss = RollLoss(previousRawResourceNodes, probability, context.Random);
+            int energyLoss = RollLoss(previousEnergyCapacity, probability, context.Random);
+            int requiredLoss = Math.Min(MinimumTotalLoss, availableResources);
+            int remainingRequiredLoss = requiredLoss - rawResourceLoss - energyLoss;
+            if (remainingRequiredLoss > 0)
             {
-                for (int iteration = 0; iteration < oldValues[stat]; iteration++)
-                {
-                    if (RollProbability(context.Random, LossProbabilityPerResource))
-                        losses[stat]++;
-                }
+                int additionalRawResourceLoss = Math.Min(
+                    remainingRequiredLoss,
+                    previousRawResourceNodes - rawResourceLoss
+                );
+                rawResourceLoss += additionalRawResourceLoss;
+                remainingRequiredLoss -= additionalRawResourceLoss;
+                energyLoss += Math.Min(remainingRequiredLoss, previousEnergyCapacity - energyLoss);
             }
 
-            int requiredLoss = Math.Min(MinimumTotalLoss, oldValues.Values.Sum());
-            while (losses.Values.Sum() < requiredLoss)
-            {
-                PlanetStat? available = selectedStats
-                    .Where(stat => oldValues[stat] - losses[stat] > 0)
-                    .Cast<PlanetStat?>()
-                    .FirstOrDefault();
-                if (!available.HasValue)
-                    break;
-                losses[available.Value]++;
-            }
-
-            List<GameResult> results = new List<GameResult>();
-            foreach (PlanetStat stat in selectedStats)
-            {
-                int newValue = oldValues[stat] - losses[stat];
-                if (stat == PlanetStat.RawResourceNodes)
-                    planet.NumRawResourceNodes = newValue;
-                else
-                    planet.EnergyCapacity = newValue;
-                AddStatChange(
-                    results,
+            planet.NumRawResourceNodes = previousRawResourceNodes - rawResourceLoss;
+            planet.EnergyCapacity = previousEnergyCapacity - energyLoss;
+            context.Record(
+                PlanetActionResults.Create(
                     game,
                     planet,
-                    stat == PlanetStat.RawResourceNodes
-                        ? PlanetChangeCategory.RawMaterial
-                        : PlanetChangeCategory.Energy,
-                    oldValues[stat],
-                    newValue
-                );
-            }
-            context.Record(results);
+                    PlanetChangeCategory.RawMaterial,
+                    previousRawResourceNodes,
+                    planet.NumRawResourceNodes
+                )
+            );
+            context.Record(
+                PlanetActionResults.Create(
+                    game,
+                    planet,
+                    PlanetChangeCategory.Energy,
+                    previousEnergyCapacity,
+                    planet.EnergyCapacity
+                )
+            );
         }
 
         /// <summary>
-        /// Rolls a normalized probability against the supplied random source.
+        /// Counts successful independent loss rolls for one planet resource.
         /// </summary>
-        private static bool RollProbability(IRandomNumberProvider provider, double probability) =>
-            provider.NextDouble() < Math.Min(1.0, Math.Max(0.0, probability));
+        /// <param name="available">The number of resource points available to lose.</param>
+        /// <param name="probability">The normalized loss probability per resource point.</param>
+        /// <param name="provider">The random-number provider used for the roll.</param>
+        /// <returns>The number of resource points lost.</returns>
+        private static int RollLoss(
+            int available,
+            double probability,
+            IRandomNumberProvider provider
+        )
+        {
+            int loss = 0;
+            for (int index = 0; index < available; index++)
+            {
+                if (provider.NextDouble() < probability)
+                    loss++;
+            }
+            return loss;
+        }
+    }
 
+    /// <summary>
+    /// Creates one standard result describing a changed planet value.
+    /// </summary>
+    internal static class PlanetActionResults
+    {
         /// <summary>
-        /// Adds a planet-stat result when the value changed.
+        /// Creates one result when the supplied planet value changed.
         /// </summary>
-        private static void AddStatChange(
-            ICollection<GameResult> results,
+        /// <param name="game">The current game state.</param>
+        /// <param name="planet">The changed planet.</param>
+        /// <param name="category">The category of planet value that changed.</param>
+        /// <param name="oldValue">The value before the change.</param>
+        /// <param name="newValue">The value after the change.</param>
+        /// <param name="faction">The affected faction when the value is faction-specific.</param>
+        /// <returns>A change result, or null when the value did not change.</returns>
+        internal static PlanetStatChangedResult Create(
             GameRoot game,
             Planet planet,
             PlanetChangeCategory category,
             int oldValue,
-            int newValue
+            int newValue,
+            Faction faction = null
         )
         {
             if (oldValue == newValue)
-                return;
-            results.Add(
-                new PlanetStatChangedResult
-                {
-                    Planet = planet,
-                    Faction = game.GetFactions()
-                        .FirstOrDefault(faction => faction.InstanceID == planet.OwnerInstanceID),
-                    Category = category,
-                    OldValue = oldValue,
-                    NewValue = newValue,
-                    Tick = game.CurrentTick,
-                }
-            );
+                return null;
+            return new PlanetStatChangedResult
+            {
+                Planet = planet,
+                Faction =
+                    faction
+                    ?? game.GetFactions()
+                        .FirstOrDefault(candidate =>
+                            candidate.InstanceID == planet.OwnerInstanceID
+                        ),
+                Category = category,
+                OldValue = oldValue,
+                NewValue = newValue,
+                Tick = game.CurrentTick,
+            };
         }
     }
 
-    [PersistableObject(Name = "Stat")]
-    public sealed class PlanetStatReference
+    /// <summary>
+    /// Resolves planet targets shared by explicit planet actions.
+    /// </summary>
+    internal static class PlanetActionTargets
     {
-        [PersistableAttribute(Name = "Name")]
-        public PlanetStat Stat { get; set; }
+        /// <summary>
+        /// Resolves and validates every directly named, bound, or selected planet.
+        /// </summary>
+        /// <param name="planetInstanceID">The directly authored planet instance ID.</param>
+        /// <param name="planetBinding">The authored planet binding reference.</param>
+        /// <param name="selectors">The authored planet selectors.</param>
+        /// <param name="context">The current action execution context.</param>
+        /// <param name="actionName">The XML action name used in validation errors.</param>
+        /// <returns>The distinct resolved planets.</returns>
+        internal static List<Planet> Resolve(
+            string planetInstanceID,
+            string planetBinding,
+            IEnumerable<GameEventSelector> selectors,
+            GameActionContext context,
+            string actionName
+        )
+        {
+            GameRoot game = context.Game;
+            IEnumerable<ISceneNode> selected = (
+                selectors ?? Enumerable.Empty<GameEventSelector>()
+            ).SelectMany(selector => selector.Select(game, context.Random, context.Evaluation));
+            Planet explicitPlanet = !string.IsNullOrWhiteSpace(planetBinding)
+                ? context.Evaluation?.GetBindingReference<Planet>(planetBinding)
+                : game.GetSceneNodeByInstanceID<Planet>(planetInstanceID);
+            if (explicitPlanet != null)
+                selected = new ISceneNode[] { explicitPlanet }.Concat(selected);
+            List<ISceneNode> nodes = selected.Distinct().ToList();
+            if (nodes.Count == 0)
+                throw new InvalidOperationException(
+                    $"{actionName} requires a planet, planet binding, or matching selector."
+                );
+            if (nodes.Any(node => node is not Planet))
+                throw new InvalidOperationException(
+                    $"{actionName} selectors may return only planets."
+                );
+            return nodes.Cast<Planet>().ToList();
+        }
     }
 
     #endregion
@@ -1782,10 +2338,14 @@ namespace Rebellion.Game.Events
     /// </summary>
     public enum SceneNodeState
     {
-        /// <summary>The node participates in normal gameplay queries.</summary>
+        /// <summary>
+        /// The node participates in normal gameplay queries.
+        /// </summary>
         Active,
 
-        /// <summary>The node remains retained but is excluded from normal gameplay queries.</summary>
+        /// <summary>
+        /// The node remains retained but is excluded from normal gameplay queries.
+        /// </summary>
         Inactive,
     }
 

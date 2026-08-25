@@ -936,6 +936,16 @@ public sealed class DefenseWindowController
     /// </summary>
     private sealed class DefenseContextMenuSource : IStrategyContextMenuSource
     {
+        public int HotspotX { get; }
+
+        public int HotspotY { get; }
+
+        public IReadOnlyList<ISceneNode> Items { get; }
+
+        public StrategyStatusTarget Target { get; }
+
+        public UIWindow Window { get; }
+
         /// <summary>
         /// Creates one Defense context-menu source snapshot.
         /// </summary>
@@ -958,15 +968,5 @@ public sealed class DefenseWindowController
             Items = new List<ISceneNode>(items ?? Array.Empty<ISceneNode>()).AsReadOnly();
             Target = target;
         }
-
-        public int HotspotX { get; }
-
-        public int HotspotY { get; }
-
-        public IReadOnlyList<ISceneNode> Items { get; }
-
-        public StrategyStatusTarget Target { get; }
-
-        public UIWindow Window { get; }
     }
 }

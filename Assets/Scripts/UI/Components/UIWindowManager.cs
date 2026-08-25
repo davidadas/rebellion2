@@ -287,6 +287,8 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     {
         if (!window || !window.CanFocus || !CanInteractWithWindow(window))
             return false;
+        if (ActiveWindow == window)
+            return true;
 
         windows.Remove(window);
         windows.Add(window);

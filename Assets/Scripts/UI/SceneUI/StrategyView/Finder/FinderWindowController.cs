@@ -416,20 +416,6 @@ internal sealed class FinderWindowSession
     private string selectedRowId;
     private string searchText = string.Empty;
 
-    /// <summary>
-    /// Creates the default session for one Finder category.
-    /// </summary>
-    /// <param name="window">The owning Finder window.</param>
-    /// <param name="mode">The Finder category represented by the session.</param>
-    public FinderWindowSession(UIWindow window, FinderMode mode)
-    {
-        Window = window ?? throw new ArgumentNullException(nameof(window));
-        Mode = mode;
-        activeTab = mode == FinderMode.Fleets ? 1 : 0;
-        ProjectedTabs = Array.Empty<FinderWindowTab>();
-        ProjectedRows = Array.Empty<FinderWindowRow>();
-    }
-
     public int ActiveTab => activeTab;
 
     public FinderMode Mode { get; }
@@ -453,6 +439,20 @@ internal sealed class FinderWindowSession
         new FinderWindowState(Mode, panel, activeTab, selectedIndex, searchText);
 
     public UIWindow Window { get; }
+
+    /// <summary>
+    /// Creates the default session for one Finder category.
+    /// </summary>
+    /// <param name="window">The owning Finder window.</param>
+    /// <param name="mode">The Finder category represented by the session.</param>
+    public FinderWindowSession(UIWindow window, FinderMode mode)
+    {
+        Window = window ?? throw new ArgumentNullException(nameof(window));
+        Mode = mode;
+        activeTab = mode == FinderMode.Fleets ? 1 : 0;
+        ProjectedTabs = Array.Empty<FinderWindowTab>();
+        ProjectedRows = Array.Empty<FinderWindowRow>();
+    }
 
     /// <summary>
     /// Reconciles the selected tab against the current semantic tab catalog.

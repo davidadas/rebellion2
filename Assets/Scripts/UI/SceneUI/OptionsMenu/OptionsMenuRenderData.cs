@@ -19,6 +19,12 @@ public enum OptionsMenuTab
 /// </summary>
 public sealed class OptionsBindingRow
 {
+    public string Action { get; }
+    public string Primary { get; }
+    public string Secondary { get; }
+    public bool IsHeader { get; }
+    public bool PrimaryEditable { get; }
+
     /// <summary>
     /// Creates a binding row.
     /// </summary>
@@ -41,12 +47,6 @@ public sealed class OptionsBindingRow
         IsHeader = isHeader;
         PrimaryEditable = primaryEditable;
     }
-
-    public string Action { get; }
-    public string Primary { get; }
-    public string Secondary { get; }
-    public bool IsHeader { get; }
-    public bool PrimaryEditable { get; }
 }
 
 /// <summary>
@@ -54,6 +54,12 @@ public sealed class OptionsBindingRow
 /// </summary>
 public sealed class OptionsSaveSlot
 {
+    public string Name { get; }
+    public string Date { get; }
+    public Texture2D FactionIcon { get; }
+    public bool IsCreateNew { get; }
+    public string FileName { get; }
+
     /// <summary>
     /// Creates a save row.
     /// </summary>
@@ -76,12 +82,6 @@ public sealed class OptionsSaveSlot
         IsCreateNew = isCreateNew;
         FileName = fileName ?? string.Empty;
     }
-
-    public string Name { get; }
-    public string Date { get; }
-    public Texture2D FactionIcon { get; }
-    public bool IsCreateNew { get; }
-    public string FileName { get; }
 }
 
 /// <summary>
@@ -89,6 +89,28 @@ public sealed class OptionsSaveSlot
 /// </summary>
 public sealed class OptionsMenuRenderData
 {
+    public int X { get; }
+    public int Y { get; }
+
+    public OptionsMenuTab ActiveTab { get; }
+    public int SelectedSlot { get; }
+    public int ListeningRow { get; }
+    public bool ListeningSecondary { get; }
+
+    public string ResolutionLabel { get; }
+    public string FullScreenLabel { get; }
+    public IReadOnlyDictionary<UserTacticalOption, bool> TacticalStates { get; }
+    public IReadOnlyDictionary<UserGameplayOption, bool> GameplayStates { get; }
+    public int AutosaveIntervalTicks { get; }
+    public int AutosavesToKeep { get; }
+
+    public IReadOnlyList<float> Volumes { get; }
+
+    public IReadOnlyList<OptionsBindingRow> Bindings { get; }
+    public IReadOnlyList<OptionsSaveSlot> SaveSlots { get; }
+
+    public bool HasActiveGame { get; }
+
     /// <summary>
     /// Creates the Options menu data.
     /// </summary>
@@ -144,26 +166,4 @@ public sealed class OptionsMenuRenderData
         ListeningRow = listeningRow;
         ListeningSecondary = listeningSecondary;
     }
-
-    public int X { get; }
-    public int Y { get; }
-
-    public OptionsMenuTab ActiveTab { get; }
-    public int SelectedSlot { get; }
-    public int ListeningRow { get; }
-    public bool ListeningSecondary { get; }
-
-    public string ResolutionLabel { get; }
-    public string FullScreenLabel { get; }
-    public IReadOnlyDictionary<UserTacticalOption, bool> TacticalStates { get; }
-    public IReadOnlyDictionary<UserGameplayOption, bool> GameplayStates { get; }
-    public int AutosaveIntervalTicks { get; }
-    public int AutosavesToKeep { get; }
-
-    public IReadOnlyList<float> Volumes { get; }
-
-    public IReadOnlyList<OptionsBindingRow> Bindings { get; }
-    public IReadOnlyList<OptionsSaveSlot> SaveSlots { get; }
-
-    public bool HasActiveGame { get; }
 }

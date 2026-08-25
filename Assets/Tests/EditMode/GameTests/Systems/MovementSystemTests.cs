@@ -1881,6 +1881,28 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void RequestMove_FleetToRejectedDestination_PreservesWaypointRoute()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            Fleet rejectedDestination = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(rejectedDestination, firstDestination);
+            fleet.Waypoints.Add(secondDestination.InstanceID);
+
+            movement.RequestMove(fleet, rejectedDestination);
+
+            Assert.AreSame(origin, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
+        }
+
+        [Test]
         public void RequestMove_RegimentToNeutralColonizedPlanet_IsRejected()
         {
             (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
@@ -3378,6 +3400,189 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void TrySetFleetWaypointRoute_MultipleDestinations_ContinuesRouteAfterArrival()
+        {
+            (
+                _,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+
+            Assert.IsTrue(routeSet);
+            Assert.AreSame(firstDestination, fleet.GetParent());
+            Assert.IsNotNull(fleet.Movement);
+            CollectionAssert.AreEqual(
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                fleet.Waypoints
+            );
+
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            List<GameResult> firstArrivalResults = movement.ProcessTick();
+
+            Assert.IsNull(fleet.Movement);
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
+            Assert.IsFalse(firstArrivalResults.OfType<FleetWaypointsCompletedResult>().Any());
+
+            movement.ContinueFleetWaypointRoutes();
+
+            Assert.AreSame(secondDestination, fleet.GetParent());
+            Assert.IsNotNull(fleet.Movement);
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
+
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            List<GameResult> finalArrivalResults = movement.ProcessTick();
+
+            FleetWaypointsCompletedResult completed = finalArrivalResults
+                .OfType<FleetWaypointsCompletedResult>()
+                .Single();
+            Assert.AreSame(fleet, completed.Fleet);
+            Assert.AreSame(secondDestination, completed.Destination);
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [Test]
+        public void TrySetFleetWaypointRoute_FleetAlreadyMoving_QueuesContinuation()
+        {
+            (
+                _,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { fleet },
+                firstDestination,
+                "empire"
+            );
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { secondDestination.InstanceID },
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.IsTrue(routeSet);
+            CollectionAssert.AreEqual(
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                fleet.Waypoints
+            );
+        }
+
+        [Test]
+        public void TrySetFleetWaypointRoute_OpposingFleet_ReturnsFalse()
+        {
+            (_, Planet origin, Planet firstDestination, _, Fleet fleet, MovementSystem movement) =
+                BuildWaypointScene();
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { firstDestination.InstanceID },
+                "rebels"
+            );
+
+            Assert.IsFalse(routeSet);
+            Assert.IsNull(fleet.Movement);
+            Assert.IsEmpty(fleet.Waypoints);
+            Assert.AreSame(origin, fleet.GetParent());
+        }
+
+        [Test]
+        public void CanSetFleetWaypointRoute_ValidRoute_DoesNotMutateFleet()
+        {
+            (
+                _,
+                Planet origin,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+
+            bool canSetRoute = movement.CanSetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+
+            Assert.IsTrue(canSetRoute);
+            Assert.AreSame(origin, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [Test]
+        public void ClearFleetWaypoints_ActiveRoute_PreservesCurrentMovementAndStopsContinuation()
+        {
+            (
+                _,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+            MovementState activeMovement = fleet.Movement;
+
+            bool cleared = movement.ClearFleetWaypoints(new ISceneNode[] { fleet }, "empire");
+
+            Assert.IsTrue(cleared);
+            Assert.AreSame(activeMovement, fleet.Movement);
+            Assert.AreSame(firstDestination, fleet.GetParent());
+            Assert.IsEmpty(fleet.Waypoints);
+
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            movement.ProcessTick();
+            movement.ContinueFleetWaypointRoutes();
+
+            Assert.IsNull(fleet.Movement);
+            Assert.AreSame(firstDestination, fleet.GetParent());
+        }
+
+        [Test]
+        public void TryRequestMove_FleetWithQueuedWaypoints_ReplacesRoute()
+        {
+            (
+                _,
+                Planet origin,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            movement.ProcessTick();
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { fleet }, origin, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.IsNotNull(fleet.Movement);
+            Assert.IsEmpty(fleet.Waypoints);
+            Assert.AreSame(origin, fleet.GetParent());
+        }
+
+        [Test]
         public void TryRequestMove_GroupUnderConstructionExceedsCapacity_NoneRetarget()
         {
             (
@@ -4291,6 +4496,60 @@ namespace Rebellion.Tests.Sectors
             );
 
             return (game, origin, destination, officer, movement);
+        }
+
+        private static (
+            GameRoot game,
+            Planet origin,
+            Planet firstDestination,
+            Planet secondDestination,
+            Fleet fleet,
+            MovementSystem movement
+        ) BuildWaypointScene()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet firstDestination = new Planet
+            {
+                InstanceID = "first-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 50,
+                PositionY = 25,
+            };
+            Planet secondDestination = new Planet
+            {
+                InstanceID = "second-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 50,
+            };
+            game.AttachNode(origin, sector);
+            game.AttachNode(firstDestination, sector);
+            game.AttachNode(secondDestination, sector);
+
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            return (game, origin, firstDestination, secondDestination, fleet, movement);
         }
 
         private (

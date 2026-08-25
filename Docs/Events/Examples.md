@@ -73,9 +73,9 @@ This repeating event selects one Alliance-owned core planet and adds a raw-resou
     <RandomInterval MinimumTicks="100" MaximumTicks="300"/>
   </Schedule>
   <Actions>
-    <ChangePlanetStat Stat="RawResourceNodes" PlanetBinding="$planet">
+    <ChangeRawResourceNodes PlanetBinding="$planet">
       <Amount>1</Amount>
-    </ChangePlanetStat>
+    </ChangeRawResourceNodes>
     <SendMessage RecipientFactionInstanceID="FNALL1"
                  LocationBinding="$planet"
                  Type="Resource">
@@ -98,14 +98,14 @@ percent of the time and a message-only outcome 70 percent of the time.
     <At Tick="100"/>
   </Schedule>
   <Actions>
-    <RollRandom>
+    <RollOutcome>
       <Outcomes>
         <!-- Weights are relative; 30 and 70 form a 30/70 split. -->
         <Outcome Weight="30">
           <Actions>
-            <ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
+            <ChangeRawResourceNodes PlanetInstanceID="NABOO">
               <Amount>1</Amount>
-            </ChangePlanetStat>
+            </ChangeRawResourceNodes>
           </Actions>
         </Outcome>
         <Outcome Weight="70">
@@ -119,7 +119,7 @@ percent of the time and a message-only outcome 70 percent of the time.
           </Actions>
         </Outcome>
       </Outcomes>
-    </RollRandom>
+    </RollOutcome>
   </Actions>
 </GameEvent>
 ```

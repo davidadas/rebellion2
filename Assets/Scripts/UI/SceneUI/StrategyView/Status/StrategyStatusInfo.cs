@@ -25,11 +25,6 @@ internal sealed class StrategyStatusInfo
     public List<ISceneNode> ImageItems { get; } = new List<ISceneNode>();
 
     /// <summary>
-    /// Gets the overlay image items.
-    /// </summary>
-    public List<ISceneNode> OverlayImageItems { get; } = new List<ISceneNode>();
-
-    /// <summary>
     /// Gets the rows.
     /// </summary>
     public List<StrategyStatusRow> Rows { get; } = new List<StrategyStatusRow>();
@@ -53,6 +48,10 @@ internal enum StatusWindowImage
 /// </summary>
 public sealed class StrategyStatusRow
 {
+    public string Left { get; }
+
+    public string Right { get; }
+
     /// <summary>
     /// Creates one paired status value.
     /// </summary>
@@ -63,8 +62,4 @@ public sealed class StrategyStatusRow
         Left = left ?? string.Empty;
         Right = right ?? string.Empty;
     }
-
-    public string Left { get; }
-
-    public string Right { get; }
 }

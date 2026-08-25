@@ -45,6 +45,39 @@ class Example
         }
 
         [Test]
+        public async Task PropertyAfterMethod_ReportsDiagnosticAsync()
+        {
+            const string source =
+                @"
+class Example
+{
+    void Render() { }
+    public int Value { get; }
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            Assert.AreEqual(1, diagnostics.Length);
+            Assert.AreEqual(MemberDeclarationOrderAnalyzer.DiagnosticId, diagnostics[0].Id);
+        }
+
+        [Test]
+        public async Task PropertyBeforeMethod_DoesNotReportDiagnosticAsync()
+        {
+            const string source =
+                @"
+class Example
+{
+    public int Value { get; }
+    void Render() { }
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            Assert.IsEmpty(diagnostics);
+        }
+
+        [Test]
         public async Task FieldAfterNestedMethod_ReportsDiagnosticAsync()
         {
             const string source =

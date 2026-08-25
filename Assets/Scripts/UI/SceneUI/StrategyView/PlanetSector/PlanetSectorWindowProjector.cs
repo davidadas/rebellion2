@@ -38,13 +38,19 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="selectedIcon">The selected planet icon.</param>
     /// <param name="hoveredPlanetInstanceId">The hovered planet identifier.</param>
     /// <param name="hoveredIcon">The hovered planet icon.</param>
+    /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
+    /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
+    /// <param name="showAllWaypointRoutes">Whether every player waypoint route is visible.</param>
     /// <returns>The immutable planet-sector presentation.</returns>
     public PlanetSectorWindowRenderData CreateRenderData(
         GalaxyMapSector mapSector,
         string selectedPlanetInstanceId,
         PlanetIcon selectedIcon,
         string hoveredPlanetInstanceId,
-        PlanetIcon hoveredIcon
+        PlanetIcon hoveredIcon,
+        StrategyWindowTargetingSource waypointPlan = null,
+        IReadOnlyCollection<string> selectedFleetInstanceIds = null,
+        bool showAllWaypointRoutes = false
     )
     {
         UIContext uiContext = GetUIContext();
@@ -70,7 +76,121 @@ internal sealed class PlanetSectorWindowProjector
             );
         }
 
-        return new PlanetSectorWindowRenderData(sector?.GetDisplayName(), presentations);
+        ProjectWaypointRoutes(
+            mapSector,
+            waypointPlan,
+            out List<PlanetSectorWaypointSegmentRenderData> waypointSegments,
+            out List<PlanetSectorWaypointRenderData> waypoints,
+            selectedFleetInstanceIds,
+            showAllWaypointRoutes
+        );
+        return new PlanetSectorWindowRenderData(
+            sector?.GetDisplayName(),
+            presentations,
+            waypointSegments,
+            waypoints
+        );
+    }
+
+    /// <summary>
+    /// Projects only the waypoint layer for one visible planet sector.
+    /// </summary>
+    /// <param name="mapSector">The represented galaxy-map sector.</param>
+    /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
+    /// <param name="segments">Receives route segments with two visible endpoints.</param>
+    /// <param name="waypoints">Receives numbered route stops visible in the sector.</param>
+    /// <param name="selectedFleetInstanceIds">The fleet routes visible through selection.</param>
+    /// <param name="showAllRoutes">Whether every player waypoint route is visible.</param>
+    internal void ProjectWaypointRoutes(
+        GalaxyMapSector mapSector,
+        StrategyWindowTargetingSource waypointPlan,
+        out List<PlanetSectorWaypointSegmentRenderData> segments,
+        out List<PlanetSectorWaypointRenderData> waypoints,
+        IReadOnlyCollection<string> selectedFleetInstanceIds = null,
+        bool showAllRoutes = false
+    )
+    {
+        UIContext uiContext = GetUIContext();
+        List<FleetWaypointRoute> resolvedRoutes = FleetWaypointRouteResolver.Resolve(
+            uiContext.Game,
+            uiContext.GetPlayerFactionInstanceID(),
+            waypointPlan,
+            selectedFleetInstanceIds,
+            showAllRoutes
+        );
+        segments = new List<PlanetSectorWaypointSegmentRenderData>();
+        waypoints = new List<PlanetSectorWaypointRenderData>();
+        IReadOnlyList<GalaxyMapPlanet> planets =
+            mapSector?.Planets ?? Array.Empty<GalaxyMapPlanet>();
+        if (planets.Count == 0)
+            return;
+
+        Dictionary<string, int> visiblePlanetIndices = new Dictionary<string, int>(
+            StringComparer.Ordinal
+        );
+        for (int index = 0; index < planets.Count; index++)
+        {
+            string planetId = planets[index]?.Planet?.InstanceID;
+            if (!string.IsNullOrEmpty(planetId))
+                visiblePlanetIndices[planetId] = index;
+        }
+
+        foreach (FleetWaypointRoute route in resolvedRoutes)
+        {
+            AddProjectedWaypointRoute(segments, waypoints, route, visiblePlanetIndices);
+        }
+    }
+
+    /// <summary>
+    /// Projects one fleet route onto visible planet indices in a sector window.
+    /// </summary>
+    /// <param name="segments">The collection receiving visible route segments.</param>
+    /// <param name="waypoints">The collection receiving visible waypoint markers.</param>
+    /// <param name="route">The resolved fleet route.</param>
+    /// <param name="visiblePlanetIndices">The visible planet indices keyed by identifier.</param>
+    private static void AddProjectedWaypointRoute(
+        ICollection<PlanetSectorWaypointSegmentRenderData> segments,
+        ICollection<PlanetSectorWaypointRenderData> waypoints,
+        FleetWaypointRoute route,
+        IReadOnlyDictionary<string, int> visiblePlanetIndices
+    )
+    {
+        int? previousPlanetIndex =
+            route?.OriginPlanet != null
+            && visiblePlanetIndices.TryGetValue(
+                route.OriginPlanet.InstanceID,
+                out int visibleOriginIndex
+            )
+                ? visibleOriginIndex
+                : null;
+        foreach (
+            FleetWaypointRouteStop stop in route?.Stops ?? Array.Empty<FleetWaypointRouteStop>()
+        )
+        {
+            int? waypointPlanetIndex = visiblePlanetIndices.TryGetValue(
+                stop.Planet.InstanceID,
+                out int visiblePlanetIndex
+            )
+                ? visiblePlanetIndex
+                : null;
+            if (previousPlanetIndex.HasValue && waypointPlanetIndex.HasValue)
+            {
+                segments.Add(
+                    new PlanetSectorWaypointSegmentRenderData(
+                        previousPlanetIndex.Value,
+                        waypointPlanetIndex.Value
+                    )
+                );
+            }
+            if (waypointPlanetIndex.HasValue)
+            {
+                waypoints.Add(
+                    new PlanetSectorWaypointRenderData(stop.Order, waypointPlanetIndex.Value)
+                );
+            }
+
+            previousPlanetIndex = waypointPlanetIndex;
+        }
     }
 
     /// <summary>

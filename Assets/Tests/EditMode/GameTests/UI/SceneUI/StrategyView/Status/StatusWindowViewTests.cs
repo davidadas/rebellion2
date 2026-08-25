@@ -121,6 +121,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
+        public void Render_LongLeftLabelWithShortValue_AllocatesAdditionalLabelWidth()
+        {
+            _view.Render(
+                CreateRenderData(
+                    false,
+                    false,
+                    "Manufacturing Status",
+                    new[] { _firstTexture },
+                    "Construction Yards",
+                    new[] { new StatusWindowRowRenderData("Estimated Day of Completion:", "140") }
+                )
+            );
+
+            RectInt templateRect = UILayout.GetSourceRect(
+                FindText("LeftRowTextTemplate").rectTransform
+            );
+            RectInt labelRect = UILayout.GetSourceRect(FindText("LeftRowTextField0").rectTransform);
+            RectInt valueRect = UILayout.GetSourceRect(
+                FindText("RightRowTextField0").rectTransform
+            );
+
+            Assert.Greater(labelRect.width, templateRect.width);
+            Assert.LessOrEqual(labelRect.xMax, valueRect.x);
+        }
+
+        [Test]
         public void Render_CenteredImage_CentersFittedImageInAuthoredArea()
         {
             _view.Render(

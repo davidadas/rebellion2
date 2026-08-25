@@ -61,6 +61,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         [TestCase(StrategyMenuAction.Destination, "Select destination")]
         [TestCase(StrategyMenuAction.Move, "Select move destination")]
         [TestCase(StrategyMenuAction.MoveConfirm, "Select move destination")]
+        [TestCase(
+            StrategyMenuAction.WaypointMove,
+            "Select waypoints; press Enter to move or Escape to undo"
+        )]
         [TestCase(StrategyMenuAction.Status, "Select target")]
         public void GetPrompt_Action_ReturnsExpectedPrompt(
             StrategyMenuAction action,
@@ -70,6 +74,44 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             string prompt = StrategyWindowTargetingSource.GetPrompt(action);
 
             Assert.AreEqual(expectedPrompt, prompt);
+        }
+
+        [Test]
+        public void TryAppendWaypoint_ValidIdentifiers_PreservesSelectionOrder()
+        {
+            StrategyWindowTargetingSource source = new StrategyWindowTargetingSource(
+                null,
+                StrategyMenuAction.WaypointMove,
+                0,
+                0,
+                null
+            );
+
+            bool firstAppended = source.TryAppendWaypoint("first");
+            bool secondAppended = source.TryAppendWaypoint("second");
+
+            Assert.IsTrue(firstAppended);
+            Assert.IsTrue(secondAppended);
+            CollectionAssert.AreEqual(new[] { "first", "second" }, source.WaypointPlanetIds);
+        }
+
+        [Test]
+        public void TryRemoveLastWaypoint_MultipleWaypoints_RemovesNewestWaypoint()
+        {
+            StrategyWindowTargetingSource source = new StrategyWindowTargetingSource(
+                null,
+                StrategyMenuAction.WaypointMove,
+                0,
+                0,
+                null
+            );
+            source.TryAppendWaypoint("first");
+            source.TryAppendWaypoint("second");
+
+            bool removed = source.TryRemoveLastWaypoint();
+
+            Assert.IsTrue(removed);
+            CollectionAssert.AreEqual(new[] { "first" }, source.WaypointPlanetIds);
         }
 
         private UIWindow CreateWindow()

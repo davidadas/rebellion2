@@ -74,12 +74,12 @@ namespace Rebellion.Tests.UI.Runtime
         {
             private readonly bool _consume;
 
+            public int CancelCount { get; private set; }
+
             public TestCancelable(bool consume)
             {
                 _consume = consume;
             }
-
-            public int CancelCount { get; private set; }
 
             public bool TryCancel()
             {

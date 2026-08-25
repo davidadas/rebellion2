@@ -1381,6 +1381,31 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_PlayerInvolvedEncounter_ClearsFleetWaypointRoutes()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
+            empireFleet.Waypoints.Add("empire-next");
+            allianceFleet.Waypoints.Add("alliance-next");
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            List<GameResult> results = manager.ProcessTick();
+
+            Assert.IsNotNull(results.OfType<PendingCombatResult>().SingleOrDefault());
+            Assert.IsEmpty(empireFleet.Waypoints);
+            Assert.IsEmpty(allianceFleet.Waypoints);
+        }
+
+        [Test]
         public void ProcessTick_PlayerFleetAgainstPlanetaryStarfighters_ReturnsPendingDecision()
         {
             GameRoot game = CreateGame();

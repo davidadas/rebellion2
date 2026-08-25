@@ -7,6 +7,38 @@ using UnityEngine;
 /// </summary>
 public sealed class ConstructionWindowRenderData
 {
+    public int X { get; }
+
+    public int Y { get; }
+
+    public Texture2D TitleTexture { get; }
+
+    public Texture2D SelectedTexture { get; }
+
+    public string SelectedName { get; }
+
+    public int BuildCount { get; }
+
+    public string ConstructionCost { get; }
+
+    public string MaintenanceCost { get; }
+
+    public string CompletionEstimate { get; }
+
+    public bool CompletionHasDays { get; }
+
+    public string DeploymentEstimate { get; }
+
+    public bool DeploymentHasDays { get; }
+
+    public bool DropdownOpen { get; }
+
+    public bool CanStart { get; }
+
+    public IReadOnlyList<StrategyDropdownItemRenderData> DropdownItems { get; }
+
+    public bool HasSelection => DropdownItems.Count > 0;
+
     /// <summary>
     /// Creates a complete construction-window presentation snapshot.
     /// </summary>
@@ -61,36 +93,4 @@ public sealed class ConstructionWindowRenderData
             dropdownItems ?? throw new ArgumentNullException(nameof(dropdownItems))
         ).AsReadOnly();
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public Texture2D TitleTexture { get; }
-
-    public Texture2D SelectedTexture { get; }
-
-    public string SelectedName { get; }
-
-    public int BuildCount { get; }
-
-    public string ConstructionCost { get; }
-
-    public string MaintenanceCost { get; }
-
-    public string CompletionEstimate { get; }
-
-    public bool CompletionHasDays { get; }
-
-    public string DeploymentEstimate { get; }
-
-    public bool DeploymentHasDays { get; }
-
-    public bool DropdownOpen { get; }
-
-    public bool CanStart { get; }
-
-    public IReadOnlyList<StrategyDropdownItemRenderData> DropdownItems { get; }
-
-    public bool HasSelection => DropdownItems.Count > 0;
 }

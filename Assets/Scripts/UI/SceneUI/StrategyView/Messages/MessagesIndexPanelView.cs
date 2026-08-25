@@ -109,6 +109,27 @@ public sealed class MessagesIndexPanelView : MonoBehaviour, IContentInitializabl
     internal event Action<MessagesTab> TabRequested;
 
     /// <summary>
+    /// Lazily creates the repeated-row presenter after authored references are available.
+    /// </summary>
+    private SelectableListView<MessageWindowRowView, MessageWindowRowRenderData> RowsList
+    {
+        get
+        {
+            rowsList ??= new SelectableListView<MessageWindowRowView, MessageWindowRowRenderData>(
+                rowsScrollArea,
+                rowTemplate,
+                "MessageRow",
+                HandleRowClicked,
+                HandleRowDoubleClicked,
+                HandleRowContextRequested,
+                CanNavigateRows,
+                navigationScope
+            );
+            return rowsList;
+        }
+    }
+
+    /// <summary>
     /// Supplies the owning window's navigation predicate.
     /// </summary>
     /// <param name="canNavigate">Returns whether keyboard row navigation is currently allowed.</param>
@@ -462,26 +483,5 @@ public sealed class MessagesIndexPanelView : MonoBehaviour, IContentInitializabl
             || removeSelectedButton == null
         )
             throw new MissingReferenceException($"{name}/RemoveSelectedButton is missing.");
-    }
-
-    /// <summary>
-    /// Lazily creates the repeated-row presenter after authored references are available.
-    /// </summary>
-    private SelectableListView<MessageWindowRowView, MessageWindowRowRenderData> RowsList
-    {
-        get
-        {
-            rowsList ??= new SelectableListView<MessageWindowRowView, MessageWindowRowRenderData>(
-                rowsScrollArea,
-                rowTemplate,
-                "MessageRow",
-                HandleRowClicked,
-                HandleRowDoubleClicked,
-                HandleRowContextRequested,
-                CanNavigateRows,
-                navigationScope
-            );
-            return rowsList;
-        }
     }
 }

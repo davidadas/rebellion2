@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -18,6 +20,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private const string _opposingFactionId = "FNEMP1";
         private const string _playerFactionId = "FNALL1";
 
+        private GameRoot _game;
         private GalaxyPlanetSector _planetSector;
         private PlanetSectorWindowProjector _projector;
         private UIContext _uiContext;
@@ -25,14 +28,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         [SetUp]
         public void SetUp()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            game.GetFactions()
+            _game = new GameRoot(TestConfig.Create());
+            _game
+                .GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
-            game.GetFactions()
+            _game
+                .GetFactions()
                 .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
-            game.Summary.PlayerFactionID = _playerFactionId;
+            _game.Summary.PlayerFactionID = _playerFactionId;
             _uiContext = TestContent.CreateUIContext(
-                game,
+                _game,
                 TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
@@ -50,6 +55,132 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new PlanetSectorWindowProjector(null));
+        }
+
+        [Test]
+        public void ProjectWaypointRoutes_PlayerAndOpposingRoutes_ReturnsVisiblePlayerRoute()
+        {
+            Planet origin = CreatePlanet("origin", _playerFactionId, 10, 20);
+            Planet firstDestination = CreatePlanet("first", _playerFactionId, 13, 24);
+            Planet secondDestination = CreatePlanet("second", _playerFactionId, 16, 28);
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, _planetSector);
+            _game.AttachNode(firstDestination, _planetSector);
+            _game.AttachNode(secondDestination, _planetSector);
+            GameFleet playerFleet = new GameFleet(_playerFactionId, "Player Fleet")
+            {
+                Movement = new MovementState { OriginPosition = origin.GetPosition() },
+            };
+            playerFleet.Waypoints.Add(firstDestination.InstanceID);
+            playerFleet.Waypoints.Add(secondDestination.InstanceID);
+            _game.AttachNode(playerFleet, origin);
+            GameFleet opposingFleet = new GameFleet(_opposingFactionId, "Opposing Fleet");
+            opposingFleet.Waypoints.Add(firstDestination.InstanceID);
+            _game.AttachNode(opposingFleet, origin);
+            GalaxyMapPlanet[] visiblePlanets =
+            {
+                new GalaxyMapPlanet(_planetSector, origin, string.Empty),
+                new GalaxyMapPlanet(_planetSector, firstDestination, string.Empty),
+                new GalaxyMapPlanet(_planetSector, secondDestination, string.Empty),
+            };
+
+            _projector.ProjectWaypointRoutes(
+                new GalaxyMapSector(_planetSector, visiblePlanets),
+                null,
+                out List<PlanetSectorWaypointSegmentRenderData> segments,
+                out List<PlanetSectorWaypointRenderData> waypoints,
+                new[] { playerFleet.InstanceID, opposingFleet.InstanceID }
+            );
+
+            Assert.AreEqual(2, segments.Count);
+            Assert.AreEqual(0, segments[0].StartPlanetIndex);
+            Assert.AreEqual(1, segments[0].EndPlanetIndex);
+            Assert.AreEqual(1, segments[1].StartPlanetIndex);
+            Assert.AreEqual(2, segments[1].EndPlanetIndex);
+            Assert.AreEqual(2, waypoints.Count);
+            Assert.AreEqual(1, waypoints[0].Order);
+            Assert.AreEqual(1, waypoints[0].PlanetIndex);
+            Assert.AreEqual(2, waypoints[1].Order);
+            Assert.AreEqual(2, waypoints[1].PlanetIndex);
+        }
+
+        [Test]
+        public void ProjectWaypointRoutes_UnselectedRoute_ReturnsRouteOnlyWhenAllRoutesEnabled()
+        {
+            Planet origin = CreatePlanet("origin", _playerFactionId, 10, 20);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 13, 24);
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, _planetSector);
+            _game.AttachNode(destination, _planetSector);
+            GameFleet fleet = new GameFleet(_playerFactionId, "Player Fleet");
+            fleet.Waypoints.Add(destination.InstanceID);
+            _game.AttachNode(fleet, origin);
+            GalaxyMapPlanet[] visiblePlanets =
+            {
+                new GalaxyMapPlanet(_planetSector, origin, string.Empty),
+                new GalaxyMapPlanet(_planetSector, destination, string.Empty),
+            };
+            GalaxyMapSector mapSector = new GalaxyMapSector(_planetSector, visiblePlanets);
+
+            _projector.ProjectWaypointRoutes(
+                mapSector,
+                null,
+                out List<PlanetSectorWaypointSegmentRenderData> defaultSegments,
+                out List<PlanetSectorWaypointRenderData> defaultWaypoints
+            );
+            _projector.ProjectWaypointRoutes(
+                mapSector,
+                null,
+                out List<PlanetSectorWaypointSegmentRenderData> allSegments,
+                out List<PlanetSectorWaypointRenderData> allWaypoints,
+                showAllRoutes: true
+            );
+
+            Assert.IsEmpty(defaultSegments);
+            Assert.IsEmpty(defaultWaypoints);
+            Assert.AreEqual(1, allSegments.Count);
+            Assert.AreEqual(1, allWaypoints.Count);
+        }
+
+        [Test]
+        public void ProjectWaypointRoutes_UncommittedPlan_ReturnsVisiblePreview()
+        {
+            Planet origin = CreatePlanet("origin", _playerFactionId, 10, 20);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 13, 24);
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, _planetSector);
+            _game.AttachNode(destination, _planetSector);
+            GameFleet fleet = new GameFleet(_playerFactionId, "Player Fleet");
+            _game.AttachNode(fleet, origin);
+            StrategyWindowTargetingSource plan = new StrategyWindowTargetingSource(
+                null,
+                StrategyMenuAction.WaypointMove,
+                0,
+                0,
+                new[] { fleet }
+            );
+            plan.TryAppendWaypoint(destination.InstanceID);
+            GalaxyMapPlanet[] visiblePlanets =
+            {
+                new GalaxyMapPlanet(_planetSector, origin, string.Empty),
+                new GalaxyMapPlanet(_planetSector, destination, string.Empty),
+            };
+
+            _projector.ProjectWaypointRoutes(
+                new GalaxyMapSector(_planetSector, visiblePlanets),
+                plan,
+                out List<PlanetSectorWaypointSegmentRenderData> segments,
+                out List<PlanetSectorWaypointRenderData> waypoints
+            );
+
+            Assert.AreEqual(1, segments.Count);
+            Assert.AreEqual(0, segments[0].StartPlanetIndex);
+            Assert.AreEqual(1, segments[0].EndPlanetIndex);
+            Assert.AreEqual(1, waypoints.Count);
+            Assert.AreEqual(1, waypoints[0].Order);
+            Assert.AreEqual(1, waypoints[0].PlanetIndex);
+            Assert.IsEmpty(fleet.Waypoints);
+            Assert.IsNull(fleet.Movement);
         }
 
         [Test]

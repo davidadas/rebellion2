@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -240,6 +241,29 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
         RenderSelectedFleet(data);
         RenderRename(data);
         gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Updates only the selected fleet-detail cards without rebuilding their presentation.
+    /// </summary>
+    /// <param name="selectedIndexes">The selected detail-card indexes.</param>
+    /// <param name="selectionTexture">The selected-card frame.</param>
+    internal void RenderDetailSelection(
+        IReadOnlyCollection<int> selectedIndexes,
+        Texture selectionTexture
+    )
+    {
+        if (selectedIndexes == null)
+            throw new ArgumentNullException(nameof(selectedIndexes));
+
+        for (int i = 0; i < detailItemViews.Count; i++)
+        {
+            StrategyUnitCardView item = detailItemViews[i];
+            if (item.gameObject.activeInHierarchy)
+                item.RenderSelection(
+                    selectedIndexes.Contains(item.Index) ? selectionTexture : null
+                );
+        }
     }
 
     /// <summary>

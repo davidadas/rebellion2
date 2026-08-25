@@ -93,6 +93,27 @@ internal sealed class FleetWindowProjector
     }
 
     /// <summary>
+    /// Resolves the selected fleet's detail-card selection frame.
+    /// </summary>
+    /// <param name="session">The controller-owned fleet session.</param>
+    /// <returns>The selected-card frame, or null when no fleet is selected.</returns>
+    public Texture GetDetailSelectionTexture(FleetWindowSession session)
+    {
+        if (session == null)
+            throw new ArgumentNullException(nameof(session));
+
+        Fleet fleet = session.SelectedFleet;
+        if (fleet == null)
+            return null;
+
+        UIContext uiContext = GetUIContext();
+        string path = uiContext
+            .GetTheme(fleet.OwnerInstanceID)
+            ?.PlanetOverlayTheme?.UnitTileIcons?.FleetDetailSelectionImagePath;
+        return uiContext.GetTexture(path);
+    }
+
+    /// <summary>
     /// Projects the fleet-list rows and all resolved themed textures.
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>

@@ -61,7 +61,14 @@ public sealed class AppBootstrap : MonoBehaviour
             return Instance;
 
         GameObject obj = new GameObject("AppBootstrap (Auto)");
-        return obj.AddComponent<AppBootstrap>();
+        AppBootstrap bootstrap = obj.AddComponent<AppBootstrap>();
+        if (Instance == bootstrap)
+            return bootstrap;
+
+        Destroy(obj);
+        throw new System.InvalidOperationException(
+            "AppBootstrap initialization failed. See the preceding exception for the root cause."
+        );
     }
 
     /// <summary>
@@ -228,6 +235,10 @@ public sealed class AppBootstrap : MonoBehaviour
             _contentAssets.PreloadAsync(_mainMenuApplicationPreload),
             _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_mainMenuPreloadID))
         );
+
+        if (Instance != this)
+            return;
+
         StartStrategyContentPreload();
     }
 

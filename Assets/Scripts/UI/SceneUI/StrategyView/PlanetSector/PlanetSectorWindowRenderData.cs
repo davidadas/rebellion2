@@ -7,26 +7,88 @@ using UnityEngine;
 /// </summary>
 public sealed class PlanetSectorWindowRenderData
 {
+    public IReadOnlyList<PlanetSectorPlanetRenderData> Planets { get; }
+
+    public string Title { get; }
+
+    public IReadOnlyList<PlanetSectorWaypointSegmentRenderData> WaypointSegments { get; }
+
+    public IReadOnlyList<PlanetSectorWaypointRenderData> Waypoints { get; }
+
     /// <summary>
     /// Creates a planet-sector window presentation.
     /// </summary>
     /// <param name="title">The displayed sector title.</param>
     /// <param name="planets">The displayed planet presentations.</param>
+    /// <param name="waypointSegments">The route segments whose endpoints are visible in this window.</param>
+    /// <param name="waypoints">The numbered route stops visible in this window.</param>
     public PlanetSectorWindowRenderData(
         string title,
-        IReadOnlyList<PlanetSectorPlanetRenderData> planets
+        IReadOnlyList<PlanetSectorPlanetRenderData> planets,
+        IReadOnlyList<PlanetSectorWaypointSegmentRenderData> waypointSegments = null,
+        IReadOnlyList<PlanetSectorWaypointRenderData> waypoints = null
     )
     {
         Title = title ?? string.Empty;
-        Planets =
-            planets == null
-                ? Array.Empty<PlanetSectorPlanetRenderData>()
-                : new List<PlanetSectorPlanetRenderData>(planets).AsReadOnly();
+        Planets = Copy(planets);
+        WaypointSegments = Copy(waypointSegments);
+        Waypoints = Copy(waypoints);
     }
 
-    public IReadOnlyList<PlanetSectorPlanetRenderData> Planets { get; }
+    /// <summary>
+    /// Copies a presentation collection into immutable window-owned storage.
+    /// </summary>
+    /// <typeparam name="T">The collection element type.</typeparam>
+    /// <param name="source">The source collection.</param>
+    /// <returns>An isolated read-only copy.</returns>
+    private static IReadOnlyList<T> Copy<T>(IReadOnlyList<T> source)
+    {
+        return source == null || source.Count == 0
+            ? Array.Empty<T>()
+            : new List<T>(source).AsReadOnly();
+    }
+}
 
-    public string Title { get; }
+/// <summary>
+/// Identifies one route segment by the displayed planet indices at its endpoints.
+/// </summary>
+public readonly struct PlanetSectorWaypointSegmentRenderData
+{
+    public int StartPlanetIndex { get; }
+
+    public int EndPlanetIndex { get; }
+
+    /// <summary>
+    /// Creates a route segment between two displayed planet indices.
+    /// </summary>
+    /// <param name="startPlanetIndex">The starting planet index.</param>
+    /// <param name="endPlanetIndex">The ending planet index.</param>
+    public PlanetSectorWaypointSegmentRenderData(int startPlanetIndex, int endPlanetIndex)
+    {
+        StartPlanetIndex = startPlanetIndex;
+        EndPlanetIndex = endPlanetIndex;
+    }
+}
+
+/// <summary>
+/// Identifies one numbered route stop by its displayed planet index.
+/// </summary>
+public readonly struct PlanetSectorWaypointRenderData
+{
+    public int Order { get; }
+
+    public int PlanetIndex { get; }
+
+    /// <summary>
+    /// Creates a numbered route stop for one displayed planet.
+    /// </summary>
+    /// <param name="order">The one-based waypoint order.</param>
+    /// <param name="planetIndex">The displayed planet index.</param>
+    public PlanetSectorWaypointRenderData(int order, int planetIndex)
+    {
+        Order = order;
+        PlanetIndex = planetIndex;
+    }
 }
 
 /// <summary>
@@ -34,6 +96,46 @@ public sealed class PlanetSectorWindowRenderData
 /// </summary>
 public sealed class PlanetSectorPlanetRenderData
 {
+    public Texture2D DefensePressedTexture { get; }
+
+    public Texture2D DefenseTexture { get; }
+
+    public PlanetSectorBarRenderData EnergyBar { get; }
+
+    public Texture2D FacilityPressedTexture { get; }
+
+    public Texture2D FacilityTexture { get; }
+
+    public Texture2D FleetPressedTexture { get; }
+
+    public Texture2D FleetTexture { get; }
+
+    public Texture2D HeadquartersTexture { get; }
+
+    public PlanetIcon HoveredIcon { get; }
+
+    public Texture2D MissionPressedTexture { get; }
+
+    public Texture2D MissionTexture { get; }
+
+    public string Name { get; }
+
+    public Color32 NameColor { get; }
+
+    public Texture2D PlanetTexture { get; }
+
+    public int PlanetIndex { get; }
+
+    public Vector2Int GalaxyOffset { get; }
+
+    public PlanetSectorBarRenderData RawResourceBar { get; }
+
+    public PlanetIcon SelectedIcon { get; }
+
+    public PlanetSectorBarRenderData SupportBar { get; }
+
+    public Texture2D UprisingTexture { get; }
+
     /// <summary>
     /// Creates a planet presentation.
     /// </summary>
@@ -101,46 +203,6 @@ public sealed class PlanetSectorPlanetRenderData
         RawResourceBar = rawResourceBar ?? throw new ArgumentNullException(nameof(rawResourceBar));
         SupportBar = supportBar ?? throw new ArgumentNullException(nameof(supportBar));
     }
-
-    public Texture2D DefensePressedTexture { get; }
-
-    public Texture2D DefenseTexture { get; }
-
-    public PlanetSectorBarRenderData EnergyBar { get; }
-
-    public Texture2D FacilityPressedTexture { get; }
-
-    public Texture2D FacilityTexture { get; }
-
-    public Texture2D FleetPressedTexture { get; }
-
-    public Texture2D FleetTexture { get; }
-
-    public Texture2D HeadquartersTexture { get; }
-
-    public PlanetIcon HoveredIcon { get; }
-
-    public Texture2D MissionPressedTexture { get; }
-
-    public Texture2D MissionTexture { get; }
-
-    public string Name { get; }
-
-    public Color32 NameColor { get; }
-
-    public Texture2D PlanetTexture { get; }
-
-    public int PlanetIndex { get; }
-
-    public Vector2Int GalaxyOffset { get; }
-
-    public PlanetSectorBarRenderData RawResourceBar { get; }
-
-    public PlanetIcon SelectedIcon { get; }
-
-    public PlanetSectorBarRenderData SupportBar { get; }
-
-    public Texture2D UprisingTexture { get; }
 }
 
 /// <summary>
@@ -148,6 +210,20 @@ public sealed class PlanetSectorPlanetRenderData
 /// </summary>
 public sealed class PlanetSectorBarRenderData
 {
+    public Color32 BackgroundColor { get; }
+
+    public int CellCount { get; }
+
+    public Color32 EmptyColor { get; }
+
+    public Color32 FillColor { get; }
+
+    public float FillRatio { get; }
+
+    public int LitCells { get; }
+
+    public bool Visible { get; }
+
     /// <summary>
     /// Creates a planet status-bar presentation.
     /// </summary>
@@ -176,20 +252,6 @@ public sealed class PlanetSectorBarRenderData
         EmptyColor = emptyColor;
         BackgroundColor = backgroundColor;
     }
-
-    public Color32 BackgroundColor { get; }
-
-    public int CellCount { get; }
-
-    public Color32 EmptyColor { get; }
-
-    public Color32 FillColor { get; }
-
-    public float FillRatio { get; }
-
-    public int LitCells { get; }
-
-    public bool Visible { get; }
 }
 
 /// <summary>
@@ -197,6 +259,12 @@ public sealed class PlanetSectorBarRenderData
 /// </summary>
 public sealed class PlanetSectorWindowElement
 {
+    public PlanetIcon Icon { get; }
+
+    public int PlanetIndex { get; }
+
+    public bool PlanetImage { get; }
+
     /// <summary>
     /// Creates a semantic planet-sector presentation element.
     /// </summary>
@@ -209,10 +277,4 @@ public sealed class PlanetSectorWindowElement
         Icon = icon;
         PlanetImage = planetImage;
     }
-
-    public PlanetIcon Icon { get; }
-
-    public int PlanetIndex { get; }
-
-    public bool PlanetImage { get; }
 }

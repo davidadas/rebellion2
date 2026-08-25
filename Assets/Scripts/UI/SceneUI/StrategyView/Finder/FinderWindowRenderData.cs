@@ -22,6 +22,16 @@ public enum FinderWindowCommand
 /// </summary>
 public readonly struct FinderWindowState
 {
+    public FinderMode Mode { get; }
+
+    public bool Panel { get; }
+
+    public int ActiveTab { get; }
+
+    public int SelectedIndex { get; }
+
+    public string SearchText { get; }
+
     /// <summary>
     /// Creates an immutable Finder session-state snapshot.
     /// </summary>
@@ -44,16 +54,6 @@ public readonly struct FinderWindowState
         SelectedIndex = selectedIndex;
         SearchText = searchText ?? string.Empty;
     }
-
-    public FinderMode Mode { get; }
-
-    public bool Panel { get; }
-
-    public int ActiveTab { get; }
-
-    public int SelectedIndex { get; }
-
-    public string SearchText { get; }
 }
 
 /// <summary>
@@ -61,6 +61,14 @@ public readonly struct FinderWindowState
 /// </summary>
 public sealed class FinderWindowDialogButtonRenderData
 {
+    public FinderWindowCommand Command { get; }
+
+    public Texture Texture { get; }
+
+    public Texture PressedTexture { get; }
+
+    public RectInt? SourceRect { get; }
+
     /// <summary>
     /// Creates immutable command-button presentation data.
     /// </summary>
@@ -80,14 +88,6 @@ public sealed class FinderWindowDialogButtonRenderData
         PressedTexture = pressedTexture;
         SourceRect = sourceRect;
     }
-
-    public FinderWindowCommand Command { get; }
-
-    public Texture Texture { get; }
-
-    public Texture PressedTexture { get; }
-
-    public RectInt? SourceRect { get; }
 }
 
 /// <summary>
@@ -95,6 +95,10 @@ public sealed class FinderWindowDialogButtonRenderData
 /// </summary>
 public sealed class FinderWindowTabRenderData
 {
+    public Texture Texture { get; }
+
+    public Texture PressedTexture { get; }
+
     /// <summary>
     /// Creates immutable Finder-tab presentation data.
     /// </summary>
@@ -105,10 +109,6 @@ public sealed class FinderWindowTabRenderData
         Texture = texture;
         PressedTexture = pressedTexture;
     }
-
-    public Texture Texture { get; }
-
-    public Texture PressedTexture { get; }
 }
 
 /// <summary>
@@ -116,6 +116,14 @@ public sealed class FinderWindowTabRenderData
 /// </summary>
 public sealed class FinderWindowRowRenderData
 {
+    public string RowId { get; }
+
+    public string Name { get; }
+
+    public bool Selected { get; }
+
+    public IReadOnlyList<string> Counts { get; }
+
     /// <summary>
     /// Creates immutable Finder-row presentation data.
     /// </summary>
@@ -135,14 +143,6 @@ public sealed class FinderWindowRowRenderData
         Selected = selected;
         Counts = FinderWindowRenderData.Copy(counts);
     }
-
-    public string RowId { get; }
-
-    public string Name { get; }
-
-    public bool Selected { get; }
-
-    public IReadOnlyList<string> Counts { get; }
 }
 
 /// <summary>
@@ -150,6 +150,26 @@ public sealed class FinderWindowRowRenderData
 /// </summary>
 public sealed class FinderWindowFrameRenderData
 {
+    public int X { get; }
+
+    public int Y { get; }
+
+    public int Width { get; }
+
+    public int Height { get; }
+
+    public bool ActiveWindow { get; }
+
+    public bool UseUpperButtonLayout { get; }
+
+    public Texture BackgroundTexture { get; }
+
+    public Texture OverlayFrameTexture { get; }
+
+    public Texture ButtonStripTexture { get; }
+
+    public IReadOnlyList<FinderWindowDialogButtonRenderData> DialogButtons { get; }
+
     /// <summary>
     /// Creates immutable Finder-frame presentation data.
     /// </summary>
@@ -187,26 +207,6 @@ public sealed class FinderWindowFrameRenderData
         ButtonStripTexture = buttonStripTexture;
         DialogButtons = FinderWindowRenderData.Copy(dialogButtons);
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public int Width { get; }
-
-    public int Height { get; }
-
-    public bool ActiveWindow { get; }
-
-    public bool UseUpperButtonLayout { get; }
-
-    public Texture BackgroundTexture { get; }
-
-    public Texture OverlayFrameTexture { get; }
-
-    public Texture ButtonStripTexture { get; }
-
-    public IReadOnlyList<FinderWindowDialogButtonRenderData> DialogButtons { get; }
 }
 
 /// <summary>
@@ -214,6 +214,28 @@ public sealed class FinderWindowFrameRenderData
 /// </summary>
 public sealed class FinderWindowRenderData
 {
+    public FinderMode Mode { get; }
+
+    public bool Panel { get; }
+
+    public int ActiveTab { get; }
+
+    public int SelectedIndex { get; }
+
+    public string SearchText { get; }
+
+    public string Title { get; }
+
+    public string Label { get; }
+
+    public string ActiveTabText { get; }
+
+    public FinderWindowFrameRenderData Frame { get; }
+
+    public IReadOnlyList<FinderWindowTabRenderData> Tabs { get; }
+
+    public IReadOnlyList<FinderWindowRowRenderData> Rows { get; }
+
     /// <summary>
     /// Creates immutable Finder-window presentation data.
     /// </summary>
@@ -254,28 +276,6 @@ public sealed class FinderWindowRenderData
         Tabs = Copy(tabs);
         Rows = Copy(rows);
     }
-
-    public FinderMode Mode { get; }
-
-    public bool Panel { get; }
-
-    public int ActiveTab { get; }
-
-    public int SelectedIndex { get; }
-
-    public string SearchText { get; }
-
-    public string Title { get; }
-
-    public string Label { get; }
-
-    public string ActiveTabText { get; }
-
-    public FinderWindowFrameRenderData Frame { get; }
-
-    public IReadOnlyList<FinderWindowTabRenderData> Tabs { get; }
-
-    public IReadOnlyList<FinderWindowRowRenderData> Rows { get; }
 
     /// <summary>
     /// Copies an optional collection into an isolated read-only snapshot.

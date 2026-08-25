@@ -42,10 +42,14 @@ public sealed class GalacticInformationDisplayProjector
         GalacticInformationDisplayTheme theme = GetRequiredDisplayTheme(playerTheme);
         SourceRectLayout selector = GetRequiredSelectorLayout(theme);
         Color highlightColor = playerTheme.GetPrimaryColor();
+        Texture2D checkMarkTexture = context.GetTexture(
+            playerTheme.StrategyContextMenuTheme?.CheckMarkImagePath
+        );
         List<GalacticInformationCategoryRenderData> categories = ProjectCategories(
             theme,
             state,
             highlightColor,
+            checkMarkTexture,
             context
         );
         RectInt selectorBounds = ToRect(selector);
@@ -55,7 +59,13 @@ public sealed class GalacticInformationDisplayProjector
             theme.GetBackgroundColor(),
             ProjectFrame(theme.Frame, selector.Width, selector.Height, context),
             categories,
-            ProjectDisplayOffRow(theme, state.DisplayOffHovered, highlightColor)
+            ProjectDisplayOffRow(
+                theme,
+                state.DisplayOffHovered,
+                state.SelectedFilterMode == GalacticInformationFilterMode.DisplayOff,
+                highlightColor,
+                checkMarkTexture
+            )
         );
     }
 
@@ -105,12 +115,14 @@ public sealed class GalacticInformationDisplayProjector
     /// <param name="theme">The active galactic-information theme.</param>
     /// <param name="state">The current interaction state.</param>
     /// <param name="highlightColor">The active faction highlight color.</param>
+    /// <param name="checkMarkTexture">The shared selected-state check-mark texture.</param>
     /// <param name="context">The current strategy UI context.</param>
     /// <returns>The projected category presentations.</returns>
     private static List<GalacticInformationCategoryRenderData> ProjectCategories(
         GalacticInformationDisplayTheme theme,
         GalacticInformationDisplayState state,
         Color highlightColor,
+        Texture2D checkMarkTexture,
         UIContext context
     )
     {
@@ -119,7 +131,15 @@ public sealed class GalacticInformationDisplayProjector
         for (int i = 0; i < theme.Categories.Count; i++)
         {
             categories.Add(
-                ProjectCategory(theme, theme.Categories[i], i, state, highlightColor, context)
+                ProjectCategory(
+                    theme,
+                    theme.Categories[i],
+                    i,
+                    state,
+                    highlightColor,
+                    checkMarkTexture,
+                    context
+                )
             );
         }
 
@@ -134,6 +154,7 @@ public sealed class GalacticInformationDisplayProjector
     /// <param name="categoryIndex">The category's authored-slot index.</param>
     /// <param name="state">The current interaction state.</param>
     /// <param name="highlightColor">The active faction highlight color.</param>
+    /// <param name="checkMarkTexture">The shared selected-state check-mark texture.</param>
     /// <param name="context">The current strategy UI context.</param>
     /// <returns>The immutable category presentation.</returns>
     private static GalacticInformationCategoryRenderData ProjectCategory(
@@ -142,6 +163,7 @@ public sealed class GalacticInformationDisplayProjector
         int categoryIndex,
         GalacticInformationDisplayState state,
         Color highlightColor,
+        Texture2D checkMarkTexture,
         UIContext context
     )
     {
@@ -188,7 +210,9 @@ public sealed class GalacticInformationDisplayProjector
                 category,
                 active,
                 state.HoveredFilterIndex,
+                state.SelectedFilterMode,
                 highlightColor,
+                checkMarkTexture,
                 context
             )
         );
@@ -201,7 +225,9 @@ public sealed class GalacticInformationDisplayProjector
     /// <param name="category">The configured category.</param>
     /// <param name="visible">Whether the submenu is open.</param>
     /// <param name="hoveredFilterIndex">The hovered filter index.</param>
+    /// <param name="selectedFilterMode">The filter currently applied to the map.</param>
     /// <param name="highlightColor">The active faction highlight color.</param>
+    /// <param name="checkMarkTexture">The shared selected-state check-mark texture.</param>
     /// <param name="context">The current strategy UI context.</param>
     /// <returns>The immutable submenu presentation, or null when no layout is configured.</returns>
     private static GalacticInformationSubmenuRenderData ProjectSubmenu(
@@ -209,7 +235,9 @@ public sealed class GalacticInformationDisplayProjector
         GalacticInformationCategoryTheme category,
         bool visible,
         int hoveredFilterIndex,
+        GalacticInformationFilterMode selectedFilterMode,
         Color highlightColor,
+        Texture2D checkMarkTexture,
         UIContext context
     )
     {
@@ -226,7 +254,9 @@ public sealed class GalacticInformationDisplayProjector
                     theme,
                     category.Filters[i],
                     i == hoveredFilterIndex,
+                    category.Filters[i]?.Mode == selectedFilterMode,
                     highlightColor,
+                    checkMarkTexture,
                     context
                 )
             );
@@ -247,14 +277,18 @@ public sealed class GalacticInformationDisplayProjector
     /// <param name="theme">The active galactic-information theme.</param>
     /// <param name="filter">The configured filter row.</param>
     /// <param name="hovered">Whether the row is hovered.</param>
+    /// <param name="selected">Whether the filter is currently applied to the map.</param>
     /// <param name="highlightColor">The active faction highlight color.</param>
+    /// <param name="checkMarkTexture">The shared selected-state check-mark texture.</param>
     /// <param name="context">The current strategy UI context.</param>
     /// <returns>The immutable filter-row presentation.</returns>
     private static GalacticInformationFilterRenderData ProjectFilter(
         GalacticInformationDisplayTheme theme,
         GalacticInformationFilterTheme filter,
         bool hovered,
+        bool selected,
         Color highlightColor,
+        Texture2D checkMarkTexture,
         UIContext context
     )
     {
@@ -268,6 +302,7 @@ public sealed class GalacticInformationDisplayProjector
                 false,
                 default,
                 default,
+                default,
                 default
             );
         }
@@ -276,6 +311,10 @@ public sealed class GalacticInformationDisplayProjector
             filter.Mode,
             true,
             ToRect(row),
+            new GalacticInformationImageRenderData(
+                selected ? checkMarkTexture : null,
+                new RectInt(row.X + icon.X - icon.Width, row.Y + icon.Y, icon.Width, icon.Height)
+            ),
             new GalacticInformationImageRenderData(
                 context.GetTexture(filter.IconImagePath),
                 new RectInt(row.X + icon.X, row.Y + icon.Y, icon.Width, icon.Height)
@@ -293,12 +332,16 @@ public sealed class GalacticInformationDisplayProjector
     /// </summary>
     /// <param name="theme">The active galactic-information theme.</param>
     /// <param name="hovered">Whether the display-off row is hovered.</param>
+    /// <param name="selected">Whether the display-off row is currently selected.</param>
     /// <param name="highlightColor">The active faction highlight color.</param>
+    /// <param name="checkMarkTexture">The shared selected-state check-mark texture.</param>
     /// <returns>The immutable display-off row presentation.</returns>
     private static GalacticInformationTextRowRenderData ProjectDisplayOffRow(
         GalacticInformationDisplayTheme theme,
         bool hovered,
-        Color highlightColor
+        bool selected,
+        Color highlightColor,
+        Texture2D checkMarkTexture
     )
     {
         SourceRectLayout row = theme?.DisplayOffRowSourceLayout;
@@ -309,6 +352,15 @@ public sealed class GalacticInformationDisplayProjector
         return new GalacticInformationTextRowRenderData(
             true,
             bounds,
+            new GalacticInformationImageRenderData(
+                selected ? checkMarkTexture : null,
+                new RectInt(
+                    row.X - theme.MenuIconSourceLayout.Width,
+                    row.Y,
+                    theme.MenuIconSourceLayout.Width,
+                    theme.MenuIconSourceLayout.Height
+                )
+            ),
             new GalacticInformationTextRenderData(
                 theme.DisplayOffLabel,
                 hovered ? highlightColor : Color.white,

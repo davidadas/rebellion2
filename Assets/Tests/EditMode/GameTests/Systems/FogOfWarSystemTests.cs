@@ -699,10 +699,9 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void BuildFactionView_CapturedFriendlyOfficer_VisibleOnLivePlanet()
+        public void BuildFactionView_CapturedFriendlyOfficerOnVisiblePlanet_ReturnsOfficer()
         {
-            // Leia is captured on Coruscant. Alliance sends a fleet (real-time visibility).
-            // Captured friendly officers are always live data — must appear regardless.
+            // The Alliance fleet supplies visibility independently of the captured officer.
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
             AddCapitalShip(allianceFleet, _alliance, "CS1");
@@ -725,10 +724,8 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void BuildFactionView_CapturedFriendlyOfficer_VisibleOnSnapshotPlanet()
+        public void BuildFactionView_CapturedFriendlyOfficerOnSnapshotPlanet_DoesNotRevealOfficer()
         {
-            // Leia is captured on Coruscant. Alliance has a snapshot but no current visibility.
-            // Captured friendly officers are always live data — must appear even via snapshot path.
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
@@ -744,17 +741,12 @@ namespace Rebellion.Tests.Sectors
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.IsTrue(
-                viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"),
-                "Captured friendly officer must appear as live data even when planet is only known via snapshot"
-            );
+            Assert.IsFalse(viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"));
         }
 
         [Test]
-        public void BuildFactionView_CapturedFriendlyOfficer_VisibleOnUnexploredPlanet()
+        public void BuildFactionView_CapturedFriendlyOfficerOnUnexploredPlanet_DoesNotRevealOfficer()
         {
-            // Leia is captured on Coruscant. Alliance has never observed the planet.
-            // Captured friendly officers are always live data — must appear even on unexplored planets.
             Officer leia = CreateOfficer("LEIA", _alliance);
             leia.IsCaptured = true;
             _game.AttachNode(leia, _coruscant);
@@ -766,10 +758,7 @@ namespace Rebellion.Tests.Sectors
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.IsTrue(
-                viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"),
-                "Captured friendly officer must appear as live data even on a completely unexplored planet"
-            );
+            Assert.IsFalse(viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"));
         }
 
         [Test]
@@ -2304,6 +2293,19 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void IsPlanetVisible_CapturedFriendlyOfficerPresent_ReturnsFalse()
+        {
+            Officer captive = CreateOfficer("CAPTIVE", _alliance);
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = _empire.InstanceID;
+            _game.AttachNode(captive, _coruscant);
+
+            bool visible = _fogSystem.IsPlanetVisible(_coruscant, _alliance);
+
+            Assert.IsFalse(visible);
+        }
+
+        [Test]
         public void IsPlanetVisible_MultipleFleetsDifferentFactions_OnlyOwnFactionCounts()
         {
             Fleet empireFleet = CreateFleet("FLEET1", _empire);
@@ -2533,6 +2535,29 @@ namespace Rebellion.Tests.Sectors
                     .Single()
                     .InstanceID
             );
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_EnemyFleet_DoesNotRetainWaypoints()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            fleet.Waypoints.Add(_tatooine.InstanceID);
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _empire, "STAR_DESTROYER");
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.CapitalShips
+            );
+
+            Fleet knownFleet = _alliance
+                .Fog.Snapshots["CORE_SECTOR"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single();
+            Assert.IsEmpty(knownFleet.Waypoints);
         }
 
         [Test]
