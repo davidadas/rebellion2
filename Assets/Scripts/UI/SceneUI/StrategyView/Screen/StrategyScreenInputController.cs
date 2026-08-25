@@ -217,6 +217,20 @@ public sealed class StrategyScreenInputController : ICancelable
     }
 
     /// <summary>
+    /// Submits the active multi-selection targeting session and suppresses its trailing click.
+    /// </summary>
+    /// <returns>True when targeting was submitted.</returns>
+    public bool SubmitTargeting()
+    {
+        if (!targetingController.TrySubmit())
+            return false;
+
+        suppressNextClick = true;
+        markDirty();
+        return true;
+    }
+
+    /// <summary>
     /// Tries to cancel active strategy-surface interaction.
     /// </summary>
     /// <returns>True when targeting was cancelled.</returns>

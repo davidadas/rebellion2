@@ -237,15 +237,21 @@ public sealed class GameManager
             processMessages: false
         );
 
-        List<GameResult> messageResults = CombineResults(movementResults, combatResults);
+        List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
+
+        List<GameResult> movementPhaseResults = CombineResults(
+            movementResults,
+            combatResults,
+            waypointResults
+        );
         if (_spaceCombatSystem.HasPendingDecision)
         {
-            StoreDeferredMessageResults(messageResults);
+            StoreDeferredMessageResults(movementPhaseResults);
             TickCompleted?.Invoke();
             return;
         }
 
-        ProcessMessageReactions(messageResults);
+        ProcessMessageReactions(movementPhaseResults);
 
         ProcessResults(_missionSystem.ProcessTick());
         ProcessResults(_eventSystem.ProcessEvents(_game.GetEventPool()));
@@ -443,12 +449,30 @@ public sealed class GameManager
     {
         combatResults = ProcessResults(combatResults, processMessages: false);
 
-        List<GameResult> messageResults = TakeDeferredMessageResults();
-        messageResults.AddRange(combatResults);
-        _messageSystem.ProcessResults(messageResults);
+        List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
+
+        List<GameResult> movementPhaseResults = TakeDeferredMessageResults();
+        movementPhaseResults.AddRange(combatResults);
+        movementPhaseResults.AddRange(waypointResults);
+        _messageSystem.ProcessResults(movementPhaseResults);
         _tickTimer = 0f;
 
         return combatResults.OfType<SpaceCombatResult>().FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Continues waypoint routes when no combat decision is blocking movement.
+    /// </summary>
+    /// <returns>The results produced while starting the next route legs.</returns>
+    private List<GameResult> ProcessAvailableWaypointContinuations()
+    {
+        if (_spaceCombatSystem.HasPendingDecision)
+            return new List<GameResult>();
+
+        return ProcessResults(
+            _movementSystem.ContinueFleetWaypointRoutes(),
+            processMessages: false
+        );
     }
 
     /// <summary>

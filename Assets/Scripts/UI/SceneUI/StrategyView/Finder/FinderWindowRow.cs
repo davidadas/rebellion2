@@ -10,6 +10,24 @@ using Rebellion.SceneGraph;
 /// </summary>
 public sealed class FinderWindowRow
 {
+    public string Identity => Node?.InstanceID ?? Planet?.Planet?.InstanceID ?? string.Empty;
+
+    public string Name { get; }
+
+    public GalaxyMapPlanet Planet { get; }
+
+    public PlanetIcon TargetIcon { get; }
+
+    public ISceneNode Node { get; }
+
+    public Fleet Fleet { get; }
+
+    public Mission Mission { get; }
+
+    public IReadOnlyList<int> Counts { get; }
+
+    public string OwnerFactionId => Node?.OwnerInstanceID ?? Planet?.Planet?.OwnerInstanceID;
+
     /// <summary>
     /// Creates an immutable Finder result.
     /// </summary>
@@ -38,24 +56,6 @@ public sealed class FinderWindowRow
         Mission = mission;
         Counts = CopyCounts(counts);
     }
-
-    public string Identity => Node?.InstanceID ?? Planet?.Planet?.InstanceID ?? string.Empty;
-
-    public string Name { get; }
-
-    public GalaxyMapPlanet Planet { get; }
-
-    public PlanetIcon TargetIcon { get; }
-
-    public ISceneNode Node { get; }
-
-    public Fleet Fleet { get; }
-
-    public Mission Mission { get; }
-
-    public IReadOnlyList<int> Counts { get; }
-
-    public string OwnerFactionId => Node?.OwnerInstanceID ?? Planet?.Planet?.OwnerInstanceID;
 
     /// <summary>
     /// Copies optional count values into an isolated read-only collection.

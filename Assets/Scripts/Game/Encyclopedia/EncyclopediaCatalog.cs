@@ -12,6 +12,8 @@ namespace Rebellion.Game.Encyclopedia
     {
         private readonly List<EncyclopediaEntry> _entries;
 
+        public int Count => _entries.Count;
+
         /// <summary>
         /// Creates a catalog from encyclopedia entries.
         /// </summary>
@@ -46,8 +48,6 @@ namespace Rebellion.Game.Encyclopedia
         {
             return FindEntry(_entries, typeId, factionInstanceId);
         }
-
-        public int Count => _entries.Count;
 
         public EncyclopediaEntry this[int index] => _entries[index];
 

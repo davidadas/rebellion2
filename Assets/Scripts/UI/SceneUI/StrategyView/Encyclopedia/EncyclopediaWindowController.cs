@@ -501,15 +501,6 @@ internal sealed class EncyclopediaWindowSession
     private string selectedTypeId;
     private string searchText = string.Empty;
 
-    /// <summary>
-    /// Creates one Encyclopedia window session.
-    /// </summary>
-    /// <param name="window">The owning Encyclopedia window.</param>
-    public EncyclopediaWindowSession(UIWindow window)
-    {
-        Window = window ?? throw new ArgumentNullException(nameof(window));
-    }
-
     public EncyclopediaWindowTab ActiveTab => activeTab;
 
     public bool Panel => panel;
@@ -526,6 +517,15 @@ internal sealed class EncyclopediaWindowSession
 
     public EncyclopediaWindowState State =>
         new EncyclopediaWindowState(panel, activeTab, selectedIndex, searchText);
+
+    /// <summary>
+    /// Creates one Encyclopedia window session.
+    /// </summary>
+    /// <param name="window">The owning Encyclopedia window.</param>
+    public EncyclopediaWindowSession(UIWindow window)
+    {
+        Window = window ?? throw new ArgumentNullException(nameof(window));
+    }
 
     /// <summary>
     /// Replaces the current entry projection and reconciles selection and panel state.

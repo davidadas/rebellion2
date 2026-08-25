@@ -1346,6 +1346,7 @@ namespace Rebellion.Game.FogOfWar
 
             Fleet copy = fleet.CreateCopy(recursive: true) as Fleet;
             copy.Order = null;
+            copy.Waypoints.Clear();
             return copy;
         }
 

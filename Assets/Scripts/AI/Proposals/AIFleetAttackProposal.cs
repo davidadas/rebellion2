@@ -12,6 +12,14 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIFleetAttackProposal : AIProposal
     {
+        public Fleet Fleet { get; }
+
+        public FleetOrderType OrderType { get; }
+
+        public FleetOrderStatus Status { get; }
+
+        public Planet TargetPlanet { get; }
+
         /// <summary>
         /// Creates an attack fleet proposal.
         /// </summary>
@@ -31,14 +39,6 @@ namespace Rebellion.AI.Proposals
             Status = status;
             TargetPlanet = targetPlanet;
         }
-
-        public Fleet Fleet { get; }
-
-        public FleetOrderType OrderType { get; }
-
-        public FleetOrderStatus Status { get; }
-
-        public Planet TargetPlanet { get; }
 
         /// <summary>
         /// Returns claims that prevent incompatible fleet actions.

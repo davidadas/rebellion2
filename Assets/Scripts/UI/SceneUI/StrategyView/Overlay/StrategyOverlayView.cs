@@ -476,38 +476,6 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
 /// </summary>
 public sealed class StrategyOverlayRenderData
 {
-    /// <summary>
-    /// Creates one complete drag-overlay presentation snapshot.
-    /// </summary>
-    /// <param name="dragFrameBounds">The optional window-move preview bounds.</param>
-    /// <param name="dragImageTexture">The optional item-drag texture.</param>
-    /// <param name="dragImageBounds">The optional item-drag bounds.</param>
-    public StrategyOverlayRenderData(
-        RectInt? dragFrameBounds,
-        Texture dragImageTexture,
-        RectInt? dragImageBounds
-    )
-    {
-        bool hasDragImageTexture = dragImageTexture != null;
-        bool hasDragImageBounds = dragImageBounds.HasValue;
-        if (hasDragImageTexture != hasDragImageBounds)
-            throw new System.ArgumentException(
-                "Drag image texture and bounds must either both be supplied or both be absent."
-            );
-
-        DragFrameBounds = dragFrameBounds;
-        DragPreview =
-            dragImageTexture == null
-                ? null
-                : new DragPreview(
-                    new[] { new DragPreviewImage(dragImageTexture, dragImageBounds.Value) },
-                    0,
-                    0
-                );
-        DragPointerX = 0;
-        DragPointerY = 0;
-    }
-
     public RectInt? DragFrameBounds { get; }
 
     /// <summary>
@@ -542,6 +510,38 @@ public sealed class StrategyOverlayRenderData
                 bounds.height
             );
         }
+    }
+
+    /// <summary>
+    /// Creates one complete drag-overlay presentation snapshot.
+    /// </summary>
+    /// <param name="dragFrameBounds">The optional window-move preview bounds.</param>
+    /// <param name="dragImageTexture">The optional item-drag texture.</param>
+    /// <param name="dragImageBounds">The optional item-drag bounds.</param>
+    public StrategyOverlayRenderData(
+        RectInt? dragFrameBounds,
+        Texture dragImageTexture,
+        RectInt? dragImageBounds
+    )
+    {
+        bool hasDragImageTexture = dragImageTexture != null;
+        bool hasDragImageBounds = dragImageBounds.HasValue;
+        if (hasDragImageTexture != hasDragImageBounds)
+            throw new System.ArgumentException(
+                "Drag image texture and bounds must either both be supplied or both be absent."
+            );
+
+        DragFrameBounds = dragFrameBounds;
+        DragPreview =
+            dragImageTexture == null
+                ? null
+                : new DragPreview(
+                    new[] { new DragPreviewImage(dragImageTexture, dragImageBounds.Value) },
+                    0,
+                    0
+                );
+        DragPointerX = 0;
+        DragPointerY = 0;
     }
 
     /// <summary>

@@ -37,6 +37,11 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool _disposed;
 
     /// <summary>
+    /// Returns whether the Options menu is open.
+    /// </summary>
+    public bool IsOpen => _window != null;
+
+    /// <summary>
     /// Creates an Options menu controller.
     /// </summary>
     /// <param name="prefab">The Options menu prefab.</param>
@@ -88,11 +93,6 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _bindingSession.ConflictRequested += HandleBindingConflictRequested;
         _bootstrap.GetCancelStack()?.Register(this);
     }
-
-    /// <summary>
-    /// Returns whether the Options menu is open.
-    /// </summary>
-    public bool IsOpen => _window != null;
 
     /// <summary>
     /// Opens or focuses the Options menu.

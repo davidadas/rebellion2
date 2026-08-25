@@ -12,6 +12,29 @@ internal sealed class ConstructionWindowSession
     private readonly List<IManufacturable> items = new List<IManufacturable>();
     private string selectedItemTypeId;
 
+    public int BuildCount { get; private set; } = _minimumBuildCount;
+
+    public string DestinationItemId { get; private set; }
+
+    public string DestinationPlanetId { get; private set; }
+
+    public bool DropdownOpen { get; private set; }
+
+    public IReadOnlyList<IManufacturable> Items => items;
+
+    public FacilityWindowTab ManufacturingTab { get; private set; }
+
+    public GalaxyMapPlanet Planet { get; private set; }
+
+    public IManufacturable SelectedItem =>
+        SelectedItemIndex >= 0 && SelectedItemIndex < items.Count ? items[SelectedItemIndex] : null;
+
+    public int SelectedItemIndex { get; private set; }
+
+    public UIWindow SourceWindow { get; private set; }
+
+    public UIWindow Window { get; }
+
     /// <summary>
     /// Creates state for one construction window.
     /// </summary>
@@ -37,29 +60,6 @@ internal sealed class ConstructionWindowSession
         DestinationPlanetId = destinationPlanetId;
         DestinationItemId = destinationItemId;
     }
-
-    public int BuildCount { get; private set; } = _minimumBuildCount;
-
-    public string DestinationItemId { get; private set; }
-
-    public string DestinationPlanetId { get; private set; }
-
-    public bool DropdownOpen { get; private set; }
-
-    public IReadOnlyList<IManufacturable> Items => items;
-
-    public FacilityWindowTab ManufacturingTab { get; private set; }
-
-    public GalaxyMapPlanet Planet { get; private set; }
-
-    public IManufacturable SelectedItem =>
-        SelectedItemIndex >= 0 && SelectedItemIndex < items.Count ? items[SelectedItemIndex] : null;
-
-    public int SelectedItemIndex { get; private set; }
-
-    public UIWindow SourceWindow { get; private set; }
-
-    public UIWindow Window { get; }
 
     /// <summary>
     /// Applies external session inputs and resets local state only when the panel changes.

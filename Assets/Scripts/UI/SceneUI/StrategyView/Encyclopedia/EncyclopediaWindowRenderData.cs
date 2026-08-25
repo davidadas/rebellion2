@@ -115,6 +115,14 @@ public static class EncyclopediaWindowTabCatalog
 /// </summary>
 public readonly struct EncyclopediaWindowState
 {
+    public bool Panel { get; }
+
+    public EncyclopediaWindowTab ActiveTab { get; }
+
+    public int SelectedIndex { get; }
+
+    public string SearchText { get; }
+
     /// <summary>
     /// Creates a snapshot of the Encyclopedia controller session state.
     /// </summary>
@@ -134,14 +142,6 @@ public readonly struct EncyclopediaWindowState
         SelectedIndex = selectedIndex;
         SearchText = searchText ?? string.Empty;
     }
-
-    public bool Panel { get; }
-
-    public EncyclopediaWindowTab ActiveTab { get; }
-
-    public int SelectedIndex { get; }
-
-    public string SearchText { get; }
 }
 
 /// <summary>
@@ -149,6 +149,14 @@ public readonly struct EncyclopediaWindowState
 /// </summary>
 public sealed class EncyclopediaDialogButtonRenderData
 {
+    public EncyclopediaWindowCommand Command { get; }
+
+    public Texture Texture { get; }
+
+    public Texture PressedTexture { get; }
+
+    public RectInt? SourceRect { get; }
+
     /// <summary>
     /// Creates immutable render data for an Encyclopedia command button.
     /// </summary>
@@ -168,14 +176,6 @@ public sealed class EncyclopediaDialogButtonRenderData
         PressedTexture = pressedTexture;
         SourceRect = sourceRect;
     }
-
-    public EncyclopediaWindowCommand Command { get; }
-
-    public Texture Texture { get; }
-
-    public Texture PressedTexture { get; }
-
-    public RectInt? SourceRect { get; }
 }
 
 /// <summary>
@@ -183,6 +183,10 @@ public sealed class EncyclopediaDialogButtonRenderData
 /// </summary>
 public sealed class EncyclopediaTabRenderData
 {
+    public EncyclopediaWindowTab Tab { get; }
+
+    public Texture Texture { get; }
+
     /// <summary>
     /// Creates immutable render data for an Encyclopedia database tab.
     /// </summary>
@@ -193,10 +197,6 @@ public sealed class EncyclopediaTabRenderData
         Tab = tab;
         Texture = texture;
     }
-
-    public EncyclopediaWindowTab Tab { get; }
-
-    public Texture Texture { get; }
 }
 
 /// <summary>
@@ -204,6 +204,12 @@ public sealed class EncyclopediaTabRenderData
 /// </summary>
 public sealed class EncyclopediaWindowRowRenderData
 {
+    public string EntryTypeId { get; }
+
+    public string Name { get; }
+
+    public bool Selected { get; }
+
     /// <summary>
     /// Creates immutable render data for one Encyclopedia index row.
     /// </summary>
@@ -216,12 +222,6 @@ public sealed class EncyclopediaWindowRowRenderData
         Name = name ?? string.Empty;
         Selected = selected;
     }
-
-    public string EntryTypeId { get; }
-
-    public string Name { get; }
-
-    public bool Selected { get; }
 }
 
 /// <summary>
@@ -229,6 +229,24 @@ public sealed class EncyclopediaWindowRowRenderData
 /// </summary>
 public sealed class EncyclopediaWindowFrameRenderData
 {
+    public int X { get; }
+
+    public int Y { get; }
+
+    public int Width { get; }
+
+    public int Height { get; }
+
+    public bool ActiveWindow { get; }
+
+    public bool UseUpperButtonLayout { get; }
+
+    public Texture OverlayFrameTexture { get; }
+
+    public Texture ButtonStripTexture { get; }
+
+    public IReadOnlyList<EncyclopediaDialogButtonRenderData> DialogButtons { get; }
+
     /// <summary>
     /// Creates an Encyclopedia frame presentation snapshot.
     /// </summary>
@@ -263,24 +281,6 @@ public sealed class EncyclopediaWindowFrameRenderData
         ButtonStripTexture = buttonStripTexture;
         DialogButtons = EncyclopediaWindowRenderData.Copy(dialogButtons);
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public int Width { get; }
-
-    public int Height { get; }
-
-    public bool ActiveWindow { get; }
-
-    public bool UseUpperButtonLayout { get; }
-
-    public Texture OverlayFrameTexture { get; }
-
-    public Texture ButtonStripTexture { get; }
-
-    public IReadOnlyList<EncyclopediaDialogButtonRenderData> DialogButtons { get; }
 }
 
 /// <summary>
@@ -288,6 +288,18 @@ public sealed class EncyclopediaWindowFrameRenderData
 /// </summary>
 public sealed class EncyclopediaWindowIndexRenderData
 {
+    public EncyclopediaWindowTab ActiveTab { get; }
+
+    public int SelectedIndex { get; }
+
+    public string SearchText { get; }
+
+    public string TabTitle { get; }
+
+    public IReadOnlyList<EncyclopediaTabRenderData> Tabs { get; }
+
+    public IReadOnlyList<EncyclopediaWindowRowRenderData> Rows { get; }
+
     /// <summary>
     /// Creates an Encyclopedia index-panel presentation snapshot.
     /// </summary>
@@ -313,18 +325,6 @@ public sealed class EncyclopediaWindowIndexRenderData
         Tabs = EncyclopediaWindowRenderData.Copy(tabs);
         Rows = EncyclopediaWindowRenderData.Copy(rows);
     }
-
-    public EncyclopediaWindowTab ActiveTab { get; }
-
-    public int SelectedIndex { get; }
-
-    public string SearchText { get; }
-
-    public string TabTitle { get; }
-
-    public IReadOnlyList<EncyclopediaTabRenderData> Tabs { get; }
-
-    public IReadOnlyList<EncyclopediaWindowRowRenderData> Rows { get; }
 }
 
 /// <summary>
@@ -332,6 +332,16 @@ public sealed class EncyclopediaWindowIndexRenderData
 /// </summary>
 public sealed class EncyclopediaWindowDetailRenderData
 {
+    public string Title { get; }
+
+    public string Text { get; }
+
+    public Texture Image { get; }
+
+    public bool PreviousDisabled { get; }
+
+    public bool NextDisabled { get; }
+
     /// <summary>
     /// Creates an Encyclopedia topic-detail presentation snapshot.
     /// </summary>
@@ -354,16 +364,6 @@ public sealed class EncyclopediaWindowDetailRenderData
         PreviousDisabled = previousDisabled;
         NextDisabled = nextDisabled;
     }
-
-    public string Title { get; }
-
-    public string Text { get; }
-
-    public Texture Image { get; }
-
-    public bool PreviousDisabled { get; }
-
-    public bool NextDisabled { get; }
 }
 
 /// <summary>
@@ -371,6 +371,14 @@ public sealed class EncyclopediaWindowDetailRenderData
 /// </summary>
 public sealed class EncyclopediaWindowRenderData
 {
+    public bool Panel { get; }
+
+    public EncyclopediaWindowFrameRenderData Frame { get; }
+
+    public EncyclopediaWindowIndexRenderData Index { get; }
+
+    public EncyclopediaWindowDetailRenderData Detail { get; }
+
     /// <summary>
     /// Creates a complete Encyclopedia window presentation snapshot.
     /// </summary>
@@ -390,14 +398,6 @@ public sealed class EncyclopediaWindowRenderData
         Index = index ?? throw new ArgumentNullException(nameof(index));
         Detail = detail ?? throw new ArgumentNullException(nameof(detail));
     }
-
-    public bool Panel { get; }
-
-    public EncyclopediaWindowFrameRenderData Frame { get; }
-
-    public EncyclopediaWindowIndexRenderData Index { get; }
-
-    public EncyclopediaWindowDetailRenderData Detail { get; }
 
     /// <summary>
     /// Copies an optional source list into a read-only collection.

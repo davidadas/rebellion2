@@ -7,6 +7,7 @@ public enum GalacticInformationFilterMode
     Uprisings = 0x12,
     IdleFleets = 0x21,
     FleetsEnroute = 0x22,
+    FleetWaypoints = 0x23,
     IdlePersonnel = 0x43,
     ActivePersonnel = 0x44,
     AvailableEnergy = 0x51,

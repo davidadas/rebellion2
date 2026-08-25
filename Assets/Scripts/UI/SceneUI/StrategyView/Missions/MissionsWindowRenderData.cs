@@ -7,6 +7,12 @@ using UnityEngine;
 /// </summary>
 public sealed class MissionsWindowTabRenderData
 {
+    public MissionParticipantRole Role { get; }
+
+    public Texture Texture { get; }
+
+    public Texture PressedTexture { get; }
+
     /// <summary>
     /// Creates one complete Missions-tab presentation snapshot.
     /// </summary>
@@ -23,12 +29,6 @@ public sealed class MissionsWindowTabRenderData
         Texture = texture;
         PressedTexture = pressedTexture;
     }
-
-    public MissionParticipantRole Role { get; }
-
-    public Texture Texture { get; }
-
-    public Texture PressedTexture { get; }
 }
 
 /// <summary>
@@ -47,6 +47,30 @@ public sealed class MissionsWindowRenderData
     public static int TabCount => _orderedRoles.Length;
 
     public static IReadOnlyList<MissionParticipantRole> OrderedRoles => _readOnlyOrderedRoles;
+
+    public int X { get; }
+
+    public int Y { get; }
+
+    public Texture TitleTexture { get; }
+
+    public string Caption { get; }
+
+    public MissionParticipantRole ActiveRole { get; }
+
+    public int SelectedMissionIndex { get; }
+
+    public bool HasSelectedMission { get; }
+
+    public string TargetName { get; }
+
+    public Texture TargetTexture { get; }
+
+    public IReadOnlyList<MissionListRowRenderData> Missions { get; }
+
+    public IReadOnlyList<MissionsWindowTabRenderData> Tabs { get; }
+
+    public IReadOnlyList<MissionParticipantRowRenderData> Participants { get; }
 
     /// <summary>
     /// Creates one complete Missions-window presentation snapshot.
@@ -91,30 +115,6 @@ public sealed class MissionsWindowRenderData
         Tabs = Copy(tabs, nameof(tabs));
         Participants = Copy(participants, nameof(participants));
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public Texture TitleTexture { get; }
-
-    public string Caption { get; }
-
-    public MissionParticipantRole ActiveRole { get; }
-
-    public int SelectedMissionIndex { get; }
-
-    public bool HasSelectedMission { get; }
-
-    public string TargetName { get; }
-
-    public Texture TargetTexture { get; }
-
-    public IReadOnlyList<MissionListRowRenderData> Missions { get; }
-
-    public IReadOnlyList<MissionsWindowTabRenderData> Tabs { get; }
-
-    public IReadOnlyList<MissionParticipantRowRenderData> Participants { get; }
 
     /// <summary>
     /// Copies a required presentation collection into an isolated read-only snapshot.

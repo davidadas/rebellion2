@@ -22,19 +22,41 @@ namespace Rebellion.Game.Events
 
         [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public RollInteger RollInteger { get; set; }
+        public RollDouble RollDouble { get; set; }
 
         /// <summary>
-        /// Resolves the selected scene node and adds it to the evaluation context.
+        /// Resolves the authored source and stores its value in the evaluation context.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <param name="provider">The random number provider used by selectors.</param>
-        /// <param name="context">The event evaluation context receiving the binding.</param>
+        /// <param name="provider">The random number provider used by selectors and rolls.</param>
+        /// <param name="context">The event evaluation context that receives the binding.</param>
         internal void Bind(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventEvaluationContext context
         )
         {
+            int modeCount =
+                (Selectors.Count > 0 ? 1 : 0)
+                + (RollInteger != null ? 1 : 0)
+                + (RollDouble != null ? 1 : 0);
+            if (modeCount != 1)
+                throw new InvalidOperationException(
+                    $"Binding '{As}' requires exactly one selector, RollInteger, or RollDouble."
+                );
+
+            if (RollInteger != null)
+            {
+                context.Bind(As, RollInteger.Roll(provider));
+                return;
+            }
+            if (RollDouble != null)
+            {
+                context.Bind(As, RollDouble.Roll(provider));
+                return;
+            }
+
             if (Selectors.Count != 1)
                 throw new InvalidOperationException(
                     $"Selection binding '{As}' requires exactly one selector."

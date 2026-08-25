@@ -317,7 +317,8 @@ public sealed class StrategyController
             strategyWindowManager,
             (x, y) => windowPlacementController.ClampPlanetWindowPosition(PlanetIcon.Fleet, x, y),
             MarkDirty,
-            getSelectionModifiers
+            getSelectionModifiers,
+            RenderFleetSelectionRoutes
         );
         constructionWindowController = new ConstructionWindowController(
             () => gameManager.GetGame(),
@@ -362,7 +363,11 @@ public sealed class StrategyController
             () => Sectors,
             windowPlacementController.GetSectorWindowPosition,
             CloseWindow,
-            MarkDirty
+            MarkDirty,
+            () =>
+                galacticInformationDisplayController?.FilterMode
+                ?? GalacticInformationFilterMode.DisplayOff,
+            GetSelectedFleetInstanceIds
         );
         missionsWindowController = new MissionsWindowController(
             () => uiContext,
@@ -774,6 +779,9 @@ public sealed class StrategyController
                 Render();
             return;
         }
+
+        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            inputController?.SubmitTargeting();
 
         if (battleAlertWindowController.SyncPendingCombatWindow())
         {
@@ -1250,8 +1258,64 @@ public sealed class StrategyController
             Sectors,
             PlayerFactionId,
             galacticInformationDisplayController?.FilterMode
-                ?? GalacticInformationFilterMode.DisplayOff
+                ?? GalacticInformationFilterMode.DisplayOff,
+            GetActiveWaypointPlan(),
+            GetSelectedFleetInstanceIds()
         );
+    }
+
+    /// <summary>
+    /// Gets the player fleets selected across fleet and planet-sector windows.
+    /// </summary>
+    /// <returns>The selected fleet instance identifiers.</returns>
+    private IReadOnlyCollection<string> GetSelectedFleetInstanceIds()
+    {
+        HashSet<string> fleetInstanceIds = new HashSet<string>(StringComparer.Ordinal);
+        if (fleetWindowController != null)
+            fleetInstanceIds.UnionWith(fleetWindowController.GetSelectedFleetInstanceIds());
+        if (planetSectorWindowController != null)
+            fleetInstanceIds.UnionWith(planetSectorWindowController.GetSelectedFleetInstanceIds());
+
+        StrategyWindowTargetingSource waypointPlan = GetActiveWaypointPlan();
+        if (waypointPlan != null)
+        {
+            fleetInstanceIds.UnionWith(
+                waypointPlan.Items.OfType<Fleet>().Select(fleet => fleet.InstanceID)
+            );
+        }
+
+        return fleetInstanceIds;
+    }
+
+    /// <summary>
+    /// Refreshes only map layers whose visibility depends on the current fleet selection.
+    /// </summary>
+    private void RenderFleetSelectionRoutes()
+    {
+        GalacticInformationFilterMode filterMode =
+            galacticInformationDisplayController?.FilterMode
+            ?? GalacticInformationFilterMode.DisplayOff;
+        StrategyWindowTargetingSource waypointPlan = GetActiveWaypointPlan();
+        IReadOnlyCollection<string> selectedFleetInstanceIds = GetSelectedFleetInstanceIds();
+        galaxyMapController?.RenderWaypointRoutes(
+            filterMode,
+            waypointPlan,
+            selectedFleetInstanceIds
+        );
+        planetSectorWindowController?.RenderWaypointRoutes();
+    }
+
+    /// <summary>
+    /// Gets the uncommitted waypoint plan currently owned by strategy targeting.
+    /// </summary>
+    /// <returns>The active waypoint plan, or null.</returns>
+    private StrategyWindowTargetingSource GetActiveWaypointPlan()
+    {
+        return
+            targetingController?.ActiveRequest?.Source is StrategyWindowTargetingSource source
+            && source.Action == StrategyMenuAction.WaypointMove
+            ? source
+            : null;
     }
 
     /// <summary>

@@ -9,6 +9,10 @@ namespace Rebellion.Tests.AI.Helpers
         private readonly List<string> _claimKeys;
         private readonly string _sortKey;
 
+        public bool CanSelectResult { get; set; }
+        public bool CanExecuteResult { get; set; }
+        public int ExecuteCount { get; private set; }
+
         public TestAIProposal(
             string sortKey = "test",
             IEnumerable<string> claimKeys = null,
@@ -21,10 +25,6 @@ namespace Rebellion.Tests.AI.Helpers
             CanSelectResult = canSelect;
             CanExecuteResult = canExecute;
         }
-
-        public bool CanSelectResult { get; set; }
-        public bool CanExecuteResult { get; set; }
-        public int ExecuteCount { get; private set; }
 
         public override IReadOnlyList<string> GetClaimKeys()
         {

@@ -123,6 +123,7 @@ do_format() {
 }
 
 do_lint() {
+    require_command rg
     dotnet tool restore
     dotnet build "$MEMBER_ORDER_ANALYZER_PROJECT" --configuration Release --verbosity quiet
     dotnet test "$MEMBER_ORDER_ANALYZER_TEST_PROJECT" --configuration Release --verbosity quiet

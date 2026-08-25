@@ -21,6 +21,15 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string TrainerInstanceID { get; set; }
 
+        /// <summary>
+        /// Gets the selected trainer from the mission's current participants.
+        /// </summary>
+        [PersistableIgnore]
+        public Officer Trainer =>
+            GetMainParticipants()
+                .OfType<Officer>()
+                .FirstOrDefault(officer => officer.InstanceID == TrainerInstanceID);
+
         /// <summary>Creates an empty Jedi-training mission copy.</summary>
         /// <returns>An empty Jedi-training mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new JediTrainingMission();
@@ -32,15 +41,6 @@ namespace Rebellion.Game.Missions
             base.CopyStateTo(destination);
             ((JediTrainingMission)destination).TrainerInstanceID = TrainerInstanceID;
         }
-
-        /// <summary>
-        /// Gets the selected trainer from the mission's current participants.
-        /// </summary>
-        [PersistableIgnore]
-        public Officer Trainer =>
-            GetMainParticipants()
-                .OfType<Officer>()
-                .FirstOrDefault(officer => officer.InstanceID == TrainerInstanceID);
 
         /// <summary>
         /// Parameterless constructor for deserialization.

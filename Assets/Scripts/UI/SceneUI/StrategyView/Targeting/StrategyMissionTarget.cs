@@ -7,6 +7,12 @@ using Rebellion.SceneGraph;
 /// </summary>
 public sealed class StrategyMissionTarget : ITargetable
 {
+    public GalaxyMapPlanet Planet { get; }
+
+    public ISceneNode Item { get; }
+
+    public object Target => this;
+
     /// <summary>
     /// Creates a strategy target for one planet and optional contained item.
     /// </summary>
@@ -17,12 +23,6 @@ public sealed class StrategyMissionTarget : ITargetable
         Planet = planet;
         Item = item;
     }
-
-    public GalaxyMapPlanet Planet { get; }
-
-    public ISceneNode Item { get; }
-
-    public object Target => this;
 
     /// <summary>
     /// Resolves the concrete fleet, ship, or planet that can receive movement.

@@ -77,26 +77,6 @@ namespace Rebellion.AI.Director
         private readonly Dictionary<ManufacturingType, double> _queuedProductionClearTicks =
             new Dictionary<ManufacturingType, double>();
 
-        /// <summary>
-        /// Creates an AI assessment for a turn context.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        public AIAssessment(AITurnContext context)
-        {
-            _context = context;
-            KnownColonizedPlanets = BuildKnownColonizedPlanets();
-            OwnedPlanets = BuildOwnedPlanets();
-            EnemyPlanets = BuildEnemyPlanets();
-            NeutralPlanets = BuildNeutralPlanets();
-            AvailableMissionParticipants = BuildAvailableMissionParticipants();
-            AvailableMainOfficers = BuildAvailableMainOfficers();
-            TargetableEnemyOfficerMissionTargets = BuildTargetableEnemyOfficerMissionTargets();
-            OwnedFleets = BuildOwnedFleets();
-            IdleBattleFleets = BuildIdleBattleFleets();
-            AttackOrderedFleets = BuildAttackOrderedFleets();
-            StagingAttackFleets = BuildStagingAttackFleets();
-        }
-
         public IReadOnlyList<Planet> KnownColonizedPlanets { get; }
 
         public IReadOnlyList<Planet> OwnedPlanets { get; }
@@ -121,6 +101,26 @@ namespace Rebellion.AI.Director
         public IReadOnlyList<Fleet> AttackOrderedFleets { get; }
 
         public IReadOnlyList<Fleet> StagingAttackFleets { get; }
+
+        /// <summary>
+        /// Creates an AI assessment for a turn context.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        public AIAssessment(AITurnContext context)
+        {
+            _context = context;
+            KnownColonizedPlanets = BuildKnownColonizedPlanets();
+            OwnedPlanets = BuildOwnedPlanets();
+            EnemyPlanets = BuildEnemyPlanets();
+            NeutralPlanets = BuildNeutralPlanets();
+            AvailableMissionParticipants = BuildAvailableMissionParticipants();
+            AvailableMainOfficers = BuildAvailableMainOfficers();
+            TargetableEnemyOfficerMissionTargets = BuildTargetableEnemyOfficerMissionTargets();
+            OwnedFleets = BuildOwnedFleets();
+            IdleBattleFleets = BuildIdleBattleFleets();
+            AttackOrderedFleets = BuildAttackOrderedFleets();
+            StagingAttackFleets = BuildStagingAttackFleets();
+        }
 
         /// <summary>
         /// Returns whether a planet is owned by the faction.

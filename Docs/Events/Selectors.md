@@ -295,8 +295,9 @@ Returns a unit's registered `LastParentInstanceID` when that node still resolves
 
 **Required options**
 
-- `UnitInstanceID` **[Required]:** The `InstanceID` of the unit whose previous location is selected; use either this or `UnitBinding`.
-- `UnitBinding` **[Required]:** Bound unit source; use either this or `UnitInstanceID`.
+- Unit source **[Required]:** Provide exactly one:
+  - `UnitInstanceID`: The `InstanceID` of the unit whose previous location is selected.
+  - `UnitBinding`: A binding that resolves the unit whose previous location is selected.
 
 ```xml
 <SelectPreviousLocation UnitInstanceID="LUKE_SKYWALKER"/>

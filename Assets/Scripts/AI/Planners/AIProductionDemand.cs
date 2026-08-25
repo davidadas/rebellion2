@@ -27,6 +27,16 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionDemand
     {
+        public string Id { get; }
+        public AIProductionDemandKind Kind { get; }
+        public ManufacturingType ManufacturingType { get; }
+        public BuildingType BuildingType { get; }
+        public ContainerNode Destination { get; }
+        public Planet DestinationPlanet => Destination as Planet;
+        public Fleet DestinationFleet => Destination as Fleet;
+        public int QuantityNeeded { get; }
+        public double Pressure { get; }
+
         /// <summary>
         /// Creates a production demand.
         /// </summary>
@@ -55,15 +65,5 @@ namespace Rebellion.AI.Planners
             QuantityNeeded = quantityNeeded;
             Pressure = pressure;
         }
-
-        public string Id { get; }
-        public AIProductionDemandKind Kind { get; }
-        public ManufacturingType ManufacturingType { get; }
-        public BuildingType BuildingType { get; }
-        public ContainerNode Destination { get; }
-        public Planet DestinationPlanet => Destination as Planet;
-        public Fleet DestinationFleet => Destination as Fleet;
-        public int QuantityNeeded { get; }
-        public double Pressure { get; }
     }
 }

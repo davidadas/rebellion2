@@ -22,6 +22,18 @@ internal sealed class FacilityWindowSession
     private readonly HashSet<int> selectedCards = new HashSet<int>();
     private string contextBuildingId;
 
+    public FacilityWindowTab ActiveTab { get; private set; } = FacilityWindowTab.Manufacturing;
+
+    public FacilityWindowTab? ContextManufacturingTab { get; private set; }
+
+    public GalaxyMapPlanet Planet { get; private set; }
+
+    public IReadOnlyCollection<string> SelectedBuildingIds => selectedBuildingIds;
+
+    public IReadOnlyCollection<int> SelectedCards => selectedCards;
+
+    public UIWindow Window { get; }
+
     /// <summary>
     /// Creates a facility-window session for one represented strategy planet.
     /// </summary>
@@ -38,18 +50,6 @@ internal sealed class FacilityWindowSession
         this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
         RebindPlanet(planet);
     }
-
-    public FacilityWindowTab ActiveTab { get; private set; } = FacilityWindowTab.Manufacturing;
-
-    public FacilityWindowTab? ContextManufacturingTab { get; private set; }
-
-    public GalaxyMapPlanet Planet { get; private set; }
-
-    public IReadOnlyCollection<string> SelectedBuildingIds => selectedBuildingIds;
-
-    public IReadOnlyCollection<int> SelectedCards => selectedCards;
-
-    public UIWindow Window { get; }
 
     /// <summary>
     /// Rebinds the session to the refreshed projection of its represented planet.

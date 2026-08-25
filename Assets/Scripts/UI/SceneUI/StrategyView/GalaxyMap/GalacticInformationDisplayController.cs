@@ -28,6 +28,10 @@ public sealed class GalacticInformationDisplayController : ICancelable
     private bool displayOffHovered;
     private bool open;
 
+    public bool Open => open;
+
+    public GalacticInformationFilterMode FilterMode => filterMode;
+
     /// <summary>
     /// Creates a galactic-information controller with current-context and audio dependencies.
     /// </summary>
@@ -41,10 +45,6 @@ public sealed class GalacticInformationDisplayController : ICancelable
         projector = new GalacticInformationDisplayProjector(getUIContext);
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
     }
-
-    public bool Open => open;
-
-    public GalacticInformationFilterMode FilterMode => filterMode;
 
     /// <summary>
     /// Connects the controller to strategy-screen actions.
@@ -125,7 +125,8 @@ public sealed class GalacticInformationDisplayController : ICancelable
                 true,
                 activeCategoryIndex,
                 hoveredFilterIndex,
-                displayOffHovered
+                displayOffHovered,
+                filterMode
             )
         );
     }
@@ -343,7 +344,8 @@ public sealed class GalacticInformationDisplayController : ICancelable
                 open,
                 activeCategoryIndex,
                 hoveredFilterIndex,
-                displayOffHovered
+                displayOffHovered,
+                filterMode
             )
         );
         displayView.Render(data);

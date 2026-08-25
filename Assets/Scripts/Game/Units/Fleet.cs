@@ -27,21 +27,14 @@ namespace Rebellion.Game.Units
         // Movement Info.
         public MovementState Movement { get; set; }
 
-        /// <summary>
-        /// Designates whether this fleet is a battle fleet or a patrol/presence fleet.
-        /// Battle fleets engage in combat and defend key systems.
-        /// Patrol fleets provide system presence but are not sent on attack missions.
-        /// </summary>
         public FleetRoleType RoleType { get; set; } = FleetRoleType.None;
 
         public FleetOrder Order { get; set; }
 
-        /// <summary>
-        /// True while this fleet is engaged in a pending combat encounter.
-        /// Cleared after combat is resolved. Not persisted to save files.
-        /// </summary>
+        public List<string> Waypoints { get; set; } = new List<string>();
+
         [PersistableIgnore]
-        public bool IsInCombat { get; set; }
+        public bool IsInCombat { get; private set; }
 
         // Child Nodes.
         [PersistableMember(Name = "CapitalShips")]
@@ -51,6 +44,23 @@ namespace Rebellion.Game.Units
         /// Default constructor used for deserialization.
         /// </summary>
         public Fleet() { }
+
+        /// <summary>
+        /// Creates a fleet with an optional initial collection of capital ships.
+        /// </summary>
+        /// <param name="ownerInstanceId">The owning faction identifier.</param>
+        /// <param name="displayName">The displayed fleet name.</param>
+        /// <param name="capitalShips">The initial capital ships, or null.</param>
+        public Fleet(
+            string ownerInstanceId,
+            string displayName,
+            List<CapitalShip> capitalShips = null
+        )
+        {
+            OwnerInstanceID = ownerInstanceId;
+            DisplayName = displayName;
+            _capitalShips = capitalShips ?? new List<CapitalShip>();
+        }
 
         /// <summary>Creates an empty fleet copy.</summary>
         protected override BaseSceneNode CreateNodeCopy() => new Fleet();
@@ -63,18 +73,29 @@ namespace Rebellion.Game.Units
             copy.Movement = Movement?.CreateCopy();
             copy.RoleType = RoleType;
             copy.Order = Order?.CreateCopy();
+            copy.Waypoints = new List<string>(Waypoints ?? new List<string>());
             copy.IsInCombat = IsInCombat;
         }
 
-        public Fleet(
-            string ownerInstanceId,
-            string displayName,
-            List<CapitalShip> capitalShips = null
-        )
+        /// <summary>
+        /// Returns whether the fleet has an active or queued waypoint.
+        /// </summary>
+        /// <returns>True when at least one waypoint remains.</returns>
+        public bool HasWaypoints()
         {
-            OwnerInstanceID = ownerInstanceId;
-            DisplayName = displayName;
-            _capitalShips = capitalShips ?? new List<CapitalShip>();
+            return Waypoints?.Count > 0;
+        }
+
+        /// <summary>
+        /// Sets whether the fleet is engaged in combat. Entering combat cancels its remaining
+        /// waypoint route.
+        /// </summary>
+        /// <param name="isInCombat">Whether the fleet is engaged in combat.</param>
+        public void SetCombatState(bool isInCombat)
+        {
+            IsInCombat = isInCombat;
+            if (isInCombat)
+                Waypoints.Clear();
         }
 
         /// <summary>

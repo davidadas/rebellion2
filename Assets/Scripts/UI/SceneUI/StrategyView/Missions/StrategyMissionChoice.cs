@@ -6,6 +6,14 @@ using Rebellion.Game.Research;
 /// </summary>
 public sealed class StrategyMissionChoice
 {
+    public string MissionTypeID { get; }
+
+    public ResearchDiscipline? Discipline { get; }
+
+    public string Name { get; }
+
+    public string IconKey { get; }
+
     /// <summary>
     /// Creates a strategy mission choice from one available game option.
     /// </summary>
@@ -20,12 +28,4 @@ public sealed class StrategyMissionChoice
         Name = option.DisplayName;
         IconKey = MissionIconKeys.GetMissionIconKey(option.MissionTypeID, option.Discipline);
     }
-
-    public string MissionTypeID { get; }
-
-    public ResearchDiscipline? Discipline { get; }
-
-    public string Name { get; }
-
-    public string IconKey { get; }
 }

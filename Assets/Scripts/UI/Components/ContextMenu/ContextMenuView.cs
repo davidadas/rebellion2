@@ -420,6 +420,16 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
     /// </summary>
     private sealed class ContextMenuPanel
     {
+        public int X { get; set; }
+
+        public int Y { get; set; }
+
+        public int Width { get; }
+
+        public List<ContextMenuCommandItem> Commands { get; }
+
+        public ContextMenuVisuals Visuals { get; }
+
         /// <summary>
         /// Creates one panel state.
         /// </summary>
@@ -445,16 +455,6 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
                     : new List<ContextMenuCommandItem>(commands);
             Visuals = visuals;
         }
-
-        public int X { get; set; }
-
-        public int Y { get; set; }
-
-        public int Width { get; }
-
-        public List<ContextMenuCommandItem> Commands { get; }
-
-        public ContextMenuVisuals Visuals { get; }
     }
 
     /// <summary>
@@ -468,6 +468,12 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
             _defaultDisabledColor
         );
 
+        public Color32 EnabledColor { get; }
+
+        public Color32 ActiveColor { get; }
+
+        public Color32 DisabledColor { get; }
+
         /// <summary>
         /// Creates one command-color set.
         /// </summary>
@@ -480,12 +486,6 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
             ActiveColor = activeColor;
             DisabledColor = disabledColor;
         }
-
-        public Color32 EnabledColor { get; }
-
-        public Color32 ActiveColor { get; }
-
-        public Color32 DisabledColor { get; }
     }
 }
 
@@ -494,6 +494,26 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
 /// </summary>
 public sealed class ContextMenuCommandItem
 {
+    public IContextMenuCommand Command { get; }
+
+    public string Text => Command.Text;
+
+    public bool Enabled => Command.Enabled;
+
+    public bool Active { get; set; }
+
+    public bool UsesIconColumn { get; }
+
+    public bool CenterNativeIcon { get; }
+
+    public IReadOnlyList<ContextMenuCommandItem> SubmenuCommands { get; }
+
+    public bool HasSubmenu => SubmenuCommands.Count > 0;
+
+    public Texture IconTexture { get; }
+
+    public Texture ActiveIconTexture { get; }
+
     /// <summary>
     /// Creates one context-menu command item.
     /// </summary>
@@ -523,26 +543,6 @@ public sealed class ContextMenuCommandItem
                 : new List<ContextMenuCommandItem>(submenuCommands);
     }
 
-    public IContextMenuCommand Command { get; }
-
-    public string Text => Command.Text;
-
-    public bool Enabled => Command.Enabled;
-
-    public bool Active { get; set; }
-
-    public bool UsesIconColumn { get; }
-
-    public bool CenterNativeIcon { get; }
-
-    public IReadOnlyList<ContextMenuCommandItem> SubmenuCommands { get; }
-
-    public bool HasSubmenu => SubmenuCommands.Count > 0;
-
-    public Texture IconTexture { get; }
-
-    public Texture ActiveIconTexture { get; }
-
     /// <summary>
     /// Gets the icon texture for the current active state.
     /// </summary>
@@ -561,6 +561,12 @@ public sealed class ContextMenuCommandItem
 /// </summary>
 internal readonly struct ContextMenuMetrics
 {
+    public int RowHeight { get; }
+
+    public int IconPanelWidth { get; }
+
+    public int BorderSize { get; }
+
     /// <summary>
     /// Creates one authored context-menu measurement set.
     /// </summary>
@@ -573,12 +579,6 @@ internal readonly struct ContextMenuMetrics
         IconPanelWidth = iconPanelWidth;
         BorderSize = borderSize;
     }
-
-    public int RowHeight { get; }
-
-    public int IconPanelWidth { get; }
-
-    public int BorderSize { get; }
 
     /// <summary>
     /// Calculates one panel width from its authored width and icon-column state.

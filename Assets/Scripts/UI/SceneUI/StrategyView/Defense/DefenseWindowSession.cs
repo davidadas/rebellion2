@@ -17,6 +17,16 @@ internal sealed class DefenseWindowSession
     private readonly HashSet<int> selectedIndexes = new HashSet<int>();
     private ISceneNode contextItem;
 
+    public DefenseWindowTab ActiveTab { get; private set; } = DefenseWindowTab.Personnel;
+
+    public int ContextItemIndex { get; private set; } = -1;
+
+    public GalaxyMapPlanet Planet { get; private set; }
+
+    public IReadOnlyCollection<int> SelectedItemIndexes => selectedIndexes;
+
+    public UIWindow Window { get; }
+
     /// <summary>
     /// Creates a Defense-window session for one planet and owning window.
     /// </summary>
@@ -34,16 +44,6 @@ internal sealed class DefenseWindowSession
         this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
         Reconcile();
     }
-
-    public DefenseWindowTab ActiveTab { get; private set; } = DefenseWindowTab.Personnel;
-
-    public int ContextItemIndex { get; private set; } = -1;
-
-    public GalaxyMapPlanet Planet { get; private set; }
-
-    public IReadOnlyCollection<int> SelectedItemIndexes => selectedIndexes;
-
-    public UIWindow Window { get; }
 
     /// <summary>
     /// Rebinds the session to the refreshed projection of its represented planet.

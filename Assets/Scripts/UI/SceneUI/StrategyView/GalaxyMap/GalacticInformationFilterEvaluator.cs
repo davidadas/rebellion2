@@ -13,6 +13,12 @@ using Rebellion.Util.Extensions;
 /// </summary>
 public readonly struct GalacticInformationMarker
 {
+    public int Index { get; }
+
+    public string FactionInstanceId { get; }
+
+    public bool Mixed { get; }
+
     /// <summary>
     /// Creates an immutable evaluated marker result.
     /// </summary>
@@ -25,12 +31,6 @@ public readonly struct GalacticInformationMarker
         FactionInstanceId = factionInstanceId;
         Mixed = mixed;
     }
-
-    public int Index { get; }
-
-    public string FactionInstanceId { get; }
-
-    public bool Mixed { get; }
 }
 
 /// <summary>
@@ -75,6 +75,13 @@ public static class GalacticInformationFilterEvaluator
                 planet,
                 viewerFactionId,
                 CountFleets(planet, true),
+                filter
+            ),
+            GalacticInformationFilterMode.FleetWaypoints => EvaluateFactionCounts(
+                game,
+                planet,
+                viewerFactionId,
+                CountWaypointFleets(planet),
                 filter
             ),
             GalacticInformationFilterMode.IdlePersonnel => EvaluateFactionCounts(
@@ -207,6 +214,23 @@ public static class GalacticInformationFilterEvaluator
                 continue;
 
             Increment(counts, fleet.OwnerInstanceID);
+        }
+
+        return counts;
+    }
+
+    /// <summary>
+    /// Counts fleets with assigned waypoint routes by owning faction.
+    /// </summary>
+    /// <param name="planet">The visible planet snapshot.</param>
+    /// <returns>Waypoint fleet counts keyed by faction identifier.</returns>
+    private static Dictionary<string, int> CountWaypointFleets(Planet planet)
+    {
+        Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (Fleet fleet in planet.GetChildren<Fleet>())
+        {
+            if (fleet.HasWaypoints())
+                Increment(counts, fleet.OwnerInstanceID);
         }
 
         return counts;

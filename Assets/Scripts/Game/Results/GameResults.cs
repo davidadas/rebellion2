@@ -467,6 +467,15 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A fleet completed its assigned waypoint route.
+    /// </summary>
+    public class FleetWaypointsCompletedResult : GameResult
+    {
+        public Fleet Fleet { get; set; }
+        public Planet Destination { get; set; }
+    }
+
+    /// <summary>
     /// A game object was damaged.
     /// </summary>
     public class GameObjectDamagedResult : GameResult
