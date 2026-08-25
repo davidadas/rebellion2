@@ -1831,6 +1831,12 @@ namespace Rebellion.Game.Messages
             return WithAdvisorNotification(message, AdvisorNotificationType.FleetArrived);
         }
 
+        /// <summary>
+        /// Creates a delivery for each fleet that completed its assigned waypoint route.
+        /// </summary>
+        /// <param name="results">The completed fleet waypoint results.</param>
+        /// <param name="game">The active game used to resolve receiving factions.</param>
+        /// <param name="deliveries">The collection receiving message delivery requests.</param>
         private void AddFleetWaypointCompletionMessages(
             IEnumerable<FleetWaypointsCompletedResult> results,
             GameRoot game,
