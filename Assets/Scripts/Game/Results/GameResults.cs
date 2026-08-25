@@ -467,7 +467,7 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A fleet completed the final leg of its assigned waypoint route.
+    /// A fleet completed its assigned waypoint route.
     /// </summary>
     public class FleetWaypointsCompletedResult : GameResult
     {
