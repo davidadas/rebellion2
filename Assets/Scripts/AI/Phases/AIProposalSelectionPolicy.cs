@@ -32,6 +32,30 @@ namespace Rebellion.AI.Phases
         /// <returns>True when the proposal is valid and its resources were reserved.</returns>
         internal bool TrySelect(AITurnContext context, AIProposal proposal)
         {
+            AIManufactureProposal manufactureProposal = proposal as AIManufactureProposal;
+            AIManufactureOption priorOption =
+                manufactureProposal != null
+                    ? new AIManufactureOption(
+                        manufactureProposal.Demand,
+                        manufactureProposal.ProducerPlanet
+                    )
+                    : default;
+
+            if (TrySelectCore(context, proposal))
+                return true;
+
+            manufactureProposal?.SelectOption(priorOption);
+            return false;
+        }
+
+        /// <summary>
+        /// Selects a proposal option and reserves resources without restoring on failure.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal being considered.</param>
+        /// <returns>True when the proposal is valid and its resources were reserved.</returns>
+        private bool TrySelectCore(AITurnContext context, AIProposal proposal)
+        {
             if (!TrySelectOption(context, proposal))
                 return false;
 

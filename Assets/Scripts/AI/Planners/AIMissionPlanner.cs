@@ -602,6 +602,7 @@ namespace Rebellion.AI.Planners
                 )
                 .Shuffle(context.Random)
                 .OrderByDescending(planet => GetDiplomacyCandidatePriority(context, planet))
+                .ThenBy(planet => planet.InstanceID)
                 .ToList();
         }
 
@@ -639,7 +640,8 @@ namespace Rebellion.AI.Planners
                 .OrderByDescending(planet =>
                     GetAvailableResearchDisciplineCount(context, officer, planet)
                 )
-                .ThenByDescending(planet => GetStrongestResearchRating(context, officer, planet));
+                .ThenByDescending(planet => GetStrongestResearchRating(context, officer, planet))
+                .ThenBy(planet => planet.InstanceID);
         }
 
         private IEnumerable<Planet> GetEspionageCandidatePlanets(AITurnContext context)

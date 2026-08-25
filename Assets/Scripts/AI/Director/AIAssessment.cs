@@ -976,9 +976,12 @@ namespace Rebellion.AI.Director
             if (planet == null || _context?.Game?.Config == null)
                 return 0;
 
-            return IntegerMath.ScaleByPercent(
-                GetDefendingRegimentDefenseStrength(planet),
-                _context.Game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense
+            return Math.Max(
+                1,
+                IntegerMath.ScaleByPercent(
+                    GetDefendingRegimentDefenseStrength(planet),
+                    _context.Game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense
+                )
             );
         }
 

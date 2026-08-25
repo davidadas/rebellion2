@@ -672,7 +672,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithSpecialForcesDeficits_SelectsEachRequestedUnlockedType()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 3;
+            game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 30;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -728,7 +728,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             Assert.AreEqual(2, commandoProposal.Demand.QuantityNeeded);
             Assert.AreSame(commandos, commandoProposal.Product.GetReference());
-            Assert.AreEqual(3, spyProposal.Demand.QuantityNeeded);
+            Assert.AreEqual(4, spyProposal.Demand.QuantityNeeded);
             Assert.AreSame(spies, spyProposal.Product.GetReference());
         }
 
@@ -1886,6 +1886,9 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 4;
+            game.Config.AI.NonCapitalSummary.StarfighterRequirementHeadquarters = 0;
+            game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure = 0;
+            game.Config.AI.NonCapitalSummary.StarfighterRequirementDefault = 0;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
             game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 10;

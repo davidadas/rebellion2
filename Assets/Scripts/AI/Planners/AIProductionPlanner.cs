@@ -592,7 +592,32 @@ namespace Rebellion.AI.Planners
         )
         {
             int queueCapacity = GetQueueBatchCapacity(context, producerPlanet, product);
-            return Math.Max(0, Math.Min(remainingQuantity, queueCapacity));
+            int batch = Math.Max(0, Math.Min(remainingQuantity, queueCapacity));
+            ConsumeQueueCapacity(producerPlanet, product, batch);
+            return batch;
+        }
+
+        /// <summary>
+        /// Records queued work granted this turn so later demands see reduced capacity.
+        /// </summary>
+        /// <param name="producerPlanet">The producer receiving the batch.</param>
+        /// <param name="product">The product being queued.</param>
+        /// <param name="batch">The granted batch size.</param>
+        private void ConsumeQueueCapacity(Planet producerPlanet, IManufacturable product, int batch)
+        {
+            int constructionCost = product.GetConstructionCost();
+            if (batch <= 0 || constructionCost <= 0)
+                return;
+
+            (string PlanetId, ManufacturingType ManufacturingType) key = (
+                producerPlanet.InstanceID,
+                product.GetManufacturingType()
+            );
+            if (!_queueWork.TryGetValue(key, out (double TargetWork, long QueuedWork) work))
+                return;
+
+            work.QueuedWork += (long)batch * constructionCost;
+            _queueWork[key] = work;
         }
 
         private int GetQueueBatchCapacity(
@@ -872,6 +897,7 @@ namespace Rebellion.AI.Planners
                 )
                 .OrderBy(technology => technology.GetResearchOrder())
                 .ThenBy(technology => technology.GetReference().GetConstructionCost())
+                .ThenBy(technology => technology.GetReference().GetTypeID())
                 .FirstOrDefault();
         }
 
