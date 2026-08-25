@@ -123,7 +123,7 @@ internal sealed class StrategyStatusInfoBuilder
                 ManufacturingType.Troop => "Training Facilities",
                 _ => "Construction Yards",
             },
-            CenterImage = false,
+            CenterImage = true,
         };
         info.Images.Add(
             type switch
@@ -709,11 +709,6 @@ internal sealed class StrategyStatusInfoBuilder
         };
 
         info.ImageItems.Add(item);
-        if (
-            item is Officer { IsCaptured: true }
-            && !string.IsNullOrEmpty(item.CapturedOverlayImagePath)
-        )
-            info.OverlayImageItems.Add(item);
         return info;
     }
 

@@ -12,8 +12,6 @@ public class FactionTheme
 
     public string FactionPrimaryColorHex { get; set; }
 
-    public MainMenuFactionTheme MainMenu { get; set; }
-
     public BattleParticipantTheme BattleParticipant { get; set; }
 
     public bool UseUpperButtonLayout { get; set; }
@@ -86,23 +84,3 @@ public class FactionTheme
 /// </summary>
 [PersistableObject]
 public sealed class FactionThemes : List<FactionTheme> { }
-
-[PersistableObject]
-public sealed class MainMenuFactionTheme
-{
-    public string LaunchAnimationRoot { get; set; }
-
-    public int LaunchAnimationFrameCount { get; set; }
-
-    public float LaunchAnimationFrameIntervalSeconds { get; set; }
-
-    /// <summary>
-    /// Builds the content address for one configured launch-animation frame.
-    /// </summary>
-    /// <param name="frameIndex">The one-based animation frame index.</param>
-    /// <returns>The animation frame content address.</returns>
-    public string GetLaunchAnimationFramePath(int frameIndex)
-    {
-        return $"{LaunchAnimationRoot}/frame-{frameIndex:D3}";
-    }
-}

@@ -326,8 +326,6 @@ public sealed class StatusWindowController
             textures.Add(uiContext.GetTexture(GetImageThemePath(theme, image)));
         foreach (ISceneNode item in info.ImageItems)
             textures.Add(GetPrimaryImageTexture(uiContext, item));
-        foreach (ISceneNode item in info.OverlayImageItems)
-            textures.Add(uiContext.GetEntityCapturedOverlayTexture(item));
         return textures.AsReadOnly();
     }
 
