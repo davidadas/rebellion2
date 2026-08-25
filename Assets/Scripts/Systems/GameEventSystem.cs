@@ -162,10 +162,10 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns whether two alternative triggers expose the same binding contract.
+        /// Checks whether two triggers expose the same binding contract.
         /// </summary>
-        /// <param name="first">The first trigger binding contract.</param>
-        /// <param name="second">The second trigger binding contract.</param>
+        /// <param name="first">The first binding contract.</param>
+        /// <param name="second">The second binding contract.</param>
         /// <returns>True when both contracts expose the same names and value types.</returns>
         private static bool HaveSameBindings(
             IReadOnlyDictionary<string, Type> first,
@@ -462,9 +462,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Marks an event complete after it reaches its authored activation limit.
         /// </summary>
-        /// <param name="gameEvent">The event definition being evaluated.</param>
-        /// <param name="state">The persisted runtime state for the event.</param>
-        /// <returns>True when the event is complete.</returns>
+        /// <param name="gameEvent">The event definition.</param>
+        /// <param name="state">The event's current runtime state.</param>
         private static bool HasReachedMaximumActivations(GameEvent gameEvent, GameEventState state)
         {
             int? maximum = gameEvent.MaximumActivations;
