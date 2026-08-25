@@ -102,6 +102,35 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
+        /// Deserializes an object from a complete defaults document layered with a sparse
+        /// overlay document. Matched leaf values are replaced, matched branches merge
+        /// recursively, unmatched overlay elements are appended, and collections replace
+        /// wholesale. Neither input document is modified.
+        /// </summary>
+        /// <param name="defaults">The complete defaults document.</param>
+        /// <param name="overlay">The sparse overlay document applied over the defaults.</param>
+        /// <returns>The deserialized object.</returns>
+        public object Deserialize(XmlDocument defaults, XmlDocument overlay)
+        {
+            XmlElement defaultsRoot =
+                defaults?.DocumentElement
+                ?? throw new InvalidDataException("A defaults document root element is required.");
+            XmlElement overlayRoot =
+                overlay?.DocumentElement
+                ?? throw new InvalidDataException("An overlay document root element is required.");
+            if (!string.Equals(defaultsRoot.Name, overlayRoot.Name, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException(
+                    $"Overlay root '{overlayRoot.Name}' does not match defaults root '{defaultsRoot.Name}'."
+                );
+            }
+
+            XmlDocument merged = (XmlDocument)defaults.CloneNode(true);
+            MergeElement(merged.DocumentElement, overlayRoot);
+            return Deserialize(merged);
+        }
+
+        /// <summary>
         /// Deserializes the first XML element matching <paramref name="elementName"/> from the given stream.
         /// When <paramref name="elementName"/> is null, falls back to the type name of <typeparamref name="T"/>.
         /// Use an explicit name when the element is stored under a member name that differs from the type
@@ -152,6 +181,127 @@ namespace Rebellion.Util.Serialization
         {
             reader.MoveToContent();
             return XmlDeserializer.ReadValue(_type, reader, _settings);
+        }
+
+        /// <summary>
+        /// Merges one overlay element into its matching target element.
+        /// </summary>
+        /// <param name="target">The target element to mutate.</param>
+        /// <param name="overlay">The overlay element to apply.</param>
+        private static void MergeElement(XmlElement target, XmlElement overlay)
+        {
+            MergeAttributes(target, overlay);
+            if (HasRepeatedChildNames(target) || HasRepeatedChildNames(overlay))
+            {
+                ReplaceChildren(target, overlay);
+                return;
+            }
+
+            foreach (XmlElement overlayChild in ChildElements(overlay))
+            {
+                XmlElement targetChild = FindChildElement(target, overlayChild.Name);
+                if (targetChild == null)
+                {
+                    target.AppendChild(target.OwnerDocument.ImportNode(overlayChild, true));
+                }
+                else if (HasChildElements(overlayChild) || HasChildElements(targetChild))
+                {
+                    MergeElement(targetChild, overlayChild);
+                }
+                else
+                {
+                    MergeAttributes(targetChild, overlayChild);
+                    ReplaceChildren(targetChild, overlayChild);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Applies an overlay element's attributes onto a target element by name.
+        /// </summary>
+        /// <param name="target">The target element to mutate.</param>
+        /// <param name="overlay">The overlay element supplying the attributes.</param>
+        private static void MergeAttributes(XmlElement target, XmlElement overlay)
+        {
+            foreach (XmlAttribute attribute in overlay.Attributes)
+                target.SetAttribute(attribute.Name, attribute.Value);
+        }
+
+        /// <summary>
+        /// Replaces a target element's child nodes with an overlay element's child nodes.
+        /// </summary>
+        /// <param name="target">The target element to mutate.</param>
+        /// <param name="overlay">The overlay element supplying the content.</param>
+        private static void ReplaceChildren(XmlElement target, XmlElement overlay)
+        {
+            while (target.HasChildNodes)
+                target.RemoveChild(target.FirstChild);
+            foreach (XmlNode overlayChild in overlay.ChildNodes)
+                target.AppendChild(target.OwnerDocument.ImportNode(overlayChild, true));
+        }
+
+        /// <summary>
+        /// Determines whether an element repeats any child element name.
+        /// </summary>
+        /// <param name="element">The element to inspect.</param>
+        /// <returns>True when any child element name occurs more than once.</returns>
+        private static bool HasRepeatedChildNames(XmlElement element)
+        {
+            HashSet<string> names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (XmlElement child in ChildElements(element))
+            {
+                if (!names.Add(child.Name))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Determines whether an element has any child elements.
+        /// </summary>
+        /// <param name="element">The element to inspect.</param>
+        /// <returns>True when at least one child node is an element.</returns>
+        private static bool HasChildElements(XmlElement element)
+        {
+            foreach (XmlNode child in element.ChildNodes)
+            {
+                if (child.NodeType == XmlNodeType.Element)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Finds the first child element with the requested name.
+        /// </summary>
+        /// <param name="element">The element to search.</param>
+        /// <param name="name">The child element name to match.</param>
+        /// <returns>The matching child element, or null when absent.</returns>
+        private static XmlElement FindChildElement(XmlElement element, string name)
+        {
+            foreach (XmlElement child in ChildElements(element))
+            {
+                if (string.Equals(child.Name, name, StringComparison.Ordinal))
+                    return child;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Enumerates the child elements of an element.
+        /// </summary>
+        /// <param name="element">The element to enumerate.</param>
+        /// <returns>The element's child elements in document order.</returns>
+        private static IEnumerable<XmlElement> ChildElements(XmlElement element)
+        {
+            foreach (XmlNode child in element.ChildNodes)
+            {
+                if (child is XmlElement childElement)
+                    yield return childElement;
+            }
         }
     }
 

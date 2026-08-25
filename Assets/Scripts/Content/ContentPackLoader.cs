@@ -348,16 +348,9 @@ public static class ContentPackLoader
         string packGameConfigPath
     )
     {
-        XmlDocument merged = LoadXmlDocument(
+        XmlDocument defaults = LoadXmlDocument(
             ResolveSafePath(contentRootPath, _applicationGameConfigRelativePath)
         );
-        if (!string.IsNullOrWhiteSpace(packGameConfigPath))
-        {
-            XmlOverlay.Apply(
-                merged,
-                LoadXmlDocument(ResolveSafePath(packRoot, packGameConfigPath))
-            );
-        }
 
         XmlSchemaSet schemas = new XmlSchemaSet();
         using (
@@ -371,7 +364,13 @@ public static class ContentPackLoader
             typeof(GameConfig),
             new GameSerializerSettings { RootName = nameof(GameConfig), Schemas = schemas }
         );
-        return serializer.Deserialize(merged) as GameConfig
+        object gameConfig = string.IsNullOrWhiteSpace(packGameConfigPath)
+            ? serializer.Deserialize(defaults)
+            : serializer.Deserialize(
+                defaults,
+                LoadXmlDocument(ResolveSafePath(packRoot, packGameConfigPath))
+            );
+        return gameConfig as GameConfig
             ?? throw new InvalidDataException("Failed to deserialize the merged game config.");
     }
 
