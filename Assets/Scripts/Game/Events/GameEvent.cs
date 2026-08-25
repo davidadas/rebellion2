@@ -1,8 +1,5 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
@@ -22,44 +19,6 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Assigns an explicitly selected value to an event-local binding name.
-    /// </summary>
-    [PersistableObject(Name = "Bind")]
-    public sealed class GameEventBinding
-    {
-        /// <summary>Gets or sets the stable trigger argument to expose.</summary>
-        [PersistableAttribute]
-        public string Argument { get; set; }
-
-        /// <summary>Gets or sets the event-local name assigned to the value.</summary>
-        [PersistableAttribute]
-        public string As { get; set; }
-
-        [PersistableMember(Name = "From")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
-
-        /// <summary>Selects exactly one scene node and stores it in the evaluation context.</summary>
-        internal void Bind(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            if (Selectors.Count != 1)
-                throw new InvalidOperationException(
-                    $"Selection binding '{As}' requires exactly one selector."
-                );
-
-            ISceneNode[] values = Selectors[0].Select(game, provider, context).Distinct().ToArray();
-            if (values.Length != 1)
-                throw new InvalidOperationException(
-                    $"Selection binding '{As}' must resolve exactly one object but resolved {values.Length}."
-                );
-            context.Bind(As, values[0]);
-        }
-    }
-
-    /// <summary>
     /// Defines one scheduled or triggered event and the actions performed when it activates.
     /// </summary>
     [PersistableObject]
@@ -76,7 +35,11 @@ namespace Rebellion.Game.Events
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
-        /// <summary>Returns whether the event remains below its authored activation limit.</summary>
+        /// <summary>
+        /// Checks whether the event remains below its authored activation limit.
+        /// </summary>
+        /// <param name="state">The event's current runtime state.</param>
+        /// <returns>True when the event can activate.</returns>
         internal bool CanActivate(GameEventState state) =>
             !state.IsComplete
             && (!MaximumActivations.HasValue || state.ActivationCount < MaximumActivations.Value);

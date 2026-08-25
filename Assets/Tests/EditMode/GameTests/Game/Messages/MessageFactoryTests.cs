@@ -455,6 +455,37 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_CapturedOfficerArrival_DoesNotCreateDelivery()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Officer captive = new Officer
+            {
+                InstanceID = "captured-officer",
+                DisplayName = "Captured Officer",
+                OwnerInstanceID = alliance.InstanceID,
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, destination);
+
+            List<MessageDeliveryRequest> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.PersonnelArrived,
+                        MessageType.Mission,
+                        "personnel:{system}",
+                        "body:{personnel}"
+                    ),
+                },
+                new UnitArrivedResult { Unit = captive, Destination = destination }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
+        [Test]
         public void CreateMessages_SpecialForcesArrival_GroupsWithReportingOfficer()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
