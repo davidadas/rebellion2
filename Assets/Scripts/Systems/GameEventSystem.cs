@@ -127,17 +127,22 @@ namespace Rebellion.Systems
                         (binding.Selectors.Count > 0 ? 1 : 0)
                         + (binding.RollInteger != null ? 1 : 0)
                         + (binding.RollDouble != null ? 1 : 0);
+                    if (bindingModeCount != 1)
+                        throw new InvalidOperationException(
+                            $"Event '{gameEvent.InstanceID}' binding '{binding.As}' requires exactly one source: From, RollInteger, or RollDouble."
+                        );
+                    if (string.IsNullOrWhiteSpace(binding.As))
+                        throw new InvalidOperationException(
+                            $"Event '{gameEvent.InstanceID}' has a binding with a missing alias."
+                        );
+
                     Type bindingType =
                         binding.RollInteger != null ? typeof(int)
                         : binding.RollDouble != null ? typeof(double)
                         : typeof(ISceneNode);
-                    if (
-                        bindingModeCount != 1
-                        || string.IsNullOrWhiteSpace(binding.As)
-                        || !aliases.TryAdd(binding.As, bindingType)
-                    )
+                    if (!aliases.TryAdd(binding.As, bindingType))
                         throw new InvalidOperationException(
-                            $"Event '{gameEvent.InstanceID}' has a missing or duplicate binding alias '{binding.As}'."
+                            $"Event '{gameEvent.InstanceID}' has duplicate binding alias '{binding.As}'."
                         );
                 }
             }

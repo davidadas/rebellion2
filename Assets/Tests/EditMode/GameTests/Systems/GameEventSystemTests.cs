@@ -69,12 +69,38 @@ namespace Rebellion.Tests.Sectors
                 {
                     new UnitArrivedTrigger { Bindings = TriggerBindings(("Unit", "target")) },
                 },
+                Bindings = new List<GameEventBinding>
+                {
+                    new GameEventBinding
+                    {
+                        As = "target",
+                        RollInteger = new RollInteger { Minimum = 1, Maximum = 1 },
+                    },
+                },
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _system.ValidateEvents(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("duplicate binding alias 'target'", exception.Message);
+        }
+
+        [Test]
+        public void ValidateEvents_BindingWithoutSource_ThrowsInvalidOperationException()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "INVALID_BINDING",
+                Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
                 Bindings = new List<GameEventBinding> { new GameEventBinding { As = "target" } },
             };
 
-            TestDelegate validate = () => _system.ValidateEvents(new[] { gameEvent });
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _system.ValidateEvents(new[] { gameEvent })
+            );
 
-            Assert.Throws<InvalidOperationException>(validate);
+            StringAssert.Contains("requires exactly one source", exception.Message);
         }
 
         [Test]

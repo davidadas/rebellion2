@@ -14,8 +14,8 @@ event evaluation. Bindings are resolved before schedules, so recurring `Until` c
 consume them. In a triggered event, top-level bindings are resolved after trigger bindings and may
 use those results.
 
-The selector must resolve exactly one scene node. Resolving no nodes or multiple nodes raises a
-runtime authoring error.
+When `From` is used, its selector must resolve exactly one scene node. Resolving no nodes or
+multiple nodes raises a runtime authoring error.
 
 **Required options**
 

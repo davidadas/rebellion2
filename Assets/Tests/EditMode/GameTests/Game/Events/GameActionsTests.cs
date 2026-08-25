@@ -1522,6 +1522,57 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void DamagePlanetResources_NaNProbabilityWithNoResources_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.NumRawResourceNodes = 0;
+            planet.EnergyCapacity = 0;
+            DamagePlanetResourcesAction action = new DamagePlanetResourcesAction
+            {
+                PlanetInstanceID = planet.InstanceID,
+                LossProbabilityPerResource = double.NaN,
+            };
+
+            TestDelegate execute = () => action.Execute(game);
+
+            Assert.Throws<InvalidOperationException>(execute);
+        }
+
+        [Test]
+        public void DamagePlanetResources_NegativeMinimumLossWithNoResources_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.NumRawResourceNodes = 0;
+            planet.EnergyCapacity = 0;
+            DamagePlanetResourcesAction action = new DamagePlanetResourcesAction
+            {
+                PlanetInstanceID = planet.InstanceID,
+                LossProbabilityPerResource = 0.5,
+                MinimumTotalLoss = -1,
+            };
+
+            TestDelegate execute = () => action.Execute(game);
+
+            Assert.Throws<InvalidOperationException>(execute);
+        }
+
+        [Test]
+        public void RollDouble_ExtremeFiniteRange_ReturnsFiniteValue()
+        {
+            RollDouble roll = new RollDouble
+            {
+                Minimum = -double.MaxValue,
+                Maximum = double.MaxValue,
+            };
+
+            double result = roll.Roll(new FixedRNG(0.5));
+
+            Assert.IsFalse(double.IsNaN(result));
+            Assert.IsFalse(double.IsInfinity(result));
+            Assert.AreEqual(0, result);
+        }
+
+        [Test]
         public void RollChance_RolledProbability_ExecutesActionsOnSuccess()
         {
             GameRoot game = BuildGame(out _, out _);
@@ -1537,6 +1588,17 @@ namespace Rebellion.Tests.Game.Events
             action.Execute(game, new SequenceRNG(doubleValues: new[] { 0.5, 0.6 }));
 
             Assert.AreEqual(1, game.EventRuntime.GetVariable("success"));
+        }
+
+        [Test]
+        public void RollChance_NaNProbability_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            RollChanceAction action = new RollChanceAction { Probability = double.NaN };
+
+            TestDelegate execute = () => action.Execute(game);
+
+            Assert.Throws<InvalidOperationException>(execute);
         }
 
         [Test]

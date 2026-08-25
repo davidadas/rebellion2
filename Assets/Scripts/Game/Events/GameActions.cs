@@ -76,7 +76,8 @@ namespace Rebellion.Game.Events
                     "RollDouble requires finite bounds with Minimum less than Maximum."
                 );
 
-            return Minimum + provider.NextDouble() * (Maximum - Minimum);
+            double sample = provider.NextDouble();
+            return Minimum * (1 - sample) + Maximum * sample;
         }
     }
 
@@ -245,7 +246,7 @@ namespace Rebellion.Game.Events
         internal override void Execute(GameActionContext context)
         {
             double probability = ResolveProbability(context);
-            if (probability < 0 || probability > 1)
+            if (double.IsNaN(probability) || probability < 0 || probability > 1)
                 throw new InvalidOperationException(
                     "RollChance Probability must be between zero and one."
                 );
@@ -1759,13 +1760,7 @@ namespace Rebellion.Game.Events
                 "DamagePlanetResources",
                 "LossProbabilityPerResource"
             );
-            int previousRawResourceNodes = planet.NumRawResourceNodes;
-            int previousEnergyCapacity = planet.EnergyCapacity;
-            int availableResources = previousRawResourceNodes + previousEnergyCapacity;
-            if (availableResources == 0)
-                return;
-
-            if (probability < 0 || probability > 1)
+            if (double.IsNaN(probability) || probability < 0 || probability > 1)
                 throw new InvalidOperationException(
                     "DamagePlanetResources.LossProbabilityPerResource must be between zero and one."
                 );
@@ -1773,6 +1768,12 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     "DamagePlanetResources.MinimumTotalLoss cannot be negative."
                 );
+
+            int previousRawResourceNodes = planet.NumRawResourceNodes;
+            int previousEnergyCapacity = planet.EnergyCapacity;
+            int availableResources = previousRawResourceNodes + previousEnergyCapacity;
+            if (availableResources == 0)
+                return;
 
             int rawResourceLoss = RollLoss(previousRawResourceNodes, probability, context.Random);
             int energyLoss = RollLoss(previousEnergyCapacity, probability, context.Random);
