@@ -86,7 +86,13 @@ namespace Rebellion.Game.Events
         public bool TryGetBinding(string name, out object value) =>
             _bindings.TryGetValue(name, out value);
 
-        /// <summary>Attempts to resolve one explicit binding reference as the requested type.</summary>
+        /// <summary>
+        /// Attempts to resolve a binding reference as the requested type.
+        /// </summary>
+        /// <typeparam name="T">The expected binding type.</typeparam>
+        /// <param name="reference">The dollar-prefixed binding reference.</param>
+        /// <param name="value">Receives the typed binding when found.</param>
+        /// <returns>True when a compatible binding exists.</returns>
         public bool TryGetBindingReference<T>(string reference, out T value)
         {
             if (TryResolveBindingReference(reference, out object resolved) && resolved is T typed)
@@ -98,17 +104,31 @@ namespace Rebellion.Game.Events
             return false;
         }
 
-        /// <summary>Attempts to resolve one explicit binding reference without a type constraint.</summary>
+        /// <summary>
+        /// Attempts to resolve a binding reference without a type constraint.
+        /// </summary>
+        /// <param name="reference">The dollar-prefixed binding reference.</param>
+        /// <param name="value">Receives the binding when found.</param>
+        /// <returns>True when the binding exists.</returns>
         public bool TryGetBindingReference(string reference, out object value) =>
             TryResolveBindingReference(reference, out value);
 
-        /// <summary>Gets one explicit binding reference as the requested type.</summary>
+        /// <summary>
+        /// Resolves a binding reference as the requested type.
+        /// </summary>
+        /// <typeparam name="T">The expected binding type.</typeparam>
+        /// <param name="reference">The dollar-prefixed binding reference.</param>
+        /// <returns>The typed binding, or the default value when it is absent or incompatible.</returns>
         public T GetBindingReference<T>(string reference)
         {
             return TryGetBindingReference(reference, out T value) ? value : default;
         }
 
-        /// <summary>Removes the required dollar-sign prefix from a binding reference.</summary>
+        /// <summary>
+        /// Removes the required dollar-sign prefix from a binding reference.
+        /// </summary>
+        /// <param name="reference">The dollar-prefixed binding reference.</param>
+        /// <returns>The binding name.</returns>
         private static string GetBindingName(string reference)
         {
             if (string.IsNullOrWhiteSpace(reference) || reference[0] != '$')
@@ -116,7 +136,12 @@ namespace Rebellion.Game.Events
             return reference.Substring(1);
         }
 
-        /// <summary>Attempts to resolve one explicitly authored binding from the evaluation context.</summary>
+        /// <summary>
+        /// Attempts to resolve an authored binding from the evaluation context.
+        /// </summary>
+        /// <param name="reference">The dollar-prefixed binding reference.</param>
+        /// <param name="value">Receives the binding when found.</param>
+        /// <returns>True when the binding exists.</returns>
         private bool TryResolveBindingReference(string reference, out object value)
         {
             string name = GetBindingName(reference);

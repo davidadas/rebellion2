@@ -142,7 +142,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int InitialDelayTicks { get; set; }
 
-        /// <summary>Gets the conditions that permanently end this recurring schedule.</summary>
+        // Completion Conditions.
         public List<GameConditional> Until { get; set; } = new List<GameConditional>();
     }
 
@@ -182,7 +182,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int MaximumTicks { get; set; }
 
-        /// <summary>Gets the conditions that permanently end this recurring schedule.</summary>
+        // Completion Conditions.
         public List<GameConditional> Until { get; set; } = new List<GameConditional>();
 
         /// <summary>
