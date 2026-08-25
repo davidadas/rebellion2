@@ -8,7 +8,7 @@ but with the updates we have always wanted.
 
 ## Current Status
 
-Rebellion 2 is approximately **55% complete toward a feature-complete single-player campaign**.
+Rebellion 2 is approximately **60% complete toward a feature-complete single-player campaign**.
 
 | Area | Estimate |
 | --- | ---: |
@@ -16,7 +16,8 @@ Rebellion 2 is approximately **55% complete toward a feature-complete single-pla
 | Strategy Simulation | 60% |
 | Strategic AI | 50% |
 | Missions | 80% |
-| Events | 0% |
+| Original Game Events | 85% |
+| Custom Events API | 30% |
 | Tactical Simulation | 0% |
 | Tactical AI | 0% |
 | Strategy Interface | 80% |
