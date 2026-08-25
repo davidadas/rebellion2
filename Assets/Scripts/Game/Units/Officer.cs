@@ -297,17 +297,6 @@ namespace Rebellion.Game.Units
         public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
         public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
 
-        /// <summary>
-        /// Applies authored image-set overrides to the officer's active image paths.
-        /// </summary>
-        public void ApplyImageSet()
-        {
-            DisplayImagePath = ImageSet.DisplayImagePath ?? DisplayImagePath;
-            SmallDisplayImagePath = ImageSet.SmallDisplayImagePath ?? SmallDisplayImagePath;
-            MessageImagePath = ImageSet.MessageImagePath ?? MessageImagePath;
-            EncyclopediaImagePath = ImageSet.EncyclopediaImagePath ?? EncyclopediaImagePath;
-        }
-
         // Mission rating info.
         public Dictionary<OfficerRating, int> Ratings { get; set; } =
             new Dictionary<OfficerRating, int>
@@ -318,6 +307,17 @@ namespace Rebellion.Game.Units
                 { OfficerRating.Leadership, 0 },
             };
         public bool CanImproveMissionRating => true;
+
+        /// <summary>
+        /// Applies authored image-set overrides to the officer's active image paths.
+        /// </summary>
+        public void ApplyImageSet()
+        {
+            DisplayImagePath = ImageSet.DisplayImagePath ?? DisplayImagePath;
+            SmallDisplayImagePath = ImageSet.SmallDisplayImagePath ?? SmallDisplayImagePath;
+            MessageImagePath = ImageSet.MessageImagePath ?? MessageImagePath;
+            EncyclopediaImagePath = ImageSet.EncyclopediaImagePath ?? EncyclopediaImagePath;
+        }
 
         /// <summary>
         /// Returns whether this officer can perform a mission type.

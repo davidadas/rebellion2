@@ -966,6 +966,10 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     private sealed class AdvisorContextMenuSource
     {
+        public int SourceX { get; }
+
+        public int SourceY { get; }
+
         /// <summary>
         /// Creates advisor request state at one source-space position.
         /// </summary>
@@ -976,9 +980,5 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             SourceX = sourceX;
             SourceY = sourceY;
         }
-
-        public int SourceX { get; }
-
-        public int SourceY { get; }
     }
 }

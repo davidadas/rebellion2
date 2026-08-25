@@ -36,6 +36,18 @@ internal sealed class OptionsSettingsSession
     private string _snapshotBindingOverrides = string.Empty;
     private bool _inputDiffersFromSnapshot;
 
+    internal bool IsDirty { get; private set; }
+
+    internal UserVideoSettings Video => _userSettings.Settings.Video;
+
+    internal UserGameplaySettings Gameplay => _userSettings.Settings.Gameplay;
+
+    internal UserAudioSettings Audio => _userSettings.Settings.Audio;
+
+    internal string ResolutionLabel => $"{Video.ResolutionWidth} x {Video.ResolutionHeight}";
+
+    internal string FullScreenLabel => GetFullScreenLabel(Video.FullScreenMode);
+
     /// <summary>
     /// Creates a pending settings session over the runtime service owners.
     /// </summary>
@@ -51,18 +63,6 @@ internal sealed class OptionsSettingsSession
         _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
         _inputManager = inputManager ?? throw new ArgumentNullException(nameof(inputManager));
     }
-
-    internal bool IsDirty { get; private set; }
-
-    internal UserVideoSettings Video => _userSettings.Settings.Video;
-
-    internal UserGameplaySettings Gameplay => _userSettings.Settings.Gameplay;
-
-    internal UserAudioSettings Audio => _userSettings.Settings.Audio;
-
-    internal string ResolutionLabel => $"{Video.ResolutionWidth} x {Video.ResolutionHeight}";
-
-    internal string FullScreenLabel => GetFullScreenLabel(Video.FullScreenMode);
 
     /// <summary>
     /// Captures the current runtime settings as the session's revert point.

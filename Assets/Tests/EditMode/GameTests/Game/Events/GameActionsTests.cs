@@ -18,14 +18,8 @@ using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Events
 {
-    /// <summary>
-    /// Creates complete action contexts for focused action tests without expanding the production API.
-    /// </summary>
     internal static class GameActionTestExtensions
     {
-        /// <summary>
-        /// Executes an action with the game's random-number provider.
-        /// </summary>
         internal static List<GameResult> Execute(this GameAction action, GameRoot game)
         {
             GameActionContext context = new GameActionContext(game, game.Random);
@@ -33,9 +27,6 @@ namespace Rebellion.Tests.Game.Events
             return context.Results;
         }
 
-        /// <summary>
-        /// Executes an action with a caller-supplied random-number provider.
-        /// </summary>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
@@ -47,9 +38,6 @@ namespace Rebellion.Tests.Game.Events
             return context.Results;
         }
 
-        /// <summary>
-        /// Executes an action with a caller-supplied event evaluation context.
-        /// </summary>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
@@ -62,9 +50,6 @@ namespace Rebellion.Tests.Game.Events
             return context.Results;
         }
 
-        /// <summary>
-        /// Executes an action with the unit definitions required to spawn runtime units.
-        /// </summary>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
@@ -76,9 +61,6 @@ namespace Rebellion.Tests.Game.Events
             return context.Results;
         }
 
-        /// <summary>
-        /// Executes an action and returns the authoritative work it requested.
-        /// </summary>
         internal static List<GameRequest> ExecuteRequests(this GameAction action, GameRoot game)
         {
             GameActionContext context = new GameActionContext(game, game.Random);
@@ -86,9 +68,6 @@ namespace Rebellion.Tests.Game.Events
             return context.Requests;
         }
 
-        /// <summary>
-        /// Executes an action with a caller-supplied event evaluation and returns its requests.
-        /// </summary>
         internal static List<GameRequest> ExecuteRequests(
             this GameAction action,
             GameRoot game,
@@ -101,9 +80,6 @@ namespace Rebellion.Tests.Game.Events
             return context.Requests;
         }
 
-        /// <summary>
-        /// Executes an action with a unit factory and returns its authoritative requests.
-        /// </summary>
         internal static List<GameRequest> ExecuteRequests(
             this GameAction action,
             GameRoot game,
@@ -116,9 +92,6 @@ namespace Rebellion.Tests.Game.Events
         }
     }
 
-    /// <summary>
-    /// Verifies data-defined action behavior and authored XML contracts.
-    /// </summary>
     [TestFixture]
     public class GameActionsTests
     {
@@ -1392,15 +1365,14 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ChangePlanetStat_RawResourceNodes_IncreasesExplicitAmount()
+        public void ChangeRawResourceNodes_IncreasesExplicitAmount()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 4;
             planet.EnergyCapacity = 8;
-            ChangePlanetStatAction action = new ChangePlanetStatAction
+            ChangeRawResourceNodesAction action = new ChangeRawResourceNodesAction
             {
                 PlanetBinding = "$target",
-                Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
             };
             GameEventEvaluationContext context = new GameEventEvaluationContext(
@@ -1419,16 +1391,15 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ChangePlanetStat_NeutralPlanet_ReportsNoFaction()
+        public void ChangeRawResourceNodes_NeutralPlanet_ReportsNoFaction()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.OwnerInstanceID = null;
             planet.NumRawResourceNodes = 4;
             planet.EnergyCapacity = 8;
-            ChangePlanetStatAction action = new ChangePlanetStatAction
+            ChangeRawResourceNodesAction action = new ChangeRawResourceNodesAction
             {
                 PlanetBinding = "$target",
-                Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
             };
             GameEventEvaluationContext context = new GameEventEvaluationContext(
@@ -1447,21 +1418,97 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void DamagePlanetStats_MinimumLoss_GuaranteesOnePointLoss()
+        public void ChangeRawResourceNodes_BoundAmount_AppliesReusedInteger()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.NumRawResourceNodes = 4;
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                null
+            );
+            context.Bind("change", -2);
+            ChangeRawResourceNodesAction action = new ChangeRawResourceNodesAction
+            {
+                PlanetInstanceID = planet.InstanceID,
+                AmountBinding = "$change",
+            };
+
+            action.Execute(game, new ThrowingRNG(), context);
+
+            Assert.AreEqual(2, planet.NumRawResourceNodes);
+        }
+
+        [Test]
+        public void ChangeEnergyCapacity_RolledAmount_AppliesInclusiveIntegerRoll()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.EnergyCapacity = 8;
+            ChangeEnergyCapacityAction action = new ChangeEnergyCapacityAction
+            {
+                PlanetInstanceID = planet.InstanceID,
+                RollInteger = new RollInteger { Minimum = -3, Maximum = -1 },
+            };
+
+            action.Execute(game, new FixedRandomProvider(new[] { 0.5 }));
+
+            Assert.AreEqual(6, planet.EnergyCapacity);
+        }
+
+        [Test]
+        public void ChangePopularSupport_IncreaseRebalancesOtherFaction()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.SetPopularSupport("empire", 60);
+            planet.SetPopularSupport("rebels", 40);
+            ChangePopularSupportAction action = new ChangePopularSupportAction
+            {
+                PlanetInstanceID = planet.InstanceID,
+                FactionInstanceID = "empire",
+                Amount = 10,
+            };
+
+            List<GameResult> results = action.Execute(game);
+
+            Assert.AreEqual(70, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(30, planet.GetPopularSupport("rebels"));
+            Assert.AreEqual(2, results.OfType<PlanetStatChangedResult>().Count());
+            Assert.IsTrue(
+                results
+                    .OfType<PlanetStatChangedResult>()
+                    .All(result => result.Category == PlanetChangeCategory.Loyalty)
+            );
+        }
+
+        [Test]
+        public void SetPopularSupport_AbsoluteValue_PreservesUnallocatedSupport()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.SetPopularSupport("empire", 60);
+            planet.SetPopularSupport("rebels", 40);
+            SetPopularSupportAction action = new SetPopularSupportAction
+            {
+                PlanetInstanceID = planet.InstanceID,
+                FactionInstanceID = "rebels",
+                Support = 20,
+            };
+
+            action.Execute(game);
+
+            Assert.AreEqual(60, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(20, planet.GetPopularSupport("rebels"));
+        }
+
+        [Test]
+        public void DamagePlanetResources_MinimumLoss_GuaranteesOnePointLoss()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 3;
             planet.EnergyCapacity = 3;
-            DamagePlanetStatsAction action = new DamagePlanetStatsAction
+            DamagePlanetResourcesAction action = new DamagePlanetResourcesAction
             {
                 PlanetBinding = "$target",
                 LossProbabilityPerResource = 0,
                 MinimumTotalLoss = 1,
-                Stats = new List<PlanetStatReference>
-                {
-                    new PlanetStatReference { Stat = PlanetStat.RawResourceNodes },
-                    new PlanetStatReference { Stat = PlanetStat.EnergyCapacity },
-                },
             };
             GameEvent gameEvent = new GameEvent { InstanceID = "disaster" };
             GameEventEvaluationContext context = new GameEventEvaluationContext(gameEvent, null);
@@ -1472,6 +1519,139 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(2, planet.NumRawResourceNodes);
             Assert.AreEqual(3, planet.EnergyCapacity);
             Assert.AreEqual(1, results.OfType<PlanetStatChangedResult>().Count());
+        }
+
+        [Test]
+        public void DamagePlanetResources_NaNProbabilityWithNoResources_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.NumRawResourceNodes = 0;
+            planet.EnergyCapacity = 0;
+            DamagePlanetResourcesAction action = new DamagePlanetResourcesAction
+            {
+                PlanetInstanceID = planet.InstanceID,
+                LossProbabilityPerResource = double.NaN,
+            };
+
+            TestDelegate execute = () => action.Execute(game);
+
+            Assert.Throws<InvalidOperationException>(execute);
+        }
+
+        [Test]
+        public void DamagePlanetResources_NegativeMinimumLossWithNoResources_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.NumRawResourceNodes = 0;
+            planet.EnergyCapacity = 0;
+            DamagePlanetResourcesAction action = new DamagePlanetResourcesAction
+            {
+                PlanetInstanceID = planet.InstanceID,
+                LossProbabilityPerResource = 0.5,
+                MinimumTotalLoss = -1,
+            };
+
+            TestDelegate execute = () => action.Execute(game);
+
+            Assert.Throws<InvalidOperationException>(execute);
+        }
+
+        [Test]
+        public void RollDouble_ExtremeFiniteRange_ReturnsFiniteValue()
+        {
+            RollDouble roll = new RollDouble
+            {
+                Minimum = -double.MaxValue,
+                Maximum = double.MaxValue,
+            };
+
+            double result = roll.Roll(new FixedRNG(0.5));
+
+            Assert.IsFalse(double.IsNaN(result));
+            Assert.IsFalse(double.IsInfinity(result));
+            Assert.AreEqual(0, result);
+        }
+
+        [Test]
+        public void RollChance_RolledProbability_ExecutesActionsOnSuccess()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            RollChanceAction action = new RollChanceAction
+            {
+                RollDouble = new RollDouble { Minimum = 0.7, Maximum = 0.8 },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "success", Operand = 1 },
+                },
+            };
+
+            action.Execute(game, new SequenceRNG(doubleValues: new[] { 0.5, 0.6 }));
+
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("success"));
+        }
+
+        [Test]
+        public void RollChance_NaNProbability_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            RollChanceAction action = new RollChanceAction { Probability = double.NaN };
+
+            TestDelegate execute = () => action.Execute(game);
+
+            Assert.Throws<InvalidOperationException>(execute);
+        }
+
+        [Test]
+        public void RollChance_FailedProbability_DoesNotExecuteActions()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            RollChanceAction action = new RollChanceAction
+            {
+                Probability = 0.25,
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "failure", Operand = 1 },
+                },
+            };
+
+            action.Execute(game, new SequenceRNG(doubleValues: new[] { 0.5 }));
+
+            Assert.Zero(game.EventRuntime.GetVariable("failure"));
+        }
+
+        [Test]
+        public void RollOutcome_WeightedSelection_ExecutesEveryActionInSelectedOutcome()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            RollOutcomeAction action = new RollOutcomeAction
+            {
+                Outcomes = new List<RandomOutcome>
+                {
+                    new RandomOutcome
+                    {
+                        Weight = 1,
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "wrong", Operand = 1 },
+                        },
+                    },
+                    new RandomOutcome
+                    {
+                        Weight = 3,
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "first", Operand = 1 },
+                            new SetEventVariableAction { Key = "second", Operand = 2 },
+                        },
+                    },
+                },
+            };
+
+            action.Execute(game, new SequenceRNG(new[] { 3 }));
+
+            Assert.Zero(game.EventRuntime.GetVariable("wrong"));
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("first"));
+            Assert.AreEqual(2, game.EventRuntime.GetVariable("second"));
         }
 
         [Test]
@@ -1526,44 +1706,6 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
-        [Test]
-        public void Random_WeightedSelection_ExecutesEveryActionInSelectedOutcome()
-        {
-            GameRoot game = BuildGame(out _, out _);
-            RollRandomAction action = new RollRandomAction
-            {
-                Outcomes = new List<RandomOutcome>
-                {
-                    new RandomOutcome
-                    {
-                        Weight = 1,
-                        Actions = new List<GameAction>
-                        {
-                            new SetEventVariableAction { Key = "wrong", Operand = 1 },
-                        },
-                    },
-                    new RandomOutcome
-                    {
-                        Weight = 3,
-                        Actions = new List<GameAction>
-                        {
-                            new SetEventVariableAction { Key = "first", Operand = 1 },
-                            new SetEventVariableAction { Key = "second", Operand = 2 },
-                        },
-                    },
-                },
-            };
-
-            action.Execute(game, new SequenceRNG(new[] { 3 }));
-
-            Assert.Zero(game.EventRuntime.GetVariable("wrong"));
-            Assert.AreEqual(1, game.EventRuntime.GetVariable("first"));
-            Assert.AreEqual(2, game.EventRuntime.GetVariable("second"));
-        }
-
-        /// <summary>
-        /// Creates a two-faction game with one colonized planet owned by each faction.
-        /// </summary>
         private GameRoot BuildGame(out Planet empirePlanet, out Planet rebelPlanet)
         {
             GameConfig config = TestConfig.Create();

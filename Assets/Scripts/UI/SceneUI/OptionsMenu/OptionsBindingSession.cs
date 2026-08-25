@@ -56,15 +56,6 @@ internal sealed class OptionsBindingSession : IDisposable
     internal event Action PresentationChanged;
 
     /// <summary>
-    /// Creates a binding editor for the supplied input manager.
-    /// </summary>
-    /// <param name="inputManager">The application input manager.</param>
-    internal OptionsBindingSession(InputManager inputManager)
-    {
-        _inputManager = inputManager ?? throw new ArgumentNullException(nameof(inputManager));
-    }
-
-    /// <summary>
     /// Gets the current controls rows.
     /// </summary>
     internal IReadOnlyList<OptionsBindingRow> Rows => _rows;
@@ -83,6 +74,15 @@ internal sealed class OptionsBindingSession : IDisposable
     /// Gets whether a binding conflict is awaiting a decision.
     /// </summary>
     internal bool HasPendingConflict => _conflictNewAction != null;
+
+    /// <summary>
+    /// Creates a binding editor for the supplied input manager.
+    /// </summary>
+    /// <param name="inputManager">The application input manager.</param>
+    internal OptionsBindingSession(InputManager inputManager)
+    {
+        _inputManager = inputManager ?? throw new ArgumentNullException(nameof(inputManager));
+    }
 
     /// <summary>
     /// Rebuilds the controls rows from the authored Global and Strategy binding slots.

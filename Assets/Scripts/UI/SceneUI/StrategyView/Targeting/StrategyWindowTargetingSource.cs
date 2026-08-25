@@ -3,10 +3,25 @@ using System.Linq;
 using Rebellion.SceneGraph;
 
 /// <summary>
-/// Captures the immutable source window, hotspot, command, and selection for targeting.
+/// Captures the source window, hotspot, command, selection, and transient waypoint plan for
+/// one targeting session.
 /// </summary>
 public sealed class StrategyWindowTargetingSource
 {
+    private readonly List<string> _waypointPlanetIds = new List<string>();
+
+    public UIWindow Window { get; }
+
+    public StrategyMenuAction Action { get; }
+
+    public int SourceX { get; }
+
+    public int SourceY { get; }
+
+    public IReadOnlyList<ISceneNode> Items { get; }
+
+    public IReadOnlyList<string> WaypointPlanetIds => _waypointPlanetIds;
+
     /// <summary>
     /// Creates one strategy-window targeting source snapshot.
     /// </summary>
@@ -30,15 +45,32 @@ public sealed class StrategyWindowTargetingSource
         Items = items?.ToList() ?? new List<ISceneNode>();
     }
 
-    public UIWindow Window { get; }
+    /// <summary>
+    /// Appends one planet identifier to this session's uncommitted waypoint plan.
+    /// </summary>
+    /// <param name="planetInstanceId">The planned destination planet identifier.</param>
+    /// <returns>True when the identifier was appended.</returns>
+    internal bool TryAppendWaypoint(string planetInstanceId)
+    {
+        if (string.IsNullOrEmpty(planetInstanceId))
+            return false;
 
-    public StrategyMenuAction Action { get; }
+        _waypointPlanetIds.Add(planetInstanceId);
+        return true;
+    }
 
-    public int SourceX { get; }
+    /// <summary>
+    /// Removes the most recently planned waypoint.
+    /// </summary>
+    /// <returns>True when a waypoint was removed.</returns>
+    internal bool TryRemoveLastWaypoint()
+    {
+        if (_waypointPlanetIds.Count == 0)
+            return false;
 
-    public int SourceY { get; }
-
-    public IReadOnlyList<ISceneNode> Items { get; }
+        _waypointPlanetIds.RemoveAt(_waypointPlanetIds.Count - 1);
+        return true;
+    }
 
     /// <summary>
     /// Gets the targeting prompt for one semantic strategy command.
@@ -52,6 +84,8 @@ public sealed class StrategyWindowTargetingSource
             StrategyMenuAction.CreateMission => "Select mission target",
             StrategyMenuAction.Destination => "Select destination",
             StrategyMenuAction.Move or StrategyMenuAction.MoveConfirm => "Select move destination",
+            StrategyMenuAction.WaypointMove =>
+                "Select waypoints; press Enter to move or Escape to undo",
             _ => "Select target",
         };
     }

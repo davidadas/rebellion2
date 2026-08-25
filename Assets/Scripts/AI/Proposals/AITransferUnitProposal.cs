@@ -11,6 +11,16 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AITransferUnitProposal : AIProposal
     {
+        public ContainerNode SourceContainer { get; }
+
+        public ContainerNode Destination { get; }
+
+        public IManufacturable Unit { get; }
+
+        public Fleet TargetFleet { get; }
+
+        public Planet TargetPlanet { get; }
+
         /// <summary>
         /// Creates a unit transfer proposal.
         /// </summary>
@@ -33,16 +43,6 @@ namespace Rebellion.AI.Proposals
             TargetFleet = targetFleet;
             TargetPlanet = targetPlanet;
         }
-
-        public ContainerNode SourceContainer { get; }
-
-        public ContainerNode Destination { get; }
-
-        public IManufacturable Unit { get; }
-
-        public Fleet TargetFleet { get; }
-
-        public Planet TargetPlanet { get; }
 
         /// <summary>
         /// Returns claims that prevent incompatible unit transfers.

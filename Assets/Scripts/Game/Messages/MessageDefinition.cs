@@ -79,6 +79,7 @@ namespace Rebellion.Game.Messages
     {
         None,
         FleetArrived,
+        FleetWaypointsCompleted,
         ShipsArrived,
         PersonnelArrived,
         PersonnelArrivedByOfficer,

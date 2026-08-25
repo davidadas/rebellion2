@@ -97,6 +97,58 @@ namespace Rebellion.AI.Director
             StringComparer.Ordinal
         );
 
+        public IReadOnlyList<Planet> KnownColonizedPlanets { get; }
+
+        public IReadOnlyList<Planet> KnownUncolonizedPlanets { get; }
+
+        public IReadOnlyList<Planet> FactionViewPlanets { get; }
+
+        public IReadOnlyList<Planet> UnexploredPlanets { get; }
+
+        public IReadOnlyList<Planet> OwnedPlanets { get; }
+
+        public IReadOnlyList<Planet> EnemyPlanets { get; }
+
+        public IReadOnlyList<Planet> NeutralPlanets { get; }
+
+        /// <summary>
+        /// Gets the faction's maintenance capacity at the start of the AI turn.
+        /// </summary>
+        public int MaintenanceCapacity { get; }
+
+        /// <summary>
+        /// Gets the faction's projected maintenance headroom at the start of the AI turn.
+        /// </summary>
+        public int ProjectedMaintenanceHeadroom { get; }
+
+        /// <summary>
+        /// Gets the faction's refined-material supply at the start of the AI turn.
+        /// </summary>
+        public int RefinedMaterialSupply { get; }
+
+        /// <summary>
+        /// Gets the faction's refined-material stockpile at the start of the AI turn.
+        /// </summary>
+        public int RefinedMaterialStockpile { get; }
+
+        public IReadOnlyList<IMissionParticipant> AvailableMissionParticipants { get; }
+
+        internal IReadOnlyList<Mission> ActiveMissions { get; }
+
+        public IReadOnlyList<(
+            Planet Planet,
+            Officer TargetOfficer
+        )> TargetableEnemyOfficerMissionTargets { get; }
+
+        public IReadOnlyList<Fleet> OwnedFleets { get; }
+
+        public IReadOnlyList<Fleet> AttackOrderedFleets { get; }
+
+        /// <summary>Gets the owned fleets assigned to orbital engagements.</summary>
+        public IReadOnlyList<Fleet> EngagementOrderedFleets { get; }
+
+        public IReadOnlyList<Fleet> ColonizationOrderedFleets { get; }
+
         /// <summary>
         /// Creates an AI assessment for a turn context.
         /// </summary>
@@ -151,58 +203,6 @@ namespace Rebellion.AI.Director
             EngagementOrderedFleets = BuildEngagementOrderedFleets();
             ColonizationOrderedFleets = BuildColonizationOrderedFleets();
         }
-
-        public IReadOnlyList<Planet> KnownColonizedPlanets { get; }
-
-        public IReadOnlyList<Planet> KnownUncolonizedPlanets { get; }
-
-        public IReadOnlyList<Planet> FactionViewPlanets { get; }
-
-        public IReadOnlyList<Planet> UnexploredPlanets { get; }
-
-        public IReadOnlyList<Planet> OwnedPlanets { get; }
-
-        public IReadOnlyList<Planet> EnemyPlanets { get; }
-
-        public IReadOnlyList<Planet> NeutralPlanets { get; }
-
-        /// <summary>
-        /// Gets the faction's maintenance capacity at the start of the AI turn.
-        /// </summary>
-        public int MaintenanceCapacity { get; }
-
-        /// <summary>
-        /// Gets the faction's projected maintenance headroom at the start of the AI turn.
-        /// </summary>
-        public int ProjectedMaintenanceHeadroom { get; }
-
-        /// <summary>
-        /// Gets the faction's refined-material supply at the start of the AI turn.
-        /// </summary>
-        public int RefinedMaterialSupply { get; }
-
-        /// <summary>
-        /// Gets the faction's refined-material stockpile at the start of the AI turn.
-        /// </summary>
-        public int RefinedMaterialStockpile { get; }
-
-        public IReadOnlyList<IMissionParticipant> AvailableMissionParticipants { get; }
-
-        internal IReadOnlyList<Mission> ActiveMissions { get; }
-
-        public IReadOnlyList<(
-            Planet Planet,
-            Officer TargetOfficer
-        )> TargetableEnemyOfficerMissionTargets { get; }
-
-        public IReadOnlyList<Fleet> OwnedFleets { get; }
-
-        public IReadOnlyList<Fleet> AttackOrderedFleets { get; }
-
-        /// <summary>Gets the owned fleets assigned to orbital engagements.</summary>
-        public IReadOnlyList<Fleet> EngagementOrderedFleets { get; }
-
-        public IReadOnlyList<Fleet> ColonizationOrderedFleets { get; }
 
         public bool IsFactionHeadquarters(Planet planet)
         {

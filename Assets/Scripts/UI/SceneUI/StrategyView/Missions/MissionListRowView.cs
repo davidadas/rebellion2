@@ -176,6 +176,12 @@ public sealed class MissionListRowView : MonoBehaviour, IStrategyStatusDoubleCli
 /// </summary>
 public sealed class MissionListRowRenderData
 {
+    public string Name { get; }
+
+    public Texture IconTexture { get; }
+
+    public Texture SelectionTexture { get; }
+
     /// <summary>
     /// Creates one complete mission-list row snapshot.
     /// </summary>
@@ -188,10 +194,4 @@ public sealed class MissionListRowRenderData
         IconTexture = iconTexture;
         SelectionTexture = selectionTexture;
     }
-
-    public string Name { get; }
-
-    public Texture IconTexture { get; }
-
-    public Texture SelectionTexture { get; }
 }

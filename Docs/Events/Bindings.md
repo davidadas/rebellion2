@@ -1,28 +1,31 @@
 # Bindings
 
 Bindings assign names to values that schedules, selectors, conditionals, and actions can reuse
-during one event evaluation. A binding contains either a scene node selected by the event or one
-explicitly documented argument exposed by a matched trigger.
+during one event evaluation. A top-level binding contains one selected scene node or numeric roll.
+A trigger binding contains one explicitly documented argument exposed by a matched trigger.
 
 Binding values are temporary. They are rebuilt whenever the event is evaluated and are not stored
 in the save game.
 
-## Selection bindings
+## Top-level bindings
 
-Each `Bind` selects exactly one scene node and exposes it under its `As` name for the complete event
-evaluation. Bindings are resolved before schedules, so recurring `Until` conditionals can consume
-them. In a triggered event, selection bindings are resolved after the trigger binding and may use
-that result. See [Selectors](Selectors.md) for the available selection operations.
+Each top-level `Bind` resolves exactly one value and exposes it under its `As` name for the complete
+event evaluation. Bindings are resolved before schedules, so recurring `Until` conditionals can
+consume them. In a triggered event, top-level bindings are resolved after trigger bindings and may
+use those results.
 
-The selector must resolve exactly one scene node. Resolving no nodes or multiple nodes raises a
-runtime authoring error.
+When `From` is used, its selector must resolve exactly one scene node. Resolving no nodes or
+multiple nodes raises a runtime authoring error.
 
 **Required options**
 
-- `As` **[Required]:** The unique name assigned to the selected scene node.
-- `From` **[Required]:** Contains exactly one supported selector. The schema currently accepts
-  direct planet, officer, special-forces, fleet, mission, ship, regiment, building, and
-  manufacturing-order selectors, plus `SelectRandom` and `SelectBinding`.
+- `As` **[Required]:** The unique name assigned to the resolved value.
+- Binding source **[Required]:** Provide exactly one:
+  - `From`: Contains exactly one supported selector. The schema currently accepts direct planet,
+    officer, special-forces, fleet, mission, ship, regiment, building, and manufacturing-order
+    selectors, plus `SelectRandom` and `SelectBinding`.
+  - `RollInteger`: Produces an integer from its inclusive `Minimum` and `Maximum`.
+  - `RollDouble`: Produces a double from its inclusive `Minimum` and exclusive `Maximum`.
 
 ```xml
 <Bindings>
@@ -36,6 +39,24 @@ runtime authoring error.
     </From>
   </Bind>
 </Bindings>
+```
+
+Numeric bindings let multiple actions reuse one roll:
+
+```xml
+<Bindings>
+  <Bind As="resourceChange">
+    <RollInteger Minimum="1" Maximum="5"/>
+  </Bind>
+</Bindings>
+<Actions>
+  <ChangeRawResourceNodes PlanetInstanceID="NABOO">
+    <AmountBinding>$resourceChange</AmountBinding>
+  </ChangeRawResourceNodes>
+  <ChangeEnergyCapacity PlanetInstanceID="NABOO">
+    <AmountBinding>$resourceChange</AmountBinding>
+  </ChangeEnergyCapacity>
+</Actions>
 ```
 
 ## Trigger bindings

@@ -148,6 +148,14 @@ public sealed class MissionParticipantRowView : MonoBehaviour
 /// </summary>
 public sealed class MissionParticipantRowRenderData
 {
+    public string Name { get; }
+
+    public Color32 NameColor { get; }
+
+    public Texture BackgroundTexture { get; }
+
+    public Texture EntityTexture { get; }
+
     /// <summary>
     /// Creates one complete participant-row presentation snapshot.
     /// </summary>
@@ -167,12 +175,4 @@ public sealed class MissionParticipantRowRenderData
         BackgroundTexture = backgroundTexture;
         EntityTexture = entityTexture;
     }
-
-    public string Name { get; }
-
-    public Color32 NameColor { get; }
-
-    public Texture BackgroundTexture { get; }
-
-    public Texture EntityTexture { get; }
 }

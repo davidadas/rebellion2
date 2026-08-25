@@ -26,6 +26,16 @@ public interface IStrategyContextMenuProvider
 /// </summary>
 public sealed class StrategyContextMenuProviderContext : IStrategyContextMenuSource
 {
+    public UIWindow Window { get; }
+
+    public StrategyContextMenuLayout Layout { get; }
+
+    public PointerEventData EventData { get; }
+
+    public int X { get; }
+
+    public int Y { get; }
+
     /// <summary>
     /// Creates a context-menu provider invocation.
     /// </summary>
@@ -48,16 +58,6 @@ public sealed class StrategyContextMenuProviderContext : IStrategyContextMenuSou
         X = x;
         Y = y;
     }
-
-    public UIWindow Window { get; }
-
-    public StrategyContextMenuLayout Layout { get; }
-
-    public PointerEventData EventData { get; }
-
-    public int X { get; }
-
-    public int Y { get; }
 }
 
 /// <summary>
@@ -65,6 +65,20 @@ public sealed class StrategyContextMenuProviderContext : IStrategyContextMenuSou
 /// </summary>
 public readonly struct StrategyContextMenuLayout
 {
+    public int FacilityMenuWidth { get; }
+
+    public int FleetMenuWidth { get; }
+
+    public int FleetBombardmentMenuWidth { get; }
+
+    public int PlanetSectorMenuWidth { get; }
+
+    public int DefenseMenuWidth { get; }
+
+    public int MissionsMenuWidth { get; }
+
+    public int FallbackMenuWidth { get; }
+
     /// <summary>
     /// Creates an authored context-menu layout.
     /// </summary>
@@ -93,20 +107,6 @@ public readonly struct StrategyContextMenuLayout
         MissionsMenuWidth = missionsMenuWidth;
         FallbackMenuWidth = fallbackMenuWidth;
     }
-
-    public int FacilityMenuWidth { get; }
-
-    public int FleetMenuWidth { get; }
-
-    public int FleetBombardmentMenuWidth { get; }
-
-    public int PlanetSectorMenuWidth { get; }
-
-    public int DefenseMenuWidth { get; }
-
-    public int MissionsMenuWidth { get; }
-
-    public int FallbackMenuWidth { get; }
 }
 
 /// <summary>
@@ -114,6 +114,16 @@ public readonly struct StrategyContextMenuLayout
 /// </summary>
 public sealed class StrategyContextMenuData
 {
+    public UIWindow Window { get; }
+
+    public int X { get; }
+
+    public int Y { get; }
+
+    public int Width { get; }
+
+    public IReadOnlyList<StrategyMenuCommand> Commands { get; }
+
     /// <summary>
     /// Creates a strategy context-menu presentation.
     /// </summary>
@@ -136,14 +146,4 @@ public sealed class StrategyContextMenuData
         Width = width;
         Commands = commands?.ToList() ?? new List<StrategyMenuCommand>();
     }
-
-    public UIWindow Window { get; }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public int Width { get; }
-
-    public IReadOnlyList<StrategyMenuCommand> Commands { get; }
 }

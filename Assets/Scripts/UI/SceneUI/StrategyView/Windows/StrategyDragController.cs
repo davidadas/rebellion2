@@ -24,29 +24,6 @@ public delegate bool StrategyPointerPositionResolver(
 /// </summary>
 public readonly struct StrategyDragEventResult
 {
-    /// <summary>
-    /// Creates one immutable drag transition result.
-    /// </summary>
-    /// <param name="handled">Whether the item-drag controller consumed the pointer event.</param>
-    /// <param name="renderOverlay">Whether the drag overlay must be rendered immediately.</param>
-    /// <param name="suppressClick">Whether the subsequent click must be suppressed.</param>
-    /// <param name="clearPressedWindow">Whether the pressed-window gesture state must be cleared.</param>
-    /// <param name="dirty">Whether the complete strategy presentation must be invalidated.</param>
-    private StrategyDragEventResult(
-        bool handled,
-        bool renderOverlay,
-        bool suppressClick,
-        bool clearPressedWindow,
-        bool dirty
-    )
-    {
-        Handled = handled;
-        RenderOverlay = renderOverlay;
-        SuppressClick = suppressClick;
-        ClearPressedWindow = clearPressedWindow;
-        Dirty = dirty;
-    }
-
     public bool Handled { get; }
 
     public bool RenderOverlay { get; }
@@ -76,6 +53,29 @@ public readonly struct StrategyDragEventResult
 
     public static StrategyDragEventResult ItemDragFinished =>
         new StrategyDragEventResult(true, false, true, true, true);
+
+    /// <summary>
+    /// Creates one immutable drag transition result.
+    /// </summary>
+    /// <param name="handled">Whether the item-drag controller consumed the pointer event.</param>
+    /// <param name="renderOverlay">Whether the drag overlay must be rendered immediately.</param>
+    /// <param name="suppressClick">Whether the subsequent click must be suppressed.</param>
+    /// <param name="clearPressedWindow">Whether the pressed-window gesture state must be cleared.</param>
+    /// <param name="dirty">Whether the complete strategy presentation must be invalidated.</param>
+    private StrategyDragEventResult(
+        bool handled,
+        bool renderOverlay,
+        bool suppressClick,
+        bool clearPressedWindow,
+        bool dirty
+    )
+    {
+        Handled = handled;
+        RenderOverlay = renderOverlay;
+        SuppressClick = suppressClick;
+        ClearPressedWindow = clearPressedWindow;
+        Dirty = dirty;
+    }
 }
 
 /// <summary>
@@ -90,6 +90,11 @@ public sealed class StrategyDragController
     private Vector2 itemPointerPressPosition;
     private GameObject itemPointerPressTarget;
     private bool itemPointerTracked;
+
+    private bool HasItemCandidate => itemDragController.HasCandidate;
+
+    private bool HasItemState =>
+        itemDragController.HasCandidate || itemDragController.SourceDragActive;
 
     /// <summary>
     /// Creates the strategy item-drag coordinator.
@@ -126,11 +131,6 @@ public sealed class StrategyDragController
             commands
         );
     }
-
-    private bool HasItemCandidate => itemDragController.HasCandidate;
-
-    private bool HasItemState =>
-        itemDragController.HasCandidate || itemDragController.SourceDragActive;
 
     /// <summary>
     /// Begins tracking an item-drag candidate for a registered source window.

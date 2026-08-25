@@ -14,6 +14,12 @@ internal sealed class StatusWindowSession
     private readonly bool rebindVisibleItem;
     private readonly ISceneNode staticItem;
 
+    public bool InfoDisabled { get; }
+
+    public StrategyStatusTarget Target { get; private set; }
+
+    public UIWindow Window { get; }
+
     /// <summary>
     /// Creates one status-window session.
     /// </summary>
@@ -39,12 +45,6 @@ internal sealed class StatusWindowSession
             !string.IsNullOrEmpty(itemInstanceId) && findVisibleNode(itemInstanceId) != null;
         staticItem = rebindVisibleItem ? null : target.Item;
     }
-
-    public bool InfoDisabled { get; }
-
-    public StrategyStatusTarget Target { get; private set; }
-
-    public UIWindow Window { get; }
 
     /// <summary>
     /// Rebinds snapshot-backed target references while preserving static template targets.

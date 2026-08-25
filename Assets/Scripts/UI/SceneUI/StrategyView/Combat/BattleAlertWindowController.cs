@@ -668,15 +668,6 @@ public sealed class BattleAlertWindowController
     /// </summary>
     private sealed class BattleAlertWindowSession
     {
-        /// <summary>
-        /// Creates one battle-alert window session.
-        /// </summary>
-        /// <param name="window">The owning battle-alert window.</param>
-        public BattleAlertWindowSession(UIWindow window)
-        {
-            Window = window ?? throw new ArgumentNullException(nameof(window));
-        }
-
         internal BattleAlertWindowMode Mode { get; private set; } = BattleAlertWindowMode.Hidden;
 
         internal BattleAlertPanel PendingPanel { get; private set; } = BattleAlertPanel.Summary;
@@ -689,6 +680,15 @@ public sealed class BattleAlertWindowController
         internal BattleResultPresentation Result { get; private set; }
 
         internal UIWindow Window { get; }
+
+        /// <summary>
+        /// Creates one battle-alert window session.
+        /// </summary>
+        /// <param name="window">The owning battle-alert window.</param>
+        public BattleAlertWindowSession(UIWindow window)
+        {
+            Window = window ?? throw new ArgumentNullException(nameof(window));
+        }
 
         /// <summary>
         /// Stores a completed combat result and restores default result selections.

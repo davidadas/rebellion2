@@ -19,6 +19,12 @@ public enum DefenseWindowTab
 /// </summary>
 public sealed class DefenseWindowTabRenderData
 {
+    public DefenseWindowTab Tab { get; }
+
+    public Texture Texture { get; }
+
+    public Texture PressedTexture { get; }
+
     /// <summary>
     /// Creates one complete Defense tab presentation snapshot.
     /// </summary>
@@ -31,12 +37,6 @@ public sealed class DefenseWindowTabRenderData
         Texture = texture;
         PressedTexture = pressedTexture;
     }
-
-    public DefenseWindowTab Tab { get; }
-
-    public Texture Texture { get; }
-
-    public Texture PressedTexture { get; }
 }
 
 /// <summary>
@@ -59,6 +59,24 @@ public sealed class DefenseWindowRenderData
     public static int TabCount => _orderedTabs.Length;
 
     public static IReadOnlyList<DefenseWindowTab> OrderedTabs => _readOnlyOrderedTabs;
+
+    public int X { get; }
+
+    public int Y { get; }
+
+    public Texture TitleTexture { get; }
+
+    public string Caption { get; }
+
+    public DefenseWindowTab ActiveTab { get; }
+
+    public string TabTitle { get; }
+
+    public string GarrisonRequirementText { get; }
+
+    public IReadOnlyList<DefenseWindowTabRenderData> Tabs { get; }
+
+    public IReadOnlyList<StrategyUnitCardRenderData> Items { get; }
 
     /// <summary>
     /// Creates one complete Defense window presentation snapshot.
@@ -94,24 +112,6 @@ public sealed class DefenseWindowRenderData
         Tabs = Copy(tabs, nameof(tabs));
         Items = Copy(items, nameof(items));
     }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public Texture TitleTexture { get; }
-
-    public string Caption { get; }
-
-    public DefenseWindowTab ActiveTab { get; }
-
-    public string TabTitle { get; }
-
-    public string GarrisonRequirementText { get; }
-
-    public IReadOnlyList<DefenseWindowTabRenderData> Tabs { get; }
-
-    public IReadOnlyList<StrategyUnitCardRenderData> Items { get; }
 
     /// <summary>
     /// Copies a required presentation collection into an isolated read-only snapshot.

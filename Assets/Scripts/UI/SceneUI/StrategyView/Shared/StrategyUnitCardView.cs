@@ -152,6 +152,16 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     }
 
     /// <summary>
+    /// Updates only the card's selection presentation.
+    /// </summary>
+    /// <param name="texture">The selected frame, or null when the card is not selected.</param>
+    internal void RenderSelection(Texture texture)
+    {
+        VerifyReferences();
+        SetOptionalImageTexture(selectionImage, texture);
+    }
+
+    /// <summary>
     /// Returns the currently rendered entity image and its source bounds for drag presentation.
     /// </summary>
     /// <param name="texture">Receives the rendered entity texture.</param>
@@ -380,6 +390,36 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
 /// </summary>
 public sealed class StrategyUnitCardRenderData
 {
+    public string Name { get; }
+
+    public Color32 NameColor { get; }
+
+    public bool ShowName { get; }
+
+    public bool UseAlternateNameLayout { get; }
+
+    public Texture BackgroundTexture { get; }
+
+    public Texture EnrouteOverlayTexture { get; }
+
+    public Texture DamagedOverlayTexture { get; }
+
+    public Texture EntityTexture { get; }
+
+    public Texture CapturedOverlayTexture { get; }
+
+    public Texture SelectionTexture { get; }
+
+    public int EntityFrameYOffset { get; }
+
+    public Texture StarfighterBadgeTexture { get; }
+
+    public Texture TroopBadgeTexture { get; }
+
+    public Texture PersonnelBadgeTexture { get; }
+
+    public bool CanDrag { get; }
+
     /// <summary>
     /// Creates one complete strategy unit-card presentation snapshot.
     /// </summary>
@@ -432,34 +472,4 @@ public sealed class StrategyUnitCardRenderData
         PersonnelBadgeTexture = personnelBadgeTexture;
         CanDrag = canDrag;
     }
-
-    public string Name { get; }
-
-    public Color32 NameColor { get; }
-
-    public bool ShowName { get; }
-
-    public bool UseAlternateNameLayout { get; }
-
-    public Texture BackgroundTexture { get; }
-
-    public Texture EnrouteOverlayTexture { get; }
-
-    public Texture DamagedOverlayTexture { get; }
-
-    public Texture EntityTexture { get; }
-
-    public Texture CapturedOverlayTexture { get; }
-
-    public Texture SelectionTexture { get; }
-
-    public int EntityFrameYOffset { get; }
-
-    public Texture StarfighterBadgeTexture { get; }
-
-    public Texture TroopBadgeTexture { get; }
-
-    public Texture PersonnelBadgeTexture { get; }
-
-    public bool CanDrag { get; }
 }

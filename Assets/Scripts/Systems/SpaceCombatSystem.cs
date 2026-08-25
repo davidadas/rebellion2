@@ -350,10 +350,8 @@ namespace Rebellion.Systems
             )
                 return false;
 
-            if (attacker != null)
-                attacker.IsInCombat = true;
-            if (defender != null)
-                defender.IsInCombat = true;
+            attacker?.SetCombatState(true);
+            defender?.SetCombatState(true);
 
             decision = new SpaceCombatDecision
             {
@@ -821,10 +819,8 @@ namespace Rebellion.Systems
             Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
                 decision.DefenderFleetInstanceID
             );
-            if (attacker != null)
-                attacker.IsInCombat = false;
-            if (defender != null)
-                defender.IsInCombat = false;
+            attacker?.SetCombatState(false);
+            defender?.SetCombatState(false);
         }
 
         /// <summary>

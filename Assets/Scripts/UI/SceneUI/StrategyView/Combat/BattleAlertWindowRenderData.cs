@@ -135,6 +135,14 @@ internal static class BattleResultCategoryCatalog
 /// </summary>
 internal sealed class BattleAlertButtonRenderData
 {
+    public RectInt? Bounds { get; }
+
+    public bool Interactable { get; }
+
+    public Texture2D Texture { get; }
+
+    public Texture2D PressedTexture { get; }
+
     /// <summary>
     /// Creates presentation data for one battle-alert button.
     /// </summary>
@@ -154,14 +162,6 @@ internal sealed class BattleAlertButtonRenderData
         PressedTexture = pressedTexture;
         Bounds = bounds;
     }
-
-    public RectInt? Bounds { get; }
-
-    public bool Interactable { get; }
-
-    public Texture2D Texture { get; }
-
-    public Texture2D PressedTexture { get; }
 }
 
 /// <summary>
@@ -169,6 +169,10 @@ internal sealed class BattleAlertButtonRenderData
 /// </summary>
 internal sealed class BattleAlertRowRenderData
 {
+    public string Text { get; }
+
+    public Texture2D IconTexture { get; }
+
     /// <summary>
     /// Creates presentation data for one pending-combat row.
     /// </summary>
@@ -179,10 +183,6 @@ internal sealed class BattleAlertRowRenderData
         Text = text ?? string.Empty;
         IconTexture = iconTexture;
     }
-
-    public string Text { get; }
-
-    public Texture2D IconTexture { get; }
 }
 
 /// <summary>
@@ -190,6 +190,16 @@ internal sealed class BattleAlertRowRenderData
 /// </summary>
 internal sealed class BattleResultItemRenderData
 {
+    public string Text { get; }
+
+    public Texture2D BaseTexture { get; }
+
+    public Texture2D WithdrawingOverlayTexture { get; }
+
+    public Texture2D DamagedOverlayTexture { get; }
+
+    public Texture2D CapturedOverlayTexture { get; }
+
     /// <summary>
     /// Creates presentation data for one completed battle-result item.
     /// </summary>
@@ -212,16 +222,6 @@ internal sealed class BattleResultItemRenderData
         DamagedOverlayTexture = damagedOverlayTexture;
         CapturedOverlayTexture = capturedOverlayTexture;
     }
-
-    public string Text { get; }
-
-    public Texture2D BaseTexture { get; }
-
-    public Texture2D WithdrawingOverlayTexture { get; }
-
-    public Texture2D DamagedOverlayTexture { get; }
-
-    public Texture2D CapturedOverlayTexture { get; }
 }
 
 /// <summary>
@@ -229,6 +229,10 @@ internal sealed class BattleResultItemRenderData
 /// </summary>
 internal sealed class BattleResultTableRenderData
 {
+    public IReadOnlyList<BattleResultItemRenderData> Operational { get; }
+
+    public IReadOnlyList<BattleResultItemRenderData> Destroyed { get; }
+
     /// <summary>
     /// Creates immutable presentation data for the operational and destroyed columns.
     /// </summary>
@@ -246,10 +250,6 @@ internal sealed class BattleResultTableRenderData
             .ToList()
             .AsReadOnly();
     }
-
-    public IReadOnlyList<BattleResultItemRenderData> Operational { get; }
-
-    public IReadOnlyList<BattleResultItemRenderData> Destroyed { get; }
 }
 
 /// <summary>
@@ -257,6 +257,10 @@ internal sealed class BattleResultTableRenderData
 /// </summary>
 internal sealed class BattleResultCategoryRenderData
 {
+    public BattleResultCategory Category { get; }
+
+    public BattleAlertButtonRenderData Button { get; }
+
     /// <summary>
     /// Creates presentation data for one completed battle-result category.
     /// </summary>
@@ -270,10 +274,6 @@ internal sealed class BattleResultCategoryRenderData
         Category = category;
         Button = button ?? throw new ArgumentNullException(nameof(button));
     }
-
-    public BattleResultCategory Category { get; }
-
-    public BattleAlertButtonRenderData Button { get; }
 }
 
 /// <summary>
@@ -281,6 +281,18 @@ internal sealed class BattleResultCategoryRenderData
 /// </summary>
 internal sealed class BattleAlertPendingRenderData
 {
+    public BattleAlertPanel Panel { get; }
+
+    public string Title { get; }
+
+    public string Header { get; }
+
+    public string Summary { get; }
+
+    public IReadOnlyList<BattleAlertRowRenderData> Rows { get; }
+
+    public IReadOnlyList<BattleAlertButtonRenderData> CommandButtons { get; }
+
     /// <summary>
     /// Creates the presentation for one pending-combat panel.
     /// </summary>
@@ -308,18 +320,6 @@ internal sealed class BattleAlertPendingRenderData
             .ToList()
             .AsReadOnly();
     }
-
-    public BattleAlertPanel Panel { get; }
-
-    public string Title { get; }
-
-    public string Header { get; }
-
-    public string Summary { get; }
-
-    public IReadOnlyList<BattleAlertRowRenderData> Rows { get; }
-
-    public IReadOnlyList<BattleAlertButtonRenderData> CommandButtons { get; }
 }
 
 /// <summary>
@@ -327,6 +327,34 @@ internal sealed class BattleAlertPendingRenderData
 /// </summary>
 internal sealed class BattleAlertResultRenderData
 {
+    public BattleResultPanel Panel { get; }
+
+    public BattleResultCategory Category { get; }
+
+    public string Title { get; }
+
+    public string Summary { get; }
+
+    public BattleAlertButtonRenderData ResultCloseButton { get; }
+
+    public string ResultForceHeader { get; }
+
+    public Color ResultForceHeaderColor { get; }
+
+    public string ResultTableTitle { get; }
+
+    public IReadOnlyList<string> ResultColumnHeaders { get; }
+
+    public IReadOnlyList<BattleResultCategoryRenderData> ResultCategories { get; }
+
+    public bool UsesPlanetaryCategoryLayout { get; }
+
+    public IReadOnlyList<BattleAlertButtonRenderData> ResultDirectButtons { get; }
+
+    public BattleResultTableRenderData ResultTable { get; }
+
+    public bool UsesPersonnelColumns => Category == BattleResultCategory.Personnel;
+
     /// <summary>
     /// Creates the presentation for one completed battle-result panel.
     /// </summary>
@@ -382,34 +410,6 @@ internal sealed class BattleAlertResultRenderData
             .AsReadOnly();
         ResultTable = resultTable;
     }
-
-    public BattleResultPanel Panel { get; }
-
-    public BattleResultCategory Category { get; }
-
-    public string Title { get; }
-
-    public string Summary { get; }
-
-    public BattleAlertButtonRenderData ResultCloseButton { get; }
-
-    public string ResultForceHeader { get; }
-
-    public Color ResultForceHeaderColor { get; }
-
-    public string ResultTableTitle { get; }
-
-    public IReadOnlyList<string> ResultColumnHeaders { get; }
-
-    public IReadOnlyList<BattleResultCategoryRenderData> ResultCategories { get; }
-
-    public bool UsesPlanetaryCategoryLayout { get; }
-
-    public IReadOnlyList<BattleAlertButtonRenderData> ResultDirectButtons { get; }
-
-    public BattleResultTableRenderData ResultTable { get; }
-
-    public bool UsesPersonnelColumns => Category == BattleResultCategory.Personnel;
 }
 
 /// <summary>
@@ -417,6 +417,24 @@ internal sealed class BattleAlertResultRenderData
 /// </summary>
 internal sealed class BattleAlertWindowRenderData
 {
+    public BattleAlertWindowMode Mode { get; }
+
+    public int X { get; }
+
+    public int Y { get; }
+
+    public Texture2D BackgroundTexture { get; }
+
+    public Texture2D FrameTexture { get; }
+
+    public Color TitleColor { get; }
+
+    public IReadOnlyList<BattleAlertButtonRenderData> ViewButtons { get; }
+
+    public BattleAlertPendingRenderData Pending { get; }
+
+    public BattleAlertResultRenderData Result { get; }
+
     /// <summary>
     /// Creates one complete battle-alert window presentation.
     /// </summary>
@@ -458,22 +476,4 @@ internal sealed class BattleAlertWindowRenderData
         Pending = pending;
         Result = result;
     }
-
-    public BattleAlertWindowMode Mode { get; }
-
-    public int X { get; }
-
-    public int Y { get; }
-
-    public Texture2D BackgroundTexture { get; }
-
-    public Texture2D FrameTexture { get; }
-
-    public Color TitleColor { get; }
-
-    public IReadOnlyList<BattleAlertButtonRenderData> ViewButtons { get; }
-
-    public BattleAlertPendingRenderData Pending { get; }
-
-    public BattleAlertResultRenderData Result { get; }
 }

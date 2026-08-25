@@ -17,6 +17,9 @@ public sealed class GalacticInformationSubmenuView : MonoBehaviour
     private GalacticInformationFrameView frameView;
 
     [SerializeField]
+    private RawImage[] checkMarkImages = Array.Empty<RawImage>();
+
+    [SerializeField]
     private RawImage[] iconImages = Array.Empty<RawImage>();
 
     [SerializeField]
@@ -129,6 +132,7 @@ public sealed class GalacticInformationSubmenuView : MonoBehaviour
         }
 
         hitAreas[index].Render(data.HitBounds);
+        ApplyImage(checkMarkImages[index], data.CheckMark);
         ApplyImage(iconImages[index], data.Icon);
         ApplyText(textFields[index], data.Label);
     }
@@ -276,6 +280,7 @@ public sealed class GalacticInformationSubmenuView : MonoBehaviour
     private void HideRow(int index)
     {
         hitAreas[index].gameObject.SetActive(false);
+        checkMarkImages[index].gameObject.SetActive(false);
         iconImages[index].gameObject.SetActive(false);
         textFields[index].gameObject.SetActive(false);
     }
@@ -290,10 +295,12 @@ public sealed class GalacticInformationSubmenuView : MonoBehaviour
         if (frameView == null)
             throw new MissingReferenceException($"{name}/FrameView is missing.");
         if (
-            iconImages == null
+            checkMarkImages == null
+            || iconImages == null
             || textFields == null
             || hitAreas == null
             || iconImages.Length == 0
+            || checkMarkImages.Length != iconImages.Length
             || iconImages.Length != textFields.Length
             || iconImages.Length != hitAreas.Length
         )
@@ -303,7 +310,12 @@ public sealed class GalacticInformationSubmenuView : MonoBehaviour
 
         for (int i = 0; i < iconImages.Length; i++)
         {
-            if (iconImages[i] == null || textFields[i] == null || hitAreas[i] == null)
+            if (
+                checkMarkImages[i] == null
+                || iconImages[i] == null
+                || textFields[i] == null
+                || hitAreas[i] == null
+            )
                 throw new MissingReferenceException($"{name}/Row{i} is incomplete.");
         }
     }

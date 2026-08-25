@@ -168,7 +168,7 @@ namespace Rebellion.Systems
             )
             {
                 if (
-                    TryRequestMoveGroup(
+                    TryExecuteNormalMoveGroup(
                         units.ToList(),
                         destination,
                         reactions,
@@ -259,12 +259,14 @@ namespace Rebellion.Systems
                 return;
             }
 
-            ExecuteMove(
+            bool moved = ExecuteMove(
                 unit,
                 destination,
                 _pendingResults,
                 sourceEventInstanceID: sourceEventInstanceID
             );
+            if (moved && unit is Fleet fleet)
+                fleet.Waypoints.Clear();
         }
 
         /// <summary>
@@ -340,7 +342,7 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
-            TryRequestMoveGroup(units, destination, _pendingResults, sourceEventInstanceID);
+            TryExecuteNormalMoveGroup(units, destination, _pendingResults, sourceEventInstanceID);
         }
 
         /// <summary>
@@ -596,7 +598,7 @@ namespace Rebellion.Systems
             }
 
             List<GameResult> results = new List<GameResult>();
-            bool accepted = TryRequestMoveGroup(movables, liveDestination, results);
+            bool accepted = TryExecuteNormalMoveGroup(movables, liveDestination, results);
             if (accepted)
             {
                 foreach (Fleet sourceFleet in sourceFleets.Distinct())
@@ -608,6 +610,135 @@ namespace Rebellion.Systems
                 ResultsProduced?.Invoke(results);
 
             return accepted;
+        }
+
+        /// <summary>
+        /// Determines whether a player-controlled fleet selection can accept one complete waypoint
+        /// route without changing game state.
+        /// </summary>
+        /// <param name="items">The selected fleets or their visible snapshots.</param>
+        /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
+        /// <param name="ownerInstanceId">The faction authorized to command the fleets.</param>
+        /// <returns>True when the complete route is valid.</returns>
+        public bool CanSetFleetWaypointRoute(
+            IReadOnlyList<ISceneNode> items,
+            IReadOnlyList<string> waypointPlanetIds,
+            string ownerInstanceId
+        )
+        {
+            return TryPlanFleetWaypointRoute(
+                items,
+                waypointPlanetIds,
+                ownerInstanceId,
+                out _,
+                out _
+            );
+        }
+
+        /// <summary>
+        /// Commits one complete waypoint route and starts its first leg for stationary fleets.
+        /// </summary>
+        /// <param name="items">The selected fleets or their visible snapshots.</param>
+        /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
+        /// <param name="ownerInstanceId">The faction authorized to command the fleets.</param>
+        /// <returns>True when the route was committed to every selected fleet.</returns>
+        public bool TrySetFleetWaypointRoute(
+            IReadOnlyList<ISceneNode> items,
+            IReadOnlyList<string> waypointPlanetIds,
+            string ownerInstanceId
+        )
+        {
+            if (
+                !TryPlanFleetWaypointRoute(
+                    items,
+                    waypointPlanetIds,
+                    ownerInstanceId,
+                    out List<Fleet> fleets,
+                    out List<Planet> destinations
+                )
+            )
+                return false;
+
+            bool startsRoute = fleets[0].Movement == null;
+            foreach (Fleet fleet in fleets)
+            {
+                if (fleet.Movement != null)
+                    fleet.Waypoints.Add(fleet.GetParentOfType<Planet>().InstanceID);
+
+                fleet.Waypoints.AddRange(waypointPlanetIds);
+            }
+
+            if (!startsRoute)
+                return true;
+
+            List<GameResult> results = new List<GameResult>();
+            bool accepted = TryExecuteMoveGroup(
+                fleets.Cast<IMovable>().ToList(),
+                destinations[0],
+                results
+            );
+            if (!accepted)
+            {
+                foreach (Fleet fleet in fleets)
+                    fleet.Waypoints.Clear();
+                return false;
+            }
+
+            ResultsProduced?.Invoke(results);
+            return true;
+        }
+
+        /// <summary>
+        /// Clears queued waypoint continuation without changing an active movement leg.
+        /// </summary>
+        /// <param name="items">The selected fleets or their visible snapshots.</param>
+        /// <param name="ownerInstanceId">The faction authorized to command the fleets.</param>
+        /// <returns>True when at least one waypoint was removed.</returns>
+        public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items, string ownerInstanceId)
+        {
+            if (!TryResolveControlledFleets(items, ownerInstanceId, out List<Fleet> fleets))
+                return false;
+
+            bool cleared = false;
+            foreach (Fleet fleet in fleets)
+            {
+                if (!fleet.HasWaypoints())
+                    continue;
+
+                fleet.Waypoints.Clear();
+                cleared = true;
+            }
+
+            return cleared;
+        }
+
+        /// <summary>
+        /// Starts the next queued fleet legs after the combat phase has had an opportunity to
+        /// interrupt newly arrived fleets.
+        /// </summary>
+        /// <returns>The movement results produced by accepted waypoint legs.</returns>
+        internal List<GameResult> ContinueFleetWaypointRoutes()
+        {
+            List<GameResult> results = new List<GameResult>();
+            List<Fleet> fleets = _game.GetSceneNodesByType<Fleet>().ToList();
+            foreach (Fleet fleet in fleets)
+            {
+                if (fleet == null)
+                    continue;
+
+                if (!fleet.HasOperationalCapitalShips())
+                {
+                    fleet.Waypoints.Clear();
+                    continue;
+                }
+
+                if (fleet.Movement != null || fleet.IsInCombat || !fleet.HasWaypoints())
+                    continue;
+
+                TryStartNextFleetWaypoint(fleet, results);
+            }
+
+            return results;
         }
 
         /// <summary>
@@ -881,14 +1012,38 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Executes a validated movement group through the existing movement pipeline.
+        /// Submits a normal movement group and replaces any existing fleet waypoint routes.
         /// </summary>
         /// <param name="units">The movable units in execution order.</param>
         /// <param name="destination">The shared destination.</param>
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
         /// <returns>True when the movement group was accepted.</returns>
-        private bool TryRequestMoveGroup(
+        private bool TryExecuteNormalMoveGroup(
+            List<IMovable> units,
+            ContainerNode destination,
+            ICollection<GameResult> results,
+            string sourceEventInstanceID = null
+        )
+        {
+            if (!TryExecuteMoveGroup(units, destination, results, sourceEventInstanceID))
+                return false;
+
+            foreach (Fleet fleet in units.OfType<Fleet>())
+                fleet.Waypoints.Clear();
+
+            return true;
+        }
+
+        /// <summary>
+        /// Validates and executes a movement group without applying command-specific route policy.
+        /// </summary>
+        /// <param name="units">The movable units in execution order.</param>
+        /// <param name="destination">The shared destination.</param>
+        /// <param name="results">The collection receiving movement results.</param>
+        /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
+        /// <returns>True when the movement group was accepted.</returns>
+        private bool TryExecuteMoveGroup(
             List<IMovable> units,
             ContainerNode destination,
             ICollection<GameResult> results,
@@ -1051,6 +1206,119 @@ namespace Rebellion.Systems
 
                 liveItems.Add(liveItem);
             }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves a selection containing only uniquely identified fleets controlled by one faction.
+        /// </summary>
+        /// <param name="items">The selected fleets or their snapshots.</param>
+        /// <param name="ownerInstanceId">The required controlling faction.</param>
+        /// <param name="fleets">Receives the registered fleets in selection order.</param>
+        /// <returns>True when the complete selection resolves to controlled fleets.</returns>
+        private bool TryResolveControlledFleets(
+            IReadOnlyList<ISceneNode> items,
+            string ownerInstanceId,
+            out List<Fleet> fleets
+        )
+        {
+            fleets = new List<Fleet>();
+            if (items == null || items.Count == 0 || string.IsNullOrEmpty(ownerInstanceId))
+                return false;
+
+            HashSet<string> instanceIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (ISceneNode item in items)
+            {
+                Fleet fleet = ResolveRegisteredNode(item) as Fleet;
+                if (
+                    fleet == null
+                    || !instanceIds.Add(fleet.InstanceID)
+                    || !string.Equals(
+                        GetMovementControlOwner(fleet),
+                        ownerInstanceId,
+                        StringComparison.Ordinal
+                    )
+                )
+                    return false;
+
+                fleets.Add(fleet);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Validates and resolves one complete fleet waypoint route without mutating it.
+        /// </summary>
+        /// <param name="items">The selected fleets or their snapshots.</param>
+        /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
+        /// <param name="ownerInstanceId">The faction authorized to command the fleets.</param>
+        /// <param name="fleets">Receives the registered controlled fleets.</param>
+        /// <param name="destinations">Receives the registered destination planets.</param>
+        /// <returns>True when the complete plan is valid.</returns>
+        private bool TryPlanFleetWaypointRoute(
+            IReadOnlyList<ISceneNode> items,
+            IReadOnlyList<string> waypointPlanetIds,
+            string ownerInstanceId,
+            out List<Fleet> fleets,
+            out List<Planet> destinations
+        )
+        {
+            fleets = new List<Fleet>();
+            destinations = new List<Planet>();
+            if (
+                waypointPlanetIds == null
+                || waypointPlanetIds.Count == 0
+                || !TryResolveControlledFleets(items, ownerInstanceId, out fleets)
+            )
+                return false;
+
+            bool fleetsAreMoving = fleets[0].Movement != null;
+            if (
+                fleets.Any(fleet =>
+                    fleet.IsInCombat
+                    || !fleet.HasOperationalCapitalShips()
+                    || fleet.HasWaypoints()
+                    || fleet.Movement != null != fleetsAreMoving
+                    || fleet.GetParentOfType<Planet>() == null
+                )
+            )
+                return false;
+
+            string previousDestinationId = null;
+            foreach (string waypointPlanetId in waypointPlanetIds)
+            {
+                Planet destination = _game.GetSceneNodeByInstanceID<Planet>(waypointPlanetId);
+                if (
+                    destination?.IsDestroyed != false
+                    || string.Equals(
+                        previousDestinationId,
+                        destination.InstanceID,
+                        StringComparison.Ordinal
+                    )
+                )
+                    return false;
+
+                destinations.Add(destination);
+                previousDestinationId = destination.InstanceID;
+            }
+
+            Planet firstDestination = destinations[0];
+            if (
+                fleetsAreMoving
+                && fleets.Any(fleet =>
+                    ReferenceEquals(fleet.GetParentOfType<Planet>(), firstDestination)
+                )
+            )
+                return false;
+            if (
+                !fleetsAreMoving
+                && fleets.All(fleet =>
+                    ReferenceEquals(fleet.GetParentOfType<Planet>(), firstDestination)
+                )
+            )
+                return false;
 
             return true;
         }
@@ -1522,7 +1790,78 @@ namespace Rebellion.Systems
             AddPlanetGarrisonChangedResults(results, movable, destinationPlanet);
 
             if (movable is Fleet fleet)
+            {
+                if (ConsumeReachedFleetWaypoint(fleet, destinationPlanet))
+                {
+                    results.Add(
+                        new FleetWaypointsCompletedResult
+                        {
+                            Fleet = fleet,
+                            Destination = destinationPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                }
                 CaptureFleetArrivalSnapshot(fleet, destinationPlanet);
+            }
+        }
+
+        /// <summary>
+        /// Removes the active waypoint after its fleet successfully reaches that planet.
+        /// </summary>
+        /// <param name="fleet">The arriving fleet.</param>
+        /// <param name="destinationPlanet">The planet that accepted the arrival.</param>
+        /// <returns>True when the consumed waypoint completed the assigned route.</returns>
+        private static bool ConsumeReachedFleetWaypoint(Fleet fleet, Planet destinationPlanet)
+        {
+            if (
+                fleet?.HasWaypoints() != true
+                || destinationPlanet == null
+                || !string.Equals(
+                    fleet.Waypoints[0],
+                    destinationPlanet.InstanceID,
+                    StringComparison.Ordinal
+                )
+            )
+                return false;
+
+            fleet.Waypoints.RemoveAt(0);
+            return !fleet.HasWaypoints();
+        }
+
+        /// <summary>
+        /// Starts the first valid queued waypoint for one stationary fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet whose route should continue.</param>
+        /// <param name="results">The result collection receiving the new movement leg.</param>
+        /// <returns>True when a new movement leg began.</returns>
+        private bool TryStartNextFleetWaypoint(Fleet fleet, List<GameResult> results)
+        {
+            int waypointCount = fleet.Waypoints.Count;
+            for (int index = 0; index < waypointCount; index++)
+            {
+                string waypointId = fleet.Waypoints[0];
+                Planet destination = _game.GetSceneNodeByInstanceID<Planet>(waypointId);
+                if (
+                    destination?.IsDestroyed != false
+                    || ReferenceEquals(fleet.GetParentOfType<Planet>(), destination)
+                )
+                {
+                    fleet.Waypoints.RemoveAt(0);
+                    continue;
+                }
+
+                bool accepted = TryExecuteMoveGroup(
+                    new List<IMovable> { fleet },
+                    destination,
+                    results
+                );
+                if (!accepted)
+                    fleet.Waypoints.Clear();
+                return accepted;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -1897,7 +2236,8 @@ namespace Rebellion.Systems
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order id for grouped moves.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
-        private void ExecuteMove(
+        /// <returns>True when the movement order was accepted; otherwise false.</returns>
+        private bool ExecuteMove(
             IMovable unit,
             ContainerNode destination,
             ICollection<GameResult> results,
@@ -1915,9 +2255,9 @@ namespace Rebellion.Systems
                     out ContainerNode resolvedDestination
                 )
             )
-                return;
+                return false;
 
-            ExecuteAcceptedMove(
+            return ExecuteAcceptedMove(
                 unit,
                 resolvedDestination,
                 results,
@@ -1934,7 +2274,8 @@ namespace Rebellion.Systems
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order identifier.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
-        private void ExecuteAcceptedMove(
+        /// <returns>True when the movement order was accepted; otherwise false.</returns>
+        private bool ExecuteAcceptedMove(
             IMovable unit,
             ContainerNode destination,
             ICollection<GameResult> results,
@@ -1950,7 +2291,7 @@ namespace Rebellion.Systems
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} is not at a planet location and cannot move."
                 );
-                return;
+                return false;
             }
 
             if (_blockade != null)
@@ -1963,7 +2304,7 @@ namespace Rebellion.Systems
                 {
                     results.Add(evacResult);
                     AddPlanetGarrisonChangedResults(results, unit, originPlanet);
-                    return;
+                    return true;
                 }
             }
 
@@ -1986,7 +2327,7 @@ namespace Rebellion.Systems
                         results,
                         sourceEventInstanceID
                     );
-                return;
+                return true;
             }
 
             if (destinationPlanet == originPlanet)
@@ -2003,7 +2344,7 @@ namespace Rebellion.Systems
                         results,
                         sourceEventInstanceID
                     );
-                return;
+                return true;
             }
 
             _game.MoveNode(unit, destination);
@@ -2039,6 +2380,7 @@ namespace Rebellion.Systems
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
+            return true;
         }
 
         /// <summary>

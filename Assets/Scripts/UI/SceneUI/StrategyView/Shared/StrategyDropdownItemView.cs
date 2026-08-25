@@ -113,6 +113,12 @@ public sealed class StrategyDropdownItemView : MonoBehaviour
 /// </summary>
 public sealed class StrategyDropdownItemRenderData
 {
+    public Texture Texture { get; }
+
+    public string Label { get; }
+
+    public Color32 LabelColor { get; }
+
     /// <summary>
     /// Creates one complete dropdown-row presentation snapshot.
     /// </summary>
@@ -125,10 +131,4 @@ public sealed class StrategyDropdownItemRenderData
         Label = label ?? string.Empty;
         LabelColor = labelColor;
     }
-
-    public Texture Texture { get; }
-
-    public string Label { get; }
-
-    public Color32 LabelColor { get; }
 }

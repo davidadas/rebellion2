@@ -1,5 +1,7 @@
 # Creating Game Events
 
+> **Note:** Game events are in active development and are likely to change.
+
 Game events let content authors react to campaign time and simulation results without adding new C# code. An event can select game objects, test current game state, perform ordered actions, and persist its activation history across saves.
 
 This guide explains the event lifecycle, where events are authored, and how each top-level part of a `GameEvent` works.

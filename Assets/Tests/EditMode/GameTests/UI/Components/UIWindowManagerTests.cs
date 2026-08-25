@@ -192,6 +192,20 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void Focus_ActiveWindow_DoesNotEmitFocusChanged()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            UIWindow window = CreateWindow(windowManager, 1, modal: false, canFocus: true);
+            int focusChangedCount = 0;
+            windowManager.FocusChanged += _ => focusChangedCount++;
+
+            bool focused = windowManager.Focus(window);
+
+            Assert.IsTrue(focused);
+            Assert.AreEqual(0, focusChangedCount);
+        }
+
+        [Test]
         public void Unregister_ActiveWindow_PromotesPreviousFocusableWindow()
         {
             UIWindowManager windowManager = CreateWindowManager();

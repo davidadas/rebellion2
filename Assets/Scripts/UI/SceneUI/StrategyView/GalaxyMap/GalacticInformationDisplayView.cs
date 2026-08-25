@@ -38,6 +38,9 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
         Array.Empty<GalacticInformationSubmenuView>();
 
     [SerializeField]
+    private RawImage displayOffCheckMarkImage;
+
+    [SerializeField]
     private TextMeshProUGUI displayOffTextField;
 
     [SerializeField]
@@ -202,11 +205,13 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
         if (!data.Visible)
         {
             displayOffHitArea.gameObject.SetActive(false);
+            displayOffCheckMarkImage.gameObject.SetActive(false);
             displayOffTextField.gameObject.SetActive(false);
             return;
         }
 
         displayOffHitArea.Render(data.HitBounds);
+        ApplyImage(displayOffCheckMarkImage, data.CheckMark, false);
         ApplyText(displayOffTextField, data.Label);
     }
 
@@ -468,7 +473,11 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
             }
         }
 
-        if (displayOffTextField == null || displayOffHitArea == null)
+        if (
+            displayOffCheckMarkImage == null
+            || displayOffTextField == null
+            || displayOffHitArea == null
+        )
             throw new MissingReferenceException($"{name}/DisplayOff row is missing.");
     }
 }

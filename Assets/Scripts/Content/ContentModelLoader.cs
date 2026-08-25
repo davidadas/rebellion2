@@ -125,6 +125,11 @@ public sealed class ContentModelInstance : IDisposable
     private Transform sceneRoot;
 
     /// <summary>
+    /// Gets the transform that receives the binding's authored pose.
+    /// </summary>
+    public Transform ModelRoot { get; private set; }
+
+    /// <summary>
     /// Initializes ownership of one instantiated GLB scene.
     /// </summary>
     /// <param name="loadedSceneRoot">The complete instantiated scene hierarchy.</param>
@@ -136,11 +141,6 @@ public sealed class ContentModelInstance : IDisposable
             : throw new ArgumentNullException(nameof(loadedSceneRoot));
         ModelRoot = modelRoot ? modelRoot : throw new ArgumentNullException(nameof(modelRoot));
     }
-
-    /// <summary>
-    /// Gets the transform that receives the binding's authored pose.
-    /// </summary>
-    public Transform ModelRoot { get; private set; }
 
     /// <summary>
     /// Transfers ownership of a one-off parsed resource to this model instance.

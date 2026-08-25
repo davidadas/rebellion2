@@ -17,6 +17,10 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     internal readonly struct AIManufactureOption
     {
+        internal AIDemand Demand { get; }
+
+        internal Planet ProducerPlanet { get; }
+
         /// <summary>
         /// Creates a production option.
         /// </summary>
@@ -27,10 +31,6 @@ namespace Rebellion.AI.Proposals
             Demand = demand;
             ProducerPlanet = producerPlanet;
         }
-
-        internal AIDemand Demand { get; }
-
-        internal Planet ProducerPlanet { get; }
     }
 
     /// <summary>
@@ -38,6 +38,20 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIManufactureProposal : AIProposal
     {
+        public AIDemand Demand { get; private set; }
+
+        public Planet ProducerPlanet { get; private set; }
+
+        internal IReadOnlyList<AIManufactureOption> ProducerOptions { get; }
+
+        internal IReadOnlyList<Planet> ProducerPlanets { get; }
+
+        public Technology Product { get; }
+
+        public ContainerNode Destination => Demand?.Destination;
+
+        internal bool DistributesDemand { get; }
+
         /// <summary>
         /// Creates a manufacture proposal.
         /// </summary>
@@ -82,20 +96,6 @@ namespace Rebellion.AI.Proposals
             Product = product;
             DistributesDemand = distributesDemand;
         }
-
-        public AIDemand Demand { get; private set; }
-
-        public Planet ProducerPlanet { get; private set; }
-
-        internal IReadOnlyList<AIManufactureOption> ProducerOptions { get; }
-
-        internal IReadOnlyList<Planet> ProducerPlanets { get; }
-
-        public Technology Product { get; }
-
-        public ContainerNode Destination => Demand?.Destination;
-
-        internal bool DistributesDemand { get; }
 
         /// <summary>
         /// Selects the producer option used when validating and executing this proposal.

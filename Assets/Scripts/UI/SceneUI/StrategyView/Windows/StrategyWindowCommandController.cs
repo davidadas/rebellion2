@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
@@ -115,6 +116,9 @@ public sealed class StrategyWindowCommandController
             case StrategyMenuAction.MoveConfirm:
                 OpenMoveConfirmWindow(source.Window, target, source.Items);
                 break;
+            case StrategyMenuAction.WaypointMove:
+                TryAppendFleetWaypoint(source, target);
+                break;
         }
     }
 
@@ -187,6 +191,86 @@ public sealed class StrategyWindowCommandController
                     RefreshAfterMutation(sourceWindow);
             }
         );
+    }
+
+    /// <summary>
+    /// Appends a selected planet to the active uncommitted waypoint plan.
+    /// </summary>
+    /// <param name="source">The active waypoint targeting session.</param>
+    /// <param name="target">The selected waypoint planet.</param>
+    /// <returns>True when the waypoint was appended to the plan.</returns>
+    public bool TryAppendFleetWaypoint(
+        StrategyWindowTargetingSource source,
+        StrategyMissionTarget target
+    )
+    {
+        Planet destination = target?.Planet?.Planet;
+        if (source?.Action != StrategyMenuAction.WaypointMove || destination == null)
+            return false;
+
+        List<string> proposedWaypoints = source.WaypointPlanetIds.ToList();
+        proposedWaypoints.Add(destination.InstanceID);
+        if (
+            getMovementSystem()
+                ?.CanSetFleetWaypointRoute(source.Items, proposedWaypoints, GetPlayerFactionID())
+            != true
+        )
+            return false;
+
+        bool appended = source.TryAppendWaypoint(destination.InstanceID);
+        if (appended)
+            markDirty();
+        return appended;
+    }
+
+    /// <summary>
+    /// Commits an active waypoint plan and starts its first leg when the fleets are stationary.
+    /// </summary>
+    /// <param name="source">The active waypoint targeting session.</param>
+    /// <returns>True when the route was committed.</returns>
+    public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source)
+    {
+        if (
+            source?.Action != StrategyMenuAction.WaypointMove
+            || getMovementSystem()
+                ?.TrySetFleetWaypointRoute(
+                    source.Items,
+                    source.WaypointPlanetIds,
+                    GetPlayerFactionID()
+                ) != true
+        )
+            return false;
+
+        RefreshAfterWaypointMutation();
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the newest stop from an active waypoint plan and refreshes its preview.
+    /// </summary>
+    /// <param name="source">The active waypoint targeting session.</param>
+    /// <returns>True when waypoints remain and targeting should stay active.</returns>
+    public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source)
+    {
+        if (source?.Action != StrategyMenuAction.WaypointMove || !source.TryRemoveLastWaypoint())
+            return false;
+
+        markDirty();
+        return source.WaypointPlanetIds.Count > 0;
+    }
+
+    /// <summary>
+    /// Clears selected fleet waypoint routes while preserving any active movement leg.
+    /// </summary>
+    /// <param name="items">The selected fleets or their visible snapshots.</param>
+    /// <returns>True when at least one waypoint was cleared.</returns>
+    public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items)
+    {
+        if (getMovementSystem()?.ClearFleetWaypoints(items, GetPlayerFactionID()) != true)
+            return false;
+
+        RefreshAfterWaypointMutation();
+        return true;
     }
 
     /// <summary>
@@ -381,6 +465,15 @@ public sealed class StrategyWindowCommandController
     private void RefreshAfterMutation(UIWindow sourceWindow)
     {
         clearWindowSelection(sourceWindow);
+        rebuildSnapshot();
+        markDirty();
+    }
+
+    /// <summary>
+    /// Rebuilds route projection without clearing the selection used by repeated waypoint targeting.
+    /// </summary>
+    private void RefreshAfterWaypointMutation()
+    {
         rebuildSnapshot();
         markDirty();
     }

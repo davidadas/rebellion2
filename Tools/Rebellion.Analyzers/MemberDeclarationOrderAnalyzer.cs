@@ -13,8 +13,8 @@ namespace Rebellion.Analyzers
 
         private static readonly DiagnosticDescriptor _rule = new DiagnosticDescriptor(
             DiagnosticId,
-            "Fields must precede behavior members",
-            "Field declaration must appear before constructors and methods",
+            "State members must precede behavior members",
+            "Field or property declaration must appear before constructors and methods",
             "Layout",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true
@@ -50,9 +50,12 @@ namespace Rebellion.Analyzers
                     continue;
                 }
 
-                if (behaviorSeen && member is BaseFieldDeclarationSyntax field)
+                if (
+                    behaviorSeen
+                    && member is BaseFieldDeclarationSyntax or PropertyDeclarationSyntax
+                )
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(_rule, field.GetLocation()));
+                    context.ReportDiagnostic(Diagnostic.Create(_rule, member.GetLocation()));
                 }
             }
         }

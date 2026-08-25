@@ -55,6 +55,26 @@ namespace Rebellion.AI.Planners.Demand
     /// </summary>
     public sealed class AIDemand
     {
+        // Demand Identity.
+        public string Id { get; }
+        public AIDemandKind Kind { get; }
+
+        // Production Requirements.
+        public ManufacturingType ManufacturingType { get; }
+        public BuildingType BuildingType { get; }
+        public string ProductTypeId { get; }
+        public AICapitalShipProductionRole CapitalShipRole { get; }
+        public Building BuildingToReplace { get; set; }
+
+        // Destination.
+        public ContainerNode Destination { get; }
+        public Planet DestinationPlanet => Destination as Planet;
+        public Fleet DestinationFleet => Destination as Fleet;
+
+        // Priority.
+        public int QuantityNeeded { get; }
+        public double Pressure { get; }
+
         /// <summary>
         /// Creates a production demand.
         /// </summary>
@@ -89,26 +109,6 @@ namespace Rebellion.AI.Planners.Demand
             ProductTypeId = productTypeId;
             CapitalShipRole = capitalShipRole;
         }
-
-        // Demand Identity.
-        public string Id { get; }
-        public AIDemandKind Kind { get; }
-
-        // Production Requirements.
-        public ManufacturingType ManufacturingType { get; }
-        public BuildingType BuildingType { get; }
-        public string ProductTypeId { get; }
-        public AICapitalShipProductionRole CapitalShipRole { get; }
-        public Building BuildingToReplace { get; set; }
-
-        // Destination.
-        public ContainerNode Destination { get; }
-        public Planet DestinationPlanet => Destination as Planet;
-        public Fleet DestinationFleet => Destination as Fleet;
-
-        // Priority.
-        public int QuantityNeeded { get; }
-        public double Pressure { get; }
 
         // Reserve Policy.
         public bool CanUseRefinedMaterialReserve =>

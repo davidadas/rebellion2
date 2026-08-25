@@ -1086,6 +1086,12 @@ public sealed class FacilityWindowController
     /// </summary>
     private sealed class FacilityDestinationTargetingSource
     {
+        public UIWindow Window { get; }
+
+        public FacilityWindowView View { get; }
+
+        public FacilityWindowTab ManufacturingTab { get; }
+
         /// <summary>
         /// Creates a facility destination targeting source.
         /// </summary>
@@ -1102,11 +1108,5 @@ public sealed class FacilityWindowController
             View = view;
             ManufacturingTab = manufacturingTab;
         }
-
-        public UIWindow Window { get; }
-
-        public FacilityWindowView View { get; }
-
-        public FacilityWindowTab ManufacturingTab { get; }
     }
 }

@@ -263,6 +263,8 @@ namespace Rebellion.Tests.Game.Units
         public void SerializeAndDeserialize_FleetWithCapitalShip_MaintainsState()
         {
             _fleet.AddChild(_capitalShip1);
+            _fleet.Waypoints.Add("PLANET1");
+            _fleet.Waypoints.Add("PLANET2");
             string serialized = SerializationHelper.Serialize(_fleet);
             Fleet deserialized = SerializationHelper.Deserialize<Fleet>(serialized);
 
@@ -296,6 +298,58 @@ namespace Rebellion.Tests.Game.Units
                 deserialized.GetChildren<CapitalShip>().Count,
                 "CapitalShips count should be correctly deserialized."
             );
+            CollectionAssert.AreEqual(_fleet.Waypoints, deserialized.Waypoints);
+        }
+
+        [Test]
+        public void CreateCopy_FleetWithWaypoints_CopiesIndependentRoute()
+        {
+            _fleet.Waypoints.Add("PLANET1");
+
+            Fleet copy = (Fleet)_fleet.CreateCopy();
+            copy.Waypoints.Add("PLANET2");
+
+            CollectionAssert.AreEqual(new[] { "PLANET1" }, _fleet.Waypoints);
+            CollectionAssert.AreEqual(new[] { "PLANET1", "PLANET2" }, copy.Waypoints);
+        }
+
+        [Test]
+        public void HasWaypoints_WaypointAdded_ReturnsTrue()
+        {
+            _fleet.Waypoints.Add("PLANET1");
+
+            bool hasWaypoints = _fleet.HasWaypoints();
+
+            Assert.IsTrue(hasWaypoints);
+        }
+
+        [Test]
+        public void HasWaypoints_NoWaypoints_ReturnsFalse()
+        {
+            bool hasWaypoints = _fleet.HasWaypoints();
+
+            Assert.IsFalse(hasWaypoints);
+        }
+
+        [Test]
+        public void SetCombatState_EnteringCombat_SetsCombatStateAndClearsRoute()
+        {
+            _fleet.Waypoints.Add("PLANET1");
+
+            _fleet.SetCombatState(true);
+
+            Assert.IsTrue(_fleet.IsInCombat);
+            Assert.IsEmpty(_fleet.Waypoints);
+        }
+
+        [Test]
+        public void SetCombatState_LeavingCombat_ClearsCombatState()
+        {
+            _fleet.SetCombatState(true);
+
+            _fleet.SetCombatState(false);
+
+            Assert.IsFalse(_fleet.IsInCombat);
         }
 
         [Test]

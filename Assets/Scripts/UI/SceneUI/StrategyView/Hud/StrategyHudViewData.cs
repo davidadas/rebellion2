@@ -11,6 +11,16 @@ public sealed class StrategyHudRenderData
 {
     private readonly HashSet<MessageType> unreadMessageTypes;
 
+    public string TickText { get; }
+
+    public string RawMaterialsText { get; }
+
+    public string RefinedMaterialsText { get; }
+
+    public string MaintenanceText { get; }
+
+    public TickSpeed Speed { get; }
+
     /// <summary>
     /// Creates an immutable strategy HUD state snapshot.
     /// </summary>
@@ -40,16 +50,6 @@ public sealed class StrategyHudRenderData
                 : new HashSet<MessageType>(unreadMessageTypes);
     }
 
-    public string TickText { get; }
-
-    public string RawMaterialsText { get; }
-
-    public string RefinedMaterialsText { get; }
-
-    public string MaintenanceText { get; }
-
-    public TickSpeed Speed { get; }
-
     /// <summary>
     /// Returns whether a message category contains at least one unread message.
     /// </summary>
@@ -66,6 +66,12 @@ public sealed class StrategyHudRenderData
 /// </summary>
 public sealed class StrategyHudCounterViewData
 {
+    public string Text { get; }
+
+    public Color Color { get; }
+
+    public RectInt? Bounds { get; }
+
     /// <summary>
     /// Creates immutable counter presentation data.
     /// </summary>
@@ -78,12 +84,6 @@ public sealed class StrategyHudCounterViewData
         Color = color;
         Bounds = bounds;
     }
-
-    public string Text { get; }
-
-    public Color Color { get; }
-
-    public RectInt? Bounds { get; }
 }
 
 /// <summary>
@@ -91,6 +91,14 @@ public sealed class StrategyHudCounterViewData
 /// </summary>
 public sealed class StrategyHudButtonViewData
 {
+    public StrategyHudAction Action { get; }
+
+    public RectInt HitArea { get; }
+
+    public Texture2D PressedTexture { get; }
+
+    public RectInt PressedBounds { get; }
+
     /// <summary>
     /// Creates immutable HUD button presentation data.
     /// </summary>
@@ -110,14 +118,6 @@ public sealed class StrategyHudButtonViewData
         PressedTexture = pressedTexture;
         PressedBounds = pressedBounds;
     }
-
-    public StrategyHudAction Action { get; }
-
-    public RectInt HitArea { get; }
-
-    public Texture2D PressedTexture { get; }
-
-    public RectInt PressedBounds { get; }
 }
 
 /// <summary>
@@ -125,6 +125,12 @@ public sealed class StrategyHudButtonViewData
 /// </summary>
 public sealed class StrategyHudMessageNotificationViewData
 {
+    public MessagesTab Tab { get; }
+
+    public Texture2D Texture { get; }
+
+    public RectInt Bounds { get; }
+
     /// <summary>
     /// Creates immutable message-notification presentation data.
     /// </summary>
@@ -141,12 +147,6 @@ public sealed class StrategyHudMessageNotificationViewData
         Texture = texture;
         Bounds = bounds;
     }
-
-    public MessagesTab Tab { get; }
-
-    public Texture2D Texture { get; }
-
-    public RectInt Bounds { get; }
 }
 
 /// <summary>
@@ -156,6 +156,31 @@ public sealed class StrategyHudViewData
 {
     private readonly IReadOnlyList<StrategyHudButtonViewData> buttons;
     private readonly IReadOnlyList<StrategyHudMessageNotificationViewData> messageNotifications;
+
+    public Texture2D BackgroundTexture { get; }
+
+    public StrategyHudCounterViewData TickCounter { get; }
+
+    public StrategyHudCounterViewData RawMaterialsCounter { get; }
+
+    public StrategyHudCounterViewData RefinedMaterialsCounter { get; }
+
+    public StrategyHudCounterViewData MaintenanceCounter { get; }
+
+    public Texture2D SpeedIndicatorTexture { get; }
+
+    public RectInt? SpeedIndicatorBounds { get; }
+
+    public Texture2D GalacticInformationDisplayTexture { get; }
+
+    public RectInt? GalacticInformationDisplayBounds { get; }
+
+    public RectInt? SpeedContextBounds { get; }
+
+    public IReadOnlyList<StrategyHudButtonViewData> Buttons => buttons;
+
+    public IReadOnlyList<StrategyHudMessageNotificationViewData> MessageNotifications =>
+        messageNotifications;
 
     /// <summary>
     /// Creates a complete immutable HUD presentation snapshot.
@@ -200,31 +225,6 @@ public sealed class StrategyHudViewData
         this.buttons = Copy(buttons);
         this.messageNotifications = Copy(messageNotifications);
     }
-
-    public Texture2D BackgroundTexture { get; }
-
-    public StrategyHudCounterViewData TickCounter { get; }
-
-    public StrategyHudCounterViewData RawMaterialsCounter { get; }
-
-    public StrategyHudCounterViewData RefinedMaterialsCounter { get; }
-
-    public StrategyHudCounterViewData MaintenanceCounter { get; }
-
-    public Texture2D SpeedIndicatorTexture { get; }
-
-    public RectInt? SpeedIndicatorBounds { get; }
-
-    public Texture2D GalacticInformationDisplayTexture { get; }
-
-    public RectInt? GalacticInformationDisplayBounds { get; }
-
-    public RectInt? SpeedContextBounds { get; }
-
-    public IReadOnlyList<StrategyHudButtonViewData> Buttons => buttons;
-
-    public IReadOnlyList<StrategyHudMessageNotificationViewData> MessageNotifications =>
-        messageNotifications;
 
     /// <summary>
     /// Copies a possibly null list into an immutable array-backed snapshot.

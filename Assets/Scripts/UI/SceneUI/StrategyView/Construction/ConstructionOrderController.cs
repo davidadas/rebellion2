@@ -299,6 +299,10 @@ public sealed class ConstructionOrderController
 /// </summary>
 public sealed class ConstructionBuildEstimate
 {
+    public int? CompletionTicks { get; }
+
+    public int? DeploymentTicks { get; }
+
     /// <summary>
     /// Creates a construction estimate.
     /// </summary>
@@ -309,8 +313,4 @@ public sealed class ConstructionBuildEstimate
         CompletionTicks = completionTicks;
         DeploymentTicks = deploymentTicks;
     }
-
-    public int? CompletionTicks { get; }
-
-    public int? DeploymentTicks { get; }
 }

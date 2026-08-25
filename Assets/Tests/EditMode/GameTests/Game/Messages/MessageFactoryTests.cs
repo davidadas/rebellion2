@@ -171,6 +171,41 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_FleetWaypointsCompleted_InterpolatesFleetAndLocation()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "FLEET1",
+                DisplayName = "Fleet 1",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(fleet, destination);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.FleetWaypointsCompleted,
+                            MessageType.Fleet,
+                            "{fleet} Completes Waypoints",
+                            "{fleet} has completed all assigned waypoints."
+                        ),
+                    },
+                    new FleetWaypointsCompletedResult { Fleet = fleet, Destination = destination }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Fleet 1 Completes Waypoints", message.Title);
+            Assert.AreEqual("Fleet 1 has completed all assigned waypoints.", message.Body);
+            Assert.AreEqual(fleet.InstanceID, message.NavigationTargetInstanceID);
+            Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
+        }
+
+        [Test]
         public void CreateMessages_WithDefinitionVoicePath_StoresMessageAudioData()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();

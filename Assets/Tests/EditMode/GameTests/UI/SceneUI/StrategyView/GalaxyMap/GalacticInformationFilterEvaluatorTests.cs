@@ -243,6 +243,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void Evaluate_FleetWaypoints_PlayerRouteReturnsPlayerIntensity()
+        {
+            Planet planet = CreatePlanet(_playerFactionId);
+            GameFleet waypointFleet = CreateFleet(_playerFactionId, true);
+            waypointFleet.Waypoints.Add("destination");
+            planet.AddTestChild(waypointFleet);
+            planet.AddTestChild(CreateFleet(_playerFactionId, true));
+
+            GalacticInformationMarker marker = GalacticInformationFilterEvaluator.Evaluate(
+                _game,
+                planet,
+                _playerFactionId,
+                CreateFilter(GalacticInformationFilterMode.FleetWaypoints)
+            );
+
+            Assert.AreEqual(1, marker.Index);
+            Assert.AreEqual(_playerFactionId, marker.FactionInstanceId);
+            Assert.IsFalse(marker.Mixed);
+        }
+
+        [Test]
         public void Evaluate_FactionCountWithoutMatches_ReturnsPlanetOwnerAtLowestIntensity()
         {
             Planet planet = CreatePlanet(_opponentFactionId);

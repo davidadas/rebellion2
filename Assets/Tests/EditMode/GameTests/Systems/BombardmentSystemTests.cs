@@ -145,6 +145,21 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void Execute_AttackingFleetWithWaypoints_ClearsRoute()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            AddRegiment(game, planet, "defender", "empire");
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+            fleet.Waypoints.Add("next-planet");
+
+            MakeBombardment(game, new SequenceRNG(intValues: new[] { 1, 0, 10 }))
+                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
+
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [Test]
         public void Execute_CivilianBombardment_AppliesCoreSupportPenalties()
         {
             GameRoot game = CreateGame();

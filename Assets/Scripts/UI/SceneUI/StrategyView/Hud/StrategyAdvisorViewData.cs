@@ -7,6 +7,18 @@ using UnityEngine;
 /// </summary>
 public sealed class StrategyAdvisorViewData
 {
+    public bool Visible { get; }
+
+    public Texture2D ProtocolIdleTexture { get; }
+
+    public Texture2D DroidIdleTexture { get; }
+
+    public RectInt? ProtocolBounds { get; }
+
+    public RectInt? DroidBounds { get; }
+
+    public float FrameIntervalSeconds { get; }
+
     /// <summary>
     /// Creates an immutable advisor presentation snapshot.
     /// </summary>
@@ -32,18 +44,6 @@ public sealed class StrategyAdvisorViewData
         DroidBounds = droidBounds;
         FrameIntervalSeconds = frameIntervalSeconds;
     }
-
-    public bool Visible { get; }
-
-    public Texture2D ProtocolIdleTexture { get; }
-
-    public Texture2D DroidIdleTexture { get; }
-
-    public RectInt? ProtocolBounds { get; }
-
-    public RectInt? DroidBounds { get; }
-
-    public float FrameIntervalSeconds { get; }
 }
 
 /// <summary>
@@ -52,6 +52,18 @@ public sealed class StrategyAdvisorViewData
 public sealed class StrategyAdvisorAnimationViewData
 {
     private readonly IReadOnlyList<Texture2D> frames;
+
+    public IReadOnlyList<Texture2D> Frames => frames;
+
+    public bool UsesDroid { get; }
+
+    public string AudioPath { get; }
+
+    public float DelayBeforeSeconds { get; }
+
+    public float MinimumPlaybackSeconds { get; }
+
+    public bool HoldFinalFrame { get; }
 
     /// <summary>
     /// Creates immutable advisor animation presentation data.
@@ -78,18 +90,6 @@ public sealed class StrategyAdvisorAnimationViewData
         MinimumPlaybackSeconds = Math.Max(0f, minimumPlaybackSeconds);
         HoldFinalFrame = holdFinalFrame;
     }
-
-    public IReadOnlyList<Texture2D> Frames => frames;
-
-    public bool UsesDroid { get; }
-
-    public string AudioPath { get; }
-
-    public float DelayBeforeSeconds { get; }
-
-    public float MinimumPlaybackSeconds { get; }
-
-    public bool HoldFinalFrame { get; }
 
     /// <summary>
     /// Copies animation frames into an isolated read-only snapshot.

@@ -538,6 +538,46 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessTick_FleetReachesWaypoint_StartsNextLegAfterCombatDetection()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            game.GetFactions().Add(alliance);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet origin = CreatePlanet("ORIGIN", alliance.InstanceID, 0);
+            Planet waypoint = CreatePlanet("WAYPOINT", alliance.InstanceID, 10);
+            Planet destination = CreatePlanet("DESTINATION", alliance.InstanceID, 20);
+            game.AttachNode(origin, sector);
+            game.AttachNode(waypoint, sector);
+            game.AttachNode(destination, sector);
+            Fleet fleet = CreateCombatFleet(
+                game,
+                "ROUTE_FLEET",
+                alliance.InstanceID,
+                origin,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            GameManager manager = TestContent.CreateGameManager(game);
+            Assert.IsTrue(
+                manager.MovementSystem.TrySetFleetWaypointRoute(
+                    new ISceneNode[] { fleet },
+                    new[] { waypoint.InstanceID, destination.InstanceID },
+                    alliance.InstanceID
+                )
+            );
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+
+            manager.ProcessTick();
+
+            Assert.IsFalse(manager.SpaceCombatSystem.HasPendingDecision);
+            Assert.AreSame(destination, fleet.GetParent());
+            Assert.IsNotNull(fleet.Movement);
+            CollectionAssert.AreEqual(new[] { destination.InstanceID }, fleet.Waypoints);
+        }
+
+        [Test]
         public void ProcessTick_PendingCombat_CompletesOnlyStartedTick()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -606,6 +646,77 @@ namespace Rebellion.Tests.Managers
             manager.ProcessTick();
 
             Assert.AreEqual(0, game.CurrentTick);
+        }
+
+        [Test]
+        public void ResolveCombat_UnrelatedFleetReachedWaypoint_StartsDeferredNextLeg()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction alliance = new Faction
+            {
+                InstanceID = "FNALL1",
+                DisplayName = "Alliance",
+                PlayerID = "player",
+            };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            game.GetFactions().Add(alliance);
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet origin = CreatePlanet("ORIGIN", alliance.InstanceID, 0);
+            Planet waypoint = CreatePlanet("WAYPOINT", alliance.InstanceID, 10);
+            Planet destination = CreatePlanet("DESTINATION", alliance.InstanceID, 20);
+            Planet combatPlanet = CreatePlanet("COMBAT", empire.InstanceID, 30);
+            game.AttachNode(origin, sector);
+            game.AttachNode(waypoint, sector);
+            game.AttachNode(destination, sector);
+            game.AttachNode(combatPlanet, sector);
+            Fleet routeFleet = CreateCombatFleet(
+                game,
+                "ROUTE_FLEET",
+                alliance.InstanceID,
+                origin,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            CreateCombatFleet(
+                game,
+                "ALLIANCE_COMBAT",
+                alliance.InstanceID,
+                combatPlanet,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            CreateCombatFleet(
+                game,
+                "EMPIRE_COMBAT",
+                empire.InstanceID,
+                combatPlanet,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            GameManager manager = TestContent.CreateGameManager(game);
+            Assert.IsTrue(
+                manager.MovementSystem.TrySetFleetWaypointRoute(
+                    new ISceneNode[] { routeFleet },
+                    new[] { waypoint.InstanceID, destination.InstanceID },
+                    alliance.InstanceID
+                )
+            );
+            routeFleet.Movement.TicksElapsed = routeFleet.Movement.TransitTicks - 1;
+
+            manager.ProcessTick();
+
+            Assert.IsTrue(manager.SpaceCombatSystem.HasPendingDecision);
+            Assert.AreSame(waypoint, routeFleet.GetParent());
+            Assert.IsNull(routeFleet.Movement);
+            CollectionAssert.AreEqual(new[] { destination.InstanceID }, routeFleet.Waypoints);
+
+            manager.ResolveCombat(autoResolve: true);
+
+            Assert.AreSame(destination, routeFleet.GetParent());
+            Assert.IsNotNull(routeFleet.Movement);
+            CollectionAssert.AreEqual(new[] { destination.InstanceID }, routeFleet.Waypoints);
         }
 
         [Test]
@@ -917,6 +1028,19 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             return fleet;
+        }
+
+        private static Planet CreatePlanet(string instanceId, string ownerId, int positionX)
+        {
+            return new Planet
+            {
+                InstanceID = instanceId,
+                DisplayName = instanceId,
+                OwnerInstanceID = ownerId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = positionX,
+            };
         }
 
         private static float? GetTickInterval(GameManager manager)
