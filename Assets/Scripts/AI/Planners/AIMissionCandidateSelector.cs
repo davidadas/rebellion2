@@ -10,7 +10,7 @@ namespace Rebellion.AI.Planners
     /// <summary>
     /// Retains the strongest bounded set of mission alternatives for each participant and mission.
     /// </summary>
-    internal sealed class AIMissionCandidateFrontier
+    internal sealed class AIMissionCandidateSelector
     {
         // Candidate State.
         private readonly AIMissionProposalScorer _scorer = new AIMissionProposalScorer();
@@ -47,10 +47,10 @@ namespace Rebellion.AI.Planners
                 1,
                 context.Game.Config.AI.MissionPlanning.RetainedAlternativesPerMission
             );
-            List<AIMissionProposal> frontier = GetAlternatives(proposal);
-            AIMissionProposal weakest = GetWeakest(frontier);
+            List<AIMissionProposal> alternatives = GetAlternatives(proposal);
+            AIMissionProposal weakest = GetWeakest(alternatives);
             if (
-                frontier.Count >= retainedAlternatives
+                alternatives.Count >= retainedAlternatives
                 && _scorer.GetScoreUpperBound(context, proposal) < weakest.Score
             )
                 return;
@@ -60,21 +60,21 @@ namespace Rebellion.AI.Planners
                 return;
 
             proposal.SetScore(score);
-            frontier.Add(proposal);
+            alternatives.Add(proposal);
             proposals.Add(proposal);
-            if (frontier.Count <= retainedAlternatives)
+            if (alternatives.Count <= retainedAlternatives)
                 return;
 
-            weakest = GetWeakest(frontier);
-            frontier.Remove(weakest);
+            weakest = GetWeakest(alternatives);
+            alternatives.Remove(weakest);
             proposals.Remove(weakest);
         }
 
         /// <summary>
-        /// Returns the retained alternatives for a participant and mission type.
+        /// Gets the retained alternatives for a participant and mission type.
         /// </summary>
-        /// <param name="proposal">The proposal identifying the frontier.</param>
-        /// <returns>The mutable frontier for the proposal.</returns>
+        /// <param name="proposal">The proposal identifying the alternatives collection.</param>
+        /// <returns>The mutable alternatives collection for the proposal.</returns>
         private List<AIMissionProposal> GetAlternatives(AIMissionProposal proposal)
         {
             (string ParticipantId, string MissionTypeId) key = (

@@ -17,8 +17,8 @@ namespace Rebellion.AI.Planners
     public sealed class AIMissionPlanner : IAIProposalPlanner
     {
         // Planning State.
-        private readonly AIMissionCandidateFrontier _candidateFrontier =
-            new AIMissionCandidateFrontier();
+        private readonly AIMissionCandidateSelector _candidateSelector =
+            new AIMissionCandidateSelector();
         private readonly Dictionary<
             (string MissionTypeId, string PlanetId),
             List<IMissionParticipant>
@@ -52,7 +52,7 @@ namespace Rebellion.AI.Planners
             if (context?.Game == null || context.Faction == null || context.Missions == null)
                 return new List<AIProposal>();
 
-            _candidateFrontier.Reset();
+            _candidateSelector.Reset();
             _decoyCandidates.Clear();
             _sabotageTargets.Clear();
             _diplomacyCandidates = null;
@@ -581,7 +581,7 @@ namespace Rebellion.AI.Planners
             if (proposal == null)
                 return;
 
-            _candidateFrontier.TryAdd(context, proposals, proposal);
+            _candidateSelector.TryAdd(context, proposals, proposal);
         }
 
         private static AIMissionProposal CreateProposal(
