@@ -55,7 +55,7 @@ Conditionally executes one action collection.
 </If>
 ```
 
-### RollRandom
+### RollOutcome
 
 Executes one randomly selected eligible outcome.
 
@@ -73,13 +73,13 @@ Outcomes whose conditionals fail are excluded. Weights are relative, so weights 
 a 30/70 split. The action does nothing when no outcome remains eligible.
 
 ```xml
-<RollRandom>
+<RollOutcome>
   <Outcomes>
     <Outcome Weight="30">
       <Actions>
-        <ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
+        <ChangeRawResourceNodes PlanetInstanceID="NABOO">
           <Amount>1</Amount>
-        </ChangePlanetStat>
+        </ChangeRawResourceNodes>
       </Actions>
     </Outcome>
     <Outcome Weight="70">
@@ -91,7 +91,30 @@ a 30/70 split. The action does nothing when no outcome remains eligible.
       </Actions>
     </Outcome>
   </Outcomes>
-</RollRandom>
+</RollOutcome>
+```
+
+### RollChance
+
+Executes an action collection when one probability roll succeeds.
+
+**Required options**
+
+- `Actions` **[Required]:** The actions executed when the probability roll succeeds.
+- Probability source **[Required]:** Provide exactly one:
+  - `Probability`: A fixed probability from `0` through `1`.
+  - `ProbabilityBinding`: A binding containing a probability from `0` through `1`.
+  - `RollDouble`: Generates the probability from its inclusive `Minimum` and exclusive `Maximum`.
+
+```xml
+<RollChance Probability="0.25">
+  <Actions>
+    <SendMessage RecipientFactionInstanceID="FNALL1" Type="Advice">
+      <Subject>Discovery</Subject>
+      <Body>Scouts discovered something useful.</Body>
+    </SendMessage>
+  </Actions>
+</RollChance>
 ```
 
 ### PerformSkillCheck
@@ -141,7 +164,10 @@ Updates a saved integer shared by all events.
 **Required options**
 
 - `Key` **[Required]:** The persistent key identifying the event variable.
-- `Operand` **[Required]:** The integer used by the selected operation.
+- Operand source **[Required]:** Provide exactly one:
+  - `Operand`: The fixed integer used by the selected operation.
+  - `OperandBinding`: A binding containing the operation's integer.
+  - `RollInteger`: Generates the operation's integer from its inclusive `Minimum` and `Maximum`.
 
 **Optional options**
 
@@ -230,49 +256,105 @@ Delivers a strategy message to an explicitly identified faction.
 
 ## Planets and resources
 
-### ChangePlanetStat
+### ChangeEnergyCapacity
 
-Adjusts one stat on one or more planets.
+Adjusts the energy capacity of one or more planets without reducing it below zero.
 
 **Required options**
 
-- `Stat` **[Required]:** The planet stat to adjust: `RawResourceNodes` or `EnergyCapacity`.
-- `PlanetInstanceID` **[Required]:** The `InstanceID` of a planet to adjust; at least one planet source must be provided, and `PlanetBinding` takes precedence when both attributes are present.
-- `PlanetBinding` **[Required]:** A binding that resolves a planet to adjust; at least one planet source must be provided, and this takes precedence over `PlanetInstanceID`.
-- `Planets` **[Required]:** The selectors identifying planets to adjust; at least one planet source must be provided, and these may be combined with the direct or bound planet.
-- `Amount` **[Required]:** Signed fixed adjustment; use either this or `PercentOfCurrent`.
-- `PercentOfCurrent` **[Required]:** Signed percentage adjustment; use either this or `Amount`.
+- Planet source **[Required]:** Provide at least one:
+  - `PlanetInstanceID`: The `InstanceID` of a planet to adjust; `PlanetBinding` takes precedence when both attributes are present.
+  - `PlanetBinding`: A binding that resolves a planet to adjust; takes precedence over `PlanetInstanceID`.
+  - `Planets`: Selectors identifying planets to adjust; may be combined with the direct or bound planet.
+- Adjustment source **[Required]:** Provide exactly one:
+  - `Amount`: A signed fixed adjustment.
+  - `AmountBinding`: A binding containing a signed adjustment.
+  - `RollInteger`: Generates a signed adjustment from its inclusive `Minimum` and `Maximum`.
+  - `PercentOfCurrent`: A signed percentage of the current value.
 
 ```xml
-<ChangePlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes">
-  <Amount>5</Amount>
-</ChangePlanetStat>
+<ChangeEnergyCapacity PlanetInstanceID="NABOO">
+  <RollInteger Minimum="1" Maximum="3"/>
+</ChangeEnergyCapacity>
 ```
 
-Values cannot fall below zero.
+### ChangePopularSupport
 
-### DamagePlanetStats
-
-Randomly removes points from selected planet stats without reducing them below zero.
+Adjusts one faction's popular support on one or more planets and applies the planet's normal support-rebalancing rules.
 
 **Required options**
 
-- `PlanetInstanceID` **[Required]:** The `InstanceID` of the affected planet; use either this or `PlanetBinding`.
-- `PlanetBinding` **[Required]:** A binding that resolves the affected planet; use either this or `PlanetInstanceID`.
-- `LossProbabilityPerResource` **[Required]:** Probability from `0` through `1`, rolled independently for each current point.
-- `MinimumTotalLoss` **[Required]:** Minimum combined loss, capped by the total available points.
-- `Stats` **[Required]:** One or more planet stats from which points may be removed.
-- `Name` **[Required]:** The stat selected by each `Stat` element: `RawResourceNodes` or `EnergyCapacity`.
+- `FactionInstanceID` **[Required]:** The `InstanceID` of the faction whose support changes.
+- Planet source **[Required]:** Provide at least one:
+  - `PlanetInstanceID`: The `InstanceID` of a planet to adjust.
+  - `PlanetBinding`: A binding that resolves a planet to adjust.
+  - `Planets`: Selectors identifying planets to adjust.
+- Adjustment source **[Required]:** Provide exactly one:
+  - `Amount`: A signed fixed adjustment.
+  - `AmountBinding`: A binding containing a signed adjustment.
+  - `RollInteger`: Generates a signed adjustment from its inclusive `Minimum` and `Maximum`.
+  - `PercentOfCurrent`: A signed percentage of the faction's current support.
 
 ```xml
-<DamagePlanetStats PlanetInstanceID="NABOO"
-                   LossProbabilityPerResource="0.05"
-                   MinimumTotalLoss="1">
-  <Stats>
-    <Stat Name="RawResourceNodes"/>
-    <Stat Name="EnergyCapacity"/>
-  </Stats>
-</DamagePlanetStats>
+<ChangePopularSupport PlanetInstanceID="NABOO" FactionInstanceID="FNALL1">
+  <Amount>10</Amount>
+</ChangePopularSupport>
+```
+
+### ChangeRawResourceNodes
+
+Adjusts the raw-resource nodes of one or more planets without reducing them below zero. It supports the same planet targets and adjustment modes as `ChangeEnergyCapacity`.
+
+```xml
+<ChangeRawResourceNodes PlanetBinding="$planet">
+  <Amount>1</Amount>
+</ChangeRawResourceNodes>
+```
+
+### DamagePlanetResources
+
+Randomly removes raw-resource nodes and energy capacity without reducing either below zero.
+
+**Required options**
+
+- Planet source **[Required]:** Provide exactly one:
+  - `PlanetInstanceID`: The `InstanceID` of the affected planet.
+  - `PlanetBinding`: A binding that resolves the affected planet.
+- Loss-probability source **[Required]:** Provide exactly one:
+  - `LossProbabilityPerResource`: A fixed probability from `0` through `1`, rolled independently for each current point.
+  - `ProbabilityBinding`: A binding containing the per-point probability.
+  - `RollDouble`: Generates the per-point probability from its inclusive `Minimum` and exclusive `Maximum`.
+
+**Optional options**
+
+- `MinimumTotalLoss` **[Optional]:** The minimum combined loss, capped by the available points; defaults to `1`.
+
+```xml
+<DamagePlanetResources PlanetInstanceID="NABOO"
+                       LossProbabilityPerResource="0.05"
+                       MinimumTotalLoss="1"/>
+```
+
+### SetPopularSupport
+
+Sets one faction's popular support on one or more planets to an absolute value and applies the planet's normal support-rebalancing rules.
+
+**Required options**
+
+- `FactionInstanceID` **[Required]:** The `InstanceID` of the faction whose support is set.
+- Planet source **[Required]:** Provide at least one:
+  - `PlanetInstanceID`: The `InstanceID` of a planet to update.
+  - `PlanetBinding`: A binding that resolves a planet to update.
+  - `Planets`: Selectors identifying planets to update.
+- Support source **[Required]:** Provide exactly one:
+  - `Support`: A fixed support value.
+  - `SupportBinding`: A binding containing the support value.
+  - `RollInteger`: Generates the support value from its inclusive `Minimum` and `Maximum`.
+
+```xml
+<SetPopularSupport PlanetInstanceID="NABOO" FactionInstanceID="FNALL1">
+  <Support>50</Support>
+</SetPopularSupport>
 ```
 
 ## Units and ownership
@@ -310,8 +392,9 @@ Transfers selected planets or units to another faction.
 **Required options**
 
 - `FactionInstanceID` **[Required]:** The `InstanceID` of the faction receiving ownership.
-- `Planets` **[Required]:** The selectors identifying planets to transfer; use either this or `Units`.
-- `Units` **[Required]:** The selectors identifying units to transfer; use either this or `Planets`.
+- Ownership target **[Required]:** Provide exactly one:
+  - `Planets`: Selectors identifying planets to transfer.
+  - `Units`: Selectors identifying units to transfer.
 
 Planet transfers use planetary-control rules. Unit transfers leave units at their current scene
 locations. Only selected nodes change owner.
@@ -331,10 +414,12 @@ Immediately places existing or newly spawned units at one valid destination.
 
 **Required options**
 
-- `UnitInstanceID` **[Required]:** The `InstanceID` of an existing unit to place; at least one unit source must be provided and this may be combined with `Units`.
-- `Units` **[Required]:** The selectors and `SpawnUnits` entries producing units to place; at least one unit source must be provided and this may be combined with `UnitInstanceID`.
-- `DestinationInstanceID` **[Required]:** The `InstanceID` of the destination; use either this or `Destination`.
-- `Destination` **[Required]:** The selectors that must resolve exactly one destination; use either this or `DestinationInstanceID`.
+- Unit source **[Required]:** Provide at least one:
+  - `UnitInstanceID`: The `InstanceID` of an existing unit to place.
+  - `Units`: Selectors and `SpawnUnits` entries producing units to place; may be combined with `UnitInstanceID`.
+- Destination source **[Required]:** Provide exactly one:
+  - `DestinationInstanceID`: The `InstanceID` of the destination.
+  - `Destination`: Selectors that must resolve exactly one destination.
 
 ```xml
 <PlaceUnits DestinationInstanceID="NABOO">
@@ -354,10 +439,12 @@ Moves active, already-placed units through normal validation and transit.
 
 **Required options**
 
-- `UnitInstanceID` **[Required]:** The `InstanceID` of an existing unit to send; at least one unit source must be provided and this may be combined with `Units`.
-- `Units` **[Required]:** The selectors identifying existing units to send; at least one unit source must be provided and this may be combined with `UnitInstanceID`.
-- `DestinationInstanceID` **[Required]:** The `InstanceID` of the destination; use either this or `Destination`.
-- `Destination` **[Required]:** The selectors that must resolve exactly one destination; use either this or `DestinationInstanceID`.
+- Unit source **[Required]:** Provide at least one:
+  - `UnitInstanceID`: The `InstanceID` of an existing unit to send.
+  - `Units`: Selectors identifying existing units to send; may be combined with `UnitInstanceID`.
+- Destination source **[Required]:** Provide exactly one:
+  - `DestinationInstanceID`: The `InstanceID` of the destination.
+  - `Destination`: Selectors that must resolve exactly one destination.
 
 ```xml
 <SendUnits UnitInstanceID="DARTH_VADER" DestinationInstanceID="YAVIN"/>
@@ -376,8 +463,9 @@ Reactivate a returning unit before placing or sending it.
 **Required options**
 
 - `State` **[Required]:** The gameplay state to apply. Accepts `Active` or `Inactive`.
-- `InstanceID` **[Required]:** The `InstanceID` of a scene node to update; at least one node source must be provided and this may be combined with `Targets`.
-- `Targets` **[Required]:** The selectors identifying scene nodes to update; at least one node source must be provided and this may be combined with `InstanceID`.
+- Node source **[Required]:** Provide at least one:
+  - `InstanceID`: The `InstanceID` of a scene node to update.
+  - `Targets`: Selectors identifying scene nodes to update; may be combined with `InstanceID`.
 
 ```xml
 <SetNodeState InstanceID="LUKE_SKYWALKER" State="Inactive"/>
@@ -405,9 +493,13 @@ Captures or releases one or more officers without moving them.
 **Required options**
 
 - `IsCaptured` **[Required]:** Whether the selected officers are captured (`true`) or released (`false`).
-- `OfficerInstanceID` **[Required]:** The `InstanceID` of an officer to capture or release; at least one officer source must be provided and this may be combined with `Officers`.
-- `Officers` **[Required]:** The selectors identifying officers to capture or release; at least one officer source must be provided and this may be combined with `OfficerInstanceID`.
-- `CaptorFactionInstanceID` **[Required]:** The `InstanceID` of the capturing faction when `IsCaptured` is `true`; omit when releasing.
+- Officer source **[Required]:** Provide at least one:
+  - `OfficerInstanceID`: The `InstanceID` of an officer to capture or release.
+  - `Officers`: Selectors identifying officers to capture or release; may be combined with `OfficerInstanceID`.
+
+**Conditionally required options**
+
+- `CaptorFactionInstanceID` **[Conditionally required]:** The `InstanceID` of the capturing faction when `IsCaptured` is `true`; omit when releasing.
 
 **Optional options**
 
@@ -428,13 +520,20 @@ Adjusts one rating for one or more officers.
 **Required options**
 
 - `Rating` **[Required]:** The officer rating to adjust: `Diplomacy`, `Espionage`, `Combat`, `Leadership`, `ShipResearch`, `TroopResearch`, or `FacilityResearch`.
-- `OfficerInstanceID` **[Required]:** The `InstanceID` of an officer to adjust; at least one officer source must be provided and this may be combined with `Officers`.
-- `Officers` **[Required]:** The selectors identifying officers to adjust; at least one officer source must be provided and this may be combined with `OfficerInstanceID`.
-- `ReferenceOfficerInstanceID` **[Required]:** The `InstanceID` of the comparison officer when using `PercentOfPositiveGap`.
-- `Amount` **[Required]:** Signed integer added to the stored rating; use exactly one adjustment option.
-- `PercentOfStored` **[Required]:** Signed change calculated from the stored rating; use exactly one adjustment option.
-- `PercentOfEffective` **[Required]:** Signed change calculated from the effective rating and applied to the stored rating; use exactly one adjustment option.
-- `PercentOfPositiveGap` **[Required]:** Non-negative percentage of the effective-rating gap to `ReferenceOfficerInstanceID`; use exactly one adjustment option.
+- Officer source **[Required]:** Provide at least one:
+  - `OfficerInstanceID`: The `InstanceID` of an officer to adjust.
+  - `Officers`: Selectors identifying officers to adjust; may be combined with `OfficerInstanceID`.
+- Adjustment source **[Required]:** Provide exactly one:
+  - `Amount`: A signed integer added to the stored rating.
+  - `AmountBinding`: A binding containing the signed integer added to the stored rating.
+  - `RollInteger`: Generates the signed integer adjustment from its inclusive `Minimum` and `Maximum`.
+  - `PercentOfStored`: A signed change calculated from the stored rating.
+  - `PercentOfEffective`: A signed change calculated from the effective rating and applied to the stored rating.
+  - `PercentOfPositiveGap`: A non-negative percentage of the effective-rating gap to `ReferenceOfficerInstanceID`.
+
+**Conditionally required options**
+
+- `ReferenceOfficerInstanceID` **[Conditionally required]:** The `InstanceID` of the comparison officer when using `PercentOfPositiveGap`.
 
 **Optional options**
 
@@ -452,13 +551,20 @@ Increases Force progression for one or more officers.
 
 **Required options**
 
-- `OfficerInstanceID` **[Required]:** The `InstanceID` of an officer whose Force progression will increase; at least one officer source must be provided and this may be combined with `Officers`.
-- `Officers` **[Required]:** The selectors identifying officers whose Force progression will increase; at least one officer source must be provided and this may be combined with `OfficerInstanceID`.
-- `ReferenceOfficerInstanceID` **[Required]:** The `InstanceID` of the comparison officer when using `PercentOfPositiveGap`.
-- `Amount` **[Required]:** Positive fixed adjustment; use exactly one adjustment option.
-- `PercentOfStored` **[Required]:** Positive change calculated from `ForceValue`; use exactly one adjustment option.
-- `PercentOfEffective` **[Required]:** Positive change calculated from the effective `ForceRank`; use exactly one adjustment option.
-- `PercentOfPositiveGap` **[Required]:** Positive percentage of the effective-rank gap to `ReferenceOfficerInstanceID`; use exactly one adjustment option.
+- Officer source **[Required]:** Provide at least one:
+  - `OfficerInstanceID`: The `InstanceID` of an officer whose Force progression will increase.
+  - `Officers`: Selectors identifying officers whose Force progression will increase; may be combined with `OfficerInstanceID`.
+- Adjustment source **[Required]:** Provide exactly one:
+  - `Amount`: A positive fixed adjustment.
+  - `AmountBinding`: A binding containing the positive fixed adjustment.
+  - `RollInteger`: Generates the positive adjustment from its inclusive `Minimum` and `Maximum`.
+  - `PercentOfStored`: A positive change calculated from `ForceValue`.
+  - `PercentOfEffective`: A positive change calculated from the effective `ForceRank`.
+  - `PercentOfPositiveGap`: A positive percentage of the effective-rank gap to `ReferenceOfficerInstanceID`.
+
+**Conditionally required options**
+
+- `ReferenceOfficerInstanceID` **[Conditionally required]:** The `InstanceID` of the comparison officer when using `PercentOfPositiveGap`.
 
 **Optional options**
 
@@ -608,8 +714,9 @@ Changes the display name of one or more scene nodes.
 **Required options**
 
 - `Name` **[Required]:** The display name assigned to every selected node.
-- `TargetInstanceID` **[Required]:** The `InstanceID` of a node to rename; at least one target source must be provided and this may be combined with `Targets`.
-- `Targets` **[Required]:** The selectors identifying nodes to rename; at least one target source must be provided and this may be combined with `TargetInstanceID`.
+- Target source **[Required]:** Provide at least one:
+  - `TargetInstanceID`: The `InstanceID` of a node to rename.
+  - `Targets`: Selectors identifying nodes to rename; may be combined with `TargetInstanceID`.
 
 ```xml
 <SetDisplayName TargetInstanceID="LUKE_SKYWALKER" Name="Luke Skywalker (Jedi)"/>
@@ -622,8 +729,9 @@ Changes the supplemental status text shown for one or more scene nodes.
 **Required options**
 
 - `Status` **[Required]:** The supplemental status text assigned to every selected node.
-- `TargetInstanceID` **[Required]:** The `InstanceID` of a node whose status will change; at least one target source must be provided and this may be combined with `Targets`.
-- `Targets` **[Required]:** The selectors identifying nodes whose status will change; at least one target source must be provided and this may be combined with `TargetInstanceID`.
+- Target source **[Required]:** Provide at least one:
+  - `TargetInstanceID`: The `InstanceID` of a node whose status will change.
+  - `Targets`: Selectors identifying nodes whose status will change; may be combined with `TargetInstanceID`.
 
 ```xml
 <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER" Status="On Mission (Dagobah)"/>
@@ -635,8 +743,9 @@ Removes the supplemental status text shown for one or more scene nodes.
 
 **Required options**
 
-- `TargetInstanceID` **[Required]:** The `InstanceID` of a node whose status will be cleared; at least one target source must be provided and this may be combined with `Targets`.
-- `Targets` **[Required]:** The selectors identifying nodes whose status will be cleared; at least one target source must be provided and this may be combined with `TargetInstanceID`.
+- Target source **[Required]:** Provide at least one:
+  - `TargetInstanceID`: The `InstanceID` of a node whose status will be cleared.
+  - `Targets`: Selectors identifying nodes whose status will be cleared; may be combined with `TargetInstanceID`.
 
 ```xml
 <ClearDisplayStatus TargetInstanceID="LUKE_SKYWALKER"/>

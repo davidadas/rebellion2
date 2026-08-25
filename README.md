@@ -4,11 +4,11 @@ An open-source remake of the 1998 strategy game *Star Wars: Rebellion*, built wi
 Despite the name, Rebellion 2 is not a sequel. Think of it as a remaster of the original game,
 but with the updates we have always wanted.
 
-<img width="1421" height="794" alt="Rebellion 2 strategy view screenshot" src="https://github.com/user-attachments/assets/a440fc8c-6916-47a5-a7eb-5a8811700844" />
+<img width="3770" height="2110" alt="image" src="https://github.com/user-attachments/assets/f3b454e3-aa88-4363-b8ba-19d2447acb2e" />
 
 ## Current Status
 
-Rebellion 2 is approximately **55% complete toward a feature-complete single-player campaign**.
+Rebellion 2 is approximately **60% complete toward a feature-complete single-player campaign**.
 
 | Area | Estimate |
 | --- | ---: |
@@ -16,23 +16,19 @@ Rebellion 2 is approximately **55% complete toward a feature-complete single-pla
 | Strategy Simulation | 60% |
 | Strategic AI | 50% |
 | Missions | 80% |
-| Events | 0% |
+| Original Game Events | 85% |
+| Custom Events API | 30% |
 | Tactical Simulation | 0% |
 | Tactical AI | 0% |
 | Strategy Interface | 80% |
 | UI Upscaling | 40% |
-| Save Games* | 100% |
+| Save Games | 100% |
 | Settings | 10% |
 | Moddability | 65% |
 | Modding Tools | 0% |
 | Multiplayer | 0% |
 
-\* Save compatibility is not guaranteed between versions during development.
-
-Campaign generation, core strategy systems, missions, save games, and most of the Strategy
-interface are functional. Major remaining work includes story events, strategic AI depth, tactical
-AI, UI upscaling, settings, modding tools, tactical simulation, multiplayer, balance, and release
-polish.
+**NOTE: Save compatibility is not guaranteed between versions during development.**
 
 ## Playing the game
 

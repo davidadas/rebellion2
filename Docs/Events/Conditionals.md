@@ -192,8 +192,9 @@ Passes when the selected planet has a non-neutral owner.
 
 **Required options**
 
-- `PlanetInstanceID` **[Required]:** The `InstanceID` of the planet to evaluate; use either this or `PlanetBinding`.
-- `PlanetBinding` **[Required]:** A binding that resolves the planet to evaluate; use either this or `PlanetInstanceID`.
+- Planet source **[Required]:** Provide exactly one:
+  - `PlanetInstanceID`: The `InstanceID` of the planet to evaluate.
+  - `PlanetBinding`: A binding that resolves the planet to evaluate.
 
 **Optional options**
 
@@ -210,8 +211,9 @@ Rolls a random percentage against the selected faction's current support on a pl
 **Required options**
 
 - `FactionInstanceID` **[Required]:** The `InstanceID` of the faction whose support is evaluated.
-- `PlanetInstanceID` **[Required]:** The `InstanceID` of the planet to evaluate; use either this or `PlanetBinding`.
-- `PlanetBinding` **[Required]:** A binding that resolves the planet to evaluate; use either this or `PlanetInstanceID`.
+- Planet source **[Required]:** Provide exactly one:
+  - `PlanetInstanceID`: The `InstanceID` of the planet to evaluate.
+  - `PlanetBinding`: A binding that resolves the planet to evaluate.
 
 ```xml
 <RollAgainstPopularSupport PlanetBinding="$planet" FactionInstanceID="FNALL1"/>
@@ -441,8 +443,9 @@ Compares one planet stat against an integer.
 - `Stat` **[Required]:** `RawResourceNodes` or `EnergyCapacity`.
 - `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
 - `Value` **[Required]:** Integer.
-- `PlanetInstanceID` **[Required]:** The `InstanceID` of the planet to evaluate; use either this or `PlanetBinding`.
-- `PlanetBinding` **[Required]:** A binding that resolves the planet to evaluate; use either this or `PlanetInstanceID`.
+- Planet source **[Required]:** Provide exactly one:
+  - `PlanetInstanceID`: The `InstanceID` of the planet to evaluate.
+  - `PlanetBinding`: A binding that resolves the planet to evaluate.
 
 ```xml
 <ComparePlanetStat PlanetInstanceID="NABOO"
@@ -458,8 +461,9 @@ Passes when the selected planet contains a completed building of the requested t
 **Required options**
 
 - `Type` **[Required]:** `Mine`, `Refinery`, `Shipyard`, `TrainingFacility`, `ConstructionFacility`, `Defense`, `Weapon`, or `Headquarters`.
-- `PlanetInstanceID` **[Required]:** The `InstanceID` of the planet to evaluate; use either this or `PlanetBinding`.
-- `PlanetBinding` **[Required]:** A binding that resolves the planet to evaluate; use either this or `PlanetInstanceID`.
+- Planet source **[Required]:** Provide exactly one:
+  - `PlanetInstanceID`: The `InstanceID` of the planet to evaluate.
+  - `PlanetBinding`: A binding that resolves the planet to evaluate.
 
 ```xml
 <Conditionals>
