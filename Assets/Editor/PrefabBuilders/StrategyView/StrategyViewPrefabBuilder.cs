@@ -6717,6 +6717,13 @@ public static class StrategyViewPrefabBuilder
             submenus.Add(submenu);
         }
 
+        RawImage displayOffCheckMark = CreateRawImage(
+            "DisplayOffCheckMarkImage",
+            selector.transform,
+            null,
+            0,
+            0
+        );
         TextMeshProUGUI displayOffText = CreateGalacticInformationLabel(
             "DisplayOffText",
             selector.transform,
@@ -6737,6 +6744,7 @@ public static class StrategyViewPrefabBuilder
         AssignReferenceArray(view, "categoryTextFields", categoryLabels);
         AssignReferenceArray(view, "categoryHitAreas", categoryHitAreas);
         AssignReferenceArray(view, "submenuViews", submenus);
+        AssignReference(view, "displayOffCheckMarkImage", displayOffCheckMark);
         AssignReference(view, "displayOffTextField", displayOffText);
         AssignReference(view, "displayOffHitArea", displayOffHitArea);
         root.SetActive(false);
@@ -6774,12 +6782,16 @@ public static class StrategyViewPrefabBuilder
         background.color = theme.GetBackgroundColor();
         FillParent(background.rectTransform);
         GalacticInformationFrameView frame = CreateGalacticInformationFrameView(root.transform);
+        List<RawImage> checkMarks = new List<RawImage>();
         List<RawImage> icons = new List<RawImage>();
         List<TextMeshProUGUI> labels = new List<TextMeshProUGUI>();
         List<UIRaycastArea> hitAreas = new List<UIRaycastArea>();
         for (int i = 0; i < category.Filters.Count; i++)
         {
             GalacticInformationFilterTheme filter = category.Filters[i];
+            checkMarks.Add(
+                CreateRawImage($"{filter.Mode}FilterCheckMarkImage", root.transform, null, 0, 0)
+            );
             icons.Add(
                 CreateRawImage(
                     $"{filter.Mode}FilterIconImage",
@@ -6807,6 +6819,7 @@ public static class StrategyViewPrefabBuilder
 
         AssignReference(view, "backgroundImage", background);
         AssignReference(view, "frameView", frame);
+        AssignReferenceArray(view, "checkMarkImages", checkMarks);
         AssignReferenceArray(view, "iconImages", icons);
         AssignReferenceArray(view, "textFields", labels);
         AssignReferenceArray(view, "hitAreas", hitAreas);

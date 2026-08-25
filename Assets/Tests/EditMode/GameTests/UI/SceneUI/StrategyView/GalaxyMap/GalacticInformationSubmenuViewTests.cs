@@ -323,6 +323,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 mode,
                 visible,
                 hitBounds,
+                default,
                 new GalacticInformationImageRenderData(_texture, hitBounds),
                 new GalacticInformationTextRenderData(label, color, hitBounds)
             );

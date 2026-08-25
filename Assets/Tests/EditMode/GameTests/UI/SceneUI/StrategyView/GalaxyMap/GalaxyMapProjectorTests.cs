@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -46,6 +47,97 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new GalaxyMapProjector(null));
+        }
+
+        [Test]
+        public void ProjectWaypointRoutes_PlayerAndOpposingRoutes_ReturnsOnlyPlayerRoute()
+        {
+            GalaxyPlanetSector sector = CreateSector("sector", "Sector", 0, 0);
+            Planet origin = CreatePlanet("origin", _playerFactionId, 10, 20);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 40, 50);
+            _game.AttachNode(sector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, sector);
+            _game.AttachNode(destination, sector);
+            GameFleet playerFleet = new GameFleet(_playerFactionId, "Player Fleet")
+            {
+                Movement = new MovementState { OriginPosition = new System.Drawing.Point(12, 14) },
+            };
+            playerFleet.Waypoints.Add(destination.InstanceID);
+            _game.AttachNode(playerFleet, origin);
+            GameFleet opposingFleet = new GameFleet(_opposingFactionId, "Opposing Fleet");
+            opposingFleet.Waypoints.Add(destination.InstanceID);
+            _game.AttachNode(opposingFleet, origin);
+
+            List<GalaxyMapWaypointRouteRenderData> routes =
+                GalaxyMapProjector.ProjectWaypointRoutes(
+                    _game,
+                    _playerFactionId,
+                    selectedFleetInstanceIds: new[] { playerFleet.InstanceID }
+                );
+
+            Assert.AreEqual(1, routes.Count);
+            Assert.AreEqual(playerFleet.InstanceID, routes[0].FleetInstanceId);
+            Assert.AreEqual(new Vector2Int(20, 22), routes[0].Origin);
+            Assert.AreEqual(1, routes[0].Waypoints.Count);
+            Assert.AreEqual(1, routes[0].Waypoints[0].Order);
+            Assert.AreEqual(new Vector2Int(48, 58), routes[0].Waypoints[0].Position);
+        }
+
+        [Test]
+        public void ProjectWaypointRoutes_UnselectedRoute_ReturnsRouteOnlyWhenAllRoutesEnabled()
+        {
+            GalaxyPlanetSector sector = CreateSector("sector", "Sector", 0, 0);
+            Planet origin = CreatePlanet("origin", _playerFactionId, 10, 20);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 40, 50);
+            _game.AttachNode(sector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, sector);
+            _game.AttachNode(destination, sector);
+            GameFleet fleet = new GameFleet(_playerFactionId, "Player Fleet");
+            fleet.Waypoints.Add(destination.InstanceID);
+            _game.AttachNode(fleet, origin);
+
+            List<GalaxyMapWaypointRouteRenderData> defaultRoutes =
+                GalaxyMapProjector.ProjectWaypointRoutes(_game, _playerFactionId);
+            List<GalaxyMapWaypointRouteRenderData> allRoutes =
+                GalaxyMapProjector.ProjectWaypointRoutes(
+                    _game,
+                    _playerFactionId,
+                    showAllRoutes: true
+                );
+
+            Assert.IsEmpty(defaultRoutes);
+            Assert.AreEqual(1, allRoutes.Count);
+            Assert.AreEqual(fleet.InstanceID, allRoutes[0].FleetInstanceId);
+        }
+
+        [Test]
+        public void ProjectWaypointRoutes_UncommittedPlan_ReturnsPreviewWithoutMutatingFleet()
+        {
+            GalaxyPlanetSector sector = CreateSector("sector", "Sector", 0, 0);
+            Planet origin = CreatePlanet("origin", _playerFactionId, 10, 20);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 40, 50);
+            _game.AttachNode(sector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, sector);
+            _game.AttachNode(destination, sector);
+            GameFleet fleet = new GameFleet(_playerFactionId, "Player Fleet");
+            _game.AttachNode(fleet, origin);
+            StrategyWindowTargetingSource plan = new StrategyWindowTargetingSource(
+                null,
+                StrategyMenuAction.WaypointMove,
+                0,
+                0,
+                new[] { fleet }
+            );
+            plan.TryAppendWaypoint(destination.InstanceID);
+
+            List<GalaxyMapWaypointRouteRenderData> routes =
+                GalaxyMapProjector.ProjectWaypointRoutes(_game, _playerFactionId, plan);
+
+            Assert.AreEqual(1, routes.Count);
+            Assert.AreEqual(new Vector2Int(18, 28), routes[0].Origin);
+            Assert.AreEqual(new Vector2Int(48, 58), routes[0].Waypoints[0].Position);
+            Assert.IsEmpty(fleet.Waypoints);
+            Assert.IsNull(fleet.Movement);
         }
 
         [Test]

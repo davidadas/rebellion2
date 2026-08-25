@@ -236,7 +236,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             StrategyStatusTarget target = _controller.GetStatusTarget(view);
 
             Assert.IsTrue(created);
-            Assert.AreEqual(7, request.Commands.Count);
+            Assert.AreEqual(8, request.Commands.Count);
             CollectionAssert.AreEqual(
                 new ISceneNode[] { _fleet },
                 _controller.GetContextItems(view)
@@ -305,6 +305,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             Assert.IsEmpty(_controller.GetContextItems(view));
             Assert.IsNull(_controller.GetStatusTarget(view));
+        }
+
+        [Test]
+        public void PlanetPressed_FleetIcon_MarksDirty()
+        {
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            PointerEventData eventData = CreateFleetPointerEvent(
+                view,
+                PointerEventData.InputButton.Left
+            );
+
+            planetView.OnPointerDown(eventData);
+
+            Assert.AreEqual(2, _dirtyCount);
         }
 
         [Test]
@@ -540,7 +558,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _controller.TryCreateContextMenu(context, out _, out _);
         }
 
-        private static PointerEventData CreateFleetPointerEvent(PlanetSectorWindowView view)
+        private static PointerEventData CreateFleetPointerEvent(
+            PlanetSectorWindowView view,
+            PointerEventData.InputButton button = PointerEventData.InputButton.Right
+        )
         {
             PlanetSectorPlanetView planetView =
                 view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
@@ -548,7 +569,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             RawImage fleetImage = GetField<RawImage>(planetView, "fleetImage");
             return new PointerEventData(null)
             {
-                button = PointerEventData.InputButton.Right,
+                button = button,
                 pointerCurrentRaycast = new RaycastResult { gameObject = fleetImage.gameObject },
                 pointerPressRaycast = new RaycastResult { gameObject = fleetImage.gameObject },
             };
@@ -700,6 +721,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             {
                 LastItems = items;
             }
+
+            public bool TryAppendFleetWaypoint(
+                StrategyWindowTargetingSource source,
+                StrategyMissionTarget target
+            ) => false;
+
+            public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+
+            public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+
+            public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
         }
     }
 }

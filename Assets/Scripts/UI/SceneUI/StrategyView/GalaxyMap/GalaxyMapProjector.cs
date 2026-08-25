@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Util.Extensions;
@@ -11,6 +12,8 @@ using UnityEngine;
 /// </summary>
 public sealed class GalaxyMapProjector
 {
+    private static readonly Vector2Int _planetMarkerCenterOffset = new Vector2Int(8, 8);
+
     private const int _defaultMarkerIndex = 0;
     private static readonly Color _dimmedBackgroundColor = new Color(0.5f, 0.5f, 0.5f, 1f);
 
@@ -33,13 +36,17 @@ public sealed class GalaxyMapProjector
     /// <param name="filterMode">The active galactic-information filter.</param>
     /// <param name="hoveredSectorInstanceId">The planet-sector identifier whose label is revealed.</param>
     /// <param name="briefing">The transient briefing presentation, or null.</param>
+    /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
+    /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
     /// <returns>The complete immutable map presentation.</returns>
     public GalaxyMapRenderData Project(
         IReadOnlyList<GalaxyMapSector> sectors,
         string playerFactionId,
         GalacticInformationFilterMode filterMode,
         string hoveredSectorInstanceId,
-        StrategyBriefingMapPresentation briefing = null
+        StrategyBriefingMapPresentation briefing = null,
+        StrategyWindowTargetingSource waypointPlan = null,
+        IReadOnlyCollection<string> selectedFleetInstanceIds = null
     )
     {
         UIContext context = GetRequiredContext();
@@ -67,8 +74,160 @@ public sealed class GalaxyMapProjector
                     : string.IsNullOrWhiteSpace(briefing.Label) ? "Briefing"
                     : briefing.Label
             ),
-            clusters
+            clusters,
+            ProjectWaypointRoutes(
+                playerFactionId,
+                waypointPlan,
+                selectedFleetInstanceIds,
+                filterMode == GalacticInformationFilterMode.FleetWaypoints
+            )
         );
+    }
+
+    /// <summary>
+    /// Projects the waypoint routes visible for the current player selection and display mode.
+    /// </summary>
+    /// <param name="playerFactionId">The viewing player's faction identifier.</param>
+    /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
+    /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
+    /// <param name="showAllRoutes">Whether every player waypoint route is visible.</param>
+    /// <returns>The visible waypoint routes in fleet scene order.</returns>
+    internal List<GalaxyMapWaypointRouteRenderData> ProjectWaypointRoutes(
+        string playerFactionId,
+        StrategyWindowTargetingSource waypointPlan = null,
+        IReadOnlyCollection<string> selectedFleetInstanceIds = null,
+        bool showAllRoutes = false
+    )
+    {
+        return ProjectWaypointRoutes(
+            GetRequiredContext().Game,
+            playerFactionId,
+            waypointPlan,
+            selectedFleetInstanceIds,
+            showAllRoutes
+        );
+    }
+
+    /// <summary>
+    /// Projects player-controlled fleet waypoint routes from authoritative game state.
+    /// </summary>
+    /// <param name="game">The active game.</param>
+    /// <param name="playerFactionId">The viewing player's faction identifier.</param>
+    /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
+    /// <param name="selectedFleetInstanceIds">The fleet routes visible through selection.</param>
+    /// <param name="showAllRoutes">Whether every player waypoint route is visible.</param>
+    /// <returns>The visible waypoint routes in fleet scene order.</returns>
+    internal static List<GalaxyMapWaypointRouteRenderData> ProjectWaypointRoutes(
+        GameRoot game,
+        string playerFactionId,
+        StrategyWindowTargetingSource waypointPlan = null,
+        IReadOnlyCollection<string> selectedFleetInstanceIds = null,
+        bool showAllRoutes = false
+    )
+    {
+        List<GalaxyMapWaypointRouteRenderData> routes =
+            new List<GalaxyMapWaypointRouteRenderData>();
+        if (game == null || string.IsNullOrEmpty(playerFactionId))
+            return routes;
+
+        HashSet<string> selectedFleetIds = new HashSet<string>(
+            selectedFleetInstanceIds ?? Array.Empty<string>(),
+            StringComparer.Ordinal
+        );
+
+        IEnumerable<Fleet> fleets = showAllRoutes
+            ? game.GetSceneNodesByType<Fleet>(fleet =>
+                string.Equals(fleet.OwnerInstanceID, playerFactionId, StringComparison.Ordinal)
+                && fleet.Waypoints.Count > 0
+            )
+            : selectedFleetIds
+                .Select(fleetId => game.GetSceneNodeByInstanceID<Fleet>(fleetId))
+                .Where(fleet =>
+                    fleet != null
+                    && string.Equals(
+                        fleet.OwnerInstanceID,
+                        playerFactionId,
+                        StringComparison.Ordinal
+                    )
+                    && fleet.Waypoints.Count > 0
+                );
+        foreach (Fleet fleet in fleets)
+        {
+            AddProjectedWaypointRoute(routes, game, fleet, fleet.Waypoints);
+        }
+
+        if (
+            waypointPlan?.Action == StrategyMenuAction.WaypointMove
+            && waypointPlan.WaypointPlanetIds.Count > 0
+        )
+        {
+            HashSet<string> projectedFleetIds = routes
+                .Select(route => route.FleetInstanceId)
+                .ToHashSet(StringComparer.Ordinal);
+            foreach (Fleet selectedFleet in waypointPlan.Items.OfType<Fleet>())
+            {
+                Fleet fleet = game.GetSceneNodeByInstanceID<Fleet>(selectedFleet.InstanceID);
+                if (
+                    fleet == null
+                    || fleet.OwnerInstanceID != playerFactionId
+                    || !projectedFleetIds.Add(fleet.InstanceID)
+                )
+                    continue;
+
+                List<string> previewWaypointIds = new List<string>();
+                if (fleet.Movement != null)
+                {
+                    string activeDestinationId = fleet.GetParentOfType<Planet>()?.InstanceID;
+                    if (!string.IsNullOrEmpty(activeDestinationId))
+                        previewWaypointIds.Add(activeDestinationId);
+                }
+                previewWaypointIds.AddRange(waypointPlan.WaypointPlanetIds);
+                AddProjectedWaypointRoute(routes, game, fleet, previewWaypointIds);
+            }
+        }
+
+        return routes;
+    }
+
+    /// <summary>
+    /// Projects one fleet route from its origin through an ordered set of planet identifiers.
+    /// </summary>
+    private static void AddProjectedWaypointRoute(
+        ICollection<GalaxyMapWaypointRouteRenderData> routes,
+        GameRoot game,
+        Fleet fleet,
+        IReadOnlyList<string> waypointPlanetIds
+    )
+    {
+        if (routes == null || game == null || fleet == null || waypointPlanetIds == null)
+            return;
+
+        System.Drawing.Point originPosition =
+            fleet.Movement?.OriginPosition
+            ?? fleet.GetParentOfType<Planet>()?.GetPosition()
+            ?? fleet.GetPosition();
+        Vector2Int origin =
+            new Vector2Int(originPosition.X, originPosition.Y) + _planetMarkerCenterOffset;
+        List<GalaxyMapWaypointRenderData> waypoints = new List<GalaxyMapWaypointRenderData>();
+        for (int index = 0; index < waypointPlanetIds.Count; index++)
+        {
+            Planet waypoint = game.GetSceneNodeByInstanceID<Planet>(waypointPlanetIds[index]);
+            if (waypoint == null)
+                continue;
+
+            System.Drawing.Point position = waypoint.GetPosition();
+            waypoints.Add(
+                new GalaxyMapWaypointRenderData(
+                    index + 1,
+                    new Vector2Int(position.X, position.Y) + _planetMarkerCenterOffset
+                )
+            );
+        }
+
+        if (waypoints.Count > 0)
+        {
+            routes.Add(new GalaxyMapWaypointRouteRenderData(fleet.InstanceID, origin, waypoints));
+        }
     }
 
     /// <summary>

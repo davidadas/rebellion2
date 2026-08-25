@@ -347,10 +347,8 @@ namespace Rebellion.Systems
             )
                 return false;
 
-            if (attacker != null)
-                attacker.IsInCombat = true;
-            if (defender != null)
-                defender.IsInCombat = true;
+            PrepareFleetForCombat(attacker);
+            PrepareFleetForCombat(defender);
 
             decision = new SpaceCombatDecision
             {
@@ -362,6 +360,19 @@ namespace Rebellion.Systems
             };
 
             return true;
+        }
+
+        /// <summary>
+        /// Marks a fleet as engaged and cancels any travel planned beyond the battle.
+        /// </summary>
+        /// <param name="fleet">The fleet entering combat, or null for loose forces.</param>
+        private static void PrepareFleetForCombat(Fleet fleet)
+        {
+            if (fleet == null)
+                return;
+
+            fleet.IsInCombat = true;
+            fleet.Waypoints.Clear();
         }
 
         /// <summary>

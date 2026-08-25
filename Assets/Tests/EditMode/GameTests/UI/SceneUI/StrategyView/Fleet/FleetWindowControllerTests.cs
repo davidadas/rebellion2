@@ -28,6 +28,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private FleetWindowController _controller;
         private TestActions _actions;
         private int _dirtyCount;
+        private int _selectionRouteRenderCount;
         private GameRoot _game;
         private GameManager _gameManager;
         private GameFleet _fleet;
@@ -44,6 +45,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void SetUp()
         {
             _dirtyCount = 0;
+            _selectionRouteRenderCount = 0;
             _game = CreateGame();
             _uiContext = TestContent.CreateUIContext(
                 _game,
@@ -308,6 +310,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void FleetRowRelease_UnselectedFleet_RendersSelectionWithoutInvalidatingScreen()
+        {
+            GameFleet secondFleet = CreateFleet("second-fleet", "Second Fleet", out _);
+            _planet.Planet.AddChild(secondFleet);
+            AttachFleetGraph(_planet.Planet, secondFleet);
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Single(item => item.Index == 1 && item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerCurrentRaycast = new RaycastResult
+                {
+                    gameObject = row.NameTextField.gameObject,
+                },
+                pointerPressRaycast = new RaycastResult
+                {
+                    gameObject = row.NameTextField.gameObject,
+                },
+            };
+            UIPointerGestureRelay pointerGestures = row.GetComponent<UIPointerGestureRelay>();
+
+            pointerGestures.OnPointerDown(eventData);
+            pointerGestures.OnPointerClick(eventData);
+
+            Assert.AreEqual(1, _controller.GetSelectedFleetIndex(view));
+            Assert.AreEqual(1, _dirtyCount);
+            Assert.AreEqual(1, _selectionRouteRenderCount);
+        }
+
+        [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndTargetByIdentity()
         {
             FleetWindowView view = OpenWindow(out UIWindow _);
@@ -424,7 +460,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 _windowLayer,
                 _windowManager,
                 (x, y) => new Vector2Int(x + 17, y + 19),
-                () => _dirtyCount++
+                () => _dirtyCount++,
+                renderSelectionRoutes: () => _selectionRouteRenderCount++
             );
         }
 
@@ -605,6 +642,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             ) { }
+
+            public bool TryAppendFleetWaypoint(
+                StrategyWindowTargetingSource source,
+                StrategyMissionTarget target
+            ) => false;
+
+            public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+
+            public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+
+            public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
         }
     }
 }

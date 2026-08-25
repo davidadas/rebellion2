@@ -99,7 +99,17 @@ internal static class PlanetSectorWindowContextMenuBuilder
             fleetItems,
             playerFactionId
         );
+        bool playerControlsFleets = StrategyContextMenuAvailability.PlayerControlsItems(
+            fleetItems,
+            playerFactionId
+        );
         bool canShowSingleFleetInfo = fleetItems?.Count == 1;
+        bool hasWaypoints =
+            fleetItems?.Exists(fleet => fleet is Fleet routeFleet && routeFleet.Waypoints.Count > 0)
+            == true;
+        bool allFleetsAreMoving =
+            fleetItems?.Count > 0
+            && fleetItems.TrueForAll(fleet => fleet is Fleet { Movement: not null });
         return new List<StrategyMenuCommand>
         {
             new StrategyMenuCommand(StrategyMenuAction.Move, "Move", canCommandFleets),
@@ -107,6 +117,11 @@ internal static class PlanetSectorWindowContextMenuBuilder
                 StrategyMenuAction.MoveConfirm,
                 "Confirmed Move",
                 canCommandFleets
+            ),
+            new StrategyMenuCommand(
+                StrategyMenuAction.WaypointMove,
+                hasWaypoints ? "Clear Waypoints" : "Waypoint Move",
+                playerControlsFleets && (canCommandFleets || allFleetsAreMoving || hasWaypoints)
             ),
             StrategyBombardmentMenuBuilder.Build(
                 canCommandFleets && canBombard,

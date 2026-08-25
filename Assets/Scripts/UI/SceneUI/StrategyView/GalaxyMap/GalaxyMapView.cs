@@ -32,6 +32,7 @@ public sealed class GalaxyMapView : MonoBehaviour
     private readonly HashSet<string> visibleClusterKeys = new HashSet<string>(
         StringComparer.Ordinal
     );
+    private WaypointRouteOverlay waypointOverlay;
 
     /// <summary>
     /// Raised when Unity destroys the authored galaxy-map view.
@@ -63,6 +64,7 @@ public sealed class GalaxyMapView : MonoBehaviour
     private void Awake()
     {
         VerifyReferences();
+        EnsureWaypointOverlay();
     }
 
     /// <summary>
@@ -75,6 +77,7 @@ public sealed class GalaxyMapView : MonoBehaviour
 
         clusterViews.Clear();
         visibleClusterKeys.Clear();
+        waypointOverlay = null;
         Destroyed?.Invoke(this);
     }
 
@@ -88,8 +91,11 @@ public sealed class GalaxyMapView : MonoBehaviour
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
+        EnsureWaypointOverlay();
         RenderBackground(data.BackgroundTexture, data.BackgroundBounds, data.BackgroundColor);
+        RenderWaypointRoutes(data.WaypointRoutes);
         RenderClusters(data.Clusters);
+        waypointOverlay.SetPresentationOrder();
         RenderActiveFilterLabel(data.ActiveFilterLabel);
     }
 
@@ -239,6 +245,42 @@ public sealed class GalaxyMapView : MonoBehaviour
             if (!visibleClusterKeys.Contains(entry.Key))
                 entry.Value.gameObject.SetActive(false);
         }
+    }
+
+    /// <summary>
+    /// Renders numbered white route segments for player-controlled fleet waypoints.
+    /// </summary>
+    /// <param name="routes">The projected waypoint routes.</param>
+    internal void RenderWaypointRoutes(IReadOnlyList<GalaxyMapWaypointRouteRenderData> routes)
+    {
+        EnsureWaypointOverlay();
+        List<WaypointRouteLineRenderData> lines = new List<WaypointRouteLineRenderData>();
+        List<WaypointRouteMarkerRenderData> markers = new List<WaypointRouteMarkerRenderData>();
+        foreach (
+            GalaxyMapWaypointRouteRenderData route in routes
+                ?? Array.Empty<GalaxyMapWaypointRouteRenderData>()
+        )
+        {
+            Vector2Int previous = route.Origin;
+            foreach (GalaxyMapWaypointRenderData waypoint in route.Waypoints)
+            {
+                lines.Add(new WaypointRouteLineRenderData(previous, waypoint.Position));
+                markers.Add(new WaypointRouteMarkerRenderData(waypoint.Order, waypoint.Position));
+                previous = waypoint.Position;
+            }
+        }
+
+        waypointOverlay.Render(lines, markers);
+        waypointOverlay.SetPresentationOrder();
+    }
+
+    /// <summary>
+    /// Creates the non-interactive route layer beneath planet-sector clusters when needed.
+    /// </summary>
+    private void EnsureWaypointOverlay()
+    {
+        if (waypointOverlay == null)
+            waypointOverlay = new WaypointRouteOverlay(planetSectorClusters, activeFilterLabel);
     }
 
     /// <summary>

@@ -57,7 +57,9 @@ public interface IPlanetSectorWindowActions
 public sealed class PlanetSectorWindowController
     : IStrategyContextMenuProvider,
         IContextMenuReceiver,
-        ITargetingReceiver
+        ITargetingReceiver,
+        ITargetingSubmissionReceiver,
+        ITargetingUndoReceiver
 {
     private static readonly int[] _sectorWindowPositionOrder =
     {
@@ -70,6 +72,8 @@ public sealed class PlanetSectorWindowController
         new HashSet<PlanetSectorWindowView>();
     private readonly Action<UIWindow, bool> closeWindow;
     private readonly Func<IReadOnlyList<GalaxyMapSector>> getSectors;
+    private readonly Func<GalacticInformationFilterMode> getFilterMode;
+    private readonly Func<IReadOnlyCollection<string>> getSelectedFleetInstanceIds;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<int, Vector2Int> getWindowPosition;
     private readonly StrategyFleetCommandController fleetCommandController;
@@ -98,6 +102,8 @@ public sealed class PlanetSectorWindowController
     /// <param name="getWindowPosition">Returns the authored position for a sector slot.</param>
     /// <param name="closeWindow">Closes a registered window through the screen lifecycle.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="getFilterMode">Returns the active galactic-information filter.</param>
+    /// <param name="getSelectedFleetInstanceIds">Returns fleets selected across strategy windows.</param>
     public PlanetSectorWindowController(
         StrategyFleetCommandController fleetCommandController,
         Func<UIContext> getUIContext,
@@ -107,7 +113,9 @@ public sealed class PlanetSectorWindowController
         Func<IReadOnlyList<GalaxyMapSector>> getSectors,
         Func<int, Vector2Int> getWindowPosition,
         Action<UIWindow, bool> closeWindow,
-        Action markDirty
+        Action markDirty,
+        Func<GalacticInformationFilterMode> getFilterMode = null,
+        Func<IReadOnlyCollection<string>> getSelectedFleetInstanceIds = null
     )
     {
         this.fleetCommandController =
@@ -124,6 +132,9 @@ public sealed class PlanetSectorWindowController
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.getFilterMode = getFilterMode ?? (() => GalacticInformationFilterMode.DisplayOff);
+        this.getSelectedFleetInstanceIds =
+            getSelectedFleetInstanceIds ?? (() => Array.Empty<string>());
         projector = new PlanetSectorWindowProjector(getUIContext);
     }
 
@@ -376,9 +387,72 @@ public sealed class PlanetSectorWindowController
                 session.SelectedPlanetInstanceId,
                 session.SelectedIcon,
                 session.HoveredPlanetInstanceId,
-                session.HoveredIcon
+                session.HoveredIcon,
+                GetActiveWaypointPlan(),
+                getSelectedFleetInstanceIds(),
+                getFilterMode() == GalacticInformationFilterMode.FleetWaypoints
             )
         );
+    }
+
+    /// <summary>
+    /// Reprojects only the waypoint layers of open planet-sector windows.
+    /// </summary>
+    public void RenderWaypointRoutes()
+    {
+        IReadOnlyCollection<string> selectedFleetInstanceIds = getSelectedFleetInstanceIds();
+        StrategyWindowTargetingSource waypointPlan = GetActiveWaypointPlan();
+        bool showAllRoutes = getFilterMode() == GalacticInformationFilterMode.FleetWaypoints;
+        foreach (KeyValuePair<PlanetSectorWindowView, PlanetSectorWindowSession> entry in sessions)
+        {
+            PlanetSectorWindowView view = entry.Key;
+            GalaxyMapSector sector = entry.Value.Sector;
+            if (view == null || sector == null)
+                continue;
+
+            projector.ProjectWaypointRoutes(
+                sector,
+                waypointPlan,
+                out List<PlanetSectorWaypointSegmentRenderData> segments,
+                out List<PlanetSectorWaypointRenderData> waypoints,
+                selectedFleetInstanceIds,
+                showAllRoutes
+            );
+            view.RenderWaypointRoutes(segments, waypoints);
+        }
+    }
+
+    /// <summary>
+    /// Gets the fleets represented by selected fleet icons in open sector windows.
+    /// </summary>
+    /// <returns>The selected fleet instance identifiers.</returns>
+    public IReadOnlyCollection<string> GetSelectedFleetInstanceIds()
+    {
+        HashSet<string> fleetInstanceIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (PlanetSectorWindowSession session in sessions.Values)
+        {
+            PlanetSectorWindowHit hit = session.GetSelectedHit();
+            if (hit?.Icon != PlanetIcon.Fleet || hit.Planet == null)
+                continue;
+
+            foreach (Fleet fleet in hit.Planet.GetChildren<Fleet>())
+                fleetInstanceIds.Add(fleet.InstanceID);
+        }
+
+        return fleetInstanceIds;
+    }
+
+    /// <summary>
+    /// Gets the uncommitted waypoint plan currently owned by strategy targeting.
+    /// </summary>
+    /// <returns>The active waypoint plan, or null.</returns>
+    private StrategyWindowTargetingSource GetActiveWaypointPlan()
+    {
+        return
+            targetingController.ActiveRequest?.Source is StrategyWindowTargetingSource source
+            && source.Action == StrategyMenuAction.WaypointMove
+            ? source
+            : null;
     }
 
     /// <summary>
@@ -515,9 +589,14 @@ public sealed class PlanetSectorWindowController
             case StrategyMenuAction.Scrap:
                 confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
                 break;
+            case StrategyMenuAction.WaypointMove when HasWaypoints(source.Items):
+                targetingController.Cancel();
+                commandActions.ClearFleetWaypoints(source.Items);
+                break;
             case StrategyMenuAction.CreateMission:
             case StrategyMenuAction.Move:
             case StrategyMenuAction.MoveConfirm:
+            case StrategyMenuAction.WaypointMove:
                 BeginContextTargeting(source, strategyCommand.Action);
                 break;
         }
@@ -552,7 +631,8 @@ public sealed class PlanetSectorWindowController
                     source.HotspotY,
                     source.Items
                 ),
-                this
+                this,
+                remainsActiveAfterSelection: action == StrategyMenuAction.WaypointMove
             ),
             source.HotspotX,
             source.HotspotY
@@ -580,6 +660,28 @@ public sealed class PlanetSectorWindowController
     /// </summary>
     /// <param name="request">The cancelled targeting request.</param>
     public void OnTargetingCancelled(TargetingRequest request) { }
+
+    /// <summary>
+    /// Commits the active fleet waypoint plan when Enter is pressed.
+    /// </summary>
+    /// <param name="request">The active targeting request.</param>
+    /// <returns>True when the complete route was committed.</returns>
+    public bool TrySubmitTargeting(TargetingRequest request)
+    {
+        return request?.Source is StrategyWindowTargetingSource source
+            && commandActions.TryCommitFleetWaypointPlan(source);
+    }
+
+    /// <summary>
+    /// Removes the newest planned fleet waypoint when Escape is pressed.
+    /// </summary>
+    /// <param name="request">The active targeting request.</param>
+    /// <returns>True when targeting should remain active after the undo.</returns>
+    public bool TryUndoTargeting(TargetingRequest request)
+    {
+        return request?.Source is StrategyWindowTargetingSource source
+            && commandActions.TryUndoFleetWaypointPlan(source);
+    }
 
     /// <summary>
     /// Gets the status target represented by a planet-sector selection.
@@ -837,8 +939,8 @@ public sealed class PlanetSectorWindowController
 
         if (selected && hit.Icon == PlanetIcon.Fleet)
             startItemDrag(session.Window, eventData);
-        else
-            markDirty();
+
+        markDirty();
     }
 
     /// <summary>
@@ -963,7 +1065,20 @@ public sealed class PlanetSectorWindowController
     private static bool IsMoveTargetingRequest(TargetingRequest request)
     {
         return request?.Source is StrategyWindowTargetingSource source
-            && source.Action is StrategyMenuAction.Move or StrategyMenuAction.MoveConfirm;
+            && source.Action
+                is StrategyMenuAction.Move
+                    or StrategyMenuAction.MoveConfirm
+                    or StrategyMenuAction.WaypointMove;
+    }
+
+    /// <summary>
+    /// Returns whether a fleet selection contains queued or active waypoint route entries.
+    /// </summary>
+    /// <param name="items">The selected fleets or their visible snapshots.</param>
+    /// <returns>True when at least one selected fleet has waypoints.</returns>
+    private static bool HasWaypoints(IReadOnlyList<ISceneNode> items)
+    {
+        return items?.OfType<Fleet>().Any(fleet => fleet.Waypoints.Count > 0) == true;
     }
 
     /// <summary>

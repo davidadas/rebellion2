@@ -250,6 +250,58 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void TryAppendFleetWaypoint_ValidDestination_StagesRouteWithoutMovingFleet()
+        {
+            Rebellion.Game.Units.Fleet fleet = CreateOperationalFleet();
+            Planet origin = fleet.GetParentOfType<Planet>();
+            StrategyWindowTargetingSource source = new StrategyWindowTargetingSource(
+                _sourceWindow,
+                StrategyMenuAction.WaypointMove,
+                0,
+                0,
+                new ISceneNode[] { fleet }
+            );
+
+            bool appended = _controller.TryAppendFleetWaypoint(
+                source,
+                new StrategyMissionTarget(_destination, null)
+            );
+
+            Assert.IsTrue(appended);
+            CollectionAssert.AreEqual(
+                new[] { _destination.Planet.InstanceID },
+                source.WaypointPlanetIds
+            );
+            Assert.AreSame(origin, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [Test]
+        public void TryCommitFleetWaypointPlan_StagedRoute_StartsFleetMovement()
+        {
+            Rebellion.Game.Units.Fleet fleet = CreateOperationalFleet();
+            StrategyWindowTargetingSource source = new StrategyWindowTargetingSource(
+                _sourceWindow,
+                StrategyMenuAction.WaypointMove,
+                0,
+                0,
+                new ISceneNode[] { fleet }
+            );
+            _controller.TryAppendFleetWaypoint(
+                source,
+                new StrategyMissionTarget(_destination, null)
+            );
+
+            bool committed = _controller.TryCommitFleetWaypointPlan(source);
+
+            Assert.IsTrue(committed);
+            Assert.AreSame(_destination.Planet, fleet.GetParent());
+            Assert.IsNotNull(fleet.Movement);
+            CollectionAssert.AreEqual(new[] { _destination.Planet.InstanceID }, fleet.Waypoints);
+        }
+
+        [Test]
         public void ExecuteTargetedCommand_MoveConfirm_OpensConfirmationWindow()
         {
             _controller.ExecuteTargetedCommand(
@@ -409,6 +461,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             UIWindow window = sourceObject.GetComponent<UIWindow>();
             window.Configure(500, 20, 30, 100, 80, false, true, false);
             return window;
+        }
+
+        private Rebellion.Game.Units.Fleet CreateOperationalFleet()
+        {
+            Planet origin = _officer.GetParentOfType<Planet>();
+            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
+                _playerFactionId,
+                "fleet"
+            );
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 1,
+            };
+            _game.AttachNode(fleet, origin);
+            _game.AttachNode(ship, fleet);
+            return fleet;
         }
 
         private void ConfirmOpenDialog()

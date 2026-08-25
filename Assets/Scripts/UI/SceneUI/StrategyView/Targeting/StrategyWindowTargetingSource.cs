@@ -3,10 +3,13 @@ using System.Linq;
 using Rebellion.SceneGraph;
 
 /// <summary>
-/// Captures the immutable source window, hotspot, command, and selection for targeting.
+/// Captures the source window, hotspot, command, selection, and transient waypoint plan for
+/// one targeting session.
 /// </summary>
 public sealed class StrategyWindowTargetingSource
 {
+    private readonly List<string> waypointPlanetIds = new List<string>();
+
     /// <summary>
     /// Creates one strategy-window targeting source snapshot.
     /// </summary>
@@ -40,6 +43,35 @@ public sealed class StrategyWindowTargetingSource
 
     public IReadOnlyList<ISceneNode> Items { get; }
 
+    public IReadOnlyList<string> WaypointPlanetIds => waypointPlanetIds;
+
+    /// <summary>
+    /// Appends one planet identifier to this session's uncommitted waypoint plan.
+    /// </summary>
+    /// <param name="planetInstanceId">The planned destination planet identifier.</param>
+    /// <returns>True when the identifier was appended.</returns>
+    internal bool TryAppendWaypoint(string planetInstanceId)
+    {
+        if (string.IsNullOrEmpty(planetInstanceId))
+            return false;
+
+        waypointPlanetIds.Add(planetInstanceId);
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the most recently planned waypoint.
+    /// </summary>
+    /// <returns>True when a waypoint was removed.</returns>
+    internal bool TryRemoveLastWaypoint()
+    {
+        if (waypointPlanetIds.Count == 0)
+            return false;
+
+        waypointPlanetIds.RemoveAt(waypointPlanetIds.Count - 1);
+        return true;
+    }
+
     /// <summary>
     /// Gets the targeting prompt for one semantic strategy command.
     /// </summary>
@@ -52,6 +84,8 @@ public sealed class StrategyWindowTargetingSource
             StrategyMenuAction.CreateMission => "Select mission target",
             StrategyMenuAction.Destination => "Select destination",
             StrategyMenuAction.Move or StrategyMenuAction.MoveConfirm => "Select move destination",
+            StrategyMenuAction.WaypointMove =>
+                "Select waypoints; press Enter to move or Escape to undo",
             _ => "Select target",
         };
     }

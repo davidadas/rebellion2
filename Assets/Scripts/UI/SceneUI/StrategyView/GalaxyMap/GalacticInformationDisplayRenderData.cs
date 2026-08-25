@@ -13,17 +13,20 @@ public readonly struct GalacticInformationDisplayState
     /// <param name="activeCategoryIndex">The open category index, or negative when none is open.</param>
     /// <param name="hoveredFilterIndex">The hovered filter index, or negative when none is hovered.</param>
     /// <param name="displayOffHovered">Whether the display-off row is hovered.</param>
+    /// <param name="selectedFilterMode">The filter currently applied to the map.</param>
     public GalacticInformationDisplayState(
         bool visible,
         int activeCategoryIndex,
         int hoveredFilterIndex,
-        bool displayOffHovered
+        bool displayOffHovered,
+        GalacticInformationFilterMode selectedFilterMode
     )
     {
         Visible = visible;
         ActiveCategoryIndex = activeCategoryIndex;
         HoveredFilterIndex = hoveredFilterIndex;
         DisplayOffHovered = displayOffHovered;
+        SelectedFilterMode = selectedFilterMode;
     }
 
     public bool Visible { get; }
@@ -33,6 +36,8 @@ public readonly struct GalacticInformationDisplayState
     public int HoveredFilterIndex { get; }
 
     public bool DisplayOffHovered { get; }
+
+    public GalacticInformationFilterMode SelectedFilterMode { get; }
 }
 
 /// <summary>
@@ -173,12 +178,14 @@ public sealed class GalacticInformationFilterRenderData
     /// <param name="mode">The semantic filter selected by the row.</param>
     /// <param name="visible">Whether the filter row is visible.</param>
     /// <param name="hitBounds">The filter row hit bounds.</param>
+    /// <param name="checkMark">The selected-state check-mark presentation.</param>
     /// <param name="icon">The filter icon presentation.</param>
     /// <param name="label">The filter label presentation.</param>
     public GalacticInformationFilterRenderData(
         GalacticInformationFilterMode mode,
         bool visible,
         RectInt hitBounds,
+        GalacticInformationImageRenderData checkMark,
         GalacticInformationImageRenderData icon,
         GalacticInformationTextRenderData label
     )
@@ -186,6 +193,7 @@ public sealed class GalacticInformationFilterRenderData
         Mode = mode;
         Visible = visible;
         HitBounds = hitBounds;
+        CheckMark = checkMark;
         Icon = icon;
         Label = label;
     }
@@ -195,6 +203,8 @@ public sealed class GalacticInformationFilterRenderData
     public bool Visible { get; }
 
     public RectInt HitBounds { get; }
+
+    public GalacticInformationImageRenderData CheckMark { get; }
 
     public GalacticInformationImageRenderData Icon { get; }
 
@@ -257,21 +267,26 @@ public readonly struct GalacticInformationTextRowRenderData
     /// </summary>
     /// <param name="visible">Whether the row is visible.</param>
     /// <param name="hitBounds">The row hit bounds.</param>
+    /// <param name="checkMark">The selected-state check-mark presentation.</param>
     /// <param name="label">The row label presentation.</param>
     public GalacticInformationTextRowRenderData(
         bool visible,
         RectInt hitBounds,
+        GalacticInformationImageRenderData checkMark,
         GalacticInformationTextRenderData label
     )
     {
         Visible = visible;
         HitBounds = hitBounds;
+        CheckMark = checkMark;
         Label = label;
     }
 
     public bool Visible { get; }
 
     public RectInt HitBounds { get; }
+
+    public GalacticInformationImageRenderData CheckMark { get; }
 
     public GalacticInformationTextRenderData Label { get; }
 }

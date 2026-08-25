@@ -125,7 +125,8 @@ public sealed class GalacticInformationDisplayController : ICancelable
                 true,
                 activeCategoryIndex,
                 hoveredFilterIndex,
-                displayOffHovered
+                displayOffHovered,
+                filterMode
             )
         );
     }
@@ -343,7 +344,8 @@ public sealed class GalacticInformationDisplayController : ICancelable
                 open,
                 activeCategoryIndex,
                 hoveredFilterIndex,
-                displayOffHovered
+                displayOffHovered,
+                filterMode
             )
         );
         displayView.Render(data);

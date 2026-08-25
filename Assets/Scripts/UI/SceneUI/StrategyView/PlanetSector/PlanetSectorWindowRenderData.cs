@@ -12,21 +12,70 @@ public sealed class PlanetSectorWindowRenderData
     /// </summary>
     /// <param name="title">The displayed sector title.</param>
     /// <param name="planets">The displayed planet presentations.</param>
+    /// <param name="waypointSegments">The route segments whose endpoints are visible in this window.</param>
+    /// <param name="waypoints">The numbered route stops visible in this window.</param>
     public PlanetSectorWindowRenderData(
         string title,
-        IReadOnlyList<PlanetSectorPlanetRenderData> planets
+        IReadOnlyList<PlanetSectorPlanetRenderData> planets,
+        IReadOnlyList<PlanetSectorWaypointSegmentRenderData> waypointSegments = null,
+        IReadOnlyList<PlanetSectorWaypointRenderData> waypoints = null
     )
     {
         Title = title ?? string.Empty;
-        Planets =
-            planets == null
-                ? Array.Empty<PlanetSectorPlanetRenderData>()
-                : new List<PlanetSectorPlanetRenderData>(planets).AsReadOnly();
+        Planets = Copy(planets);
+        WaypointSegments = Copy(waypointSegments);
+        Waypoints = Copy(waypoints);
     }
 
     public IReadOnlyList<PlanetSectorPlanetRenderData> Planets { get; }
 
     public string Title { get; }
+
+    public IReadOnlyList<PlanetSectorWaypointSegmentRenderData> WaypointSegments { get; }
+
+    public IReadOnlyList<PlanetSectorWaypointRenderData> Waypoints { get; }
+
+    /// <summary>
+    /// Copies a presentation collection into immutable window-owned storage.
+    /// </summary>
+    private static IReadOnlyList<T> Copy<T>(IReadOnlyList<T> source)
+    {
+        return source == null || source.Count == 0
+            ? Array.Empty<T>()
+            : new List<T>(source).AsReadOnly();
+    }
+}
+
+/// <summary>
+/// Identifies one route segment by the displayed planet indices at its endpoints.
+/// </summary>
+public readonly struct PlanetSectorWaypointSegmentRenderData
+{
+    public PlanetSectorWaypointSegmentRenderData(int startPlanetIndex, int endPlanetIndex)
+    {
+        StartPlanetIndex = startPlanetIndex;
+        EndPlanetIndex = endPlanetIndex;
+    }
+
+    public int EndPlanetIndex { get; }
+
+    public int StartPlanetIndex { get; }
+}
+
+/// <summary>
+/// Identifies one numbered route stop by its displayed planet index.
+/// </summary>
+public readonly struct PlanetSectorWaypointRenderData
+{
+    public PlanetSectorWaypointRenderData(int order, int planetIndex)
+    {
+        Order = order;
+        PlanetIndex = planetIndex;
+    }
+
+    public int Order { get; }
+
+    public int PlanetIndex { get; }
 }
 
 /// <summary>

@@ -32,13 +32,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 true,
                 2,
                 3,
-                true
+                true,
+                GalacticInformationFilterMode.FleetWaypoints
             );
 
             Assert.IsTrue(state.Visible);
             Assert.AreEqual(2, state.ActiveCategoryIndex);
             Assert.AreEqual(3, state.HoveredFilterIndex);
             Assert.IsTrue(state.DisplayOffHovered);
+            Assert.AreEqual(GalacticInformationFilterMode.FleetWaypoints, state.SelectedFilterMode);
         }
 
         [Test]
@@ -55,6 +57,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new GalacticInformationTextRowRenderData(
                     true,
                     new RectInt(5, 6, 7, 8),
+                    default,
                     new GalacticInformationTextRenderData(
                         "Display Off",
                         Color.white,
@@ -132,6 +135,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 true,
                 new RectInt(1, 2, 3, 4),
                 default,
+                default,
                 default
             );
             GalacticInformationFilterRenderData[] filters = { filter };
@@ -161,6 +165,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 _firstTexture,
                 new RectInt(1, 2, 3, 4)
             );
+            GalacticInformationImageRenderData checkMark = new GalacticInformationImageRenderData(
+                _secondTexture,
+                new RectInt(-3, 2, 3, 4)
+            );
             GalacticInformationTextRenderData label = new GalacticInformationTextRenderData(
                 null,
                 Color.cyan,
@@ -171,6 +179,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 GalacticInformationFilterMode.FleetsEnroute,
                 true,
                 new RectInt(9, 10, 11, 12),
+                checkMark,
                 icon,
                 label
             );
@@ -178,6 +187,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(GalacticInformationFilterMode.FleetsEnroute, data.Mode);
             Assert.IsTrue(data.Visible);
             Assert.AreEqual(new RectInt(9, 10, 11, 12), data.HitBounds);
+            Assert.AreSame(_secondTexture, data.CheckMark.Texture);
+            Assert.AreEqual(new RectInt(-3, 2, 3, 4), data.CheckMark.Bounds);
             Assert.AreSame(_firstTexture, data.Icon.Texture);
             Assert.AreEqual(string.Empty, data.Label.Text);
             Assert.AreEqual(Color.cyan, data.Label.Color);
@@ -196,6 +207,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GalacticInformationTextRowRenderData data = new GalacticInformationTextRowRenderData(
                 true,
                 new RectInt(5, 6, 7, 8),
+                default,
                 label
             );
 

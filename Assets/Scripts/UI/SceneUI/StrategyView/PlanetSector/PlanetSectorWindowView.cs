@@ -40,6 +40,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     private int planetPositionOffsetY;
 
     private readonly List<PlanetSectorPlanetView> planetViews = new List<PlanetSectorPlanetView>();
+    private WaypointRouteOverlay waypointOverlay;
 
     /// <summary>
     /// Occurs when the control is clicked.
@@ -97,6 +98,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
+        EnsureWaypointOverlay();
         UILayout.SetTextContent(sectorNameTextField, data.Title);
         RectInt windowBounds = UILayout.GetSourceRect(transform as RectTransform);
         for (int index = 0; index < data.Planets.Count; index++)
@@ -114,7 +116,73 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
         }
         for (int index = data.Planets.Count; index < planetViews.Count; index++)
             planetViews[index].gameObject.SetActive(false);
+        RenderWaypointRoutes(data.WaypointSegments, data.Waypoints);
+        waypointOverlay.SetPresentationOrder();
         gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Renders route segments and numbered stops over the planets visible in this window.
+    /// </summary>
+    internal void RenderWaypointRoutes(
+        IReadOnlyList<PlanetSectorWaypointSegmentRenderData> segments,
+        IReadOnlyList<PlanetSectorWaypointRenderData> waypoints
+    )
+    {
+        EnsureWaypointOverlay();
+        List<WaypointRouteLineRenderData> lines = new List<WaypointRouteLineRenderData>();
+        foreach (
+            PlanetSectorWaypointSegmentRenderData segment in segments
+                ?? Array.Empty<PlanetSectorWaypointSegmentRenderData>()
+        )
+        {
+            if (
+                TryGetPlanetCenter(segment.StartPlanetIndex, out Vector2Int start)
+                && TryGetPlanetCenter(segment.EndPlanetIndex, out Vector2Int end)
+            )
+            {
+                lines.Add(new WaypointRouteLineRenderData(start, end));
+            }
+        }
+
+        List<WaypointRouteMarkerRenderData> markers = new List<WaypointRouteMarkerRenderData>();
+        foreach (
+            PlanetSectorWaypointRenderData waypoint in waypoints
+                ?? Array.Empty<PlanetSectorWaypointRenderData>()
+        )
+        {
+            if (TryGetPlanetCenter(waypoint.PlanetIndex, out Vector2Int position))
+                markers.Add(new WaypointRouteMarkerRenderData(waypoint.Order, position));
+        }
+
+        waypointOverlay.Render(lines, markers);
+        waypointOverlay.SetPresentationOrder();
+    }
+
+    /// <summary>
+    /// Gets the center of one rendered planet image in window source coordinates.
+    /// </summary>
+    private bool TryGetPlanetCenter(int planetIndex, out Vector2Int center)
+    {
+        PlanetSectorPlanetView planetView = GetActivePlanetView(planetIndex);
+        if (planetView == null)
+        {
+            center = default;
+            return false;
+        }
+
+        RectInt bounds = planetView.GetRenderedPlanetImageSourceRect();
+        center = new Vector2Int(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+        return true;
+    }
+
+    /// <summary>
+    /// Creates the shared non-interactive route presentation when needed.
+    /// </summary>
+    private void EnsureWaypointOverlay()
+    {
+        if (waypointOverlay == null)
+            waypointOverlay = new WaypointRouteOverlay(planetsRoot, sectorNameTextField);
     }
 
     /// <summary>
@@ -224,6 +292,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     private void Awake()
     {
         VerifyReferences();
+        EnsureWaypointOverlay();
     }
 
     /// <summary>

@@ -86,6 +86,7 @@ public enum StrategyMenuAction
     Retire,
     Status,
     MoveConfirm,
+    WaypointMove,
     PlanetaryBombardment,
     Encyclopedia,
     Abort,

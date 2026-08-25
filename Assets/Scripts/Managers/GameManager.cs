@@ -237,7 +237,20 @@ public sealed class GameManager
             processMessages: false
         );
 
-        List<GameResult> messageResults = CombineResults(movementResults, combatResults);
+        List<GameResult> waypointResults = new List<GameResult>();
+        if (!_spaceCombatSystem.HasPendingDecision)
+        {
+            waypointResults = ProcessResults(
+                _movementSystem.ContinueFleetWaypointRoutes(),
+                processMessages: false
+            );
+        }
+
+        List<GameResult> messageResults = CombineResults(
+            movementResults,
+            combatResults,
+            waypointResults
+        );
         if (_spaceCombatSystem.HasPendingDecision)
         {
             StoreDeferredMessageResults(messageResults);
@@ -443,8 +456,14 @@ public sealed class GameManager
     {
         combatResults = ProcessResults(combatResults, processMessages: false);
 
+        List<GameResult> waypointResults = ProcessResults(
+            _movementSystem.ContinueFleetWaypointRoutes(),
+            processMessages: false
+        );
+
         List<GameResult> messageResults = TakeDeferredMessageResults();
         messageResults.AddRange(combatResults);
+        messageResults.AddRange(waypointResults);
         _messageSystem.ProcessResults(messageResults);
         _tickTimer = 0f;
 

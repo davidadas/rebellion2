@@ -37,6 +37,12 @@ namespace Rebellion.Game.Units
         public FleetOrder Order { get; set; }
 
         /// <summary>
+        /// Gets or sets the ordered planet identifiers that make up the fleet's active and queued
+        /// waypoint route. The first entry is the current destination while the fleet is moving.
+        /// </summary>
+        public List<string> Waypoints { get; set; } = new List<string>();
+
+        /// <summary>
         /// True while this fleet is engaged in a pending combat encounter.
         /// Cleared after combat is resolved. Not persisted to save files.
         /// </summary>
@@ -63,6 +69,7 @@ namespace Rebellion.Game.Units
             copy.Movement = Movement?.CreateCopy();
             copy.RoleType = RoleType;
             copy.Order = Order?.CreateCopy();
+            copy.Waypoints = new List<string>(Waypoints ?? new List<string>());
             copy.IsInCombat = IsInCombat;
         }
 

@@ -77,6 +77,13 @@ public static class GalacticInformationFilterEvaluator
                 CountFleets(planet, true),
                 filter
             ),
+            GalacticInformationFilterMode.FleetWaypoints => EvaluateFactionCounts(
+                game,
+                planet,
+                viewerFactionId,
+                CountWaypointFleets(planet),
+                filter
+            ),
             GalacticInformationFilterMode.IdlePersonnel => EvaluateFactionCounts(
                 game,
                 planet,
@@ -207,6 +214,23 @@ public static class GalacticInformationFilterEvaluator
                 continue;
 
             Increment(counts, fleet.OwnerInstanceID);
+        }
+
+        return counts;
+    }
+
+    /// <summary>
+    /// Counts fleets with assigned waypoint routes by owning faction.
+    /// </summary>
+    /// <param name="planet">The visible planet snapshot.</param>
+    /// <returns>Waypoint fleet counts keyed by faction identifier.</returns>
+    private static Dictionary<string, int> CountWaypointFleets(Planet planet)
+    {
+        Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (Fleet fleet in planet.GetChildren<Fleet>())
+        {
+            if (fleet.Waypoints.Count > 0)
+                Increment(counts, fleet.OwnerInstanceID);
         }
 
         return counts;

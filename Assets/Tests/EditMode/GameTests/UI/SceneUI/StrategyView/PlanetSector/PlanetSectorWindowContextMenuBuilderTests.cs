@@ -115,21 +115,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 _playerFactionId
             );
 
-            Assert.AreEqual(7, commands.Count);
+            Assert.AreEqual(8, commands.Count);
             Assert.AreEqual(StrategyMenuAction.Move, commands[0].Action);
             Assert.IsFalse(commands[0].Enabled);
             Assert.AreEqual(StrategyMenuAction.MoveConfirm, commands[1].Action);
             Assert.IsFalse(commands[1].Enabled);
-            Assert.AreEqual(StrategyMenuAction.PlanetaryBombardment, commands[2].Action);
+            Assert.AreEqual(StrategyMenuAction.WaypointMove, commands[2].Action);
             Assert.IsFalse(commands[2].Enabled);
-            Assert.AreEqual(StrategyMenuAction.PlanetaryAssault, commands[3].Action);
+            Assert.AreEqual(StrategyMenuAction.PlanetaryBombardment, commands[3].Action);
             Assert.IsFalse(commands[3].Enabled);
-            Assert.AreEqual(StrategyMenuAction.Encyclopedia, commands[4].Action);
+            Assert.AreEqual(StrategyMenuAction.PlanetaryAssault, commands[4].Action);
             Assert.IsFalse(commands[4].Enabled);
-            Assert.AreEqual(StrategyMenuAction.Status, commands[5].Action);
+            Assert.AreEqual(StrategyMenuAction.Encyclopedia, commands[5].Action);
             Assert.IsFalse(commands[5].Enabled);
-            Assert.AreEqual(StrategyMenuAction.Scrap, commands[6].Action);
+            Assert.AreEqual(StrategyMenuAction.Status, commands[6].Action);
             Assert.IsFalse(commands[6].Enabled);
+            Assert.AreEqual(StrategyMenuAction.Scrap, commands[7].Action);
+            Assert.IsFalse(commands[7].Enabled);
         }
 
         [Test]
@@ -154,9 +156,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(commands[1].Enabled);
             Assert.IsTrue(commands[2].Enabled);
             Assert.IsTrue(commands[3].Enabled);
-            Assert.IsFalse(commands[4].Enabled);
-            Assert.IsTrue(commands[5].Enabled);
+            Assert.IsTrue(commands[4].Enabled);
+            Assert.IsFalse(commands[5].Enabled);
             Assert.IsTrue(commands[6].Enabled);
+            Assert.IsTrue(commands[7].Enabled);
             CollectionAssert.AreEqual(
                 new[]
                 {
@@ -165,11 +168,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                     StrategyMenuAction.GeneralBombardment,
                     StrategyMenuAction.DestroyPlanet,
                 },
-                commands[2].SubmenuCommands.Select(command => command.Action)
+                commands[3].SubmenuCommands.Select(command => command.Action)
             );
             CollectionAssert.AreEqual(
                 new[] { true, true, true, false },
-                commands[2].SubmenuCommands.Select(command => command.Enabled)
+                commands[3].SubmenuCommands.Select(command => command.Enabled)
             );
         }
 
@@ -194,8 +197,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(commands[0].Enabled);
             Assert.IsFalse(commands[1].Enabled);
             Assert.IsFalse(commands[2].Enabled);
-            Assert.IsTrue(commands[5].Enabled);
-            Assert.IsFalse(commands[6].Enabled);
+            Assert.IsFalse(commands[3].Enabled);
+            Assert.IsTrue(commands[6].Enabled);
+            Assert.IsFalse(commands[7].Enabled);
         }
 
         [Test]
@@ -221,8 +225,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(commands[1].Enabled);
             Assert.IsTrue(commands[2].Enabled);
             Assert.IsTrue(commands[3].Enabled);
-            Assert.IsFalse(commands[5].Enabled);
-            Assert.IsTrue(commands[6].Enabled);
+            Assert.IsTrue(commands[4].Enabled);
+            Assert.IsFalse(commands[6].Enabled);
+            Assert.IsTrue(commands[7].Enabled);
+        }
+
+        [Test]
+        public void Create_PlayerFleetInTransitWithWaypoints_ReturnsClearWaypointsCommand()
+        {
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
+            GameFleet fleet = new GameFleet(_playerFactionId, "Fleet")
+            {
+                Movement = new Rebellion.Game.Movement.MovementState(),
+            };
+            fleet.Waypoints.Add("destination");
+
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
+                hit,
+                new List<ISceneNode> { fleet },
+                _playerFactionId
+            );
+
+            Assert.AreEqual("Clear Waypoints", commands[2].Text);
+            Assert.IsTrue(commands[2].Enabled);
+        }
+
+        [Test]
+        public void Create_PlayerFleetInTransitWithoutWaypoints_ReturnsEnabledWaypointMoveCommand()
+        {
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
+            GameFleet fleet = new GameFleet(_playerFactionId, "Fleet")
+            {
+                Movement = new Rebellion.Game.Movement.MovementState(),
+            };
+
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
+                hit,
+                new List<ISceneNode> { fleet },
+                _playerFactionId
+            );
+
+            Assert.AreEqual("Waypoint Move", commands[2].Text);
+            Assert.IsTrue(commands[2].Enabled);
         }
 
         private static PlanetSectorWindowHit CreateHit(PlanetIcon icon, bool planetImage)

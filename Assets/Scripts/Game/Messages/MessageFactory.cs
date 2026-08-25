@@ -65,6 +65,11 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
+            AddFleetWaypointCompletionMessages(
+                batch.OfType<FleetWaypointsCompletedResult>(),
+                game,
+                deliveries
+            );
             AddFacilityLossMessages(
                 batch.OfType<GameObjectDestroyedOnArrivalResult>(),
                 game,
@@ -1824,6 +1829,31 @@ namespace Rebellion.Game.Messages
             );
             SetArrivalLocation(message, destination, fleet);
             return WithAdvisorNotification(message, AdvisorNotificationType.FleetArrived);
+        }
+
+        private void AddFleetWaypointCompletionMessages(
+            IEnumerable<FleetWaypointsCompletedResult> results,
+            GameRoot game,
+            ICollection<MessageDeliveryRequest> deliveries
+        )
+        {
+            foreach (FleetWaypointsCompletedResult result in results)
+            {
+                if (result?.Fleet == null)
+                    continue;
+
+                Faction faction = GetArrivalFaction(game, result.Fleet.GetOwnerInstanceID());
+                MessageDeliveryRequest message = BuildArrivalMessage(
+                    MessageResultType.FleetWaypointsCompleted,
+                    faction,
+                    new Dictionary<string, string>
+                    {
+                        { "fleet", result.Fleet.GetDisplayName() ?? string.Empty },
+                    }
+                );
+                SetArrivalLocation(message, result.Destination, result.Fleet);
+                AddArrivalDelivery(deliveries, faction, message);
+            }
         }
 
         private MessageDeliveryRequest CreateShips(
