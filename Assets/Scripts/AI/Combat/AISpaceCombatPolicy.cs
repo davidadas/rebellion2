@@ -36,10 +36,10 @@ namespace Rebellion.AI.Combat
             if (fleet == null || planet == null || fleetPower > opponentPower)
                 return false;
 
-            Faction faction = _game.GetFactionByOwnerInstanceID(fleet.OwnerInstanceID);
+            Faction faction = _game.GetFactionByOwnerInstanceID(fleet.GetOwnerInstanceID());
             bool defendingFixedHeadquarters =
                 faction != null
-                && planet.OwnerInstanceID == faction.InstanceID
+                && planet.GetOwnerInstanceID() == faction.InstanceID
                 && _game
                     .GetFactions()
                     .Any(candidate =>

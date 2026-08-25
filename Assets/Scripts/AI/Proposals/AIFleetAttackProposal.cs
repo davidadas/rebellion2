@@ -260,10 +260,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the order was cleared.</returns>
         private bool TryClearCompletedAttackOrder(AITurnContext context, Planet liveTarget)
         {
-            if (context?.Faction == null || Fleet == null || TargetPlanet == null)
-                return false;
-
-            if (Fleet.GetOwnerInstanceID() != context.Faction.InstanceID)
+            if (!IsOwnedBy(context, Fleet) || TargetPlanet == null)
                 return false;
 
             FleetOrder order = Fleet.Order;

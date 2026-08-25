@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.AI.Director;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.AI.Proposals
 {
@@ -26,6 +27,19 @@ namespace Rebellion.AI.Proposals
         {
             Score = score;
             HasScore = true;
+        }
+
+        /// <summary>
+        /// Returns whether a scene node exists and is owned by the context faction.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="node">The scene node to inspect.</param>
+        /// <returns>True when the node is owned by the context faction.</returns>
+        protected static bool IsOwnedBy(AITurnContext context, BaseSceneNode node)
+        {
+            return context?.Faction != null
+                && node != null
+                && node.GetOwnerInstanceID() == context.Faction.InstanceID;
         }
 
         /// <summary>

@@ -155,13 +155,11 @@ namespace Rebellion.AI.Proposals
 
         private bool IsStillValid(AITurnContext context)
         {
-            if (context?.Faction == null || Fleet == null || TargetPlanet == null)
+            if (!IsOwnedBy(context, Fleet) || TargetPlanet == null)
                 return false;
 
             if (
-                Fleet.GetOwnerInstanceID() != context.Faction.InstanceID
-                || TargetPlanet.IsColonized
-                || !string.IsNullOrEmpty(TargetPlanet.GetOwnerInstanceID())
+                TargetPlanet.IsColonized || !string.IsNullOrEmpty(TargetPlanet.GetOwnerInstanceID())
             )
                 return false;
 

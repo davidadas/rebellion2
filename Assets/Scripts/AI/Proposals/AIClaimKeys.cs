@@ -1,4 +1,5 @@
 using Rebellion.AI.Planners;
+using Rebellion.AI.Planners.Demand;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 

@@ -5,7 +5,7 @@ using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Planners
+namespace Rebellion.AI.Planners.Demand
 {
     /// <summary>
     /// Generates founding-facility demand for newly claimed planets.

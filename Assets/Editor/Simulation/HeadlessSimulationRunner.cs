@@ -5,6 +5,7 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
+using Rebellion.AI.Planners.Demand;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;

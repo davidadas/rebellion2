@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
+using Rebellion.AI.Planners.Demand;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Planners
 {
@@ -69,8 +71,8 @@ namespace Rebellion.AI.Planners
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
                     && building.DefenseFacilityClass == DefenseFacilityClass.Shield
                 );
-            int shieldDeficit = System.Math.Max(0, shieldTarget - shieldCount);
-            int shieldQuantity = System.Math.Min(shieldDeficit, availableEnergy);
+            int shieldDeficit = Math.Max(0, shieldTarget - shieldCount);
+            int shieldQuantity = Math.Min(shieldDeficit, availableEnergy);
 
             if (shieldQuantity > 0)
             {
@@ -93,7 +95,7 @@ namespace Rebellion.AI.Planners
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
                     && building.GetBuildingType() == BuildingType.Weapon
                 );
-            int weaponTarget = System.Math.Max(
+            int weaponTarget = Math.Max(
                 config.PlanetaryWeaponTargetCount,
                 weaponCount + config.PlanetaryDefenseSurplusBatchSize
             );
@@ -106,7 +108,7 @@ namespace Rebellion.AI.Planners
                     context,
                     planet,
                     BuildingType.Weapon,
-                    System.Math.Min(weaponDeficit, availableEnergy),
+                    Math.Min(weaponDeficit, availableEnergy),
                     weaponTarget,
                     config.PlanetaryWeaponDemandPercent
                 )
@@ -197,7 +199,9 @@ namespace Rebellion.AI.Planners
             );
             int fighterStrength = GetStrongestAvailableStarfighterStrength(context);
             int threatReinforcement =
-                fighterStrength > 0 ? CeilingDivide(requiredDefenseStrength, fighterStrength) : 0;
+                fighterStrength > 0
+                    ? IntegerMath.DivideRoundedUp(requiredDefenseStrength, fighterStrength)
+                    : 0;
             return baseline + threatReinforcement;
         }
 
@@ -270,7 +274,7 @@ namespace Rebellion.AI.Planners
             if (destination == null)
                 return;
 
-            int quantityNeeded = System.Math.Max(1, deficit);
+            int quantityNeeded = Math.Max(1, deficit);
 
             demands.Add(
                 new AIProductionDemand(
@@ -284,7 +288,7 @@ namespace Rebellion.AI.Planners
                         context,
                         AIProductionDemandKind.FleetSeedCapitalShip,
                         quantityNeeded,
-                        System.Math.Max(1, targetCount),
+                        Math.Max(1, targetCount),
                         context.Game.Config.AI.Infrastructure.FleetSeedCapitalShipDemandPercent
                     ),
                     capitalShipRole: AICapitalShipProductionRole.General
@@ -298,8 +302,11 @@ namespace Rebellion.AI.Planners
             int operationalPlanetCount = context.Assessment.OwnedPlanets.Count(planet =>
                 planet.IsColonized && !planet.IsDestroyed
             );
-            int scaledTarget = CeilingDivide(operationalPlanetCount, config.PlanetsPerBattleFleet);
-            return System.Math.Max(config.MinimumBattleFleetCount, scaledTarget);
+            int scaledTarget = IntegerMath.DivideRoundedUp(
+                operationalPlanetCount,
+                config.PlanetsPerBattleFleet
+            );
+            return Math.Max(config.MinimumBattleFleetCount, scaledTarget);
         }
 
         private Planet FindUnguardedHeadquarters(AITurnContext context)
@@ -918,7 +925,7 @@ namespace Rebellion.AI.Planners
             Fleet fleet
         )
         {
-            int targetCount = System.Math.Min(
+            int targetCount = Math.Min(
                 fleet.GetRegimentCapacity(),
                 GetDesiredRegimentCount(context, fleet)
             );
@@ -1033,16 +1040,13 @@ namespace Rebellion.AI.Planners
                 return 0;
 
             if (plannedRefineries > plannedMines)
-                return System.Math.Min(
+                return Math.Min(
                     economyBatchSize,
-                    System.Math.Min(
-                        plannedRefineries - plannedMines,
-                        rawResourceNodes - plannedMines
-                    )
+                    Math.Min(plannedRefineries - plannedMines, rawResourceNodes - plannedMines)
                 );
 
             if (plannedRefineries == plannedMines)
-                return System.Math.Min(economyBatchSize, rawResourceNodes - plannedMines);
+                return Math.Min(economyBatchSize, rawResourceNodes - plannedMines);
 
             return 0;
         }
@@ -1066,7 +1070,7 @@ namespace Rebellion.AI.Planners
             if (desiredRefineries <= plannedRefineries)
                 return 0;
 
-            return System.Math.Min(economyBatchSize, desiredRefineries - plannedRefineries);
+            return Math.Min(economyBatchSize, desiredRefineries - plannedRefineries);
         }
 
         /// <summary>
@@ -1107,10 +1111,7 @@ namespace Rebellion.AI.Planners
                 ManufacturingType.Building
             );
             int economyLaneBudget = availableBuildingLanes - config.EconomyCompetingNeedSlotReserve;
-            return System.Math.Max(
-                config.EconomyDefaultBatchSize,
-                System.Math.Max(0, economyLaneBudget)
-            );
+            return Math.Max(config.EconomyDefaultBatchSize, Math.Max(0, economyLaneBudget));
         }
 
         /// <summary>
@@ -1198,7 +1199,7 @@ namespace Rebellion.AI.Planners
             if (count <= 0)
                 return Enumerable.Empty<Planet>();
 
-            return GetEconomyDestinationPlanets(context)
+            return GetBuildingDestinationPlanets(context)
                 .Where(planet => planet.GetUnminedResourceNodeCount() > 0)
                 .OrderByDescending(planet => planet.GetUnminedResourceNodeCount())
                 .ThenByDescending(planet => planet.GetAvailableEnergy())
@@ -1222,7 +1223,7 @@ namespace Rebellion.AI.Planners
             if (count <= 0)
                 return Enumerable.Empty<Planet>();
 
-            List<Planet> preferredTargets = GetEconomyDestinationPlanets(context)
+            List<Planet> preferredTargets = GetBuildingDestinationPlanets(context)
                 .Where(planet => !excludedPlanetIds.Contains(planet.InstanceID))
                 .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
                 .ThenByDescending(planet => planet.GetAvailableEnergy())
@@ -1234,7 +1235,7 @@ namespace Rebellion.AI.Planners
                 return preferredTargets;
 
             preferredTargets.AddRange(
-                GetEconomyDestinationPlanets(context)
+                GetBuildingDestinationPlanets(context)
                     .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
                     .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
                     .ThenByDescending(planet => planet.GetAvailableEnergy())
@@ -1278,7 +1279,7 @@ namespace Rebellion.AI.Planners
 
         private int GetAvailableFacilityExpansionEnergy(AITurnContext context, Planet planet)
         {
-            return System.Math.Max(
+            return Math.Max(
                 0,
                 planet.GetAvailableEnergy()
                     - context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet)
@@ -1297,20 +1298,6 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <returns>Building destination planets.</returns>
         private IEnumerable<Planet> GetBuildingDestinationPlanets(AITurnContext context)
-        {
-            return context.Assessment.OwnedPlanets.Where(planet =>
-                IsOwnedUsablePlanet(planet)
-                && planet.GetAvailableEnergy()
-                    > context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet)
-            );
-        }
-
-        /// <summary>
-        /// Returns planets that can receive economy buildings.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>Economy destination planets.</returns>
-        private IEnumerable<Planet> GetEconomyDestinationPlanets(AITurnContext context)
         {
             return context.Assessment.OwnedPlanets.Where(planet =>
                 IsOwnedUsablePlanet(planet)
@@ -1379,9 +1366,7 @@ namespace Rebellion.AI.Planners
             double highestPlanetValue = context.Assessment.GetHighestOwnedPlanetValue();
             double pressure =
                 baseDemandPercent
-                + config.PlanetaryDefenseDeficitPressureWeight
-                    * deficit
-                    / System.Math.Max(1, targetCount);
+                + config.PlanetaryDefenseDeficitPressureWeight * deficit / Math.Max(1, targetCount);
 
             if (highestPlanetValue > 0)
             {
@@ -1444,8 +1429,8 @@ namespace Rebellion.AI.Planners
         /// <returns>The base pressure.</returns>
         private double GetBasePressure(int baseDemandPercent, int deficit, int targetCount)
         {
-            int deficitPercent = deficit * 100 / System.Math.Max(1, targetCount);
-            return System.Math.Min(100, baseDemandPercent + deficitPercent);
+            int deficitPercent = deficit * 100 / Math.Max(1, targetCount);
+            return Math.Min(100, baseDemandPercent + deficitPercent);
         }
 
         /// <summary>
@@ -1472,7 +1457,7 @@ namespace Rebellion.AI.Planners
 
             return config.EconomyMaintenanceReservePressure
                 * (reserve - headroom)
-                / System.Math.Max(1, reserve);
+                / Math.Max(1, reserve);
         }
 
         /// <summary>
@@ -1614,7 +1599,7 @@ namespace Rebellion.AI.Planners
             if (target <= 0)
                 return 1;
 
-            return System.Math.Max(0, System.Math.Min(1, value / target));
+            return Math.Max(0, Math.Min(1, value / target));
         }
 
         /// <summary>
@@ -1624,7 +1609,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The clamped pressure.</returns>
         private double ClampPressure(double pressure)
         {
-            return System.Math.Max(0, System.Math.Min(100, pressure));
+            return Math.Max(0, Math.Min(100, pressure));
         }
 
         /// <summary>
@@ -1687,9 +1672,9 @@ namespace Rebellion.AI.Planners
         private int GetTargetStarfighterCount(AITurnContext context, Fleet fleet)
         {
             int capacity = fleet.GetStarfighterCapacity();
-            return System.Math.Min(
+            return Math.Min(
                 capacity,
-                ScaleByPercent(
+                IntegerMath.ScaleByPercentRoundedUp(
                     capacity,
                     context.Game.Config.AI.Infrastructure.StarfighterParentFillPercent
                 )
@@ -1713,13 +1698,13 @@ namespace Rebellion.AI.Planners
             }
 
             int capacity = fleet.GetRegimentCapacity();
-            int fillTarget = ScaleByPercent(
+            int fillTarget = IntegerMath.ScaleByPercentRoundedUp(
                 capacity,
                 context.Game.Config.AI.Infrastructure.AssaultRegimentLoadPercent
             );
             Planet targetPlanet = context.Assessment.GetAttackTargetPlanet(fleet);
             if (targetPlanet != null)
-                fillTarget = System.Math.Max(
+                fillTarget = Math.Max(
                     fillTarget,
                     context.Assessment.GetProjectedRequiredAttackRegimentCount(fleet, targetPlanet)
                 );
@@ -1733,7 +1718,7 @@ namespace Rebellion.AI.Planners
                     )
             )
             {
-                fillTarget = System.Math.Max(fillTarget, fleet.GetCurrentRegimentCount() + 1);
+                fillTarget = Math.Max(fillTarget, fleet.GetCurrentRegimentCount() + 1);
             }
 
             return fillTarget;
@@ -1753,7 +1738,7 @@ namespace Rebellion.AI.Planners
                 context.Game.Config.AI.Garrison
             );
 
-            return System.Math.Max(
+            return Math.Max(
                 context.Game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount,
                 stabilityTarget
             );
@@ -1780,31 +1765,6 @@ namespace Rebellion.AI.Planners
                 return null;
 
             return targetPlanet;
-        }
-
-        /// <summary>
-        /// Scales an integer by a percent value and rounds up.
-        /// </summary>
-        /// <param name="value">Value to scale.</param>
-        /// <param name="percent">Percent to apply.</param>
-        /// <returns>The scaled value.</returns>
-        private int ScaleByPercent(int value, int percent)
-        {
-            return (value * percent + 99) / 100;
-        }
-
-        /// <summary>
-        /// Divides two integers and rounds up.
-        /// </summary>
-        /// <param name="value">Value to divide.</param>
-        /// <param name="divisor">Divisor to use.</param>
-        /// <returns>The rounded-up quotient.</returns>
-        private static int CeilingDivide(int value, int divisor)
-        {
-            if (divisor <= 0)
-                return 0;
-
-            return (value + divisor - 1) / divisor;
         }
     }
 }

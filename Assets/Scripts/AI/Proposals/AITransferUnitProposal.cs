@@ -148,7 +148,7 @@ namespace Rebellion.AI.Proposals
             if (SourceContainer == Destination)
                 return false;
 
-            if (SourceContainer.GetOwnerInstanceID() != context.Faction.InstanceID)
+            if (!IsOwnedBy(context, SourceContainer))
                 return false;
 
             if (Destination.GetOwnerInstanceID() != context.Faction.InstanceID)

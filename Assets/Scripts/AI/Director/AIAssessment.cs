@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Director
 {
@@ -683,7 +684,7 @@ namespace Rebellion.AI.Director
                 return 0;
 
             GameConfig.AIFleetDeploymentConfig config = _context.Game.Config.AI.FleetDeployment;
-            int hostileFleetRequirement = ScaleByPercent(
+            int hostileFleetRequirement = IntegerMath.ScaleByPercent(
                 GetHeadquartersThreatStrength(planet),
                 config.AttackStrengthPercentOfStrongestHostileFleet
             );
@@ -857,7 +858,7 @@ namespace Rebellion.AI.Director
                 GetStrongestHostileFleetStrength(planet)
                 + GetHostilePlanetaryStarfighterStrength(planet);
             return hostileStrength > 0
-                ? ScaleByPercent(
+                ? IntegerMath.ScaleByPercent(
                     hostileStrength,
                     _context
                         .Game
@@ -907,7 +908,7 @@ namespace Rebellion.AI.Director
 
             int hostileStrength = GetPlanetDefenseThreatStrength(planet);
             return hostileStrength > 0
-                ? ScaleByPercent(
+                ? IntegerMath.ScaleByPercent(
                     hostileStrength,
                     _context
                         .Game
@@ -951,11 +952,11 @@ namespace Rebellion.AI.Director
                     building.GetOwnerInstanceID() == _context.Faction.InstanceID
                     && building.GetBuildingType() == BuildingType.Weapon
                 );
-            int shieldDeficit = System.Math.Max(
+            int shieldDeficit = Math.Max(
                 0,
                 _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit - shieldCount
             );
-            int weaponDeficit = System.Math.Max(
+            int weaponDeficit = Math.Max(
                 0,
                 _context.Game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount - weaponCount
             );
@@ -975,7 +976,7 @@ namespace Rebellion.AI.Director
             if (planet == null || _context?.Game?.Config == null)
                 return 0;
 
-            return ScaleByPercent(
+            return IntegerMath.ScaleByPercent(
                 GetDefendingRegimentDefenseStrength(planet),
                 _context.Game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense
             );
@@ -1810,7 +1811,7 @@ namespace Rebellion.AI.Director
         private bool IsTargetableEnemyOfficer(Officer officer)
         {
             return officer != null
-                && officer.OwnerInstanceID != _context.Faction.InstanceID
+                && officer.GetOwnerInstanceID() != _context.Faction.InstanceID
                 && !officer.IsCaptured
                 && !officer.IsKilled;
         }
@@ -1885,17 +1886,6 @@ namespace Rebellion.AI.Director
             return manufacturingQueue.Sum(item =>
                 Math.Max(0, item.GetConstructionCost() - item.ManufacturingProgress)
             );
-        }
-
-        /// <summary>
-        /// Scales an integer by a percent value.
-        /// </summary>
-        /// <param name="value">Value to scale.</param>
-        /// <param name="percent">Percent to apply.</param>
-        /// <returns>The scaled value.</returns>
-        private int ScaleByPercent(int value, int percent)
-        {
-            return value * percent / 100;
         }
 
         private static int SumRequirements(

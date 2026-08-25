@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
@@ -808,10 +809,7 @@ namespace Rebellion.AI.Planners
                 .Select(context.Assessment.GetFleetCombatValue)
                 .DefaultIfEmpty()
                 .Max();
-            return System.Math.Max(
-                System.Math.Max(0, sourceCombatAfterTransfer),
-                otherLocalFleetCombat
-            );
+            return Math.Max(Math.Max(0, sourceCombatAfterTransfer), otherLocalFleetCombat);
         }
 
         /// <summary>
@@ -869,11 +867,11 @@ namespace Rebellion.AI.Planners
             if (targetFleet.Order?.OrderType == FleetOrderType.Defend)
             {
                 int requiredDefense = context.Assessment.GetRequiredDefenseStrength(targetPlanet);
-                int defenseGap = System.Math.Max(
+                int defenseGap = Math.Max(
                     0,
                     requiredDefense - context.Assessment.GetProjectedFleetCombatValue(targetFleet)
                 );
-                return System.Math.Min(
+                return Math.Min(
                     defenseGap,
                     context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip)
                 );
@@ -950,11 +948,8 @@ namespace Rebellion.AI.Planners
             if (target <= 0 || contribution <= 0)
                 return 0;
 
-            double before = System.Math.Min(1, System.Math.Max(0, current / target));
-            double after = System.Math.Min(
-                1,
-                System.Math.Max(0, (current + contribution) / target)
-            );
+            double before = Math.Min(1, Math.Max(0, current / target));
+            double after = Math.Min(1, Math.Max(0, (current + contribution) / target));
             return after - before;
         }
     }

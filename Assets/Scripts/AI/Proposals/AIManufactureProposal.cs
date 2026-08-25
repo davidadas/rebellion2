@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
+using Rebellion.AI.Planners.Demand;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
@@ -37,8 +39,6 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIManufactureProposal : AIProposal
     {
-        private const int _percentageScale = 100;
-
         /// <summary>
         /// Creates a manufacture proposal.
         /// </summary>
@@ -302,7 +302,7 @@ namespace Rebellion.AI.Proposals
                 && Demand.BuildingToReplace != null
             )
             {
-                maintenanceCost = System.Math.Max(
+                maintenanceCost = Math.Max(
                     0,
                     maintenanceCost - Demand.BuildingToReplace.MaintenanceCost
                 );
@@ -318,22 +318,13 @@ namespace Rebellion.AI.Proposals
             if (Demand?.UsesDefensiveReserve != true)
                 return hardFloor;
 
-            int percentageFloor = (int)(
-                (
-                    (long)context.Assessment.MaintenanceCapacity
-                        * context
-                            .Game
-                            .Config
-                            .AI
-                            .Infrastructure
-                            .PlanetaryDefenseMaintenanceReservePercent
-                    + _percentageScale
-                    - 1
-                ) / _percentageScale
+            int percentageFloor = IntegerMath.ScaleByPercentRoundedUp(
+                context.Assessment.MaintenanceCapacity,
+                context.Game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent
             );
-            return System.Math.Max(
+            return Math.Max(
                 hardFloor,
-                System.Math.Max(
+                Math.Max(
                     context.Game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction,
                     percentageFloor
                 )
@@ -367,13 +358,12 @@ namespace Rebellion.AI.Proposals
                 context?.Faction == null
                 || context.Manufacturing == null
                 || Demand == null
-                || ProducerPlanet == null
                 || Destination == null
                 || Product?.GetReference() == null
             )
                 return false;
 
-            if (ProducerPlanet.GetOwnerInstanceID() != context.Faction.InstanceID)
+            if (!IsOwnedBy(context, ProducerPlanet))
                 return false;
 
             if (!ProducerPlanet.IsColonized || ProducerPlanet.IsDestroyed)

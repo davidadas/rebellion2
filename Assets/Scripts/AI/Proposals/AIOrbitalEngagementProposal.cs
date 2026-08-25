@@ -58,13 +58,13 @@ namespace Rebellion.AI.Proposals
         /// <inheritdoc />
         public override bool CanSelect(AITurnContext context)
         {
-            return IsValid(context);
+            return IsStillValid(context);
         }
 
         /// <inheritdoc />
         public override bool CanExecute(AITurnContext context)
         {
-            return IsValid(context);
+            return IsStillValid(context);
         }
 
         /// <inheritdoc />
@@ -174,13 +174,12 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>True when the engagement can advance.</returns>
-        private bool IsValid(AITurnContext context)
+        private bool IsStillValid(AITurnContext context)
         {
             if (
-                context?.Faction == null
-                || Fleet?.RoleType != FleetRoleType.Battle
+                !IsOwnedBy(context, Fleet)
+                || Fleet.RoleType != FleetRoleType.Battle
                 || TargetPlanet == null
-                || Fleet.GetOwnerInstanceID() != context.Faction.InstanceID
             )
                 return false;
 

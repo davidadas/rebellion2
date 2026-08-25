@@ -6,7 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Planners
+namespace Rebellion.AI.Planners.Demand
 {
     /// <summary>
     /// Generates production demand for faction special-forces templates.

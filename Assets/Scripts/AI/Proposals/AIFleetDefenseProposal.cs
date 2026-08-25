@@ -90,15 +90,10 @@ namespace Rebellion.AI.Proposals
 
         private bool IsStillValid(AITurnContext context)
         {
-            if (context?.Faction == null || Fleet == null || TargetPlanet == null)
+            if (!IsOwnedBy(context, Fleet) || !IsOwnedBy(context, TargetPlanet))
                 return false;
 
-            if (
-                Fleet.GetOwnerInstanceID() != context.Faction.InstanceID
-                || Fleet.RoleType != FleetRoleType.Battle
-                || !Fleet.HasOperationalCapitalShips()
-                || TargetPlanet.GetOwnerInstanceID() != context.Faction.InstanceID
-            )
+            if (Fleet.RoleType != FleetRoleType.Battle || !Fleet.HasOperationalCapitalShips())
                 return false;
 
             if (

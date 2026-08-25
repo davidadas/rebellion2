@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.AI.Planners
@@ -121,20 +122,13 @@ namespace Rebellion.AI.Planners
                 return;
 
             foreach (Planet target in GetReconnaissanceCandidatePlanets(context, participant))
-                TryAddProposal(
+                TryAddDecoyedProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(
-                        new[] { participant },
-                        MissionTypeIDs.Reconnaissance,
-                        target,
-                        decoyParticipants: GetMissionDecoy(
-                            availableParticipants,
-                            participant,
-                            MissionTypeIDs.Reconnaissance,
-                            target
-                        )
-                    )
+                    participant,
+                    availableParticipants,
+                    MissionTypeIDs.Reconnaissance,
+                    target
                 );
         }
 
@@ -357,22 +351,15 @@ namespace Rebellion.AI.Planners
                     .ThenBy(candidate => candidate.officer.InstanceID)
             )
             {
-                TryAddProposal(
+                TryAddDecoyedProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(
-                        new[] { participant },
-                        MissionTypeIDs.Rescue,
-                        planet,
-                        selectedTarget: target,
-                        targetOfficer: target,
-                        decoyParticipants: GetMissionDecoy(
-                            availableParticipants,
-                            participant,
-                            MissionTypeIDs.Rescue,
-                            planet
-                        )
-                    )
+                    participant,
+                    availableParticipants,
+                    MissionTypeIDs.Rescue,
+                    planet,
+                    selectedTarget: target,
+                    targetOfficer: target
                 );
             }
         }
@@ -388,20 +375,13 @@ namespace Rebellion.AI.Planners
                 return;
 
             foreach (Planet planet in GetEspionageCandidatePlanets(context))
-                TryAddProposal(
+                TryAddDecoyedProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(
-                        new[] { participant },
-                        MissionTypeIDs.Espionage,
-                        planet,
-                        decoyParticipants: GetMissionDecoy(
-                            availableParticipants,
-                            participant,
-                            MissionTypeIDs.Espionage,
-                            planet
-                        )
-                    )
+                    participant,
+                    availableParticipants,
+                    MissionTypeIDs.Espionage,
+                    planet
                 );
         }
 
@@ -426,20 +406,13 @@ namespace Rebellion.AI.Planners
                         )
                     )
             )
-                TryAddProposal(
+                TryAddDecoyedProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(
-                        new[] { participant },
-                        MissionTypeIDs.InciteUprising,
-                        planet,
-                        decoyParticipants: GetMissionDecoy(
-                            availableParticipants,
-                            participant,
-                            MissionTypeIDs.InciteUprising,
-                            planet
-                        )
-                    )
+                    participant,
+                    availableParticipants,
+                    MissionTypeIDs.InciteUprising,
+                    planet
                 );
         }
 
@@ -457,21 +430,14 @@ namespace Rebellion.AI.Planners
             {
                 foreach (IManufacturable target in GetSabotageTargets(context, planet))
                 {
-                    TryAddProposal(
+                    TryAddDecoyedProposal(
                         context,
                         proposals,
-                        new AIMissionProposal(
-                            new[] { participant },
-                            MissionTypeIDs.Sabotage,
-                            planet,
-                            selectedTarget: target,
-                            decoyParticipants: GetMissionDecoy(
-                                availableParticipants,
-                                participant,
-                                MissionTypeIDs.Sabotage,
-                                planet
-                            )
-                        )
+                        participant,
+                        availableParticipants,
+                        MissionTypeIDs.Sabotage,
+                        planet,
+                        selectedTarget: target
                     );
                 }
             }
@@ -533,41 +499,27 @@ namespace Rebellion.AI.Planners
             foreach ((Planet planet, Officer targetOfficer) in GetOfficerTargetCandidates(context))
             {
                 if (participant.CanPerformMission(MissionTypeIDs.Abduction))
-                    TryAddProposal(
+                    TryAddDecoyedProposal(
                         context,
                         proposals,
-                        new AIMissionProposal(
-                            new[] { participant },
-                            MissionTypeIDs.Abduction,
-                            planet,
-                            selectedTarget: targetOfficer,
-                            targetOfficer: targetOfficer,
-                            decoyParticipants: GetMissionDecoy(
-                                availableParticipants,
-                                participant,
-                                MissionTypeIDs.Abduction,
-                                planet
-                            )
-                        )
+                        participant,
+                        availableParticipants,
+                        MissionTypeIDs.Abduction,
+                        planet,
+                        selectedTarget: targetOfficer,
+                        targetOfficer: targetOfficer
                     );
 
                 if (participant.CanPerformMission(MissionTypeIDs.Assassination))
-                    TryAddProposal(
+                    TryAddDecoyedProposal(
                         context,
                         proposals,
-                        new AIMissionProposal(
-                            new[] { participant },
-                            MissionTypeIDs.Assassination,
-                            planet,
-                            selectedTarget: targetOfficer,
-                            targetOfficer: targetOfficer,
-                            decoyParticipants: GetMissionDecoy(
-                                availableParticipants,
-                                participant,
-                                MissionTypeIDs.Assassination,
-                                planet
-                            )
-                        )
+                        participant,
+                        availableParticipants,
+                        MissionTypeIDs.Assassination,
+                        planet,
+                        selectedTarget: targetOfficer,
+                        targetOfficer: targetOfficer
                     );
             }
         }
@@ -582,6 +534,47 @@ namespace Rebellion.AI.Planners
                 return;
 
             _candidateSelector.TryAdd(context, proposals, proposal);
+        }
+
+        /// <summary>
+        /// Adds a mission proposal with decoys drawn from the available participants.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposals">The proposal list to append to.</param>
+        /// <param name="participant">The main mission participant.</param>
+        /// <param name="availableParticipants">The participants available as decoys.</param>
+        /// <param name="missionTypeId">The mission type identifier.</param>
+        /// <param name="targetPlanet">The mission target planet.</param>
+        /// <param name="selectedTarget">The optional selected mission target.</param>
+        /// <param name="targetOfficer">The optional target officer.</param>
+        private void TryAddDecoyedProposal(
+            AITurnContext context,
+            List<AIProposal> proposals,
+            IMissionParticipant participant,
+            IReadOnlyList<IMissionParticipant> availableParticipants,
+            string missionTypeId,
+            Planet targetPlanet,
+            ISceneNode selectedTarget = null,
+            Officer targetOfficer = null
+        )
+        {
+            TryAddProposal(
+                context,
+                proposals,
+                new AIMissionProposal(
+                    new[] { participant },
+                    missionTypeId,
+                    targetPlanet,
+                    selectedTarget: selectedTarget,
+                    targetOfficer: targetOfficer,
+                    decoyParticipants: GetMissionDecoy(
+                        availableParticipants,
+                        participant,
+                        missionTypeId,
+                        targetPlanet
+                    )
+                )
+            );
         }
 
         private static AIMissionProposal CreateProposal(

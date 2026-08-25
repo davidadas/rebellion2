@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
+using Rebellion.AI.Planners.Demand;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Planners
 {
@@ -15,7 +17,6 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionPlanner : IAIProposalPlanner
     {
-        private const int _percentageScale = 100;
         private const int _primaryLaserDivisor = 6;
         private const int _primaryWeaponWeight = 100;
         private const int _roleMetricScale = 10;
@@ -152,7 +153,7 @@ namespace Rebellion.AI.Planners
             );
             if (distributesDemand)
             {
-                remainingQuantity = System.Math.Min(
+                remainingQuantity = Math.Min(
                     remainingQuantity,
                     GetFleetUnitDiversityLimit(context, demand, product.GetReference())
                 );
@@ -400,10 +401,7 @@ namespace Rebellion.AI.Planners
             )
                 return building.MaintenanceCost;
 
-            return System.Math.Max(
-                0,
-                building.MaintenanceCost - demand.BuildingToReplace.MaintenanceCost
-            );
+            return Math.Max(0, building.MaintenanceCost - demand.BuildingToReplace.MaintenanceCost);
         }
 
         private int GetBuildingMaintenanceBudget(AITurnContext context, AIProductionDemand demand)
@@ -414,7 +412,7 @@ namespace Rebellion.AI.Planners
             if (demand.UsesDefensiveReserve)
                 return GetDefensiveMaintenanceBudget(context);
 
-            return System.Math.Max(
+            return Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
                     - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
@@ -426,21 +424,21 @@ namespace Rebellion.AI.Planners
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             int allocatedMaintenance = demand.Kind switch
             {
-                AIProductionDemandKind.Shipyard => ScaleByPercent(
-                    ScaleByPercent(
+                AIProductionDemandKind.Shipyard => IntegerMath.ScaleByPercent(
+                    IntegerMath.ScaleByPercent(
                         context.Assessment.MaintenanceCapacity,
                         config.ShipyardMaintenanceAllocationPercent
                     ),
                     config.ShipyardMaintenanceAllocationScalePercent
                 ),
-                AIProductionDemandKind.TrainingFacility => ScaleByPercent(
-                    ScaleByPercent(
+                AIProductionDemandKind.TrainingFacility => IntegerMath.ScaleByPercent(
+                    IntegerMath.ScaleByPercent(
                         context.Assessment.MaintenanceCapacity,
                         config.TrainingFacilityMaintenanceAllocationPercent
                     ),
                     config.TrainingFacilityMaintenanceAllocationScalePercent
                 ),
-                AIProductionDemandKind.ConstructionFacility => ScaleByPercent(
+                AIProductionDemandKind.ConstructionFacility => IntegerMath.ScaleByPercent(
                     context.Assessment.MaintenanceCapacity,
                     config.ConstructionFacilityMaintenanceAllocationPercent
                 ),
@@ -454,12 +452,12 @@ namespace Rebellion.AI.Planners
             )
                 return 0;
 
-            int headroomBudget = System.Math.Max(
+            int headroomBudget = Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
                     - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
             );
-            return System.Math.Min(availableMaintenance, headroomBudget);
+            return Math.Min(availableMaintenance, headroomBudget);
         }
 
         private int GetCommittedFacilityMaintenance(
@@ -562,7 +560,7 @@ namespace Rebellion.AI.Planners
         )
         {
             if (!IsDistributedProductionDemand(demand))
-                return System.Math.Max(0, demand.QuantityNeeded);
+                return Math.Max(0, demand.QuantityNeeded);
 
             int requestedCount =
                 demand.Kind == AIProductionDemandKind.FleetCapitalShip
@@ -570,12 +568,12 @@ namespace Rebellion.AI.Planners
                     : demand.QuantityNeeded;
 
             if (demand.UsesDefensiveReserve)
-                requestedCount = System.Math.Min(
+                requestedCount = Math.Min(
                     requestedCount,
                     GetDefensiveBatchSize(context, demand, product)
                 );
 
-            return System.Math.Max(0, requestedCount);
+            return Math.Max(0, requestedCount);
         }
 
         private int GetCapitalShipCount(
@@ -603,11 +601,11 @@ namespace Rebellion.AI.Planners
             if (contribution <= 0)
                 return 0;
 
-            int requestedCount = DivideRoundedUp(demand.QuantityNeeded, contribution);
+            int requestedCount = IntegerMath.DivideRoundedUp(demand.QuantityNeeded, contribution);
             if (capitalShip.MaintenanceCost <= 0)
                 return requestedCount;
 
-            return System.Math.Min(
+            return Math.Min(
                 requestedCount,
                 GetCapitalShipMaintenanceBudget(context) / capitalShip.MaintenanceCost
             );
@@ -621,7 +619,7 @@ namespace Rebellion.AI.Planners
         )
         {
             int queueCapacity = GetQueueBatchCapacity(context, producerPlanet, product);
-            return System.Math.Max(0, System.Math.Min(remainingQuantity, queueCapacity));
+            return Math.Max(0, Math.Min(remainingQuantity, queueCapacity));
         }
 
         private int GetQueueBatchCapacity(
@@ -645,11 +643,7 @@ namespace Rebellion.AI.Planners
                     .GetManufacturingQueue()
                     .TryGetValue(manufacturingType, out List<IManufacturable> queue)
                     ? queue.Sum(item =>
-                        (long)
-                            System.Math.Max(
-                                0,
-                                item.GetConstructionCost() - item.ManufacturingProgress
-                            )
+                        (long)Math.Max(0, item.GetConstructionCost() - item.ManufacturingProgress)
                     )
                     : 0;
                 _queueWork.Add(key, work);
@@ -657,7 +651,7 @@ namespace Rebellion.AI.Planners
 
             double targetWork = work.TargetWork;
             long queuedWork = work.QueuedWork;
-            long additionalWork = (long)System.Math.Ceiling(targetWork) - queuedWork;
+            long additionalWork = (long)Math.Ceiling(targetWork) - queuedWork;
             if (additionalWork <= 0)
                 return 0;
 
@@ -665,7 +659,7 @@ namespace Rebellion.AI.Planners
             if (constructionCost <= 0)
                 return int.MaxValue;
 
-            long capacity = (additionalWork + constructionCost - 1) / constructionCost;
+            long capacity = IntegerMath.DivideRoundedUp(additionalWork, constructionCost);
             return capacity > int.MaxValue ? int.MaxValue : (int)capacity;
         }
 
@@ -725,7 +719,7 @@ namespace Rebellion.AI.Planners
             if (!hasPreferredTechnology)
                 return int.MaxValue;
 
-            return System.Math.Max(
+            return Math.Max(
                 0,
                 maximumDuplicateCount - CountFleetUnitsByType<T>(fleet, selectedTypeId)
             );
@@ -747,18 +741,15 @@ namespace Rebellion.AI.Planners
                     ? demand.DestinationPlanet?.GetAvailableEnergy() ?? 0
                     : int.MaxValue;
 
-            return System.Math.Max(
+            return Math.Max(
                 0,
-                System.Math.Min(
-                    demand.QuantityNeeded,
-                    System.Math.Min(maintenanceLimit, destinationLimit)
-                )
+                Math.Min(demand.QuantityNeeded, Math.Min(maintenanceLimit, destinationLimit))
             );
         }
 
         private int GetDefensiveMaintenanceBudget(AITurnContext context)
         {
-            return System.Math.Max(
+            return Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
                     - GetDefensiveMaintenanceFloor(context)
@@ -767,11 +758,11 @@ namespace Rebellion.AI.Planners
 
         private int GetDefensiveMaintenanceFloor(AITurnContext context)
         {
-            return System.Math.Max(
+            return Math.Max(
                 context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor,
-                System.Math.Max(
+                Math.Max(
                     context.Game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction,
-                    ScaleByPercentRoundedUp(
+                    IntegerMath.ScaleByPercentRoundedUp(
                         context.Assessment.MaintenanceCapacity,
                         context
                             .Game
@@ -782,11 +773,6 @@ namespace Rebellion.AI.Planners
                     )
                 )
             );
-        }
-
-        private static int ScaleByPercentRoundedUp(int value, int percent)
-        {
-            return (int)(((long)value * percent + _percentageScale - 1) / _percentageScale);
         }
 
         private int GetFacilityBatchSize(
@@ -808,22 +794,19 @@ namespace Rebellion.AI.Planners
             int laneReserve =
                 demand.Kind == AIProductionDemandKind.ConstructionFacility
                     ? 0
-                    : System.Math.Max(
+                    : Math.Max(
                         0,
                         context.Game.Config.AI.Infrastructure.FacilityConstructionLaneReserve
                     );
             int laneLimit =
                 facilityCount > laneReserve ? facilityCount - laneReserve : facilityCount;
-            int energyLimit = System.Math.Max(
+            int energyLimit = Math.Max(
                 0,
                 demand.DestinationPlanet.GetAvailableEnergy()
                     - context.Assessment.GetPlanetaryDefenseEnergyDeficit(demand.DestinationPlanet)
             );
 
-            return System.Math.Max(
-                0,
-                System.Math.Min(maintenanceLimit, System.Math.Min(laneLimit, energyLimit))
-            );
+            return Math.Max(0, Math.Min(maintenanceLimit, Math.Min(laneLimit, energyLimit)));
         }
 
         private static bool IsFacilityExpansionDemand(AIProductionDemand demand)
@@ -1009,11 +992,11 @@ namespace Rebellion.AI.Planners
                 return _capitalShipMaintenanceBudget.Value;
 
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
-            int allocatedMaintenance = ScaleByPercent(
+            int allocatedMaintenance = IntegerMath.ScaleByPercent(
                 context.Assessment.MaintenanceCapacity,
                 config.CapitalMaintenanceAllocationPercent
             );
-            int targetCapitalMaintenance = ScaleByPercent(
+            int targetCapitalMaintenance = IntegerMath.ScaleByPercent(
                 allocatedMaintenance,
                 config.CapitalMaintenanceSafetyPercent
             );
@@ -1021,7 +1004,7 @@ namespace Rebellion.AI.Planners
                 .Faction.GetOwnedUnitsByType<CapitalShip>()
                 .Where(IsCommittedCapitalShip)
                 .Sum(capitalShip => capitalShip.MaintenanceCost);
-            int budget = System.Math.Max(0, targetCapitalMaintenance - committedCapitalMaintenance);
+            int budget = Math.Max(0, targetCapitalMaintenance - committedCapitalMaintenance);
 
             _capitalShipMaintenanceBudget =
                 context.Assessment.ProjectedMaintenanceHeadroom < budget ? 0 : budget;
@@ -1033,19 +1016,6 @@ namespace Rebellion.AI.Planners
             return capitalShip?.ManufacturingStatus
                 is ManufacturingStatus.Complete
                     or ManufacturingStatus.Building;
-        }
-
-        private static int ScaleByPercent(int value, int percent)
-        {
-            return (int)((long)value * percent / _percentageScale);
-        }
-
-        private static int DivideRoundedUp(int value, int divisor)
-        {
-            if (value <= 0 || divisor <= 0)
-                return 0;
-
-            return (int)(((long)value + divisor - 1) / divisor);
         }
 
         private static bool CanFillCapitalShipRole(
@@ -1078,7 +1048,7 @@ namespace Rebellion.AI.Planners
             {
                 AICapitalShipProductionRole.General => GetPrimaryWeaponMetric(capitalShip)
                     * _roleMetricScale
-                    / System.Math.Max(1, capitalShip.MaintenanceCost),
+                    / Math.Max(1, capitalShip.MaintenanceCost),
                 AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
                 AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0 ? 1 : 0,
                 AICapitalShipProductionRole.Interdiction => capitalShip.ShieldRechargeRate,
@@ -1126,7 +1096,7 @@ namespace Rebellion.AI.Planners
                     + (long)_primaryWeaponWeight
                         * GetWeaponCount(capitalShip, PrimaryWeaponType.LaserCannon, arc)
                         / _primaryLaserDivisor;
-                maximumWeight = System.Math.Max(maximumWeight, weight);
+                maximumWeight = Math.Max(maximumWeight, weight);
             }
 
             return maximumWeight;
