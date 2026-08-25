@@ -182,6 +182,12 @@ public static class HeadlessSimulationRunner
         }
     }
 
+    /// <summary>
+    /// Saves and reloads a completed simulation when the options request a save artifact.
+    /// </summary>
+    /// <param name="game">The completed simulated game.</param>
+    /// <param name="options">The simulation options containing save configuration.</param>
+    /// <returns>The validated save-file path, or an empty string when saving is disabled.</returns>
     private static string SaveSimulation(GameRoot game, SimulationOptions options)
     {
         if (string.IsNullOrWhiteSpace(options.SaveFileName))
@@ -477,6 +483,12 @@ public static class HeadlessSimulationRunner
         };
     }
 
+    /// <summary>
+    /// Evaluates the faction's current production plan and adds its counts to the summary.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="summary">The faction summary to enrich.</param>
+    /// <returns>The enriched faction summary.</returns>
     private static FactionSimulationSummary AddProductionPlanningSummary(
         GameRoot game,
         FactionSimulationSummary summary
@@ -543,12 +555,24 @@ public static class HeadlessSimulationRunner
         return summary;
     }
 
+    /// <summary>
+    /// Counts operational faction planets with at least one completed shield generator.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The faction whose planets are counted.</param>
+    /// <returns>The number of shielded planets.</returns>
     private static int CountShieldedPlanets(GameRoot game, Faction faction)
     {
         return GetOperationalOwnedPlanets(game, faction)
             .Count(planet => GetActiveOwnedBuildings(planet, faction).Any(IsShieldGenerator));
     }
 
+    /// <summary>
+    /// Counts operational faction planets that meet the configured shield target.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The faction whose planets are counted.</param>
+    /// <returns>The number of fully shielded planets.</returns>
     private static int CountFullyShieldedPlanets(GameRoot game, Faction faction)
     {
         int target = game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
@@ -558,6 +582,12 @@ public static class HeadlessSimulationRunner
             );
     }
 
+    /// <summary>
+    /// Counts operational faction planets that meet the configured weapon target.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The faction whose planets are counted.</param>
+    /// <returns>The number of weapon-defended planets.</returns>
     private static int CountWeaponDefendedPlanets(GameRoot game, Faction faction)
     {
         int target = game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
@@ -568,6 +598,12 @@ public static class HeadlessSimulationRunner
             );
     }
 
+    /// <summary>
+    /// Counts operational faction planets that meet both static-defense targets.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The faction whose planets are counted.</param>
+    /// <returns>The number of fully defended planets.</returns>
     private static int CountFullyStaticDefendedPlanets(GameRoot game, Faction faction)
     {
         int shieldTarget = game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
@@ -583,6 +619,13 @@ public static class HeadlessSimulationRunner
             });
     }
 
+    /// <summary>
+    /// Counts completed researched production facilities of the requested type.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The faction whose facilities are counted.</param>
+    /// <param name="buildingType">The production facility type.</param>
+    /// <returns>The number of advanced production facilities.</returns>
     private static int CountAdvancedProductionFacilities(
         GameRoot game,
         Faction faction,
@@ -598,6 +641,12 @@ public static class HeadlessSimulationRunner
             );
     }
 
+    /// <summary>
+    /// Counts faction planets projected to meet the configured shield target.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The faction whose planets are counted.</param>
+    /// <returns>The projected number of fully shielded planets.</returns>
     private static int CountProjectedFullyShieldedPlanets(GameRoot game, Faction faction)
     {
         int target = game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
@@ -605,6 +654,12 @@ public static class HeadlessSimulationRunner
             .Count(planet => GetOwnedBuildings(planet, faction).Count(IsShieldGenerator) >= target);
     }
 
+    /// <summary>
+    /// Counts faction planets projected to meet the configured weapon target.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The faction whose planets are counted.</param>
+    /// <returns>The projected number of weapon-defended planets.</returns>
     private static int CountProjectedWeaponDefendedPlanets(GameRoot game, Faction faction)
     {
         int target = game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
@@ -615,6 +670,12 @@ public static class HeadlessSimulationRunner
             );
     }
 
+    /// <summary>
+    /// Counts faction planets projected to meet both static-defense targets.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The faction whose planets are counted.</param>
+    /// <returns>The projected number of fully defended planets.</returns>
     private static int CountProjectedFullyStaticDefendedPlanets(GameRoot game, Faction faction)
     {
         int shieldTarget = game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
@@ -630,11 +691,23 @@ public static class HeadlessSimulationRunner
             });
     }
 
+    /// <summary>
+    /// Gets every planet owned by the specified faction.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The owning faction.</param>
+    /// <returns>The owned planets.</returns>
     private static List<Planet> GetOwnedPlanets(GameRoot game, Faction faction)
     {
         return game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID);
     }
 
+    /// <summary>
+    /// Gets the faction's colonized, undestroyed planets.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The owning faction.</param>
+    /// <returns>The operational owned planets.</returns>
     private static List<Planet> GetOperationalOwnedPlanets(GameRoot game, Faction faction)
     {
         return GetOwnedPlanets(game, faction)
@@ -642,6 +715,12 @@ public static class HeadlessSimulationRunner
             .ToList();
     }
 
+    /// <summary>
+    /// Gets completed, stationary faction buildings at a planet.
+    /// </summary>
+    /// <param name="planet">The planet to inspect.</param>
+    /// <param name="faction">The owning faction.</param>
+    /// <returns>The active owned buildings.</returns>
     private static List<Building> GetActiveOwnedBuildings(Planet planet, Faction faction)
     {
         return GetOwnedBuildings(planet, faction)
@@ -652,6 +731,12 @@ public static class HeadlessSimulationRunner
             .ToList();
     }
 
+    /// <summary>
+    /// Gets every faction building at a planet, including projected construction.
+    /// </summary>
+    /// <param name="planet">The planet to inspect.</param>
+    /// <param name="faction">The owning faction.</param>
+    /// <returns>The owned buildings.</returns>
     private static List<Building> GetOwnedBuildings(Planet planet, Faction faction)
     {
         return planet
@@ -660,6 +745,11 @@ public static class HeadlessSimulationRunner
             .ToList();
     }
 
+    /// <summary>
+    /// Determines whether a building is a planetary shield generator.
+    /// </summary>
+    /// <param name="building">The building to inspect.</param>
+    /// <returns>True when the building generates planetary shields.</returns>
     private static bool IsShieldGenerator(Building building)
     {
         return building.DefenseFacilityClass == DefenseFacilityClass.Shield;
@@ -1567,6 +1657,10 @@ public static class HeadlessSimulationRunner
             StringComparer.Ordinal
         );
 
+        /// <summary>
+        /// Records the missions, ownership, and research state at simulation start.
+        /// </summary>
+        /// <param name="game">The initial game state.</param>
         public void RecordInitialState(GameRoot game)
         {
             foreach (Mission mission in game.GetSceneNodesByType<Mission>())
@@ -1587,6 +1681,10 @@ public static class HeadlessSimulationRunner
                 _researchOrders[faction.InstanceID] = ResearchOrders.From(faction);
         }
 
+        /// <summary>
+        /// Records mission, ownership, and research changes for one simulation tick.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
         public void RecordTick(GameRoot game)
         {
             RecordMissions(game);
@@ -1594,6 +1692,11 @@ public static class HeadlessSimulationRunner
             RecordResearch(game);
         }
 
+        /// <summary>
+        /// Builds the recorded strategic activity summary for one faction.
+        /// </summary>
+        /// <param name="faction">The faction to summarize.</param>
+        /// <returns>The faction activity summary.</returns>
         public FactionActivitySummary BuildSummary(Faction faction)
         {
             FactionActivity activity = GetActivity(faction.InstanceID);
@@ -1664,6 +1767,10 @@ public static class HeadlessSimulationRunner
             };
         }
 
+        /// <summary>
+        /// Records mission starts, completions, targets, and observed outcomes.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
         private void RecordMissions(GameRoot game)
         {
             Dictionary<string, TrackedMission> currentMissions = game.GetSceneNodesByType<Mission>()
@@ -1737,6 +1844,12 @@ public static class HeadlessSimulationRunner
                 _activeMissions[pair.Key] = pair.Value;
         }
 
+        /// <summary>
+        /// Classifies the observed outcome of a completed espionage mission.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="mission">The completed mission state.</param>
+        /// <param name="counts">The target counters to update.</param>
         private void RecordEspionageOutcome(
             GameRoot game,
             TrackedMission mission,
@@ -1762,6 +1875,13 @@ public static class HeadlessSimulationRunner
                 counts.EarlyInterruptions++;
         }
 
+        /// <summary>
+        /// Gets the tick of the faction's latest intelligence snapshot for a planet.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="factionId">The observing faction instance identifier.</param>
+        /// <param name="planetId">The observed planet instance identifier.</param>
+        /// <returns>The snapshot tick, or -1 when no snapshot exists.</returns>
         private static int GetIntelTick(GameRoot game, string factionId, string planetId)
         {
             Faction faction = game.GetFactionByOwnerInstanceID(factionId);
@@ -1779,6 +1899,10 @@ public static class HeadlessSimulationRunner
             return planetSnapshot.TickCaptured;
         }
 
+        /// <summary>
+        /// Records planet acquisition, loss, and colonization transitions.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
         private void RecordPlanetOwnership(GameRoot game)
         {
             foreach (Planet planet in game.GetSceneNodesByType<Planet>())
@@ -1807,6 +1931,10 @@ public static class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Records research-order advances for every faction.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
         private void RecordResearch(GameRoot game)
         {
             foreach (Faction faction in game.GetFactions())
@@ -1827,6 +1955,11 @@ public static class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Gets the aggregate counters for a tracked mission type.
+        /// </summary>
+        /// <param name="mission">The tracked mission.</param>
+        /// <returns>The mission-type counters.</returns>
         private MissionCounts GetMissionCounts(TrackedMission mission)
         {
             FactionActivity activity = GetActivity(mission.FactionId);
@@ -1841,6 +1974,11 @@ public static class HeadlessSimulationRunner
             return counts;
         }
 
+        /// <summary>
+        /// Gets or creates the mutable activity counters for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance identifier.</param>
+        /// <returns>The faction activity counters.</returns>
         private FactionActivity GetActivity(string factionId)
         {
             string key = factionId ?? string.Empty;
@@ -1853,6 +1991,11 @@ public static class HeadlessSimulationRunner
             return activity;
         }
 
+        /// <summary>
+        /// Gets or creates counters for a mission type and target planet.
+        /// </summary>
+        /// <param name="mission">The tracked mission.</param>
+        /// <returns>The mission-target counters.</returns>
         private MissionTargetCounts GetMissionTargetCounts(TrackedMission mission)
         {
             FactionActivity activity = GetActivity(mission.FactionId);
@@ -1870,6 +2013,11 @@ public static class HeadlessSimulationRunner
             return counts;
         }
 
+        /// <summary>
+        /// Gets or creates counters for a sabotage target.
+        /// </summary>
+        /// <param name="mission">The tracked sabotage mission.</param>
+        /// <returns>The sabotage-target counters, or null when the mission has no target.</returns>
         private SabotageTargetCounts GetSabotageTargetCounts(TrackedMission mission)
         {
             if (string.IsNullOrEmpty(mission.TargetId))
@@ -1956,6 +2104,12 @@ public static class HeadlessSimulationRunner
             public bool WaitingForParticipants;
             public int MainRating;
 
+            /// <summary>
+            /// Captures the mission state needed to compare it across ticks.
+            /// </summary>
+            /// <param name="mission">The mission to record.</param>
+            /// <param name="game">The current game state.</param>
+            /// <returns>The tracked mission state.</returns>
             public static TrackedMission From(Mission mission, GameRoot game)
             {
                 string targetId = (mission as SabotageMission)?.SabotageTargetInstanceID;
@@ -1989,6 +2143,11 @@ public static class HeadlessSimulationRunner
             public string OwnerId;
             public bool IsColonized;
 
+            /// <summary>
+            /// Captures the ownership state needed to compare a planet across ticks.
+            /// </summary>
+            /// <param name="planet">The planet to record.</param>
+            /// <returns>The tracked planet state.</returns>
             public static PlanetState From(Planet planet)
             {
                 return new PlanetState
@@ -2005,6 +2164,11 @@ public static class HeadlessSimulationRunner
             public int Facility;
             public int Troop;
 
+            /// <summary>
+            /// Captures the faction's current research progression.
+            /// </summary>
+            /// <param name="faction">The faction to record.</param>
+            /// <returns>The tracked research orders.</returns>
             public static ResearchOrders From(Faction faction)
             {
                 return new ResearchOrders
@@ -2085,6 +2249,11 @@ public static class HeadlessSimulationRunner
             return GetCounters(factionId).BuildSummary();
         }
 
+        /// <summary>
+        /// Gets or creates attack-readiness counters for one faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance identifier.</param>
+        /// <returns>The faction readiness counters.</returns>
         private AttackReadinessFactionCounters GetCounters(string factionId)
         {
             string key = factionId ?? string.Empty;
@@ -2097,6 +2266,13 @@ public static class HeadlessSimulationRunner
             return counters;
         }
 
+        /// <summary>
+        /// Gets the readiness gates currently blocking an attack fleet.
+        /// </summary>
+        /// <param name="assessment">The faction's current strategic assessment.</param>
+        /// <param name="fleet">The attack fleet to inspect.</param>
+        /// <param name="planets">Known planets indexed by instance identifier.</param>
+        /// <returns>The active readiness blocker names.</returns>
         private static List<string> GetBlockers(
             AIAssessment assessment,
             Fleet fleet,
@@ -2155,6 +2331,10 @@ public static class HeadlessSimulationRunner
 
             public int BuildingFleetSamples { get; private set; }
 
+            /// <summary>
+            /// Records one attack fleet's active readiness blockers.
+            /// </summary>
+            /// <param name="blockers">The blocker names observed for the fleet.</param>
             public void Record(IReadOnlyList<string> blockers)
             {
                 BuildingFleetSamples++;
@@ -2165,6 +2345,10 @@ public static class HeadlessSimulationRunner
                     Increment(_soleBlockerSamples, blockers[0]);
             }
 
+            /// <summary>
+            /// Builds the aggregate attack-readiness blocker summary.
+            /// </summary>
+            /// <returns>The attack-readiness summary.</returns>
             public AttackReadinessSimulationSummary BuildSummary()
             {
                 return new AttackReadinessSimulationSummary
@@ -2188,6 +2372,11 @@ public static class HeadlessSimulationRunner
                 };
             }
 
+            /// <summary>
+            /// Increments a named readiness counter.
+            /// </summary>
+            /// <param name="counters">The counters to update.</param>
+            /// <param name="key">The counter name.</param>
             private static void Increment(Dictionary<string, int> counters, string key)
             {
                 counters[key] = counters.TryGetValue(key, out int count) ? count + 1 : 1;
@@ -2450,9 +2639,19 @@ public static class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Determines whether a manufacturable item has completed production.
+        /// </summary>
+        /// <param name="item">The item to inspect.</param>
+        /// <returns>True when production is complete.</returns>
         private static bool IsComplete(IManufacturable item) =>
             item.ManufacturingStatus == ManufacturingStatus.Complete;
 
+        /// <summary>
+        /// Determines whether a completed item was produced during the game.
+        /// </summary>
+        /// <param name="item">The item to inspect.</param>
+        /// <returns>True when the item has an originating producer planet.</returns>
         private static bool IsManufactured(IManufacturable item) =>
             IsComplete(item) && !string.IsNullOrEmpty(item.ProducerPlanetID);
 
@@ -3013,6 +3212,12 @@ public static class HeadlessSimulationRunner
         return Math.Max(config.MinimumAttackStrength, fleetDefenseRequirement);
     }
 
+    /// <summary>
+    /// Gets the combined attack strength of ready regiments aboard a fleet.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="fleet">The fleet to inspect.</param>
+    /// <returns>The regiment attack strength including leadership bonuses.</returns>
     private static int GetFleetRegimentAttackStrength(GameRoot game, Fleet fleet)
     {
         if (game == null || fleet == null)
@@ -3037,6 +3242,12 @@ public static class HeadlessSimulationRunner
             .Sum(regiment => regiment.AttackRating + leadershipBonus);
     }
 
+    /// <summary>
+    /// Gets the combined defense strength of ready regiments at a planet.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="planet">The target planet.</param>
+    /// <returns>The regiment defense strength including leadership bonuses.</returns>
     private static int GetTargetRegimentDefenseStrength(GameRoot game, Planet planet)
     {
         if (game == null || planet == null)

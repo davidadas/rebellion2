@@ -190,6 +190,12 @@ public static class PersistentSimulationRunner
         }
     }
 
+    /// <summary>
+    /// Resolves the requested simulation type, including legacy jobs that omit it.
+    /// </summary>
+    /// <param name="job">The queued simulation job.</param>
+    /// <param name="jobPath">The job file path used in validation errors.</param>
+    /// <returns>The resolved simulation job type.</returns>
     private static SimulationJobType GetSimulationJobType(SimulationJob job, string jobPath)
     {
         if (string.IsNullOrWhiteSpace(job.SimulationType))
@@ -218,6 +224,11 @@ public static class PersistentSimulationRunner
         );
     }
 
+    /// <summary>
+    /// Validates the fields required to produce a loadable simulation save.
+    /// </summary>
+    /// <param name="job">The queued simulation job.</param>
+    /// <param name="jobPath">The job file path used in validation errors.</param>
     private static void ValidateSaveJob(SimulationJob job, string jobPath)
     {
         if (string.IsNullOrWhiteSpace(job.SaveFileName))
