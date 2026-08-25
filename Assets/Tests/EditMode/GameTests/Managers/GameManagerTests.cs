@@ -109,7 +109,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_VictoryConditionMet_DoesNotEvaluateVictory()
+        public void ProcessTick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
         {
             GameRoot game = new GameRoot(TestConfig.Create())
             {
@@ -140,7 +140,9 @@ namespace Rebellion.Tests.Managers
             manager.ProcessTick();
             manager.ProcessTick();
 
-            Assert.IsEmpty(declarations);
+            Assert.AreEqual(1, declarations.Count);
+            Assert.AreSame(alliance, declarations[0].Winner);
+            Assert.AreSame(empire, declarations[0].Loser);
         }
 
         [Test]

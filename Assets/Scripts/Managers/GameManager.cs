@@ -58,6 +58,7 @@ public sealed class GameManager
     // Strategic Systems.
     private ResearchSystem _researchSystem;
     private OfficerLoyaltySystem _officerLoyaltySystem;
+    private VictorySystem _victorySystem;
     private AISystem _aiSystem;
 
     // Result Processing.
@@ -325,6 +326,7 @@ public sealed class GameManager
 
         ProcessResults(_researchSystem.ProcessTick());
         ProcessResults(_jediSystem.ProcessTick());
+        ProcessResults(_victorySystem.ProcessTick());
         TickCompleted?.Invoke();
     }
 
@@ -435,6 +437,7 @@ public sealed class GameManager
             _planetaryControlSystem
         );
         _researchSystem = new ResearchSystem(_game, _randomProvider);
+        _victorySystem = new VictorySystem(_game);
         GameRequestDispatcher requestDispatcher = new GameRequestDispatcher();
         requestDispatcher.Subscribe<UnitMovementRequest>(_movementSystem);
         requestDispatcher.Subscribe<UnitPlacementRequest>(_movementSystem);
@@ -468,6 +471,7 @@ public sealed class GameManager
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_officerLoyaltySystem);
+        _resultProcessor.Subscribe<HeadquartersLostResult>(_victorySystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
