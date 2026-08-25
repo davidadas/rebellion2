@@ -2538,6 +2538,29 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void RecordIntelligenceSnapshot_EnemyFleet_DoesNotRetainWaypoints()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            fleet.Waypoints.Add(_tatooine.InstanceID);
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _empire, "STAR_DESTROYER");
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.CapitalShips
+            );
+
+            Fleet knownFleet = _alliance
+                .Fog.Snapshots["CORE_SECTOR"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single();
+            Assert.IsEmpty(knownFleet.Waypoints);
+        }
+
+        [Test]
         public void RecordEspionageSnapshot_EnemyManufacturing_RevealsManufacturing()
         {
             AddQueuedBuilding(_coruscant, _empire, "REVEALED_BUILDING", 25);

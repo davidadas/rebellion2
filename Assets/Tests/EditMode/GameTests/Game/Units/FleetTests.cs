@@ -332,6 +332,27 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void SetCombatState_EnteringCombat_SetsCombatStateAndClearsRoute()
+        {
+            _fleet.Waypoints.Add("PLANET1");
+
+            _fleet.SetCombatState(true);
+
+            Assert.IsTrue(_fleet.IsInCombat);
+            Assert.IsEmpty(_fleet.Waypoints);
+        }
+
+        [Test]
+        public void SetCombatState_LeavingCombat_ClearsCombatState()
+        {
+            _fleet.SetCombatState(true);
+
+            _fleet.SetCombatState(false);
+
+            Assert.IsFalse(_fleet.IsInCombat);
+        }
+
+        [Test]
         public void GetStarfighters_FleetWithStarfighters_ReturnsAllStarfightersAcrossFleet()
         {
             Starfighter starfighter1 = new Starfighter();

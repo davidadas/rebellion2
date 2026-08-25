@@ -55,6 +55,21 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void Execute_AttackingFleetWithWaypoints_ClearsRoute()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            AddDefender(game, planet, "defender");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            fleet.Waypoints.Add("next-planet");
+
+            MakePlanetaryAssault(game, new SequenceRNG(intValues: new[] { 0, 6, 99 }))
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [Test]
         public void Execute_DefenseFire_UsesInitialAttackerIndexRange()
         {
             GameRoot game = CreateGame();

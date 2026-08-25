@@ -1881,6 +1881,28 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void RequestMove_FleetToRejectedDestination_PreservesWaypointRoute()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            Fleet rejectedDestination = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(rejectedDestination, firstDestination);
+            fleet.Waypoints.Add(secondDestination.InstanceID);
+
+            movement.RequestMove(fleet, rejectedDestination);
+
+            Assert.AreSame(origin, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
+        }
+
+        [Test]
         public void RequestMove_RegimentToNeutralColonizedPlanet_IsRejected()
         {
             (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =

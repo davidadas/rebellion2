@@ -224,10 +224,10 @@ namespace Rebellion.Systems
         )
         {
             foreach (Fleet fleet in attackers)
-                fleet.IsInCombat = isInCombat;
+                fleet.SetCombatState(isInCombat);
 
             foreach (Fleet fleet in planet.GetChildren<Fleet>())
-                fleet.IsInCombat = isInCombat;
+                fleet.SetCombatState(isInCombat);
         }
 
         /// <summary>

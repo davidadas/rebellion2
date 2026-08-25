@@ -347,8 +347,8 @@ namespace Rebellion.Systems
             )
                 return false;
 
-            PrepareFleetForCombat(attacker);
-            PrepareFleetForCombat(defender);
+            attacker?.SetCombatState(true);
+            defender?.SetCombatState(true);
 
             decision = new SpaceCombatDecision
             {
@@ -360,19 +360,6 @@ namespace Rebellion.Systems
             };
 
             return true;
-        }
-
-        /// <summary>
-        /// Marks a fleet as engaged and cancels any travel planned beyond the battle.
-        /// </summary>
-        /// <param name="fleet">The fleet entering combat, or null for loose forces.</param>
-        private static void PrepareFleetForCombat(Fleet fleet)
-        {
-            if (fleet == null)
-                return;
-
-            fleet.IsInCombat = true;
-            fleet.Waypoints.Clear();
         }
 
         /// <summary>
@@ -829,10 +816,8 @@ namespace Rebellion.Systems
             Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
                 decision.DefenderFleetInstanceID
             );
-            if (attacker != null)
-                attacker.IsInCombat = false;
-            if (defender != null)
-                defender.IsInCombat = false;
+            attacker?.SetCombatState(false);
+            defender?.SetCombatState(false);
         }
 
         /// <summary>

@@ -259,15 +259,14 @@ namespace Rebellion.Systems
                 return;
             }
 
-            if (unit is Fleet fleet)
-                fleet.Waypoints.Clear();
-
-            ExecuteMove(
+            bool moved = ExecuteMove(
                 unit,
                 destination,
                 _pendingResults,
                 sourceEventInstanceID: sourceEventInstanceID
             );
+            if (moved && unit is Fleet fleet)
+                fleet.Waypoints.Clear();
         }
 
         /// <summary>
@@ -2237,7 +2236,8 @@ namespace Rebellion.Systems
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order id for grouped moves.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
-        private void ExecuteMove(
+        /// <returns>True when the movement order was accepted; otherwise false.</returns>
+        private bool ExecuteMove(
             IMovable unit,
             ContainerNode destination,
             ICollection<GameResult> results,
@@ -2255,9 +2255,9 @@ namespace Rebellion.Systems
                     out ContainerNode resolvedDestination
                 )
             )
-                return;
+                return false;
 
-            ExecuteAcceptedMove(
+            return ExecuteAcceptedMove(
                 unit,
                 resolvedDestination,
                 results,
@@ -2274,7 +2274,8 @@ namespace Rebellion.Systems
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order identifier.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
-        private void ExecuteAcceptedMove(
+        /// <returns>True when the movement order was accepted; otherwise false.</returns>
+        private bool ExecuteAcceptedMove(
             IMovable unit,
             ContainerNode destination,
             ICollection<GameResult> results,
@@ -2290,7 +2291,7 @@ namespace Rebellion.Systems
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} is not at a planet location and cannot move."
                 );
-                return;
+                return false;
             }
 
             if (_blockade != null)
@@ -2303,7 +2304,7 @@ namespace Rebellion.Systems
                 {
                     results.Add(evacResult);
                     AddPlanetGarrisonChangedResults(results, unit, originPlanet);
-                    return;
+                    return true;
                 }
             }
 
@@ -2326,7 +2327,7 @@ namespace Rebellion.Systems
                         results,
                         sourceEventInstanceID
                     );
-                return;
+                return true;
             }
 
             if (destinationPlanet == originPlanet)
@@ -2343,7 +2344,7 @@ namespace Rebellion.Systems
                         results,
                         sourceEventInstanceID
                     );
-                return;
+                return true;
             }
 
             _game.MoveNode(unit, destination);
@@ -2379,6 +2380,7 @@ namespace Rebellion.Systems
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
+            return true;
         }
 
         /// <summary>

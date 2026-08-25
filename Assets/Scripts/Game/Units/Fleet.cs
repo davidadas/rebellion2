@@ -34,7 +34,7 @@ namespace Rebellion.Game.Units
         public List<string> Waypoints { get; set; } = new List<string>();
 
         [PersistableIgnore]
-        public bool IsInCombat { get; set; }
+        public bool IsInCombat { get; private set; }
 
         // Child Nodes.
         [PersistableMember(Name = "CapitalShips")]
@@ -84,6 +84,18 @@ namespace Rebellion.Game.Units
         public bool HasWaypoints()
         {
             return Waypoints?.Count > 0;
+        }
+
+        /// <summary>
+        /// Sets whether the fleet is engaged in combat. Entering combat cancels its remaining
+        /// waypoint route.
+        /// </summary>
+        /// <param name="isInCombat">Whether the fleet is engaged in combat.</param>
+        public void SetCombatState(bool isInCombat)
+        {
+            IsInCombat = isInCombat;
+            if (isInCombat)
+                Waypoints.Clear();
         }
 
         /// <summary>
