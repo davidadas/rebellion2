@@ -102,9 +102,9 @@ namespace Rebellion.Tests.AI.Phases
                 ManufacturingType.Ship
             );
             shipyard.MaintenanceCost = 10;
-            AIProductionDemand demand = new AIProductionDemand(
+            AIDemand demand = new AIDemand(
                 "shipyard-demand",
-                AIProductionDemandKind.Shipyard,
+                AIDemandKind.Shipyard,
                 ManufacturingType.Building,
                 BuildingType.Shipyard,
                 planet,
@@ -130,7 +130,7 @@ namespace Rebellion.Tests.AI.Phases
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
             AIManufactureProposal proposal = CreateManufactureProposal(
                 producer,
-                AIProductionDemandKind.PlanetaryDefense,
+                AIDemandKind.PlanetaryDefense,
                 BuildingType.Defense
             );
             context.AddProposal(proposal);
@@ -146,7 +146,7 @@ namespace Rebellion.Tests.AI.Phases
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
             AIManufactureProposal proposal = CreateManufactureProposal(
                 producer,
-                AIProductionDemandKind.Refinery,
+                AIDemandKind.Refinery,
                 BuildingType.Refinery
             );
             context.AddProposal(proposal);
@@ -196,18 +196,18 @@ namespace Rebellion.Tests.AI.Phases
                 BuildingType.Mine,
                 ManufacturingType.Building
             );
-            AIProductionDemand preferredDemand = new AIProductionDemand(
+            AIDemand preferredDemand = new AIDemand(
                 "preferred-demand",
-                AIProductionDemandKind.Mine,
+                AIDemandKind.Mine,
                 ManufacturingType.Building,
                 BuildingType.Mine,
                 preferredProducer,
                 1,
                 100
             );
-            AIProductionDemand flexibleDemand = new AIProductionDemand(
+            AIDemand flexibleDemand = new AIDemand(
                 "flexible-demand",
-                AIProductionDemandKind.Mine,
+                AIDemandKind.Mine,
                 ManufacturingType.Building,
                 BuildingType.Mine,
                 fallbackProducer,
@@ -310,7 +310,7 @@ namespace Rebellion.Tests.AI.Phases
         /// <returns>The building-production proposal.</returns>
         private static AIManufactureProposal CreateManufactureProposal(
             Planet producer,
-            AIProductionDemandKind kind,
+            AIDemandKind kind,
             BuildingType buildingType
         )
         {
@@ -320,7 +320,7 @@ namespace Rebellion.Tests.AI.Phases
                 ManufacturingType.None
             );
             building.MaintenanceCost = 0;
-            AIProductionDemand demand = new AIProductionDemand(
+            AIDemand demand = new AIDemand(
                 $"reserve-{kind}",
                 kind,
                 ManufacturingType.Building,

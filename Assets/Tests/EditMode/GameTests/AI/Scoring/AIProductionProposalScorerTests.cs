@@ -48,9 +48,9 @@ namespace Rebellion.Tests.AI.Scoring
             );
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             game.AttachNode(fleet, fleetPlanet);
-            AIProductionDemand demand = new AIProductionDemand(
+            AIDemand demand = new AIDemand(
                 "fleet-regiment-demand",
-                AIProductionDemandKind.FleetRegiment,
+                AIDemandKind.FleetRegiment,
                 ManufacturingType.Troop,
                 BuildingType.None,
                 fleet,

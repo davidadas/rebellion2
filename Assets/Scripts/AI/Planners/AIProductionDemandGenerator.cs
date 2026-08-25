@@ -16,36 +16,37 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionDemandGenerator
     {
+        private static readonly AIDemandSource _colonyDemandSource = new AIColonyDemandSource();
+        private static readonly AIDemandSource _specialForcesDemandSource =
+            new AISpecialForcesDemandSource();
+
         /// <summary>
         /// Returns production demand for the current AI turn.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>Production demand generated for this faction.</returns>
-        public List<AIProductionDemand> Generate(AITurnContext context)
+        public List<AIDemand> Generate(AITurnContext context)
         {
-            List<AIProductionDemand> demands = new List<AIProductionDemand>();
+            List<AIDemand> demands = new List<AIDemand>();
 
             if (context?.Game == null || context.Faction == null || context.Assessment == null)
                 return demands;
 
-            AIColonyDemandSource.AddDemands(context, demands);
+            _colonyDemandSource.AddDemands(context, demands);
             AddResourceBalanceDemand(context, demands);
             AddPlanetaryDefenseDemands(context, demands);
             AddPlanetaryStarfighterDemands(context, demands);
             AddFleetSeedDemand(context, demands);
             AddFleetReinforcementDemands(context, demands);
             AddPlanetaryGarrisonDemands(context, demands);
-            AISpecialForcesDemandSource.AddDemands(context, demands);
+            _specialForcesDemandSource.AddDemands(context, demands);
             AddProductionFacilityDemands(context, demands);
             AddProductionFacilityUpgradeDemands(context, demands);
 
             return demands;
         }
 
-        private void AddPlanetaryDefenseDemands(
-            AITurnContext context,
-            List<AIProductionDemand> demands
-        )
+        private void AddPlanetaryDefenseDemands(AITurnContext context, List<AIDemand> demands)
         {
             foreach (
                 Planet planet in context
@@ -58,7 +59,7 @@ namespace Rebellion.AI.Planners
 
         private void AddPlanetaryDefenseDemands(
             AITurnContext context,
-            List<AIProductionDemand> demands,
+            List<AIDemand> demands,
             Planet planet
         )
         {
@@ -115,7 +116,7 @@ namespace Rebellion.AI.Planners
             );
         }
 
-        private AIProductionDemand CreatePlanetaryDefenseBuildingDemand(
+        private AIDemand CreatePlanetaryDefenseBuildingDemand(
             AITurnContext context,
             Planet planet,
             BuildingType buildingType,
@@ -124,9 +125,14 @@ namespace Rebellion.AI.Planners
             int baseDemandPercent
         )
         {
-            return new AIProductionDemand(
-                $"production:{context.Faction.InstanceID}:{AIProductionDemandKind.PlanetaryDefense}:{buildingType}:{planet.InstanceID}",
-                AIProductionDemandKind.PlanetaryDefense,
+            return new AIDemand(
+                AIDemand.CreateId(
+                    context.Faction.InstanceID,
+                    AIDemandKind.PlanetaryDefense,
+                    buildingType,
+                    planet.InstanceID
+                ),
+                AIDemandKind.PlanetaryDefense,
                 ManufacturingType.Building,
                 buildingType,
                 planet,
@@ -141,10 +147,7 @@ namespace Rebellion.AI.Planners
             );
         }
 
-        private void AddPlanetaryStarfighterDemands(
-            AITurnContext context,
-            List<AIProductionDemand> demands
-        )
+        private void AddPlanetaryStarfighterDemands(AITurnContext context, List<AIDemand> demands)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             foreach (
@@ -161,9 +164,13 @@ namespace Rebellion.AI.Planners
                     continue;
 
                 demands.Add(
-                    new AIProductionDemand(
-                        $"production:{context.Faction.InstanceID}:{AIProductionDemandKind.PlanetaryStarfighterReserve}:{planet.InstanceID}",
-                        AIProductionDemandKind.PlanetaryStarfighterReserve,
+                    new AIDemand(
+                        AIDemand.CreateId(
+                            context.Faction.InstanceID,
+                            AIDemandKind.PlanetaryStarfighterReserve,
+                            planet.InstanceID
+                        ),
+                        AIDemandKind.PlanetaryStarfighterReserve,
                         ManufacturingType.Ship,
                         BuildingType.None,
                         planet,
@@ -261,7 +268,7 @@ namespace Rebellion.AI.Planners
                 );
         }
 
-        private void AddFleetSeedDemand(AITurnContext context, List<AIProductionDemand> demands)
+        private void AddFleetSeedDemand(AITurnContext context, List<AIDemand> demands)
         {
             int targetCount = GetTargetBattleFleetCount(context);
             int committedCount = context.Assessment.OwnedFleets.Count(IsCommittedBattleFleet);
@@ -277,16 +284,19 @@ namespace Rebellion.AI.Planners
             int quantityNeeded = Math.Max(1, deficit);
 
             demands.Add(
-                new AIProductionDemand(
-                    $"production:{context.Faction.InstanceID}:FleetSeedCapitalShip",
-                    AIProductionDemandKind.FleetSeedCapitalShip,
+                new AIDemand(
+                    AIDemand.CreateId(
+                        context.Faction.InstanceID,
+                        AIDemandKind.FleetSeedCapitalShip
+                    ),
+                    AIDemandKind.FleetSeedCapitalShip,
                     ManufacturingType.Ship,
                     BuildingType.None,
                     destination,
                     quantityNeeded,
                     GetDemandPressure(
                         context,
-                        AIProductionDemandKind.FleetSeedCapitalShip,
+                        AIDemandKind.FleetSeedCapitalShip,
                         quantityNeeded,
                         Math.Max(1, targetCount),
                         context.Game.Config.AI.Infrastructure.FleetSeedCapitalShipDemandPercent
@@ -348,17 +358,14 @@ namespace Rebellion.AI.Planners
                     );
         }
 
-        private void AddProductionFacilityDemands(
-            AITurnContext context,
-            List<AIProductionDemand> demands
-        )
+        private void AddProductionFacilityDemands(AITurnContext context, List<AIDemand> demands)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             AddProductionFacilityDemand(
                 context,
                 demands,
                 ManufacturingType.Ship,
-                AIProductionDemandKind.Shipyard,
+                AIDemandKind.Shipyard,
                 BuildingType.Shipyard,
                 config.ShipyardDemandPercent
             );
@@ -366,7 +373,7 @@ namespace Rebellion.AI.Planners
                 context,
                 demands,
                 ManufacturingType.Troop,
-                AIProductionDemandKind.TrainingFacility,
+                AIDemandKind.TrainingFacility,
                 BuildingType.TrainingFacility,
                 config.TrainingFacilityDemandPercent
             );
@@ -374,7 +381,7 @@ namespace Rebellion.AI.Planners
                 context,
                 demands,
                 ManufacturingType.Building,
-                AIProductionDemandKind.ConstructionFacility,
+                AIDemandKind.ConstructionFacility,
                 BuildingType.ConstructionFacility,
                 config.ConstructionFacilityDemandPercent
             );
@@ -382,7 +389,7 @@ namespace Rebellion.AI.Planners
 
         private void AddProductionFacilityUpgradeDemands(
             AITurnContext context,
-            List<AIProductionDemand> demands
+            List<AIDemand> demands
         )
         {
             foreach (
@@ -410,7 +417,7 @@ namespace Rebellion.AI.Planners
 
         private void AddProductionFacilityUpgradeDemand(
             AITurnContext context,
-            List<AIProductionDemand> demands,
+            List<AIDemand> demands,
             Planet planet,
             BuildingType buildingType
         )
@@ -459,9 +466,15 @@ namespace Rebellion.AI.Planners
             if (replacement == null)
                 return;
 
-            AIProductionDemand demand = new AIProductionDemand(
-                $"production:{context.Faction.InstanceID}:{AIProductionDemandKind.BuildingUpgrade}:{buildingType}:{planet.InstanceID}:{replacement.InstanceID}",
-                AIProductionDemandKind.BuildingUpgrade,
+            AIDemand demand = new AIDemand(
+                AIDemand.CreateId(
+                    context.Faction.InstanceID,
+                    AIDemandKind.BuildingUpgrade,
+                    buildingType,
+                    planet.InstanceID,
+                    replacement.InstanceID
+                ),
+                AIDemandKind.BuildingUpgrade,
                 ManufacturingType.Building,
                 buildingType,
                 planet,
@@ -493,14 +506,14 @@ namespace Rebellion.AI.Planners
 
         private void AddProductionFacilityDemand(
             AITurnContext context,
-            List<AIProductionDemand> demands,
+            List<AIDemand> demands,
             ManufacturingType manufacturingType,
-            AIProductionDemandKind kind,
+            AIDemandKind kind,
             BuildingType buildingType,
             int baseDemandPercent
         )
         {
-            AIProductionDemand primaryDemand = demands
+            AIDemand primaryDemand = demands
                 .Where(demand => demand.ManufacturingType == manufacturingType)
                 .Where(demand => demand.Kind != kind)
                 .OrderByDescending(demand => demand.Pressure)
@@ -519,8 +532,8 @@ namespace Rebellion.AI.Planners
 
             int currentCount = GetOwnedFacilityCount(context, buildingType);
             demands.Add(
-                new AIProductionDemand(
-                    $"production:{context.Faction.InstanceID}:{kind}:{target.InstanceID}",
+                new AIDemand(
+                    AIDemand.CreateId(context.Faction.InstanceID, kind, target.InstanceID),
                     kind,
                     ManufacturingType.Building,
                     buildingType,
@@ -535,7 +548,7 @@ namespace Rebellion.AI.Planners
 
         private double GetProductionFacilityPressure(
             AITurnContext context,
-            AIProductionDemandKind kind,
+            AIDemandKind kind,
             int currentCount,
             int baseDemandPercent
         )
@@ -547,7 +560,7 @@ namespace Rebellion.AI.Planners
                 currentCount + 1,
                 baseDemandPercent
             );
-            return kind == AIProductionDemandKind.TrainingFacility
+            return kind == AIDemandKind.TrainingFacility
                 ? pressure
                     + context.Game.Config.AI.Infrastructure.TrainingFacilityBacklogPressureBonus
                 : pressure;
@@ -555,7 +568,7 @@ namespace Rebellion.AI.Planners
 
         private bool NeedsProductionFacility(
             AITurnContext context,
-            IReadOnlyCollection<AIProductionDemand> demands,
+            IReadOnlyCollection<AIDemand> demands,
             ManufacturingType manufacturingType
         )
         {
@@ -597,10 +610,7 @@ namespace Rebellion.AI.Planners
                 );
         }
 
-        private void AddPlanetaryGarrisonDemands(
-            AITurnContext context,
-            List<AIProductionDemand> demands
-        )
+        private void AddPlanetaryGarrisonDemands(AITurnContext context, List<AIDemand> demands)
         {
             foreach (Planet planet in context.Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet))
                 AddGarrisonRegimentReserveDemand(context, demands, planet);
@@ -614,7 +624,7 @@ namespace Rebellion.AI.Planners
         /// <param name="planet">The planet to inspect.</param>
         private void AddGarrisonRegimentReserveDemand(
             AITurnContext context,
-            List<AIProductionDemand> demands,
+            List<AIDemand> demands,
             Planet planet
         )
         {
@@ -627,9 +637,13 @@ namespace Rebellion.AI.Planners
                 return;
 
             demands.Add(
-                new AIProductionDemand(
-                    $"production:{context.Faction.InstanceID}:{AIProductionDemandKind.GarrisonRegimentReserve}:{planet.InstanceID}",
-                    AIProductionDemandKind.GarrisonRegimentReserve,
+                new AIDemand(
+                    AIDemand.CreateId(
+                        context.Faction.InstanceID,
+                        AIDemandKind.GarrisonRegimentReserve,
+                        planet.InstanceID
+                    ),
+                    AIDemandKind.GarrisonRegimentReserve,
                     ManufacturingType.Troop,
                     BuildingType.None,
                     planet,
@@ -650,10 +664,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        private void AddFleetReinforcementDemands(
-            AITurnContext context,
-            List<AIProductionDemand> demands
-        )
+        private void AddFleetReinforcementDemands(AITurnContext context, List<AIDemand> demands)
         {
             foreach (Fleet fleet in GetPriorityReinforcementFleets(context))
             {
@@ -771,7 +782,7 @@ namespace Rebellion.AI.Planners
         /// <param name="fleet">The fleet to inspect.</param>
         private void AddFleetCapitalShipDemand(
             AITurnContext context,
-            List<AIProductionDemand> demands,
+            List<AIDemand> demands,
             Fleet fleet
         )
         {
@@ -845,7 +856,7 @@ namespace Rebellion.AI.Planners
             demands.Add(
                 CreateFleetDemand(
                     context,
-                    AIProductionDemandKind.FleetCapitalShip,
+                    AIDemandKind.FleetCapitalShip,
                     ManufacturingType.Ship,
                     fleet,
                     deficit,
@@ -891,7 +902,7 @@ namespace Rebellion.AI.Planners
         /// <param name="fleet">The fleet to inspect.</param>
         private void AddFleetStarfighterDemand(
             AITurnContext context,
-            List<AIProductionDemand> demands,
+            List<AIDemand> demands,
             Fleet fleet
         )
         {
@@ -903,7 +914,7 @@ namespace Rebellion.AI.Planners
             demands.Add(
                 CreateFleetDemand(
                     context,
-                    AIProductionDemandKind.FleetStarfighter,
+                    AIDemandKind.FleetStarfighter,
                     ManufacturingType.Ship,
                     fleet,
                     deficit,
@@ -921,7 +932,7 @@ namespace Rebellion.AI.Planners
         /// <param name="fleet">The fleet to inspect.</param>
         private void AddFleetRegimentDemand(
             AITurnContext context,
-            List<AIProductionDemand> demands,
+            List<AIDemand> demands,
             Fleet fleet
         )
         {
@@ -936,7 +947,7 @@ namespace Rebellion.AI.Planners
             demands.Add(
                 CreateFleetDemand(
                     context,
-                    AIProductionDemandKind.FleetRegiment,
+                    AIDemandKind.FleetRegiment,
                     ManufacturingType.Troop,
                     fleet,
                     deficit,
@@ -951,10 +962,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        private void AddResourceBalanceDemand(
-            AITurnContext context,
-            List<AIProductionDemand> demands
-        )
+        private void AddResourceBalanceDemand(AITurnContext context, List<AIDemand> demands)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             int economyBatchSize = GetEconomyBatchSize(context, config);
@@ -995,7 +1003,7 @@ namespace Rebellion.AI.Planners
                 demands.Add(
                     CreateBuildingDemand(
                         context,
-                        AIProductionDemandKind.Mine,
+                        AIDemandKind.Mine,
                         BuildingType.Mine,
                         target,
                         mineDeficit,
@@ -1010,7 +1018,7 @@ namespace Rebellion.AI.Planners
                 demands.Add(
                     CreateBuildingDemand(
                         context,
-                        AIProductionDemandKind.Refinery,
+                        AIDemandKind.Refinery,
                         BuildingType.Refinery,
                         target,
                         refineryDeficit,
@@ -1125,9 +1133,9 @@ namespace Rebellion.AI.Planners
         /// <param name="targetCount">Target count.</param>
         /// <param name="baseDemandPercent">Base pressure for the demand.</param>
         /// <returns>The production demand.</returns>
-        private AIProductionDemand CreateBuildingDemand(
+        private AIDemand CreateBuildingDemand(
             AITurnContext context,
-            AIProductionDemandKind kind,
+            AIDemandKind kind,
             BuildingType buildingType,
             Planet target,
             int deficit,
@@ -1135,8 +1143,8 @@ namespace Rebellion.AI.Planners
             int baseDemandPercent
         )
         {
-            return new AIProductionDemand(
-                $"production:{context.Faction.InstanceID}:{kind}:{target.InstanceID}",
+            return new AIDemand(
+                AIDemand.CreateId(context.Faction.InstanceID, kind, target.InstanceID),
                 kind,
                 ManufacturingType.Building,
                 buildingType,
@@ -1158,9 +1166,9 @@ namespace Rebellion.AI.Planners
         /// <param name="baseDemandPercent">Base pressure for the demand.</param>
         /// <param name="capitalShipRole">Capital ship role required by the demand.</param>
         /// <returns>The production demand.</returns>
-        private AIProductionDemand CreateFleetDemand(
+        private AIDemand CreateFleetDemand(
             AITurnContext context,
-            AIProductionDemandKind kind,
+            AIDemandKind kind,
             ManufacturingType manufacturingType,
             Fleet fleet,
             int deficit,
@@ -1169,8 +1177,8 @@ namespace Rebellion.AI.Planners
             AICapitalShipProductionRole capitalShipRole = AICapitalShipProductionRole.None
         )
         {
-            return new AIProductionDemand(
-                $"production:{context.Faction.InstanceID}:{kind}:{fleet.InstanceID}",
+            return new AIDemand(
+                AIDemand.CreateId(context.Faction.InstanceID, kind, fleet.InstanceID),
                 kind,
                 manufacturingType,
                 BuildingType.None,
@@ -1248,7 +1256,7 @@ namespace Rebellion.AI.Planners
 
         private Planet FindFacilityTargetPlanet(
             AITurnContext context,
-            AIProductionDemand primaryDemand,
+            AIDemand primaryDemand,
             ManufacturingType manufacturingType
         )
         {
@@ -1286,7 +1294,7 @@ namespace Rebellion.AI.Planners
             );
         }
 
-        private Planet GetDemandPlanet(AITurnContext context, AIProductionDemand demand)
+        private Planet GetDemandPlanet(AITurnContext context, AIDemand demand)
         {
             return demand?.DestinationPlanet
                 ?? context.Assessment.GetFleetPlanet(demand?.DestinationFleet);
@@ -1340,7 +1348,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The demand pressure.</returns>
         private double GetDemandPressure(
             AITurnContext context,
-            AIProductionDemandKind kind,
+            AIDemandKind kind,
             int deficit,
             int targetCount,
             int baseDemandPercent
@@ -1348,7 +1356,7 @@ namespace Rebellion.AI.Planners
         {
             double pressure = GetBasePressure(baseDemandPercent, deficit, targetCount);
 
-            if (kind is AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery)
+            if (kind is AIDemandKind.Mine or AIDemandKind.Refinery)
                 pressure += GetEconomyMaintenancePressure(context);
 
             return ClampPressure(pressure);
@@ -1397,7 +1405,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The fleet demand pressure.</returns>
         private double GetFleetDemandPressure(
             AITurnContext context,
-            AIProductionDemandKind kind,
+            AIDemandKind kind,
             Fleet fleet,
             int deficit,
             int targetCount,
@@ -1414,7 +1422,7 @@ namespace Rebellion.AI.Planners
                 pressure += GetFinalReadinessGatePressure(context, fleet, targetPlanet, deficit);
             }
 
-            if (kind == AIProductionDemandKind.FleetStarfighter)
+            if (kind == AIDemandKind.FleetStarfighter)
                 pressure += GetStarfighterFillPressure(context, fleet, targetCount);
 
             return pressure;
@@ -1487,7 +1495,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The fleet readiness pressure.</returns>
         private double GetFleetReadinessPressure(
             AITurnContext context,
-            AIProductionDemandKind kind,
+            AIDemandKind kind,
             Fleet fleet,
             Planet targetPlanet
         )
@@ -1513,13 +1521,13 @@ namespace Rebellion.AI.Planners
 
             return kind switch
             {
-                AIProductionDemandKind.FleetRegiment => config.FleetReadinessPressureWeight
+                AIDemandKind.FleetRegiment => config.FleetReadinessPressureWeight
                     * (combatReadiness + capacityReadiness)
                     / 2,
-                AIProductionDemandKind.FleetCapitalShip => config.FleetReadinessPressureWeight
+                AIDemandKind.FleetCapitalShip => config.FleetReadinessPressureWeight
                     * (regimentReadiness + capacityReadiness)
                     / 2,
-                AIProductionDemandKind.FleetStarfighter => config.FleetReadinessPressureWeight
+                AIDemandKind.FleetStarfighter => config.FleetReadinessPressureWeight
                     * (combatReadiness + regimentReadiness + capacityReadiness)
                     / 3,
                 _ => 0,

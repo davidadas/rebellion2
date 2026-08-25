@@ -36,9 +36,9 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.Colony);
+                .Single(item => item.Kind == AIDemandKind.Colony);
 
             Assert.AreSame(planet, demand.DestinationPlanet);
             Assert.AreEqual(BuildingType.Mine, demand.BuildingType);
@@ -59,9 +59,9 @@ namespace Rebellion.Tests.AI.Planners
             planet.IsColonized = false;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsFalse(demands.Any(item => item.Kind == AIProductionDemandKind.Colony));
+            Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.Colony));
         }
 
         [Test]
@@ -79,10 +79,10 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsTrue(demands.Any(demand => demand.Kind == AIProductionDemandKind.Mine));
-            Assert.IsTrue(demands.Any(demand => demand.Kind == AIProductionDemandKind.Refinery));
+            Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.Mine));
+            Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.Refinery));
         }
 
         [Test]
@@ -129,9 +129,9 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.Refinery);
+                .Single(item => item.Kind == AIDemandKind.Refinery);
 
             Assert.AreSame(eligiblePlanet, demand.DestinationPlanet);
         }
@@ -153,12 +153,10 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(
-                demands.Any(demand =>
-                    demand.Kind is AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery
-                )
+                demands.Any(demand => demand.Kind is AIDemandKind.Mine or AIDemandKind.Refinery)
             );
         }
 
@@ -196,14 +194,14 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(
                 demands.Any(demand =>
                     demand.Kind
-                        is AIProductionDemandKind.ConstructionFacility
-                            or AIProductionDemandKind.Shipyard
-                            or AIProductionDemandKind.TrainingFacility
+                        is AIDemandKind.ConstructionFacility
+                            or AIDemandKind.Shipyard
+                            or AIDemandKind.TrainingFacility
                 )
             );
         }
@@ -262,14 +260,10 @@ namespace Rebellion.Tests.AI.Planners
             hub.AddToManufacturingQueue(queuedRegiment);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
-            AIProductionDemand demand = demands.Single(item =>
-                item.Kind == AIProductionDemandKind.TrainingFacility
-            );
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            AIDemand demand = demands.Single(item => item.Kind == AIDemandKind.TrainingFacility);
             double economyPressure = demands
-                .Where(item =>
-                    item.Kind is AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery
-                )
+                .Where(item => item.Kind is AIDemandKind.Mine or AIDemandKind.Refinery)
                 .Max(item => item.Pressure);
 
             Assert.AreSame(expansionWorld, demand.DestinationPlanet);
@@ -297,9 +291,9 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(shipyard, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsFalse(demands.Any(demand => demand.Kind == AIProductionDemandKind.Shipyard));
+            Assert.IsFalse(demands.Any(demand => demand.Kind == AIDemandKind.Shipyard));
         }
 
         [Test]
@@ -331,9 +325,9 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(shipyard, pendingPlanet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.Shipyard);
+                .Single(item => item.Kind == AIDemandKind.Shipyard);
 
             Assert.AreSame(demandPlanet, demand.DestinationPlanet);
         }
@@ -372,9 +366,9 @@ namespace Rebellion.Tests.AI.Planners
             AddUnlockedShipyardUpgrade(empire);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.BuildingUpgrade);
+                .Single(item => item.Kind == AIDemandKind.BuildingUpgrade);
 
             Assert.AreSame(planet, demand.DestinationPlanet);
             Assert.AreEqual(BuildingType.Shipyard, demand.BuildingType);
@@ -405,11 +399,9 @@ namespace Rebellion.Tests.AI.Planners
             AddUnlockedShipyardUpgrade(empire);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsFalse(
-                demands.Any(item => item.Kind == AIProductionDemandKind.BuildingUpgrade)
-            );
+            Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.BuildingUpgrade));
         }
 
         [Test]
@@ -461,9 +453,9 @@ namespace Rebellion.Tests.AI.Planners
             AddUnlockedShipyardUpgrade(empire);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> upgradeDemands = new AIProductionDemandGenerator()
+            List<AIDemand> upgradeDemands = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Where(item => item.Kind == AIProductionDemandKind.BuildingUpgrade)
+                .Where(item => item.Kind == AIDemandKind.BuildingUpgrade)
                 .ToList();
 
             Assert.AreEqual(1, upgradeDemands.Count);
@@ -485,11 +477,9 @@ namespace Rebellion.Tests.AI.Planners
             planet.SetPopularSupport(empire.InstanceID, 100);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsTrue(
-                demands.Any(demand => demand.Kind == AIProductionDemandKind.ConstructionFacility)
-            );
+            Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.ConstructionFacility));
         }
 
         [Test]
@@ -505,9 +495,9 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.Shipyard);
+                .Single(item => item.Kind == AIDemandKind.Shipyard);
 
             Assert.AreSame(planet, demand.DestinationPlanet);
             Assert.AreEqual(1, demand.QuantityNeeded);
@@ -529,9 +519,9 @@ namespace Rebellion.Tests.AI.Planners
             hub.AddToManufacturingQueue(queuedStarfighter);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.Shipyard);
+                .Single(item => item.Kind == AIDemandKind.Shipyard);
 
             Assert.AreSame(hub, demand.DestinationPlanet);
         }
@@ -558,9 +548,9 @@ namespace Rebellion.Tests.AI.Planners
             hub.AddToManufacturingQueue(queuedStarfighter);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsFalse(demands.Any(demand => demand.Kind == AIProductionDemandKind.Shipyard));
+            Assert.IsFalse(demands.Any(demand => demand.Kind == AIDemandKind.Shipyard));
         }
 
         [Test]
@@ -587,11 +577,9 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsFalse(
-                demands.Any(item => item.Kind == AIProductionDemandKind.TrainingFacility)
-            );
+            Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.TrainingFacility));
         }
 
         [Test]
@@ -608,9 +596,9 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.ConstructionFacility);
+                .Single(item => item.Kind == AIDemandKind.ConstructionFacility);
 
             Assert.AreSame(planet, demand.DestinationPlanet);
             Assert.AreEqual(1, demand.QuantityNeeded);
@@ -634,12 +622,12 @@ namespace Rebellion.Tests.AI.Planners
             AddMaintenanceCapacity(game, headquarters, 1);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             CollectionAssert.AreEquivalent(
                 new[] { BuildingType.Defense, BuildingType.Weapon },
                 demands
-                    .Where(demand => demand.Kind == AIProductionDemandKind.PlanetaryDefense)
+                    .Where(demand => demand.Kind == AIDemandKind.PlanetaryDefense)
                     .Select(demand => demand.BuildingType)
             );
         }
@@ -663,20 +651,20 @@ namespace Rebellion.Tests.AI.Planners
             AddMaintenanceCapacity(game, planet, 1);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            AIProductionDemand shieldDemand = demands.Single(demand =>
-                demand.Kind == AIProductionDemandKind.PlanetaryDefense
+            AIDemand shieldDemand = demands.Single(demand =>
+                demand.Kind == AIDemandKind.PlanetaryDefense
                 && demand.BuildingType == BuildingType.Defense
                 && demand.DestinationPlanet == planet
             );
-            AIProductionDemand weaponDemand = demands.Single(demand =>
-                demand.Kind == AIProductionDemandKind.PlanetaryDefense
+            AIDemand weaponDemand = demands.Single(demand =>
+                demand.Kind == AIDemandKind.PlanetaryDefense
                 && demand.BuildingType == BuildingType.Weapon
                 && demand.DestinationPlanet == planet
             );
-            AIProductionDemand garrisonDemand = demands.Single(demand =>
-                demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+            AIDemand garrisonDemand = demands.Single(demand =>
+                demand.Kind == AIDemandKind.GarrisonRegimentReserve
                 && demand.DestinationPlanet == planet
             );
             Assert.AreEqual(
@@ -707,13 +695,13 @@ namespace Rebellion.Tests.AI.Planners
             AddMaintenanceCapacity(game, planet, 1);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             CollectionAssert.AreEquivalent(
                 new[] { BuildingType.Defense, BuildingType.Weapon },
                 demands
                     .Where(demand =>
-                        demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                        demand.Kind == AIDemandKind.PlanetaryDefense
                         && demand.DestinationPlanet == planet
                     )
                     .Select(demand => demand.BuildingType)
@@ -740,17 +728,17 @@ namespace Rebellion.Tests.AI.Planners
             AddMaintenanceCapacity(game, planet, 1);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            AIProductionDemand shieldDemand = demands.Single(demand =>
-                demand.Kind == AIProductionDemandKind.PlanetaryDefense
+            AIDemand shieldDemand = demands.Single(demand =>
+                demand.Kind == AIDemandKind.PlanetaryDefense
                 && demand.BuildingType == BuildingType.Defense
                 && demand.DestinationPlanet == planet
             );
             Assert.AreEqual(1, shieldDemand.QuantityNeeded);
             Assert.IsFalse(
                 demands.Any(demand =>
-                    demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                    demand.Kind == AIDemandKind.PlanetaryDefense
                     && demand.BuildingType == BuildingType.Weapon
                     && demand.DestinationPlanet == planet
                 )
@@ -785,10 +773,10 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(weapon, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.PlanetaryDefense
+                    item.Kind == AIDemandKind.PlanetaryDefense
                     && item.BuildingType == BuildingType.Weapon
                     && item.DestinationPlanet == planet
                 );
@@ -836,18 +824,18 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             double valuablePressure = demands
                 .Single(demand =>
-                    demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                    demand.Kind == AIDemandKind.PlanetaryDefense
                     && demand.BuildingType == BuildingType.Defense
                     && demand.DestinationPlanet == valuablePlanet
                 )
                 .Pressure;
             double threatenedPressure = demands
                 .Single(demand =>
-                    demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                    demand.Kind == AIDemandKind.PlanetaryDefense
                     && demand.BuildingType == BuildingType.Defense
                     && demand.DestinationPlanet == threatenedPlanet
                 )
@@ -887,10 +875,10 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(building, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                    item.Kind == AIDemandKind.PlanetaryStarfighterReserve
                     && item.DestinationPlanet == planet
                 );
 
@@ -936,11 +924,11 @@ namespace Rebellion.Tests.AI.Planners
             }
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(
                 demands.Any(item =>
-                    item.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                    item.Kind == AIDemandKind.PlanetaryStarfighterReserve
                     && item.DestinationPlanet == planet
                 )
             );
@@ -960,11 +948,11 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(
                 demands.Any(demand =>
-                    demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                    demand.Kind == AIDemandKind.PlanetaryStarfighterReserve
                     && demand.DestinationPlanet == planet
                 )
             );
@@ -1001,10 +989,10 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                    item.Kind == AIDemandKind.PlanetaryStarfighterReserve
                     && item.DestinationPlanet == planet
                 );
 
@@ -1052,14 +1040,14 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            AIProductionDemand infrastructureDemand = demands.Single(item =>
-                item.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+            AIDemand infrastructureDemand = demands.Single(item =>
+                item.Kind == AIDemandKind.PlanetaryStarfighterReserve
                 && item.DestinationPlanet == infrastructure
             );
-            AIProductionDemand headquartersDemand = demands.Single(item =>
-                item.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+            AIDemand headquartersDemand = demands.Single(item =>
+                item.Kind == AIDemandKind.PlanetaryStarfighterReserve
                 && item.DestinationPlanet == headquarters
             );
 
@@ -1095,14 +1083,10 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(fleet, owned);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsTrue(
-                demands.Any(demand => demand.Kind == AIProductionDemandKind.FleetStarfighter)
-            );
-            Assert.IsTrue(
-                demands.Any(demand => demand.Kind == AIProductionDemandKind.FleetRegiment)
-            );
+            Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.FleetStarfighter));
+            Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.FleetRegiment));
         }
 
         [Test]
@@ -1135,11 +1119,10 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetStarfighter
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetStarfighter && item.DestinationFleet == fleet
                 );
 
             Assert.Greater(demand.Pressure, 100);
@@ -1172,7 +1155,7 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(ship, fleet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(demands.Any(demand => demand.DestinationFleet == fleet));
         }
@@ -1194,11 +1177,11 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsTrue(
                 demands.Any(demand =>
-                    demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                    demand.Kind == AIDemandKind.FleetCapitalShip
                     && demand.DestinationFleet == assemblyFleet
                 )
             );
@@ -1215,13 +1198,13 @@ namespace Rebellion.Tests.AI.Planners
             Fleet secondFleet = AddIdleBattleFleet(game, owned, empire.InstanceID, "fleet-2");
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             CollectionAssert.AreEquivalent(
                 new[] { firstFleet, secondFleet },
                 demands
                     .Where(demand =>
-                        demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                        demand.Kind == AIDemandKind.FleetCapitalShip
                         && (
                             demand.DestinationFleet == firstFleet
                             || demand.DestinationFleet == secondFleet
@@ -1303,11 +1286,10 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(100, demand.QuantityNeeded);
@@ -1398,13 +1380,11 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            List<AIProductionDemand> reinforcementDemands = demands
+            List<AIDemand> reinforcementDemands = demands
                 .Where(demand =>
-                    demand.Kind
-                        is AIProductionDemandKind.FleetCapitalShip
-                            or AIProductionDemandKind.FleetRegiment
+                    demand.Kind is AIDemandKind.FleetCapitalShip or AIDemandKind.FleetRegiment
                 )
                 .ToList();
 
@@ -1446,11 +1426,10 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetRegiment
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetRegiment && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(1, demand.QuantityNeeded);
@@ -1486,11 +1465,10 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(1, demand.QuantityNeeded);
@@ -1518,11 +1496,10 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(fleet, owned);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(
@@ -1566,11 +1543,10 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(ship, fleet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(11, demand.QuantityNeeded);
@@ -1610,11 +1586,10 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(ship, fleet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(AICapitalShipProductionRole.Bombardment, demand.CapitalShipRole);
@@ -1662,11 +1637,10 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(1, demand.QuantityNeeded);
@@ -1706,11 +1680,10 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(1, demand.QuantityNeeded);
@@ -1762,12 +1735,11 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(
                 demands.Any(demand =>
-                    demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && demand.DestinationFleet == fleet
+                    demand.Kind == AIDemandKind.FleetCapitalShip && demand.DestinationFleet == fleet
                 )
             );
         }
@@ -1823,11 +1795,10 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(ship, fleet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(1500, demand.QuantityNeeded);
@@ -1861,12 +1832,11 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(fleet, owned);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(
                 demands.Any(demand =>
-                    demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && demand.DestinationFleet == fleet
+                    demand.Kind == AIDemandKind.FleetCapitalShip && demand.DestinationFleet == fleet
                 )
             );
         }
@@ -1896,12 +1866,11 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(ship, fleet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(
                 demands.Any(demand =>
-                    demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && demand.DestinationFleet == fleet
+                    demand.Kind == AIDemandKind.FleetCapitalShip && demand.DestinationFleet == fleet
                 )
             );
         }
@@ -1933,11 +1902,10 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(fleet, owned);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(
@@ -1976,11 +1944,10 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetRegiment
-                    && item.DestinationFleet == fleet
+                    item.Kind == AIDemandKind.FleetRegiment && item.DestinationFleet == fleet
                 );
 
             Assert.AreEqual(
@@ -2027,12 +1994,11 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(
                 demands.Any(item =>
-                    item.Kind == AIProductionDemandKind.FleetRegiment
-                    && item.DestinationFleet == defenseFleet
+                    item.Kind == AIDemandKind.FleetRegiment && item.DestinationFleet == defenseFleet
                 )
             );
         }
@@ -2058,9 +2024,9 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.SpecialForces);
+                .Single(item => item.Kind == AIDemandKind.SpecialForces);
 
             Assert.AreEqual("commandos", demand.ProductTypeId);
             Assert.AreSame(planet, demand.DestinationPlanet);
@@ -2083,9 +2049,9 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.FleetSeedCapitalShip);
+                .Single(item => item.Kind == AIDemandKind.FleetSeedCapitalShip);
 
             Assert.AreSame(planet, demand.DestinationPlanet);
             Assert.AreEqual(
@@ -2107,9 +2073,9 @@ namespace Rebellion.Tests.AI.Planners
             }
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.FleetSeedCapitalShip);
+                .Single(item => item.Kind == AIDemandKind.FleetSeedCapitalShip);
 
             Assert.AreEqual(4, demand.QuantityNeeded);
         }
@@ -2141,9 +2107,9 @@ namespace Rebellion.Tests.AI.Planners
             }
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.FleetSeedCapitalShip);
+                .Single(item => item.Kind == AIDemandKind.FleetSeedCapitalShip);
 
             Assert.AreEqual(1, demand.QuantityNeeded);
         }
@@ -2174,9 +2140,9 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID), fleet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.FleetSeedCapitalShip);
+                .Single(item => item.Kind == AIDemandKind.FleetSeedCapitalShip);
 
             Assert.AreSame(headquarters, demand.DestinationPlanet);
             Assert.AreEqual(1, demand.QuantityNeeded);
@@ -2208,11 +2174,9 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID), fleet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsTrue(
-                demands.Any(demand => demand.Kind == AIProductionDemandKind.FleetSeedCapitalShip)
-            );
+            Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.FleetSeedCapitalShip));
         }
 
         [Test]
@@ -2229,10 +2193,10 @@ namespace Rebellion.Tests.AI.Planners
             planet.SetPopularSupport(empire.InstanceID, 20);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
+            AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item =>
-                    item.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+                    item.Kind == AIDemandKind.GarrisonRegimentReserve
                     && item.DestinationPlanet == planet
                 );
 
@@ -2267,11 +2231,11 @@ namespace Rebellion.Tests.AI.Planners
             }
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(
                 demands.Any(item =>
-                    item.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+                    item.Kind == AIDemandKind.GarrisonRegimentReserve
                     && item.DestinationPlanet == planet
                 )
             );

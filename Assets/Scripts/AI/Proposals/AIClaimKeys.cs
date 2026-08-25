@@ -52,10 +52,8 @@ namespace Rebellion.AI.Proposals
         /// <param name="demandKind">The production demand kind.</param>
         /// <param name="fleetId">The destination fleet instance ID.</param>
         /// <returns>The fleet-reinforcement claim.</returns>
-        internal static string FleetReinforcement(
-            AIProductionDemandKind? demandKind,
-            string fleetId
-        ) => $"fleet:reinforcement:{demandKind}:{fleetId}";
+        internal static string FleetReinforcement(AIDemandKind? demandKind, string fleetId) =>
+            $"fleet:reinforcement:{demandKind}:{fleetId}";
 
         /// <summary>Creates a claim for capital-ship reinforcement of a fleet.</summary>
         /// <param name="fleetId">The destination fleet instance ID.</param>

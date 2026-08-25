@@ -508,7 +508,7 @@ public static class HeadlessSimulationRunner
             null,
             game.Random
         );
-        List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+        List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
         List<AIManufactureProposal> proposals = new AIProductionPlanner()
             .Plan(context)
             .OfType<AIManufactureProposal>()
@@ -524,25 +524,25 @@ public static class HeadlessSimulationRunner
         summary.ProductionProposalCount = proposals.Count;
         summary.SelectedProductionProposalCount = selected.Count;
         summary.PlanetaryDefenseDemandCount = demands.Count(demand =>
-            demand.Kind == AIProductionDemandKind.PlanetaryDefense
+            demand.Kind == AIDemandKind.PlanetaryDefense
         );
         summary.PlanetaryDefenseDemandQuantity = demands
-            .Where(demand => demand.Kind == AIProductionDemandKind.PlanetaryDefense)
+            .Where(demand => demand.Kind == AIDemandKind.PlanetaryDefense)
             .Sum(demand => demand.QuantityNeeded);
         summary.PlanetaryDefenseProposalCount = proposals.Count(proposal =>
-            proposal.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
+            proposal.Demand.Kind == AIDemandKind.PlanetaryDefense
         );
         summary.SelectedPlanetaryDefenseProposalCount = selected.Count(proposal =>
-            proposal.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
+            proposal.Demand.Kind == AIDemandKind.PlanetaryDefense
         );
         summary.GarrisonDemandCount = demands.Count(demand =>
-            demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+            demand.Kind == AIDemandKind.GarrisonRegimentReserve
         );
         summary.GarrisonProposalCount = proposals.Count(proposal =>
-            proposal.Demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+            proposal.Demand.Kind == AIDemandKind.GarrisonRegimentReserve
         );
         summary.SelectedGarrisonProposalCount = selected.Count(proposal =>
-            proposal.Demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+            proposal.Demand.Kind == AIDemandKind.GarrisonRegimentReserve
         );
         summary.BuildingProductionProposalCount = proposals.Count(proposal =>
             proposal.Demand.ManufacturingType == ManufacturingType.Building

@@ -61,7 +61,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.Colony);
+                .Single(item => item.Demand.Kind == AIDemandKind.Colony);
 
             Assert.AreSame(producer, proposal.ProducerPlanet);
             Assert.AreSame(colony, proposal.Destination);
@@ -102,7 +102,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(
                 proposals
                     .OfType<AIManufactureProposal>()
-                    .Any(proposal => proposal.Demand.Kind == AIProductionDemandKind.Mine)
+                    .Any(proposal => proposal.Demand.Kind == AIDemandKind.Mine)
             );
         }
 
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.Shipyard);
+                .Single(item => item.Demand.Kind == AIDemandKind.Shipyard);
 
             Assert.AreSame(advancedShipyard, proposal.Product.GetReference());
         }
@@ -171,7 +171,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.BuildingUpgrade);
+                .Single(item => item.Demand.Kind == AIDemandKind.BuildingUpgrade);
 
             Assert.AreSame(replacement, proposal.Demand.BuildingToReplace);
             Assert.AreSame(advancedShipyard, proposal.Product.GetReference());
@@ -190,7 +190,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 proposals
                     .OfType<AIManufactureProposal>()
-                    .Any(item => item.Demand.Kind == AIProductionDemandKind.BuildingUpgrade)
+                    .Any(item => item.Demand.Kind == AIDemandKind.BuildingUpgrade)
             );
         }
 
@@ -207,7 +207,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 proposals
                     .OfType<AIManufactureProposal>()
-                    .Any(item => item.Demand.Kind == AIProductionDemandKind.BuildingUpgrade)
+                    .Any(item => item.Demand.Kind == AIDemandKind.BuildingUpgrade)
             );
         }
 
@@ -225,7 +225,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.Shipyard);
+                .Single(item => item.Demand.Kind == AIDemandKind.Shipyard);
 
             Assert.AreEqual(100, empire.ProjectedMaintenanceHeadroom);
             Assert.AreSame(shipyard, proposal.Product.GetReference());
@@ -241,7 +241,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.Shipyard);
+                .Single(item => item.Demand.Kind == AIDemandKind.Shipyard);
 
             Assert.AreSame(affordableShipyard, proposal.Product.GetReference());
         }
@@ -262,7 +262,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 proposals
                     .OfType<AIManufactureProposal>()
-                    .Any(item => item.Demand.Kind == AIProductionDemandKind.Shipyard)
+                    .Any(item => item.Demand.Kind == AIDemandKind.Shipyard)
             );
         }
 
@@ -385,7 +385,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 proposals
                     .OfType<AIManufactureProposal>()
-                    .Any(item => item.Demand.Kind == AIProductionDemandKind.Shipyard)
+                    .Any(item => item.Demand.Kind == AIDemandKind.Shipyard)
             );
         }
 
@@ -443,7 +443,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.ConstructionFacility);
+                .Single(item => item.Demand.Kind == AIDemandKind.ConstructionFacility);
 
             Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
         }
@@ -462,7 +462,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 proposals
                     .OfType<AIManufactureProposal>()
-                    .Any(item => item.Demand.Kind == AIProductionDemandKind.ConstructionFacility)
+                    .Any(item => item.Demand.Kind == AIDemandKind.ConstructionFacility)
             );
         }
 
@@ -479,7 +479,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.ConstructionFacility);
+                .Single(item => item.Demand.Kind == AIDemandKind.ConstructionFacility);
 
             Assert.AreEqual(2, proposal.Demand.QuantityNeeded);
         }
@@ -528,7 +528,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                    item.Demand.Kind == AIDemandKind.PlanetaryDefense
                     && item.Demand.BuildingType == BuildingType.Defense
                 );
 
@@ -548,7 +548,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                    item.Demand.Kind == AIDemandKind.PlanetaryDefense
                     && item.Demand.BuildingType == BuildingType.Defense
                 );
 
@@ -569,7 +569,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                    item.Demand.Kind == AIDemandKind.PlanetaryDefense
                     && item.Demand.BuildingType == BuildingType.Defense
                 );
 
@@ -592,7 +592,7 @@ namespace Rebellion.Tests.AI.Planners
                 proposals
                     .OfType<AIManufactureProposal>()
                     .Any(item =>
-                        item.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                        item.Demand.Kind == AIDemandKind.PlanetaryDefense
                         && item.Demand.BuildingType == BuildingType.Defense
                     )
             );
@@ -615,9 +615,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
-                );
+                .Single(item => item.Demand.Kind == AIDemandKind.PlanetaryStarfighterReserve);
 
             Assert.AreSame(efficient, proposal.Product.GetReference());
         }
@@ -632,9 +630,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
-                );
+                .Single(item => item.Demand.Kind == AIDemandKind.PlanetaryStarfighterReserve);
 
             Assert.AreEqual(3, proposal.Demand.QuantityNeeded);
             Assert.AreEqual(30, proposal.GetMaintenanceCost());
@@ -650,9 +646,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
-                );
+                .Single(item => item.Demand.Kind == AIDemandKind.PlanetaryStarfighterReserve);
 
             Assert.AreEqual(3, proposal.Demand.QuantityNeeded);
             Assert.AreEqual(30, proposal.GetMaintenanceCost());
@@ -670,9 +664,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 proposals
                     .OfType<AIManufactureProposal>()
-                    .Any(item =>
-                        item.Demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
-                    )
+                    .Any(item => item.Demand.Kind == AIDemandKind.PlanetaryStarfighterReserve)
             );
         }
 
@@ -725,7 +717,7 @@ namespace Rebellion.Tests.AI.Planners
             List<AIManufactureProposal> proposals = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Where(item => item.Demand.Kind == AIProductionDemandKind.SpecialForces)
+                .Where(item => item.Demand.Kind == AIDemandKind.SpecialForces)
                 .ToList();
 
             AIManufactureProposal commandoProposal = proposals.Single(item =>
@@ -773,7 +765,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.FleetSeedCapitalShip);
+                .Single(item => item.Demand.Kind == AIDemandKind.FleetSeedCapitalShip);
 
             Assert.AreSame(planet, proposal.Destination);
             Assert.AreSame(template, proposal.Product.GetReference());
@@ -833,7 +825,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.FleetSeedCapitalShip);
+                .Single(item => item.Demand.Kind == AIDemandKind.FleetSeedCapitalShip);
 
             Assert.AreSame(battleShip, proposal.Product.GetReference());
         }
@@ -884,7 +876,7 @@ namespace Rebellion.Tests.AI.Planners
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.FleetSeedCapitalShip);
+                .Single(item => item.Demand.Kind == AIDemandKind.FleetSeedCapitalShip);
 
             Assert.AreSame(battleShip, proposal.Product.GetReference());
         }
@@ -955,8 +947,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(transport, proposal.Product.GetReference());
@@ -1049,8 +1040,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(transport, proposal.Product.GetReference());
@@ -1129,8 +1119,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(lineShip, proposal.Product.GetReference());
@@ -1197,8 +1186,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(higherMetricTemplate, proposal.Product.GetReference());
@@ -1284,8 +1272,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(bombardmentShip, proposal.Product.GetReference());
@@ -1368,8 +1355,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(higherRecharge, proposal.Product.GetReference());
@@ -1463,8 +1449,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(bombardmentShip, proposal.Product.GetReference());
@@ -1493,8 +1478,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreEqual(100, empire.MaintenanceCapacity);
@@ -1533,8 +1517,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(affordableTemplate, proposal.Product.GetReference());
@@ -1571,8 +1554,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Where(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 )
                 .ToList();
 
@@ -1617,8 +1599,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(strongTemplate, proposal.Product.GetReference());
@@ -1660,8 +1641,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(secondTemplate, proposal.Product.GetReference());
@@ -1712,8 +1692,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
             Assert.AreSame(firstAffordableTemplate, proposal.Product.GetReference());
@@ -1788,8 +1767,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetStarfighter && item.Destination == fleet
                 );
 
             Assert.AreSame(alternateTemplate, proposal.Product.GetReference());
@@ -1806,8 +1784,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetStarfighter && item.Destination == fleet
                 );
 
             Assert.AreSame(firstProducer, proposal.ProducerPlanet);
@@ -1830,8 +1807,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Where(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetStarfighter && item.Destination == fleet
                 )
                 .ToDictionary(
                     item => item.ProducerPlanet.InstanceID,
@@ -1855,8 +1831,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Where(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetStarfighter && item.Destination == fleet
                 )
                 .Sum(item => item.Demand.QuantityNeeded);
 
@@ -1886,8 +1861,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Where(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
-                    && item.Destination == fleet
+                    item.Demand.Kind == AIDemandKind.FleetStarfighter && item.Destination == fleet
                 )
                 .ToList();
 
@@ -1899,7 +1873,7 @@ namespace Rebellion.Tests.AI.Planners
             return new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.Shipyard);
+                .Single(item => item.Demand.Kind == AIDemandKind.Shipyard);
         }
 
         private static (

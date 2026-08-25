@@ -23,13 +23,13 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         /// <param name="demand">Demand adjusted for this producer.</param>
         /// <param name="producerPlanet">Planet capable of serving the demand.</param>
-        public AIManufactureOption(AIProductionDemand demand, Planet producerPlanet)
+        public AIManufactureOption(AIDemand demand, Planet producerPlanet)
         {
             Demand = demand;
             ProducerPlanet = producerPlanet;
         }
 
-        internal AIProductionDemand Demand { get; }
+        internal AIDemand Demand { get; }
 
         internal Planet ProducerPlanet { get; }
     }
@@ -45,15 +45,11 @@ namespace Rebellion.AI.Proposals
         /// <param name="demand">Production demand served by the proposal.</param>
         /// <param name="producerPlanet">Planet that will produce the item.</param>
         /// <param name="product">Technology to manufacture.</param>
-        public AIManufactureProposal(
-            AIProductionDemand demand,
-            Planet producerPlanet,
-            Technology product
-        )
+        public AIManufactureProposal(AIDemand demand, Planet producerPlanet, Technology product)
             : this(demand, producerPlanet, product, false) { }
 
         internal AIManufactureProposal(
-            AIProductionDemand demand,
+            AIDemand demand,
             Planet producerPlanet,
             Technology product,
             bool distributesDemand
@@ -61,7 +57,7 @@ namespace Rebellion.AI.Proposals
             : this(demand, new[] { producerPlanet }, product, distributesDemand) { }
 
         internal AIManufactureProposal(
-            AIProductionDemand demand,
+            AIDemand demand,
             IReadOnlyList<Planet> producerPlanets,
             Technology product,
             bool distributesDemand
@@ -88,7 +84,7 @@ namespace Rebellion.AI.Proposals
             DistributesDemand = distributesDemand;
         }
 
-        public AIProductionDemand Demand { get; private set; }
+        public AIDemand Demand { get; private set; }
 
         public Planet ProducerPlanet { get; private set; }
 
@@ -145,7 +141,7 @@ namespace Rebellion.AI.Proposals
                     AIClaimKeys.ProductionBuildingReplacement(Demand.BuildingToReplace.InstanceID)
                 );
 
-            if (Demand?.Kind == AIProductionDemandKind.ConstructionFacility)
+            if (Demand?.Kind == AIDemandKind.ConstructionFacility)
                 claimKeys.Add(
                     AIClaimKeys.ProductionBuildingKind(BuildingType.ConstructionFacility)
                 );
@@ -155,13 +151,13 @@ namespace Rebellion.AI.Proposals
                 claimKeys.Add(
                     AIClaimKeys.FleetReinforcement(Demand?.Kind, destinationFleet.InstanceID)
                 );
-                if (Demand?.Kind == AIProductionDemandKind.FleetCapitalShip)
+                if (Demand?.Kind == AIDemandKind.FleetCapitalShip)
                     claimKeys.Add(
                         AIClaimKeys.FleetCapitalReinforcement(destinationFleet.InstanceID)
                     );
             }
 
-            if (Demand?.Kind == AIProductionDemandKind.FleetSeedCapitalShip)
+            if (Demand?.Kind == AIDemandKind.FleetSeedCapitalShip)
                 claimKeys.Add(AIClaimKeys.FleetCreation(Demand.Destination?.GetOwnerInstanceID()));
 
             return claimKeys;
@@ -173,7 +169,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>A stable sort key.</returns>
         public override string GetSortKey()
         {
-            if (Demand?.Kind == AIProductionDemandKind.FleetSeedCapitalShip)
+            if (Demand?.Kind == AIDemandKind.FleetSeedCapitalShip)
             {
                 return string.Join(
                     ":",
@@ -238,7 +234,7 @@ namespace Rebellion.AI.Proposals
             if (!CanExecute(context))
                 return;
 
-            if (Demand.Kind == AIProductionDemandKind.BuildingUpgrade)
+            if (Demand.Kind == AIDemandKind.BuildingUpgrade)
             {
                 ExecuteBuildingUpgrade(context);
                 return;
@@ -266,7 +262,7 @@ namespace Rebellion.AI.Proposals
             sceneNode.OwnerInstanceID = context.Faction.InstanceID;
 
             if (
-                Demand.Kind == AIProductionDemandKind.FleetSeedCapitalShip
+                Demand.Kind == AIDemandKind.FleetSeedCapitalShip
                 && manufacturable is CapitalShip capitalShip
                 && Destination is Planet fleetPlanet
             )
@@ -297,10 +293,7 @@ namespace Rebellion.AI.Proposals
         public int GetMaintenanceCost()
         {
             int maintenanceCost = Product?.GetReference()?.GetMaintenanceCost() ?? 0;
-            if (
-                Demand?.Kind == AIProductionDemandKind.BuildingUpgrade
-                && Demand.BuildingToReplace != null
-            )
+            if (Demand?.Kind == AIDemandKind.BuildingUpgrade && Demand.BuildingToReplace != null)
             {
                 maintenanceCost = Math.Max(
                     0,
@@ -394,7 +387,7 @@ namespace Rebellion.AI.Proposals
                 return false;
 
             if (
-                Demand.Kind != AIProductionDemandKind.BuildingUpgrade
+                Demand.Kind != AIDemandKind.BuildingUpgrade
                 && IsCountedManufacturingDemand()
                 && !context.Manufacturing.CanAcceptManufacturingOrder(
                     ProducerPlanet,
@@ -408,24 +401,22 @@ namespace Rebellion.AI.Proposals
 
             return Demand.Kind switch
             {
-                AIProductionDemandKind.Colony
-                or AIProductionDemandKind.Mine
-                or AIProductionDemandKind.Refinery => CanManufactureBuilding(context),
-                AIProductionDemandKind.ConstructionFacility
-                or AIProductionDemandKind.Shipyard
-                or AIProductionDemandKind.TrainingFacility
-                or AIProductionDemandKind.BuildingUpgrade
-                or AIProductionDemandKind.PlanetaryDefense => CanManufactureBuilding(context),
-                AIProductionDemandKind.FleetCapitalShip => CanManufactureCapitalShip(context),
-                AIProductionDemandKind.FleetStarfighter => CanManufactureStarfighter(context),
-                AIProductionDemandKind.PlanetaryStarfighterReserve =>
-                    CanManufacturePlanetStarfighter(context),
-                AIProductionDemandKind.FleetRegiment => CanManufactureRegiment(context),
-                AIProductionDemandKind.GarrisonRegimentReserve => CanManufacturePlanetRegiment(
+                AIDemandKind.Colony or AIDemandKind.Mine or AIDemandKind.Refinery =>
+                    CanManufactureBuilding(context),
+                AIDemandKind.ConstructionFacility
+                or AIDemandKind.Shipyard
+                or AIDemandKind.TrainingFacility
+                or AIDemandKind.BuildingUpgrade
+                or AIDemandKind.PlanetaryDefense => CanManufactureBuilding(context),
+                AIDemandKind.FleetCapitalShip => CanManufactureCapitalShip(context),
+                AIDemandKind.FleetStarfighter => CanManufactureStarfighter(context),
+                AIDemandKind.PlanetaryStarfighterReserve => CanManufacturePlanetStarfighter(
                     context
                 ),
-                AIProductionDemandKind.SpecialForces => CanManufactureSpecialForces(context),
-                AIProductionDemandKind.FleetSeedCapitalShip => CanManufactureFleetSeed(context),
+                AIDemandKind.FleetRegiment => CanManufactureRegiment(context),
+                AIDemandKind.GarrisonRegimentReserve => CanManufacturePlanetRegiment(context),
+                AIDemandKind.SpecialForces => CanManufactureSpecialForces(context),
+                AIDemandKind.FleetSeedCapitalShip => CanManufactureFleetSeed(context),
                 _ => false,
             };
         }
@@ -486,7 +477,7 @@ namespace Rebellion.AI.Proposals
             if (destinationPlanet.IsDestroyed)
                 return false;
 
-            if (Demand.Kind == AIProductionDemandKind.BuildingUpgrade)
+            if (Demand.Kind == AIDemandKind.BuildingUpgrade)
                 return CanReplaceProductionFacility(context, destinationPlanet, building);
 
             if (destinationPlanet.GetAvailableEnergy() < GetManufacturingCount())
@@ -604,9 +595,9 @@ namespace Rebellion.AI.Proposals
         private bool IsFacilityExpansionDemand()
         {
             return Demand?.Kind
-                is AIProductionDemandKind.ConstructionFacility
-                    or AIProductionDemandKind.Shipyard
-                    or AIProductionDemandKind.TrainingFacility;
+                is AIDemandKind.ConstructionFacility
+                    or AIDemandKind.Shipyard
+                    or AIDemandKind.TrainingFacility;
         }
 
         /// <summary>
