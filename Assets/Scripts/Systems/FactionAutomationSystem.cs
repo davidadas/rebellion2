@@ -124,9 +124,11 @@ namespace Rebellion.Systems
         private void FillProductionManufacturingCapacity(Faction faction)
         {
             List<Planet> ownedPlanets = GetOwnedPlanets(faction);
-            int availableCapacity = ownedPlanets.Sum(planet =>
-                planet.GetAvailableManufacturingCapacity(ManufacturingType.Building)
-            );
+            int availableCapacity = ownedPlanets
+                .Where(planet => !planet.IsConstructionYardReserved)
+                .Sum(planet =>
+                    planet.GetAvailableManufacturingCapacity(ManufacturingType.Building)
+                );
 
             for (int orderIndex = 0; orderIndex < availableCapacity; orderIndex++)
             {
@@ -280,7 +282,8 @@ namespace Rebellion.Systems
         {
             List<Planet> producers = planets
                 .Where(planet =>
-                    planet.GetAvailableManufacturingCapacity(ManufacturingType.Building) > 0
+                    !planet.IsConstructionYardReserved
+                    && planet.GetAvailableManufacturingCapacity(ManufacturingType.Building) > 0
                 )
                 .ToList();
             IEnumerable<Planet> destinations = planets.Where(planet =>

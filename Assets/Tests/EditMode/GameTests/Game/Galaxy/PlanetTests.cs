@@ -366,6 +366,7 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             _planet.SetPopularSupport("FNALL1", 100);
             _planet.IsDestroyed = true;
+            _planet.IsConstructionYardReserved = true;
             _planet.AddChild(new Fleet { OwnerInstanceID = "FNALL1" });
 
             string serialized = SerializationHelper.Serialize(_planet);
@@ -380,6 +381,11 @@ namespace Rebellion.Tests.Game.Galaxy
                 _planet.GetPopularSupport("FNALL1"),
                 deserialized.GetPopularSupport("FNALL1"),
                 "Deserialized planet should retain popular support."
+            );
+            Assert.AreEqual(
+                _planet.IsConstructionYardReserved,
+                deserialized.IsConstructionYardReserved,
+                "Deserialized planet should retain its construction-yard reservation."
             );
             Assert.AreEqual(
                 _planet.GetChildren<Fleet>().Count,

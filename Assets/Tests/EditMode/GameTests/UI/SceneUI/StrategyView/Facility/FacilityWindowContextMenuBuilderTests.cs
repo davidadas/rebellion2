@@ -67,6 +67,63 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void Build_UnreservedConstructionLane_ReturnsUncheckedReservationCommand()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Manufacturing,
+                FacilityWindowTab.Construction,
+                null,
+                "owner"
+            );
+
+            StrategyMenuCommand reserve = commands.Single(command =>
+                command.Action == StrategyMenuAction.Reserve
+            );
+            Assert.IsTrue(reserve.Enabled);
+            Assert.AreEqual(StrategyContextMenuIconKeys.None, reserve.IconKey);
+            Assert.IsTrue(reserve.UsesIconColumn);
+        }
+
+        [Test]
+        public void Build_ReservedConstructionLane_ReturnsCheckedReservationCommand()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+            planet.IsConstructionYardReserved = true;
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Manufacturing,
+                FacilityWindowTab.Construction,
+                null,
+                "owner"
+            );
+
+            StrategyMenuCommand reserve = commands.Single(command =>
+                command.Action == StrategyMenuAction.Reserve
+            );
+            Assert.AreEqual(StrategyContextMenuIconKeys.CheckMark, reserve.IconKey);
+        }
+
+        [Test]
+        public void Build_NonConstructionManufacturingLane_OmitsReservationCommand()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Manufacturing,
+                FacilityWindowTab.Shipyards,
+                null,
+                "owner"
+            );
+
+            Assert.IsFalse(commands.Any(command => command.Action == StrategyMenuAction.Reserve));
+        }
+
+        [Test]
         public void Build_InventoryItemUnderConstruction_ReturnsEnabledStopCommand()
         {
             Planet planet = CreatePlanet(withBuildingQueue: false);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -9,6 +10,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
@@ -249,6 +251,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 
             Assert.IsNull(_controller.GetStatusTarget(view));
             Assert.IsEmpty(_controller.GetScrapItems(view));
+        }
+
+        [Test]
+        public void OnContextMenuCommandSelected_ConstructionReservation_TogglesPlanetReservation()
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            ManufacturingLaneCardView card =
+                view.GetComponentsInChildren<ManufacturingLaneCardView>(true)
+                    .Single(candidate => candidate.name == "ConstructionManufacturingLaneCard");
+            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            PointerEventData pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+            };
+            card.GetComponent<UIPointerGestureRelay>().OnPointerDown(pointer);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 4, 5, 6, 7),
+                pointer,
+                10,
+                20
+            );
+            StrategyMenuCommand reserve = FacilityWindowContextMenuBuilder
+                .Build(
+                    _planet.Planet,
+                    FacilityWindowTab.Manufacturing,
+                    FacilityWindowTab.Construction,
+                    null,
+                    _playerFactionId
+                )
+                .Single(command => command.Action == StrategyMenuAction.Reserve);
+            ContextMenuRequest request = new ContextMenuRequest(
+                context,
+                new IContextMenuCommand[] { reserve },
+                _controller
+            );
+
+            _controller.OnContextMenuCommandSelected(request, reserve);
+
+            Assert.IsTrue(_planet.Planet.IsConstructionYardReserved);
         }
 
         [Test]

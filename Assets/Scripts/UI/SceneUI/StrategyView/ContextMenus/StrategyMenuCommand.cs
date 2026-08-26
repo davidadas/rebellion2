@@ -81,6 +81,7 @@ public enum StrategyMenuAction
     Stop,
     CreateMission,
     Destination,
+    Reserve,
     Scrap,
     Move,
     Retire,

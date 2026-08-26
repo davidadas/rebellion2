@@ -57,7 +57,7 @@ internal static class FacilityWindowContextMenuBuilder
         bool playerControlsPlanet
     )
     {
-        return new List<StrategyMenuCommand>
+        List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>
         {
             new StrategyMenuCommand(
                 StrategyMenuAction.Build,
@@ -77,8 +77,24 @@ internal static class FacilityWindowContextMenuBuilder
             new StrategyMenuCommand(StrategyMenuAction.None, "Rename", false),
             new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true),
             new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
-            new StrategyMenuCommand(StrategyMenuAction.None, "Reserved", false),
         };
+
+        if (manufacturingTab == FacilityWindowTab.Construction)
+        {
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyMenuAction.Reserve,
+                    "Reserved",
+                    playerControlsPlanet,
+                    planet?.IsConstructionYardReserved == true
+                        ? StrategyContextMenuIconKeys.CheckMark
+                        : StrategyContextMenuIconKeys.None,
+                    usesIconColumn: true
+                )
+            );
+        }
+
+        return commands;
     }
 
     /// <summary>

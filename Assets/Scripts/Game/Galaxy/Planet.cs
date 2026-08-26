@@ -103,6 +103,8 @@ namespace Rebellion.Game.Galaxy
         private List<Building> _buildings = new List<Building>();
 
         // Manufacturing Status.
+        public bool IsConstructionYardReserved { get; set; }
+
         [PersistableIgnore]
         public Dictionary<ManufacturingType, List<IManufacturable>> ManufacturingQueue
         {
@@ -152,6 +154,7 @@ namespace Rebellion.Game.Galaxy
             copy.UprisingClearTimerOrder = UprisingClearTimerOrder;
             copy.NextUprisingTimerOrder = NextUprisingTimerOrder;
             copy.PopularSupport = new Dictionary<string, int>(PopularSupport);
+            copy.IsConstructionYardReserved = IsConstructionYardReserved;
             copy.ManufacturingQueue = ManufacturingQueue.Keys.ToDictionary(
                 type => type,
                 _ => new List<IManufacturable>()

@@ -1,9 +1,15 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
+using Rebellion.Generation;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Systems
@@ -11,6 +17,9 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class FactionAutomationSystemTests
     {
+        private const string _factionId = "faction";
+        private const string _garrisonTypeId = "garrison";
+
         private GameRoot _game;
         private Faction _faction;
         private Planet _producer;
@@ -20,10 +29,12 @@ namespace Rebellion.Tests.Systems
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestContent.Data.GameConfig);
+            GameConfig config = CreateGameConfig();
+            GameDataCatalog gameData = CreateGameData(config);
+            _game = new GameRoot(config);
             _faction = new Faction
             {
-                InstanceID = "FNALL1",
+                InstanceID = _factionId,
                 ManageGarrisons = true,
                 ManageProduction = true,
             };
@@ -46,7 +57,7 @@ namespace Rebellion.Tests.Systems
                 _game,
                 new FleetSystem(_game)
             );
-            _automation = new FactionAutomationSystem(_game, TestContent.Data, manufacturing);
+            _automation = new FactionAutomationSystem(_game, gameData, manufacturing);
         }
 
         [Test]
@@ -64,7 +75,7 @@ namespace Rebellion.Tests.Systems
                 ManufacturingStatus.Building,
                 _destination.GetAllRegiments().Single().ManufacturingStatus
             );
-            Assert.AreEqual("REAL002", _destination.GetAllRegiments().Single().TypeID);
+            Assert.AreEqual(_garrisonTypeId, _destination.GetAllRegiments().Single().TypeID);
         }
 
         [Test]
@@ -126,6 +137,32 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_ManageProductionWithReservedConstructionYard_DoesNotQueueWork()
+        {
+            _faction.ManageGarrisons = false;
+            _producer.IsConstructionYardReserved = true;
+            int mineCount = CountResourceFacilities(BuildingType.Mine);
+            int refineryCount = CountResourceFacilities(BuildingType.Refinery);
+
+            _automation.ProcessTick();
+
+            Assert.AreEqual(mineCount, CountResourceFacilities(BuildingType.Mine));
+            Assert.AreEqual(refineryCount, CountResourceFacilities(BuildingType.Refinery));
+        }
+
+        [Test]
+        public void ProcessTick_ReservedDestination_RemainsAvailableForAutomatedDelivery()
+        {
+            _faction.ManageGarrisons = false;
+            _destination.IsConstructionYardReserved = true;
+            _destination.PositionX = 1;
+
+            _automation.ProcessTick();
+
+            Assert.AreEqual(1, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
+        }
+
+        [Test]
         public void ProcessTick_ManageProductionWithoutMineCapacity_DoesNotAddRefinery()
         {
             _faction.ManageGarrisons = false;
@@ -161,6 +198,73 @@ namespace Rebellion.Tests.Systems
             };
             planet.SetFullPopularSupport(_faction.InstanceID);
             return planet;
+        }
+
+        private static GameConfig CreateGameConfig()
+        {
+            GameConfig config = new GameConfig();
+            config.AI.Garrison.SupportThreshold = 50;
+            config.AI.Garrison.GarrisonDivisor = 10;
+            config.AI.Garrison.UprisingMultiplier = 2;
+            return config;
+        }
+
+        private static GameDataCatalog CreateGameData(GameConfig config)
+        {
+            GameGenerationConfig generationConfig = new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>
+                    {
+                        new FactionSetup
+                        {
+                            FactionID = _factionId,
+                            GarrisonTroopTypeID = _garrisonTypeId,
+                        },
+                    },
+                },
+            };
+            List<string> manufacturingFactionIds = new List<string> { _factionId };
+            Building mine = new Building
+            {
+                TypeID = "mine",
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = manufacturingFactionIds,
+            };
+            Building refinery = new Building
+            {
+                TypeID = "refinery",
+                BuildingType = BuildingType.Refinery,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = manufacturingFactionIds,
+            };
+            Regiment garrison = new Regiment
+            {
+                TypeID = _garrisonTypeId,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = manufacturingFactionIds,
+            };
+            return new GameDataCatalog(
+                config,
+                generationConfig,
+                Array.Empty<Faction>(),
+                Array.Empty<PlanetSector>(),
+                new[] { mine, refinery },
+                Array.Empty<CapitalShip>(),
+                Array.Empty<Starfighter>(),
+                new[] { garrison },
+                Array.Empty<SpecialForces>(),
+                Array.Empty<Officer>(),
+                Array.Empty<GameEvent>(),
+                Array.Empty<MessageDefinition>(),
+                new EncyclopediaEntries(),
+                new FactionThemes()
+            );
         }
 
         private void AddProductionFacility(Planet planet, string instanceId, ManufacturingType type)
