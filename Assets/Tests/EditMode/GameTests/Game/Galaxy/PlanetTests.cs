@@ -366,7 +366,9 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             _planet.SetPopularSupport("FNALL1", 100);
             _planet.IsDestroyed = true;
-            _planet.IsConstructionYardReserved = true;
+            _planet.SetManufacturingReserved(ManufacturingType.Ship, true);
+            _planet.SetManufacturingReserved(ManufacturingType.Building, true);
+            _planet.SetManufacturingReserved(ManufacturingType.Troop, true);
             _planet.AddChild(new Fleet { OwnerInstanceID = "FNALL1" });
 
             string serialized = SerializationHelper.Serialize(_planet);
@@ -382,15 +384,35 @@ namespace Rebellion.Tests.Game.Galaxy
                 deserialized.GetPopularSupport("FNALL1"),
                 "Deserialized planet should retain popular support."
             );
-            Assert.AreEqual(
-                _planet.IsConstructionYardReserved,
-                deserialized.IsConstructionYardReserved,
-                "Deserialized planet should retain its construction-yard reservation."
-            );
+            Assert.IsTrue(deserialized.IsManufacturingReserved(ManufacturingType.Ship));
+            Assert.IsTrue(deserialized.IsManufacturingReserved(ManufacturingType.Building));
+            Assert.IsTrue(deserialized.IsManufacturingReserved(ManufacturingType.Troop));
             Assert.AreEqual(
                 _planet.GetChildren<Fleet>().Count,
                 deserialized.GetChildren<Fleet>().Count,
                 "Deserialized planet should retain fleets."
+            );
+        }
+
+        [Test]
+        public void SetManufacturingReserved_ReservedThenReleased_UpdatesSelectedLaneOnly()
+        {
+            _planet.SetManufacturingReserved(ManufacturingType.Troop, true);
+
+            Assert.IsTrue(_planet.IsManufacturingReserved(ManufacturingType.Troop));
+            Assert.IsFalse(_planet.IsManufacturingReserved(ManufacturingType.Ship));
+            Assert.IsFalse(_planet.IsManufacturingReserved(ManufacturingType.Building));
+
+            _planet.SetManufacturingReserved(ManufacturingType.Troop, false);
+
+            Assert.IsFalse(_planet.IsManufacturingReserved(ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void SetManufacturingReserved_None_ThrowsArgumentOutOfRangeException()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                _planet.SetManufacturingReserved(ManufacturingType.None, true)
             );
         }
 

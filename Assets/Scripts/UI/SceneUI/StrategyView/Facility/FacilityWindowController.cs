@@ -337,7 +337,7 @@ public sealed class FacilityWindowController
                 BeginContextTargeting(context, strategyCommand.Action);
                 break;
             case StrategyMenuAction.Reserve:
-                ToggleConstructionYardReservation(view);
+                ToggleManufacturingReservation(view);
                 break;
             case StrategyMenuAction.Encyclopedia:
                 actions.OpenFacilityInfo(GetStatusTarget(view));
@@ -358,15 +358,19 @@ public sealed class FacilityWindowController
     public void OnContextMenuCancelled(ContextMenuRequest request) { }
 
     /// <summary>
-    /// Toggles whether the advisor may use the represented planet's construction yards.
+    /// Toggles whether the advisor may use the represented manufacturing lane.
     /// </summary>
-    /// <param name="view">The facility view whose construction lane was selected.</param>
-    private void ToggleConstructionYardReservation(FacilityWindowView view)
+    /// <param name="view">The facility view whose manufacturing lane was selected.</param>
+    private void ToggleManufacturingReservation(FacilityWindowView view)
     {
-        if (
-            !TryGetSession(view, out FacilityWindowSession session)
-            || session.GetContextManufacturingTab() != FacilityWindowTab.Construction
-        )
+        if (!TryGetSession(view, out FacilityWindowSession session))
+            return;
+
+        FacilityWindowTab? manufacturingTab = session.GetContextManufacturingTab();
+        ManufacturingType? manufacturingType = manufacturingTab.HasValue
+            ? ConstructionOrderController.GetManufacturingType(manufacturingTab.Value)
+            : null;
+        if (!manufacturingType.HasValue)
             return;
 
         Planet planet = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
@@ -378,7 +382,10 @@ public sealed class FacilityWindowController
         )
             return;
 
-        planet.IsConstructionYardReserved = !planet.IsConstructionYardReserved;
+        planet.SetManufacturingReserved(
+            manufacturingType.Value,
+            !planet.IsManufacturingReserved(manufacturingType.Value)
+        );
         actions.RefreshFacilityState();
     }
 

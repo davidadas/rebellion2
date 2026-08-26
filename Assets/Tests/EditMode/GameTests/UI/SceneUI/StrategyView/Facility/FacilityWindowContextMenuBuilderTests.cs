@@ -66,15 +66,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(stop.Enabled);
         }
 
-        [Test]
-        public void Build_UnreservedConstructionLane_ReturnsUncheckedReservationCommand()
+        [TestCase(FacilityWindowTab.Shipyards)]
+        [TestCase(FacilityWindowTab.Training)]
+        [TestCase(FacilityWindowTab.Construction)]
+        public void Build_UnreservedManufacturingLane_ReturnsUncheckedReservationCommand(
+            FacilityWindowTab manufacturingTab
+        )
         {
             Planet planet = CreatePlanet(withBuildingQueue: false);
 
             List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
                 planet,
                 FacilityWindowTab.Manufacturing,
-                FacilityWindowTab.Construction,
+                manufacturingTab,
                 null,
                 "owner"
             );
@@ -87,16 +91,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsTrue(reserve.UsesIconColumn);
         }
 
-        [Test]
-        public void Build_ReservedConstructionLane_ReturnsCheckedReservationCommand()
+        [TestCase(FacilityWindowTab.Shipyards, ManufacturingType.Ship)]
+        [TestCase(FacilityWindowTab.Training, ManufacturingType.Troop)]
+        [TestCase(FacilityWindowTab.Construction, ManufacturingType.Building)]
+        public void Build_ReservedManufacturingLane_ReturnsCheckedReservationCommand(
+            FacilityWindowTab manufacturingTab,
+            ManufacturingType manufacturingType
+        )
         {
             Planet planet = CreatePlanet(withBuildingQueue: false);
-            planet.IsConstructionYardReserved = true;
+            planet.SetManufacturingReserved(manufacturingType, true);
 
             List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
                 planet,
                 FacilityWindowTab.Manufacturing,
-                FacilityWindowTab.Construction,
+                manufacturingTab,
                 null,
                 "owner"
             );
@@ -105,22 +114,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 command.Action == StrategyMenuAction.Reserve
             );
             Assert.AreEqual(StrategyContextMenuIconKeys.CheckMark, reserve.IconKey);
-        }
-
-        [Test]
-        public void Build_NonConstructionManufacturingLane_OmitsReservationCommand()
-        {
-            Planet planet = CreatePlanet(withBuildingQueue: false);
-
-            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
-                planet,
-                FacilityWindowTab.Manufacturing,
-                FacilityWindowTab.Shipyards,
-                null,
-                "owner"
-            );
-
-            Assert.IsFalse(commands.Any(command => command.Action == StrategyMenuAction.Reserve));
         }
 
         [Test]

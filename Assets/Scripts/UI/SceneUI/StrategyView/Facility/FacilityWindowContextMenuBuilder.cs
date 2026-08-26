@@ -79,14 +79,17 @@ internal static class FacilityWindowContextMenuBuilder
             new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
         };
 
-        if (manufacturingTab == FacilityWindowTab.Construction)
+        ManufacturingType? manufacturingType = ConstructionOrderController.GetManufacturingType(
+            manufacturingTab
+        );
+        if (manufacturingType.HasValue)
         {
             commands.Add(
                 new StrategyMenuCommand(
                     StrategyMenuAction.Reserve,
                     "Reserved",
                     playerControlsPlanet,
-                    planet?.IsConstructionYardReserved == true
+                    planet?.IsManufacturingReserved(manufacturingType.Value) == true
                         ? StrategyContextMenuIconKeys.CheckMark
                         : StrategyContextMenuIconKeys.None,
                     usesIconColumn: true

@@ -254,7 +254,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
-        public void OnContextMenuCommandSelected_ConstructionReservation_TogglesPlanetReservation()
+        public void OnContextMenuCommandSelected_ManufacturingReservation_TogglesSelectedLane()
         {
             FacilityWindowView view = OpenWindow(out UIWindow window);
             ManufacturingLaneCardView card =
@@ -291,7 +291,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 
             _controller.OnContextMenuCommandSelected(request, reserve);
 
-            Assert.IsTrue(_planet.Planet.IsConstructionYardReserved);
+            Assert.IsTrue(_planet.Planet.IsManufacturingReserved(ManufacturingType.Building));
+            Assert.IsFalse(_planet.Planet.IsManufacturingReserved(ManufacturingType.Ship));
+            Assert.IsFalse(_planet.Planet.IsManufacturingReserved(ManufacturingType.Troop));
         }
 
         [Test]

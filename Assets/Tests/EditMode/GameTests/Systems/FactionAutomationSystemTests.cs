@@ -111,6 +111,17 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_ManageGarrisonsWithReservedTrainingFacility_DoesNotQueueWork()
+        {
+            _faction.ManageProduction = false;
+            _producer.SetManufacturingReserved(ManufacturingType.Troop, true);
+
+            _automation.ProcessTick();
+
+            Assert.IsEmpty(_destination.GetAllRegiments());
+        }
+
+        [Test]
         public void ProcessTick_ManageProduction_FillsCapacityWithMatchedPair()
         {
             _faction.ManageGarrisons = false;
@@ -137,10 +148,10 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_ManageProductionWithReservedConstructionYard_DoesNotQueueWork()
+        public void ProcessTick_ManageProductionWithReservedBuildingLane_DoesNotQueueWork()
         {
             _faction.ManageGarrisons = false;
-            _producer.IsConstructionYardReserved = true;
+            _producer.SetManufacturingReserved(ManufacturingType.Building, true);
             int mineCount = CountResourceFacilities(BuildingType.Mine);
             int refineryCount = CountResourceFacilities(BuildingType.Refinery);
 
@@ -154,7 +165,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_ReservedDestination_RemainsAvailableForAutomatedDelivery()
         {
             _faction.ManageGarrisons = false;
-            _destination.IsConstructionYardReserved = true;
+            _destination.SetManufacturingReserved(ManufacturingType.Building, true);
             _destination.PositionX = 1;
 
             _automation.ProcessTick();
