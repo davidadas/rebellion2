@@ -271,7 +271,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
-        public void CreateRenderData_QueuedBuilding_UsesConfiguredConstructionTexture()
+        public void CreateRenderData_UnderConstructionInventoryBuilding_UsesConstructionTexture()
+        {
+            Building mine = CreateBuilding(
+                "incomplete-mine",
+                "Incomplete Mine",
+                BuildingType.Mine,
+                ManufacturingStatus.Building
+            );
+            _planet.AddTestChild(mine);
+            _session.Reconcile();
+            _session.SetActiveTab(FacilityWindowTab.Mines);
+
+            FacilityWindowRenderData data = _projector.CreateRenderData(_window, _session, null);
+
+            Assert.AreSame(_constructionTexture, data.InventoryItems[0].Texture);
+        }
+
+        [Test]
+        public void CreateRenderData_QueuedBuilding_UsesCompactEntityTexture()
         {
             Building building = CreateBuilding(
                 "queued-building",
@@ -286,7 +304,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 
             FacilityWindowRenderData data = _projector.CreateRenderData(_window, _session, null);
 
-            Assert.AreSame(_constructionTexture, data.ManufacturingCards[2].EntityTexture);
+            Assert.AreSame(
+                _uiContext.GetTexture(building.SmallDisplayImagePath),
+                data.ManufacturingCards[2].EntityTexture
+            );
         }
 
         [Test]
