@@ -138,6 +138,8 @@ public static class HeadlessSimulationRunner
 
             for (int i = 0; i < options.TickCount && victory == null; i++)
             {
+                if (i % 25 == 0)
+                    LogToFile(logPath, $"[HeadlessSim] tick {i}");
                 manager.ProcessTick();
                 idleTracker.RecordTick(game);
                 manufacturedUnitTracker.RecordTick(game);
