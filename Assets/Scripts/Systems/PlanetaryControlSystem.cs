@@ -706,7 +706,10 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Evacuates non-owner units from the planet to the nearest friendly planet.
+        /// Removes non-owner units from the planet: starfighters stationed on the surface are
+        /// destroyed with the change of control, while all other units evacuate to the nearest
+        /// friendly planet that accepts them. Regiments with no reachable destination are
+        /// destroyed; officers with no reachable destination are captured by the new owner.
         /// </summary>
         /// <param name="planet">The planet to evict enemy units from.</param>
         /// <param name="newOwnerID">The instance ID of the new owning faction.</param>
@@ -720,7 +723,15 @@ namespace Rebellion.Systems
                 .ToList();
 
             foreach (IMovable unit in enemies)
-                _movementSystem.EvacuateToNearestFriendlyPlanet(unit);
+            {
+                if (unit is Starfighter)
+                    _movementSystem.DestroyEvictedUnit(unit, planet);
+                else
+                    _movementSystem.EvacuateToNearestFriendlyPlanet(
+                        unit,
+                        evictingOwnerInstanceID: newOwnerID
+                    );
+            }
         }
     }
 }
