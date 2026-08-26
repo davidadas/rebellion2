@@ -291,7 +291,7 @@ namespace Rebellion.Tests.Game.Missions
             Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
             rebels.HQInstanceID = enemyPlanet.InstanceID;
             rebels.Settings.Headquarters.IsMobile = true;
-            game.Config.Espionage.MobileHeadquartersBonus = new GameConfig.RandomCountConfig
+            game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
             {
                 Base = 10,
             };
@@ -317,7 +317,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_CapitalTarget_CanRevealCoreAndOuterRimPlanets()
+        public void ResolveObjective_FixedHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
         {
             (
                 GameRoot game,
@@ -327,10 +327,16 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
             enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
             AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim);
-            game.Config.Espionage.CapitalPlanetInstanceID = enemyPlanet.InstanceID;
-            game.Config.Espionage.CapitalObserverFactionInstanceID = "empire";
-            game.Config.Espionage.CapitalBonus = new GameConfig.RandomCountConfig { Base = 10 };
+            AddSector(game, "neutral1", "neutral_planet1", PlanetSectorType.OuterRim, null);
+            Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
+            rebels.HQInstanceID = enemyPlanet.InstanceID;
+            rebels.Settings.Headquarters.IsMobile = false;
+            game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
+            {
+                Base = 10,
+            };
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
@@ -346,7 +352,10 @@ namespace Rebellion.Tests.Game.Missions
             MissionSceneBuilder.RunToSuccess(mission, game);
 
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
-            CollectionAssert.Contains(RevealedPlanetIDs(empire), "rim_planet1");
+            CollectionAssert.AreEquivalent(
+                new[] { "enemy_planet", "core_planet2", "rim_planet1" },
+                RevealedPlanetIDs(empire)
+            );
         }
 
         [Test]

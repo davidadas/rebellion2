@@ -13,79 +13,7 @@ namespace Rebellion.Tests.Game.Missions
     public class InciteUprisingMissionTests
     {
         [Test]
-        public void RollParticipantSuccess_ResistanceRegimentReducesScoreByOne()
-        {
-            (
-                GameRoot game,
-                Planet empirePlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            enemyPlanet.SetPopularSupport("empire", 40);
-            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
-            {
-                { -11, 0 },
-                { -10, 100 },
-            };
-            Mission mission = CreateInciteUprisingMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(0);
-
-            Regiment regiment = EntityFactory.CreateRegiment("r1", "rebels");
-            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
-            regiment.TypeID = "non-resistance";
-            game.AttachNode(regiment, enemyPlanet);
-
-            Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
-
-            regiment.TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
-
-            Assert.IsFalse(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
-        }
-
-        [Test]
-        public void RollParticipantSuccess_IncompleteResistanceRegimentDoesNotReduceScore()
-        {
-            (
-                GameRoot game,
-                Planet empirePlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            enemyPlanet.SetPopularSupport("empire", 40);
-            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
-            {
-                { -11, 0 },
-                { -10, 100 },
-            };
-            Mission mission = CreateInciteUprisingMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(0);
-
-            Regiment regiment = EntityFactory.CreateRegiment("r1", "rebels");
-            regiment.ManufacturingStatus = ManufacturingStatus.Building;
-            regiment.TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
-            game.AttachNode(regiment, enemyPlanet);
-
-            Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
-        }
-
-        [Test]
-        public void RollParticipantSuccess_NonResistanceDefenseRatingDoesNotAffectScore()
+        public void RollParticipantSuccess_GarrisonedRegimentDoesNotAffectScore()
         {
             (
                 GameRoot game,
@@ -100,7 +28,6 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "r1",
                 OwnerInstanceID = "rebels",
-                TypeID = "non-resistance",
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 DefenseRating = 500,
             };

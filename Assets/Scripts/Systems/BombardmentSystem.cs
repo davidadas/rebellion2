@@ -881,24 +881,16 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the local-sector support penalty for civilian destruction.
+        /// Returns the attacker's local-sector support penalty for civilian destruction.
         /// </summary>
         /// <param name="sector">Planet sector where the destruction occurred.</param>
         /// <param name="attacker">Faction responsible for the bombardment.</param>
         /// <returns>The applicable popular-support shift.</returns>
         private int GetCivilianBombardmentSectorPenalty(PlanetSector sector, Faction attacker)
         {
-            bool empire = attacker.Settings.InvertSupportShift;
-            if (sector.SectorType == PlanetSectorType.Core)
-            {
-                return empire
-                    ? _game.Config.Combat.Bombardment.CivilianCoreEmpireSupportPenalty
-                    : _game.Config.Combat.Bombardment.CivilianCoreAllianceSupportPenalty;
-            }
-
-            return empire
-                ? _game.Config.Combat.Bombardment.CivilianOuterRimEmpireSupportPenalty
-                : _game.Config.Combat.Bombardment.CivilianOuterRimAllianceSupportPenalty;
+            return sector.SectorType == PlanetSectorType.Core
+                ? attacker.Settings.CivilianBombardmentCoreSupportPenalty
+                : attacker.Settings.CivilianBombardmentOuterRimSupportPenalty;
         }
 
         /// <summary>

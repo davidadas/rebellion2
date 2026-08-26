@@ -111,12 +111,8 @@ namespace Rebellion.Game.Missions
         {
             Planet planet = GetParent() as Planet;
 
-            int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
-                game?.Config?.Uprising?.ResistanceRegimentTypeID
-            );
-            return uprisingResistanceRegimentCount
-                - planet.GetOpposingPopularSupport(OwnerInstanceID)
-                + agent.GetEffectiveRating(OfficerRating.Leadership);
+            return agent.GetEffectiveRating(OfficerRating.Leadership)
+                - planet.GetOpposingPopularSupport(OwnerInstanceID);
         }
 
         /// <summary>

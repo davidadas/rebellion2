@@ -13,7 +13,6 @@ namespace Rebellion.Game.Missions
     public class SabotageMission : Mission
     {
         public const string MissionTypeID = "Sabotage";
-        private const string _deathStarSabotageConfigKey = "DeathStarSabotage";
 
         /// <summary>
         /// Instance ID of the selected sabotage target.
@@ -133,34 +132,6 @@ namespace Rebellion.Game.Missions
                     agent.GetEffectiveRating(OfficerRating.Espionage)
                     + agent.GetEffectiveRating(OfficerRating.Combat)
                 ) / 2;
-        }
-
-        /// <summary>
-        /// Returns the configured sabotage probability for the participant's raw score.
-        /// Planet-destroying capital ships use their dedicated probability table.
-        /// </summary>
-        /// <param name="agent">The participant whose score is evaluated.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The configured sabotage success probability.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
-        {
-            int? score = GetAgentScore(agent, game);
-            if (!score.HasValue)
-                return 0;
-
-            ISceneNode target = GetSabotageTarget(game);
-            if (target is not CapitalShip { CanDestroyPlanets: true })
-                return LookupSuccessProbability(game, score.Value);
-
-            Dictionary<int, int> table = game
-                ?.Config
-                ?.ProbabilityTables
-                ?.Mission
-                ?.DeathStarSabotage;
-            if (table == null || table.Count == 0)
-                return LookupSuccessProbability(game, score.Value);
-
-            return LookupSuccessProbability(game, score.Value, _deathStarSabotageConfigKey);
         }
 
         /// <summary>

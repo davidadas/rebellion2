@@ -55,10 +55,11 @@ You can keep an entirely separate `Content` directory and launch the game with i
 Content/
   catalog.xml
   Application/                 Shared application UI, audio, video, and preload manifests
+    Rules/                     Application-level game-config defaults
   Packs/
     MyPack/
       pack.xml                 Pack identity and definition paths
-      Rules/                   Campaign rules
+      Rules/                   Optional game-config overrides
       Shared/                  Shared data and presentation
       Factions/                Faction data, units, UI themes, and media
       Scenarios/               Scenario definitions and generation settings
@@ -70,6 +71,22 @@ Content addresses beginning with `Application/` resolve from the shared applicat
 addresses beginning with `Pack/` resolve from the active pack.
 
 ## Common changes
+
+### Simulation rules
+
+Runtime simulation constants are layered. `Content/Application/Rules/game.xml` ships the complete
+application-level defaults and is owned by the game: it changes with engine updates and must not be
+copied into or edited by a mod. A pack that tunes simulation constants declares a `GameConfigPath`
+in `pack.xml` pointing at a sparse override merged over those defaults at load:
+
+- A leaf value in the pack file replaces the default value.
+- A section merges recursively, so unlisted siblings keep their defaults.
+- A lookup table (repeated `Entry` elements) is replaced wholesale, never merged entry-by-entry.
+
+State only the values your pack changes, and omit `GameConfigPath` entirely when the pack does not
+change any. The merged configuration is validated against
+`Content/Application/Schemas/game-config.xsd` when the pack loads, and an invalid or unknown value
+is reported by name.
 
 ### Campaign setup
 
