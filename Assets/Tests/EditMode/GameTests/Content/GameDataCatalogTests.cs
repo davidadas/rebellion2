@@ -68,6 +68,19 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("contain a cycle", exception.Message);
         }
 
+        [Test]
+        public void ValidateBuildingUpgrades_DiamondUpgradePath_DoesNotThrow()
+        {
+            Building basic = CreateBuilding("basic", "left", "right");
+            Building left = CreateBuilding("left", "top");
+            Building right = CreateBuilding("right", "top");
+            Building top = CreateBuilding("top");
+
+            Assert.DoesNotThrow(() =>
+                GameDataCatalog.ValidateBuildingUpgrades(new[] { basic, left, right, top })
+            );
+        }
+
         private static Building CreateBuilding(string typeID, params string[] upgrades)
         {
             Building building = new Building { TypeID = typeID };

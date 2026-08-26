@@ -506,7 +506,7 @@ public static class HeadlessSimulationRunner
             manufacturing,
             null,
             null,
-            game.Random
+            new SystemRandomProvider(0)
         );
         List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
         List<AIManufactureProposal> proposals = new AIProductionPlanner()
@@ -2228,7 +2228,7 @@ public static class HeadlessSimulationRunner
                     null,
                     null,
                     null,
-                    game.Random
+                    new SystemRandomProvider(0)
                 ).Assessment;
                 AttackReadinessFactionCounters counters = GetCounters(faction.InstanceID);
 

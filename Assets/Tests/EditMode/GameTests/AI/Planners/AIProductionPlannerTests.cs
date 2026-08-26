@@ -197,9 +197,10 @@ namespace Rebellion.Tests.AI.Planners
         [Test]
         public void Plan_WithoutAuthoredFacilityUpgrade_DoesNotAddUpgrade()
         {
-            (GameRoot game, Faction empire, Planet _, Building replacement, Building _, int _) =
+            (GameRoot game, Faction empire, Planet planet, Building _, Building _, int _) =
                 CreateFacilityUpgradeScene(0);
-            replacement.Upgrades.Clear();
+            foreach (Building facility in planet.GetChildren<Building>())
+                facility.Upgrades.Clear();
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
