@@ -1009,6 +1009,57 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void BuildFactionView_SnapshotQueuedBuildingOnFullLivePlanet_SkipsGhostBuilding()
+        {
+            _coruscant.EnergyCapacity = 5;
+
+            // Alliance snapshots coruscant while an empire building is in progress there.
+            Building queuedBuilding = CreateBuilding(
+                "BLDG_GHOST",
+                _empire,
+                ManufacturingStatus.Building
+            );
+            queuedBuilding.ConstructionCost = 100;
+            queuedBuilding.BaseBuildSpeed = 1;
+            queuedBuilding.BuildingType = BuildingType.Mine;
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                _game,
+                new FleetSystem(_game)
+            );
+            Assert.IsTrue(
+                manufacturing.Enqueue(_coruscant, queuedBuilding, _coruscant, ignoreCost: true)
+            );
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            // The queued building is removed and the planet later fills to capacity; completions
+            // never re-validate capacity, so a live planet can legitimately sit at full energy.
+            _game.DeleteNode(queuedBuilding);
+            Building completedBuilding = CreateBuilding("BLDG_DONE", _empire);
+            completedBuilding.BuildingType = BuildingType.Refinery;
+            _game.AttachNode(completedBuilding, _coruscant);
+            _coruscant.EnergyCapacity = 1;
+
+            // Alliance gains a live view, which merges its stale manufacturing intel.
+            Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
+            _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
+
+            GalaxyMap view = null;
+            Assert.DoesNotThrow(() => view = _fogSystem.BuildFactionView(_alliance));
+
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
+            Assert.IsTrue(
+                viewCoruscant
+                    .GetChildren<Building>(includeDisabled: true)
+                    .All(b => b.InstanceID != "BLDG_GHOST"),
+                "Ghost building intel should be skipped when the view planet has no energy capacity"
+            );
+        }
+
+        [Test]
         public void BuildFactionView_LivePlanet_StaleOwnSnapshotUnits_NotVisible()
         {
             // Snapshot hoth while alliance has a fleet there.

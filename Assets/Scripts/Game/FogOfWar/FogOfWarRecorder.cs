@@ -1141,7 +1141,9 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Adds unfinished entities that are absent from a detached container snapshot.
+        /// Adds unfinished entities that are absent from a detached container snapshot. Entities
+        /// the snapshot container cannot accept (for example a building on a view planet already
+        /// at energy capacity) are skipped rather than failing view construction.
         /// </summary>
         internal static void MergeManufacturingEntities<T>(
             ContainerNode destination,
@@ -1156,8 +1158,12 @@ namespace Rebellion.Game.FogOfWar
                 .ToHashSet();
             foreach (T item in source.Where(IsManufacturingInProgress))
             {
-                if (existingIds.Add(item.InstanceID))
-                    destination.AddChild(CopyEntityForSnapshot(item));
+                if (!existingIds.Add(item.InstanceID))
+                    continue;
+
+                T copy = CopyEntityForSnapshot(item);
+                if (destination.CanAcceptChild(copy))
+                    destination.AddChild(copy);
             }
         }
 
