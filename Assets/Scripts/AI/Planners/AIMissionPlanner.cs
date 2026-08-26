@@ -334,18 +334,15 @@ namespace Rebellion.AI.Planners
 
             foreach (
                 (Planet planet, Officer target) in context
-                    .Assessment.FactionViewPlanets.SelectMany(planet =>
-                        context
-                            .Assessment.GetKnownOfficers(planet)
-                            .Where(officer =>
-                                officer.GetOwnerInstanceID() == context.Faction.InstanceID
-                                && officer.IsCaptured
-                                && !officer.IsKilled
-                                && officer.Movement == null
-                                && !HasActiveOfficerTargetMission(context, officer.InstanceID)
-                            )
-                            .Select(officer => (planet, officer))
+                    .Faction.GetOwnedUnitsByType<Officer>()
+                    .Where(officer =>
+                        officer.IsCaptured
+                        && !officer.IsKilled
+                        && officer.Movement == null
+                        && !HasActiveOfficerTargetMission(context, officer.InstanceID)
                     )
+                    .Select(officer => (planet: officer.GetParentOfType<Planet>(), officer))
+                    .Where(candidate => candidate.planet != null)
                     .OrderByDescending(candidate => candidate.officer.IsMain)
                     .ThenBy(candidate => candidate.planet.InstanceID)
                     .ThenBy(candidate => candidate.officer.InstanceID)
