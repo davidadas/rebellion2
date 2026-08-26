@@ -200,7 +200,7 @@ internal sealed class FacilityWindowProjector
             uiContext.GetTexture(
                 selected ? stateTheme?.ActiveImagePath : stateTheme?.InactiveImagePath
             ),
-            GetManufacturingTexture(uiContext, ownerFactionId, current),
+            GetManufacturingTexture(uiContext, current),
             current?.GetManufacturingProgress() ?? 0,
             current?.GetConstructionCost() ?? 0,
             GetManufacturingTitle(type),
@@ -213,28 +213,13 @@ internal sealed class FacilityWindowProjector
     }
 
     /// <summary>
-    /// Resolves the artwork for the item currently being manufactured.
+    /// Resolves the compact artwork for the item currently being manufactured.
     /// </summary>
     /// <param name="uiContext">The active presentation context.</param>
-    /// <param name="ownerFactionId">The producing planet owner.</param>
     /// <param name="item">The current queue item.</param>
-    /// <returns>The configured construction artwork or the item's compact artwork.</returns>
-    private static Texture GetManufacturingTexture(
-        UIContext uiContext,
-        string ownerFactionId,
-        IManufacturable item
-    )
+    /// <returns>The item's compact artwork.</returns>
+    private static Texture GetManufacturingTexture(UIContext uiContext, IManufacturable item)
     {
-        if (item is Building building)
-        {
-            string constructionPath = uiContext
-                .GetTheme(ownerFactionId)
-                ?.StrategyWindows?.Facility?.GetConstructionImagePath(building.GetTypeID());
-            Texture constructionTexture = uiContext.GetTexture(constructionPath);
-            if (constructionTexture != null)
-                return constructionTexture;
-        }
-
         return item is ISceneNode node ? uiContext.GetEntityTexture(node, true) : null;
     }
 
