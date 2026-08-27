@@ -421,8 +421,6 @@ namespace Rebellion.Game
 
             public int InciteMissionSupportShift { get; set; }
 
-            public string ResistanceRegimentTypeID { get; set; }
-
             public int SubdueOwnedSupportBase { get; set; }
 
             public int SubdueOwnedSupportRange { get; set; }
@@ -574,10 +572,6 @@ namespace Rebellion.Game
             public int AllocatedEnergyResistance { get; set; }
             public int HeadquartersResistance { get; set; }
             public int CivilianSupportPenalty { get; set; }
-            public int CivilianCoreAllianceSupportPenalty { get; set; }
-            public int CivilianCoreEmpireSupportPenalty { get; set; }
-            public int CivilianOuterRimAllianceSupportPenalty { get; set; }
-            public int CivilianOuterRimEmpireSupportPenalty { get; set; }
             public int DestroyPlanetPersonnelInjuryPercent { get; set; }
             public int DestroyPlanetMinorPersonnelDeathPercent { get; set; }
             public int DestroyPlanetCoreSupportPenalty { get; set; }
@@ -648,19 +642,9 @@ namespace Rebellion.Game
 
             public int ForceQualifiedThreshold { get; set; }
 
-            public int FastHealThreshold { get; set; }
-
             public int ForceGrowthPerMission { get; set; }
 
             public int TrainingCatchUpPercent { get; set; }
-
-            public int HeritageThreshold { get; set; }
-
-            public int DagobahCompletionBonusPercent { get; set; }
-
-            public int EncounterLocalMinRank { get; set; }
-
-            public int EncounterCrossSideMinRank { get; set; }
 
             public int EncounterProbabilityOffset { get; set; }
 
@@ -831,16 +815,9 @@ namespace Rebellion.Game
         [PersistableObject]
         public class EspionageConfig
         {
-            public string CapitalPlanetInstanceID { get; set; }
-
-            public string CapitalObserverFactionInstanceID { get; set; }
-
             public RandomCountConfig CoreSectorBonus { get; set; } = new RandomCountConfig();
 
-            public RandomCountConfig CapitalBonus { get; set; } = new RandomCountConfig();
-
-            public RandomCountConfig MobileHeadquartersBonus { get; set; } =
-                new RandomCountConfig();
+            public RandomCountConfig HeadquartersBonus { get; set; } = new RandomCountConfig();
         }
 
         /// <summary>
@@ -915,9 +892,6 @@ namespace Rebellion.Game
 
             public Dictionary<int, int> Diplomacy { get; set; } = new Dictionary<int, int>();
 
-            public Dictionary<int, int> DeathStarSabotage { get; set; } =
-                new Dictionary<int, int>();
-
             public Dictionary<int, int> Espionage { get; set; } = new Dictionary<int, int>();
 
             public Dictionary<int, int> Foil { get; set; } = new Dictionary<int, int>();
@@ -952,7 +926,6 @@ namespace Rebellion.Game
                     "Abduction" => Abduction,
                     "Assassination" => Assassination,
                     "Diplomacy" => Diplomacy,
-                    "DeathStarSabotage" => DeathStarSabotage,
                     "Espionage" => Espionage,
                     "InciteUprising" => InciteUprising,
                     "Recruitment" => Recruitment,

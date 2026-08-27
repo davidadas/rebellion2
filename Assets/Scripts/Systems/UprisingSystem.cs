@@ -782,16 +782,12 @@ namespace Rebellion.Systems
             int troopMultiplier = GetUprisingTroopMultiplier(planet, faction);
             int threshold = CalculateUprisingThreshold(supportForController);
             int missionAdjustment = CalculateUprisingMissionAdjustment(planet, config);
-            int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
-                config.ResistanceRegimentTypeID
-            );
 
             int combinedScore =
                 rollA
                 + rollB
                 + (threshold - troopMultiplier * controllerTroopCount)
-                + missionAdjustment
-                - uprisingResistanceRegimentCount;
+                + missionAdjustment;
 
             uprisingEffect = GetThresholdTableValue(config.PrimaryConsequenceTable, combinedScore);
 

@@ -78,6 +78,18 @@ namespace Rebellion.Game.Factions
         public bool InvertSupportShift { get; set; } = false;
 
         /// <summary>
+        /// Popular-support shift applied on core-sector planets when this faction's
+        /// bombardment destroys civilian structures.
+        /// </summary>
+        public int CivilianBombardmentCoreSupportPenalty { get; set; }
+
+        /// <summary>
+        /// Popular-support shift applied on outer-rim planets when this faction's
+        /// bombardment destroys civilian structures.
+        /// </summary>
+        public int CivilianBombardmentOuterRimSupportPenalty { get; set; }
+
+        /// <summary>
         /// Condition under which the weak support penalty triggers.
         /// </summary>
         public SupportChange SupportResistance { get; set; } = SupportChange.Increase;

@@ -258,28 +258,21 @@ public class FixedRandomProvider : IRandomNumberProvider
 
 public static class TestConfig
 {
-    private static string ConfigPath =>
-        Path.Combine(TestContent.Pack.PackRootPath, TestContent.Pack.Definition.GameConfigPath);
-
     private static string SchemaPath =>
         Path.Combine(TestContent.Pack.ContentRootPath, "Application", "Schemas", "game-config.xsd");
 
     public static GameConfig Create()
     {
-        string xml = File.ReadAllText(ConfigPath);
-        GameSerializer serializer = new GameSerializer(typeof(GameConfig));
-        using StringReader reader = new StringReader(xml);
-        GameConfig config = (GameConfig)serializer.Deserialize(reader);
-        return config;
+        return ContentPackLoader.LoadGameConfig(
+            TestContent.Pack.ContentRootPath,
+            TestContent.Pack.PackRootPath,
+            TestContent.Pack.Definition.GameConfigPath
+        );
     }
 
     public static GameConfig CreateWithSchema()
     {
-        string xml = File.ReadAllText(ConfigPath);
-        GameSerializerSettings settings = BuildSchemaSettings();
-        GameSerializer serializer = new GameSerializer(typeof(GameConfig), settings);
-        using StringReader reader = new StringReader(xml);
-        return (GameConfig)serializer.Deserialize(reader);
+        return Create();
     }
 
     public static void DeserializeWithSchema(string xml)

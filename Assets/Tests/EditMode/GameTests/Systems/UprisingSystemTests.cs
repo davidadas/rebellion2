@@ -363,28 +363,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_IncidentSubtractsResistanceRegiment()
-        {
-            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
-                ownerSupport: 10,
-                troopCount: 1
-            );
-            planet.GetChildren<Regiment>()[0].TypeID = game.Config
-                .Uprising
-                .ResistanceRegimentTypeID;
-            ScheduleIncident(planet, 1);
-            game.CurrentTick = 1;
-            planet.EnergyCapacity = 1;
-            Building facility = EntityFactory.CreateBuilding("b1", "empire");
-            facility.ManufacturingStatus = ManufacturingStatus.Complete;
-            game.AttachNode(facility, planet);
-
-            system.ProcessTick();
-
-            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
-        }
-
-        [Test]
         public void ProcessTick_IncidentAppliesInciteAndSubdueLeadershipAdjustments()
         {
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(

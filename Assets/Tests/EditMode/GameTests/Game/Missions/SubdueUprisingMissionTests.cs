@@ -14,79 +14,7 @@ namespace Rebellion.Tests.Game.Missions
     public class SubdueUprisingMissionTests
     {
         [Test]
-        public void RollParticipantSuccess_ResistanceRegimentRaisesScoreByOne()
-        {
-            (
-                GameRoot game,
-                Planet empirePlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            empirePlanet.BeginUprising();
-            game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
-            {
-                { 30, 0 },
-                { 31, 100 },
-            };
-
-            Mission mission = CreateSubdueUprisingMission(
-                "empire",
-                empirePlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, empirePlanet);
-            mission.Initiate(0);
-
-            Assert.IsFalse(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
-
-            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
-            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
-            regiment.TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
-            game.AttachNode(regiment, empirePlanet);
-
-            Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
-        }
-
-        [Test]
-        public void RollParticipantSuccess_IncompleteResistanceRegimentDoesNotRaiseScore()
-        {
-            (
-                GameRoot game,
-                Planet empirePlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            empirePlanet.BeginUprising();
-            game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
-            {
-                { 30, 0 },
-                { 31, 100 },
-            };
-
-            Mission mission = CreateSubdueUprisingMission(
-                "empire",
-                empirePlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, empirePlanet);
-            mission.Initiate(0);
-
-            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
-            regiment.ManufacturingStatus = ManufacturingStatus.Building;
-            regiment.TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
-            game.AttachNode(regiment, empirePlanet);
-
-            Assert.IsFalse(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
-        }
-
-        [Test]
-        public void RollParticipantSuccess_NonResistanceDefenseRatingDoesNotAffectScore()
+        public void RollParticipantSuccess_GarrisonedRegimentDoesNotAffectScore()
         {
             (
                 GameRoot game,
@@ -112,7 +40,6 @@ namespace Rebellion.Tests.Game.Missions
             mission.Initiate(0);
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
-            regiment.TypeID = "non-resistance";
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             regiment.DefenseRating = 500;
             game.AttachNode(regiment, empirePlanet);

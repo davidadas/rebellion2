@@ -359,6 +359,99 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
+        public void Deserialize_OverlayLeaf_ReplacesDefaultValue()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            XmlDocument defaults = LoadDocument(
+                "<SimpleItem><Name>base</Name><Value>1</Value></SimpleItem>"
+            );
+            XmlDocument overlay = LoadDocument("<SimpleItem><Value>2</Value></SimpleItem>");
+
+            SimpleItem restored = (SimpleItem)serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual("base", restored.Name);
+            Assert.AreEqual(2, restored.Value);
+        }
+
+        [Test]
+        public void Deserialize_OverlayElementMissingFromDefaults_AppendsToDefaults()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            XmlDocument defaults = LoadDocument("<SimpleItem><Name>base</Name></SimpleItem>");
+            XmlDocument overlay = LoadDocument("<SimpleItem><Value>7</Value></SimpleItem>");
+
+            SimpleItem restored = (SimpleItem)serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual("base", restored.Name);
+            Assert.AreEqual(7, restored.Value);
+        }
+
+        [Test]
+        public void Deserialize_OverlayCollection_ReplacesCollectionWholesale()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(NestedItem));
+            XmlDocument defaults = LoadDocument(
+                "<NestedItem><Identifier>base</Identifier><Items>"
+                    + "<SimpleItem><Name>first</Name></SimpleItem>"
+                    + "<SimpleItem><Name>second</Name></SimpleItem>"
+                    + "</Items></NestedItem>"
+            );
+            XmlDocument overlay = LoadDocument(
+                "<NestedItem><Items><SimpleItem><Name>only</Name></SimpleItem></Items></NestedItem>"
+            );
+
+            NestedItem restored = (NestedItem)serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual("base", restored.Identifier);
+            Assert.AreEqual(1, restored.Items.Count);
+            Assert.AreEqual("only", restored.Items[0].Name);
+        }
+
+        [Test]
+        public void Deserialize_OverlayAttribute_ReplacesDefaultAttribute()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            XmlDocument defaults = LoadDocument(
+                "<SimpleItem AttributeVariable=\"base\"><Name>kept</Name></SimpleItem>"
+            );
+            XmlDocument overlay = LoadDocument("<SimpleItem AttributeVariable=\"override\"/>");
+
+            SimpleItem restored = (SimpleItem)serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual("override", restored.AttributeVariable);
+            Assert.AreEqual("kept", restored.Name);
+        }
+
+        [Test]
+        public void Deserialize_LayeredDocuments_DoesNotModifyInputs()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            XmlDocument defaults = LoadDocument(
+                "<SimpleItem><Name>base</Name><Value>1</Value></SimpleItem>"
+            );
+            XmlDocument overlay = LoadDocument("<SimpleItem><Value>2</Value></SimpleItem>");
+            string defaultsXml = defaults.OuterXml;
+            string overlayXml = overlay.OuterXml;
+
+            serializer.Deserialize(defaults, overlay);
+
+            Assert.AreEqual(defaultsXml, defaults.OuterXml);
+            Assert.AreEqual(overlayXml, overlay.OuterXml);
+        }
+
+        [Test]
+        public void Deserialize_OverlayRootMismatch_ThrowsInvalidDataException()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            XmlDocument defaults = LoadDocument("<SimpleItem><Name>base</Name></SimpleItem>");
+            XmlDocument overlay = LoadDocument(
+                "<NestedItem><Identifier>x</Identifier></NestedItem>"
+            );
+
+            Assert.Throws<InvalidDataException>(() => serializer.Deserialize(defaults, overlay));
+        }
+
+        [Test]
         public void Serialize_InlineCollection_RejectsNullItem()
         {
             GameSerializer serializer = new GameSerializer(typeof(ItemWithInlineCollection));
@@ -1808,6 +1901,18 @@ namespace Rebellion.Tests.Util.Serialization
                 stream.Seek(0, SeekOrigin.Begin);
                 serializer.DeserializeNode<SimpleItem>(stream);
             });
+        }
+
+        /// <summary>
+        /// Loads an XML string into a document.
+        /// </summary>
+        /// <param name="xml">The XML content to load.</param>
+        /// <returns>The loaded document.</returns>
+        private static XmlDocument LoadDocument(string xml)
+        {
+            XmlDocument document = new XmlDocument();
+            document.LoadXml(xml);
+            return document;
         }
 
         private static XmlSchemaSet BuildSimpleItemSchema()
