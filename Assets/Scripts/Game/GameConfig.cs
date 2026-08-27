@@ -199,6 +199,16 @@ namespace Rebellion.Game
 
             public int ExistingAttackOrderBonus { get; set; } = 25;
 
+            /// <summary>
+            /// Owned planets required per concurrent attack campaign. Zero disables the cap.
+            /// </summary>
+            public int PlanetsPerAttackCampaign { get; set; }
+
+            /// <summary>
+            /// Minimum combat value a battle fleet needs before colonization duty may draft it.
+            /// </summary>
+            public int MinimumColonizationFleetCombatValue { get; set; }
+
             public int HeadquartersAttackBonus { get; set; } = 45;
 
             public int OrbitalResponseBonus { get; set; } = 250;

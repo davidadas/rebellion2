@@ -5,6 +5,7 @@ using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Planners
 {
@@ -237,7 +238,8 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            bool canStartAttack = CanStartAttackOrder(context, fleet);
+            bool canStartAttack =
+                CanStartAttackOrder(context, fleet) && !IsAtAttackCampaignLimit(context);
             string preferredSystemId = canStartAttack
                 ? FindPreferredAttackSystemId(context, fleet, currentPlanet)
                 : string.Empty;
@@ -360,6 +362,32 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">The fleet to inspect.</param>
         /// <returns>True if the fleet can start an attack order.</returns>
+        /// <summary>
+        /// Returns whether the faction has reached its concurrent attack campaign limit.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when no additional attack campaigns may start.</returns>
+        private bool IsAtAttackCampaignLimit(AITurnContext context)
+        {
+            int planetsPerCampaign = context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment
+                .PlanetsPerAttackCampaign;
+            if (planetsPerCampaign <= 0)
+                return false;
+
+            int ownedPlanetCount = context.Assessment.OwnedPlanets.Count(planet =>
+                planet.IsColonized && !planet.IsDestroyed
+            );
+            int campaignLimit = Math.Max(
+                1,
+                IntegerMath.DivideRoundedUp(ownedPlanetCount, planetsPerCampaign)
+            );
+            return context.Assessment.AttackOrderedFleets.Count >= campaignLimit;
+        }
+
         private bool CanStartAttackOrder(AITurnContext context, Fleet fleet)
         {
             if (fleet.RoleType != FleetRoleType.Battle)
@@ -412,6 +440,8 @@ namespace Rebellion.AI.Planners
                 && fleet.Movement == null
                 && !fleet.IsInCombat
                 && fleet.HasOperationalCapitalShips()
+                && context.Assessment.GetReadyFleetCombatValue(fleet)
+                    >= context.Game.Config.AI.FleetDeployment.MinimumColonizationFleetCombatValue
                 && AIColonizationProposal.FindCarrier(fleet) != null
                 && context.Assessment.CanFleetDepartHeadquarters(fleet);
         }
@@ -730,10 +760,47 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
+            if (
+                !IsDefendingThreatenedPlanet(context, targetFleet)
+                && IsReservedForNewCampaign(context, sourceFleet)
+            )
+                return false;
+
             Planet sourcePlanet = context.Assessment.GetFleetPlanet(sourceFleet);
             return sourcePlanet != null
                 && sourcePlanet.GetOwnerInstanceID() == context.Faction.InstanceID
                 && !context.Assessment.IsFactionHeadquarters(sourcePlanet);
+        }
+
+        /// <summary>
+        /// Returns whether a fleet holds a defense order for a planet under actual hostile
+        /// contact, which lets it requisition ships past campaign reservations.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The receiving fleet to inspect.</param>
+        /// <returns>True when the fleet defends a planet with hostile contact.</returns>
+        private bool IsDefendingThreatenedPlanet(AITurnContext context, Fleet fleet)
+        {
+            if (fleet?.Order?.OrderType != FleetOrderType.Defend)
+                return false;
+
+            Planet defendedPlanet = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
+            return context.Assessment.GetPlanetDefenseThreatStrength(defendedPlanet) > 0;
+        }
+
+        /// <summary>
+        /// Returns whether an idle battle fleet should keep its ships to open another attack
+        /// campaign instead of donating them, which applies while the faction fields fewer
+        /// campaigns than its limit allows.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="sourceFleet">The potential donor fleet.</param>
+        /// <returns>True when the fleet is reserved for a future campaign.</returns>
+        private bool IsReservedForNewCampaign(AITurnContext context, Fleet sourceFleet)
+        {
+            return sourceFleet.RoleType == FleetRoleType.Battle
+                && context.Game.Config.AI.FleetDeployment.PlanetsPerAttackCampaign > 0
+                && !IsAtAttackCampaignLimit(context);
         }
 
         /// <summary>

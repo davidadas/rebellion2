@@ -77,6 +77,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithAssemblingCampaign_AddsAttackOrderForDifferentSystem()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.PlanetsPerAttackCampaign = 0;
             PlanetSector firstSystem = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(
                 game,
@@ -520,6 +521,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithAnotherAttackOrder_AddsAttackProposalForIdleFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.PlanetsPerAttackCampaign = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet assignedTarget = AITestSceneBuilder.AddPlanet(
@@ -563,6 +565,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithAnotherAttackOrderAndFavorableOrbitalTarget_AddsResponseProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.PlanetsPerAttackCampaign = 0;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 125;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
@@ -1272,6 +1275,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithIdleBattleFleetAndUncolonizedPlanet_AddsColonizationProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumColonizationFleetCombatValue = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
@@ -1290,6 +1294,59 @@ namespace Rebellion.Tests.AI.Planners
                         proposal.Fleet == fleet
                         && proposal.TargetPlanet.InstanceID == target.InstanceID
                     )
+            );
+        }
+
+        [Test]
+        public void Plan_WithUnderstrengthFleetBelowColonizationMinimum_DoesNotAddColonizationProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumColonizationFleetCombatValue = 500;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
+            target.IsColonized = false;
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID, "fleet", 100);
+            AddColonizationRegiment(game, fleet, empire.InstanceID);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
+
+            Assert.IsFalse(
+                proposals.OfType<AIColonizationProposal>().Any(proposal => proposal.Fleet == fleet),
+                "Understrength battle fleet should not be drafted for colonization"
+            );
+        }
+
+        [Test]
+        public void Plan_AtAttackCampaignLimit_DoesNotAddAttackProposals()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.PlanetsPerAttackCampaign = 100;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
+            Fleet attacking = AddBattleFleet(game, owned, empire.InstanceID, "attacking", 500);
+            attacking.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = enemy.InstanceID,
+            };
+            Fleet idle = AddBattleFleet(game, owned, empire.InstanceID, "idle", 500);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIFleetAttackProposal>()
+                    .Any(proposal =>
+                        proposal.Fleet == idle && proposal.OrderType == FleetOrderType.Attack
+                    ),
+                "Second attack campaign should not start while at the campaign limit"
             );
         }
 
@@ -1316,6 +1373,8 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithConquestAndColonizationTargets_OffersEligibleFleetsBothOrders()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.PlanetsPerAttackCampaign = 0;
+            game.Config.AI.FleetDeployment.MinimumColonizationFleetCombatValue = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -1392,6 +1451,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithAnotherColonizationOrder_AddsProposalForIdleFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumColonizationFleetCombatValue = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet firstTarget = AITestSceneBuilder.AddPlanet(game, system, "target-1", null);
@@ -1824,6 +1884,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithUnderstrengthHeadquartersDefenseFleet_AddsTransferProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.PlanetsPerAttackCampaign = 0;
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
