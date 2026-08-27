@@ -136,17 +136,63 @@ public static class HeadlessSimulationRunner
             activityTracker.RecordInitialState(game);
             personnelOutcomeTracker.RecordInitialState(game);
 
+            UnityEngine.Debug.LogWarning(
+                $"[events] initial pool ({game.GetEventPool().Count}): "
+                    + string.Join(", ", game.GetEventPool().Select(e => e.InstanceID))
+            );
+            System.Diagnostics.Stopwatch tickWatch = new System.Diagnostics.Stopwatch();
+            double wholeTickMs = 0;
             for (int i = 0; i < options.TickCount && victory == null; i++)
             {
                 if (i % 25 == 0)
                     LogToFile(logPath, $"[HeadlessSim] tick {i}");
+                tickWatch.Restart();
                 manager.ProcessTick();
+                tickWatch.Stop();
+                wholeTickMs += tickWatch.Elapsed.TotalMilliseconds;
+                Rebellion.Util.Common.TickProfiler.Begin("harness.trackers");
                 idleTracker.RecordTick(game);
                 manufacturedUnitTracker.RecordTick(game);
                 fleetHistoryTracker.RecordTick(game);
                 activityTracker.RecordTick(game);
                 personnelOutcomeTracker.RecordTick(game);
                 attackReadinessTracker.RecordTick(game);
+                Rebellion.Util.Common.TickProfiler.End();
+            }
+            UnityEngine.Debug.LogWarning(
+                $"[perf] whole-tick wall total: {wholeTickMs:F0}ms ({wholeTickMs / options.TickCount:F1}/tick)"
+            );
+            UnityEngine.Debug.LogWarning(
+                $"[events] remaining pool ({game.GetEventPool().Count}): "
+                    + string.Join(", ", game.GetEventPool().Select(e => e.InstanceID))
+            );
+            UnityEngine.Debug.LogWarning(
+                "[events] activations: "
+                    + string.Join(
+                        ", ",
+                        game.EventRuntime.States.Select(kv =>
+                            $"{kv.Key}={kv.Value.ActivationCount}@t{kv.Value.LastActivationTick}"
+                        )
+                    )
+            );
+            foreach (Faction garrisonFaction in game.GetFactions())
+            {
+                var garrisons = game.GetSceneNodesByType<Rebellion.Game.Galaxy.Planet>()
+                    .Where(planet => planet.GetOwnerInstanceID() == garrisonFaction.InstanceID)
+                    .Select(planet => new
+                    {
+                        planet.InstanceID,
+                        Regiments = planet.GetAllRegiments().Count,
+                    })
+                    .OrderByDescending(entry => entry.Regiments)
+                    .ToList();
+                UnityEngine.Debug.LogWarning(
+                    $"[garrisons] {garrisonFaction.InstanceID} planets={garrisons.Count} totalRegiments={garrisons.Sum(entry => entry.Regiments)}: "
+                        + string.Join(
+                            ", ",
+                            garrisons.Select(entry => $"{entry.InstanceID}={entry.Regiments}")
+                        )
+                );
             }
 
             string savePath = SaveSimulation(game, options);
@@ -164,6 +210,7 @@ public static class HeadlessSimulationRunner
                 victory
             );
             string resolvedPath = WriteSimulationSummary(options.OutputPath, report);
+            Rebellion.Util.Common.TickProfiler.ReportTotals(report.TicksCompleted);
             string completeMessage =
                 $"[HeadlessSim] complete ticks={report.TicksCompleted} output={resolvedPath}";
             UnityEngine.Debug.Log(completeMessage);

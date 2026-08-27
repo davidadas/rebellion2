@@ -86,6 +86,7 @@ namespace Rebellion.AI.Director
             ICollection<GameResult> results
         )
         {
+            TickProfiler.Begin("ai.context");
             AITurnContext context = new AITurnContext(
                 _game,
                 faction,
@@ -97,10 +98,13 @@ namespace Rebellion.AI.Director
                 _random,
                 _fogOfWar
             );
+            TickProfiler.End();
 
             foreach (IAITurnPhase phase in _turnPhases)
             {
+                TickProfiler.Begin("ai." + phase.GetType().Name);
                 phase.Execute(context);
+                TickProfiler.End();
                 yield return null;
             }
 

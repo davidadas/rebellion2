@@ -86,8 +86,32 @@ namespace Rebellion.AI.Planners
         public List<AIProposal> Plan(AITurnContext context)
         {
             ResetPlanningCache();
+            _funnelCounts.Clear();
             List<AIDemand> demands = _demandGenerator.Generate(context);
-            return GenerateProposals(context, demands);
+            List<AIProposal> proposals = GenerateProposals(context, demands);
+            if (context?.Game != null && context.Game.CurrentTick % 100 == 0)
+            {
+                string reasons = string.Join(
+                    ", ",
+                    _funnelCounts
+                        .OrderByDescending(kv => kv.Value)
+                        .Select(kv => $"{kv.Key}={kv.Value}")
+                );
+                GameLogger.Warning(
+                    $"[funnel] t{context.Game.CurrentTick} {context.Faction?.InstanceID} demands={demands.Count} proposals={proposals.Count} :: {reasons}"
+                );
+            }
+            return proposals;
+        }
+
+        // Temporary diagnostic scaffolding for the demand-to-proposal funnel.
+        private static readonly Dictionary<string, int> _funnelCounts =
+            new Dictionary<string, int>();
+
+        private static void CountFunnel(AIDemandKind kind, string reason)
+        {
+            string key = $"{kind}.{reason}";
+            _funnelCounts[key] = _funnelCounts.TryGetValue(key, out int count) ? count + 1 : 1;
         }
 
         /// <summary>
@@ -140,7 +164,10 @@ namespace Rebellion.AI.Planners
         {
             Technology product = GetUnlockedTechnology(context, demand);
             if (product == null)
+            {
+                CountFunnel(demand.Kind, "noTech");
                 return;
+            }
 
             bool distributesDemand = IsDistributedProductionDemand(demand);
             int remainingQuantity = GetRequestedManufacturingCount(
@@ -156,11 +183,20 @@ namespace Rebellion.AI.Planners
                 );
             }
             if (remainingQuantity <= 0)
+            {
+                CountFunnel(demand.Kind, "qtyZero");
                 return;
+            }
 
             List<Planet> producerPlanets = FindProducerPlanets(context, demand).ToList();
+            if (producerPlanets.Count == 0)
+            {
+                CountFunnel(demand.Kind, "noProducer");
+                return;
+            }
             if (!distributesDemand)
             {
+                int beforeCount = proposals.Count;
                 if (IsFacilityExpansionDemand(demand))
                     AddProducerSpecificProposal(
                         context,
@@ -179,9 +215,12 @@ namespace Rebellion.AI.Planners
                         producerPlanets,
                         proposals
                     );
+                if (proposals.Count == beforeCount)
+                    CountFunnel(demand.Kind, "nonDistributedRejected");
                 return;
             }
 
+            int proposalsBefore = proposals.Count;
             foreach (Planet producerPlanet in producerPlanets)
             {
                 AIDemand proposalDemand = GetProposalDemand(
@@ -192,7 +231,10 @@ namespace Rebellion.AI.Planners
                     remainingQuantity
                 );
                 if (proposalDemand == null)
+                {
+                    CountFunnel(demand.Kind, "producerRejected");
                     continue;
+                }
 
                 AIManufactureProposal proposal = new AIManufactureProposal(
                     proposalDemand,
@@ -209,6 +251,9 @@ namespace Rebellion.AI.Planners
                         return;
                 }
             }
+
+            if (proposals.Count == proposalsBefore)
+                CountFunnel(demand.Kind, "allProducersRejected");
         }
 
         /// <summary>
