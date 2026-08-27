@@ -2047,6 +2047,9 @@ namespace Rebellion.Systems
         /// <param name="fleet">Empty fleet to remove.</param>
         private void RemoveFleetFromScene(Fleet fleet)
         {
+            GameLogger.Warning(
+                $"[fleet] removed {fleet.InstanceID} role={fleet.RoleType} owner={fleet.GetOwnerInstanceID()} reason=combat"
+            );
             _game.DeleteNode(fleet);
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
         }

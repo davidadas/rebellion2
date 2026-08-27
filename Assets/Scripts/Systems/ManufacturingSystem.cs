@@ -126,7 +126,7 @@ namespace Rebellion.Systems
 
                 if (!enqueued)
                 {
-                    _fleetSystem.RemoveIfEmpty(capitalShipDestination);
+                    _fleetSystem.RemoveIfEmpty(capitalShipDestination, "delivery");
                     return started;
                 }
 
@@ -1490,7 +1490,7 @@ namespace Rebellion.Systems
                 _game.DetachNode(sceneNode);
 
             if (parent is Fleet fleet)
-                _fleetSystem.RemoveIfEmpty(fleet);
+                _fleetSystem.RemoveIfEmpty(fleet, "queue-clear");
         }
 
         /// <summary>

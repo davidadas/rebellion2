@@ -593,7 +593,7 @@ namespace Rebellion.Systems
                 )
             )
             {
-                _fleetSystem.RemoveIfEmpty(createdDestinationFleet);
+                _fleetSystem.RemoveIfEmpty(createdDestinationFleet, "transfer");
                 return false;
             }
 
@@ -602,10 +602,10 @@ namespace Rebellion.Systems
             if (accepted)
             {
                 foreach (Fleet sourceFleet in sourceFleets.Distinct())
-                    _fleetSystem.RemoveIfEmpty(sourceFleet);
+                    _fleetSystem.RemoveIfEmpty(sourceFleet, "transfer");
             }
 
-            _fleetSystem.RemoveIfEmpty(createdDestinationFleet);
+            _fleetSystem.RemoveIfEmpty(createdDestinationFleet, "transfer");
             if (accepted)
                 ResultsProduced?.Invoke(results);
 

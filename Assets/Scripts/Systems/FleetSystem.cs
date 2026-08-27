@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.Systems
@@ -110,7 +111,7 @@ namespace Rebellion.Systems
             _game.AttachNode(fleet, planet);
 
             foreach (Fleet sourceFleet in sourceFleets.Distinct())
-                RemoveIfEmpty(sourceFleet);
+                RemoveIfEmpty(sourceFleet, "merge");
 
             return fleet;
         }
@@ -120,7 +121,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="fleet">The fleet or its snapshot.</param>
         /// <returns>True when the fleet was removed.</returns>
-        public bool RemoveIfEmpty(Fleet fleet)
+        public bool RemoveIfEmpty(Fleet fleet, string reason = "empty")
         {
             Fleet liveFleet = ResolveLiveFleet(fleet);
             if (
@@ -130,6 +131,9 @@ namespace Rebellion.Systems
             )
                 return false;
 
+            GameLogger.Warning(
+                $"[fleet] removed {liveFleet.InstanceID} role={liveFleet.RoleType} owner={liveFleet.GetOwnerInstanceID()} reason={reason}"
+            );
             _game.DetachNode(liveFleet);
             return true;
         }

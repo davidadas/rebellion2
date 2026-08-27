@@ -4,6 +4,7 @@ using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Proposals
 {
@@ -109,6 +110,9 @@ namespace Rebellion.AI.Proposals
                 if (colonizationFleet != null && colonizationFleet != Fleet)
                 {
                     colonizationFleet.RoleType = FleetRoleType.Patrol;
+                    GameLogger.Warning(
+                        $"[fleet] drafted {colonizationFleet.InstanceID} owner={colonizationFleet.GetOwnerInstanceID()} reason=colonization"
+                    );
                     colonizationFleet.Order = Fleet.Order;
                     Fleet.Order = null;
                 }
