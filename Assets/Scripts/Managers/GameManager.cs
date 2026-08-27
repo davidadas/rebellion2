@@ -34,6 +34,7 @@ public sealed class GameManager
     private DuelSystem _duelSystem;
     private MovementSystem _movementSystem;
     private HeadquartersSystem _headquartersSystem;
+    private NamingSystem _namingSystem;
 
     // Economy Systems.
     private ManufacturingSystem _manufacturingSystem;
@@ -151,6 +152,7 @@ public sealed class GameManager
     public void ProcessFactionAutomation(Faction faction)
     {
         _factionAutomationSystem?.ProcessFaction(faction);
+        _namingSystem?.ProcessFaction(faction);
     }
 
     /// <summary>
@@ -255,6 +257,7 @@ public sealed class GameManager
 
         ProcessResults(_missionSystem.ProcessTick());
         ProcessResults(_eventSystem.ProcessEvents(_game.GetEventPool()));
+        _namingSystem.ProcessTick();
         ProcessResults(_aiSystem.ProcessTick());
 
         ProcessResults(_blockadeSystem.ProcessTick());
@@ -336,6 +339,7 @@ public sealed class GameManager
         _movementSystem = new MovementSystem(_game, _fogOfWarSystem, _fleetSystem, _blockadeSystem);
         _headquartersSystem = new HeadquartersSystem(_game, _movementSystem);
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
+        _namingSystem = new NamingSystem(_game);
         _factionAutomationSystem = new FactionAutomationSystem(
             _game,
             _gameData,

@@ -75,6 +75,42 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessFactionAutomation_ManageNaming_AssignsNameImmediately()
+        {
+            GameRoot game = new GameRoot();
+            Faction faction = new Faction
+            {
+                InstanceID = "FACTION",
+                PlayerID = "PLAYER",
+                ManageNaming = true,
+            };
+            faction.ShipNamePools.Add(
+                new FactionNamePool
+                {
+                    NamePoolID = "POOL",
+                    Names = new List<string> { "Named Ship" },
+                }
+            );
+            game.GetFactions().Add(faction);
+            GameManager manager = TestContent.CreateGameManager(game);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP",
+                TypeID = "SHIP_TYPE",
+                DisplayName = "Generic Ship",
+                OwnerInstanceID = faction.InstanceID,
+                ShipNamePoolID = "POOL",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            faction.AddOwnedUnit(ship);
+
+            manager.ProcessFactionAutomation(faction);
+
+            Assert.AreEqual("Named Ship", ship.DisplayName);
+            Assert.IsTrue(ship.HasAssignedName);
+        }
+
+        [Test]
         public void ProcessTick_EventResults_DoesNotAddAutomaticMessages()
         {
             GameRoot game = new GameRoot();

@@ -79,6 +79,93 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        public void TryTakeNextShipName_AvailableNames_ReturnsNamesInOrder()
+        {
+            _faction.ShipNamePools.Add(
+                new FactionNamePool
+                {
+                    NamePoolID = "POOL",
+                    Names = new List<string> { "First", "Second" },
+                }
+            );
+
+            bool foundFirst = _faction.TryTakeNextShipName("POOL", out string firstName);
+            bool foundSecond = _faction.TryTakeNextShipName("POOL", out string secondName);
+
+            Assert.IsTrue(foundFirst);
+            Assert.IsTrue(foundSecond);
+            Assert.AreEqual("First", firstName);
+            Assert.AreEqual("Second", secondName);
+            Assert.AreEqual(2, _faction.ShipNamePools.Single().NextNameIndex);
+        }
+
+        [Test]
+        public void TryTakeNextShipName_ExhaustedPrimaryPool_ReturnsFallbackName()
+        {
+            _faction.ShipNamePools.AddRange(
+                new FactionNamePool[]
+                {
+                    new FactionNamePool
+                    {
+                        NamePoolID = "PRIMARY",
+                        FallbackNamePoolID = "FALLBACK",
+                        Names = new List<string> { "Used" },
+                        NextNameIndex = 1,
+                    },
+                    new FactionNamePool
+                    {
+                        NamePoolID = "FALLBACK",
+                        Names = new List<string> { "Available" },
+                    },
+                }
+            );
+
+            bool found = _faction.TryTakeNextShipName("PRIMARY", out string shipName);
+
+            Assert.IsTrue(found);
+            Assert.AreEqual("Available", shipName);
+            Assert.AreEqual(1, _faction.ShipNamePools[1].NextNameIndex);
+        }
+
+        [Test]
+        public void TryTakeNextShipName_FallbackCycle_ReturnsFalse()
+        {
+            _faction.ShipNamePools.AddRange(
+                new FactionNamePool[]
+                {
+                    new FactionNamePool { NamePoolID = "FIRST", FallbackNamePoolID = "SECOND" },
+                    new FactionNamePool { NamePoolID = "SECOND", FallbackNamePoolID = "FIRST" },
+                }
+            );
+
+            bool found = _faction.TryTakeNextShipName("FIRST", out string shipName);
+
+            Assert.IsFalse(found);
+            Assert.IsNull(shipName);
+        }
+
+        [Test]
+        public void TakeNextGenericShipName_SameShipType_ReturnsSequentialNames()
+        {
+            CapitalShip firstShip = new CapitalShip
+            {
+                TypeID = "SHIP_TYPE",
+                DisplayName = "Generic Ship",
+            };
+            CapitalShip secondShip = new CapitalShip
+            {
+                TypeID = "SHIP_TYPE",
+                DisplayName = "Generic Ship",
+            };
+
+            string firstName = _faction.TakeNextGenericShipName(firstShip);
+            string secondName = _faction.TakeNextGenericShipName(secondShip);
+
+            Assert.AreEqual("Generic Ship 1", firstName);
+            Assert.AreEqual("Generic Ship 2", secondName);
+        }
+
+        [Test]
         public void AddOwnedUnit_ValidPlanet_AddsPlanetToOwnedNodes()
         {
             _faction.AddOwnedUnit(_planet1);
@@ -621,6 +708,22 @@ namespace Rebellion.Tests.Game.Factions
             _faction.AgentAdvice = false;
             _faction.ManageGarrisons = true;
             _faction.ManageProduction = true;
+            _faction.ManageNaming = true;
+            _faction.ShipNamePools.Add(
+                new FactionNamePool
+                {
+                    NamePoolID = "PRIMARY",
+                    FallbackNamePoolID = "FALLBACK",
+                    Names = new List<string> { "Used", "Available" },
+                    NextNameIndex = 1,
+                }
+            );
+            CapitalShip genericShip = new CapitalShip
+            {
+                TypeID = "SHIP_TYPE",
+                DisplayName = "Generic Ship",
+            };
+            _faction.TakeNextGenericShipName(genericShip);
             _faction.RawMaterialStockpile = 17;
             _faction.RefinedMaterialStockpile = 23;
             _faction.PendingRawMaterialFacilityIDs.AddRange(new[] { "REFINERY1", "REFINERY2" });
@@ -658,6 +761,13 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsFalse(deserialized.AgentAdvice);
             Assert.IsTrue(deserialized.ManageGarrisons);
             Assert.IsTrue(deserialized.ManageProduction);
+            Assert.IsTrue(deserialized.ManageNaming);
+            FactionNamePool deserializedNamePool = deserialized.ShipNamePools.Single();
+            Assert.AreEqual("PRIMARY", deserializedNamePool.NamePoolID);
+            Assert.AreEqual("FALLBACK", deserializedNamePool.FallbackNamePoolID);
+            CollectionAssert.AreEqual(new[] { "Used", "Available" }, deserializedNamePool.Names);
+            Assert.AreEqual(1, deserializedNamePool.NextNameIndex);
+            Assert.AreEqual("Generic Ship 2", deserialized.TakeNextGenericShipName(genericShip));
             Assert.AreEqual(_faction.RawMaterialStockpile, deserialized.RawMaterialStockpile);
             Assert.AreEqual(
                 _faction.RefinedMaterialStockpile,

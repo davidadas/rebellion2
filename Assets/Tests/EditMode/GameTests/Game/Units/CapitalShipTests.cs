@@ -39,6 +39,24 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void AssignName_ValidName_ReplacesDisplayNameAndMarksAssigned()
+        {
+            _capitalShip.DisplayName = "Generic Ship";
+
+            _capitalShip.AssignName("Assigned Ship");
+
+            Assert.AreEqual("Assigned Ship", _capitalShip.DisplayName);
+            Assert.IsTrue(_capitalShip.HasAssignedName);
+        }
+
+        [Test]
+        public void AssignName_WhitespaceName_ThrowsArgumentException()
+        {
+            Assert.Throws<ArgumentException>(() => _capitalShip.AssignName(" "));
+            Assert.IsFalse(_capitalShip.HasAssignedName);
+        }
+
+        [Test]
         public void AddStarfighter_WithinCapacity_AddsStarfighter()
         {
             Starfighter starfighter = new Starfighter();
@@ -329,6 +347,8 @@ namespace Rebellion.Tests.Game.Units
         public void SerializeAndDeserialize_CapitalShipWithChildren_MaintainsState()
         {
             _capitalShip.ManufacturingQueueSequence = 7;
+            _capitalShip.ShipNamePoolID = "POOL";
+            _capitalShip.AssignName("Named Ship");
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
             Starfighter starfighter = new Starfighter();
             Regiment regiment = new Regiment();
@@ -362,6 +382,9 @@ namespace Rebellion.Tests.Game.Units
                 deserialized.ManufacturingQueueSequence,
                 "ManufacturingQueueSequence should be correctly deserialized."
             );
+            Assert.AreEqual("POOL", deserialized.ShipNamePoolID);
+            Assert.AreEqual("Named Ship", deserialized.DisplayName);
+            Assert.IsTrue(deserialized.HasAssignedName);
             Assert.AreEqual(
                 _capitalShip.GetChildren<Officer>().Count,
                 deserialized.GetChildren<Officer>().Count,
