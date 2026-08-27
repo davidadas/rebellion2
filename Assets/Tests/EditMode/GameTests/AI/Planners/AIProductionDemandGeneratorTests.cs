@@ -11,6 +11,7 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.AI.Planners
 {
@@ -679,6 +680,95 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_InteriorPlanetWithScaledFloor_ReducesGarrisonTarget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Garrison.InteriorCaptureFloorPercent = 34;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "interior",
+                empire.InstanceID
+            );
+            planet.SetPopularSupport(empire.InstanceID, 100);
+            AddMaintenanceCapacity(game, planet, 1);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            AIDemand garrisonDemand = demands.Single(demand =>
+                demand.Kind == AIDemandKind.GarrisonRegimentReserve
+                && demand.DestinationPlanet == planet
+            );
+            int expected = IntegerMath.ScaleByPercent(
+                game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount,
+                34
+            );
+            Assert.AreEqual(expected, garrisonDemand.QuantityNeeded);
+        }
+
+        [Test]
+        public void Generate_ThreatenedPlanetWithScaledFloor_KeepsFullGarrisonTarget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Garrison.InteriorCaptureFloorPercent = 34;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "border", empire.InstanceID);
+            planet.SetPopularSupport(empire.InstanceID, 100);
+            AddMaintenanceCapacity(game, planet, 1);
+            Planet enemyPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "enemy-colony",
+                rebels.InstanceID
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, enemyPlanet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            AIDemand garrisonDemand = demands.Single(demand =>
+                demand.Kind == AIDemandKind.GarrisonRegimentReserve
+                && demand.DestinationPlanet == planet
+            );
+            Assert.AreEqual(
+                game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount,
+                garrisonDemand.QuantityNeeded
+            );
+        }
+
+        [Test]
+        public void Generate_IncompleteStaticDefenseWithGate_SkipsStarfighterReserve()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = true;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "ungated",
+                empire.InstanceID
+            );
+            planet.SetPopularSupport(empire.InstanceID, 100);
+            AddMaintenanceCapacity(game, planet, 1);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(
+                demands.Any(demand =>
+                    demand.Kind == AIDemandKind.PlanetaryStarfighterReserve
+                    && demand.DestinationPlanet == planet
+                ),
+                "Starfighter reserve should wait for the static defense package"
+            );
+        }
+
+        [Test]
         public void Generate_WithUnthreatenedNonProductionPlanet_AddsStaticDefense()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -847,6 +937,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithInfrastructureStarfighterDeficit_AddsReserveDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
             game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -962,6 +1053,8 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithThreatenedOrdinaryPlanet_AddsStrengthBasedStarfighterDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
+            game.Config.AI.NonCapitalSummary.InteriorStarfighterBaselinePercent = 100;
             game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -1007,6 +1100,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithHeadquartersAndInfrastructure_RaisesHeadquartersStarfighterPressure()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
             game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet infrastructure = AITestSceneBuilder.AddPlanet(
@@ -2183,6 +2277,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithUnderGarrisonedPlanet_AddsRequiredGarrisonDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Garrison.InteriorCaptureFloorPercent = 100;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,

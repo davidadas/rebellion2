@@ -362,6 +362,18 @@ namespace Rebellion.Game
             public int StarfighterRequirementInfrastructure { get; set; }
 
             public int StarfighterRequirementHeadquarters { get; set; }
+
+            /// <summary>
+            /// Percent of the starfighter baseline kept on planets without a known threat.
+            /// Headquarters and production planets always keep their full baseline.
+            /// </summary>
+            public int InteriorStarfighterBaselinePercent { get; set; } = 100;
+
+            /// <summary>
+            /// Whether a planet must complete its static defense minimums before it can
+            /// request reserve starfighters.
+            /// </summary>
+            public bool RequireStaticDefenseBeforeStarfighters { get; set; }
         }
 
         /// <summary>
@@ -377,6 +389,12 @@ namespace Rebellion.Game
             public int UprisingMultiplier { get; set; }
 
             public int FleetLoadingDeficitThreshold { get; set; }
+
+            /// <summary>
+            /// Percent of the capture-garrison floor kept on planets without a known threat.
+            /// Uprising-suppression requirements always apply in full.
+            /// </summary>
+            public int InteriorCaptureFloorPercent { get; set; } = 100;
         }
 
         /// <summary>

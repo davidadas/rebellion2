@@ -2014,6 +2014,8 @@ namespace Rebellion.Tests.AI.Planners
                 minimumMaintenanceHeadroom;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
             game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
+            game.Config.AI.NonCapitalSummary.InteriorStarfighterBaselinePercent = 100;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "defense-system");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,

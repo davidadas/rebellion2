@@ -83,6 +83,7 @@ namespace Rebellion.AI.Director
         >(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _projectedFleetBombardmentStrengths =
             new Dictionary<string, int>(StringComparer.Ordinal);
+        private HashSet<string> _hostileSectorIds;
         private readonly Dictionary<ManufacturingType, int> _availableProductionLaneCounts =
             new Dictionary<ManufacturingType, int>();
         private readonly Dictionary<ManufacturingType, double> _productionThroughputs =
@@ -899,6 +900,38 @@ namespace Rebellion.AI.Director
                 planet.InstanceID,
                 () => GetHostileFleets(planet).Select(GetFleetCombatValue).DefaultIfEmpty().Max()
             );
+        }
+
+        /// <summary>
+        /// Returns whether a planet faces a known enemy presence: a hostile fleet in contact or
+        /// a known enemy colony in the planet's sector.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when the planet is threatened.</returns>
+        public bool IsPlanetThreatened(Planet planet)
+        {
+            if (planet == null)
+                return false;
+
+            if (GetPlanetDefenseThreatStrength(planet) > 0)
+                return true;
+
+            string sectorId = planet.GetParentOfType<PlanetSector>()?.InstanceID;
+            if (string.IsNullOrEmpty(sectorId))
+                return false;
+
+            _hostileSectorIds ??= KnownColonizedPlanets
+                .Where(known =>
+                {
+                    string ownerId = known.GetOwnerInstanceID();
+                    return !string.IsNullOrEmpty(ownerId)
+                        && ownerId != _context?.Faction?.InstanceID;
+                })
+                .Select(known => known.GetParentOfType<PlanetSector>()?.InstanceID)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToHashSet(StringComparer.Ordinal);
+
+            return _hostileSectorIds.Contains(sectorId);
         }
 
         public int GetRequiredPlanetDefenseStrength(Planet planet)

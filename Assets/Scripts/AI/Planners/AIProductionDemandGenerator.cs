@@ -116,6 +116,33 @@ namespace Rebellion.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Returns whether a planet has finished its static defense minimums: the shield
+        /// generator limit and the baseline weapon emplacement target.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when the planet's static defense minimums are complete.</returns>
+        private static bool HasCompletedStaticDefense(AITurnContext context, Planet planet)
+        {
+            int shieldTarget = context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            int weaponTarget = context.Game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
+            int shieldCount = 0;
+            int weaponCount = 0;
+            foreach (Building building in context.Assessment.GetPlanetBuildings(planet))
+            {
+                if (building.GetOwnerInstanceID() != context.Faction.InstanceID)
+                    continue;
+
+                if (building.DefenseFacilityClass == DefenseFacilityClass.Shield)
+                    shieldCount++;
+                else if (building.GetBuildingType() == BuildingType.Weapon)
+                    weaponCount++;
+            }
+
+            return shieldCount >= shieldTarget && weaponCount >= weaponTarget;
+        }
+
         private AIDemand CreatePlanetaryDefenseBuildingDemand(
             AITurnContext context,
             Planet planet,
@@ -157,6 +184,12 @@ namespace Rebellion.AI.Planners
                     .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
+                if (
+                    context.Game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters
+                    && !HasCompletedStaticDefense(context, planet)
+                )
+                    continue;
+
                 int committedCount = GetOwnedStarfighterCount(context, planet);
                 int targetCount = GetPlanetaryStarfighterRequirement(context, planet);
                 int deficit = targetCount - committedCount;
@@ -201,6 +234,17 @@ namespace Rebellion.AI.Planners
                 : HasProductionInfrastructure(context, planet)
                     ? config.StarfighterRequirementInfrastructure
                 : config.StarfighterRequirementDefault;
+            if (
+                !planet.IsHeadquarters
+                && !HasProductionInfrastructure(context, planet)
+                && !context.Assessment.IsPlanetThreatened(planet)
+            )
+            {
+                baseline = IntegerMath.ScaleByPercent(
+                    baseline,
+                    config.InteriorStarfighterBaselinePercent
+                );
+            }
             int requiredDefenseStrength = context.Assessment.GetRequiredPlanetDefenseStrength(
                 planet
             );
@@ -1746,10 +1790,16 @@ namespace Rebellion.AI.Planners
                 context.Game.Config.AI.Garrison
             );
 
-            return Math.Max(
-                context.Game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount,
-                stabilityTarget
-            );
+            int captureFloor = context.Game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount;
+            if (!planet.IsHeadquarters && !context.Assessment.IsPlanetThreatened(planet))
+            {
+                captureFloor = IntegerMath.ScaleByPercent(
+                    captureFloor,
+                    context.Game.Config.AI.Garrison.InteriorCaptureFloorPercent
+                );
+            }
+
+            return Math.Max(captureFloor, stabilityTarget);
         }
 
         /// <summary>
