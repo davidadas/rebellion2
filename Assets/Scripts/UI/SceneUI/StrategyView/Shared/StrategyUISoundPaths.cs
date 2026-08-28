@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Advisor;
 
 /// <summary>
 /// Defines shared non-themed sound resource paths used by strategy UI features.
@@ -35,6 +36,9 @@ internal static class StrategyUISoundPaths
         yield return GalacticInformationControl;
         yield return PlanetaryAssault;
 
+        foreach (string path in GetAdvisorNotificationAudioPaths(theme?.StrategyAdvisor))
+            yield return path;
+
         StrategyWindowSoundTheme windowSounds = theme?.StrategyWindowSounds;
         ConfirmDialogTheme confirmDialog = theme?.ConfirmDialogTheme;
         string[] themedPaths =
@@ -51,5 +55,45 @@ internal static class StrategyUISoundPaths
             if (!string.IsNullOrWhiteSpace(path))
                 yield return path.Trim();
         }
+    }
+
+    /// <summary>
+    /// Enumerates faction audio required by immediate strategy notifications.
+    /// </summary>
+    /// <param name="advisor">The active faction advisor theme.</param>
+    /// <returns>The configured notification audio paths.</returns>
+    private static IEnumerable<string> GetAdvisorNotificationAudioPaths(
+        StrategyAdvisorTheme advisor
+    )
+    {
+        StrategyAdvisorNotificationTheme assault = advisor?.GetNotification(
+            AdvisorNotificationType.PlanetaryAssault,
+            null,
+            AdvisorSubjectNotification.None
+        );
+        string droidPath = GetAdvisorAnimationAudioPath(advisor, assault?.Droid);
+        string protocolPath = GetAdvisorAnimationAudioPath(advisor, assault?.Protocol);
+        if (!string.IsNullOrWhiteSpace(droidPath))
+            yield return droidPath;
+        if (!string.IsNullOrWhiteSpace(protocolPath))
+            yield return protocolPath;
+    }
+
+    /// <summary>
+    /// Resolves one advisor animation's explicit or theme-relative audio path.
+    /// </summary>
+    /// <param name="advisor">The owning advisor theme.</param>
+    /// <param name="animation">The configured advisor animation.</param>
+    /// <returns>The resolved audio path, or null when no audio is configured.</returns>
+    private static string GetAdvisorAnimationAudioPath(
+        StrategyAdvisorTheme advisor,
+        StrategyAdvisorAnimationTheme animation
+    )
+    {
+        if (!string.IsNullOrWhiteSpace(animation?.AudioPath))
+            return animation.AudioPath.Trim();
+        return string.IsNullOrWhiteSpace(animation?.Audio)
+            ? null
+            : advisor.GetAudioPath(animation.Audio.Trim());
     }
 }
