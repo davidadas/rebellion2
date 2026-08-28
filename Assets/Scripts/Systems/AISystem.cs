@@ -51,15 +51,13 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes AI turns for all AI-controlled factions.
         /// </summary>
-        /// <returns>An empty result list.</returns>
+        /// <returns>The results produced by AI actions.</returns>
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
 
             foreach (Faction faction in _game.GetFactions().Where(f => f.IsAIControlled()))
-            {
                 results.AddRange(_director.ProcessFaction(faction));
-            }
 
             return results;
         }

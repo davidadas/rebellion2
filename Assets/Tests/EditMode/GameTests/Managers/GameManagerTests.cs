@@ -75,6 +75,42 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessFactionAutomation_ManageNaming_AssignsNameImmediately()
+        {
+            GameRoot game = new GameRoot();
+            Faction faction = new Faction
+            {
+                InstanceID = "FACTION",
+                PlayerID = "PLAYER",
+                ManageNaming = true,
+            };
+            faction.ShipNamePools.Add(
+                new FactionNamePool
+                {
+                    NamePoolID = "POOL",
+                    Names = new List<string> { "Named Ship" },
+                }
+            );
+            game.GetFactions().Add(faction);
+            GameManager manager = TestContent.CreateGameManager(game);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP",
+                TypeID = "SHIP_TYPE",
+                DisplayName = "Generic Ship",
+                OwnerInstanceID = faction.InstanceID,
+                ShipNamePoolID = "POOL",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            faction.AddOwnedUnit(ship);
+
+            manager.ProcessFactionAutomation(faction);
+
+            Assert.AreEqual("Named Ship", ship.DisplayName);
+            Assert.IsTrue(ship.HasAssignedName);
+        }
+
+        [Test]
         public void ProcessTick_EventResults_DoesNotAddAutomaticMessages()
         {
             GameRoot game = new GameRoot();
@@ -104,6 +140,61 @@ namespace Rebellion.Tests.Managers
             manager.ProcessTick();
 
             Assert.IsEmpty(faction.Messages[MessageType.Manufacturing]);
+        }
+
+        [Test]
+        public void ProcessTick_EventCapturesMissionParticipant_TearsDownMission()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction owner = new Faction { InstanceID = "OWNER" };
+            Faction captor = new Faction { InstanceID = "CAPTOR" };
+            game.GetFactions().Add(owner);
+            game.GetFactions().Add(captor);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                OwnerInstanceID = owner.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            Officer officer = EntityFactory.CreateOfficer("OFFICER", owner.InstanceID);
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = "MISSION",
+                OwnerInstanceID = owner.InstanceID,
+                LocationInstanceID = planet.InstanceID,
+            };
+            game.AttachNode(officer, planet);
+            game.AttachNode(mission, planet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(100);
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "CAPTURE_OFFICER",
+                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Actions = new List<GameAction>
+                        {
+                            new SetCaptureStatusAction
+                            {
+                                OfficerInstanceID = officer.InstanceID,
+                                IsCaptured = true,
+                                CaptorFactionInstanceID = captor.InstanceID,
+                            },
+                        },
+                    }
+                );
+            GameManager manager = TestContent.CreateGameManager(game);
+
+            manager.ProcessTick();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Mission>(mission.InstanceID));
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual(captor.InstanceID, officer.CaptorInstanceID);
         }
 
         [Test]

@@ -317,6 +317,7 @@ public sealed class FacilityWindowController
         if (
             request?.Source is not StrategyContextMenuProviderContext context
             || command is not StrategyMenuCommand strategyCommand
+            || !strategyCommand.Enabled
             || !windowManager.TryGetWindowView(context.Window, out FacilityWindowView view)
         )
             return;
@@ -335,6 +336,9 @@ public sealed class FacilityWindowController
             case StrategyMenuAction.Destination:
                 BeginContextTargeting(context, strategyCommand.Action);
                 break;
+            case StrategyMenuAction.Reserve:
+                ToggleManufacturingReservation(view);
+                break;
             case StrategyMenuAction.Encyclopedia:
                 actions.OpenFacilityInfo(GetStatusTarget(view));
                 break;
@@ -352,6 +356,38 @@ public sealed class FacilityWindowController
     /// </summary>
     /// <param name="request">The canceled context-menu request.</param>
     public void OnContextMenuCancelled(ContextMenuRequest request) { }
+
+    /// <summary>
+    /// Toggles whether the advisor may use the represented manufacturing lane.
+    /// </summary>
+    /// <param name="view">The facility view whose manufacturing lane was selected.</param>
+    private void ToggleManufacturingReservation(FacilityWindowView view)
+    {
+        if (!TryGetSession(view, out FacilityWindowSession session))
+            return;
+
+        FacilityWindowTab? manufacturingTab = session.GetContextManufacturingTab();
+        ManufacturingType? manufacturingType = manufacturingTab.HasValue
+            ? ConstructionOrderController.GetManufacturingType(manufacturingTab.Value)
+            : null;
+        if (!manufacturingType.HasValue)
+            return;
+
+        Planet planet = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
+        string playerFactionId = getGame()?.GetPlayerFaction()?.InstanceID;
+        if (
+            planet == null
+            || string.IsNullOrEmpty(playerFactionId)
+            || !string.Equals(planet.OwnerInstanceID, playerFactionId, StringComparison.Ordinal)
+        )
+            return;
+
+        planet.SetManufacturingReserved(
+            manufacturingType.Value,
+            !planet.IsManufacturingReserved(manufacturingType.Value)
+        );
+        actions.RefreshFacilityState();
+    }
 
     /// <summary>
     /// Begins destination targeting for a facility manufacturing lane.

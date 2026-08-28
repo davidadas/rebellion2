@@ -2420,6 +2420,38 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void HandleResults_CapturedMissionParticipant_TearsDownMissionAtCurrentPlanet()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            mission.Initiate(1);
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "rebels";
+            officer.IsEnabled = false;
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            system.HandleResults(
+                new List<OfficerCaptureStateResult>
+                {
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = officer,
+                        IsCaptured = true,
+                        Context = planet,
+                    },
+                }
+            );
+
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsFalse(officer.IsEnabled);
+        }
+
+        [Test]
         public void InitiateMission_ResearchWithDiscipline_AttachesResearchMissionToPlanet()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(

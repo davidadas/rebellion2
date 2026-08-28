@@ -575,22 +575,6 @@ internal abstract class BattleResultPresentation
         }
 
         /// <summary>
-        /// Returns completed fleet-engagement music from the saved recipient perspective.
-        /// </summary>
-        internal override string GetMusicPath(BattleAlertWindowTheme theme, string playerFactionId)
-        {
-            if (theme == null || report.CombatType != CombatReportType.SpaceBattle)
-                return null;
-            if (report.Winner == CombatSide.Draw)
-                return FirstNonBlank(theme.ResultDrawMusicPath, theme.ResultMusicPath);
-
-            CombatSide? playerSide = GetSideForOwner(report, playerFactionId);
-            return playerSide.HasValue && playerSide.Value == report.Winner
-                ? FirstNonBlank(theme.ResultVictoryMusicPath, theme.ResultMusicPath)
-                : FirstNonBlank(theme.ResultDefeatMusicPath, theme.ResultMusicPath);
-        }
-
-        /// <summary>
         /// Returns the outcome summary frozen into the delivered message.
         /// </summary>
         internal override string GetSummary(UIContext uiContext, string playerFactionId)
@@ -706,20 +690,6 @@ internal abstract class BattleResultPresentation
         private static SpaceCombatSideOutcome GetOutcome(CombatReport report, CombatSide side)
         {
             return side == CombatSide.Attacker ? report.AttackerOutcome : report.DefenderOutcome;
-        }
-
-        /// <summary>
-        /// Returns the saved side represented by one faction identifier.
-        /// </summary>
-        private static CombatSide? GetSideForOwner(CombatReport report, string ownerInstanceId)
-        {
-            if (string.IsNullOrEmpty(ownerInstanceId))
-                return null;
-            if (ownerInstanceId == report.AttackerOwnerInstanceID)
-                return CombatSide.Attacker;
-            if (ownerInstanceId == report.DefenderOwnerInstanceID)
-                return CombatSide.Defender;
-            return null;
         }
 
         /// <summary>

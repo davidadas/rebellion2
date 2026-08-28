@@ -68,9 +68,9 @@ namespace Rebellion.Systems
         private void FillGarrisonManufacturingCapacity(Faction faction)
         {
             List<Planet> ownedPlanets = GetOwnedPlanets(faction);
-            int availableCapacity = ownedPlanets.Sum(planet =>
-                planet.GetAvailableManufacturingCapacity(ManufacturingType.Troop)
-            );
+            int availableCapacity = ownedPlanets
+                .Where(planet => !planet.IsManufacturingReserved(ManufacturingType.Troop))
+                .Sum(planet => planet.GetAvailableManufacturingCapacity(ManufacturingType.Troop));
 
             for (int orderIndex = 0; orderIndex < availableCapacity; orderIndex++)
             {
@@ -124,9 +124,11 @@ namespace Rebellion.Systems
         private void FillProductionManufacturingCapacity(Faction faction)
         {
             List<Planet> ownedPlanets = GetOwnedPlanets(faction);
-            int availableCapacity = ownedPlanets.Sum(planet =>
-                planet.GetAvailableManufacturingCapacity(ManufacturingType.Building)
-            );
+            int availableCapacity = ownedPlanets
+                .Where(planet => !planet.IsManufacturingReserved(ManufacturingType.Building))
+                .Sum(planet =>
+                    planet.GetAvailableManufacturingCapacity(ManufacturingType.Building)
+                );
 
             for (int orderIndex = 0; orderIndex < availableCapacity; orderIndex++)
             {
@@ -255,7 +257,10 @@ namespace Rebellion.Systems
         )
         {
             return planets
-                .Where(planet => planet.GetAvailableManufacturingCapacity(manufacturingType) > 0)
+                .Where(planet =>
+                    !planet.IsManufacturingReserved(manufacturingType)
+                    && planet.GetAvailableManufacturingCapacity(manufacturingType) > 0
+                )
                 .OrderByDescending(planet =>
                     planet.GetAvailableManufacturingCapacity(manufacturingType)
                 )
@@ -280,7 +285,8 @@ namespace Rebellion.Systems
         {
             List<Planet> producers = planets
                 .Where(planet =>
-                    planet.GetAvailableManufacturingCapacity(ManufacturingType.Building) > 0
+                    !planet.IsManufacturingReserved(ManufacturingType.Building)
+                    && planet.GetAvailableManufacturingCapacity(ManufacturingType.Building) > 0
                 )
                 .ToList();
             IEnumerable<Planet> destinations = planets.Where(planet =>
