@@ -167,7 +167,7 @@ namespace Rebellion.Systems
                     else if (planetSnapshot != null)
                     {
                         viewPlanet = BlankPlanetView(masterPlanet);
-                        ApplySnapshotView(viewPlanet, planetSnapshot);
+                        ApplySnapshotView(viewPlanet, masterPlanet, masterSector, planetSnapshot);
                     }
                     else
                     {
@@ -476,19 +476,33 @@ namespace Rebellion.Systems
         /// visibility but has previously observed this planet.
         /// </summary>
         /// <param name="viewPlanet">The view planet to populate.</param>
+        /// <param name="masterPlanet">The authoritative planet data source.</param>
+        /// <param name="masterSector">The sector containing the planet.</param>
         /// <param name="planetSnapshot">The prior snapshot for the planet.</param>
-        private void ApplySnapshotView(Planet viewPlanet, PlanetSnapshot planetSnapshot)
+        private void ApplySnapshotView(
+            Planet viewPlanet,
+            Planet masterPlanet,
+            PlanetSector masterSector,
+            PlanetSnapshot planetSnapshot
+        )
         {
             viewPlanet.OwnerInstanceID = planetSnapshot.OwnerInstanceID;
             viewPlanet.IsColonized = planetSnapshot.IsColonized;
-            viewPlanet.IsInUprising = planetSnapshot.IsInUprising;
+            viewPlanet.IsInUprising =
+                masterSector.SectorType == PlanetSectorType.Core
+                    ? masterPlanet.IsInUprising
+                    : planetSnapshot.IsInUprising;
             viewPlanet.IsDestroyed = planetSnapshot.IsDestroyed;
             viewPlanet.IsHeadquarters = planetSnapshot.IsHeadquarters;
             viewPlanet.EnergyCapacity = planetSnapshot.EnergyCapacity;
             viewPlanet.AllocatedEnergy = planetSnapshot.AllocatedEnergy;
             viewPlanet.NumRawResourceNodes = planetSnapshot.NumRawResourceNodes;
 
-            viewPlanet.PopularSupport = new Dictionary<string, int>(planetSnapshot.PopularSupport);
+            Dictionary<string, int> popularSupport =
+                masterSector.SectorType == PlanetSectorType.Core
+                    ? masterPlanet.PopularSupport
+                    : planetSnapshot.PopularSupport;
+            viewPlanet.PopularSupport = new Dictionary<string, int>(popularSupport);
 
             viewPlanet.SetChildren(
                 planetSnapshot.Fleets.Select(FogOfWarRecorder.CopyFleetForSnapshot),
