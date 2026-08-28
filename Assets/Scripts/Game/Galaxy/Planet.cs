@@ -103,6 +103,9 @@ namespace Rebellion.Game.Galaxy
         private List<Building> _buildings = new List<Building>();
 
         // Manufacturing Status.
+        [PersistableMember(Name = "ReservedManufacturingTypes")]
+        private List<ManufacturingType> _reservedManufacturingTypes = new List<ManufacturingType>();
+
         [PersistableIgnore]
         public Dictionary<ManufacturingType, List<IManufacturable>> ManufacturingQueue
         {
@@ -152,6 +155,9 @@ namespace Rebellion.Game.Galaxy
             copy.UprisingClearTimerOrder = UprisingClearTimerOrder;
             copy.NextUprisingTimerOrder = NextUprisingTimerOrder;
             copy.PopularSupport = new Dictionary<string, int>(PopularSupport);
+            copy._reservedManufacturingTypes = new List<ManufacturingType>(
+                _reservedManufacturingTypes
+            );
             copy.ManufacturingQueue = ManufacturingQueue.Keys.ToDictionary(
                 type => type,
                 _ => new List<IManufacturable>()
@@ -565,6 +571,37 @@ namespace Rebellion.Game.Galaxy
         public double GetProductionRate(ManufacturingType type)
         {
             return GetCombinedProductionRate(type);
+        }
+
+        /// <summary>
+        /// Returns whether advisor automation may use a manufacturing lane on this planet.
+        /// </summary>
+        /// <param name="type">The manufacturing lane to inspect.</param>
+        /// <returns>True when the lane is reserved for manual orders.</returns>
+        public bool IsManufacturingReserved(ManufacturingType type)
+        {
+            return type != ManufacturingType.None && _reservedManufacturingTypes.Contains(type);
+        }
+
+        /// <summary>
+        /// Sets whether a manufacturing lane is reserved for manual orders.
+        /// </summary>
+        /// <param name="type">The manufacturing lane to update.</param>
+        /// <param name="reserved">Whether advisor automation must leave the lane available.</param>
+        public void SetManufacturingReserved(ManufacturingType type, bool reserved)
+        {
+            if (type == ManufacturingType.None)
+                throw new ArgumentOutOfRangeException(nameof(type));
+
+            if (reserved)
+            {
+                if (!_reservedManufacturingTypes.Contains(type))
+                    _reservedManufacturingTypes.Add(type);
+            }
+            else
+            {
+                _reservedManufacturingTypes.Remove(type);
+            }
         }
 
         /// <summary>

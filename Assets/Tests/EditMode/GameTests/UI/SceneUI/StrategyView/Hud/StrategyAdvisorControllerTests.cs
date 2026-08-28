@@ -36,6 +36,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     "Objectives",
                     "Manage Garrisons",
                     "Manage Production",
+                    "Manage Naming",
                     "Translate Counterpart",
                     "Agent Advice",
                 },
@@ -120,7 +121,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void ManageProduction_Enabled_ProcessesAutomationImmediately()
+        public void OnContextMenuCommandSelected_ManageProductionEnabled_ProcessesAutomationImmediately()
         {
             Faction faction = new Faction();
             TestActions actions = new TestActions();
@@ -152,6 +153,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             controller.OnContextMenuCommandSelected(request, command);
 
             Assert.IsTrue(faction.ManageProduction);
+            Assert.AreSame(faction, actions.ProcessedFaction);
+        }
+
+        [Test]
+        public void OnContextMenuCommandSelected_ManageNamingEnabled_ProcessesAutomationImmediately()
+        {
+            Faction faction = new Faction();
+            TestActions actions = new TestActions();
+            StrategyAdvisorController controller = new StrategyAdvisorController(
+                () => faction,
+                _ => null,
+                _ => { }
+            );
+            controller.Initialize(actions);
+            StrategyMenuCommand command = StrategyAdvisorController
+                .BuildCommandMenu(faction)
+                .Single(item => item.Action == StrategyMenuAction.AdvisorManageNaming);
+            ContextMenuRequest request = (ContextMenuRequest)
+                typeof(StrategyAdvisorController)
+                    .GetMethod(
+                        "CreateContextMenuRequest",
+                        BindingFlags.Instance | BindingFlags.NonPublic
+                    )
+                    ?.Invoke(
+                        controller,
+                        new object[]
+                        {
+                            new List<StrategyMenuCommand> { command },
+                            0,
+                            0,
+                        }
+                    );
+
+            controller.OnContextMenuCommandSelected(request, command);
+
+            Assert.IsTrue(faction.ManageNaming);
             Assert.AreSame(faction, actions.ProcessedFaction);
         }
 

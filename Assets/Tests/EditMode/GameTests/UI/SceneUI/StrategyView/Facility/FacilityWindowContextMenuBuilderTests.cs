@@ -66,6 +66,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(stop.Enabled);
         }
 
+        [TestCase(FacilityWindowTab.Shipyards)]
+        [TestCase(FacilityWindowTab.Training)]
+        [TestCase(FacilityWindowTab.Construction)]
+        public void Build_UnreservedManufacturingLane_ReturnsUncheckedReservationCommand(
+            FacilityWindowTab manufacturingTab
+        )
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Manufacturing,
+                manufacturingTab,
+                null,
+                "owner"
+            );
+
+            StrategyMenuCommand reserve = commands.Single(command =>
+                command.Action == StrategyMenuAction.Reserve
+            );
+            Assert.IsTrue(reserve.Enabled);
+            Assert.AreEqual(StrategyContextMenuIconKeys.None, reserve.IconKey);
+            Assert.IsTrue(reserve.UsesIconColumn);
+        }
+
+        [TestCase(FacilityWindowTab.Shipyards, ManufacturingType.Ship)]
+        [TestCase(FacilityWindowTab.Training, ManufacturingType.Troop)]
+        [TestCase(FacilityWindowTab.Construction, ManufacturingType.Building)]
+        public void Build_ReservedManufacturingLane_ReturnsCheckedReservationCommand(
+            FacilityWindowTab manufacturingTab,
+            ManufacturingType manufacturingType
+        )
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+            planet.SetManufacturingReserved(manufacturingType, true);
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Manufacturing,
+                manufacturingTab,
+                null,
+                "owner"
+            );
+
+            StrategyMenuCommand reserve = commands.Single(command =>
+                command.Action == StrategyMenuAction.Reserve
+            );
+            Assert.AreEqual(StrategyContextMenuIconKeys.CheckMark, reserve.IconKey);
+        }
+
         [Test]
         public void Build_InventoryItemUnderConstruction_ReturnsEnabledStopCommand()
         {

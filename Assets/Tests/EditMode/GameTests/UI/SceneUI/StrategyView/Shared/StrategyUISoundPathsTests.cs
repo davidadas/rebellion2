@@ -1,5 +1,6 @@
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Advisor;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 {
@@ -28,6 +29,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         {
             FactionTheme theme = new FactionTheme
             {
+                StrategyAdvisor = new StrategyAdvisorTheme
+                {
+                    AudioRoot = "advisor-audio",
+                    Notifications =
+                    {
+                        new StrategyAdvisorNotificationTheme
+                        {
+                            NotificationType = AdvisorNotificationType.PlanetaryAssault,
+                            Protocol = new StrategyAdvisorAnimationTheme
+                            {
+                                Audio = "planetary-assault",
+                            },
+                        },
+                    },
+                },
                 StrategyWindowSounds = new StrategyWindowSoundTheme
                 {
                     PlanetWindowOpenSoundPath = "window-open",
@@ -51,6 +67,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                     StrategyUISoundPaths.GalacticInformationOpen,
                     StrategyUISoundPaths.GalacticInformationControl,
                     StrategyUISoundPaths.PlanetaryAssault,
+                    "advisor-audio/planetary-assault",
                     "window-open",
                     "window-expand",
                     "window-collapse",

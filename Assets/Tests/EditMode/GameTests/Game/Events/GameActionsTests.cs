@@ -1026,6 +1026,35 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void SetDisplayName_CapitalShip_MarksNameAsAssigned()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "fleet",
+                OwnerInstanceID = planet.OwnerInstanceID,
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                DisplayName = "Generic Ship",
+                OwnerInstanceID = planet.OwnerInstanceID,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            SetDisplayNameAction action = new SetDisplayNameAction
+            {
+                TargetInstanceID = ship.InstanceID,
+                Name = "Named Ship",
+            };
+
+            action.Execute(game);
+
+            Assert.AreEqual("Named Ship", ship.DisplayName);
+            Assert.IsTrue(ship.HasAssignedName);
+        }
+
+        [Test]
         public void SetOfficerImages_ConfiguredValues_UpdatesOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);

@@ -22,6 +22,10 @@ namespace Rebellion.Game.Factions
     {
         private FactionSettings _settings = new FactionSettings();
         private int _nextFleetNumber = 1;
+
+        [PersistableMember(Name = "NextGenericShipNameNumbers")]
+        private Dictionary<string, int> _nextGenericShipNameNumbers = new Dictionary<string, int>();
+
         private Dictionary<Type, List<ISceneNode>> _ownedEntities = new Dictionary<
             Type,
             List<ISceneNode>
@@ -39,6 +43,9 @@ namespace Rebellion.Game.Factions
 
         // Faction Info.
         public List<string> DisallowedMissionTypeIDs { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "NamePool")]
+        public List<FactionNamePool> ShipNamePools { get; set; } = new List<FactionNamePool>();
         public FactionSettings Settings
         {
             get => _settings ??= new FactionSettings();
@@ -70,6 +77,7 @@ namespace Rebellion.Game.Factions
         public bool AgentAdvice { get; set; } = true;
         public bool ManageGarrisons { get; set; }
         public bool ManageProduction { get; set; }
+        public bool ManageNaming { get; set; }
 
         // Research Status.
         public FactionResearchState ResearchState { get; set; } = new FactionResearchState();
@@ -202,6 +210,78 @@ namespace Rebellion.Game.Factions
         /// </summary>
         /// <returns>True if the faction is AI controlled, false otherwise.</returns>
         public bool IsAIControlled() => string.IsNullOrEmpty(PlayerID);
+
+        /// <summary>
+        /// Takes the next available ship name from a pool or one of its configured fallbacks.
+        /// </summary>
+        /// <param name="namePoolId">The first name pool to inspect.</param>
+        /// <param name="shipName">The available ship name, when one is found.</param>
+        /// <returns>True when a name was taken; otherwise, false.</returns>
+        public bool TryTakeNextShipName(string namePoolId, out string shipName)
+        {
+            shipName = null;
+            if (string.IsNullOrWhiteSpace(namePoolId) || ShipNamePools.Count == 0)
+                return false;
+
+            HashSet<string> visitedPoolIds = new HashSet<string>(StringComparer.Ordinal);
+            string currentPoolId = namePoolId;
+            for (int fallbackDepth = 0; fallbackDepth < ShipNamePools.Count; fallbackDepth++)
+            {
+                if (string.IsNullOrWhiteSpace(currentPoolId) || !visitedPoolIds.Add(currentPoolId))
+                    return false;
+
+                FactionNamePool namePool = ShipNamePools.FirstOrDefault(pool =>
+                    string.Equals(pool.NamePoolID, currentPoolId, StringComparison.Ordinal)
+                );
+                if (namePool == null)
+                    return false;
+
+                int firstNameIndex = Math.Max(0, namePool.NextNameIndex);
+                for (int nameIndex = firstNameIndex; nameIndex < namePool.Names.Count; nameIndex++)
+                {
+                    namePool.NextNameIndex = nameIndex + 1;
+                    string candidate = namePool.Names[nameIndex];
+                    if (string.IsNullOrWhiteSpace(candidate))
+                        continue;
+
+                    shipName = candidate;
+                    return true;
+                }
+
+                namePool.NextNameIndex = namePool.Names.Count;
+                currentPoolId = namePool.FallbackNamePoolID;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Takes the next numbered generic name for a capital-ship type.
+        /// </summary>
+        /// <param name="ship">The ship that requires a generic name.</param>
+        /// <returns>The ship's generic display name with its faction-specific sequence number.</returns>
+        internal string TakeNextGenericShipName(CapitalShip ship)
+        {
+            if (ship == null)
+                throw new ArgumentNullException(nameof(ship));
+            if (string.IsNullOrWhiteSpace(ship.DisplayName))
+                throw new ArgumentException(
+                    "The ship requires a generic display name.",
+                    nameof(ship)
+                );
+
+            string counterKey = string.IsNullOrWhiteSpace(ship.TypeID)
+                ? ship.DisplayName
+                : ship.TypeID;
+            int nextNumber = _nextGenericShipNameNumbers.TryGetValue(
+                counterKey,
+                out int currentNumber
+            )
+                ? currentNumber
+                : 1;
+            _nextGenericShipNameNumbers[counterKey] = nextNumber + 1;
+            return $"{ship.DisplayName} {nextNumber}";
+        }
 
         /// <summary>
         /// Returns a list of units of a specific type owned by the faction.

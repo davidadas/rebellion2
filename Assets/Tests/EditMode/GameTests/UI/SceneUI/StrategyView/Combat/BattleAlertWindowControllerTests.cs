@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using UnityEngine;
@@ -274,6 +275,58 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(BattleAlertWindowMode.Result, data.Mode);
             Assert.AreEqual(BattleResultCategory.Troops, data.Result.Category);
             Assert.AreEqual("Assault on Corellia", data.Result.Title);
+            Assert.IsEmpty(_playedTracks);
+            CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.PlanetaryAssault }, _playedSfx);
+        }
+
+        [Test]
+        public void OpenResult_SpaceCombat_PlaysCompletedBattleMusic()
+        {
+            _pending = null;
+
+            _controller.OpenResult(_resolveResult);
+
+            Assert.AreEqual(1, _stopMusicCount);
+            Assert.AreEqual(1, _playedTracks.Count);
+            Assert.IsNotEmpty(_playedTracks[0]);
+        }
+
+        [Test]
+        public void OpenReport_SpaceCombat_PreservesStrategyMusic()
+        {
+            CombatReport report = new CombatReport
+            {
+                CombatType = CombatReportType.SpaceBattle,
+                PerspectiveOwnerInstanceID = _playerFactionId,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                Winner = CombatSide.Defender,
+                Title = "Battle at Corellia",
+                Body = "The defending fleet was victorious.",
+            };
+
+            _controller.OpenReport(report);
+
+            Assert.AreEqual(0, _stopMusicCount);
+            Assert.IsEmpty(_playedTracks);
+        }
+
+        [Test]
+        public void OpenReport_PlanetaryAssault_PlaysReportSoundWithoutChangingMusic()
+        {
+            CombatReport report = new CombatReport
+            {
+                CombatType = CombatReportType.PlanetaryAssault,
+                PerspectiveOwnerInstanceID = _playerFactionId,
+                AttackerOwnerInstanceID = _opponentFactionId,
+                DefenderOwnerInstanceID = _playerFactionId,
+                Title = "Assault on Corellia",
+                Body = "The defending troops repulsed the assault.",
+            };
+
+            _controller.OpenReport(report);
+
+            Assert.AreEqual(0, _stopMusicCount);
             Assert.IsEmpty(_playedTracks);
             CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.PlanetaryAssault }, _playedSfx);
         }

@@ -330,12 +330,14 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void BuildFactionView_CorePlanetSectorSnapshot_PreservesObservedPopularSupport()
+        public void BuildFactionView_UnownedCorePlanet_UsesCurrentPopularSupport()
         {
             _coruscant.PopularSupport["FNALL1"] = 50;
+            _coruscant.EnergyCapacity = 8;
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
             _coruscant.PopularSupport["FNALL1"] = 25;
+            _coruscant.EnergyCapacity = 3;
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
@@ -344,7 +346,25 @@ namespace Rebellion.Tests.Sectors
                 .GetChildren<Planet>()
                 .First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(50, viewCoruscant.PopularSupport["FNALL1"]);
+            Assert.AreEqual(25, viewCoruscant.PopularSupport["FNALL1"]);
+            Assert.AreEqual(8, viewCoruscant.EnergyCapacity);
+        }
+
+        [Test]
+        public void BuildFactionView_UnownedCorePlanet_UsesCurrentUprisingState()
+        {
+            _coruscant.IsInUprising = false;
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _coruscant.IsInUprising = true;
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.IsTrue(viewCoruscant.IsInUprising);
         }
 
         [Test]
@@ -1557,6 +1577,24 @@ namespace Rebellion.Tests.Sectors
                 .First(p => p.InstanceID == "TATOOINE");
 
             Assert.AreEqual(40, viewTatooine.PopularSupport["FNALL1"]);
+        }
+
+        [Test]
+        public void BuildFactionView_OuterRimSnapshot_PreservesObservedUprisingState()
+        {
+            MakeTatooineImperial();
+            _tatooine.IsInUprising = false;
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
+            _tatooine.IsInUprising = true;
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "TATOOINE");
+
+            Assert.IsFalse(viewTatooine.IsInUprising);
         }
 
         [Test]

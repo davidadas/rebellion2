@@ -16,7 +16,9 @@ namespace Rebellion.Systems
     /// Orchestrates mission creation, participant travel, and external execution services.
     /// Each mission owns its post-arrival lifecycle.
     /// </summary>
-    public class MissionSystem : IMissionExecutionRuntime
+    public class MissionSystem
+        : IMissionExecutionRuntime,
+            IGameResultHandler<OfficerCaptureStateResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -273,6 +275,34 @@ namespace Rebellion.Systems
             );
             TearDownMission(mission, null, _pendingResults);
             return true;
+        }
+
+        /// <summary>
+        /// Ends missions whose participants were captured by another simulation system.
+        /// </summary>
+        /// <param name="results">The officer capture-state changes to process.</param>
+        /// <returns>Mission interruption results produced while tearing down affected missions.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<OfficerCaptureStateResult> results)
+        {
+            List<GameResult> missionResults = new List<GameResult>();
+            List<Mission> affectedMissions = results
+                .Where(result => result?.IsCaptured == true)
+                .Select(result => result.TargetOfficer?.GetParent() as Mission)
+                .Where(mission => mission != null)
+                .Distinct()
+                .ToList();
+
+            foreach (Mission mission in affectedMissions)
+            {
+                AddMissionResults(
+                    mission,
+                    mission.ResolveInterruption(_game, _provider),
+                    missionResults
+                );
+                TearDownMission(mission, null, missionResults);
+            }
+
+            return missionResults;
         }
 
         /// <summary>

@@ -428,6 +428,12 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
                 faction?.ManageProduction == true
             ),
             CreateToggleCommand(
+                StrategyMenuAction.AdvisorManageNaming,
+                "Manage Naming",
+                faction != null,
+                faction?.ManageNaming == true
+            ),
+            CreateToggleCommand(
                 StrategyMenuAction.AdvisorTranslateCounterpart,
                 "Translate Counterpart",
                 faction != null,
@@ -580,6 +586,11 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             case StrategyMenuAction.AdvisorManageProduction:
                 faction.ManageProduction = !faction.ManageProduction;
                 if (faction.ManageProduction)
+                    actions.ProcessAdvisorAutomation(faction);
+                break;
+            case StrategyMenuAction.AdvisorManageNaming:
+                faction.ManageNaming = !faction.ManageNaming;
+                if (faction.ManageNaming)
                     actions.ProcessAdvisorAutomation(faction);
                 break;
             case StrategyMenuAction.AdvisorTranslateCounterpart:

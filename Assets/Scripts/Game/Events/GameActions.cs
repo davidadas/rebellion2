@@ -1321,7 +1321,12 @@ namespace Rebellion.Game.Events
                     "SetDisplayName"
                 )
             )
-                target.DisplayName = Name;
+            {
+                if (target is CapitalShip capitalShip)
+                    capitalShip.AssignName(Name);
+                else
+                    target.DisplayName = Name;
+            }
             return;
         }
     }

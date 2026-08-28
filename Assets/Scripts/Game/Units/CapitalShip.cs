@@ -30,9 +30,16 @@ namespace Rebellion.Game.Units
     /// </summary>
     public class CapitalShip : ContainerNode, IManufacturable, IMovable
     {
+        [PersistableMember(Name = "HasAssignedName")]
+        private bool _hasAssignedName;
+
         public string BattleResultImagePath { get; set; }
         public string BattleResultInTransitImagePath { get; set; }
         public string BattleResultDamagedImagePath { get; set; }
+
+        // Naming Info.
+        public string ShipNamePoolID { get; set; }
+        public bool HasAssignedName => _hasAssignedName;
 
         // Manufacture Info.
         public string ProducerOwnerID { get; set; }
@@ -127,6 +134,8 @@ namespace Rebellion.Game.Units
             copy.BattleResultImagePath = BattleResultImagePath;
             copy.BattleResultInTransitImagePath = BattleResultInTransitImagePath;
             copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;
+            copy.ShipNamePoolID = ShipNamePoolID;
+            copy._hasAssignedName = _hasAssignedName;
             copy.ProducerOwnerID = ProducerOwnerID;
             copy.ProducerPlanetID = ProducerPlanetID;
             copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
@@ -170,6 +179,19 @@ namespace Rebellion.Game.Units
             copy.CanDestroyPlanets = CanDestroyPlanets;
             copy.DetectionRating = DetectionRating;
             copy.InitialParentInstanceID = InitialParentInstanceID;
+        }
+
+        /// <summary>
+        /// Replaces the ship's display name and prevents automatic naming from replacing it.
+        /// </summary>
+        /// <param name="displayName">The name to assign.</param>
+        public void AssignName(string displayName)
+        {
+            if (string.IsNullOrWhiteSpace(displayName))
+                throw new ArgumentException("A ship name is required.", nameof(displayName));
+
+            DisplayName = displayName;
+            _hasAssignedName = true;
         }
 
         /// <summary>

@@ -1070,7 +1070,12 @@ public sealed class FleetWindowController
             return;
 
         if (session.RenameTarget != null && !string.IsNullOrEmpty(value))
-            session.RenameTarget.DisplayName = value;
+        {
+            if (session.RenameTarget is CapitalShip capitalShip)
+                capitalShip.AssignName(value);
+            else
+                session.RenameTarget.DisplayName = value;
+        }
         session.EndRename();
         markDirty();
     }

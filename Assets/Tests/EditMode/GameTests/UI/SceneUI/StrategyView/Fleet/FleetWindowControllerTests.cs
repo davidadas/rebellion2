@@ -10,6 +10,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -400,7 +401,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void ContextMenu_BombardmentLeaf_ExecutesAndRoutesBattleResult()
+        public void OnContextMenuCommandSelected_BombardmentLeaf_ExecutesAndRoutesBattleResult()
         {
             _planet.Planet.OwnerInstanceID = _opposingFactionId;
             _fleet.GetChildren<CapitalShip>()[0].Bombardment = 1;
@@ -439,6 +440,52 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 ((BombardmentResult)_actions.LastBattleResult).Type
             );
             Assert.AreEqual(1, _actions.RefreshCount);
+        }
+
+        [Test]
+        public void OnContextMenuCommandSelected_CapitalShipRename_MarksNameAsAssigned()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+                pointerCurrentRaycast = new RaycastResult
+                {
+                    gameObject = card.NameTextField.gameObject,
+                },
+                pointerPressRaycast = new RaycastResult
+                {
+                    gameObject = card.NameTextField.gameObject,
+                },
+            };
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 177, 188, 4, 5, 6, 7),
+                eventData,
+                10,
+                20
+            );
+            _controller.TryCreateContextMenu(context, out ContextMenuRequest request, out _);
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.Rename);
+            ContextMenuController contextMenuController = new ContextMenuController();
+            contextMenuController.Open(request);
+
+            bool selected = contextMenuController.TrySelectCommand(command);
+            _controller.RenderWindow(view, window, true);
+            TMP_InputField input = view.GetComponentInChildren<TMP_InputField>(true);
+            input.SetTextWithoutNotify("Named Ship");
+            input.onSubmit.Invoke(input.text);
+
+            Assert.IsTrue(selected);
+            Assert.AreEqual("Named Ship", ship.DisplayName);
+            Assert.IsTrue(ship.HasAssignedName);
         }
 
         [Test]
