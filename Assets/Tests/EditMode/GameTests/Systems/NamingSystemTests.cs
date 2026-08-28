@@ -85,7 +85,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessFaction_MoreThanTenEligibleShips_AssignsTenNames()
+        public void ProcessFaction_MoreThanTenEligibleShips_AssignsAllNames()
         {
             _faction.ShipNamePools.Single().Names = Enumerable
                 .Range(1, 11)
@@ -98,8 +98,8 @@ namespace Rebellion.Tests.Systems
 
             int assignedCount = _system.ProcessFaction(_faction);
 
-            Assert.AreEqual(10, assignedCount);
-            Assert.AreEqual(10, ships.Count(ship => ship.HasAssignedName));
+            Assert.AreEqual(11, assignedCount);
+            Assert.AreEqual(11, ships.Count(ship => ship.HasAssignedName));
         }
 
         [Test]

@@ -10,8 +10,6 @@ namespace Rebellion.Systems
     /// </summary>
     public sealed class NamingSystem
     {
-        private const int _maximumCapitalShipNamesPerPass = 10;
-
         private readonly GameRoot _game;
 
         /// <summary>
@@ -47,8 +45,6 @@ namespace Rebellion.Systems
             int namedShipCount = 0;
             foreach (CapitalShip ship in faction.GetOwnedUnitsByType<CapitalShip>())
             {
-                if (namedShipCount >= _maximumCapitalShipNamesPerPass)
-                    break;
                 if (
                     ship.HasAssignedName
                     || ship.ManufacturingStatus != ManufacturingStatus.Complete
