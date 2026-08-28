@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -13,64 +14,21 @@ namespace Rebellion.AI.Director
     /// </summary>
     public sealed class AITurnContext
     {
-        /// <summary>
-        /// Game instance being processed.
-        /// </summary>
+        // Turn Dependencies.
         public GameRoot Game { get; }
-
-        /// <summary>
-        /// Faction being processed.
-        /// </summary>
         public Faction Faction { get; }
-
-        /// <summary>
-        /// RNG provider used by this turn.
-        /// </summary>
         public IRandomNumberProvider Random { get; }
-
-        /// <summary>
-        /// Mission system used by mission proposals.
-        /// </summary>
         public MissionSystem Missions { get; }
-
-        /// <summary>
-        /// Movement system used by movement proposals.
-        /// </summary>
         public MovementSystem Movement { get; }
-
-        /// <summary>
-        /// Manufacturing system used by production proposals.
-        /// </summary>
         public ManufacturingSystem Manufacturing { get; }
-
-        /// <summary>
-        /// Bombardment system used by fleet attack proposals.
-        /// </summary>
         public BombardmentSystem Bombardment { get; }
-
-        /// <summary>
-        /// Planetary-assault system used by fleet attack proposals.
-        /// </summary>
         public PlanetaryAssaultSystem PlanetaryAssault { get; }
-
-        /// <summary>
-        /// Derived AI assessment for this turn.
-        /// </summary>
+        public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
 
-        /// <summary>
-        /// Proposals generated during planning.
-        /// </summary>
+        // Turn Output.
         public IReadOnlyList<AIProposal> Proposals => _proposals;
-
-        /// <summary>
-        /// Proposals selected for execution.
-        /// </summary>
         public IReadOnlyList<AIProposal> SelectedProposals => _selectedProposals;
-
-        /// <summary>
-        /// Results produced during proposal execution.
-        /// </summary>
         public IReadOnlyList<GameResult> Results => _results;
 
         private readonly List<AIProposal> _proposals = new List<AIProposal>();
@@ -88,6 +46,7 @@ namespace Rebellion.AI.Director
         /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
         /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic decisions.</param>
+        /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,
@@ -96,7 +55,8 @@ namespace Rebellion.AI.Director
             ManufacturingSystem manufacturing,
             BombardmentSystem bombardment,
             PlanetaryAssaultSystem planetaryAssault,
-            IRandomNumberProvider random
+            IRandomNumberProvider random,
+            GalaxyMap factionView = null
         )
         {
             Game = game;
@@ -107,6 +67,7 @@ namespace Rebellion.AI.Director
             Bombardment = bombardment;
             PlanetaryAssault = planetaryAssault;
             Random = random;
+            FactionView = factionView;
             Assessment = new AIAssessment(this);
         }
 

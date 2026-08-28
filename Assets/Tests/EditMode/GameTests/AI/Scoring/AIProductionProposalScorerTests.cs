@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
+using Rebellion.AI.Planners.Demand;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scoring;
 using Rebellion.Game;
@@ -34,7 +35,7 @@ namespace Rebellion.Tests.AI.Scoring
                 planetSector,
                 "far",
                 empire.InstanceID,
-                positionX: 100,
+                positionX: 240,
                 positionY: 0
             );
             Planet fleetPlanet = AITestSceneBuilder.AddPlanet(
@@ -47,9 +48,9 @@ namespace Rebellion.Tests.AI.Scoring
             );
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             game.AttachNode(fleet, fleetPlanet);
-            AIProductionDemand demand = new AIProductionDemand(
+            AIDemand demand = new AIDemand(
                 "fleet-regiment-demand",
-                AIProductionDemandKind.FleetRegiment,
+                AIDemandKind.FleetRegiment,
                 ManufacturingType.Troop,
                 BuildingType.None,
                 fleet,
@@ -72,6 +73,7 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             Assert.Greater(nearScore, farScore);
+            Assert.Greater(farScore, 0);
         }
     }
 }

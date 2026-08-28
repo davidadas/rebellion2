@@ -2403,7 +2403,7 @@ public sealed class StrategyController
         {
             return
                 building.BuildingType is BuildingType.Defense or BuildingType.Weapon
-                || building.DefenseFacilityClass != DefenseFacilityClass.None
+                || building.IsDefenseFacility()
                 ? PlanetIcon.Defense
                 : PlanetIcon.Facility;
         }
@@ -3122,8 +3122,8 @@ public sealed class StrategyController
         );
         BindGalacticInformationAction(
             asset,
-            "ShowDeathStarShields",
-            GalacticInformationFilterMode.DeathStarShields
+            "ShowUnitShieldGenerators",
+            GalacticInformationFilterMode.UnitShieldGenerators
         );
         BindGalacticInformationAction(
             asset,

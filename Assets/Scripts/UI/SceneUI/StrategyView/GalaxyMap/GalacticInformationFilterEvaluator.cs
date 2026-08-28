@@ -156,27 +156,18 @@ public static class GalacticInformationFilterEvaluator
             GalacticInformationFilterMode.FighterSquadrons => planet
                 .GetChildren<Starfighter>()
                 .Count(IsActive),
-            GalacticInformationFilterMode.DeathStarShields => Convert.ToInt32(
+            GalacticInformationFilterMode.UnitShieldGenerators => Convert.ToInt32(
                 planet
                     .GetChildren<Building>()
-                    .Any(building =>
-                        building.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
-                        && IsActive(building)
-                    )
+                    .Any(building => building.IsUnitShieldGenerator() && IsActive(building))
             ),
             GalacticInformationFilterMode.PlanetaryShieldGenerators => planet
                 .GetChildren<Building>()
-                .Count(building =>
-                    building.DefenseFacilityClass == DefenseFacilityClass.Shield
-                    && IsActive(building)
-                ),
+                .Count(building => building.IsPlanetaryShieldGenerator() && IsActive(building)),
             GalacticInformationFilterMode.PlanetaryDefenseBatteries => planet
                 .GetChildren<Building>()
                 .Count(building =>
-                    (
-                        building.DefenseFacilityClass == DefenseFacilityClass.KDY
-                        || building.DefenseFacilityClass == DefenseFacilityClass.LNR
-                    ) && IsActive(building)
+                    building.BuildingType == BuildingType.Weapon && IsActive(building)
                 ),
             _ => 0,
         };

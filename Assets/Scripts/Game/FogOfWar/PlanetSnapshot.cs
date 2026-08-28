@@ -45,6 +45,7 @@ namespace Rebellion.Game.FogOfWar
         public List<Fleet> Fleets;
         public List<Regiment> Regiments;
         public List<SpecialForces> SpecialForces;
+
         public List<Building> Buildings;
         public List<Starfighter> Starfighters;
         public List<Mission> Missions;

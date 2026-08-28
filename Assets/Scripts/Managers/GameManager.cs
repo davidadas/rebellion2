@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -68,6 +69,7 @@ public sealed class GameManager
     // Tick State.
     private float? _tickInterval;
     private float _tickTimer;
+    private bool _tickInProgress;
 
     // Game Events.
     public event Action GameSpeedChanged;
@@ -77,6 +79,16 @@ public sealed class GameManager
     public event Action<VictoryResult> VictoryDeclared;
     public event Action<MessageDeliveredResult> MessageDelivered;
     public event Action<BombardmentResult> BombardmentCompleted;
+
+    /// <summary>
+    /// Raised after planetary-assault results complete domain reaction processing.
+    /// </summary>
+    public event Action<IReadOnlyList<PlanetaryAssaultResult>> PlanetaryAssaultsResolved;
+
+    /// <summary>
+    /// Raised after victory results complete domain reaction processing.
+    /// </summary>
+    public event Action<IReadOnlyList<VictoryResult>> VictoriesResolved;
 
     // Exposed Game Systems.
     internal MessageSystem MessageSystem => _messageSystem;
@@ -200,16 +212,31 @@ public sealed class GameManager
     /// <param name="elapsedSeconds">The elapsed game-loop time in seconds.</param>
     public void AdvanceTime(float elapsedSeconds)
     {
-        if (elapsedSeconds <= 0f || _spaceCombatSystem.HasPendingDecision || _tickInterval == null)
-            return;
+        if (TryAdvanceTickTimer(elapsedSeconds))
+            ProcessTick();
+    }
+
+    /// <summary>
+    /// Advances the tick timer without immediately processing a completed interval.
+    /// </summary>
+    /// <param name="elapsedSeconds">The elapsed game-loop time in seconds.</param>
+    /// <returns>True when a game tick is ready to process.</returns>
+    public bool TryAdvanceTickTimer(float elapsedSeconds)
+    {
+        if (
+            elapsedSeconds <= 0f
+            || _tickInProgress
+            || _spaceCombatSystem.HasPendingDecision
+            || _tickInterval == null
+        )
+            return false;
 
         _tickTimer += elapsedSeconds;
+        if (_tickTimer < _tickInterval)
+            return false;
 
-        if (_tickTimer >= _tickInterval)
-        {
-            _tickTimer = 0f;
-            ProcessTick();
-        }
+        _tickTimer = 0f;
+        return true;
     }
 
     /// <summary>
@@ -217,9 +244,48 @@ public sealed class GameManager
     /// </summary>
     public void ProcessTick()
     {
-        if (_spaceCombatSystem.HasPendingDecision || _game.GetGameSpeed() == TickSpeed.Paused)
-            return;
+        IEnumerator tick = ProcessTickIncrementally();
+        try
+        {
+            while (tick.MoveNext()) { }
+        }
+        finally
+        {
+            (tick as IDisposable)?.Dispose();
+        }
+    }
 
+    /// <summary>
+    /// Runs one game tick and yields after each AI phase.
+    /// </summary>
+    /// <returns>A sequence containing one step per completed AI phase.</returns>
+    public IEnumerator ProcessTickIncrementally()
+    {
+        if (
+            _tickInProgress
+            || _spaceCombatSystem.HasPendingDecision
+            || _game.GetGameSpeed() == TickSpeed.Paused
+        )
+            yield break;
+
+        _tickInProgress = true;
+        try
+        {
+            foreach (object step in ProcessTickCore())
+                yield return step;
+        }
+        finally
+        {
+            _tickInProgress = false;
+        }
+    }
+
+    /// <summary>
+    /// Processes the systems contained in one game tick.
+    /// </summary>
+    /// <returns>A sequence containing one step per completed AI phase.</returns>
+    private IEnumerable<object> ProcessTickCore()
+    {
         _game.CurrentTick++;
         _messageSystem.ProcessTick();
         GameLogger.Debug("Tick: " + _game.CurrentTick);
@@ -250,7 +316,7 @@ public sealed class GameManager
         {
             StoreDeferredMessageResults(movementPhaseResults);
             TickCompleted?.Invoke();
-            return;
+            yield break;
         }
 
         ProcessMessageReactions(movementPhaseResults);
@@ -258,7 +324,10 @@ public sealed class GameManager
         ProcessResults(_missionSystem.ProcessTick());
         ProcessResults(_eventSystem.ProcessEvents(_game.GetEventPool()));
         _namingSystem.ProcessTick();
-        ProcessResults(_aiSystem.ProcessTick());
+        List<GameResult> aiResults = new List<GameResult>();
+        foreach (object step in _aiSystem.ProcessTickIncrementally(aiResults))
+            yield return step;
+        ProcessResults(aiResults);
 
         ProcessResults(_blockadeSystem.ProcessTick());
         ProcessResults(_planetaryControlSystem.ProcessTick());
@@ -394,7 +463,8 @@ public sealed class GameManager
             _manufacturingSystem,
             _bombardmentSystem,
             _planetaryAssaultSystem,
-            _randomProvider
+            _randomProvider,
+            _fogOfWarSystem
         );
 
         InitializeResultProcessing();
@@ -493,6 +563,16 @@ public sealed class GameManager
     )
     {
         List<GameResult> resolvedResults = _resultProcessor.Process(results);
+        List<PlanetaryAssaultResult> assaultResults = resolvedResults
+            .OfType<PlanetaryAssaultResult>()
+            .ToList();
+        if (assaultResults.Count > 0)
+            PlanetaryAssaultsResolved?.Invoke(assaultResults);
+
+        List<VictoryResult> victoryResults = resolvedResults.OfType<VictoryResult>().ToList();
+        if (victoryResults.Count > 0)
+            VictoriesResolved?.Invoke(victoryResults);
+
         if (processMessages)
             ProcessMessageReactions(resolvedResults);
 
@@ -500,6 +580,7 @@ public sealed class GameManager
             HeadquartersLostResult headquarters in resolvedResults.OfType<HeadquartersLostResult>()
         )
             HeadquartersLost?.Invoke(headquarters);
+
         foreach (VictoryResult victory in resolvedResults.OfType<VictoryResult>())
             VictoryDeclared?.Invoke(victory);
         return resolvedResults;

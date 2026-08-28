@@ -5,6 +5,8 @@ namespace Rebellion.Util.Common
 {
     public class ProbabilityTable
     {
+        public const int GuaranteedProbability = 100;
+
         private readonly Dictionary<int, int> _table;
 
         public ProbabilityTable(Dictionary<int, int> entries)
@@ -12,6 +14,9 @@ namespace Rebellion.Util.Common
             _table = entries;
         }
 
+        /// <summary>Returns the table result for an input value.</summary>
+        /// <param name="value">The lookup value.</param>
+        /// <returns>The matching table result.</returns>
         public int Lookup(int value)
         {
             if (_table.Count == 0)

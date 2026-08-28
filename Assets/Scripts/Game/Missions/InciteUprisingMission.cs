@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
@@ -81,7 +82,11 @@ namespace Rebellion.Game.Missions
         /// <returns>The participant's raw incite-uprising score.</returns>
         protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
         {
-            Planet planet = GetParent() as Planet;
+            Planet planet = GetMissionPlanet(game);
+            if (planet == null)
+                throw new InvalidOperationException(
+                    "InciteUprisingMission must be attached to a Planet."
+                );
 
             int leadershipSkill = agent.GetEffectiveRating(OfficerRating.Leadership);
             int enemySupport = planet.GetOpposingPopularSupport(OwnerInstanceID);

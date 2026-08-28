@@ -185,6 +185,44 @@ namespace Rebellion.Game.Missions
         ) => 0;
 
         /// <summary>
+        /// Calculates the probability that at least one researcher produces research progress.
+        /// </summary>
+        /// <param name="participants">The researchers to evaluate.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The calculated research progress odds.</returns>
+        internal override MissionOdds GetMissionOdds(
+            IEnumerable<IMissionParticipant> participants,
+            GameRoot game
+        )
+        {
+            GameConfig.ResearchConfig config = game?.Config?.Research;
+            double rewardProbability = GetPositiveRewardProbability(config);
+            IEnumerable<double> probabilities = (
+                participants ?? Enumerable.Empty<IMissionParticipant>()
+            )
+                .OfType<Officer>()
+                .Select(officer => officer.GetBaseRating(Discipline) * rewardProbability);
+            return new MissionOdds(CombineSuccessProbabilities(probabilities));
+        }
+
+        /// <summary>
+        /// Returns the probability that a successful research roll awards at least one point.
+        /// </summary>
+        /// <param name="config">The research reward configuration.</param>
+        /// <returns>The positive reward probability as a multiplier from 0 through 1.</returns>
+        private static double GetPositiveRewardProbability(GameConfig.ResearchConfig config)
+        {
+            if (config == null)
+                return 0;
+            if (config.BaseResearchPoints > 0)
+                return 1;
+            if (config.BaseResearchPoints < 0 || config.ResearchDiceRange <= 0)
+                return 0;
+
+            return (double)config.ResearchDiceRange / (config.ResearchDiceRange + 1);
+        }
+
+        /// <summary>
         /// Resolves one mission execution: each main participant rolls independently;
         /// each success accumulates a reward and bumps that officer's research rating.
         /// The total is then applied to the faction and any transitions are emitted.

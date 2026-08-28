@@ -22,7 +22,7 @@ public enum GalacticInformationFilterMode
     IdleConstructionYards = 0x67,
     Troopers = 0x71,
     FighterSquadrons = 0x72,
-    DeathStarShields = 0x73,
+    UnitShieldGenerators = 0x73,
     PlanetaryShieldGenerators = 0x74,
     PlanetaryDefenseBatteries = 0x75,
     DisplayOff = 0x80,

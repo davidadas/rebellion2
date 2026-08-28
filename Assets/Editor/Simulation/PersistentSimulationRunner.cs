@@ -6,7 +6,11 @@ using Rebellion.Util.Common;
 [UnityEditor.InitializeOnLoad]
 public static class PersistentSimulationRunner
 {
-    private const string _jobDirectory = "/tmp/rebellion2-sim-jobs";
+    private static readonly string _jobDirectory = Path.Combine(
+        "/tmp/rebellion2-sim-jobs",
+        Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, ".."))
+            .TrimStart(Path.DirectorySeparatorChar)
+    );
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
     private const double _pollIntervalSeconds = 1.0;
 
@@ -129,18 +133,26 @@ public static class PersistentSimulationRunner
                 );
             }
 
+            SimulationJobType simulationType = GetSimulationJobType(job, runningPath);
+            if (simulationType == SimulationJobType.NormalAndSave)
+                ValidateSaveJob(job, runningPath);
+
             string logPath = GetLogPath(job.OutputPath);
             GameLogger.Configure(logPath, enableFileLogging: true);
             string startMessage =
-                $"[PersistentSim] running job={Path.GetFileName(runningPath)} seed={(job.Seed >= 0 ? job.Seed.ToString() : "random")} ticks={job.TickCount} output={job.OutputPath}";
+                $"[PersistentSim] running job={Path.GetFileName(runningPath)} type={simulationType} seed={(job.Seed >= 0 ? job.Seed.ToString() : "random")} ticks={job.TickCount} output={job.OutputPath}";
             UnityEngine.Debug.Log(startMessage);
             LogToFile(logPath, startMessage);
 
+            bool saveAfterRun = simulationType == SimulationJobType.NormalAndSave;
             HeadlessSimulationRunner.SimulationRunResult result =
                 HeadlessSimulationRunner.RunPersistentSimulation(
                     job.TickCount > 0 ? job.TickCount : 300,
                     job.OutputPath,
-                    job.Seed >= 0 ? job.Seed : null
+                    job.Seed >= 0 ? job.Seed : null,
+                    saveAfterRun ? job.SaveFileName : null,
+                    saveAfterRun ? job.SaveDisplayName : null,
+                    saveAfterRun ? job.PlayerFactionId : null
                 );
 
             File.WriteAllText(
@@ -149,9 +161,11 @@ public static class PersistentSimulationRunner
                     new SimulationJobResult
                     {
                         JobPath = runningPath,
+                        SimulationType = simulationType.ToString(),
                         OutputPath = result.OutputPath,
                         TicksCompleted = result.TicksCompleted,
                         Seed = result.Seed,
+                        SavePath = result.SavePath,
                     },
                     true
                 )
@@ -173,6 +187,62 @@ public static class PersistentSimulationRunner
         finally
         {
             _isRunningJob = false;
+        }
+    }
+
+    /// <summary>
+    /// Resolves the requested simulation type, including legacy jobs that omit it.
+    /// </summary>
+    /// <param name="job">The queued simulation job.</param>
+    /// <param name="jobPath">The job file path used in validation errors.</param>
+    /// <returns>The resolved simulation job type.</returns>
+    private static SimulationJobType GetSimulationJobType(SimulationJob job, string jobPath)
+    {
+        if (string.IsNullOrWhiteSpace(job.SimulationType))
+        {
+            return string.IsNullOrWhiteSpace(job.SaveFileName)
+                ? SimulationJobType.Normal
+                : SimulationJobType.NormalAndSave;
+        }
+
+        if (
+            Enum.TryParse(
+                job.SimulationType,
+                ignoreCase: true,
+                out SimulationJobType simulationType
+            )
+            && string.Equals(
+                Enum.GetName(typeof(SimulationJobType), simulationType),
+                job.SimulationType,
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+            return simulationType;
+
+        throw new InvalidOperationException(
+            $"Simulation job has unknown type '{job.SimulationType}': {jobPath}"
+        );
+    }
+
+    /// <summary>
+    /// Validates the fields required to produce a loadable simulation save.
+    /// </summary>
+    /// <param name="job">The queued simulation job.</param>
+    /// <param name="jobPath">The job file path used in validation errors.</param>
+    private static void ValidateSaveJob(SimulationJob job, string jobPath)
+    {
+        if (string.IsNullOrWhiteSpace(job.SaveFileName))
+        {
+            throw new InvalidOperationException(
+                $"Save simulation job is missing SaveFileName: {jobPath}"
+            );
+        }
+
+        if (string.IsNullOrWhiteSpace(job.PlayerFactionId))
+        {
+            throw new InvalidOperationException(
+                $"Save simulation job is missing PlayerFactionId: {jobPath}"
+            );
         }
     }
 
@@ -204,17 +274,29 @@ public static class PersistentSimulationRunner
     [Serializable]
     private sealed class SimulationJob
     {
+        public string SimulationType = string.Empty;
         public int TickCount = 300;
         public string OutputPath = string.Empty;
         public int Seed = -1;
+        public string SaveFileName = string.Empty;
+        public string SaveDisplayName = string.Empty;
+        public string PlayerFactionId = string.Empty;
     }
 
     [Serializable]
     private sealed class SimulationJobResult
     {
         public string JobPath;
+        public string SimulationType;
         public string OutputPath;
         public int TicksCompleted;
         public int Seed = -1;
+        public string SavePath;
+    }
+
+    private enum SimulationJobType
+    {
+        Normal,
+        NormalAndSave,
     }
 }

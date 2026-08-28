@@ -12,6 +12,23 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Missions
 {
     /// <summary>
+    /// Contains calculated mission probabilities without resolving an outcome.
+    /// </summary>
+    public sealed class MissionOdds
+    {
+        public double SuccessProbability { get; }
+
+        /// <summary>
+        /// Creates a mission probability result.
+        /// </summary>
+        /// <param name="successProbability">Probability that at least one participant succeeds.</param>
+        internal MissionOdds(double successProbability)
+        {
+            SuccessProbability = successProbability;
+        }
+    }
+
+    /// <summary>
     /// Provides the external operations needed while a mission executes its post-arrival lifecycle.
     /// </summary>
     internal interface IMissionExecutionRuntime
@@ -125,14 +142,8 @@ namespace Rebellion.Game.Missions
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }
 
-        /// <summary>
-        /// Returns whether detected mission participants suffer capture, death, or destruction.
-        /// </summary>
         internal virtual bool AppliesFoiledParticipantConsequences => true;
 
-        /// <summary>
-        /// Returns whether successful participants stay at the mission location regardless of ownership.
-        /// </summary>
         internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
 
         /// <summary>
@@ -415,6 +426,17 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Returns the mission planet whether the mission is active or only being evaluated.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The mission planet, or null when it cannot be resolved.</returns>
+        protected Planet GetMissionPlanet(GameRoot game)
+        {
+            return GetParent() as Planet
+                ?? game?.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
+        }
+
+        /// <summary>
         /// Returns the participant's mission success probability.
         /// </summary>
         /// <param name="agent">The participant whose raw score is evaluated.</param>
@@ -424,6 +446,38 @@ namespace Rebellion.Game.Missions
         {
             int? score = GetAgentScore(agent, game);
             return score.HasValue ? LookupSuccessProbability(game, score.Value) : 0;
+        }
+
+        /// <summary>
+        /// Calculates success probability for a participant set without resolving the mission.
+        /// </summary>
+        /// <param name="participants">The participants to evaluate.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The probability that at least one participant succeeds.</returns>
+        internal virtual MissionOdds GetMissionOdds(
+            IEnumerable<IMissionParticipant> participants,
+            GameRoot game
+        )
+        {
+            IEnumerable<double> probabilities = (
+                participants ?? Enumerable.Empty<IMissionParticipant>()
+            )
+                .Where(participant => participant != null)
+                .Select(participant => GetAgentProbability(participant, game));
+            return new MissionOdds(CombineSuccessProbabilities(probabilities));
+        }
+
+        /// <summary>
+        /// Combines independent success probabilities into one success chance.
+        /// </summary>
+        /// <param name="probabilities">The individual percentage probabilities.</param>
+        /// <returns>The combined percentage probability.</returns>
+        protected static double CombineSuccessProbabilities(IEnumerable<double> probabilities)
+        {
+            double failureProbability = (probabilities ?? Enumerable.Empty<double>())
+                .Select(probability => Math.Clamp(probability, 0, 100) / 100d)
+                .Aggregate(1d, (combined, probability) => combined * (1d - probability));
+            return (1d - failureProbability) * 100d;
         }
 
         /// <summary>

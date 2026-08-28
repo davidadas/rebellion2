@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -158,6 +159,29 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler, IDr
         UILayout.SetTextContent(garrisonRequirementTextField, data.GarrisonRequirementText);
         RenderItems(data.Items);
         gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Updates only the unit-card selection frames without rebuilding the window.
+    /// </summary>
+    /// <param name="selectedIndexes">The selected unit-card indexes.</param>
+    /// <param name="selectionTexture">The selected-card frame.</param>
+    internal void RenderItemSelection(
+        IReadOnlyCollection<int> selectedIndexes,
+        Texture selectionTexture
+    )
+    {
+        if (selectedIndexes == null)
+            throw new ArgumentNullException(nameof(selectedIndexes));
+
+        for (int i = 0; i < itemCards.Count; i++)
+        {
+            StrategyUnitCardView item = itemCards[i];
+            if (item.gameObject.activeInHierarchy)
+                item.RenderSelection(
+                    selectedIndexes.Contains(item.Index) ? selectionTexture : null
+                );
+        }
     }
 
     /// <summary>

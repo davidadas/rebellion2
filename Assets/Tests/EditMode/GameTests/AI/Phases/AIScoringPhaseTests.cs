@@ -20,18 +20,16 @@ namespace Rebellion.Tests.AI.Phases
         public void Execute_WithSupportedProposal_AssignsScore()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
-            Planet planet = AITestSceneBuilder.AddPlanet(
-                game,
-                planetSector,
-                "p1",
-                empire.InstanceID
-            );
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "p1", empire.InstanceID);
+            planet.AddVisitor(empire.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
             officer.Ratings[OfficerRating.Diplomacy] = 90;
             game.AttachNode(officer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            context.AddProposal(new AIMissionProposal(officer, MissionTypeIDs.Diplomacy, planet));
+            context.AddProposal(
+                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, planet)
+            );
 
             new AIScoringPhase().Execute(context);
 

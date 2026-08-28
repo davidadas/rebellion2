@@ -117,6 +117,27 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Returns the combined weapon strength of one fighter in the squadron.
+        /// </summary>
+        /// <returns>The combined laser, ion cannon, and torpedo strength.</returns>
+        public int GetWeaponStrength()
+        {
+            return LaserCannon + IonCannon + Torpedoes;
+        }
+
+        /// <summary>
+        /// Returns the combat value of the available squadron.
+        /// </summary>
+        /// <returns>The squadron's combat value, or zero when it is unavailable.</returns>
+        public int GetCombatValue()
+        {
+            if (ManufacturingStatus != ManufacturingStatus.Complete || Movement != null)
+                return 0;
+
+            return GetWeaponStrength() * Math.Max(0, CurrentSquadronSize);
+        }
+
+        /// <summary>
         /// Returns the manufacturing type for this unit.
         /// </summary>
         /// <returns>The manufacturing type.</returns>

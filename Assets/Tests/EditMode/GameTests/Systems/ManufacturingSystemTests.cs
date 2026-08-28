@@ -1662,8 +1662,8 @@ namespace Rebellion.Tests.Systems
                 {
                     InstanceID = "kdy1",
                     OwnerInstanceID = empire.InstanceID,
-                    BuildingType = BuildingType.Defense,
-                    DefenseFacilityClass = DefenseFacilityClass.KDY,
+                    BuildingType = BuildingType.Weapon,
+                    DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage,
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 },
                 planet
@@ -4237,6 +4237,30 @@ namespace Rebellion.Tests.Systems
                 "Regiment parent should be the destination planet."
             );
             Assert.AreEqual(ManufacturingStatus.Building, regiment.ManufacturingStatus);
+        }
+
+        [Test]
+        public void CanAcceptManufacturingOrder_WithoutMaintenanceHeadroom_ReturnsTrue()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                1
+            );
+
+            bool canAccept = manager.CanAcceptManufacturingOrder(
+                planet,
+                template,
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canAccept);
+            Assert.IsFalse(manager.CanStartManufacturing(planet, template, planet, 1, "empire"));
         }
 
         [Test]

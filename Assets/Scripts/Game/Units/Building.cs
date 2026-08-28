@@ -22,15 +22,12 @@ namespace Rebellion.Game.Units
     }
 
     /// <summary>
-    /// Classifies defensive facilities by tactical role.
+    /// Defines how a planetary defense weapon applies damage after depleting ship shields.
     /// </summary>
-    public enum DefenseFacilityClass
+    public enum DefenseWeaponEffect
     {
-        None,
-        KDY,
-        LNR,
-        Shield,
-        DeathStarShield,
+        HullDamage,
+        ShieldDamage,
     }
 
     /// <summary>
@@ -53,8 +50,10 @@ namespace Rebellion.Game.Units
         public int WeaponStrength { get; set; }
         public int ShieldStrength { get; set; }
         public int WeaponPower { get; set; }
-        public DefenseFacilityClass DefenseFacilityClass { get; set; }
+        public DefenseWeaponEffect DefenseWeaponEffect { get; set; }
+        public List<string> ProtectedUnitTypeIDs { get; set; } = new List<string>();
         public int ProductionModifier { get; set; }
+        public List<string> Upgrades { get; set; } = new List<string>();
 
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
@@ -101,8 +100,13 @@ namespace Rebellion.Game.Units
             copy.WeaponStrength = WeaponStrength;
             copy.ShieldStrength = ShieldStrength;
             copy.WeaponPower = WeaponPower;
-            copy.DefenseFacilityClass = DefenseFacilityClass;
+            copy.DefenseWeaponEffect = DefenseWeaponEffect;
+            copy.ProtectedUnitTypeIDs =
+                ProtectedUnitTypeIDs == null
+                    ? new List<string>()
+                    : new List<string>(ProtectedUnitTypeIDs);
             copy.ProductionModifier = ProductionModifier;
+            copy.Upgrades = Upgrades == null ? new List<string>() : new List<string>(Upgrades);
             copy.ProducerOwnerID = ProducerOwnerID;
             copy.ProducerPlanetID = ProducerPlanetID;
             copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
@@ -134,6 +138,52 @@ namespace Rebellion.Game.Units
         public int GetProcessRate()
         {
             return ProcessRate;
+        }
+
+        /// <summary>
+        /// Determines whether this building can be replaced by the specified upgrade.
+        /// </summary>
+        /// <param name="upgrade">The proposed replacement building.</param>
+        /// <returns>True when the replacement is an authored upgrade for this building.</returns>
+        public bool CanUpgradeTo(Building upgrade)
+        {
+            return upgrade != null && Upgrades?.Contains(upgrade.TypeID) == true;
+        }
+
+        /// <summary>
+        /// Returns whether this building participates in planetary defense.
+        /// </summary>
+        /// <returns>True for defense and weapon facilities.</returns>
+        public bool IsDefenseFacility()
+        {
+            return BuildingType is BuildingType.Defense or BuildingType.Weapon;
+        }
+
+        /// <summary>
+        /// Returns whether this building generates shields that protect its planet.
+        /// </summary>
+        /// <returns>True when the building supplies planetary shield strength.</returns>
+        public bool IsPlanetaryShieldGenerator()
+        {
+            return BuildingType == BuildingType.Defense && ShieldStrength > 0;
+        }
+
+        /// <summary>
+        /// Returns whether this building protects specific authored unit types.
+        /// </summary>
+        /// <returns>True when at least one protected unit type is configured.</returns>
+        public bool IsUnitShieldGenerator()
+        {
+            return ProtectedUnitTypeIDs?.Count > 0;
+        }
+
+        /// <summary>
+        /// Returns whether this building generates either planetary or unit-specific shields.
+        /// </summary>
+        /// <returns>True when the building provides either form of shield protection.</returns>
+        public bool IsShieldGenerator()
+        {
+            return IsPlanetaryShieldGenerator() || IsUnitShieldGenerator();
         }
 
         /// <summary>

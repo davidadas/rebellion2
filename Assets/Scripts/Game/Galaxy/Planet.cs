@@ -813,14 +813,14 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Gets the manufacturing output percentage available during a blockade.
-        /// An active KDY defense prevents the blockade penalty.
+        /// An active shield-disrupting defense prevents the blockade penalty.
         /// </summary>
         /// <param name="capitalShipPenalty">The percentage removed per active capital ship.</param>
         /// <param name="fighterPenalty">The percentage removed per active fighter squadron.</param>
         /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
         public int GetBlockadeModifier(int capitalShipPenalty, int fighterPenalty)
         {
-            if (!IsBlockaded() || HasActiveKdyDefense())
+            if (!IsBlockaded() || HasActiveShieldDisruptingDefense())
                 return _maximumProductionModifier;
 
             List<CapitalShip> activeCapitalShips = _fleets
@@ -840,13 +840,14 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns whether a complete, stationary KDY defense is active on this planet.
+        /// Returns whether a complete, stationary shield-disrupting defense is active.
         /// </summary>
-        /// <returns>True when an active KDY defense is present.</returns>
-        private bool HasActiveKdyDefense()
+        /// <returns>True when an active shield-disrupting defense is present.</returns>
+        private bool HasActiveShieldDisruptingDefense()
         {
             return _buildings.Any(building =>
-                building.DefenseFacilityClass == DefenseFacilityClass.KDY
+                building.BuildingType == BuildingType.Weapon
+                && building.DefenseWeaponEffect == DefenseWeaponEffect.ShieldDamage
                 && IsEntityActive(building)
             );
         }
@@ -858,12 +859,7 @@ namespace Rebellion.Game.Galaxy
         public int GetDefenseStrength()
         {
             return GetAllBuildings()
-                .Where(b =>
-                    (
-                        b.DefenseFacilityClass == DefenseFacilityClass.Shield
-                        || b.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
-                    ) && IsEntityActive(b)
-                )
+                .Where(b => (b.IsShieldGenerator()) && IsEntityActive(b))
                 .Sum(b => b.ShieldStrength);
         }
 

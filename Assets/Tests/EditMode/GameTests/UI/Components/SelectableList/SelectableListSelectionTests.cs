@@ -144,6 +144,17 @@ namespace Rebellion.Tests.UI.Components.SelectableList
         }
 
         [Test]
+        public void SelectIndexedItem_RangeSelectModifier_SelectsBoundedGrid()
+        {
+            HashSet<int> selection = new HashSet<int> { 1 };
+            SelectionModifierState modifiers = new SelectionModifierState(false, true);
+
+            SelectableListSelection.SelectIndexedItem(selection, 10, 12, modifiers, 4);
+
+            CollectionAssert.AreEquivalent(new[] { 1, 2, 5, 6, 9, 10 }, selection);
+        }
+
+        [Test]
         public void SelectIndexedItem_NoModifier_ReplacesSelection()
         {
             HashSet<int> selection = new HashSet<int> { 1, 2 };

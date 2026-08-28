@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Tests.AI.Helpers;
 
@@ -10,6 +11,26 @@ namespace Rebellion.Tests.AI.Director
     [TestFixture]
     public class AITurnContextTests
     {
+        [Test]
+        public void Constructor_WithFactionView_PreservesTurnInput()
+        {
+            GalaxyMap factionView = new GalaxyMap();
+
+            AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                factionView
+            );
+
+            Assert.AreSame(factionView, context.FactionView);
+        }
+
         [Test]
         public void AddProposal_WithNullProposal_DoesNotAddProposal()
         {

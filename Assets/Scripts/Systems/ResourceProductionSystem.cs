@@ -365,7 +365,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Advances one mine and deposits one raw material when its cycle completes.
+        /// Advances one mine and produces one raw material when its cycle completes.
         /// </summary>
         /// <param name="faction">The owning faction.</param>
         /// <param name="mine">The mine to process.</param>
@@ -382,7 +382,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Advances one refinery and deposits one refined material when its cycle completes.
+        /// Advances one refinery and produces one refined material when its cycle completes.
         /// </summary>
         /// <param name="faction">The owning faction.</param>
         /// <param name="refinery">The refinery to process.</param>

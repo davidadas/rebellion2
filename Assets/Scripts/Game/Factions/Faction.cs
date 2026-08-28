@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
@@ -129,6 +130,9 @@ namespace Rebellion.Game.Factions
         /// </summary>
         public Faction() { }
 
+        /// <summary>Returns maintenance headroom after adding a manufacturable item.</summary>
+        /// <param name="item">The prospective item.</param>
+        /// <returns>The projected maintenance headroom.</returns>
         public int GetProjectedMaintenanceHeadroom(IManufacturable item)
         {
             return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);
@@ -729,6 +733,9 @@ namespace Rebellion.Game.Factions
         {
             Fleet fleet = new Fleet(this.InstanceID, $"Fleet {_nextFleetNumber}");
             fleet.RoleType = roleType;
+            GameLogger.Warning(
+                $"[fleet] born {fleet.InstanceID} role={roleType} owner={this.InstanceID}"
+            );
 
             if (capitalShips != null)
             {

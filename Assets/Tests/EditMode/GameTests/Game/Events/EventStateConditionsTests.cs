@@ -12,6 +12,28 @@ namespace Rebellion.Tests.Game.Events
     public class EventStateConditionsTests
     {
         [Test]
+        public void EvaluateBinding_NullBinding_ReturnsFalse()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "$sourceEventInstanceID",
+                Comparison = ComparisonOperator.Equal,
+                CompareTo = "expected-event",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("sourceEventInstanceID", null);
+
+            bool result = conditional.IsMet(game, context);
+
+            Assert.IsFalse(result);
+        }
+
+        [Test]
         public void EvaluateBinding_ObjectBinding_ThrowsInvalidOperationException()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);

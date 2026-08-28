@@ -260,7 +260,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         {
             Building definition = TestContent.Data.Buildings.First(building =>
                 building.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
-                && building.DefenseFacilityClass == DefenseFacilityClass.Shield
+                && building.IsPlanetaryShieldGenerator()
             );
             Building shield = new Building
             {
@@ -269,7 +269,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 OwnerInstanceID = _ownerId,
                 DisplayImagePath = definition.DisplayImagePath,
                 SmallDisplayImagePath = definition.SmallDisplayImagePath,
-                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                BuildingType = BuildingType.Defense,
+                ShieldStrength = 1,
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             _planet.AddTestChild(shield);

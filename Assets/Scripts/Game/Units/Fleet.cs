@@ -14,7 +14,7 @@ namespace Rebellion.Game.Units
     {
         None,
         Battle,
-        Patrol,
+        Colonization,
     }
 
     /// <summary>

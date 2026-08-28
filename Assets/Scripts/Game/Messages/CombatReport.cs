@@ -395,7 +395,7 @@ namespace Rebellion.Game.Messages
         private static bool IsDefenseFacility(Building building)
         {
             return building.BuildingType is BuildingType.Defense or BuildingType.Weapon
-                || building.DefenseFacilityClass != DefenseFacilityClass.None;
+                || building.IsDefenseFacility();
         }
 
         /// <summary>

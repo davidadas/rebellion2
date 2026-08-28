@@ -378,7 +378,7 @@ namespace Rebellion.Tests.Systems
             mine.ProductionInputReserved = true;
             mine.ResourceStartupCyclePending = false;
             Building kdy = AddCompleteBuilding(_planet, BuildingType.Defense, processRate: 1);
-            kdy.DefenseFacilityClass = DefenseFacilityClass.KDY;
+            kdy.DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage;
             Fleet hostileFleet = new Fleet
             {
                 InstanceID = "HOSTILE_FLEET",

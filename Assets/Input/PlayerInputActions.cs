@@ -887,7 +887,7 @@ namespace Rebellion.Input
                     ""initialStateCheck"": false
                 },
                 {
-                    ""name"": ""ShowDeathStarShields"",
+                    ""name"": ""ShowUnitShieldGenerators"",
                     ""type"": ""Button"",
                     ""id"": ""00000000-0000-0000-0000-000000000260"",
                     ""expectedControlType"": ""Button"",
@@ -4794,7 +4794,7 @@ namespace Rebellion.Input
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""ShowDeathStarShields"",
+                    ""action"": ""ShowUnitShieldGenerators"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -4805,7 +4805,7 @@ namespace Rebellion.Input
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""ShowDeathStarShields"",
+                    ""action"": ""ShowUnitShieldGenerators"",
                     ""isComposite"": true,
                     ""isPartOfComposite"": false
                 },
@@ -4816,7 +4816,7 @@ namespace Rebellion.Input
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""ShowDeathStarShields"",
+                    ""action"": ""ShowUnitShieldGenerators"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
                 },
@@ -4827,7 +4827,7 @@ namespace Rebellion.Input
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""ShowDeathStarShields"",
+                    ""action"": ""ShowUnitShieldGenerators"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
                 },
@@ -4838,7 +4838,7 @@ namespace Rebellion.Input
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""ShowDeathStarShields"",
+                    ""action"": ""ShowUnitShieldGenerators"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -4849,7 +4849,7 @@ namespace Rebellion.Input
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""ShowDeathStarShields"",
+                    ""action"": ""ShowUnitShieldGenerators"",
                     ""isComposite"": true,
                     ""isPartOfComposite"": false
                 },
@@ -4860,7 +4860,7 @@ namespace Rebellion.Input
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""ShowDeathStarShields"",
+                    ""action"": ""ShowUnitShieldGenerators"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
                 },
@@ -4871,7 +4871,7 @@ namespace Rebellion.Input
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""ShowDeathStarShields"",
+                    ""action"": ""ShowUnitShieldGenerators"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
                 },
@@ -5501,7 +5501,7 @@ namespace Rebellion.Input
             m_Strategy_ShowIdleConstructionYards = m_Strategy.FindAction("ShowIdleConstructionYards", throwIfNotFound: true);
             m_Strategy_ShowTroopers = m_Strategy.FindAction("ShowTroopers", throwIfNotFound: true);
             m_Strategy_ShowFighterSquadrons = m_Strategy.FindAction("ShowFighterSquadrons", throwIfNotFound: true);
-            m_Strategy_ShowDeathStarShields = m_Strategy.FindAction("ShowDeathStarShields", throwIfNotFound: true);
+            m_Strategy_ShowUnitShieldGenerators = m_Strategy.FindAction("ShowUnitShieldGenerators", throwIfNotFound: true);
             m_Strategy_ShowPlanetaryShieldGenerators = m_Strategy.FindAction("ShowPlanetaryShieldGenerators", throwIfNotFound: true);
             m_Strategy_ShowPlanetaryDefenseBatteries = m_Strategy.FindAction("ShowPlanetaryDefenseBatteries", throwIfNotFound: true);
             // Window
@@ -5778,7 +5778,7 @@ namespace Rebellion.Input
         private readonly InputAction m_Strategy_ShowIdleConstructionYards;
         private readonly InputAction m_Strategy_ShowTroopers;
         private readonly InputAction m_Strategy_ShowFighterSquadrons;
-        private readonly InputAction m_Strategy_ShowDeathStarShields;
+        private readonly InputAction m_Strategy_ShowUnitShieldGenerators;
         private readonly InputAction m_Strategy_ShowPlanetaryShieldGenerators;
         private readonly InputAction m_Strategy_ShowPlanetaryDefenseBatteries;
         /// <summary>
@@ -5969,9 +5969,9 @@ namespace Rebellion.Input
             /// </summary>
             public InputAction @ShowFighterSquadrons => m_Wrapper.m_Strategy_ShowFighterSquadrons;
             /// <summary>
-            /// Provides access to the underlying input action "Strategy/ShowDeathStarShields".
+            /// Provides access to the underlying input action "Strategy/ShowUnitShieldGenerators".
             /// </summary>
-            public InputAction @ShowDeathStarShields => m_Wrapper.m_Strategy_ShowDeathStarShields;
+            public InputAction @ShowUnitShieldGenerators => m_Wrapper.m_Strategy_ShowUnitShieldGenerators;
             /// <summary>
             /// Provides access to the underlying input action "Strategy/ShowPlanetaryShieldGenerators".
             /// </summary>
@@ -6138,9 +6138,9 @@ namespace Rebellion.Input
                 @ShowFighterSquadrons.started += instance.OnShowFighterSquadrons;
                 @ShowFighterSquadrons.performed += instance.OnShowFighterSquadrons;
                 @ShowFighterSquadrons.canceled += instance.OnShowFighterSquadrons;
-                @ShowDeathStarShields.started += instance.OnShowDeathStarShields;
-                @ShowDeathStarShields.performed += instance.OnShowDeathStarShields;
-                @ShowDeathStarShields.canceled += instance.OnShowDeathStarShields;
+                @ShowUnitShieldGenerators.started += instance.OnShowUnitShieldGenerators;
+                @ShowUnitShieldGenerators.performed += instance.OnShowUnitShieldGenerators;
+                @ShowUnitShieldGenerators.canceled += instance.OnShowUnitShieldGenerators;
                 @ShowPlanetaryShieldGenerators.started += instance.OnShowPlanetaryShieldGenerators;
                 @ShowPlanetaryShieldGenerators.performed += instance.OnShowPlanetaryShieldGenerators;
                 @ShowPlanetaryShieldGenerators.canceled += instance.OnShowPlanetaryShieldGenerators;
@@ -6290,9 +6290,9 @@ namespace Rebellion.Input
                 @ShowFighterSquadrons.started -= instance.OnShowFighterSquadrons;
                 @ShowFighterSquadrons.performed -= instance.OnShowFighterSquadrons;
                 @ShowFighterSquadrons.canceled -= instance.OnShowFighterSquadrons;
-                @ShowDeathStarShields.started -= instance.OnShowDeathStarShields;
-                @ShowDeathStarShields.performed -= instance.OnShowDeathStarShields;
-                @ShowDeathStarShields.canceled -= instance.OnShowDeathStarShields;
+                @ShowUnitShieldGenerators.started -= instance.OnShowUnitShieldGenerators;
+                @ShowUnitShieldGenerators.performed -= instance.OnShowUnitShieldGenerators;
+                @ShowUnitShieldGenerators.canceled -= instance.OnShowUnitShieldGenerators;
                 @ShowPlanetaryShieldGenerators.started -= instance.OnShowPlanetaryShieldGenerators;
                 @ShowPlanetaryShieldGenerators.performed -= instance.OnShowPlanetaryShieldGenerators;
                 @ShowPlanetaryShieldGenerators.canceled -= instance.OnShowPlanetaryShieldGenerators;
@@ -7073,12 +7073,12 @@ namespace Rebellion.Input
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnShowFighterSquadrons(InputAction.CallbackContext context);
             /// <summary>
-            /// Method invoked when associated input action "ShowDeathStarShields" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// Method invoked when associated input action "ShowUnitShieldGenerators" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>
             /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-            void OnShowDeathStarShields(InputAction.CallbackContext context);
+            void OnShowUnitShieldGenerators(InputAction.CallbackContext context);
             /// <summary>
             /// Method invoked when associated input action "ShowPlanetaryShieldGenerators" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>

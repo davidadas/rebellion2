@@ -419,9 +419,9 @@ internal sealed class PlanetSectorWindowProjector
             0,
             0,
             support / 100f,
-            uiContext.GetPlayerFactionTheme()?.GetPrimaryColor() ?? Color.white,
+            uiContext.GetPlayerFactionTheme().GetPrimaryColor(),
             Color.clear,
-            GetOpposingSupportColor(uiContext)
+            GetOpposingSupportColor(uiContext, planet)
         );
     }
 
@@ -460,17 +460,30 @@ internal sealed class PlanetSectorWindowProjector
     /// Gets the opposing faction's support color.
     /// </summary>
     /// <param name="uiContext">The current strategy presentation context.</param>
+    /// <param name="planet">The planet whose popular support is displayed.</param>
     /// <returns>The opposing faction color.</returns>
-    private static Color32 GetOpposingSupportColor(UIContext uiContext)
+    private static Color32 GetOpposingSupportColor(UIContext uiContext, Planet planet)
     {
         string playerFactionId = uiContext.GetPlayerFactionInstanceID();
-        string opposingFactionId = uiContext
-            .Game?.GetFactions()
-            ?.FirstOrDefault(faction =>
-                !string.Equals(faction.InstanceID, playerFactionId, StringComparison.Ordinal)
+        string opposingFactionId = planet
+            .PopularSupport.Where(entry =>
+                entry.Value > 0
+                && !string.Equals(entry.Key, playerFactionId, StringComparison.Ordinal)
             )
-            ?.InstanceID;
-        return uiContext.GetTheme(opposingFactionId)?.GetPrimaryColor() ?? Color.white;
+            .OrderByDescending(entry => entry.Value)
+            .Select(entry => entry.Key)
+            .FirstOrDefault();
+        if (string.IsNullOrEmpty(opposingFactionId))
+        {
+            opposingFactionId = uiContext
+                .Game.GetFactions()
+                .First(faction =>
+                    !string.Equals(faction.InstanceID, playerFactionId, StringComparison.Ordinal)
+                )
+                .InstanceID;
+        }
+
+        return uiContext.GetTheme(opposingFactionId).GetPrimaryColor();
     }
 
     /// <summary>

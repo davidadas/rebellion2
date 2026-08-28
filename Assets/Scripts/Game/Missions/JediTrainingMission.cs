@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
@@ -210,6 +211,55 @@ namespace Rebellion.Game.Missions
             Officer defender,
             GameRoot game
         ) => 0;
+
+        /// <summary>
+        /// Calculates the probability that at least one student makes Force training progress.
+        /// </summary>
+        /// <param name="participants">The training participants to evaluate.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The calculated training progress odds.</returns>
+        internal override MissionOdds GetMissionOdds(
+            IEnumerable<IMissionParticipant> participants,
+            GameRoot game
+        )
+        {
+            List<Officer> officers = (participants ?? Enumerable.Empty<IMissionParticipant>())
+                .OfType<Officer>()
+                .ToList();
+            Officer trainer = officers.FirstOrDefault(officer =>
+                officer.InstanceID == TrainerInstanceID
+            );
+            if (trainer == null || game?.Config?.Jedi == null)
+                return new MissionOdds(0);
+
+            IEnumerable<double> probabilities = officers
+                .Where(officer => officer != trainer)
+                .Select(officer => GetTrainingProgressProbability(officer, trainer, game));
+            return new MissionOdds(CombineSuccessProbabilities(probabilities));
+        }
+
+        /// <summary>
+        /// Calculates one student's probability of receiving a positive training adjustment.
+        /// </summary>
+        /// <param name="officer">The student to evaluate.</param>
+        /// <param name="trainer">The selected trainer.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The student's training progress probability.</returns>
+        private static double GetTrainingProgressProbability(
+            Officer officer,
+            Officer trainer,
+            GameRoot game
+        )
+        {
+            int forceRankGap = trainer.ForceRank - officer.ForceRank;
+            int catchUpRange = forceRankGap * game.Config.Jedi.TrainingCatchUpPercent / 100;
+            if (forceRankGap <= 0 || catchUpRange <= 0)
+                return 0;
+
+            double rankRollProbability = Math.Min(100, forceRankGap) / 100.0;
+            double positiveBonusProbability = (double)catchUpRange / (catchUpRange + 1);
+            return rankRollProbability * positiveBonusProbability * 100;
+        }
 
         /// <summary>
         /// Resolves one training attempt for each selected officer and completes the mission.

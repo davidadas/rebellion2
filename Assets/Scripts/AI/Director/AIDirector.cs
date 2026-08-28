@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.AI.Phases;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -62,8 +63,28 @@ namespace Rebellion.AI.Director
         /// Processes one faction AI turn.
         /// </summary>
         /// <param name="faction">The faction to process.</param>
+        /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
         /// <returns>Game results emitted by this AI turn.</returns>
-        internal List<GameResult> ProcessFaction(Faction faction)
+        internal List<GameResult> ProcessFaction(Faction faction, GalaxyMap factionView)
+        {
+            List<GameResult> results = new List<GameResult>();
+            foreach (object _ in ProcessFactionIncrementally(faction, factionView, results)) { }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Processes one faction AI turn one phase at a time.
+        /// </summary>
+        /// <param name="faction">The faction to process.</param>
+        /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
+        /// <param name="results">The result list populated when processing completes.</param>
+        /// <returns>A sequence containing one step per completed phase.</returns>
+        internal IEnumerable<object> ProcessFactionIncrementally(
+            Faction faction,
+            GalaxyMap factionView,
+            ICollection<GameResult> results
+        )
         {
             AITurnContext context = new AITurnContext(
                 _game,
@@ -73,13 +94,17 @@ namespace Rebellion.AI.Director
                 _manufacturing,
                 _bombardment,
                 _planetaryAssault,
-                _random
+                _random,
+                factionView
             );
-
             foreach (IAITurnPhase phase in _turnPhases)
+            {
                 phase.Execute(context);
+                yield return null;
+            }
 
-            return new List<GameResult>(context.Results);
+            foreach (GameResult result in context.Results)
+                results.Add(result);
         }
     }
 }

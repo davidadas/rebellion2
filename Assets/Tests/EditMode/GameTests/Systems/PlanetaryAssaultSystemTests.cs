@@ -21,8 +21,8 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
-            AddDefenseBuilding(game, planet, "shield1", DefenseFacilityClass.Shield);
-            AddDefenseBuilding(game, planet, "shield2", DefenseFacilityClass.Shield);
+            AddDefenseBuilding(game, planet, "shield1", shieldStrength: 1);
+            AddDefenseBuilding(game, planet, "shield2", shieldStrength: 1);
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
@@ -38,13 +38,8 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
-            AddDefenseBuilding(game, planet, "shield", DefenseFacilityClass.Shield);
-            AddDefenseBuilding(
-                game,
-                planet,
-                "death-star-shield",
-                DefenseFacilityClass.DeathStarShield
-            );
+            AddDefenseBuilding(game, planet, "shield", shieldStrength: 1);
+            AddDefenseBuilding(game, planet, "death-star-shield", protectedUnitTypeId: "CSEM015");
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
@@ -74,9 +69,14 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
-            Building first = AddDefenseBuilding(game, planet, "kdy", DefenseFacilityClass.KDY);
+            Building first = AddDefenseBuilding(
+                game,
+                planet,
+                "kdy",
+                weaponEffect: DefenseWeaponEffect.ShieldDamage
+            );
             first.WeaponPower = 500;
-            Building second = AddDefenseBuilding(game, planet, "lnr", DefenseFacilityClass.LNR);
+            Building second = AddDefenseBuilding(game, planet, "lnr");
             second.WeaponPower = 500;
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 2);
             Regiment attacker = fleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>()[0];
@@ -323,8 +323,8 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
-            AddDefenseBuilding(game, planet, "shield1", DefenseFacilityClass.Shield);
-            AddDefenseBuilding(game, planet, "shield2", DefenseFacilityClass.Shield);
+            AddDefenseBuilding(game, planet, "shield1", shieldStrength: 1);
+            AddDefenseBuilding(game, planet, "shield2", shieldStrength: 1);
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
             PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
 
@@ -426,17 +426,25 @@ namespace Rebellion.Tests.Systems
             GameRoot game,
             Planet planet,
             string instanceId,
-            DefenseFacilityClass defenseClass
+            int shieldStrength = 0,
+            DefenseWeaponEffect weaponEffect = DefenseWeaponEffect.HullDamage,
+            string protectedUnitTypeId = null
         )
         {
             Building building = new Building
             {
                 InstanceID = instanceId,
                 OwnerInstanceID = planet.GetOwnerInstanceID(),
-                BuildingType = BuildingType.Defense,
-                DefenseFacilityClass = defenseClass,
+                BuildingType =
+                    shieldStrength > 0 || protectedUnitTypeId != null
+                        ? BuildingType.Defense
+                        : BuildingType.Weapon,
+                ShieldStrength = shieldStrength,
+                DefenseWeaponEffect = weaponEffect,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
+            if (protectedUnitTypeId != null)
+                building.ProtectedUnitTypeIDs.Add(protectedUnitTypeId);
             game.AttachNode(building, planet);
             return building;
         }

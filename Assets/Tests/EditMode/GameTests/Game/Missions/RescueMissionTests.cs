@@ -570,6 +570,47 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void UpdateMission_RescuedOfficerAlreadyInTransit_ReturnsRescuerOnly()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "rebels";
+            game.AttachNode(captive, enemyPlanet);
+
+            Mission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                captive
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
+            captive.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                new MovementSystem(game, fog, new FleetSystem(game))
+            );
+            missionSystem.UpdateMission(mission);
+
+            Assert.AreEqual(empPlanet, officer.GetParent());
+            Assert.AreEqual(enemyPlanet, captive.GetParent());
+            Assert.IsNotNull(captive.Movement);
+        }
+
+        [Test]
         public void GetSuccessfulReturnPassengers_TargetRescuedByOwner_ReturnsTarget()
         {
             var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();

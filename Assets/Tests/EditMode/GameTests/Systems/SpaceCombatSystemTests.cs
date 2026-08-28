@@ -1284,6 +1284,37 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_WeakerAIFleetDefendingFixedHeadquarters_DoesNotRetreat()
+        {
+            GameRoot game = CreateGame();
+            (Planet headquarters, _) = CreatePlanet(game, "headquarters", owner: "empire");
+            CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            headquarters.IsHeadquarters = true;
+            game.GetFactions().Single(faction => faction.InstanceID == "empire").HQInstanceID =
+                headquarters.InstanceID;
+
+            CreateFleet(game, "ef1", "empire", headquarters, 1, 1, 1, shieldRechargeRate: 0);
+            Fleet allianceFleet = CreateFleet(
+                game,
+                "af1",
+                "alliance",
+                headquarters,
+                1,
+                1000,
+                100,
+                shieldRechargeRate: 0
+            );
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            manager.ProcessTick();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("ef1"));
+            Assert.AreSame(headquarters, allianceFleet.GetParentOfType<Planet>());
+            Assert.IsFalse(HasHostileFleets(headquarters));
+        }
+
+        [Test]
         public void ProcessTick_WeakerAIFleetBlockedByGravityWell_Fights()
         {
             GameRoot game = CreateGame();

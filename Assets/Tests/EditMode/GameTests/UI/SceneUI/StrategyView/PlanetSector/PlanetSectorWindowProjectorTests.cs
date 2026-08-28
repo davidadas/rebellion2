@@ -330,6 +330,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void CreateRenderData_PopularSupport_ReturnsSupportedOpposingFactionColor()
+        {
+            _game
+                .GetFactions()
+                .Insert(1, new Faction { InstanceID = "SPECTATOR", DisplayName = "Spectator" });
+            Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);
+            planet.PopularSupport[_playerFactionId] = 75;
+            planet.PopularSupport[_opposingFactionId] = 25;
+            FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
+
+            PlanetSectorPlanetRenderData presentation = _projector
+                .CreateRenderData(
+                    CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                    null,
+                    PlanetIcon.None,
+                    null,
+                    PlanetIcon.None
+                )
+                .Planets[0];
+
+            Assert.AreEqual(
+                (Color32)opposingTheme.GetPrimaryColor(),
+                presentation.SupportBar.BackgroundColor
+            );
+        }
+
+        [Test]
         public void CreateRenderData_UnselectedPlanet_ReturnsNoInteractionState()
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);

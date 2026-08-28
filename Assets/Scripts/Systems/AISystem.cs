@@ -3,6 +3,7 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
@@ -14,6 +15,7 @@ namespace Rebellion.Systems
     public class AISystem
     {
         private readonly GameRoot _game;
+        private readonly FogOfWarSystem _fogOfWar;
         private readonly AIDirector _director;
 
         /// <summary>
@@ -26,6 +28,7 @@ namespace Rebellion.Systems
         /// <param name="bombardmentSystem">The bombardment system.</param>
         /// <param name="planetaryAssaultSystem">The planetary-assault system.</param>
         /// <param name="randomProvider">Random number provider for AI choices.</param>
+        /// <param name="fogOfWarManager">Fog-of-war system used to limit AI knowledge.</param>
         public AISystem(
             GameRoot game,
             MissionSystem missionManager,
@@ -33,10 +36,12 @@ namespace Rebellion.Systems
             ManufacturingSystem manufacturingManager,
             BombardmentSystem bombardmentSystem,
             PlanetaryAssaultSystem planetaryAssaultSystem,
-            IRandomNumberProvider randomProvider
+            IRandomNumberProvider randomProvider,
+            FogOfWarSystem fogOfWarManager
         )
         {
             _game = game;
+            _fogOfWar = fogOfWarManager;
             _director = new AIDirector(
                 game,
                 missionManager,
@@ -55,11 +60,34 @@ namespace Rebellion.Systems
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
-
-            foreach (Faction faction in _game.GetFactions().Where(f => f.IsAIControlled()))
-                results.AddRange(_director.ProcessFaction(faction));
+            foreach (object _ in ProcessTickIncrementally(results)) { }
 
             return results;
+        }
+
+        /// <summary>
+        /// Processes eligible AI factions one phase at a time.
+        /// </summary>
+        /// <param name="results">The result list populated as faction turns complete.</param>
+        /// <returns>A sequence containing one step per completed AI phase.</returns>
+        internal IEnumerable<object> ProcessTickIncrementally(ICollection<GameResult> results)
+        {
+            int tickInterval = _game.Config.AI.TickInterval;
+            if (tickInterval <= 0 || _game.CurrentTick % tickInterval != 0)
+                yield break;
+
+            foreach (Faction faction in _game.GetFactions().Where(f => f.IsAIControlled()))
+            {
+                GalaxyMap factionView = _fogOfWar.BuildFactionView(faction);
+                foreach (
+                    object step in _director.ProcessFactionIncrementally(
+                        faction,
+                        factionView,
+                        results
+                    )
+                )
+                    yield return step;
+            }
         }
     }
 }

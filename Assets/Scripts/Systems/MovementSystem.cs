@@ -214,6 +214,12 @@ namespace Rebellion.Systems
             RequestMove(unit, destination, (string)null);
         }
 
+        /// <summary>
+        /// Requests move.
+        /// </summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <param name="destination">The movement destination.</param>
+        /// <param name="sourceEventInstanceID">The originating event identifier.</param>
         private void RequestMove(
             IMovable unit,
             ContainerNode destination,
@@ -331,6 +337,12 @@ namespace Rebellion.Systems
             RequestMove(units, destination, null);
         }
 
+        /// <summary>
+        /// Requests move.
+        /// </summary>
+        /// <param name="units">The units to move.</param>
+        /// <param name="destination">The movement destination.</param>
+        /// <param name="sourceEventInstanceID">The originating event identifier.</param>
         private void RequestMove(
             List<IMovable> units,
             ContainerNode destination,
@@ -593,7 +605,7 @@ namespace Rebellion.Systems
                 )
             )
             {
-                _fleetSystem.RemoveIfEmpty(createdDestinationFleet);
+                _fleetSystem.RemoveIfEmpty(createdDestinationFleet, "transfer");
                 return false;
             }
 
@@ -602,10 +614,10 @@ namespace Rebellion.Systems
             if (accepted)
             {
                 foreach (Fleet sourceFleet in sourceFleets.Distinct())
-                    _fleetSystem.RemoveIfEmpty(sourceFleet);
+                    _fleetSystem.RemoveIfEmpty(sourceFleet, "transfer");
             }
 
-            _fleetSystem.RemoveIfEmpty(createdDestinationFleet);
+            _fleetSystem.RemoveIfEmpty(createdDestinationFleet, "transfer");
             if (accepted)
                 ResultsProduced?.Invoke(results);
 
@@ -2105,10 +2117,39 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Moves a unit to the nearest planet owned by its faction.
+        /// Destroys a unit that cannot remain at a planet whose ownership changed and records
+        /// its destruction.
+        /// </summary>
+        /// <param name="unit">The unit to destroy.</param>
+        /// <param name="planet">The planet responsible for the destruction.</param>
+        public void DestroyEvictedUnit(IMovable unit, Planet planet)
+        {
+            GameLogger.Log(
+                $"{unit.GetDisplayName()} was destroyed when {planet.GetDisplayName()} changed hands."
+            );
+            _game.DeleteNode(unit);
+            _pendingResults.Add(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = unit,
+                    Context = planet,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Moves a unit to the nearest planet owned by its faction that accepts it. When every
+        /// destination refuses the unit and <paramref name="evictingOwnerInstanceID"/> is set,
+        /// stranded starfighters and regiments are destroyed and stranded officers are captured
+        /// by the evicting faction; all other units remain in place.
         /// </summary>
         /// <param name="unit">The unit to evacuate.</param>
-        public void EvacuateToNearestFriendlyPlanet(IMovable unit)
+        /// <param name="evictingOwnerInstanceID">The faction claiming the planet, when evicting.</param>
+        public void EvacuateToNearestFriendlyPlanet(
+            IMovable unit,
+            string evictingOwnerInstanceID = null
+        )
         {
             string ownerID = GetMovementControlOwner(unit);
             if (string.IsNullOrEmpty(ownerID))
@@ -2120,18 +2161,54 @@ namespace Rebellion.Systems
 
             Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
             Planet currentPlanet = unit.GetParentOfType<Planet>();
-            Planet fallback = FindEvacuationDestination(owner, unit, currentPlanet);
-            if (fallback != null)
+            foreach (Planet fallback in FindEvacuationDestinations(owner, unit, currentPlanet))
             {
-                ExecuteMove(unit, fallback, _pendingResults);
+                if (ExecuteMove(unit, fallback, _pendingResults))
+                    return;
             }
-            else
+
+            unit.Movement = null;
+            if (!string.IsNullOrEmpty(evictingOwnerInstanceID))
             {
-                unit.Movement = null;
-                GameLogger.Warning(
-                    $"{unit.GetDisplayName()} has no friendly planet to evacuate to."
-                );
+                if (unit is Officer officer)
+                {
+                    CaptureStrandedOfficer(officer, currentPlanet, evictingOwnerInstanceID);
+                    return;
+                }
+
+                if (unit is Starfighter or Regiment)
+                {
+                    DestroyEvictedUnit(unit, currentPlanet);
+                    return;
+                }
             }
+
+            GameLogger.Warning($"{unit.GetDisplayName()} has no friendly planet to evacuate to.");
+        }
+
+        /// <summary>
+        /// Captures an officer stranded on a planet claimed by an enemy faction.
+        /// </summary>
+        /// <param name="officer">The stranded officer.</param>
+        /// <param name="planet">The planet the officer is stranded on.</param>
+        /// <param name="captorInstanceID">The instance ID of the capturing faction.</param>
+        private void CaptureStrandedOfficer(Officer officer, Planet planet, string captorInstanceID)
+        {
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = captorInstanceID;
+            officer.CanEscape = true;
+            _pendingResults.Add(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = officer,
+                    IsCaptured = true,
+                    Context = planet,
+                    Tick = _game.CurrentTick,
+                }
+            );
+            GameLogger.Log(
+                $"{officer.GetDisplayName()} was captured when {planet.GetDisplayName()} changed hands."
+            );
         }
 
         /// <summary>
@@ -2183,7 +2260,8 @@ namespace Rebellion.Systems
             }
 
             Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
-            Planet fallback = FindEvacuationDestination(owner, movable, rejectedDestination);
+            Planet fallback = FindEvacuationDestinations(owner, movable, rejectedDestination)
+                .FirstOrDefault();
 
             if (fallback != null)
             {
@@ -2203,29 +2281,30 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Finds the nearest valid colonized planet controlled by the unit's movement owner.
+        /// Finds all valid colonized planets controlled by the unit's movement owner, ordered
+        /// nearest first.
         /// </summary>
         /// <param name="owner">The faction controlling the unit's movement.</param>
         /// <param name="unit">The unit that must be accepted at the destination.</param>
         /// <param name="excludedPlanet">The current or rejected planet to exclude.</param>
-        /// <returns>The nearest valid evacuation destination, or null when none exists.</returns>
-        private static Planet FindEvacuationDestination(
+        /// <returns>The valid evacuation destinations, nearest first.</returns>
+        private static IEnumerable<Planet> FindEvacuationDestinations(
             Faction owner,
             IMovable unit,
             Planet excludedPlanet
         )
         {
             return owner
-                ?.GetOwnedColonizedPlanets()
-                .Where(planet =>
-                    planet != excludedPlanet
-                    && !planet.IsDestroyed
-                    && planet.GetOwnerInstanceID() == owner.InstanceID
-                    && planet.CanAcceptChild(unit)
-                )
-                .OrderBy(planet => planet.GetRawDistanceTo(unit.GetPosition()))
-                .ThenBy(planet => planet.InstanceID)
-                .FirstOrDefault();
+                    ?.GetOwnedColonizedPlanets()
+                    .Where(planet =>
+                        planet != excludedPlanet
+                        && !planet.IsDestroyed
+                        && planet.GetOwnerInstanceID() == owner.InstanceID
+                        && planet.CanAcceptChild(unit)
+                    )
+                    .OrderBy(planet => planet.GetRawDistanceTo(unit.GetPosition()))
+                    .ThenBy(planet => planet.InstanceID)
+                ?? Enumerable.Empty<Planet>();
         }
 
         /// <summary>

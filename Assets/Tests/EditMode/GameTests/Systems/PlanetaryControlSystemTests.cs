@@ -323,6 +323,69 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TransferPlanet_EnemyRegimentWithNoReachableDestination_DestroysRegiment()
+        {
+            _game.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_empirePlanet, "rebels");
+            _targetPlanet.EnergyCapacity = 1;
+            Regiment regiment = EntityFactory.CreateRegiment("reg-stranded", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.IsNull(
+                regiment.GetParentOfType<Planet>(),
+                "Regiment with nowhere to evacuate should be destroyed"
+            );
+        }
+
+        [Test]
+        public void TransferPlanet_EnemyOfficerWithNoReachableDestination_OfficerCaptured()
+        {
+            _game.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_empirePlanet, "rebels");
+            Officer officer = EntityFactory.CreateOfficer("o-stranded", "empire");
+            _game.AttachNode(officer, _targetPlanet);
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.IsTrue(
+                officer.IsCaptured,
+                "Officer with nowhere to evacuate should be captured by the new owner"
+            );
+            Assert.AreEqual("rebels", officer.CaptorInstanceID);
+            Assert.AreEqual(
+                _targetPlanet,
+                officer.GetParentOfType<Planet>(),
+                "Captured officer should be held on the planet"
+            );
+        }
+
+        [Test]
+        public void TransferPlanet_PlanetWithEnemyStarfighters_DestroysEnemyStarfighters()
+        {
+            _game.ChangeOwnership(_targetPlanet, "empire");
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 10,
+                CurrentSquadronSize = 10,
+            };
+            _game.AttachNode(fighter, _targetPlanet);
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.IsNull(
+                fighter.GetParentOfType<Planet>(),
+                "Stationed enemy starfighter should be destroyed, not evacuated"
+            );
+            CollectionAssert.DoesNotContain(_targetPlanet.GetChildren<Starfighter>(), fighter);
+        }
+
+        [Test]
         public void TransferPlanet_InTransitFleetAtPlanet_FleetNotRedirected()
         {
             // Fleet already reparented to target (our immediate-reparent model) but mid-flight.

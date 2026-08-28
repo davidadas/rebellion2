@@ -1,8 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
+using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Scoring
 {
@@ -11,6 +15,8 @@ namespace Rebellion.AI.Scoring
     /// </summary>
     public sealed class AIMissionProposalScorer : IAIProposalScorer
     {
+        private const double _maximumSuccessProbability = 100;
+
         /// <summary>
         /// Returns whether this scorer can score the proposal.
         /// </summary>
@@ -29,145 +35,238 @@ namespace Rebellion.AI.Scoring
         /// <returns>The mission proposal score.</returns>
         public double Score(AITurnContext context, AIProposal proposal)
         {
-            if (context?.Faction == null || proposal is not AIMissionProposal missionProposal)
+            if (
+                context?.Faction == null
+                || context.Game?.Config == null
+                || context.Missions == null
+                || proposal is not AIMissionProposal missionProposal
+            )
                 return 0;
 
-            return missionProposal.MissionTypeID switch
+            if (!TryCreateMission(context, missionProposal, out Mission mission))
+                return 0;
+
+            double successProbability = context
+                .Missions.GetMissionOdds(mission, missionProposal.MainParticipants)
+                .SuccessProbability;
+            double score = GetMissionScore(context, missionProposal, successProbability);
+            score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
+            score -= GetTravelPenalty(context, missionProposal);
+            score -= GetOfficerReplacementPenalty(context, missionProposal);
+
+            return score >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? score : 0;
+        }
+
+        /// <summary>
+        /// Returns the highest score a mission proposal can achieve before its odds are resolved.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The mission proposal to inspect.</param>
+        /// <returns>An upper bound for the proposal score.</returns>
+        public double GetScoreUpperBound(AITurnContext context, AIMissionProposal proposal)
+        {
+            if (context?.Game?.Config == null || proposal == null)
+                return 0;
+
+            double score = GetMissionScore(context, proposal, _maximumSuccessProbability);
+            score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, proposal);
+            score -= GetTravelPenalty(context, proposal);
+            score -= GetOfficerReplacementPenalty(context, proposal);
+            return score;
+        }
+
+        /// <summary>
+        /// Returns mission score.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <param name="successProbability">The calculated success probability.</param>
+        /// <returns>The calculated value.</returns>
+        private double GetMissionScore(
+            AITurnContext context,
+            AIMissionProposal proposal,
+            double successProbability
+        )
+        {
+            return proposal.MissionTypeID switch
             {
-                MissionTypeIDs.Recruitment => ScoreRecruitment(context, missionProposal),
-                MissionTypeIDs.Diplomacy => ScoreDiplomacy(context, missionProposal),
-                MissionTypeIDs.Research => ScoreResearch(missionProposal),
-                MissionTypeIDs.Sabotage => ScoreSabotage(missionProposal),
-                MissionTypeIDs.Abduction => ScoreTargetedOfficerMission(missionProposal),
-                MissionTypeIDs.Assassination => ScoreTargetedOfficerMission(missionProposal),
-                MissionTypeIDs.Espionage => ScorePrimaryRating(missionProposal),
-                MissionTypeIDs.Reconnaissance => ScorePrimaryRating(missionProposal),
-                MissionTypeIDs.InciteUprising => ScorePrimaryRating(missionProposal),
-                MissionTypeIDs.SubdueUprising => ScorePrimaryRating(missionProposal),
-                MissionTypeIDs.Rescue => ScoreTargetedOfficerMission(missionProposal),
-                MissionTypeIDs.JediTraining => ScorePrimaryRating(missionProposal),
+                MissionTypeIDs.Diplomacy => ScoreDiplomacy(context, proposal, successProbability),
+                MissionTypeIDs.Sabotage => ScoreSabotage(context, proposal, successProbability),
+                MissionTypeIDs.Espionage => successProbability
+                    + GetIntelAgeScore(context, proposal),
+                MissionTypeIDs.JediTraining => successProbability + GetJediTrainingValue(proposal),
+                _ => successProbability,
+            };
+        }
+
+        /// <summary>
+        /// Scores sabotage.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <param name="successProbability">The calculated success probability.</param>
+        /// <returns>The calculated value.</returns>
+        private double ScoreSabotage(
+            AITurnContext context,
+            AIMissionProposal proposal,
+            double successProbability
+        )
+        {
+            return successProbability
+                + context.Assessment.GetSabotageTargetPriorityBonus(
+                    proposal.TargetPlanet,
+                    proposal.SelectedTarget as IManufacturable
+                );
+        }
+
+        /// <summary>
+        /// Scores diplomacy.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <param name="successProbability">The calculated success probability.</param>
+        /// <returns>The calculated value.</returns>
+        private double ScoreDiplomacy(
+            AITurnContext context,
+            AIMissionProposal proposal,
+            double successProbability
+        )
+        {
+            int opposingSupport =
+                proposal.TargetPlanet?.GetOpposingPopularSupport(context.Faction.InstanceID) ?? 0;
+            return successProbability
+                + opposingSupport
+                    * context.Game.Config.AI.MissionPlanning.DiplomacySupportDeficitWeight;
+        }
+
+        /// <summary>
+        /// Returns jedi training value.
+        /// </summary>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <returns>The calculated value.</returns>
+        private double GetJediTrainingValue(AIMissionProposal proposal)
+        {
+            List<Officer> officers = proposal.Participants.OfType<Officer>().ToList();
+            Officer trainer = officers
+                .OrderByDescending(officer => officer.ForceRank)
+                .FirstOrDefault();
+            if (trainer == null)
+                return 0;
+
+            return officers
+                .Where(officer => officer != trainer)
+                .Sum(officer => Math.Max(0, trainer.ForceRank - officer.ForceRank));
+        }
+
+        /// <summary>
+        /// Attempts to create mission.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <param name="mission">The mission.</param>
+        /// <returns>True when the condition is satisfied.</returns>
+        private static bool TryCreateMission(
+            AITurnContext context,
+            AIMissionProposal proposal,
+            out Mission mission
+        )
+        {
+            return context.Missions.TryCreateMission(proposal.CreateRequest(), out mission);
+        }
+
+        /// <summary>
+        /// Returns priority bonus.
+        /// </summary>
+        /// <param name="config">The applicable configuration.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <returns>The calculated value.</returns>
+        private int GetPriorityBonus(
+            GameConfig.AIMissionPlanningConfig config,
+            AIMissionProposal proposal
+        )
+        {
+            return proposal.MissionTypeID switch
+            {
+                MissionTypeIDs.Reconnaissance => config.ReconnaissancePriorityBonus,
+                MissionTypeIDs.Recruitment => config.RecruitmentPriorityBonus,
+                MissionTypeIDs.Rescue => config.RescuePriorityBonus,
+                MissionTypeIDs.SubdueUprising => config.SubdueUprisingPriorityBonus,
+                MissionTypeIDs.Research => config.ResearchPriorityBonus,
+                MissionTypeIDs.JediTraining => config.JediTrainingPriorityBonus,
+                MissionTypeIDs.Espionage => config.EspionagePriorityBonus,
+                MissionTypeIDs.Diplomacy => config.DiplomacyPriorityBonus,
                 _ => 0,
             };
         }
 
         /// <summary>
-        /// Returns the proposal score from the mission's primary participant rating.
-        /// </summary>
-        /// <param name="proposal">The mission proposal to score.</param>
-        /// <returns>The primary rating score.</returns>
-        private double ScorePrimaryRating(AIMissionProposal proposal)
-        {
-            return GetParticipantRating(proposal.Participant, GetPrimaryMissionRating(proposal));
-        }
-
-        /// <summary>
-        /// Returns the recruitment proposal score.
+        /// Returns travel penalty.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The mission proposal to score.</param>
-        /// <returns>The recruitment proposal score.</returns>
-        private double ScoreRecruitment(AITurnContext context, AIMissionProposal proposal)
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <returns>The calculated value.</returns>
+        private double GetTravelPenalty(AITurnContext context, AIMissionProposal proposal)
         {
-            int leadership = GetParticipantRating(proposal.Participant, OfficerRating.Leadership);
-            int opposingSupport =
-                proposal.TargetPlanet?.GetOpposingPopularSupport(context.Faction.InstanceID) ?? 0;
-            ProbabilityTable table = new ProbabilityTable(
-                context.Game.Config.ProbabilityTables.Mission.Recruitment
-            );
-            return table.Lookup(leadership - opposingSupport);
+            double distanceScale = context.Game.Config.Movement.DistanceScale;
+            if (proposal.TargetPlanet == null || distanceScale <= 0)
+                return 0;
+
+            return proposal
+                    .Participants.Select(participant =>
+                        participant
+                            .GetParentOfType<Planet>()
+                            ?.GetRawDistanceTo(proposal.TargetPlanet)
+                        ?? 0
+                    )
+                    .DefaultIfEmpty()
+                    .Max() / distanceScale;
         }
 
         /// <summary>
-        /// Returns the diplomacy proposal score.
+        /// Returns officer replacement penalty.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The mission proposal to score.</param>
-        /// <returns>The diplomacy proposal score.</returns>
-        private double ScoreDiplomacy(AITurnContext context, AIMissionProposal proposal)
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <returns>The calculated value.</returns>
+        private int GetOfficerReplacementPenalty(AITurnContext context, AIMissionProposal proposal)
         {
-            return ScorePrimaryRating(proposal)
-                - context.Assessment.GetFactionPopularSupport(proposal.TargetPlanet)
-                + context.Assessment.GetPlanetMissionSupportPressure(proposal.TargetPlanet);
+            if (proposal.Participant is not Officer || !IsHostileMission(proposal.MissionTypeID))
+                return 0;
+
+            bool hasSpecialForcesReplacement = context
+                .Faction.GetUnlockedTechnologies(ManufacturingType.Troop)
+                .Select(technology => technology.GetReference())
+                .OfType<SpecialForces>()
+                .Any(specialForces => specialForces.CanPerformMission(proposal.MissionTypeID));
+            return hasSpecialForcesReplacement
+                ? context.Game.Config.AI.MissionPlanning.HostileOfficerReplacementPenalty
+                : 0;
         }
 
         /// <summary>
-        /// Returns the research proposal score.
+        /// Returns whether hostile mission.
         /// </summary>
-        /// <param name="proposal">The mission proposal to score.</param>
-        /// <returns>The research proposal score.</returns>
-        private double ScoreResearch(AIMissionProposal proposal)
+        /// <param name="missionTypeId">The mission type identifier.</param>
+        /// <returns>True when the condition is satisfied.</returns>
+        private bool IsHostileMission(string missionTypeId)
         {
-            if (proposal.Discipline.HasValue && proposal.Participant is Officer officer)
-                return officer.GetBaseRating(proposal.Discipline.Value);
-
-            return 0;
+            return missionTypeId == MissionTypeIDs.Sabotage
+                || missionTypeId == MissionTypeIDs.Abduction
+                || missionTypeId == MissionTypeIDs.Assassination
+                || missionTypeId == MissionTypeIDs.InciteUprising;
         }
 
         /// <summary>
-        /// Returns the sabotage proposal score from averaged espionage and combat ratings.
+        /// Returns intel age score.
         /// </summary>
-        /// <param name="proposal">The sabotage proposal to score.</param>
-        /// <returns>The participant's original-game sabotage score.</returns>
-        private double ScoreSabotage(AIMissionProposal proposal)
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <returns>The calculated value.</returns>
+        private double GetIntelAgeScore(AITurnContext context, AIMissionProposal proposal)
         {
-            int espionage = GetParticipantRating(proposal.Participant, OfficerRating.Espionage);
-            int combat = GetParticipantRating(proposal.Participant, OfficerRating.Combat);
-            return (espionage + combat) / 2;
-        }
-
-        /// <summary>
-        /// Returns the targeted-officer proposal score.
-        /// </summary>
-        /// <param name="proposal">The mission proposal to score.</param>
-        /// <returns>The targeted-officer proposal score.</returns>
-        private double ScoreTargetedOfficerMission(AIMissionProposal proposal)
-        {
-            return ScorePrimaryRating(proposal) - GetTargetCombatRating(proposal.TargetOfficer);
-        }
-
-        /// <summary>
-        /// Returns the mission rating used by the mission's success roll.
-        /// </summary>
-        /// <param name="proposal">The mission proposal to inspect.</param>
-        /// <returns>The primary mission participant rating.</returns>
-        private OfficerRating GetPrimaryMissionRating(AIMissionProposal proposal)
-        {
-            return proposal.MissionTypeID switch
-            {
-                MissionTypeIDs.Reconnaissance => OfficerRating.Espionage,
-                MissionTypeIDs.Diplomacy => OfficerRating.Diplomacy,
-                MissionTypeIDs.Recruitment => OfficerRating.Leadership,
-                MissionTypeIDs.SubdueUprising => OfficerRating.Leadership,
-                MissionTypeIDs.Abduction => OfficerRating.Combat,
-                MissionTypeIDs.Assassination => OfficerRating.Combat,
-                MissionTypeIDs.Espionage => OfficerRating.Espionage,
-                MissionTypeIDs.InciteUprising => OfficerRating.Leadership,
-                MissionTypeIDs.Rescue => OfficerRating.Combat,
-                MissionTypeIDs.Research => OfficerRating.None,
-                MissionTypeIDs.JediTraining => OfficerRating.Diplomacy,
-                _ => OfficerRating.Espionage,
-            };
-        }
-
-        /// <summary>
-        /// Returns a participant mission rating value.
-        /// </summary>
-        /// <param name="participant">The participant to inspect.</param>
-        /// <param name="rating">The mission rating to read.</param>
-        /// <returns>The participant's rating value, or zero if no participant exists.</returns>
-        private int GetParticipantRating(IMissionParticipant participant, OfficerRating rating)
-        {
-            return participant?.GetEffectiveRating(rating) ?? 0;
-        }
-
-        /// <summary>
-        /// Returns the target officer's combat rating.
-        /// </summary>
-        /// <param name="targetOfficer">The target officer to inspect.</param>
-        /// <returns>The target officer combat rating, or zero if no target exists.</returns>
-        private int GetTargetCombatRating(Officer targetOfficer)
-        {
-            return targetOfficer?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
+            int tickInterval = context.Game.Config.AI.TickInterval;
+            int age = context.Assessment.GetPlanetIntelAge(proposal.TargetPlanet);
+            return tickInterval > 0 && age < int.MaxValue ? (double)age / tickInterval : 0;
         }
     }
 }

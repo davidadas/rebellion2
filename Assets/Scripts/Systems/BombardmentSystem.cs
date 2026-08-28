@@ -162,8 +162,11 @@ namespace Rebellion.Systems
                 if (!GetActiveCapitalShips(attackingFleets).Any())
                     return result;
 
-                result.BombardmentStrength = CalculateBombardmentStrength(attackingFleets);
-                result.ShieldStrength = CalculatePlanetShieldStrength(targetPlanet);
+                result.BombardmentStrength = GetBombardmentStrength(
+                    attackingFleets,
+                    _game.Config.Combat.Bombardment
+                );
+                result.ShieldStrength = GetBombardmentShieldStrength(targetPlanet);
                 result.StrikeAttempts = Math.Max(
                     0,
                     result.BombardmentStrength - result.ShieldStrength
@@ -308,17 +311,27 @@ namespace Rebellion.Systems
         /// <returns>The combined bombardment strength after condition and leadership adjustments.</returns>
         private int CalculateBombardmentStrength(IReadOnlyList<Fleet> fleets)
         {
-            int divisor = _game.Config.Combat.Bombardment.AttackerLeadershipDivisor;
+            return GetBombardmentStrength(fleets, _game.Config.Combat.Bombardment);
+        }
+
+        /// <summary>
+        /// Calculates the total effective bombardment strength of the attacking fleets.
+        /// </summary>
+        /// <param name="fleets">Fleets contributing ships and starfighters.</param>
+        /// <param name="config">Bombardment configuration.</param>
+        /// <returns>The combined bombardment strength after condition and leadership adjustments.</returns>
+        public static int GetBombardmentStrength(
+            IEnumerable<Fleet> fleets,
+            GameConfig.BombardmentConfig config
+        )
+        {
+            if (fleets == null || config == null)
+                return 0;
+
             int total = 0;
 
-            foreach (Fleet fleet in fleets)
+            foreach (Fleet fleet in fleets.Where(fleet => fleet != null))
             {
-                int leadership = GetBombardmentLeadership(
-                    fleet.GetOfficers(),
-                    OfficerRank.Admiral,
-                    fleet.GetOwnerInstanceID()
-                );
-                int multiplier = leadership / divisor + 1;
                 int fleetStrength = 0;
 
                 foreach (
@@ -343,10 +356,47 @@ namespace Rebellion.Systems
                         );
                 }
 
-                total += fleetStrength * multiplier;
+                total += fleetStrength * GetBombardmentMultiplier(fleet, config);
             }
 
             return total;
+        }
+
+        /// <summary>Returns projected bombardment strength for a fleet.</summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="config">Bombardment configuration.</param>
+        /// <returns>The projected bombardment strength.</returns>
+        internal static int GetProjectedBombardmentStrength(
+            Fleet fleet,
+            GameConfig.BombardmentConfig config
+        )
+        {
+            if (fleet == null || config == null)
+                return 0;
+
+            return fleet
+                    .GetChildren<CapitalShip>()
+                    .Where(IsCommittedBombardmentUnit)
+                    .Sum(GetProjectedCapitalShipBombardmentStrength)
+                * GetBombardmentMultiplier(fleet, config);
+        }
+
+        /// <summary>Returns projected bombardment strength for one capital ship.</summary>
+        /// <param name="fleet">The fleet containing the ship.</param>
+        /// <param name="capitalShip">The capital ship to inspect.</param>
+        /// <param name="config">Bombardment configuration.</param>
+        /// <returns>The projected bombardment strength.</returns>
+        internal static int GetProjectedCapitalShipBombardmentStrength(
+            Fleet fleet,
+            CapitalShip capitalShip,
+            GameConfig.BombardmentConfig config
+        )
+        {
+            if (fleet == null || capitalShip == null || config == null)
+                return 0;
+
+            return GetProjectedCapitalShipBombardmentStrength(capitalShip)
+                * GetBombardmentMultiplier(fleet, config);
         }
 
         /// <summary>
@@ -354,15 +404,104 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">Planet whose shields are evaluated.</param>
         /// <returns>The combined active shield strength.</returns>
-        private static int CalculatePlanetShieldStrength(Planet planet)
+        public static int GetBombardmentShieldStrength(Planet planet)
         {
+            if (planet == null)
+                return 0;
+
             return planet
                 .GetAllBuildings()
                 .Where(building =>
-                    IsActiveBombardmentUnit(building)
-                    && building.DefenseFacilityClass == DefenseFacilityClass.Shield
+                    IsActiveBombardmentUnit(building) && building.IsPlanetaryShieldGenerator()
                 )
                 .Sum(building => building.ShieldStrength);
+        }
+
+        /// <summary>
+        /// Returns whether a planet has an active facility capable of resisting orbital attack.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when an active planetary defense facility remains.</returns>
+        public static bool HasActiveDefenseFacilities(Planet planet)
+        {
+            return planet
+                    ?.GetAllBuildings()
+                    .Any(building =>
+                        IsActiveBombardmentUnit(building) && IsBombardmentDefenseFacility(building)
+                    ) == true;
+        }
+
+        /// <summary>
+        /// Returns whether a planet has an active military target for orbital bombardment.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <param name="defenderInstanceId">Faction whose military targets are considered.</param>
+        /// <returns>True when a defending regiment or defense facility remains.</returns>
+        public static bool HasActiveMilitaryTargets(Planet planet, string defenderInstanceId)
+        {
+            if (planet == null || string.IsNullOrEmpty(defenderInstanceId))
+                return false;
+
+            return HasActiveDefenseFacilities(planet)
+                || planet
+                    .GetAllRegiments()
+                    .Any(regiment =>
+                        IsActiveBombardmentUnit(regiment)
+                        && regiment.GetOwnerInstanceID() == defenderInstanceId
+                    );
+        }
+
+        /// <summary>
+        /// Returns bombardment multiplier.
+        /// </summary>
+        /// <param name="fleet">The fleet to evaluate.</param>
+        /// <param name="config">The applicable configuration.</param>
+        /// <returns>The calculated value.</returns>
+        private static int GetBombardmentMultiplier(
+            Fleet fleet,
+            GameConfig.BombardmentConfig config
+        )
+        {
+            int leadership = GetBombardmentLeadership(
+                fleet.GetOfficers(),
+                OfficerRank.Admiral,
+                fleet.GetOwnerInstanceID()
+            );
+            return leadership / config.AttackerLeadershipDivisor + 1;
+        }
+
+        /// <summary>
+        /// Returns projected capital ship bombardment strength.
+        /// </summary>
+        /// <param name="capitalShip">The capital ship to evaluate.</param>
+        /// <returns>The calculated value.</returns>
+        private static int GetProjectedCapitalShipBombardmentStrength(CapitalShip capitalShip)
+        {
+            bool useCurrentCondition =
+                capitalShip.GetParent() != null
+                && capitalShip.ManufacturingStatus == ManufacturingStatus.Complete;
+            int capitalShipStrength = useCurrentCondition
+                ? ScaleByCondition(
+                    capitalShip.Bombardment,
+                    capitalShip.CurrentHullStrength,
+                    capitalShip.MaxHullStrength
+                )
+                : capitalShip.Bombardment;
+            int starfighterStrength = capitalShip
+                .GetChildren<Starfighter>()
+                .Where(IsCommittedBombardmentUnit)
+                .Sum(starfighter =>
+                    useCurrentCondition
+                    && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                        ? ScaleByCondition(
+                            starfighter.Bombardment,
+                            starfighter.CurrentSquadronSize,
+                            starfighter.MaxSquadronSize
+                        )
+                        : starfighter.Bombardment
+                );
+
+            return capitalShipStrength + starfighterStrength;
         }
 
         /// <summary>
@@ -394,11 +533,10 @@ namespace Rebellion.Systems
             );
             Dictionary<CapitalShip, int> hullDamage = targets.ToDictionary(ship => ship, _ => 0);
 
-            IEnumerable<Building> facilities = GetActiveDefenseFacilities(
-                    planet,
-                    DefenseFacilityClass.KDY
-                )
-                .Concat(GetActiveDefenseFacilities(planet, DefenseFacilityClass.LNR));
+            IEnumerable<Building> facilities = GetActiveDefenseFacilities(planet)
+                .OrderBy(facility =>
+                    facility.DefenseWeaponEffect == DefenseWeaponEffect.ShieldDamage ? 0 : 1
+                );
 
             foreach (Building facility in facilities)
             {
@@ -407,7 +545,7 @@ namespace Rebellion.Systems
                 int absorbed = Math.Min(remainingShields[target], damage);
                 remainingShields[target] -= absorbed;
 
-                if (facility.DefenseFacilityClass == DefenseFacilityClass.LNR)
+                if (facility.DefenseWeaponEffect == DefenseWeaponEffect.HullDamage)
                     hullDamage[target] += damage - absorbed;
             }
 
@@ -1058,21 +1196,17 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns active defense facilities of a specified class.
+        /// Returns active planetary defense weapons.
         /// </summary>
         /// <param name="planet">Planet containing the facilities.</param>
-        /// <param name="defenseClass">Defense-facility class to select.</param>
         /// <returns>The matching active facilities.</returns>
-        private static IEnumerable<Building> GetActiveDefenseFacilities(
-            Planet planet,
-            DefenseFacilityClass defenseClass
-        )
+        private static IEnumerable<Building> GetActiveDefenseFacilities(Planet planet)
         {
             return planet
                 .GetAllBuildings()
                 .Where(building =>
                     IsActiveBombardmentUnit(building)
-                    && building.DefenseFacilityClass == defenseClass
+                    && building.BuildingType == BuildingType.Weapon
                 );
         }
 
@@ -1151,6 +1285,18 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Returns whether committed bombardment unit.
+        /// </summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <returns>True when the condition is satisfied.</returns>
+        private static bool IsCommittedBombardmentUnit(IManufacturable unit)
+        {
+            return unit?.ManufacturingStatus
+                is ManufacturingStatus.Complete
+                    or ManufacturingStatus.Building;
+        }
+
+        /// <summary>
         /// Determines whether a capital ship can participate in bombardment.
         /// </summary>
         /// <param name="ship">Capital ship to inspect.</param>
@@ -1178,11 +1324,7 @@ namespace Rebellion.Systems
         /// <returns>True when the building is a planetary defense facility.</returns>
         private static bool IsBombardmentDefenseFacility(Building building)
         {
-            return building.DefenseFacilityClass
-                is DefenseFacilityClass.KDY
-                    or DefenseFacilityClass.LNR
-                    or DefenseFacilityClass.Shield
-                    or DefenseFacilityClass.DeathStarShield;
+            return building.IsDefenseFacility();
         }
 
         /// <summary>

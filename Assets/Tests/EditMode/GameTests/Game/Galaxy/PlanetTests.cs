@@ -1047,8 +1047,8 @@ namespace Rebellion.Tests.Game.Galaxy
                 new Building
                 {
                     OwnerInstanceID = "FNALL1",
-                    BuildingType = BuildingType.Defense,
-                    DefenseFacilityClass = DefenseFacilityClass.KDY,
+                    BuildingType = BuildingType.Weapon,
+                    DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage,
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 }
             );

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.AI.Combat;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -29,6 +30,7 @@ namespace Rebellion.Systems
     public class SpaceCombatSystem
     {
         private readonly GameRoot _game;
+        private readonly AISpaceCombatPolicy _aiCombatPolicy;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movement;
         private readonly Dictionary<CapitalShip, float> _battleHullStrengths =
@@ -67,6 +69,7 @@ namespace Rebellion.Systems
         )
         {
             _game = game;
+            _aiCombatPolicy = new AISpaceCombatPolicy(game);
             _provider = provider;
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
         }
@@ -846,23 +849,23 @@ namespace Rebellion.Systems
 
             if (attackerPower == defenderPower)
             {
-                bool attackerRetreated = TryRetreatFleet(
-                    attacker,
-                    defender,
-                    ignoreGravityWell: false
-                );
-                bool defenderRetreated = TryRetreatFleet(
-                    defender,
-                    attacker,
-                    ignoreGravityWell: false
-                );
+                bool attackerRetreated =
+                    _aiCombatPolicy.ShouldRetreat(attacker, planet, attackerPower, defenderPower)
+                    && TryRetreatFleet(attacker, defender, ignoreGravityWell: false);
+                bool defenderRetreated =
+                    _aiCombatPolicy.ShouldRetreat(defender, planet, defenderPower, attackerPower)
+                    && TryRetreatFleet(defender, attacker, ignoreGravityWell: false);
                 return attackerRetreated || defenderRetreated;
             }
 
             if (attackerPower < defenderPower)
-                return TryRetreatFleet(attacker, defender, ignoreGravityWell: false);
+            {
+                return _aiCombatPolicy.ShouldRetreat(attacker, planet, attackerPower, defenderPower)
+                    && TryRetreatFleet(attacker, defender, ignoreGravityWell: false);
+            }
 
-            return TryRetreatFleet(defender, attacker, ignoreGravityWell: false);
+            return _aiCombatPolicy.ShouldRetreat(defender, planet, defenderPower, attackerPower)
+                && TryRetreatFleet(defender, attacker, ignoreGravityWell: false);
         }
 
         /// <summary>
@@ -2044,6 +2047,9 @@ namespace Rebellion.Systems
         /// <param name="fleet">Empty fleet to remove.</param>
         private void RemoveFleetFromScene(Fleet fleet)
         {
+            GameLogger.Warning(
+                $"[fleet] removed {fleet.InstanceID} role={fleet.RoleType} owner={fleet.GetOwnerInstanceID()} reason=combat"
+            );
             _game.DeleteNode(fleet);
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
         }

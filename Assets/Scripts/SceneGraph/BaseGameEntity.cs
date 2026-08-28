@@ -12,13 +12,16 @@ namespace Rebellion.SceneGraph
     [PersistableObject]
     public class BaseGameEntity : IGameEntity
     {
+        private static readonly object _instanceIdLock = new object();
+        private static Random _deterministicInstanceIdProvider;
+
         [CloneIgnore]
         private string _instanceId;
 
         [CloneIgnore]
         public string InstanceID
         {
-            get => _instanceId ??= Guid.NewGuid().ToString().Replace("-", "");
+            get => _instanceId ??= CreateInstanceId();
             set => _instanceId = value;
         }
 
@@ -40,13 +43,40 @@ namespace Rebellion.SceneGraph
             new List<EncyclopediaEntryStat>();
         public string EncyclopediaDescription { get; set; }
 
-        /// <summary>
-        /// Gets whether this entity defines any encyclopedia presentation data.
-        /// </summary>
         public bool HasEncyclopediaData =>
             !string.IsNullOrEmpty(EncyclopediaImagePath)
             || !string.IsNullOrEmpty(EncyclopediaDescription)
             || EncyclopediaStats?.Count > 0;
+
+        /// <summary>Sets the deterministic instance-identifier seed.</summary>
+        /// <param name="seed">The seed, or null to restore random identifiers.</param>
+        public static void SetInstanceIdSeed(int? seed)
+        {
+            lock (_instanceIdLock)
+                _deterministicInstanceIdProvider = seed.HasValue ? new Random(seed.Value) : null;
+        }
+
+        /// <summary>Creates a random or deterministically seeded instance identifier.</summary>
+        /// <returns>The new identifier.</returns>
+        private static string CreateInstanceId()
+        {
+            lock (_instanceIdLock)
+            {
+                if (_deterministicInstanceIdProvider == null)
+                    return Guid.NewGuid().ToString("N");
+
+                byte[] bytes = new byte[16];
+                _deterministicInstanceIdProvider.NextBytes(bytes);
+                return new Guid(bytes).ToString("N");
+            }
+        }
+
+        /// <summary>Returns the current identifier without creating one.</summary>
+        /// <returns>The current identifier, or null.</returns>
+        internal string PeekInstanceID()
+        {
+            return _instanceId ?? string.Empty;
+        }
 
         /// <summary>
         /// Returns the instance ID of the entity.

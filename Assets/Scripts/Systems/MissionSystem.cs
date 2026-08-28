@@ -194,6 +194,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Creates a mission from a request without starting it.
+        /// </summary>
+        /// <param name="request">The mission request to resolve.</param>
+        /// <param name="mission">The created mission when successful.</param>
+        /// <returns>True when the request creates a valid mission.</returns>
+        public bool TryCreateMission(MissionStartRequest request, out Mission mission)
+        {
+            MissionContext context = ResolveMissionContext(request);
+            if (context == null)
+            {
+                mission = null;
+                return false;
+            }
+
+            return _missionFactory.TryCreateMission(context, out mission);
+        }
+
+        /// <summary>
         /// Returns the mission options available for the supplied mission start request.
         /// </summary>
         /// <param name="request">The mission start request to resolve and evaluate.</param>
@@ -204,6 +222,23 @@ namespace Rebellion.Systems
             return context != null
                 ? _missionFactory.GetAvailableMissionOptions(context)
                 : new List<MissionOption>();
+        }
+
+        /// <summary>
+        /// Calculates mission success odds without resolving an outcome.
+        /// </summary>
+        /// <param name="mission">The mission whose probability rules apply.</param>
+        /// <param name="participants">The participants to evaluate.</param>
+        /// <returns>The calculated mission odds.</returns>
+        public MissionOdds GetMissionOdds(
+            Mission mission,
+            IEnumerable<IMissionParticipant> participants
+        )
+        {
+            if (mission == null)
+                throw new ArgumentNullException(nameof(mission));
+
+            return mission.GetMissionOdds(participants, _game);
         }
 
         /// <summary>

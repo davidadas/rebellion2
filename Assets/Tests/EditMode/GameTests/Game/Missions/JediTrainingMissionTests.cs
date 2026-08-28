@@ -41,6 +41,23 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void GetMissionOdds_TrainerAndStudent_ReturnsTrainingProgressProbability()
+        {
+            JediTrainingMission mission = CreateMission();
+            _game.Config.Jedi.TrainingCatchUpPercent = 100;
+            int forceRankGap = _trainer.ForceRank - _student.ForceRank;
+            double expectedProbability =
+                (double)forceRankGap / 100 * forceRankGap / (forceRankGap + 1) * 100;
+
+            MissionOdds odds = mission.GetMissionOdds(
+                new IMissionParticipant[] { _trainer, _student },
+                _game
+            );
+
+            Assert.AreEqual(expectedProbability, odds.SuccessProbability, 0.0001);
+        }
+
+        [Test]
         public void TryCreate_EnemyPlanet_ReturnsNull()
         {
             _planet.OwnerInstanceID = "empire";
