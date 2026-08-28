@@ -252,8 +252,7 @@ namespace Rebellion.Systems
             int activeShieldCount = planet
                 .GetAllBuildings()
                 .Count(building =>
-                    IsActiveAssaultUnit(building)
-                    && building.DefenseFacilityClass == DefenseFacilityClass.Shield
+                    IsActiveAssaultUnit(building) && building.IsPlanetaryShieldGenerator()
                 );
             return activeShieldCount >= shieldGeneratorLimit;
         }
@@ -813,11 +812,7 @@ namespace Rebellion.Systems
         /// <returns>True when the building is a planetary defense facility.</returns>
         private static bool IsAssaultDefenseFacility(Building building)
         {
-            return building.DefenseFacilityClass
-                is DefenseFacilityClass.KDY
-                    or DefenseFacilityClass.LNR
-                    or DefenseFacilityClass.Shield
-                    or DefenseFacilityClass.DeathStarShield;
+            return building.IsDefenseFacility();
         }
 
         private class AssaultTroop

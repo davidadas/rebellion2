@@ -230,7 +230,7 @@ namespace Rebellion.Tests.AI.Helpers
                 bombardmentSystem,
                 planetaryAssaultSystem,
                 provider,
-                fog
+                fog.BuildFactionView(faction)
             );
         }
 

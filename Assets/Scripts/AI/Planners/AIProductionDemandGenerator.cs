@@ -78,7 +78,7 @@ namespace Rebellion.AI.Planners
                 .Assessment.GetPlanetBuildings(planet)
                 .Count(building =>
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
-                    && building.DefenseFacilityClass == DefenseFacilityClass.Shield
+                    && building.IsPlanetaryShieldGenerator()
                 );
             int shieldDeficit = Math.Max(0, shieldTarget - shieldCount);
             int shieldQuantity = Math.Min(shieldDeficit, availableEnergy);
@@ -143,7 +143,7 @@ namespace Rebellion.AI.Planners
                 if (building.GetOwnerInstanceID() != context.Faction.InstanceID)
                     continue;
 
-                if (building.DefenseFacilityClass == DefenseFacilityClass.Shield)
+                if (building.IsPlanetaryShieldGenerator())
                     shieldCount++;
                 else if (building.GetBuildingType() == BuildingType.Weapon)
                     weaponCount++;

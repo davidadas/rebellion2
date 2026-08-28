@@ -175,6 +175,62 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void IsDefenseFacility_DefenseBuilding_ReturnsTrue()
+        {
+            Building building = new Building { BuildingType = BuildingType.Defense };
+
+            Assert.IsTrue(building.IsDefenseFacility());
+        }
+
+        [Test]
+        public void IsDefenseFacility_NonDefenseBuilding_ReturnsFalse()
+        {
+            Building building = new Building { BuildingType = BuildingType.Mine };
+
+            Assert.IsFalse(building.IsDefenseFacility());
+        }
+
+        [Test]
+        public void IsPlanetaryShieldGenerator_PositiveShieldStrength_ReturnsTrue()
+        {
+            Building building = new Building
+            {
+                BuildingType = BuildingType.Defense,
+                ShieldStrength = 1,
+            };
+
+            Assert.IsTrue(building.IsPlanetaryShieldGenerator());
+        }
+
+        [Test]
+        public void IsPlanetaryShieldGenerator_WeaponBuilding_ReturnsFalse()
+        {
+            Building building = new Building
+            {
+                BuildingType = BuildingType.Weapon,
+                ShieldStrength = 1,
+            };
+
+            Assert.IsFalse(building.IsPlanetaryShieldGenerator());
+        }
+
+        [Test]
+        public void IsUnitShieldGenerator_ProtectedUnitType_ReturnsTrue()
+        {
+            Building building = new Building { ProtectedUnitTypeIDs = { "capital-ship" } };
+
+            Assert.IsTrue(building.IsUnitShieldGenerator());
+        }
+
+        [Test]
+        public void IsShieldGenerator_NoShieldCapability_ReturnsFalse()
+        {
+            Building building = new Building { BuildingType = BuildingType.Defense };
+
+            Assert.IsFalse(building.IsShieldGenerator());
+        }
+
+        [Test]
         public void GetProductionType_ValidProductionType_ReturnsCorrectType()
         {
             Building building = new Building { ProductionType = ManufacturingType.Building };
@@ -269,6 +325,8 @@ namespace Rebellion.Tests.Game.Units
                 Bombardment = 5,
                 WeaponStrength = 10,
                 ShieldStrength = 15,
+                DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage,
+                ProtectedUnitTypeIDs = { "capital-ship" },
                 ProducerOwnerID = "Faction1",
                 ProducerPlanetID = "Planet1",
                 ManufacturingQueueSequence = 7,
@@ -298,6 +356,11 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(building.Bombardment, deserializedBuilding.Bombardment);
             Assert.AreEqual(building.WeaponStrength, deserializedBuilding.WeaponStrength);
             Assert.AreEqual(building.ShieldStrength, deserializedBuilding.ShieldStrength);
+            Assert.AreEqual(building.DefenseWeaponEffect, deserializedBuilding.DefenseWeaponEffect);
+            CollectionAssert.AreEqual(
+                building.ProtectedUnitTypeIDs,
+                deserializedBuilding.ProtectedUnitTypeIDs
+            );
             Assert.AreEqual(building.ProducerOwnerID, deserializedBuilding.ProducerOwnerID);
             Assert.AreEqual(building.ProducerPlanetID, deserializedBuilding.ProducerPlanetID);
             Assert.AreEqual(

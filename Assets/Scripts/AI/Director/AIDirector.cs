@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.AI.Phases;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -20,7 +21,6 @@ namespace Rebellion.AI.Director
         private readonly ManufacturingSystem _manufacturing;
         private readonly BombardmentSystem _bombardment;
         private readonly PlanetaryAssaultSystem _planetaryAssault;
-        private readonly FogOfWarSystem _fogOfWar;
         private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
 
         /// <summary>
@@ -33,7 +33,6 @@ namespace Rebellion.AI.Director
         /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
         /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
-        /// <param name="fogOfWar">Fog-of-war system used to limit AI knowledge.</param>
         public AIDirector(
             GameRoot game,
             MissionSystem missions,
@@ -41,8 +40,7 @@ namespace Rebellion.AI.Director
             ManufacturingSystem manufacturing,
             BombardmentSystem bombardment,
             PlanetaryAssaultSystem planetaryAssault,
-            IRandomNumberProvider random,
-            FogOfWarSystem fogOfWar
+            IRandomNumberProvider random
         )
         {
             _game = game;
@@ -52,7 +50,6 @@ namespace Rebellion.AI.Director
             _manufacturing = manufacturing;
             _bombardment = bombardment;
             _planetaryAssault = planetaryAssault;
-            _fogOfWar = fogOfWar;
             _turnPhases = new List<IAITurnPhase>
             {
                 new AIPlanningPhase(),
@@ -66,11 +63,12 @@ namespace Rebellion.AI.Director
         /// Processes one faction AI turn.
         /// </summary>
         /// <param name="faction">The faction to process.</param>
+        /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
         /// <returns>Game results emitted by this AI turn.</returns>
-        internal List<GameResult> ProcessFaction(Faction faction)
+        internal List<GameResult> ProcessFaction(Faction faction, GalaxyMap factionView)
         {
             List<GameResult> results = new List<GameResult>();
-            foreach (object _ in ProcessFactionIncrementally(faction, results)) { }
+            foreach (object _ in ProcessFactionIncrementally(faction, factionView, results)) { }
 
             return results;
         }
@@ -79,10 +77,12 @@ namespace Rebellion.AI.Director
         /// Processes one faction AI turn one phase at a time.
         /// </summary>
         /// <param name="faction">The faction to process.</param>
+        /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
         /// <param name="results">The result list populated when processing completes.</param>
         /// <returns>A sequence containing one step per completed phase.</returns>
         internal IEnumerable<object> ProcessFactionIncrementally(
             Faction faction,
+            GalaxyMap factionView,
             ICollection<GameResult> results
         )
         {
@@ -95,7 +95,7 @@ namespace Rebellion.AI.Director
                 _bombardment,
                 _planetaryAssault,
                 _random,
-                _fogOfWar
+                factionView
             );
             foreach (IAITurnPhase phase in _turnPhases)
             {

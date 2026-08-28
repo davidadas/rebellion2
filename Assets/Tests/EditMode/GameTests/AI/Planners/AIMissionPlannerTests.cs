@@ -420,10 +420,7 @@ namespace Rebellion.Tests.AI.Planners
                 .First();
 
             Assert.AreEqual(attackTarget.InstanceID, proposal.TargetPlanet.InstanceID);
-            Assert.AreEqual(
-                DefenseFacilityClass.Shield,
-                ((Building)proposal.SelectedTarget).DefenseFacilityClass
-            );
+            Assert.IsTrue(((Building)proposal.SelectedTarget).IsPlanetaryShieldGenerator());
         }
 
         [Test]
@@ -734,8 +731,7 @@ namespace Rebellion.Tests.AI.Planners
                 proposals.Any(proposal =>
                     proposal.MissionTypeID == MissionTypeIDs.Sabotage
                     && proposal.TargetPlanet.InstanceID == target.InstanceID
-                    && ((Building)proposal.SelectedTarget).DefenseFacilityClass
-                        == DefenseFacilityClass.Shield
+                    && ((Building)proposal.SelectedTarget).IsPlanetaryShieldGenerator()
                 )
             );
         }
@@ -1136,7 +1132,6 @@ namespace Rebellion.Tests.AI.Planners
                 BuildingType.Defense
             );
             shield.OwnerInstanceID = ownerInstanceId;
-            shield.DefenseFacilityClass = DefenseFacilityClass.Shield;
             shield.ShieldStrength = 10;
             game.AttachNode(shield, planet);
             return shield;

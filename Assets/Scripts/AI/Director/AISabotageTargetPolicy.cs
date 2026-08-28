@@ -139,9 +139,7 @@ namespace Rebellion.AI.Director
         /// <returns>True for ordinary and Death Star shield generators.</returns>
         private static bool IsShieldGenerator(Building building)
         {
-            return building?.DefenseFacilityClass
-                is DefenseFacilityClass.Shield
-                    or DefenseFacilityClass.DeathStarShield;
+            return building?.IsShieldGenerator() == true;
         }
     }
 }

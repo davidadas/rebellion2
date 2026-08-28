@@ -62,22 +62,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Building shield = new Building
             {
                 InstanceID = "shield",
-                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                BuildingType = BuildingType.Defense,
+                ShieldStrength = 1,
             };
             Building deathStarShield = new Building
             {
                 InstanceID = "death-star-shield",
-                DefenseFacilityClass = DefenseFacilityClass.DeathStarShield,
+                BuildingType = BuildingType.Defense,
+                ProtectedUnitTypeIDs = { "CSEM015" },
             };
             Building kdy = new Building
             {
                 InstanceID = "kdy",
-                DefenseFacilityClass = DefenseFacilityClass.KDY,
+                BuildingType = BuildingType.Weapon,
+                DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage,
             };
             Building lnr = new Building
             {
                 InstanceID = "lnr",
-                DefenseFacilityClass = DefenseFacilityClass.LNR,
+                BuildingType = BuildingType.Weapon,
+                DefenseWeaponEffect = DefenseWeaponEffect.HullDamage,
             };
             _planet.AddTestChild(officer);
             _planet.AddTestChild(specialForces);

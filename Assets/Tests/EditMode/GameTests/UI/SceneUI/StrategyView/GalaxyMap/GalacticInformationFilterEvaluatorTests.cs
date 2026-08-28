@@ -96,7 +96,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [TestCase(GalacticInformationFilterMode.ConstructionYards)]
         [TestCase(GalacticInformationFilterMode.Troopers)]
         [TestCase(GalacticInformationFilterMode.FighterSquadrons)]
-        [TestCase(GalacticInformationFilterMode.DeathStarShields)]
+        [TestCase(GalacticInformationFilterMode.UnitShieldGenerators)]
         [TestCase(GalacticInformationFilterMode.PlanetaryShieldGenerators)]
         [TestCase(GalacticInformationFilterMode.PlanetaryDefenseBatteries)]
         public void Evaluate_ScalarMode_WithOneMatchingValueReturnsLowMarker(
@@ -437,16 +437,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                         new Starfighter { ManufacturingStatus = ManufacturingStatus.Complete }
                     );
                     break;
-                case GalacticInformationFilterMode.DeathStarShields:
-                    planet.AddTestChild(
-                        CreateDefenseBuilding(DefenseFacilityClass.DeathStarShield)
-                    );
+                case GalacticInformationFilterMode.UnitShieldGenerators:
+                    planet.AddTestChild(CreateUnitShieldGenerator());
                     break;
                 case GalacticInformationFilterMode.PlanetaryShieldGenerators:
-                    planet.AddTestChild(CreateDefenseBuilding(DefenseFacilityClass.Shield));
+                    planet.AddTestChild(CreatePlanetaryShieldGenerator());
                     break;
                 case GalacticInformationFilterMode.PlanetaryDefenseBatteries:
-                    planet.AddTestChild(CreateDefenseBuilding(DefenseFacilityClass.KDY));
+                    planet.AddTestChild(CreateDefenseWeapon());
                     break;
             }
         }
@@ -470,11 +468,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
-        private static Building CreateDefenseBuilding(DefenseFacilityClass facilityClass)
+        private static Building CreateUnitShieldGenerator()
+        {
+            Building building = new Building
+            {
+                BuildingType = BuildingType.Defense,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            building.ProtectedUnitTypeIDs.Add("CSEM015");
+            return building;
+        }
+
+        private static Building CreatePlanetaryShieldGenerator()
         {
             return new Building
             {
-                DefenseFacilityClass = facilityClass,
+                BuildingType = BuildingType.Defense,
+                ShieldStrength = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        private static Building CreateDefenseWeapon()
+        {
+            return new Building
+            {
+                BuildingType = BuildingType.Weapon,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }

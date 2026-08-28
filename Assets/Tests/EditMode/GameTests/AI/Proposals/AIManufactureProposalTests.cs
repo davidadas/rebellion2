@@ -293,7 +293,6 @@ namespace Rebellion.Tests.AI.Proposals
                 "shield-template",
                 BuildingType.Defense
             );
-            shield.DefenseFacilityClass = DefenseFacilityClass.Shield;
             shield.MaintenanceCost = 0;
             AIDemand demand = new AIDemand(
                 "planetary-shield-demand",

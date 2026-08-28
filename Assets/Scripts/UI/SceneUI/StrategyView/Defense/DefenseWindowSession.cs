@@ -363,12 +363,8 @@ internal sealed class DefenseWindowSession
             .GetChildren<Building>()
             .Where(building =>
                 shields
-                    ? building.DefenseFacilityClass
-                        is DefenseFacilityClass.Shield
-                            or DefenseFacilityClass.DeathStarShield
-                    : building.DefenseFacilityClass
-                        is DefenseFacilityClass.KDY
-                            or DefenseFacilityClass.LNR
+                    ? building.IsShieldGenerator()
+                    : building.BuildingType == BuildingType.Weapon
             )
             .Cast<ISceneNode>()
             .ToList();

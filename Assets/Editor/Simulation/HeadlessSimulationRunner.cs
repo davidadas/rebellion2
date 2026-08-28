@@ -508,7 +508,8 @@ public static class HeadlessSimulationRunner
             manufacturing,
             null,
             null,
-            new SystemRandomProvider(0)
+            new SystemRandomProvider(0),
+            new FogOfWarSystem(game).BuildFactionView(faction)
         );
         List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
         List<AIManufactureProposal> proposals = new AIProductionPlanner()
@@ -755,7 +756,7 @@ public static class HeadlessSimulationRunner
     /// <returns>True when the building generates planetary shields.</returns>
     private static bool IsShieldGenerator(Building building)
     {
-        return building.DefenseFacilityClass == DefenseFacilityClass.Shield;
+        return building.IsPlanetaryShieldGenerator();
     }
 
     /// <summary>
@@ -2230,7 +2231,8 @@ public static class HeadlessSimulationRunner
                     null,
                     null,
                     null,
-                    new SystemRandomProvider(0)
+                    new SystemRandomProvider(0),
+                    new FogOfWarSystem(game).BuildFactionView(faction)
                 ).Assessment;
                 AttackReadinessFactionCounters counters = GetCounters(faction.InstanceID);
 

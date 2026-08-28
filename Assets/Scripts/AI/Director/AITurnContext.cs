@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -22,7 +23,7 @@ namespace Rebellion.AI.Director
         public ManufacturingSystem Manufacturing { get; }
         public BombardmentSystem Bombardment { get; }
         public PlanetaryAssaultSystem PlanetaryAssault { get; }
-        public FogOfWarSystem FogOfWar { get; }
+        public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
 
         // Turn Output.
@@ -45,7 +46,7 @@ namespace Rebellion.AI.Director
         /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
         /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic decisions.</param>
-        /// <param name="fogOfWar">Fog-of-war system used to build faction-visible state.</param>
+        /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,
@@ -55,7 +56,7 @@ namespace Rebellion.AI.Director
             BombardmentSystem bombardment,
             PlanetaryAssaultSystem planetaryAssault,
             IRandomNumberProvider random,
-            FogOfWarSystem fogOfWar = null
+            GalaxyMap factionView = null
         )
         {
             Game = game;
@@ -66,7 +67,7 @@ namespace Rebellion.AI.Director
             Bombardment = bombardment;
             PlanetaryAssault = planetaryAssault;
             Random = random;
-            FogOfWar = fogOfWar ?? (game == null ? null : new FogOfWarSystem(game));
+            FactionView = factionView;
             Assessment = new AIAssessment(this);
         }
 

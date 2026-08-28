@@ -1123,7 +1123,7 @@ namespace Rebellion.AI.Director
                 .GetAllBuildings()
                 .Count(building =>
                     building.GetOwnerInstanceID() == _context.Faction.InstanceID
-                    && building.DefenseFacilityClass == DefenseFacilityClass.Shield
+                    && building.IsPlanetaryShieldGenerator()
                 );
             int weaponCount = planet
                 .GetAllBuildings()
@@ -1980,12 +1980,11 @@ namespace Rebellion.AI.Director
         /// <returns>Known colonized planets.</returns>
         private List<Planet> BuildFactionViewPlanets()
         {
-            if (_context?.FogOfWar == null || _context.Faction == null)
+            if (_context?.FactionView == null)
                 return new List<Planet>();
 
             return _context
-                .FogOfWar.BuildFactionView(_context.Faction)
-                .GetChildren<PlanetSector>()
+                .FactionView.GetChildren<PlanetSector>()
                 .SelectMany(sector => sector.GetChildren<Planet>())
                 .ToList();
         }

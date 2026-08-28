@@ -81,11 +81,12 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(fleet, owned);
 
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
             PlanetaryControlSystem control = new PlanetaryControlSystem(
                 game,
                 context.Movement,
                 context.Manufacturing,
-                context.FogOfWar
+                fogOfWar
             );
             BombardmentSystem bombardment = new BombardmentSystem(
                 game,
@@ -106,7 +107,7 @@ namespace Rebellion.Tests.Systems
                 bombardment,
                 planetaryAssault,
                 context.Random,
-                context.FogOfWar
+                fogOfWar
             );
 
             return (game, fleet, system);

@@ -1662,8 +1662,8 @@ namespace Rebellion.Tests.Systems
                 {
                     InstanceID = "kdy1",
                     OwnerInstanceID = empire.InstanceID,
-                    BuildingType = BuildingType.Defense,
-                    DefenseFacilityClass = DefenseFacilityClass.KDY,
+                    BuildingType = BuildingType.Weapon,
+                    DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage,
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 },
                 planet

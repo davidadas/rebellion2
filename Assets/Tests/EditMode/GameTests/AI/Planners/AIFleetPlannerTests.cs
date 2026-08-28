@@ -1165,14 +1165,12 @@ namespace Rebellion.Tests.AI.Planners
                 BuildingType.Defense
             );
             firstShield.OwnerInstanceID = rebels.InstanceID;
-            firstShield.DefenseFacilityClass = DefenseFacilityClass.Shield;
             firstShield.ShieldStrength = 10;
             Building secondShield = AITestSceneBuilder.CreateBuildingTemplate(
                 "shield-2",
                 BuildingType.Defense
             );
             secondShield.OwnerInstanceID = rebels.InstanceID;
-            secondShield.DefenseFacilityClass = DefenseFacilityClass.Shield;
             secondShield.ShieldStrength = 10;
             game.AttachNode(firstShield, enemy);
             game.AttachNode(secondShield, enemy);

@@ -751,7 +751,7 @@ namespace Rebellion.Tests.AI.Director
                 BuildingType.Weapon
             );
             battery.OwnerInstanceID = rebels.InstanceID;
-            battery.DefenseFacilityClass = DefenseFacilityClass.KDY;
+            battery.DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage;
             battery.WeaponPower = 500;
             game.AttachNode(battery, target);
             Fleet fleet = CreateAssaultFleet(game, origin, "attacker", empire.InstanceID, 0);
@@ -778,7 +778,7 @@ namespace Rebellion.Tests.AI.Director
                 BuildingType.Weapon
             );
             battery.OwnerInstanceID = rebels.InstanceID;
-            battery.DefenseFacilityClass = DefenseFacilityClass.KDY;
+            battery.DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage;
             battery.WeaponPower = 500;
             game.AttachNode(battery, target);
             Fleet fleet = CreateAssaultFleet(game, origin, "attacker", empire.InstanceID, 0);
@@ -1076,7 +1076,6 @@ namespace Rebellion.Tests.AI.Director
                 BuildingType.Defense
             );
             shield.OwnerInstanceID = ownerInstanceId;
-            shield.DefenseFacilityClass = DefenseFacilityClass.Shield;
             shield.ShieldStrength = shieldStrength;
             game.AttachNode(shield, planet);
             return shield;

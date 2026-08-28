@@ -412,8 +412,7 @@ namespace Rebellion.Systems
             return planet
                 .GetAllBuildings()
                 .Where(building =>
-                    IsActiveBombardmentUnit(building)
-                    && building.DefenseFacilityClass == DefenseFacilityClass.Shield
+                    IsActiveBombardmentUnit(building) && building.IsPlanetaryShieldGenerator()
                 )
                 .Sum(building => building.ShieldStrength);
         }
@@ -534,11 +533,10 @@ namespace Rebellion.Systems
             );
             Dictionary<CapitalShip, int> hullDamage = targets.ToDictionary(ship => ship, _ => 0);
 
-            IEnumerable<Building> facilities = GetActiveDefenseFacilities(
-                    planet,
-                    DefenseFacilityClass.KDY
-                )
-                .Concat(GetActiveDefenseFacilities(planet, DefenseFacilityClass.LNR));
+            IEnumerable<Building> facilities = GetActiveDefenseFacilities(planet)
+                .OrderBy(facility =>
+                    facility.DefenseWeaponEffect == DefenseWeaponEffect.ShieldDamage ? 0 : 1
+                );
 
             foreach (Building facility in facilities)
             {
@@ -547,7 +545,7 @@ namespace Rebellion.Systems
                 int absorbed = Math.Min(remainingShields[target], damage);
                 remainingShields[target] -= absorbed;
 
-                if (facility.DefenseFacilityClass == DefenseFacilityClass.LNR)
+                if (facility.DefenseWeaponEffect == DefenseWeaponEffect.HullDamage)
                     hullDamage[target] += damage - absorbed;
             }
 
@@ -1198,21 +1196,17 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns active defense facilities of a specified class.
+        /// Returns active planetary defense weapons.
         /// </summary>
         /// <param name="planet">Planet containing the facilities.</param>
-        /// <param name="defenseClass">Defense-facility class to select.</param>
         /// <returns>The matching active facilities.</returns>
-        private static IEnumerable<Building> GetActiveDefenseFacilities(
-            Planet planet,
-            DefenseFacilityClass defenseClass
-        )
+        private static IEnumerable<Building> GetActiveDefenseFacilities(Planet planet)
         {
             return planet
                 .GetAllBuildings()
                 .Where(building =>
                     IsActiveBombardmentUnit(building)
-                    && building.DefenseFacilityClass == defenseClass
+                    && building.BuildingType == BuildingType.Weapon
                 );
         }
 
@@ -1330,11 +1324,7 @@ namespace Rebellion.Systems
         /// <returns>True when the building is a planetary defense facility.</returns>
         private static bool IsBombardmentDefenseFacility(Building building)
         {
-            return building.DefenseFacilityClass
-                is DefenseFacilityClass.KDY
-                    or DefenseFacilityClass.LNR
-                    or DefenseFacilityClass.Shield
-                    or DefenseFacilityClass.DeathStarShield;
+            return building.IsDefenseFacility();
         }
 
         /// <summary>

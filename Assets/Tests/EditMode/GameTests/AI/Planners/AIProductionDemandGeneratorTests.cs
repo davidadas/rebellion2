@@ -2461,7 +2461,6 @@ namespace Rebellion.Tests.AI.Planners
                 BuildingType.Defense
             );
             shield.OwnerInstanceID = ownerInstanceId;
-            shield.DefenseFacilityClass = DefenseFacilityClass.Shield;
             shield.ShieldStrength = strength;
             game.AttachNode(shield, planet);
         }

@@ -453,7 +453,7 @@ public sealed class GalaxyMapProjector
                     .GetChildren<Building>()
                     .Count(building =>
                         building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.DefenseFacilityClass != DefenseFacilityClass.None
+                        && building.IsDefenseFacility()
                     );
             return new GalacticInformationMarker(
                 Math.Min(3, defenseCount),

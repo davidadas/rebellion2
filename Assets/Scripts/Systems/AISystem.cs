@@ -3,6 +3,7 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
@@ -14,6 +15,7 @@ namespace Rebellion.Systems
     public class AISystem
     {
         private readonly GameRoot _game;
+        private readonly FogOfWarSystem _fogOfWar;
         private readonly AIDirector _director;
 
         /// <summary>
@@ -39,6 +41,7 @@ namespace Rebellion.Systems
         )
         {
             _game = game;
+            _fogOfWar = fogOfWarManager;
             _director = new AIDirector(
                 game,
                 missionManager,
@@ -46,8 +49,7 @@ namespace Rebellion.Systems
                 manufacturingManager,
                 bombardmentSystem,
                 planetaryAssaultSystem,
-                randomProvider,
-                fogOfWarManager
+                randomProvider
             );
         }
 
@@ -76,7 +78,14 @@ namespace Rebellion.Systems
 
             foreach (Faction faction in _game.GetFactions().Where(f => f.IsAIControlled()))
             {
-                foreach (object step in _director.ProcessFactionIncrementally(faction, results))
+                GalaxyMap factionView = _fogOfWar.BuildFactionView(faction);
+                foreach (
+                    object step in _director.ProcessFactionIncrementally(
+                        faction,
+                        factionView,
+                        results
+                    )
+                )
                     yield return step;
             }
         }

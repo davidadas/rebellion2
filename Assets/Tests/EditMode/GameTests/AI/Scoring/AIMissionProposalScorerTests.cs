@@ -589,7 +589,6 @@ namespace Rebellion.Tests.AI.Scoring
                 BuildingType.Defense
             );
             shield.OwnerInstanceID = ownerInstanceId;
-            shield.DefenseFacilityClass = DefenseFacilityClass.Shield;
             shield.ShieldStrength = 10;
             shield.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(shield, planet);
