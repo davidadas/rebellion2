@@ -122,6 +122,9 @@ namespace Rebellion.Game.Factions
         /// </summary>
         public Faction() { }
 
+        /// <summary>Returns maintenance headroom after adding a manufacturable item.</summary>
+        /// <param name="item">The prospective item.</param>
+        /// <returns>The projected maintenance headroom.</returns>
         public int GetProjectedMaintenanceHeadroom(IManufacturable item)
         {
             return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);

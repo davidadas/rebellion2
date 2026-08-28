@@ -436,7 +436,7 @@ namespace Rebellion.Tests.AI.Scoring
             target.IsColonized = false;
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
-            fleet.RoleType = FleetRoleType.Battle;
+            fleet.RoleType = FleetRoleType.Colonization;
             CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID);
             game.AttachNode(fleet, owned);
             game.AttachNode(ship, fleet);
@@ -458,7 +458,7 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
-        public void Score_ExistingColonizationOrderOnPatrolFleet_AddsContinuationBonus()
+        public void Score_ExistingColonizationOrderOnColonizationFleet_AddsContinuationBonus()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.ColonizationBaseScore = 10;
@@ -473,7 +473,7 @@ namespace Rebellion.Tests.AI.Scoring
             target.IsColonized = false;
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
-            fleet.RoleType = FleetRoleType.Patrol;
+            fleet.RoleType = FleetRoleType.Colonization;
             fleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Colonize,

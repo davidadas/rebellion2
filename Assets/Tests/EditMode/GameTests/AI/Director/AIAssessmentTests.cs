@@ -840,7 +840,7 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
-        public void GetDefendingRegimentDefenseStrength_IgnoresBombardmentDefense()
+        public void GetDefendingRegimentDefenseStrength_WithDifferentBombardmentDefense_ReturnsEqualStrength()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -907,7 +907,7 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
-        public void GetRequiredAttackCampaignPackage_AggregatesEveryEnemyPlanetInSystem()
+        public void GetRequiredAttackCampaignPackage_WithMultipleEnemyPlanets_AggregatesEntireSystem()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;

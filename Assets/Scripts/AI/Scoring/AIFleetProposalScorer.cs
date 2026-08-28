@@ -166,6 +166,14 @@ namespace Rebellion.AI.Scoring
             return existingOrder ? score + config.ExistingAttackOrderBonus : score;
         }
 
+        /// <summary>
+        /// Scores colonization.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The fleet to evaluate.</param>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <param name="existingOrder">The existing fleet order, if any.</param>
+        /// <returns>The calculated value.</returns>
         private double ScoreColonization(
             AITurnContext context,
             Fleet fleet,
@@ -509,6 +517,13 @@ namespace Rebellion.AI.Scoring
             return 1 - GetFulfillmentRatio(distance, farthestTargetDistance);
         }
 
+        /// <summary>
+        /// Scores colonization travel efficiency.
+        /// </summary>
+        /// <param name="assessment">The current AI assessment.</param>
+        /// <param name="fleet">The fleet to evaluate.</param>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <returns>The calculated value.</returns>
         private double ScoreColonizationTravelEfficiency(
             AIAssessment assessment,
             Fleet fleet,
@@ -687,7 +702,7 @@ namespace Rebellion.AI.Scoring
         {
             return fleet != null
                 && targetPlanet != null
-                && (fleet.RoleType == FleetRoleType.Battle || existingOrder)
+                && (fleet.RoleType == FleetRoleType.Colonization || existingOrder)
                 && fleet.GetOwnerInstanceID() == context.Faction.InstanceID
                 && !targetPlanet.IsColonized
                 && !targetPlanet.IsDestroyed

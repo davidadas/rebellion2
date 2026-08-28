@@ -5,7 +5,6 @@ using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Planners
 {
@@ -147,6 +146,13 @@ namespace Rebellion.AI.Planners
             return true;
         }
 
+        /// <summary>
+        /// Adds alternative targets within an assembling fleet's current campaign.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Fleet being retargeted.</param>
+        /// <param name="currentPlanet">Fleet's current planet.</param>
+        /// <param name="proposals">Proposal list to update.</param>
         private void AddRetargetAttackOrderProposals(
             AITurnContext context,
             Fleet fleet,
@@ -175,6 +181,12 @@ namespace Rebellion.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Returns whether an assembling attack fleet can change targets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <returns>True when the fleet can be retargeted.</returns>
         private bool CanRetargetAttackOrder(AITurnContext context, Fleet fleet)
         {
             return fleet?.Order?.OrderType == FleetOrderType.Attack
@@ -186,6 +198,13 @@ namespace Rebellion.AI.Planners
                 && context.Assessment.CanFleetDepartHeadquarters(fleet);
         }
 
+        /// <summary>
+        /// Adds continuation or cleanup for an existing colonization order.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Ordered fleet.</param>
+        /// <param name="order">Existing order.</param>
+        /// <param name="proposals">Proposal list to update.</param>
         private void AddExistingColonizationOrderProposal(
             AITurnContext context,
             Fleet fleet,
@@ -203,6 +222,13 @@ namespace Rebellion.AI.Planners
             proposals.Add(new AIColonizationProposal(fleet, order.Status, targetPlanet));
         }
 
+        /// <summary>
+        /// Adds continuation or cleanup for an existing defense order.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Ordered fleet.</param>
+        /// <param name="order">Existing order.</param>
+        /// <param name="proposals">Proposal list to update.</param>
         private void AddExistingDefenseProposal(
             AITurnContext context,
             Fleet fleet,
@@ -238,8 +264,7 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            bool canStartAttack =
-                CanStartAttackOrder(context, fleet) && !IsAtAttackCampaignLimit(context);
+            bool canStartAttack = CanStartAttackOrder(context, fleet);
             string preferredSystemId = canStartAttack
                 ? FindPreferredAttackSystemId(context, fleet, currentPlanet)
                 : string.Empty;
@@ -266,6 +291,13 @@ namespace Rebellion.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Selects the preferred system for a fleet's next attack campaign.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Fleet being assigned.</param>
+        /// <param name="currentPlanet">Fleet's current planet.</param>
+        /// <returns>The preferred system identifier, or null.</returns>
         private string FindPreferredAttackSystemId(
             AITurnContext context,
             Fleet fleet,
@@ -340,6 +372,13 @@ namespace Rebellion.AI.Planners
             return context.Assessment.GetFleetAttackCampaignReadinessGateCount(fleet, targetPlanet);
         }
 
+        /// <summary>
+        /// Returns the shortest distance from a planet to a campaign system.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="currentPlanet">Fleet's current planet.</param>
+        /// <param name="systemId">Candidate system identifier.</param>
+        /// <returns>The shortest raw distance.</returns>
         private double GetDistanceToAttackSystem(
             AITurnContext context,
             Planet currentPlanet,
@@ -357,37 +396,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether a fleet can receive a new attack order.
+        /// Returns whether a fleet can start an attack order.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>True if the fleet can start an attack order.</returns>
-        /// <summary>
-        /// Returns whether the faction has reached its concurrent attack campaign limit.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when no additional attack campaigns may start.</returns>
-        private bool IsAtAttackCampaignLimit(AITurnContext context)
-        {
-            int planetsPerCampaign = context
-                .Game
-                .Config
-                .AI
-                .FleetDeployment
-                .PlanetsPerAttackCampaign;
-            if (planetsPerCampaign <= 0)
-                return false;
-
-            int ownedPlanetCount = context.Assessment.OwnedPlanets.Count(planet =>
-                planet.IsColonized && !planet.IsDestroyed
-            );
-            int campaignLimit = Math.Max(
-                1,
-                IntegerMath.DivideRoundedUp(ownedPlanetCount, planetsPerCampaign)
-            );
-            return context.Assessment.AttackOrderedFleets.Count >= campaignLimit;
-        }
-
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <returns>True when the fleet is available to attack.</returns>
         private bool CanStartAttackOrder(AITurnContext context, Fleet fleet)
         {
             if (fleet.RoleType != FleetRoleType.Battle)
@@ -400,6 +413,13 @@ namespace Rebellion.AI.Planners
                 && context.Assessment.CanFleetDepartHeadquarters(fleet);
         }
 
+        /// <summary>
+        /// Adds colonization proposals for an available colonization fleet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Fleet being assigned.</param>
+        /// <param name="currentPlanet">Fleet's current planet.</param>
+        /// <param name="proposals">Proposal list to update.</param>
         private void AddColonizationOrderProposals(
             AITurnContext context,
             Fleet fleet,
@@ -434,18 +454,29 @@ namespace Rebellion.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Returns whether a fleet can start a colonization order.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <returns>True when the fleet is available to colonize.</returns>
         private bool CanStartColonizationOrder(AITurnContext context, Fleet fleet)
         {
-            return fleet.RoleType == FleetRoleType.Battle
+            return fleet.RoleType == FleetRoleType.Colonization
                 && fleet.Movement == null
                 && !fleet.IsInCombat
                 && fleet.HasOperationalCapitalShips()
-                && context.Assessment.GetReadyFleetCombatValue(fleet)
-                    >= context.Game.Config.AI.FleetDeployment.MinimumColonizationFleetCombatValue
                 && AIColonizationProposal.FindCarrier(fleet) != null
                 && context.Assessment.CanFleetDepartHeadquarters(fleet);
         }
 
+        /// <summary>
+        /// Returns whether another fleet is colonizing a target.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetPlanet">Target planet.</param>
+        /// <param name="ignoredFleet">Fleet excluded from the check.</param>
+        /// <returns>True when another colonization fleet targets the planet.</returns>
         private bool HasColonizationFleetForTarget(
             AITurnContext context,
             Planet targetPlanet,
@@ -459,6 +490,11 @@ namespace Rebellion.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Returns whether a known planet remains eligible for colonization.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when the planet can be colonized.</returns>
         private static bool IsKnownColonizationTarget(Planet planet)
         {
             return planet?.IsColonized == false
@@ -573,6 +609,13 @@ namespace Rebellion.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Returns whether another fleet is attacking a system.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="systemId">System identifier.</param>
+        /// <param name="ignoredFleet">Fleet excluded from the check.</param>
+        /// <returns>True when another fleet has an attack campaign there.</returns>
         private bool HasAttackFleetForSystem(
             AITurnContext context,
             string systemId,
@@ -760,47 +803,10 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
-            if (
-                !IsDefendingThreatenedPlanet(context, targetFleet)
-                && IsReservedForNewCampaign(context, sourceFleet)
-            )
-                return false;
-
             Planet sourcePlanet = context.Assessment.GetFleetPlanet(sourceFleet);
             return sourcePlanet != null
                 && sourcePlanet.GetOwnerInstanceID() == context.Faction.InstanceID
                 && !context.Assessment.IsFactionHeadquarters(sourcePlanet);
-        }
-
-        /// <summary>
-        /// Returns whether a fleet holds a defense order for a planet under actual hostile
-        /// contact, which lets it requisition ships past campaign reservations.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The receiving fleet to inspect.</param>
-        /// <returns>True when the fleet defends a planet with hostile contact.</returns>
-        private bool IsDefendingThreatenedPlanet(AITurnContext context, Fleet fleet)
-        {
-            if (fleet?.Order?.OrderType != FleetOrderType.Defend)
-                return false;
-
-            Planet defendedPlanet = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
-            return context.Assessment.GetPlanetDefenseThreatStrength(defendedPlanet) > 0;
-        }
-
-        /// <summary>
-        /// Returns whether an idle battle fleet should keep its ships to open another attack
-        /// campaign instead of donating them, which applies while the faction fields fewer
-        /// campaigns than its limit allows.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="sourceFleet">The potential donor fleet.</param>
-        /// <returns>True when the fleet is reserved for a future campaign.</returns>
-        private bool IsReservedForNewCampaign(AITurnContext context, Fleet sourceFleet)
-        {
-            return sourceFleet.RoleType == FleetRoleType.Battle
-                && context.Game.Config.AI.FleetDeployment.PlanetsPerAttackCampaign > 0
-                && !IsAtAttackCampaignLimit(context);
         }
 
         /// <summary>
@@ -1010,6 +1016,13 @@ namespace Rebellion.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Returns the normalized requirement gain from one reinforcement.
+        /// </summary>
+        /// <param name="current">Current requirement value.</param>
+        /// <param name="contribution">Candidate contribution.</param>
+        /// <param name="target">Required target value.</param>
+        /// <returns>The fulfillment gain from zero through one.</returns>
         private double GetFulfillmentGain(double current, double contribution, double target)
         {
             if (target <= 0 || contribution <= 0)

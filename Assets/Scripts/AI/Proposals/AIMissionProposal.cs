@@ -15,9 +15,7 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIMissionProposal : AIProposal
     {
-        /// <summary>
-        /// Participants assigned to the mission.
-        /// </summary>
+        // Participants.
         public IReadOnlyList<IMissionParticipant> Participants { get; }
 
         public IReadOnlyList<IMissionParticipant> MainParticipants { get; }
@@ -26,26 +24,13 @@ namespace Rebellion.AI.Proposals
 
         public IMissionParticipant Participant => MainParticipants.FirstOrDefault();
 
-        /// <summary>
-        /// Mission type ID to start.
-        /// </summary>
+        // Mission Definition.
         public string MissionTypeID { get; }
-
-        /// <summary>
-        /// Planet targeted by the mission.
-        /// </summary>
         public Planet TargetPlanet { get; }
-
-        /// <summary>
-        /// Officer targeted by the mission.
-        /// </summary>
         public Officer TargetOfficer { get; }
 
         public ISceneNode SelectedTarget { get; }
 
-        /// <summary>
-        /// Research discipline advanced by the mission.
-        /// </summary>
         public ResearchDiscipline? Discipline { get; }
 
         /// <summary>
@@ -224,6 +209,8 @@ namespace Rebellion.AI.Proposals
                 || MissionTypeID == MissionTypeIDs.Rescue;
         }
 
+        /// <summary>Creates the mission-start request represented by the proposal.</summary>
+        /// <returns>The mission-start request.</returns>
         internal MissionStartRequest CreateRequest()
         {
             return new MissionStartRequest
@@ -237,6 +224,11 @@ namespace Rebellion.AI.Proposals
             };
         }
 
+        /// <summary>
+        /// Returns whether participant available.
+        /// </summary>
+        /// <param name="participant">The mission participant.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool IsParticipantAvailable(IMissionParticipant participant)
         {
             if (
@@ -258,6 +250,10 @@ namespace Rebellion.AI.Proposals
             return participant.CanPerformMission(MissionTypeID);
         }
 
+        /// <summary>
+        /// Returns whether target officer available.
+        /// </summary>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool IsTargetOfficerAvailable()
         {
             if (TargetOfficer == null)

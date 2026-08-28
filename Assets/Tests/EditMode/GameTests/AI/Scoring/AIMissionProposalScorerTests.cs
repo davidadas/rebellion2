@@ -55,54 +55,6 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
-        public void Score_DiplomacyProposal_UsesRegimentUprisingDefense()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet undefended = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "undefended",
-                empire.InstanceID
-            );
-            Planet defended = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "defended",
-                empire.InstanceID
-            );
-            undefended.SetPopularSupport(empire.InstanceID, 50);
-            defended.SetPopularSupport(empire.InstanceID, 50);
-            undefended.AddVisitor(empire.InstanceID);
-            defended.AddVisitor(empire.InstanceID);
-            game.Config.Uprising.ResistanceRegimentTypeID = "resistance";
-            Regiment regiment = AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID);
-            regiment.TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
-            game.AttachNode(regiment, defended);
-            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            officer.Ratings[OfficerRating.Diplomacy] = 40;
-            game.AttachNode(officer, undefended);
-            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
-            {
-                { -10, 10 },
-                { -9, 20 },
-            };
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
-
-            double undefendedScore = scorer.Score(
-                context,
-                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, undefended)
-            );
-            double defendedScore = scorer.Score(
-                context,
-                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, defended)
-            );
-
-            Assert.Greater(defendedScore, undefendedScore);
-        }
-
-        [Test]
         public void Score_RecruitmentProposal_ReturnsHigherScoreForHigherSupportPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

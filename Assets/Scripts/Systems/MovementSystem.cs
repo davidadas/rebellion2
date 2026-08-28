@@ -214,6 +214,12 @@ namespace Rebellion.Systems
             RequestMove(unit, destination, (string)null);
         }
 
+        /// <summary>
+        /// Requests move.
+        /// </summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <param name="destination">The movement destination.</param>
+        /// <param name="sourceEventInstanceID">The originating event identifier.</param>
         private void RequestMove(
             IMovable unit,
             ContainerNode destination,
@@ -331,6 +337,12 @@ namespace Rebellion.Systems
             RequestMove(units, destination, null);
         }
 
+        /// <summary>
+        /// Requests move.
+        /// </summary>
+        /// <param name="units">The units to move.</param>
+        /// <param name="destination">The movement destination.</param>
+        /// <param name="sourceEventInstanceID">The originating event identifier.</param>
         private void RequestMove(
             List<IMovable> units,
             ContainerNode destination,

@@ -1013,7 +1013,6 @@ namespace Rebellion.Tests.Sectors
         {
             _coruscant.EnergyCapacity = 5;
 
-            // Alliance snapshots coruscant while an empire building is in progress there.
             Building queuedBuilding = CreateBuilding(
                 "BLDG_GHOST",
                 _empire,
@@ -1031,15 +1030,12 @@ namespace Rebellion.Tests.Sectors
             );
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            // The queued building is removed and the planet later fills to capacity; completions
-            // never re-validate capacity, so a live planet can legitimately sit at full energy.
             _game.DeleteNode(queuedBuilding);
             Building completedBuilding = CreateBuilding("BLDG_DONE", _empire);
             completedBuilding.BuildingType = BuildingType.Refinery;
             _game.AttachNode(completedBuilding, _coruscant);
             _coruscant.EnergyCapacity = 1;
 
-            // Alliance gains a live view, which merges its stale manufacturing intel.
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
             AddCapitalShip(allianceFleet, _alliance, "CS1");

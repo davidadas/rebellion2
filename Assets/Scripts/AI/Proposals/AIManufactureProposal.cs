@@ -159,7 +159,11 @@ namespace Rebellion.AI.Proposals
                     );
             }
 
-            if (Demand?.Kind == AIDemandKind.FleetSeedCapitalShip)
+            if (
+                Demand?.Kind
+                is AIDemandKind.FleetSeedCapitalShip
+                    or AIDemandKind.ColonizationFleetSeedCapitalShip
+            )
                 claimKeys.Add(AIClaimKeys.FleetCreation(Demand.Destination?.GetOwnerInstanceID()));
 
             return claimKeys;
@@ -171,7 +175,11 @@ namespace Rebellion.AI.Proposals
         /// <returns>A stable sort key.</returns>
         public override string GetSortKey()
         {
-            if (Demand?.Kind == AIDemandKind.FleetSeedCapitalShip)
+            if (
+                Demand?.Kind
+                is AIDemandKind.FleetSeedCapitalShip
+                    or AIDemandKind.ColonizationFleetSeedCapitalShip
+            )
             {
                 return string.Join(
                     ":",
@@ -264,7 +272,9 @@ namespace Rebellion.AI.Proposals
             sceneNode.OwnerInstanceID = context.Faction.InstanceID;
 
             if (
-                Demand.Kind == AIDemandKind.FleetSeedCapitalShip
+                Demand.Kind
+                    is AIDemandKind.FleetSeedCapitalShip
+                        or AIDemandKind.ColonizationFleetSeedCapitalShip
                 && manufacturable is CapitalShip capitalShip
                 && Destination is Planet fleetPlanet
             )
@@ -307,6 +317,9 @@ namespace Rebellion.AI.Proposals
             return totalMaintenanceCost > int.MaxValue ? int.MaxValue : (int)totalMaintenanceCost;
         }
 
+        /// <summary>Returns the maintenance headroom required after manufacture.</summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The required maintenance headroom.</returns>
         public int GetMinimumMaintenanceHeadroom(AITurnContext context)
         {
             int hardFloor = context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor;
@@ -418,18 +431,32 @@ namespace Rebellion.AI.Proposals
                 AIDemandKind.FleetRegiment => CanManufactureRegiment(context),
                 AIDemandKind.GarrisonRegimentReserve => CanManufacturePlanetRegiment(context),
                 AIDemandKind.SpecialForces => CanManufactureSpecialForces(context),
-                AIDemandKind.FleetSeedCapitalShip => CanManufactureFleetSeed(context),
+                AIDemandKind.FleetSeedCapitalShip
+                or AIDemandKind.ColonizationFleetSeedCapitalShip => CanManufactureFleetSeed(
+                    context
+                ),
                 _ => false,
             };
         }
 
+        /// <summary>
+        /// Queues fleet seed.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="capitalShip">The capital ship to evaluate.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool EnqueueFleetSeed(
             AITurnContext context,
             CapitalShip capitalShip,
             Planet destinationPlanet
         )
         {
-            Fleet fleet = context.Faction.CreateFleet(roleType: FleetRoleType.Battle);
+            FleetRoleType roleType =
+                Demand.Kind == AIDemandKind.ColonizationFleetSeedCapitalShip
+                    ? FleetRoleType.Colonization
+                    : FleetRoleType.Battle;
+            Fleet fleet = context.Faction.CreateFleet(roleType: roleType);
             context.Game.AttachNode(fleet, destinationPlanet);
 
             if (context.Manufacturing.Enqueue(ProducerPlanet, capitalShip, fleet))
@@ -439,6 +466,11 @@ namespace Rebellion.AI.Proposals
             return false;
         }
 
+        /// <summary>
+        /// Returns whether manufacture fleet seed.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool CanManufactureFleetSeed(AITurnContext context)
         {
             if (Destination is not Planet destinationPlanet)
@@ -497,6 +529,13 @@ namespace Rebellion.AI.Proposals
             return IManufacturable.CanBeManufacturedBy(building, context.Faction.InstanceID);
         }
 
+        /// <summary>
+        /// Returns whether replace production facility.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="building">The building to evaluate.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool CanReplaceProductionFacility(
             AITurnContext context,
             Planet destinationPlanet,
@@ -536,6 +575,10 @@ namespace Rebellion.AI.Proposals
                     .ProductionFacilityUpgradeMinimumRemainingCount;
         }
 
+        /// <summary>
+        /// Executes building upgrade.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         private void ExecuteBuildingUpgrade(AITurnContext context)
         {
             Building replacement = Demand.BuildingToReplace;
@@ -563,6 +606,13 @@ namespace Rebellion.AI.Proposals
                 LogEnqueueFailure();
         }
 
+        /// <summary>
+        /// Queues at planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="manufacturable">The manufacturable.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool EnqueueAtPlanet(
             AITurnContext context,
             Planet destinationPlanet,
@@ -572,6 +622,9 @@ namespace Rebellion.AI.Proposals
             return context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, destinationPlanet);
         }
 
+        /// <summary>
+        /// Logs enqueue failure.
+        /// </summary>
         private void LogEnqueueFailure()
         {
             GameLogger.Warning(
@@ -579,11 +632,17 @@ namespace Rebellion.AI.Proposals
             );
         }
 
+        /// <summary>Returns the number of units represented by the proposal.</summary>
+        /// <returns>The manufacturing count.</returns>
         internal int GetManufacturingCount()
         {
             return IsCountedManufacturingDemand() ? Demand?.QuantityNeeded ?? 0 : 1;
         }
 
+        /// <summary>
+        /// Returns whether counted manufacturing demand.
+        /// </summary>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool IsCountedManufacturingDemand()
         {
             return IsFacilityExpansionDemand()
@@ -591,6 +650,10 @@ namespace Rebellion.AI.Proposals
                 || DistributesDemand;
         }
 
+        /// <summary>
+        /// Returns whether facility expansion demand.
+        /// </summary>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool IsFacilityExpansionDemand()
         {
             return Demand?.Kind
@@ -612,6 +675,11 @@ namespace Rebellion.AI.Proposals
                 && destinationFleet.FindShipForStarfighter() != null;
         }
 
+        /// <summary>
+        /// Returns whether manufacture planet starfighter.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool CanManufacturePlanetStarfighter(AITurnContext context)
         {
             return Destination is Planet destinationPlanet
@@ -661,6 +729,11 @@ namespace Rebellion.AI.Proposals
                 && Product.GetReference() is Regiment;
         }
 
+        /// <summary>
+        /// Returns whether manufacture special forces.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool CanManufactureSpecialForces(AITurnContext context)
         {
             return Destination is Planet destinationPlanet
@@ -672,6 +745,8 @@ namespace Rebellion.AI.Proposals
                 && IManufacturable.CanBeManufacturedBy(specialForces, context.Faction.InstanceID);
         }
 
+        /// <summary>Returns the shared producer-capacity claim key.</summary>
+        /// <returns>The capacity key.</returns>
         internal string GetProducerCapacityKey()
         {
             if (Demand?.ManufacturingType == ManufacturingType.Building)

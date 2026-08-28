@@ -114,6 +114,19 @@ internal sealed class DefenseWindowProjector
     }
 
     /// <summary>
+    /// Resolves the represented faction's unit-card selection frame.
+    /// </summary>
+    /// <param name="session">The controller-owned Defense session.</param>
+    /// <returns>The selected-card frame.</returns>
+    public Texture GetItemSelectionTexture(DefenseWindowSession session)
+    {
+        if (session == null)
+            throw new ArgumentNullException(nameof(session));
+
+        return GetSelectionTexture(GetRequiredUIContext(), session.Planet?.OwnerFactionId);
+    }
+
+    /// <summary>
     /// Returns the player's garrison requirement label for the regiment tab.
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>

@@ -108,8 +108,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             RawImage planetImage = GetField<RawImage>("planetImage");
             Image supportFill = GetField<Image>("supportBarFillImage");
+            Image supportBackground = GetField<Image>("supportBarBackgroundImage");
             Assert.IsTrue(GetField<RectTransform>("supportBarRoot").gameObject.activeSelf);
             Assert.IsTrue(supportFill.gameObject.activeSelf);
+            Assert.AreEqual((Color)new Color32(0, 0, 0, 255), supportBackground.color);
+            Assert.AreEqual((Color)new Color32(0, 255, 0, 255), supportFill.color);
             Assert.AreEqual(
                 Mathf.RoundToInt(planetTemplate.width * 0.5f),
                 GetSourceRect(supportFill.transform).width

@@ -120,6 +120,7 @@ namespace Rebellion.Systems
         /// Removes a registered fleet when it is attached and contains no capital ships.
         /// </summary>
         /// <param name="fleet">The fleet or its snapshot.</param>
+        /// <param name="reason">The diagnostic reason for removing the fleet.</param>
         /// <returns>True when the fleet was removed.</returns>
         public bool RemoveIfEmpty(Fleet fleet, string reason = "empty")
         {

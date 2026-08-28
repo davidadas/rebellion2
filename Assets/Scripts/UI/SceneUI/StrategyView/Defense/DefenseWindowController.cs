@@ -633,7 +633,7 @@ public sealed class DefenseWindowController
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        session.SelectItemForDrag(itemIndex);
+        session.SelectItemForDrag(itemIndex, view.ItemColumnCount);
         if (
             session.CanDragSelectedItems()
             && session.SelectedItemIndexes.Contains(itemIndex)
@@ -644,7 +644,20 @@ public sealed class DefenseWindowController
             return;
         }
 
-        markDirty();
+        RenderSelection(view, session);
+    }
+
+    /// <summary>
+    /// Renders only the unit-card selection affected by a ground-unit click.
+    /// </summary>
+    /// <param name="view">The changed Defense view.</param>
+    /// <param name="session">The controller-owned Defense session.</param>
+    private void RenderSelection(DefenseWindowView view, DefenseWindowSession session)
+    {
+        view.RenderItemSelection(
+            session.SelectedItemIndexes,
+            projector.GetItemSelectionTexture(session)
+        );
     }
 
     /// <summary>
@@ -673,8 +686,8 @@ public sealed class DefenseWindowController
             return;
 
         session.PrepareItemSelection(itemIndex);
-        session.SelectItem(itemIndex);
-        markDirty();
+        session.SelectItem(itemIndex, view.ItemColumnCount);
+        RenderSelection(view, session);
     }
 
     /// <summary>

@@ -16,9 +16,6 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public sealed class MissionOdds
     {
-        /// <summary>
-        /// Gets the probability that at least one participant succeeds.
-        /// </summary>
         public double SuccessProbability { get; }
 
         /// <summary>
@@ -145,14 +142,8 @@ namespace Rebellion.Game.Missions
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }
 
-        /// <summary>
-        /// Returns whether detected mission participants suffer capture, death, or destruction.
-        /// </summary>
         internal virtual bool AppliesFoiledParticipantConsequences => true;
 
-        /// <summary>
-        /// Returns whether successful participants stay at the mission location regardless of ownership.
-        /// </summary>
         internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
 
         /// <summary>

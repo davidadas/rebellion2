@@ -285,41 +285,25 @@ public sealed class GameManager
     private IEnumerable<object> ProcessTickCore()
     {
         _game.CurrentTick++;
-        TickProfiler.Begin("message");
         _messageSystem.ProcessTick();
-        TickProfiler.End();
         GameLogger.Debug("Tick: " + _game.CurrentTick);
 
-        TickProfiler.Begin("automation");
         _factionAutomationSystem.ProcessTick();
-        TickProfiler.End();
-        TickProfiler.Begin("resources");
         ProcessResults(_resourceProductionSystem.ProcessTick());
-        TickProfiler.End();
-        TickProfiler.Begin("manufacturing");
         ProcessResults(_manufacturingSystem.ProcessTick());
-        TickProfiler.End();
-        TickProfiler.Begin("maintenance");
         ProcessResults(_maintenanceSystem.ProcessTick());
-        TickProfiler.End();
 
-        TickProfiler.Begin("movement");
         List<GameResult> movementResults = ProcessResults(
             _movementSystem.ProcessTick(),
             processMessages: false
         );
-        TickProfiler.End();
 
-        TickProfiler.Begin("combat");
         List<GameResult> combatResults = ProcessResults(
             _spaceCombatSystem.ProcessTick(),
             processMessages: false
         );
-        TickProfiler.End();
 
-        TickProfiler.Begin("waypoints");
         List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
-        TickProfiler.End();
 
         List<GameResult> movementPhaseResults = CombineResults(
             movementResults,
@@ -333,43 +317,22 @@ public sealed class GameManager
             yield break;
         }
 
-        TickProfiler.Begin("reactions");
         ProcessMessageReactions(movementPhaseResults);
-        TickProfiler.End();
 
-        TickProfiler.Begin("missions");
         ProcessResults(_missionSystem.ProcessTick());
-        TickProfiler.End();
-        TickProfiler.Begin("events");
         ProcessResults(_eventSystem.ProcessEvents(_game.GetEventPool()));
-        TickProfiler.End();
         List<GameResult> aiResults = new List<GameResult>();
         foreach (object step in _aiSystem.ProcessTickIncrementally(aiResults))
             yield return step;
-        TickProfiler.Begin("ai.results");
         ProcessResults(aiResults);
-        TickProfiler.End();
 
-        TickProfiler.Begin("blockade");
         ProcessResults(_blockadeSystem.ProcessTick());
-        TickProfiler.End();
-        TickProfiler.Begin("planetaryControl");
         ProcessResults(_planetaryControlSystem.ProcessTick());
-        TickProfiler.End();
-        TickProfiler.Begin("uprising");
         ProcessResults(_uprisingSystem.ProcessTick());
-        TickProfiler.End();
 
-        TickProfiler.Begin("research");
         ProcessResults(_researchSystem.ProcessTick());
-        TickProfiler.End();
-        TickProfiler.Begin("jedi");
         ProcessResults(_jediSystem.ProcessTick());
-        TickProfiler.End();
-        TickProfiler.Begin("victory");
         ProcessResults(_victorySystem.ProcessTick());
-        TickProfiler.End();
-        TickProfiler.Report(_game.CurrentTick, 100);
         TickCompleted?.Invoke();
     }
 

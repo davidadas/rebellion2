@@ -218,14 +218,16 @@ internal sealed class DefenseWindowSession
     /// Applies the drag-selection gesture for one current item.
     /// </summary>
     /// <param name="itemIndex">The pressed visual index.</param>
-    public void SelectItemForDrag(int itemIndex)
+    /// <param name="itemsPerRow">The number of unit cards in each visual row.</param>
+    public void SelectItemForDrag(int itemIndex, int itemsPerRow = 1)
     {
         IReadOnlyList<ISceneNode> items = GetItems(ActiveTab);
         SelectableListSelection.SelectIndexedItemForDrag(
             selectedIndexes,
             itemIndex,
             items.Count,
-            getSelectionModifiers()
+            getSelectionModifiers(),
+            itemsPerRow
         );
         CaptureSelection(items);
     }
@@ -234,14 +236,16 @@ internal sealed class DefenseWindowSession
     /// Applies the release-selection gesture for one current item.
     /// </summary>
     /// <param name="itemIndex">The released visual index.</param>
-    public void SelectItem(int itemIndex)
+    /// <param name="itemsPerRow">The number of unit cards in each visual row.</param>
+    public void SelectItem(int itemIndex, int itemsPerRow = 1)
     {
         IReadOnlyList<ISceneNode> items = GetItems(ActiveTab);
         SelectableListSelection.SelectIndexedItem(
             selectedIndexes,
             itemIndex,
             items.Count,
-            getSelectionModifiers()
+            getSelectionModifiers(),
+            itemsPerRow
         );
         CaptureSelection(items);
     }

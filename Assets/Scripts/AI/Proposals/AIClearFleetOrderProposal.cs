@@ -16,6 +16,7 @@ namespace Rebellion.AI.Proposals
             _expectedOrder = expectedOrder;
         }
 
+        /// <inheritdoc />
         public override IReadOnlyList<string> GetClaimKeys()
         {
             return Fleet == null
@@ -23,27 +24,36 @@ namespace Rebellion.AI.Proposals
                 : new List<string> { AIClaimKeys.FleetOrder(Fleet.InstanceID) };
         }
 
+        /// <inheritdoc />
         public override string GetSortKey()
         {
             return $"fleet-clear-order:{Fleet?.InstanceID}";
         }
 
+        /// <inheritdoc />
         public override bool CanSelect(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
+        /// <inheritdoc />
         public override bool CanExecute(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
+        /// <inheritdoc />
         public override void Execute(AITurnContext context)
         {
             if (CanExecute(context))
                 Fleet.Order = null;
         }
 
+        /// <summary>
+        /// Returns whether the recorded order still belongs to the live fleet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the order can be cleared.</returns>
         private bool IsStillValid(AITurnContext context)
         {
             return context?.Faction != null

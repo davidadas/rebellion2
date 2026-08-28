@@ -14,7 +14,7 @@ namespace Rebellion.Tests.AI.Proposals
     public class AIColonizationProposalTests
     {
         [Test]
-        public void Execute_WithRemoteTarget_MovesOnlyLoadedCarrier()
+        public void Execute_WithRemoteTarget_MovesColonizationFleetIntact()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -22,7 +22,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
             target.IsColonized = false;
             AITestSceneBuilder.RevealPlanet(game, empire, target);
-            Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID);
+            Fleet fleet = AddColonizationFleet(game, owned, empire.InstanceID);
             CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
             CapitalShip combatShip = AITestSceneBuilder.CreateCapitalShip(
                 "combat-ship",
@@ -42,14 +42,11 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Fleet colonizationFleet = carrier.GetParentOfType<Fleet>();
-            Assert.AreSame(owned, fleet.GetParent());
-            Assert.IsNull(fleet.Order);
-            Assert.AreSame(target, colonizationFleet.GetParent());
-            Assert.AreEqual(FleetRoleType.Patrol, colonizationFleet.RoleType);
-            Assert.AreEqual(FleetOrderType.Colonize, colonizationFleet.Order.OrderType);
-            Assert.AreEqual(target.InstanceID, colonizationFleet.Order.TargetPlanetId);
-            Assert.IsNotNull(carrier.Movement);
+            Assert.AreSame(target, fleet.GetParent());
+            Assert.AreEqual(FleetRoleType.Colonization, fleet.RoleType);
+            Assert.AreEqual(FleetOrderType.Colonize, fleet.Order.OrderType);
+            Assert.AreEqual(target.InstanceID, fleet.Order.TargetPlanetId);
+            Assert.IsNotNull(fleet.Movement);
             Assert.AreSame(carrier, regiment.GetParent());
             Assert.AreSame(fleet, combatShip.GetParent());
             Assert.IsNull(target.GetOwnerInstanceID());
@@ -62,7 +59,7 @@ namespace Rebellion.Tests.AI.Proposals
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
             target.IsColonized = false;
-            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
+            Fleet fleet = AddColonizationFleet(game, target, empire.InstanceID);
             CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
             Regiment regiment = AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID);
             game.AttachNode(regiment, ship);
@@ -82,14 +79,13 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_WithPatrolFleetAtTarget_ReturnsFleetToBattleRole()
+        public void Execute_WithColonizationFleetAtTarget_PreservesFleetRole()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
             target.IsColonized = false;
-            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
-            fleet.RoleType = FleetRoleType.Patrol;
+            Fleet fleet = AddColonizationFleet(game, target, empire.InstanceID);
             fleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Colonize,
@@ -107,7 +103,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Assert.AreEqual(FleetRoleType.Battle, fleet.RoleType);
+            Assert.AreEqual(FleetRoleType.Colonization, fleet.RoleType);
             Assert.IsNull(fleet.Order);
         }
 
@@ -118,7 +114,7 @@ namespace Rebellion.Tests.AI.Proposals
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
             target.IsColonized = false;
-            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
+            Fleet fleet = AddColonizationFleet(game, target, empire.InstanceID);
             CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
             Regiment strongerRegiment = AITestSceneBuilder.CreateRegiment(
                 "stronger",
@@ -156,7 +152,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
             target.IsColonized = false;
             AITestSceneBuilder.RevealPlanet(game, empire, target);
-            Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID);
+            Fleet fleet = AddColonizationFleet(game, owned, empire.InstanceID);
             CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
             CapitalShip combatShip = AITestSceneBuilder.CreateCapitalShip(
                 "combat-ship",
@@ -178,27 +174,29 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Fleet colonizationFleet = carrier.GetParentOfType<Fleet>();
-            Assert.AreSame(owned, fleet.GetParent());
-            Assert.AreSame(target, colonizationFleet.GetParent());
-            Assert.IsNotNull(carrier.Movement);
-            Assert.AreEqual(FleetOrderType.Colonize, colonizationFleet.Order.OrderType);
+            Assert.AreSame(target, fleet.GetParent());
+            Assert.IsNotNull(fleet.Movement);
+            Assert.AreEqual(FleetOrderType.Colonize, fleet.Order.OrderType);
 
-            carrier.Movement = null;
+            fleet.Movement = null;
             new AIColonizationProposal(
-                colonizationFleet,
-                colonizationFleet.Order.Status,
+                fleet,
+                fleet.Order.Status,
                 context.Assessment.GetKnownPlanet(target.InstanceID)
             ).Execute(context);
 
             Assert.AreEqual(rebels.InstanceID, target.GetOwnerInstanceID());
-            Assert.IsNull(colonizationFleet.Order);
+            Assert.IsNull(fleet.Order);
         }
 
-        private static Fleet AddBattleFleet(GameRoot game, Planet planet, string ownerInstanceId)
+        private static Fleet AddColonizationFleet(
+            GameRoot game,
+            Planet planet,
+            string ownerInstanceId
+        )
         {
             Fleet fleet = EntityFactory.CreateFleet("fleet", ownerInstanceId);
-            fleet.RoleType = FleetRoleType.Battle;
+            fleet.RoleType = FleetRoleType.Colonization;
             game.AttachNode(fleet, planet);
             CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
                 "ship",

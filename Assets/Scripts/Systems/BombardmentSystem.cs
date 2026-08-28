@@ -362,6 +362,10 @@ namespace Rebellion.Systems
             return total;
         }
 
+        /// <summary>Returns projected bombardment strength for a fleet.</summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="config">Bombardment configuration.</param>
+        /// <returns>The projected bombardment strength.</returns>
         internal static int GetProjectedBombardmentStrength(
             Fleet fleet,
             GameConfig.BombardmentConfig config
@@ -377,6 +381,11 @@ namespace Rebellion.Systems
                 * GetBombardmentMultiplier(fleet, config);
         }
 
+        /// <summary>Returns projected bombardment strength for one capital ship.</summary>
+        /// <param name="fleet">The fleet containing the ship.</param>
+        /// <param name="capitalShip">The capital ship to inspect.</param>
+        /// <param name="config">Bombardment configuration.</param>
+        /// <returns>The projected bombardment strength.</returns>
         internal static int GetProjectedCapitalShipBombardmentStrength(
             Fleet fleet,
             CapitalShip capitalShip,
@@ -443,6 +452,12 @@ namespace Rebellion.Systems
                     );
         }
 
+        /// <summary>
+        /// Returns bombardment multiplier.
+        /// </summary>
+        /// <param name="fleet">The fleet to evaluate.</param>
+        /// <param name="config">The applicable configuration.</param>
+        /// <returns>The calculated value.</returns>
         private static int GetBombardmentMultiplier(
             Fleet fleet,
             GameConfig.BombardmentConfig config
@@ -456,6 +471,11 @@ namespace Rebellion.Systems
             return leadership / config.AttackerLeadershipDivisor + 1;
         }
 
+        /// <summary>
+        /// Returns projected capital ship bombardment strength.
+        /// </summary>
+        /// <param name="capitalShip">The capital ship to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private static int GetProjectedCapitalShipBombardmentStrength(CapitalShip capitalShip)
         {
             bool useCurrentCondition =
@@ -1270,6 +1290,11 @@ namespace Rebellion.Systems
                 && unit.Movement == null;
         }
 
+        /// <summary>
+        /// Returns whether committed bombardment unit.
+        /// </summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private static bool IsCommittedBombardmentUnit(IManufacturable unit)
         {
             return unit?.ManufacturingStatus

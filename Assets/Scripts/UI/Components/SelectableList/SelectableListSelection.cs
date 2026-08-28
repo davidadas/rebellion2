@@ -134,11 +134,13 @@ public sealed class SelectableListSelection
     /// <param name="index">The requested source index.</param>
     /// <param name="count">The current item count.</param>
     /// <param name="modifiers">The configured selection modifiers currently held.</param>
+    /// <param name="itemsPerRow">The number of items in each visual row.</param>
     public static void SelectIndexedItem(
         HashSet<int> selection,
         int index,
         int count,
-        SelectionModifierState modifiers = default
+        SelectionModifierState modifiers = default,
+        int itemsPerRow = 1
     )
     {
         if (selection == null || index < 0 || index >= count)
@@ -152,7 +154,7 @@ public sealed class SelectableListSelection
         else if (modifiers.RangeSelect)
         {
             selection.Add(index);
-            FillSelectionRange(selection, count);
+            FillSelectionGrid(selection, count, itemsPerRow);
         }
         else
         {
@@ -168,17 +170,19 @@ public sealed class SelectableListSelection
     /// <param name="index">The dragged source index.</param>
     /// <param name="count">The current item count.</param>
     /// <param name="modifiers">The configured selection modifiers currently held.</param>
+    /// <param name="itemsPerRow">The number of items in each visual row.</param>
     public static void SelectIndexedItemForDrag(
         HashSet<int> selection,
         int index,
         int count,
-        SelectionModifierState modifiers = default
+        SelectionModifierState modifiers = default,
+        int itemsPerRow = 1
     )
     {
         if (CanDragExistingSelection(selection, index, modifiers))
             return;
 
-        SelectIndexedItem(selection, index, count, modifiers);
+        SelectIndexedItem(selection, index, count, modifiers, itemsPerRow);
     }
 
     /// <summary>
@@ -236,6 +240,44 @@ public sealed class SelectableListSelection
 
         for (int i = start; i <= end && i < count; i++)
             selection.Add(i);
+    }
+
+    /// <summary>
+    /// Fills the rectangular item grid bounded by the current selection.
+    /// </summary>
+    /// <param name="selection">The selection to update.</param>
+    /// <param name="count">The current item count.</param>
+    /// <param name="itemsPerRow">The number of items in each visual row.</param>
+    private static void FillSelectionGrid(HashSet<int> selection, int count, int itemsPerRow)
+    {
+        if (!TryGetSelectionBounds(selection, out int start, out int end))
+            return;
+
+        if (itemsPerRow <= 1)
+        {
+            FillSelectionRange(selection, count);
+            return;
+        }
+
+        int startRow = start / itemsPerRow;
+        int startColumn = start % itemsPerRow;
+        int endRow = end / itemsPerRow;
+        int endColumn = end % itemsPerRow;
+        int rowMin = System.Math.Min(startRow, endRow);
+        int rowMax = System.Math.Max(startRow, endRow);
+        int columnMin = System.Math.Min(startColumn, endColumn);
+        int columnMax = System.Math.Max(startColumn, endColumn);
+
+        for (int row = rowMin; row <= rowMax; row++)
+        {
+            int baseIndex = row * itemsPerRow;
+            for (int column = columnMin; column <= columnMax; column++)
+            {
+                int itemIndex = baseIndex + column;
+                if (itemIndex >= 0 && itemIndex < count)
+                    selection.Add(itemIndex);
+            }
+        }
     }
 
     /// <summary>

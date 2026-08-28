@@ -75,6 +75,13 @@ namespace Rebellion.AI.Scoring
             return score;
         }
 
+        /// <summary>
+        /// Returns mission score.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <param name="successProbability">The calculated success probability.</param>
+        /// <returns>The calculated value.</returns>
         private double GetMissionScore(
             AITurnContext context,
             AIMissionProposal proposal,
@@ -92,6 +99,13 @@ namespace Rebellion.AI.Scoring
             };
         }
 
+        /// <summary>
+        /// Scores sabotage.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <param name="successProbability">The calculated success probability.</param>
+        /// <returns>The calculated value.</returns>
         private double ScoreSabotage(
             AITurnContext context,
             AIMissionProposal proposal,
@@ -105,6 +119,13 @@ namespace Rebellion.AI.Scoring
                 );
         }
 
+        /// <summary>
+        /// Scores diplomacy.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <param name="successProbability">The calculated success probability.</param>
+        /// <returns>The calculated value.</returns>
         private double ScoreDiplomacy(
             AITurnContext context,
             AIMissionProposal proposal,
@@ -118,6 +139,11 @@ namespace Rebellion.AI.Scoring
                     * context.Game.Config.AI.MissionPlanning.DiplomacySupportDeficitWeight;
         }
 
+        /// <summary>
+        /// Returns jedi training value.
+        /// </summary>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private double GetJediTrainingValue(AIMissionProposal proposal)
         {
             List<Officer> officers = proposal.Participants.OfType<Officer>().ToList();
@@ -132,6 +158,13 @@ namespace Rebellion.AI.Scoring
                 .Sum(officer => Math.Max(0, trainer.ForceRank - officer.ForceRank));
         }
 
+        /// <summary>
+        /// Attempts to create mission.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <param name="mission">The mission.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private static bool TryCreateMission(
             AITurnContext context,
             AIMissionProposal proposal,
@@ -141,6 +174,12 @@ namespace Rebellion.AI.Scoring
             return context.Missions.TryCreateMission(proposal.CreateRequest(), out mission);
         }
 
+        /// <summary>
+        /// Returns priority bonus.
+        /// </summary>
+        /// <param name="config">The applicable configuration.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private int GetPriorityBonus(
             GameConfig.AIMissionPlanningConfig config,
             AIMissionProposal proposal
@@ -160,6 +199,12 @@ namespace Rebellion.AI.Scoring
             };
         }
 
+        /// <summary>
+        /// Returns travel penalty.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private double GetTravelPenalty(AITurnContext context, AIMissionProposal proposal)
         {
             double distanceScale = context.Game.Config.Movement.DistanceScale;
@@ -177,6 +222,12 @@ namespace Rebellion.AI.Scoring
                     .Max() / distanceScale;
         }
 
+        /// <summary>
+        /// Returns officer replacement penalty.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private int GetOfficerReplacementPenalty(AITurnContext context, AIMissionProposal proposal)
         {
             if (proposal.Participant is not Officer || !IsHostileMission(proposal.MissionTypeID))
@@ -192,6 +243,11 @@ namespace Rebellion.AI.Scoring
                 : 0;
         }
 
+        /// <summary>
+        /// Returns whether hostile mission.
+        /// </summary>
+        /// <param name="missionTypeId">The mission type identifier.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool IsHostileMission(string missionTypeId)
         {
             return missionTypeId == MissionTypeIDs.Sabotage
@@ -200,6 +256,12 @@ namespace Rebellion.AI.Scoring
                 || missionTypeId == MissionTypeIDs.InciteUprising;
         }
 
+        /// <summary>
+        /// Returns intel age score.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private double GetIntelAgeScore(AITurnContext context, AIMissionProposal proposal)
         {
             int tickInterval = context.Game.Config.AI.TickInterval;

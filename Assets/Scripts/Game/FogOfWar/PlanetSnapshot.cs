@@ -38,9 +38,6 @@ namespace Rebellion.Game.FogOfWar
         public int AllocatedEnergy;
 
         // Popular Support.
-        /// <summary>
-        /// Popular support by faction instance ID.
-        /// </summary>
         public Dictionary<string, int> PopularSupport;
 
         // Visible Entities.
@@ -49,9 +46,6 @@ namespace Rebellion.Game.FogOfWar
         public List<Regiment> Regiments;
         public List<SpecialForces> SpecialForces;
 
-        /// <summary>
-        /// Buildings visible on the planet.
-        /// </summary>
         public List<Building> Buildings;
         public List<Starfighter> Starfighters;
         public List<Mission> Missions;

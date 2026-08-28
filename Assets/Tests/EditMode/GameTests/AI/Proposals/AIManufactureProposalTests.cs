@@ -20,7 +20,7 @@ namespace Rebellion.Tests.AI.Proposals
     public class AIManufactureProposalTests
     {
         [Test]
-        public void TrainingFacilityDemand_UsesDefensiveMaintenanceReserve()
+        public void UsesDefensiveReserve_WithTrainingFacilityDemand_ReturnsTrue()
         {
             AIDemand demand = new AIDemand(
                 "training-facility-demand",
@@ -367,7 +367,7 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void ManufacturedFacilityTotal_IncrementsOnlyAfterCompletion()
+        public void ManufacturedFacilityTotal_BeforeAndAfterCompletion_IncrementsOnlyAfterCompletion()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -573,7 +573,7 @@ namespace Rebellion.Tests.AI.Proposals
             AITestSceneBuilder.AddProductionFacility(
                 game,
                 planet,
-                "shipyard",
+                "shipyard-building",
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
@@ -633,7 +633,7 @@ namespace Rebellion.Tests.AI.Proposals
             AITestSceneBuilder.AddProductionFacility(
                 game,
                 planet,
-                "shipyard",
+                "shipyard-building",
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
@@ -794,6 +794,60 @@ namespace Rebellion.Tests.AI.Proposals
                 fleet.GetChildren<CapitalShip>()[0].ManufacturingStatus
             );
             Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Ship].Count);
+        }
+
+        [Test]
+        public void Execute_WithColonizationFleetSeedDemand_CreatesColonizationFleet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard-building",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            CapitalShip template = AITestSceneBuilder.CreateCapitalShip(
+                "transport-template",
+                empire.InstanceID,
+                regimentCapacity: 2
+            );
+            template.TypeID = "transport";
+            template.ManufacturingFactionInstanceIDs.Add(empire.InstanceID);
+            AIDemand demand = new AIDemand(
+                "colonization-fleet-seed-demand",
+                AIDemandKind.ColonizationFleetSeedCapitalShip,
+                ManufacturingType.Ship,
+                BuildingType.None,
+                planet,
+                1,
+                100,
+                capitalShipRole: AICapitalShipProductionRole.TroopTransport
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                planet,
+                new Technology(template)
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            proposal.Execute(context);
+
+            Fleet fleet = game.GetSceneNodesByOwnerInstanceID<Fleet>(empire.InstanceID).Single();
+            Assert.AreEqual(FleetRoleType.Colonization, fleet.RoleType);
+            Assert.AreSame(planet, fleet.GetParent());
+            Assert.AreEqual(1, fleet.GetChildren<CapitalShip>().Count);
+            Assert.AreEqual(
+                ManufacturingStatus.Building,
+                fleet.GetChildren<CapitalShip>()[0].ManufacturingStatus
+            );
         }
 
         private static AIDemand CreateBuildingDemand(Planet destination)

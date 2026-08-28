@@ -67,6 +67,11 @@ namespace Rebellion.AI.Planners
             return proposals;
         }
 
+        /// <summary>
+        /// Creates mission proposals.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private List<AIProposal> CreateMissionProposals(AITurnContext context)
         {
             List<AIProposal> proposals = new List<AIProposal>();
@@ -111,6 +116,13 @@ namespace Rebellion.AI.Planners
             return proposals;
         }
 
+        /// <summary>
+        /// Adds reconnaissance proposals.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="participant">The mission participant.</param>
+        /// <param name="availableParticipants">The available mission participants.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
         private void AddReconnaissanceProposals(
             AITurnContext context,
             IMissionParticipant participant,
@@ -187,6 +199,12 @@ namespace Rebellion.AI.Planners
                 .FirstOrDefault();
         }
 
+        /// <summary>
+        /// Adds subdue uprising proposals.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="participant">The mission participant.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
         private void AddSubdueUprisingProposals(
             AITurnContext context,
             IMissionParticipant participant,
@@ -244,6 +262,12 @@ namespace Rebellion.AI.Planners
             return proposals.Count > proposalCount;
         }
 
+        /// <summary>
+        /// Adds research proposals.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
         private void AddResearchProposals(
             AITurnContext context,
             Officer officer,
@@ -274,6 +298,11 @@ namespace Rebellion.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Adds jedi training proposals.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
         private void AddJediTrainingProposals(AITurnContext context, List<AIProposal> proposals)
         {
             int maximumStudents = context
@@ -319,6 +348,13 @@ namespace Rebellion.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Adds rescue proposals.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="participant">The mission participant.</param>
+        /// <param name="availableParticipants">The available mission participants.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
         private void AddRescueProposals(
             AITurnContext context,
             IMissionParticipant participant,
@@ -361,6 +397,13 @@ namespace Rebellion.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Adds espionage proposals.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="participant">The mission participant.</param>
+        /// <param name="availableParticipants">The available mission participants.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
         private void AddEspionageProposals(
             AITurnContext context,
             IMissionParticipant participant,
@@ -382,6 +425,13 @@ namespace Rebellion.AI.Planners
                 );
         }
 
+        /// <summary>
+        /// Adds incite uprising proposals.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="participant">The mission participant.</param>
+        /// <param name="availableParticipants">The available mission participants.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
         private void AddInciteUprisingProposals(
             AITurnContext context,
             IMissionParticipant participant,
@@ -413,6 +463,13 @@ namespace Rebellion.AI.Planners
                 );
         }
 
+        /// <summary>
+        /// Adds sabotage proposals.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="participant">The mission participant.</param>
+        /// <param name="availableParticipants">The available mission participants.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
         private void AddSabotageProposals(
             AITurnContext context,
             IMissionParticipant participant,
@@ -478,6 +535,12 @@ namespace Rebellion.AI.Planners
             return decoy == null ? Array.Empty<IMissionParticipant>() : new[] { decoy };
         }
 
+        /// <summary>
+        /// Returns travel distance.
+        /// </summary>
+        /// <param name="participant">The mission participant.</param>
+        /// <param name="target">The target to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private static double GetTravelDistance(IMissionParticipant participant, Planet target)
         {
             Planet origin = participant?.GetParentOfType<Planet>();
@@ -486,6 +549,13 @@ namespace Rebellion.AI.Planners
                 : double.MaxValue;
         }
 
+        /// <summary>
+        /// Adds officer target mission proposals.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="participant">The mission participant.</param>
+        /// <param name="availableParticipants">The available mission participants.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
         private void AddOfficerTargetMissionProposals(
             AITurnContext context,
             IMissionParticipant participant,
@@ -521,6 +591,12 @@ namespace Rebellion.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Attempts to add proposal.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
+        /// <param name="proposal">The proposal to evaluate.</param>
         private void TryAddProposal(
             AITurnContext context,
             List<AIProposal> proposals,
@@ -574,6 +650,13 @@ namespace Rebellion.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Creates proposal.
+        /// </summary>
+        /// <param name="participant">The mission participant.</param>
+        /// <param name="missionTypeId">The mission type identifier.</param>
+        /// <param name="target">The target to evaluate.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private static AIMissionProposal CreateProposal(
             IMissionParticipant participant,
             string missionTypeId,
@@ -583,6 +666,11 @@ namespace Rebellion.AI.Planners
             return new AIMissionProposal(new[] { participant }, missionTypeId, target);
         }
 
+        /// <summary>
+        /// Returns diplomacy candidate planets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<Planet> GetDiplomacyCandidatePlanets(AITurnContext context)
         {
             return _diplomacyCandidates ??= context
@@ -603,6 +691,12 @@ namespace Rebellion.AI.Planners
                 .ToList();
         }
 
+        /// <summary>
+        /// Returns reconnaissance candidate planets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="participant">The mission participant.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<Planet> GetReconnaissanceCandidatePlanets(
             AITurnContext context,
             IMissionParticipant participant
@@ -624,6 +718,12 @@ namespace Rebellion.AI.Planners
                 .ThenBy(planet => planet.InstanceID);
         }
 
+        /// <summary>
+        /// Returns research candidate planets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<Planet> GetResearchCandidatePlanets(
             AITurnContext context,
             Officer officer
@@ -641,6 +741,11 @@ namespace Rebellion.AI.Planners
                 .ThenBy(planet => planet.InstanceID);
         }
 
+        /// <summary>
+        /// Returns espionage candidate planets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<Planet> GetEspionageCandidatePlanets(AITurnContext context)
         {
             if (_espionageCandidates != null)
@@ -663,6 +768,11 @@ namespace Rebellion.AI.Planners
             return _espionageCandidates;
         }
 
+        /// <summary>
+        /// Returns sabotage candidate planets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<Planet> GetSabotageCandidatePlanets(AITurnContext context)
         {
             return _sabotageCandidates ??= GetFreshEnemyPlanets(context)
@@ -687,6 +797,12 @@ namespace Rebellion.AI.Planners
                 .ToList();
         }
 
+        /// <summary>
+        /// Returns sabotage targets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<IManufacturable> GetSabotageTargets(
             AITurnContext context,
             Planet planet
@@ -715,6 +831,12 @@ namespace Rebellion.AI.Planners
             return targets;
         }
 
+        /// <summary>
+        /// Returns eligible sabotage targets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<IManufacturable> GetEligibleSabotageTargets(
             AITurnContext context,
             Planet planet
@@ -748,6 +870,11 @@ namespace Rebellion.AI.Planners
                 .ToList();
         }
 
+        /// <summary>
+        /// Returns fresh enemy planets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<Planet> GetFreshEnemyPlanets(AITurnContext context)
         {
             if (_freshEnemyPlanets != null)
@@ -767,6 +894,11 @@ namespace Rebellion.AI.Planners
             return _freshEnemyPlanets;
         }
 
+        /// <summary>
+        /// Returns recruitment candidate planets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<Planet> GetRecruitmentCandidatePlanets(AITurnContext context)
         {
             return _recruitmentCandidates ??= context
@@ -776,6 +908,13 @@ namespace Rebellion.AI.Planners
                 .ToList();
         }
 
+        /// <summary>
+        /// Returns available research disciplines.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<ResearchDiscipline> GetAvailableResearchDisciplines(
             AITurnContext context,
             Officer officer,
@@ -797,6 +936,13 @@ namespace Rebellion.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Returns whether available research discipline.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool HasAvailableResearchDiscipline(
             AITurnContext context,
             Officer officer,
@@ -806,6 +952,13 @@ namespace Rebellion.AI.Planners
             return GetAvailableResearchDisciplines(context, officer, planet).Any();
         }
 
+        /// <summary>
+        /// Returns available research discipline count.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private int GetAvailableResearchDisciplineCount(
             AITurnContext context,
             Officer officer,
@@ -815,6 +968,13 @@ namespace Rebellion.AI.Planners
             return GetAvailableResearchDisciplines(context, officer, planet).Count();
         }
 
+        /// <summary>
+        /// Returns strongest research rating.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private int GetStrongestResearchRating(
             AITurnContext context,
             Officer officer,
@@ -827,11 +987,24 @@ namespace Rebellion.AI.Planners
                 .Max();
         }
 
+        /// <summary>
+        /// Returns whether active mission.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="missionTypeId">The mission type identifier.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool HasActiveMission(AITurnContext context, string missionTypeId)
         {
             return GetActiveMissions(context).Any(mission => mission.ConfigKey == missionTypeId);
         }
 
+        /// <summary>
+        /// Returns whether active mission at planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="missionTypeId">The mission type identifier.</param>
+        /// <param name="planetId">The planet id.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool HasActiveMissionAtPlanet(
             AITurnContext context,
             string missionTypeId,
@@ -844,6 +1017,12 @@ namespace Rebellion.AI.Planners
                 );
         }
 
+        /// <summary>
+        /// Returns whether active officer target mission.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="officerId">The officer id.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool HasActiveOfficerTargetMission(AITurnContext context, string officerId)
         {
             return GetActiveMissions(context)
@@ -860,6 +1039,12 @@ namespace Rebellion.AI.Planners
                 );
         }
 
+        /// <summary>
+        /// Returns whether active sabotage target.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetId">The target id.</param>
+        /// <returns>True when the condition is satisfied.</returns>
         private bool HasActiveSabotageTarget(AITurnContext context, string targetId)
         {
             return GetActiveMissions(context)
@@ -867,11 +1052,22 @@ namespace Rebellion.AI.Planners
                 .Any(mission => mission.SabotageTargetInstanceID == targetId);
         }
 
+        /// <summary>
+        /// Returns active missions.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The selected value, or null when none is available.</returns>
         private IEnumerable<Mission> GetActiveMissions(AITurnContext context)
         {
             return context.Assessment.ActiveMissions;
         }
 
+        /// <summary>
+        /// Returns diplomacy candidate priority.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private int GetDiplomacyCandidatePriority(AITurnContext context, Planet planet)
         {
             int support = context.Assessment.GetFactionPopularSupport(planet);
@@ -883,6 +1079,11 @@ namespace Rebellion.AI.Planners
             return context.Assessment.IsNeutralPlanet(planet) ? support + strategicValue : 0;
         }
 
+        /// <summary>
+        /// Returns officer target candidate priority.
+        /// </summary>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <returns>The calculated value.</returns>
         private int GetOfficerTargetCandidatePriority(Officer officer)
         {
             return officer.GetEffectiveRating(OfficerRating.Combat)

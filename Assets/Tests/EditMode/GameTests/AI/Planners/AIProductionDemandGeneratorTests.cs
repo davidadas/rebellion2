@@ -934,6 +934,72 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithUnstableUnshieldedPlanet_RaisesInitialShieldPressure()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameConfig.AIInfrastructureConfig config = game.Config.AI.Infrastructure;
+            config.PlanetaryDefenseValuePressureWeight = 0;
+            config.PlanetaryShieldInstabilityPressureWeight = 50;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "unstable-world",
+                empire.InstanceID
+            );
+            planet.SetPopularSupport(empire.InstanceID, 20);
+            AddMaintenanceCapacity(game, planet, 1);
+
+            double pressure = new AIProductionDemandGenerator()
+                .Generate(AITestSceneBuilder.CreateContext(game, empire))
+                .Single(demand =>
+                    demand.Kind == AIDemandKind.PlanetaryDefense
+                    && demand.BuildingType == BuildingType.Defense
+                    && demand.DestinationPlanet == planet
+                )
+                .Pressure;
+
+            Assert.AreEqual(
+                config.PlanetaryShieldDemandPercent
+                    + config.PlanetaryDefenseDeficitPressureWeight
+                    + 40,
+                pressure
+            );
+            Assert.Greater(pressure, config.EconomySevereDemandPercent);
+        }
+
+        [Test]
+        public void Generate_WithExistingShield_DoesNotApplyInstabilityPressure()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameConfig.AIInfrastructureConfig config = game.Config.AI.Infrastructure;
+            config.PlanetaryDefenseDeficitPressureWeight = 0;
+            config.PlanetaryDefenseValuePressureWeight = 0;
+            config.PlanetaryShieldInstabilityPressureWeight = 50;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "partially-shielded-world",
+                empire.InstanceID
+            );
+            planet.SetPopularSupport(empire.InstanceID, 20);
+            AddMaintenanceCapacity(game, planet, 1);
+            AddShield(game, planet, "existing-shield", empire.InstanceID, 40);
+
+            double pressure = new AIProductionDemandGenerator()
+                .Generate(AITestSceneBuilder.CreateContext(game, empire))
+                .Single(demand =>
+                    demand.Kind == AIDemandKind.PlanetaryDefense
+                    && demand.BuildingType == BuildingType.Defense
+                    && demand.DestinationPlanet == planet
+                )
+                .Pressure;
+
+            Assert.AreEqual(config.PlanetaryShieldDemandPercent, pressure);
+        }
+
+        [Test]
         public void Generate_WithInfrastructureStarfighterDeficit_AddsReserveDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -1978,7 +2044,7 @@ namespace Rebellion.Tests.AI.Planners
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
             target.IsColonized = false;
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
-            fleet.RoleType = FleetRoleType.Battle;
+            fleet.RoleType = FleetRoleType.Colonization;
             fleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Colonize,
@@ -2019,7 +2085,7 @@ namespace Rebellion.Tests.AI.Planners
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
             target.IsColonized = false;
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
-            fleet.RoleType = FleetRoleType.Battle;
+            fleet.RoleType = FleetRoleType.Colonization;
             fleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Colonize,
@@ -2151,6 +2217,52 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(
                 game.Config.AI.FleetDeployment.MinimumBattleFleetCount,
                 demand.QuantityNeeded
+            );
+        }
+
+        [Test]
+        public void Generate_WithKnownUncolonizedPlanet_AddsColonizationFleetSeedDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet shipyardPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
+            target.IsColonized = false;
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIDemandKind.ColonizationFleetSeedCapitalShip);
+
+            Assert.AreSame(shipyardPlanet, demand.DestinationPlanet);
+            Assert.AreEqual(AICapitalShipProductionRole.TroopTransport, demand.CapitalShipRole);
+            Assert.AreEqual(1, demand.QuantityNeeded);
+        }
+
+        [Test]
+        public void Generate_WithExistingColonizationFleet_DoesNotAddColonizationFleetSeedDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
+            target.IsColonized = false;
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = EntityFactory.CreateFleet("colonization-fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Colonization;
+            game.AttachNode(fleet, owned);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(
+                demands.Any(item => item.Kind == AIDemandKind.ColonizationFleetSeedCapitalShip)
             );
         }
 

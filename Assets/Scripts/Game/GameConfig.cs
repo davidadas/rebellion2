@@ -71,7 +71,6 @@ namespace Rebellion.Game
 
             public AIMissionTablesConfig MissionTables { get; set; } = new AIMissionTablesConfig();
 
-            /// <summary>Mission planning priorities and intelligence freshness settings.</summary>
             public AIMissionPlanningConfig MissionPlanning { get; set; } =
                 new AIMissionPlanningConfig();
 
@@ -81,13 +80,11 @@ namespace Rebellion.Game
 
             public int DeploymentGateHigh { get; set; }
 
-            /// <summary>Unit selection parameters for AI manufacturing.</summary>
             public AISelectionConfig Selection { get; set; } = new AISelectionConfig();
 
             public AINonCapitalSummaryConfig NonCapitalSummary { get; set; } =
                 new AINonCapitalSummaryConfig();
 
-            /// <summary>Infrastructure shortage parameters for AI manufacturing.</summary>
             public AIInfrastructureConfig Infrastructure { get; set; } =
                 new AIInfrastructureConfig();
 
@@ -168,17 +165,14 @@ namespace Rebellion.Game
 
             public int PlanetsPerBattleFleet { get; set; } = 15;
 
-            /// <summary>Minimum friendly attack strength required before attacking.</summary>
             public int MinimumAttackStrength { get; set; }
 
             public int MinimumDefenseStrength { get; set; } = 1000;
 
             public int FleetDefenseScore { get; set; } = 1000;
 
-            /// <summary>Minimum loaded regiments required before attempting planet capture.</summary>
             public int MinimumPlanetaryAssaultRegimentCount { get; set; } = 1;
 
-            /// <summary>Minimum estimated chance of winning a planetary assault.</summary>
             public int MinimumPlanetaryAssaultSuccessPercent { get; set; } = 55;
 
             public int AttackStrengthPercentOfDefense { get; set; }
@@ -198,16 +192,6 @@ namespace Rebellion.Game
             public int AttackOpportunityCostPenaltyWeight { get; set; } = 30;
 
             public int ExistingAttackOrderBonus { get; set; } = 25;
-
-            /// <summary>
-            /// Owned planets required per concurrent attack campaign. Zero disables the cap.
-            /// </summary>
-            public int PlanetsPerAttackCampaign { get; set; }
-
-            /// <summary>
-            /// Minimum combat value a battle fleet needs before colonization duty may draft it.
-            /// </summary>
-            public int MinimumColonizationFleetCombatValue { get; set; }
 
             public int HeadquartersAttackBonus { get; set; } = 45;
 
@@ -313,6 +297,7 @@ namespace Rebellion.Game
             public int PlanetaryWeaponTargetCount { get; set; } = 1;
             public int PlanetaryDefenseSurplusBatchSize { get; set; } = 1;
             public int PlanetaryShieldDemandPercent { get; set; } = 45;
+            public int PlanetaryShieldInstabilityPressureWeight { get; set; } = 50;
             public int PlanetaryWeaponDemandPercent { get; set; } = 35;
             public int PlanetaryGarrisonDemandPercent { get; set; } = 30;
             public int PlanetaryDefenseDeficitPressureWeight { get; set; } = 20;
@@ -373,16 +358,8 @@ namespace Rebellion.Game
 
             public int StarfighterRequirementHeadquarters { get; set; }
 
-            /// <summary>
-            /// Percent of the starfighter baseline kept on planets without a known threat.
-            /// Headquarters and production planets always keep their full baseline.
-            /// </summary>
             public int InteriorStarfighterBaselinePercent { get; set; } = 100;
 
-            /// <summary>
-            /// Whether a planet must complete its static defense minimums before it can
-            /// request reserve starfighters.
-            /// </summary>
             public bool RequireStaticDefenseBeforeStarfighters { get; set; }
         }
 
@@ -400,10 +377,6 @@ namespace Rebellion.Game
 
             public int FleetLoadingDeficitThreshold { get; set; }
 
-            /// <summary>
-            /// Percent of the capture-garrison floor kept on planets without a known threat.
-            /// Uprising-suppression requirements always apply in full.
-            /// </summary>
             public int InteriorCaptureFloorPercent { get; set; } = 100;
         }
 
@@ -648,10 +621,6 @@ namespace Rebellion.Game
 
             public int EncounterProbabilityOffset { get; set; }
 
-            /// <summary>
-            /// Maps ascending minimum Force thresholds to the rank label active from each
-            /// threshold until the next authored threshold.
-            /// </summary>
             public Dictionary<int, int> RankLabelByMinimumForceRank { get; set; } =
                 new Dictionary<int, int>();
 

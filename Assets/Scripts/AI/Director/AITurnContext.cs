@@ -13,66 +13,21 @@ namespace Rebellion.AI.Director
     /// </summary>
     public sealed class AITurnContext
     {
-        /// <summary>
-        /// Game instance being processed.
-        /// </summary>
+        // Turn Dependencies.
         public GameRoot Game { get; }
-
-        /// <summary>
-        /// Faction being processed.
-        /// </summary>
         public Faction Faction { get; }
-
-        /// <summary>
-        /// RNG provider used by this turn.
-        /// </summary>
         public IRandomNumberProvider Random { get; }
-
-        /// <summary>
-        /// Mission system used by mission proposals.
-        /// </summary>
         public MissionSystem Missions { get; }
-
-        /// <summary>
-        /// Movement system used by movement proposals.
-        /// </summary>
         public MovementSystem Movement { get; }
-
-        /// <summary>
-        /// Manufacturing system used by production proposals.
-        /// </summary>
         public ManufacturingSystem Manufacturing { get; }
-
-        /// <summary>
-        /// Bombardment system used by fleet attack proposals.
-        /// </summary>
         public BombardmentSystem Bombardment { get; }
-
-        /// <summary>
-        /// Planetary-assault system used by fleet attack proposals.
-        /// </summary>
         public PlanetaryAssaultSystem PlanetaryAssault { get; }
-
         public FogOfWarSystem FogOfWar { get; }
-
-        /// <summary>
-        /// Derived AI assessment for this turn.
-        /// </summary>
         public AIAssessment Assessment { get; }
 
-        /// <summary>
-        /// Proposals generated during planning.
-        /// </summary>
+        // Turn Output.
         public IReadOnlyList<AIProposal> Proposals => _proposals;
-
-        /// <summary>
-        /// Proposals selected for execution.
-        /// </summary>
         public IReadOnlyList<AIProposal> SelectedProposals => _selectedProposals;
-
-        /// <summary>
-        /// Results produced during proposal execution.
-        /// </summary>
         public IReadOnlyList<GameResult> Results => _results;
 
         private readonly List<AIProposal> _proposals = new List<AIProposal>();

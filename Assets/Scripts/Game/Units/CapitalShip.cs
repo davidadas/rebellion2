@@ -291,6 +291,8 @@ namespace Rebellion.Game.Units
             return CalculateCombatValue(CurrentHullStrength);
         }
 
+        /// <summary>Returns combat value at full manufactured durability.</summary>
+        /// <returns>The projected combat value.</returns>
         internal int GetProjectedCombatValue()
         {
             if (
@@ -307,6 +309,11 @@ namespace Rebellion.Game.Units
             return CalculateCombatValue(hullStrength);
         }
 
+        /// <summary>
+        /// Calculate combat value.
+        /// </summary>
+        /// <param name="hullStrength">The current hull strength.</param>
+        /// <returns>The calculated value.</returns>
         private int CalculateCombatValue(int hullStrength)
         {
             int attackStrength = GetPrimaryWeaponStrength();

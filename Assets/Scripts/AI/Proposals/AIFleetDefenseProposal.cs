@@ -17,6 +17,7 @@ namespace Rebellion.AI.Proposals
             TargetPlanet = targetPlanet;
         }
 
+        /// <inheritdoc />
         public override IReadOnlyList<string> GetClaimKeys()
         {
             if (Fleet == null || TargetPlanet == null)
@@ -30,21 +31,25 @@ namespace Rebellion.AI.Proposals
             };
         }
 
+        /// <inheritdoc />
         public override string GetSortKey()
         {
             return $"fleet-defense:{TargetPlanet?.InstanceID}:{Fleet?.InstanceID}";
         }
 
+        /// <inheritdoc />
         public override bool CanSelect(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
+        /// <inheritdoc />
         public override bool CanExecute(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
+        /// <inheritdoc />
         public override void Execute(AITurnContext context)
         {
             if (!CanExecute(context))
@@ -71,6 +76,9 @@ namespace Rebellion.AI.Proposals
             context.Movement.RequestMove(Fleet, TargetPlanet);
         }
 
+        /// <summary>
+        /// Creates or updates the fleet's defense order.
+        /// </summary>
         private void EnsureOrder()
         {
             FleetOrder order = Fleet.Order;
@@ -88,6 +96,11 @@ namespace Rebellion.AI.Proposals
             };
         }
 
+        /// <summary>
+        /// Returns whether the defense proposal still matches live game state.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when defense remains valid.</returns>
         private bool IsStillValid(AITurnContext context)
         {
             if (!IsOwnedBy(context, Fleet) || !IsOwnedBy(context, TargetPlanet))
@@ -111,6 +124,9 @@ namespace Rebellion.AI.Proposals
                     && !Fleet.IsInCombat;
         }
 
+        /// <summary>
+        /// Clears the proposal's order when it remains attached to the fleet.
+        /// </summary>
         private void ClearOrder()
         {
             if (

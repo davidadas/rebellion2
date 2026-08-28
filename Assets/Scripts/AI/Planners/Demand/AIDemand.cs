@@ -26,6 +26,7 @@ namespace Rebellion.AI.Planners.Demand
         GarrisonRegimentReserve,
         SpecialForces,
         FleetSeedCapitalShip,
+        ColonizationFleetSeedCapitalShip,
         BuildingUpgrade,
     }
 

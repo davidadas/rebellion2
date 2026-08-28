@@ -9,14 +9,8 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public abstract class AIProposal
     {
-        /// <summary>
-        /// Score assigned by the scoring phase.
-        /// </summary>
+        // Selection State.
         public double Score { get; private set; }
-
-        /// <summary>
-        /// Whether the proposal has been scored.
-        /// </summary>
         public bool HasScore { get; private set; }
 
         /// <summary>

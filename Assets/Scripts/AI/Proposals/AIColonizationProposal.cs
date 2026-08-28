@@ -3,8 +3,6 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Proposals
 {
@@ -23,6 +21,7 @@ namespace Rebellion.AI.Proposals
             TargetPlanet = targetPlanet;
         }
 
+        /// <inheritdoc />
         public override IReadOnlyList<string> GetClaimKeys()
         {
             List<string> claimKeys = new List<string>();
@@ -44,6 +43,7 @@ namespace Rebellion.AI.Proposals
             return claimKeys;
         }
 
+        /// <inheritdoc />
         public override string GetSortKey()
         {
             return string.Join(
@@ -55,16 +55,19 @@ namespace Rebellion.AI.Proposals
             );
         }
 
+        /// <inheritdoc />
         public override bool CanSelect(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
+        /// <inheritdoc />
         public override bool CanExecute(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
+        /// <inheritdoc />
         public override void Execute(AITurnContext context)
         {
             EnsureOrder();
@@ -86,36 +89,20 @@ namespace Rebellion.AI.Proposals
 
             if (Fleet.GetParentOfType<Planet>()?.InstanceID != TargetPlanet.InstanceID)
             {
-                CapitalShip carrier = FindCarrier(Fleet);
-                if (carrier == null)
+                if (FindCarrier(Fleet) == null)
                 {
                     Fleet.Order.Status = FleetOrderStatus.Staging;
                     return;
                 }
 
                 Fleet.Order.Status = FleetOrderStatus.Readying;
-                if (
-                    context.Movement?.TryRequestMove(
-                        new ISceneNode[] { carrier },
-                        TargetPlanet,
-                        context.Faction.InstanceID
-                    ) != true
-                )
+                if (context.Movement == null)
                 {
                     Fleet.Order.Status = FleetOrderStatus.Staging;
                     return;
                 }
 
-                Fleet colonizationFleet = carrier.GetParentOfType<Fleet>();
-                if (colonizationFleet != null && colonizationFleet != Fleet)
-                {
-                    colonizationFleet.RoleType = FleetRoleType.Patrol;
-                    GameLogger.Warning(
-                        $"[fleet] drafted {colonizationFleet.InstanceID} owner={colonizationFleet.GetOwnerInstanceID()} reason=colonization"
-                    );
-                    colonizationFleet.Order = Fleet.Order;
-                    Fleet.Order = null;
-                }
+                context.Movement.RequestMove(Fleet, TargetPlanet);
                 return;
             }
 
@@ -140,6 +127,9 @@ namespace Rebellion.AI.Proposals
                 ClearOrder();
         }
 
+        /// <summary>
+        /// Creates or updates the fleet's colonization order.
+        /// </summary>
         private void EnsureOrder()
         {
             FleetOrder order = Fleet.Order;
@@ -157,6 +147,11 @@ namespace Rebellion.AI.Proposals
             };
         }
 
+        /// <summary>
+        /// Returns whether the proposal still matches live game state.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when colonization remains valid.</returns>
         private bool IsStillValid(AITurnContext context)
         {
             if (!IsOwnedBy(context, Fleet) || TargetPlanet == null)
@@ -169,7 +164,7 @@ namespace Rebellion.AI.Proposals
 
             FleetOrder order = Fleet.Order;
             if (order == null)
-                return Fleet.RoleType == FleetRoleType.Battle;
+                return Fleet.RoleType == FleetRoleType.Colonization;
 
             return order.OrderType == FleetOrderType.Colonize
                 && order.TargetPlanetId == TargetPlanet.InstanceID;
@@ -196,17 +191,31 @@ namespace Rebellion.AI.Proposals
                 .FirstOrDefault();
         }
 
+        /// <summary>
+        /// Resolves the live target represented by the proposal snapshot.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The live target, or null.</returns>
         private Planet ResolveLiveTarget(AITurnContext context)
         {
             return context.Game?.GetSceneNodeByInstanceID<Planet>(TargetPlanet.InstanceID);
         }
 
+        /// <summary>
+        /// Returns whether a planet can be claimed by colonization.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when the planet can be claimed.</returns>
         private static bool CanClaim(Planet planet)
         {
             return planet?.IsColonized == false
                 && string.IsNullOrEmpty(planet.GetOwnerInstanceID());
         }
 
+        /// <summary>
+        /// Returns a ready regiment carried by the colonization fleet.
+        /// </summary>
+        /// <returns>The ready regiment, or null.</returns>
         private Regiment GetReadyRegiment()
         {
             return Fleet
@@ -217,12 +226,20 @@ namespace Rebellion.AI.Proposals
                 .FirstOrDefault();
         }
 
+        /// <summary>
+        /// Returns whether a regiment is ready for colonization duty.
+        /// </summary>
+        /// <param name="regiment">Regiment to inspect.</param>
+        /// <returns>True when the regiment is ready.</returns>
         private static bool IsReadyRegiment(Regiment regiment)
         {
             return regiment.ManufacturingStatus == ManufacturingStatus.Complete
                 && regiment.Movement == null;
         }
 
+        /// <summary>
+        /// Clears the proposal's order when it remains attached to the fleet.
+        /// </summary>
         private void ClearOrder()
         {
             if (
@@ -231,8 +248,6 @@ namespace Rebellion.AI.Proposals
             )
             {
                 Fleet.Order = null;
-                if (Fleet.RoleType == FleetRoleType.Patrol)
-                    Fleet.RoleType = FleetRoleType.Battle;
             }
         }
     }
