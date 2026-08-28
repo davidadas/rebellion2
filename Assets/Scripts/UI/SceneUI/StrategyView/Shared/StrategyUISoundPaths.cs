@@ -36,7 +36,7 @@ internal static class StrategyUISoundPaths
         yield return GalacticInformationControl;
         yield return PlanetaryAssault;
 
-        foreach (string path in GetAdvisorNotificationAudioPaths(theme?.StrategyAdvisor))
+        foreach (string path in GetPlanetaryAssaultAdvisorAudioPaths(theme?.StrategyAdvisor))
             yield return path;
 
         StrategyWindowSoundTheme windowSounds = theme?.StrategyWindowSounds;
@@ -58,11 +58,12 @@ internal static class StrategyUISoundPaths
     }
 
     /// <summary>
-    /// Enumerates faction audio required by immediate strategy notifications.
+    /// Returns the configured droid and protocol audio paths for the planetary-assault advisor
+    /// notification.
     /// </summary>
     /// <param name="advisor">The active faction advisor theme.</param>
-    /// <returns>The configured notification audio paths.</returns>
-    private static IEnumerable<string> GetAdvisorNotificationAudioPaths(
+    /// <returns>The planetary-assault advisor audio paths.</returns>
+    private static IEnumerable<string> GetPlanetaryAssaultAdvisorAudioPaths(
         StrategyAdvisorTheme advisor
     )
     {
