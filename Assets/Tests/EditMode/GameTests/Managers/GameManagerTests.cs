@@ -143,6 +143,61 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessTick_EventCapturesMissionParticipant_TearsDownMission()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction owner = new Faction { InstanceID = "OWNER" };
+            Faction captor = new Faction { InstanceID = "CAPTOR" };
+            game.GetFactions().Add(owner);
+            game.GetFactions().Add(captor);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                OwnerInstanceID = owner.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            Officer officer = EntityFactory.CreateOfficer("OFFICER", owner.InstanceID);
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = "MISSION",
+                OwnerInstanceID = owner.InstanceID,
+                LocationInstanceID = planet.InstanceID,
+            };
+            game.AttachNode(officer, planet);
+            game.AttachNode(mission, planet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(100);
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "CAPTURE_OFFICER",
+                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Actions = new List<GameAction>
+                        {
+                            new SetCaptureStatusAction
+                            {
+                                OfficerInstanceID = officer.InstanceID,
+                                IsCaptured = true,
+                                CaptorFactionInstanceID = captor.InstanceID,
+                            },
+                        },
+                    }
+                );
+            GameManager manager = TestContent.CreateGameManager(game);
+
+            manager.ProcessTick();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Mission>(mission.InstanceID));
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual(captor.InstanceID, officer.CaptorInstanceID);
+        }
+
+        [Test]
         public void ProcessTick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
         {
             GameRoot game = new GameRoot(TestConfig.Create())

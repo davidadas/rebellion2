@@ -415,6 +415,7 @@ public sealed class GameManager
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
+        _resultProcessor.Subscribe<OfficerCaptureStateResult>(_missionSystem);
         _resultProcessor.Subscribe<IntelligenceRevealedResult>(_fogOfWarSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 
