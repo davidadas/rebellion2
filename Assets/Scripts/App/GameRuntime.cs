@@ -67,7 +67,7 @@ public sealed class GameRuntime
     /// <returns>The created GameManager.</returns>
     public GameManager StartGame(GameRoot game)
     {
-        return StartSession(game, reconcileLoadedState: false);
+        return ReplaceSession(game);
     }
 
     /// <summary>
@@ -77,16 +77,17 @@ public sealed class GameRuntime
     /// <returns>The created game manager.</returns>
     public GameManager StartLoadedGame(GameRoot game)
     {
-        return StartSession(game, reconcileLoadedState: true);
+        GameManager gameManager = ReplaceSession(game);
+        gameManager.ReconcileLoadedState();
+        return gameManager;
     }
 
     /// <summary>
-    /// Starts an active game session and optionally reconciles loaded runtime state.
+    /// Replaces the active game session with one backed by the supplied game.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
-    /// <param name="reconcileLoadedState">Whether the game was restored from persisted state.</param>
     /// <returns>The created game manager.</returns>
-    private GameManager StartSession(GameRoot game, bool reconcileLoadedState)
+    private GameManager ReplaceSession(GameRoot game)
     {
         if (_activeGameSession != null)
         {
@@ -96,8 +97,6 @@ public sealed class GameRuntime
         ValidateGameContent(game);
         _activeGameSession = new GameManager(game, _contentPack.GameData);
         _activeGameSession.TickCompleted += HandleTickCompleted;
-        if (reconcileLoadedState)
-            _activeGameSession.ReconcileLoadedState();
         return _activeGameSession;
     }
 
