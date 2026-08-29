@@ -121,6 +121,7 @@ public static class CommonUIPrefabBuilder
             scrollbarObject.transform,
             _scrollUpTexturePath
         );
+        AttachTextureBinding(scrollUpImage, _scrollUpTexturePath);
         SetSourceRect(
             scrollUpImage.rectTransform,
             0,
@@ -136,6 +137,7 @@ public static class CommonUIPrefabBuilder
             scrollbarObject.transform,
             _scrollDownTexturePath
         );
+        AttachTextureBinding(scrollDownImage, _scrollDownTexturePath);
         SetSourceRect(
             scrollDownImage.rectTransform,
             0,
@@ -154,9 +156,7 @@ public static class CommonUIPrefabBuilder
             slidingArea.transform,
             _scrollHandleTexturePath
         );
-        ContentTextureBinding handleBinding =
-            handleImage.gameObject.AddComponent<ContentTextureBinding>();
-        handleBinding.SetAddress(ToContentAddress(_scrollHandleTexturePath));
+        AttachTextureBinding(handleImage, _scrollHandleTexturePath);
         FillParent(handleImage.rectTransform);
         handleImage.raycastTarget = true;
         scrollbar.handleRect = handleImage.rectTransform;
@@ -249,6 +249,17 @@ public static class CommonUIPrefabBuilder
     }
 
     /// <summary>
+    /// Attaches a runtime binding that restores a raw image from installation content.
+    /// </summary>
+    /// <param name="image">The raw image restored at runtime.</param>
+    /// <param name="texturePath">The authored content texture path.</param>
+    private static void AttachTextureBinding(RawImage image, string texturePath)
+    {
+        ContentTextureBinding binding = image.gameObject.AddComponent<ContentTextureBinding>();
+        binding.SetAddress(ToContentAddress(texturePath));
+    }
+
+    /// <summary>
     /// Converts an authored texture path to the extension-free address used by runtime content.
     /// </summary>
     /// <param name="texturePath">The authored content texture path.</param>
@@ -277,7 +288,25 @@ public static class CommonUIPrefabBuilder
         AssignReference(pressVisual, "image", image);
         AssignReference(pressVisual, "button", button);
         pressVisual.SetTextures(image.texture, null);
+        ConvertToPressVisualBinding(image.gameObject);
         return button;
+    }
+
+    /// <summary>
+    /// Transfers a button image's runtime texture address to its pressed-state visual.
+    /// </summary>
+    /// <param name="target">The button carrying the image and pressed-state visual.</param>
+    private static void ConvertToPressVisualBinding(GameObject target)
+    {
+        ContentTextureBinding textureBinding = target.GetComponent<ContentTextureBinding>();
+        if (textureBinding == null)
+            return;
+
+        ContentPressVisualBinding pressBinding =
+            target.GetComponent<ContentPressVisualBinding>()
+            ?? target.AddComponent<ContentPressVisualBinding>();
+        pressBinding.SetAddresses(textureBinding.Address, null);
+        UnityEngine.Object.DestroyImmediate(textureBinding);
     }
 
     /// <summary>

@@ -240,15 +240,17 @@ public static class UIBuilderMenu
 
         foreach (Scrollbar scrollbar in root.GetComponentsInChildren<Scrollbar>(true))
         {
-            RawImage handle = scrollbar.handleRect?.GetComponent<RawImage>();
-            if (
-                handle != null
-                && IsDevelopmentContentReference(handle.texture)
-                && handle.GetComponent<ContentTextureBinding>() == null
-            )
-                throw new InvalidOperationException(
-                    $"{prefabPath}/{handle.name} has a stripped scrollbar texture without a runtime binding."
-                );
+            foreach (RawImage image in scrollbar.GetComponentsInChildren<RawImage>(true))
+            {
+                if (
+                    IsDevelopmentContentReference(image.texture)
+                    && image.GetComponent<ContentTextureBinding>() == null
+                    && image.GetComponent<ContentPressVisualBinding>() == null
+                )
+                    throw new InvalidOperationException(
+                        $"{prefabPath}/{image.name} has a stripped scrollbar texture without a runtime binding."
+                    );
+            }
         }
     }
 

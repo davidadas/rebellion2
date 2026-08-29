@@ -165,6 +165,7 @@ public sealed class StrategyController
         gameManager.TickCompleted += RefreshStrategyState;
         gameManager.MessageDelivered += HandleMessageDelivered;
         gameManager.BombardmentCompleted += HandleBombardmentCompleted;
+        gameManager.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
 
         InitializeScreenControllers();
         IContentAssetSource contentAssets = AppBootstrap.Instance.GetContentAssets();
@@ -749,6 +750,7 @@ public sealed class StrategyController
             gameManager.TickCompleted -= RefreshStrategyState;
             gameManager.MessageDelivered -= HandleMessageDelivered;
             gameManager.BombardmentCompleted -= HandleBombardmentCompleted;
+            gameManager.PlanetaryAssaultsResolved -= HandlePlanetaryAssaultsResolved;
         }
     }
 
@@ -1572,6 +1574,27 @@ public sealed class StrategyController
             return;
 
         PauseForGameplayOption(UserGameplayOption.PauseAfterEnemyBombardment);
+    }
+
+    /// <summary>
+    /// Plays the planetary-assault alert when an opposing faction invades a player-owned planet.
+    /// </summary>
+    /// <param name="results">The planetary assaults resolved in the current result batch.</param>
+    private void HandlePlanetaryAssaultsResolved(IReadOnlyList<PlanetaryAssaultResult> results)
+    {
+        string playerFactionId = gameManager?.GetPlayerFaction()?.InstanceID;
+        if (
+            string.IsNullOrEmpty(playerFactionId)
+            || results?.Any(result =>
+                result != null
+                && result.AttackerOwnerInstanceID != playerFactionId
+                && result.DefenderOwnerInstanceID == playerFactionId
+                && result.InitialAttackerRegimentCount > 0
+            ) != true
+        )
+            return;
+
+        PlaySfx(StrategyUISoundPaths.PlanetaryAssault);
     }
 
     /// <summary>

@@ -12,12 +12,12 @@ using Rebellion.Util.Extensions;
 namespace Rebellion.Generation
 {
     /// <summary>
-    /// Selects, decorates, and deploys officers during game generation.
+    /// Decorates, selects, and deploys officers during game generation.
     /// </summary>
     public sealed class OfficerSeeder : IGameSeeder
     {
         /// <summary>
-        /// Seeds officers into the generation context: selects, decorates, and places
+        /// Seeds officers into the generation context: decorates, selects, and places
         /// them, then stores the deployed and unrecruited pools on the context.
         /// </summary>
         /// <param name="ctx">The generation context.</param>
@@ -27,6 +27,7 @@ namespace Rebellion.Generation
                 ctx.Config.Officers,
                 ctx.Summary.GalaxySize
             );
+            DecorateOfficers(ctx.Officers, ctx.Rng);
             Officer[] selected = SelectOfficers(
                 ctx.Officers,
                 ctx.Config,
@@ -34,7 +35,6 @@ namespace Rebellion.Generation
                 startingOfficerRules,
                 ctx.Rng
             );
-            DecorateOfficers(selected, ctx.Rng);
             DeployOfficers(selected, ctx.Sectors, startingOfficerRules, ctx.Rng);
 
             ctx.DeployedOfficers = selected;
@@ -251,11 +251,11 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Adds a random value in [0, variance) to the officer's existing rating.
+        /// Adds an inclusive variance roll to the officer's existing rating.
         /// </summary>
         /// <param name="officer">The officer whose rating is rolled.</param>
         /// <param name="rating">The rating to add variance to.</param>
-        /// <param name="variance">The exclusive upper bound for the random variance.</param>
+        /// <param name="variance">The signed extent of the random variance.</param>
         /// <param name="rng">Random number provider.</param>
         private void AddRatingVariance(
             Officer officer,
@@ -271,16 +271,14 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Returns a non-negative variance roll, returning 0 when <paramref name="variance"/>
-        /// is non-positive to avoid calling <see cref="IRandomNumberProvider.NextInt"/> with
-        /// an empty range.
+        /// Returns a variance roll that includes both zero and the configured extent.
         /// </summary>
-        /// <param name="variance">Exclusive upper bound for the roll.</param>
+        /// <param name="variance">Signed extent of the roll.</param>
         /// <param name="rng">Random number provider.</param>
-        /// <returns>A value in [0, variance), or 0 when variance is non-positive.</returns>
+        /// <returns>A value from zero through a positive extent, or from a negative extent through zero.</returns>
         private int RollVariance(int variance, IRandomNumberProvider rng)
         {
-            return variance <= 0 ? 0 : rng.NextInt(0, variance);
+            return variance >= 0 ? rng.NextInt(0, checked(variance + 1)) : rng.NextInt(variance, 1);
         }
 
         /// <summary>
