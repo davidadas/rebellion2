@@ -88,7 +88,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
             Assert.IsTrue(reserve.Enabled);
             Assert.AreEqual(StrategyContextMenuIconKeys.None, reserve.IconKey);
-            Assert.IsTrue(reserve.UsesIconColumn);
+            Assert.IsFalse(reserve.UsesIconColumn);
         }
 
         [TestCase(FacilityWindowTab.Shipyards, ManufacturingType.Ship)]
@@ -114,6 +114,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 command.Action == StrategyMenuAction.Reserve
             );
             Assert.AreEqual(StrategyContextMenuIconKeys.CheckMark, reserve.IconKey);
+            Assert.IsTrue(reserve.UsesIconColumn);
         }
 
         [Test]

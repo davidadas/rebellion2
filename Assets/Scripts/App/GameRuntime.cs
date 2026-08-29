@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Rebellion.Game;
+using Rebellion.Util.Common;
 using UnityEngine;
 
 /// <summary>
@@ -17,6 +18,11 @@ public sealed class GameRuntime
     /// Gets whether a game session is currently active.
     /// </summary>
     public bool HasActiveGame => _activeGameSession != null;
+
+    /// <summary>
+    /// Gets whether the active simulation is at a stable boundary that can be saved.
+    /// </summary>
+    public bool CanSave => _activeGameSession?.IsTickSettled == true;
 
     /// <summary>
     /// Creates an application runtime backed by the active content pack.
@@ -61,6 +67,27 @@ public sealed class GameRuntime
     /// <returns>The created GameManager.</returns>
     public GameManager StartGame(GameRoot game)
     {
+        return StartSession(game, reconcileLoadedState: false);
+    }
+
+    /// <summary>
+    /// Starts a game session from deserialized state and reconstructs unresolved runtime decisions.
+    /// </summary>
+    /// <param name="game">The loaded game instance to manage.</param>
+    /// <returns>The created game manager.</returns>
+    public GameManager StartLoadedGame(GameRoot game)
+    {
+        return StartSession(game, reconcileLoadedState: true);
+    }
+
+    /// <summary>
+    /// Starts an active game session and optionally reconciles loaded runtime state.
+    /// </summary>
+    /// <param name="game">The game instance to manage.</param>
+    /// <param name="reconcileLoadedState">Whether the game was restored from persisted state.</param>
+    /// <returns>The created game manager.</returns>
+    private GameManager StartSession(GameRoot game, bool reconcileLoadedState)
+    {
         if (_activeGameSession != null)
         {
             EndGame();
@@ -69,6 +96,8 @@ public sealed class GameRuntime
         ValidateGameContent(game);
         _activeGameSession = new GameManager(game, _contentPack.GameData);
         _activeGameSession.TickCompleted += HandleTickCompleted;
+        if (reconcileLoadedState)
+            _activeGameSession.ReconcileLoadedState();
         return _activeGameSession;
     }
 
@@ -88,21 +117,42 @@ public sealed class GameRuntime
 
     /// <summary>
     /// Quick save the current game.
-    /// If no active game, does nothing.
     /// </summary>
-    public void QuickSave()
+    /// <returns>True when the quicksave was written.</returns>
+    public bool QuickSave()
     {
-        if (!HasActiveGame)
-            return;
+        if (!CanSave)
+        {
+            LogUnsettledSaveWarning();
+            return false;
+        }
 
-        GameRoot game = GetActiveGame();
-        if (game == null)
-            return;
-
-        _saveGameManager.SaveQuickGameData(game);
-        Debug.Log(
+        _saveGameManager.SaveQuickGameData(GetActiveGame());
+        GameLogger.Log(
             $"Quick save completed: {_saveGameManager.GetSaveFilePath(SaveGameManager.QuickSaveFileName)}"
         );
+        return true;
+    }
+
+    /// <summary>
+    /// Saves the active game when its simulation state is settled.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <param name="displayName">The display name stored with the save.</param>
+    /// <returns>True when the save was written; otherwise false.</returns>
+    public bool SaveGame(string fileName, string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return false;
+
+        if (!CanSave)
+        {
+            LogUnsettledSaveWarning();
+            return false;
+        }
+
+        _saveGameManager.SaveGameData(GetActiveGame(), fileName, displayName);
+        return true;
     }
 
     /// <summary>
@@ -122,7 +172,18 @@ public sealed class GameRuntime
     /// </summary>
     private void HandleTickCompleted()
     {
+        if (!CanSave)
+            return;
+
         _saveGameManager.ProcessAutosaveTick(GetActiveGame(), _getGameplaySettings?.Invoke());
+    }
+
+    /// <summary>
+    /// Logs that a requested save cannot capture an unsettled simulation tick.
+    /// </summary>
+    private static void LogUnsettledSaveWarning()
+    {
+        GameLogger.Warning("Save skipped because the active game is not at a stable boundary.");
     }
 
     /// <summary>
@@ -156,6 +217,7 @@ public sealed class GameRuntime
         GameRoot loadedGame = _saveGameManager.LoadGameData(fileName);
         ValidateGameContent(loadedGame);
         _activeGameSession.ReplaceGame(loadedGame);
+        _activeGameSession.ReconcileLoadedState();
     }
 
     /// <summary>

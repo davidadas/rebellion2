@@ -419,7 +419,61 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 FinderWindowTab.Faction(_playerFactionId, "Player")
             );
 
-            Assert.AreEqual("Retired Officer - Unknown ( Retired )", rows.Single().Name);
+            Assert.AreEqual("Retired Officer - Location Unknown ( Retired )", rows.Single().Name);
+        }
+
+        [Test]
+        public void GetRows_DisabledPlayerPersonnelOutsideGalaxy_IncludesOwnedOfficer()
+        {
+            Officer inactiveOfficer = new Officer
+            {
+                InstanceID = "inactive-officer",
+                DisplayName = "Inactive Officer",
+                DisplayStatus = "Away on an event",
+                OwnerInstanceID = _playerFactionId,
+                IsEnabled = false,
+            };
+            _playerFaction.AddOwnedUnit(inactiveOfficer);
+
+            List<FinderWindowRow> rows = _builder.GetRows(
+                FinderMode.Personnel,
+                false,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            Assert.AreEqual(
+                "Inactive Officer - Location Unknown ( On Mission )",
+                rows.Single().Name
+            );
+        }
+
+        [Test]
+        public void GetRows_DisabledPlayerPersonnelOnPlanet_HidesLocationAndNavigation()
+        {
+            Officer inactiveOfficer = new Officer
+            {
+                InstanceID = "inactive-officer",
+                DisplayName = "Inactive Officer",
+                DisplayStatus = "On Mission",
+                OwnerInstanceID = _playerFactionId,
+                IsEnabled = false,
+            };
+            _alpha.AddTestChild(inactiveOfficer);
+            _playerFaction.AddOwnedUnit(inactiveOfficer);
+
+            FinderWindowRow row = _builder
+                .GetRows(
+                    FinderMode.Personnel,
+                    false,
+                    FinderWindowTab.Faction(_playerFactionId, "Player")
+                )
+                .Single();
+
+            Assert.AreEqual("Inactive Officer - Location Unknown ( On Mission )", row.Name);
+            Assert.IsNull(row.Planet);
+            Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
+            Assert.IsNull(row.Fleet);
+            Assert.IsNull(row.Mission);
         }
 
         [Test]

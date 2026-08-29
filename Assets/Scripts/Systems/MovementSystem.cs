@@ -574,6 +574,37 @@ namespace Rebellion.Systems
             string ownerInstanceId
         )
         {
+            bool accepted = TryExecutePlayerMove(
+                items,
+                destination,
+                ownerInstanceId,
+                out _,
+                out List<GameResult> results
+            );
+            if (accepted)
+                ResultsProduced?.Invoke(results);
+            return accepted;
+        }
+
+        /// <summary>
+        /// Validates and executes a player-controlled move without publishing its results.
+        /// </summary>
+        /// <param name="items">The selected scene nodes or their snapshots.</param>
+        /// <param name="destination">The requested destination or its snapshot.</param>
+        /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
+        /// <param name="createdDestinationFleet">Receives a fleet created for capital ships.</param>
+        /// <param name="results">Receives the movement results produced by the accepted order.</param>
+        /// <returns>True when the complete movement order was accepted.</returns>
+        private bool TryExecutePlayerMove(
+            IReadOnlyList<ISceneNode> items,
+            ContainerNode destination,
+            string ownerInstanceId,
+            out Fleet createdDestinationFleet,
+            out List<GameResult> results
+        )
+        {
+            createdDestinationFleet = null;
+            results = new List<GameResult>();
             ContainerNode liveDestination = ResolveRegisteredContainer(destination);
             if (
                 liveDestination == null
@@ -585,7 +616,6 @@ namespace Rebellion.Systems
             )
                 return false;
 
-            Fleet createdDestinationFleet = null;
             if (liveDestination is Planet planet && liveItems.Any(item => item is CapitalShip))
             {
                 createdDestinationFleet = _fleetSystem.CreateAtPlanet(planet, ownerInstanceId);
@@ -609,7 +639,6 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            List<GameResult> results = new List<GameResult>();
             bool accepted = TryExecuteNormalMoveGroup(movables, liveDestination, results);
             if (accepted)
             {
@@ -618,17 +647,14 @@ namespace Rebellion.Systems
             }
 
             _fleetSystem.RemoveIfEmpty(createdDestinationFleet, "transfer");
-            if (accepted)
-                ResultsProduced?.Invoke(results);
-
             return accepted;
         }
 
         /// <summary>
-        /// Determines whether a player-controlled fleet selection can accept one complete waypoint
-        /// route without changing game state.
+        /// Determines whether a player-controlled fleet or capital-ship selection can accept one
+        /// complete waypoint route without changing game state.
         /// </summary>
-        /// <param name="items">The selected fleets or their visible snapshots.</param>
+        /// <param name="items">The selected fleets, capital ships, or their visible snapshots.</param>
         /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
         /// <param name="ownerInstanceId">The faction authorized to command the fleets.</param>
         /// <returns>True when the complete route is valid.</returns>
@@ -639,18 +665,25 @@ namespace Rebellion.Systems
         )
         {
             return TryPlanFleetWaypointRoute(
-                items,
-                waypointPlanetIds,
-                ownerInstanceId,
-                out _,
-                out _
-            );
+                    items,
+                    waypointPlanetIds,
+                    ownerInstanceId,
+                    out _,
+                    out _
+                )
+                || TryPlanCapitalShipWaypointRoute(
+                    items,
+                    waypointPlanetIds,
+                    ownerInstanceId,
+                    out _,
+                    out _
+                );
         }
 
         /// <summary>
-        /// Commits one complete waypoint route and starts its first leg for stationary fleets.
+        /// Commits one complete waypoint route and starts its first leg.
         /// </summary>
-        /// <param name="items">The selected fleets or their visible snapshots.</param>
+        /// <param name="items">The selected fleets, capital ships, or their visible snapshots.</param>
         /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
         /// <param name="ownerInstanceId">The faction authorized to command the fleets.</param>
         /// <returns>True when the route was committed to every selected fleet.</returns>
@@ -660,6 +693,32 @@ namespace Rebellion.Systems
             string ownerInstanceId
         )
         {
+            if (
+                TryPlanCapitalShipWaypointRoute(
+                    items,
+                    waypointPlanetIds,
+                    ownerInstanceId,
+                    out List<CapitalShip> capitalShips,
+                    out List<Planet> capitalShipDestinations
+                )
+            )
+            {
+                bool capitalShipMoveAccepted = TryExecutePlayerMove(
+                    capitalShips.Cast<ISceneNode>().ToList(),
+                    capitalShipDestinations[0],
+                    ownerInstanceId,
+                    out Fleet routeFleet,
+                    out List<GameResult> capitalShipResults
+                );
+                if (!capitalShipMoveAccepted)
+                    return false;
+
+                if (routeFleet?.GetParent() != null)
+                    routeFleet.Waypoints.AddRange(waypointPlanetIds);
+                ResultsProduced?.Invoke(capitalShipResults);
+                return true;
+            }
+
             if (
                 !TryPlanFleetWaypointRoute(
                     items,
@@ -736,6 +795,9 @@ namespace Rebellion.Systems
             foreach (Fleet fleet in fleets)
             {
                 if (fleet == null)
+                    continue;
+
+                if (AwaitsCapitalShipWaypointAssembly(fleet))
                     continue;
 
                 if (!fleet.HasOperationalCapitalShips())
@@ -1280,9 +1342,8 @@ namespace Rebellion.Systems
             fleets = new List<Fleet>();
             destinations = new List<Planet>();
             if (
-                waypointPlanetIds == null
-                || waypointPlanetIds.Count == 0
-                || !TryResolveControlledFleets(items, ownerInstanceId, out fleets)
+                !TryResolveControlledFleets(items, ownerInstanceId, out fleets)
+                || !TryResolveWaypointDestinations(waypointPlanetIds, out destinations)
             )
                 return false;
 
@@ -1296,6 +1357,88 @@ namespace Rebellion.Systems
                     || fleet.GetParentOfType<Planet>() == null
                 )
             )
+                return false;
+
+            Planet firstDestination = destinations[0];
+            if (
+                fleetsAreMoving
+                && fleets.Any(fleet =>
+                    ReferenceEquals(fleet.GetParentOfType<Planet>(), firstDestination)
+                )
+            )
+                return false;
+            if (
+                !fleetsAreMoving
+                && fleets.All(fleet =>
+                    ReferenceEquals(fleet.GetParentOfType<Planet>(), firstDestination)
+                )
+            )
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Validates and resolves a capital-ship waypoint route without changing fleet membership.
+        /// </summary>
+        /// <param name="items">The selected capital ships or their snapshots.</param>
+        /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
+        /// <param name="ownerInstanceId">The faction authorized to command the ships.</param>
+        /// <param name="capitalShips">Receives the registered controlled capital ships.</param>
+        /// <param name="destinations">Receives the registered destination planets.</param>
+        /// <returns>True when the complete plan is valid.</returns>
+        private bool TryPlanCapitalShipWaypointRoute(
+            IReadOnlyList<ISceneNode> items,
+            IReadOnlyList<string> waypointPlanetIds,
+            string ownerInstanceId,
+            out List<CapitalShip> capitalShips,
+            out List<Planet> destinations
+        )
+        {
+            capitalShips = new List<CapitalShip>();
+            destinations = new List<Planet>();
+            if (
+                !TryResolveControlledSelection(
+                    items,
+                    ownerInstanceId,
+                    out List<ISceneNode> liveItems
+                )
+                || liveItems.Any(item => item is not CapitalShip)
+                || !TryResolveWaypointDestinations(waypointPlanetIds, out destinations)
+            )
+                return false;
+
+            capitalShips = liveItems.Cast<CapitalShip>().ToList();
+            Planet origin = capitalShips[0].GetParentOfType<Planet>();
+            if (
+                origin == null
+                || capitalShips.Any(ship =>
+                    !ReferenceEquals(ship.GetParentOfType<Planet>(), origin)
+                )
+                || ReferenceEquals(origin, destinations[0])
+            )
+                return false;
+
+            return TryGetTransitTicks(
+                capitalShips.Cast<IMovable>().ToList(),
+                destinations[0],
+                out _
+            );
+        }
+
+        /// <summary>
+        /// Resolves an ordered waypoint identifier list into live, valid destination planets.
+        /// </summary>
+        /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
+        /// <param name="destinations">Receives the registered destination planets.</param>
+        /// <returns>True when every destination is valid and consecutive stops are distinct.</returns>
+        private bool TryResolveWaypointDestinations(
+            IReadOnlyList<string> waypointPlanetIds,
+            out List<Planet> destinations
+        )
+        {
+            destinations = new List<Planet>();
+            if (waypointPlanetIds == null || waypointPlanetIds.Count == 0)
                 return false;
 
             string previousDestinationId = null;
@@ -1315,22 +1458,6 @@ namespace Rebellion.Systems
                 destinations.Add(destination);
                 previousDestinationId = destination.InstanceID;
             }
-
-            Planet firstDestination = destinations[0];
-            if (
-                fleetsAreMoving
-                && fleets.Any(fleet =>
-                    ReferenceEquals(fleet.GetParentOfType<Planet>(), firstDestination)
-                )
-            )
-                return false;
-            if (
-                !fleetsAreMoving
-                && fleets.All(fleet =>
-                    ReferenceEquals(fleet.GetParentOfType<Planet>(), firstDestination)
-                )
-            )
-                return false;
 
             return true;
         }
@@ -1854,12 +1981,28 @@ namespace Rebellion.Systems
             {
                 string waypointId = fleet.Waypoints[0];
                 Planet destination = _game.GetSceneNodeByInstanceID<Planet>(waypointId);
-                if (
-                    destination?.IsDestroyed != false
-                    || ReferenceEquals(fleet.GetParentOfType<Planet>(), destination)
-                )
+                if (destination?.IsDestroyed != false)
                 {
                     fleet.Waypoints.RemoveAt(0);
+                    continue;
+                }
+
+                if (ReferenceEquals(fleet.GetParentOfType<Planet>(), destination))
+                {
+                    fleet.Waypoints.RemoveAt(0);
+                    if (!fleet.HasWaypoints())
+                    {
+                        results.Add(
+                            new FleetWaypointsCompletedResult
+                            {
+                                Fleet = fleet,
+                                Destination = destination,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
+                        return true;
+                    }
+
                     continue;
                 }
 
@@ -1874,6 +2017,36 @@ namespace Rebellion.Systems
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns whether a capital-ship waypoint selection is still reaching or completing at
+        /// its first destination before the resulting fleet may continue.
+        /// </summary>
+        /// <param name="fleet">The fleet that owns the committed route.</param>
+        /// <returns>True when at least one selected ship has not completed the first leg.</returns>
+        private static bool AwaitsCapitalShipWaypointAssembly(Fleet fleet)
+        {
+            if (fleet?.HasWaypoints() != true)
+                return false;
+
+            Planet currentPlanet = fleet.GetParentOfType<Planet>();
+            if (
+                currentPlanet == null
+                || !string.Equals(
+                    fleet.Waypoints[0],
+                    currentPlanet.InstanceID,
+                    StringComparison.Ordinal
+                )
+            )
+                return false;
+
+            return fleet
+                .GetChildren<CapitalShip>()
+                .Any(ship =>
+                    ship.ManufacturingStatus == ManufacturingStatus.Building
+                    || ship.Movement != null
+                );
         }
 
         /// <summary>

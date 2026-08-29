@@ -104,6 +104,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void RenderItemSelection_UnderConstructionItem_ReplacesConstructionBackground()
+        {
+            _view.Render(
+                CreateRenderData(
+                    DefenseWindowTab.Starfighters,
+                    new[]
+                    {
+                        CreateItem(
+                            "Fighter Squadron",
+                            backgroundTexture: _backgroundTexture,
+                            hideBackgroundWhenSelected: true
+                        ),
+                    }
+                )
+            );
+            StrategyUnitCardView card = FindItemCards()[0];
+
+            _view.RenderItemSelection(new[] { 0 }, _texture);
+
+            Assert.IsFalse(FindCardObject(card, "BackgroundImage").activeSelf);
+            Assert.IsTrue(FindCardObject(card, "SelectionImage").activeSelf);
+
+            _view.RenderItemSelection(Array.Empty<int>(), _texture);
+
+            Assert.IsTrue(FindCardObject(card, "BackgroundImage").activeSelf);
+            Assert.IsFalse(FindCardObject(card, "SelectionImage").activeSelf);
+        }
+
+        [Test]
         public void Render_InvalidTabCount_ThrowsArgumentException()
         {
             DefenseWindowRenderData data = new DefenseWindowRenderData(
@@ -518,7 +547,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             bool canDrag = false,
             bool showOptionalImages = false,
             bool alternateNameLayout = false,
-            Texture backgroundTexture = null
+            Texture backgroundTexture = null,
+            bool hideBackgroundWhenSelected = false
         )
         {
             Texture optionalTexture = showOptionalImages ? _texture : null;
@@ -538,6 +568,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 optionalTexture,
                 optionalTexture,
                 optionalTexture,
+                hideBackgroundWhenSelected,
                 canDrag
             );
         }

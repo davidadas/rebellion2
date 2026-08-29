@@ -110,6 +110,7 @@ public sealed class OptionsMenuRenderData
     public IReadOnlyList<OptionsSaveSlot> SaveSlots { get; }
 
     public bool HasActiveGame { get; }
+    public bool CanSave { get; }
 
     /// <summary>
     /// Creates the Options menu data.
@@ -125,6 +126,7 @@ public sealed class OptionsMenuRenderData
     /// <param name="saveSlots">The save-slot rows.</param>
     /// <param name="selectedSlot">The selected save-slot index, or -1.</param>
     /// <param name="hasActiveGame">Whether a game is currently active.</param>
+    /// <param name="canSave">Whether the active game is at a stable save boundary.</param>
     /// <param name="listeningRow">The binding row awaiting a key press, or -1.</param>
     /// <param name="listeningSecondary">Whether the secondary column is awaiting a key press.</param>
     /// <param name="gameplayStates">The current gameplay-toggle states keyed by option.</param>
@@ -142,6 +144,7 @@ public sealed class OptionsMenuRenderData
         IReadOnlyList<OptionsSaveSlot> saveSlots,
         int selectedSlot,
         bool hasActiveGame,
+        bool canSave,
         int listeningRow,
         bool listeningSecondary,
         IReadOnlyDictionary<UserGameplayOption, bool> gameplayStates = null,
@@ -163,6 +166,7 @@ public sealed class OptionsMenuRenderData
         SaveSlots = saveSlots ?? Array.Empty<OptionsSaveSlot>();
         SelectedSlot = selectedSlot;
         HasActiveGame = hasActiveGame;
+        CanSave = canSave;
         ListeningRow = listeningRow;
         ListeningSecondary = listeningSecondary;
     }

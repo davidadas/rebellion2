@@ -25,7 +25,7 @@ public sealed class AudioManagerTests
 
         Assert.IsNotNull(manager);
         Assert.AreSame(manager, AudioManager.Instance);
-        Assert.GreaterOrEqual(manager.GetComponents<AudioSource>().Length, 3);
+        Assert.GreaterOrEqual(manager.GetComponents<AudioSource>().Length, 4);
         Assert.AreEqual(1f, manager.MasterVolume);
         Assert.AreEqual(1f, manager.MusicVolume);
         Assert.AreEqual(1f, manager.SfxVolume);
@@ -87,6 +87,7 @@ public sealed class AudioManagerTests
         Assert.AreEqual(0.875f, snapshot.VideoVolume);
         Assert.AreEqual(0.65625f, manager.EffectiveVideoVolume);
         Assert.AreEqual(0.375f, GetAudioSource(manager, "sfxSource").volume);
+        Assert.AreEqual(0.375f, GetAudioSource(manager, "messageSource").volume);
     }
 
     [Test]

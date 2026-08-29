@@ -270,7 +270,9 @@ public sealed class FinderWindowRowBuilder
                 seen,
                 null,
                 PlanetIcon.Defense,
-                ownedFaction?.GetOwnedUnitsByType<Officer>().Where(officer => !officer.IsKilled)
+                ownedFaction
+                    ?.GetOwnedUnitsByType<Officer>(includeDisabled: true)
+                    .Where(officer => !officer.IsKilled)
             );
         }
 
@@ -424,14 +426,20 @@ public sealed class FinderWindowRowBuilder
             if (!seen.Add(key))
                 continue;
 
+            bool hideLocation = !candidate.IsEnabled;
+            GalaxyMapPlanet displayedPlanet = hideLocation ? null : planet;
+            PlanetIcon displayedTargetIcon = hideLocation ? PlanetIcon.None : targetIcon;
+            Fleet displayedFleet = hideLocation ? null : fleet;
+            Mission displayedMission = hideLocation ? null : mission;
+
             rows.Add(
                 new FinderWindowRow(
-                    GetPersonnelDisplayName(candidate, planet, fleet),
-                    planet,
-                    targetIcon,
+                    GetPersonnelDisplayName(candidate, displayedPlanet, displayedFleet),
+                    displayedPlanet,
+                    displayedTargetIcon,
                     candidate,
-                    fleet,
-                    mission: mission
+                    displayedFleet,
+                    mission: displayedMission
                 )
             );
         }
@@ -477,6 +485,8 @@ public sealed class FinderWindowRowBuilder
         Fleet fleet = null
     )
     {
+        if (personnel is { IsEnabled: false })
+            return "Location Unknown";
         if (fleet != null)
             return fleet.GetDisplayName();
         if (personnel?.GetParentOfType<Fleet>() is Fleet parentFleet)
@@ -484,7 +494,7 @@ public sealed class FinderWindowRowBuilder
         if (personnel?.GetParentOfType<Planet>() is Planet parentPlanet)
             return parentPlanet.GetDisplayName();
 
-        return planet?.Planet?.GetDisplayName() ?? "Unknown";
+        return planet?.Planet?.GetDisplayName() ?? "Location Unknown";
     }
 
     /// <summary>
@@ -502,6 +512,8 @@ public sealed class FinderWindowRowBuilder
             return "Captured";
         if (personnel is Officer { InjuryPoints: > 0 })
             return "Injured";
+        if (personnel is { IsEnabled: false })
+            return "On Mission";
         if (personnel is IMovable movable && movable.GetTransitMovement() != null)
             return "Enroute";
         if (personnel is Officer officerOnMission && officerOnMission.IsOnMission())

@@ -147,6 +147,41 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void ValidateEvents_DependencyCompletedAndRemovedFromPool_DoesNotThrow()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "FOLLOW_UP",
+                Schedule = new GameEventScheduler
+                {
+                    After = new AfterEvent { EventInstanceID = "COMPLETED_EVENT", DelayTicks = 10 },
+                },
+            };
+            _game.EventRuntime.GetState("COMPLETED_EVENT").IsComplete = true;
+
+            Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
+        }
+
+        [Test]
+        public void ValidateEvents_DependencyMissingFromPoolAndNotCompleted_ThrowsInvalidOperationException()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "FOLLOW_UP",
+                Schedule = new GameEventScheduler
+                {
+                    After = new AfterEvent { EventInstanceID = "UNKNOWN_EVENT", DelayTicks = 10 },
+                },
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _system.ValidateEvents(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("references unknown event 'UNKNOWN_EVENT'", exception.Message);
+        }
+
+        [Test]
         public void ProcessEvents_UnmetOneShotEvent_RemainsPending()
         {
             GameEvent gameEvent = CreateTickEvent("PENDING", targetTick: 10, repeatable: false);

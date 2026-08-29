@@ -675,6 +675,71 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void SendMessage_OfficerSubject_DoesNotIncludeSubjectImageByDefault()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.MessageImagePath = "Officers/Luke/message";
+            game.AttachNode(luke, rebelPlanet);
+            SendMessageAction action = new SendMessageAction
+            {
+                RecipientFactionInstanceID = "rebels",
+                SubjectInstanceID = luke.InstanceID,
+            };
+
+            MessageDeliveryRequest result = action
+                .ExecuteRequests(game)
+                .OfType<MessageDeliveryRequest>()
+                .Single();
+
+            Assert.IsNull(result.OverlayImagePath);
+        }
+
+        [Test]
+        public void SendMessage_ShowSubjectImage_IncludesOfficerMessageImage()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.MessageImagePath = "Officers/Luke/message";
+            game.AttachNode(luke, rebelPlanet);
+            SendMessageAction action = new SendMessageAction
+            {
+                RecipientFactionInstanceID = "rebels",
+                SubjectInstanceID = luke.InstanceID,
+                ShowSubjectImage = true,
+            };
+
+            MessageDeliveryRequest result = action
+                .ExecuteRequests(game)
+                .OfType<MessageDeliveryRequest>()
+                .Single();
+
+            Assert.AreEqual("Officers/Luke/message", result.OverlayImagePath);
+        }
+
+        [Test]
+        public void SendMessage_ExplicitOverlayImage_UsesAuthoredImage()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.MessageImagePath = "Officers/Luke/message";
+            game.AttachNode(luke, rebelPlanet);
+            SendMessageAction action = new SendMessageAction
+            {
+                RecipientFactionInstanceID = "rebels",
+                SubjectInstanceID = luke.InstanceID,
+                OverlayImage = new MessageImage { Path = "Story/portrait" },
+            };
+
+            MessageDeliveryRequest result = action
+                .ExecuteRequests(game)
+                .OfType<MessageDeliveryRequest>()
+                .Single();
+
+            Assert.AreEqual("Story/portrait", result.OverlayImagePath);
+        }
+
+        [Test]
         public void SendMessage_RecipientOmitted_ThrowsException()
         {
             GameRoot game = BuildGame(out _, out _);
@@ -1065,6 +1130,7 @@ namespace Rebellion.Tests.Game.Events
                 OfficerInstanceID = luke.InstanceID,
                 DisplayImagePath = "jedi-display",
                 SmallDisplayImagePath = "jedi-small-display",
+                MessageImagePath = "jedi-message",
                 EncyclopediaImagePath = "jedi-encyclopedia",
             };
 
@@ -1072,6 +1138,7 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.AreEqual("jedi-display", luke.DisplayImagePath);
             Assert.AreEqual("jedi-small-display", luke.SmallDisplayImagePath);
+            Assert.AreEqual("jedi-message", luke.MessageImagePath);
             Assert.AreEqual("jedi-encyclopedia", luke.EncyclopediaImagePath);
         }
 

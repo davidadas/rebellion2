@@ -162,6 +162,7 @@ public sealed class StrategyController
         strategyContextMenu.Initialize(uiContext);
         gameManager.GameSpeedChanged += MarkDirty;
         gameManager.GameReplaced += HandleGameReplaced;
+        gameManager.CombatDecisionRequired += RefreshStrategyState;
         gameManager.TickCompleted += RefreshStrategyState;
         gameManager.MessageDelivered += HandleMessageDelivered;
         gameManager.BombardmentCompleted += HandleBombardmentCompleted;
@@ -381,6 +382,8 @@ public sealed class StrategyController
         );
         messagesWindowController = new MessagesWindowController(
             PlaySfx,
+            resourcePaths => AudioManager.EnsureExists().PlayMessageAudio(resourcePaths),
+            () => AudioManager.EnsureExists().StopMessageAudio(),
             () => uiContext,
             strategyWindowLayerView,
             strategyWindowManager,
@@ -435,6 +438,7 @@ public sealed class StrategyController
             windowPlacementController.GetOptionsWindowPosition,
             CloseWindow,
             bootstrap,
+            settingsRuntime.SaveGame,
             settingsRuntime.LoadGame,
             MarkDirty,
             SaveGameManager.Instance
@@ -747,6 +751,7 @@ public sealed class StrategyController
         {
             gameManager.GameSpeedChanged -= MarkDirty;
             gameManager.GameReplaced -= HandleGameReplaced;
+            gameManager.CombatDecisionRequired -= RefreshStrategyState;
             gameManager.TickCompleted -= RefreshStrategyState;
             gameManager.MessageDelivered -= HandleMessageDelivered;
             gameManager.BombardmentCompleted -= HandleBombardmentCompleted;

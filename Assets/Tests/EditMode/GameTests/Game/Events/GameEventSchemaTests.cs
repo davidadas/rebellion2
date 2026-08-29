@@ -107,6 +107,23 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void Validate_SendMessageSubjectImageToggle_AcceptsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>EVENT</InstanceID>
+    <Actions>
+      <SendMessage RecipientFactionInstanceID=""FACTION"" SubjectInstanceID=""OFFICER"" ShowSubjectImage=""true""/>
+    </Actions>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.DoesNotThrow(() => Validate(xml));
+        }
+
+        [Test]
         public void Validate_TriggerArgumentBinding_AcceptsDocument()
         {
             const string xml =

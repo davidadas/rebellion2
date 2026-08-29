@@ -233,6 +233,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
                     _ => { },
+                    _ => { },
+                    () => { },
                     () => uiContext,
                     windowLayer,
                     windowManager,
@@ -293,6 +295,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
                     _ => { },
+                    _ => { },
+                    () => { },
                     () => uiContext,
                     windowLayer,
                     windowManager,
@@ -346,6 +350,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
                     _ => { },
+                    _ => { },
+                    () => { },
                     () => uiContext,
                     windowLayer,
                     windowManager,

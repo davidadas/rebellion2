@@ -42,7 +42,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Validates the authored trigger, schedule, binding, and dependency contracts for the
-        /// complete event pool before gameplay begins.
+        /// active event pool before gameplay begins.
         /// </summary>
         /// <param name="events">The event definitions installed in the game.</param>
         /// <exception cref="InvalidOperationException">Thrown when an event contract is ambiguous or references an unknown event.</exception>
@@ -158,7 +158,12 @@ namespace Rebellion.Systems
                             ?? Enumerable.Empty<string>();
                 foreach (string dependencyID in dependencies)
                 {
-                    if (!eventIDs.Contains(dependencyID))
+                    bool isCompletedDependency =
+                        _game.EventRuntime.States.TryGetValue(
+                            dependencyID,
+                            out GameEventState dependencyState
+                        ) && dependencyState.IsComplete;
+                    if (!eventIDs.Contains(dependencyID) && !isCompletedDependency)
                         throw new InvalidOperationException(
                             $"Event '{gameEvent.InstanceID}' references unknown event '{dependencyID}'."
                         );

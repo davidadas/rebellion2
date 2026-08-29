@@ -205,6 +205,28 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        public void GetOwnedUnitsByType_DisabledUnit_ExcludesUnitByDefault()
+        {
+            _fleet.IsEnabled = false;
+            _faction.AddOwnedUnit(_fleet);
+
+            List<Fleet> fleets = _faction.GetOwnedUnitsByType<Fleet>();
+
+            CollectionAssert.DoesNotContain(fleets, _fleet);
+        }
+
+        [Test]
+        public void GetOwnedUnitsByType_DisabledUnitAndIncludedDisabled_ReturnsUnit()
+        {
+            _fleet.IsEnabled = false;
+            _faction.AddOwnedUnit(_fleet);
+
+            List<Fleet> fleets = _faction.GetOwnedUnitsByType<Fleet>(includeDisabled: true);
+
+            CollectionAssert.Contains(fleets, _fleet);
+        }
+
+        [Test]
         public void GetOwnedColonizedPlanets_FactionWithUncolonizedOwnedPlanet_ReturnsOnlyColonizedPlanets()
         {
             _planet1.IsColonized = true;
