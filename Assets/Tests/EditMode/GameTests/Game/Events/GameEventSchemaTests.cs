@@ -114,6 +114,7 @@ namespace Rebellion.Tests.Game.Events
 <GameEvents>
   <GameEvent>
     <InstanceID>EVENT</InstanceID>
+    <Schedule><At Tick=""1""/></Schedule>
     <Actions>
       <SendMessage RecipientFactionInstanceID=""FACTION"" SubjectInstanceID=""OFFICER"" ShowSubjectImage=""true""/>
     </Actions>

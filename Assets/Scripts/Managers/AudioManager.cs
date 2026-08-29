@@ -21,9 +21,6 @@ public sealed class AudioManager : MonoBehaviour
     private AudioSource sfxSource;
 
     [SerializeField]
-    private AudioSource messageSource;
-
-    [SerializeField]
     private AudioSource ambienceSource;
 
     [Range(0f, 1f)]
@@ -57,6 +54,9 @@ public sealed class AudioManager : MonoBehaviour
         string,
         Task<AudioClip>
     >(StringComparer.Ordinal);
+    private readonly HashSet<AudioPlaybackHandle> _activeSfxPlaybacks =
+        new HashSet<AudioPlaybackHandle>();
+    private readonly Stack<AudioSource> _availableSfxSources = new Stack<AudioSource>();
     private AudioClip[] _clipPlaylist;
     private string[] _activePlaylistPaths;
     private string[] _requestedPlaylistPaths;
@@ -66,12 +66,10 @@ public sealed class AudioManager : MonoBehaviour
     private Func<string> _nextTrackPathProvider;
     private Coroutine _playlistCoroutine;
     private Coroutine _musicLoadCoroutine;
-    private Coroutine _messagePlaybackCoroutine;
     private Coroutine _fadeOutCoroutine;
     private ContentAssets _contentAssets;
     private Task<AudioClip> _musicClipLoad;
     private bool _activeTrackLoop;
-    private bool _messageAudioPaused;
 
     /// <summary>
     /// Gets the active global audio manager instance.
@@ -171,6 +169,7 @@ public sealed class AudioManager : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        StopTrackedSfx();
         _musicClipLoad = null;
         _sfxLoads.Clear();
         _loadedSfx.Clear();
@@ -423,50 +422,52 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Plays one addressed sound effect through an independently controllable source.
+    /// </summary>
+    /// <param name="resourcePath">The content address for the sound effect clip.</param>
+    /// <returns>The playback handle, or null when the path is blank.</returns>
+    public AudioPlaybackHandle PlaySfxInstance(string resourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(resourcePath))
+            return null;
+
+        string normalizedPath = resourcePath.Trim();
+        if (_preloadedSfx.TryGetValue(normalizedPath, out AudioClip preloadedClip))
+            return PlaySfxInstance(preloadedClip);
+        if (_loadedSfx.TryGetValue(normalizedPath, out AudioClip loadedClip))
+            return PlaySfxInstance(loadedClip);
+
+        AudioPlaybackHandle playback = CreatePlayback();
+        Coroutine loadCoroutine = StartCoroutine(LoadAndPlaySfxInstance(playback, normalizedPath));
+        if (_activeSfxPlaybacks.Contains(playback) && playback.Source == null)
+            playback.LoadCoroutine = loadCoroutine;
+
+        return playback;
+    }
+
+    /// <summary>
+    /// Plays one loaded sound effect through an independently controllable source.
+    /// </summary>
+    /// <param name="clip">The sound effect clip to play.</param>
+    /// <returns>The playback handle, or null when the clip is missing.</returns>
+    public AudioPlaybackHandle PlaySfxInstance(AudioClip clip)
+    {
+        if (clip == null)
+            return null;
+
+        AudioPlaybackHandle playback = CreatePlayback();
+        StartPlayback(playback, clip);
+        return playback;
+    }
+
+    /// <summary>
     /// Stops sound-effect playback immediately.
     /// </summary>
     public void StopSfx()
     {
         EnsureAudioSources();
         sfxSource.Stop();
-        StopMessageAudio();
-    }
-
-    /// <summary>
-    /// Replaces message-detail audio with an ordered sequence of addressed clips.
-    /// </summary>
-    /// <param name="resourcePaths">The content addresses to play in order.</param>
-    public void PlayMessageAudio(IReadOnlyList<string> resourcePaths)
-    {
-        StopMessageAudio();
-
-        string[] playablePaths =
-            resourcePaths
-                ?.Where(resourcePath => !string.IsNullOrWhiteSpace(resourcePath))
-                .Select(resourcePath => resourcePath.Trim())
-                .ToArray()
-            ?? Array.Empty<string>();
-        if (playablePaths.Length == 0)
-            return;
-
-        _messagePlaybackCoroutine = StartCoroutine(PlayMessageAudioSequence(playablePaths));
-    }
-
-    /// <summary>
-    /// Stops message-detail audio and discards its remaining sequence.
-    /// </summary>
-    public void StopMessageAudio()
-    {
-        if (_messagePlaybackCoroutine != null)
-        {
-            StopCoroutine(_messagePlaybackCoroutine);
-            _messagePlaybackCoroutine = null;
-        }
-
-        EnsureAudioSources();
-        _messageAudioPaused = false;
-        messageSource.Stop();
-        messageSource.clip = null;
+        StopTrackedSfx();
     }
 
     /// <summary>
@@ -476,8 +477,14 @@ public sealed class AudioManager : MonoBehaviour
     {
         EnsureAudioSources();
         sfxSource.Pause();
-        _messageAudioPaused = messageSource.isPlaying;
-        messageSource.Pause();
+        foreach (AudioPlaybackHandle playback in _activeSfxPlaybacks)
+        {
+            if (playback.Source?.isPlaying != true)
+                continue;
+
+            playback.Paused = true;
+            playback.Source.Pause();
+        }
     }
 
     /// <summary>
@@ -487,8 +494,37 @@ public sealed class AudioManager : MonoBehaviour
     {
         EnsureAudioSources();
         sfxSource.UnPause();
-        messageSource.UnPause();
-        _messageAudioPaused = false;
+        foreach (AudioPlaybackHandle playback in _activeSfxPlaybacks)
+        {
+            if (!playback.Paused || playback.Source == null)
+                continue;
+
+            playback.Source.UnPause();
+            playback.Paused = false;
+        }
+    }
+
+    /// <summary>
+    /// Stops one independently controlled playback and returns its source for reuse.
+    /// </summary>
+    /// <param name="playback">The playback to stop.</param>
+    internal void StopPlayback(AudioPlaybackHandle playback)
+    {
+        if (playback == null || !_activeSfxPlaybacks.Remove(playback))
+            return;
+
+        if (playback.LoadCoroutine != null)
+            StopCoroutine(playback.LoadCoroutine);
+
+        if (playback.Source != null)
+        {
+            playback.Source.Stop();
+            playback.Source.clip = null;
+            playback.Source.loop = false;
+            _availableSfxSources.Push(playback.Source);
+        }
+
+        playback.Release();
     }
 
     /// <summary>
@@ -617,8 +653,6 @@ public sealed class AudioManager : MonoBehaviour
             musicSource = CreateAudioSource();
         if (sfxSource == null)
             sfxSource = CreateAudioSource();
-        if (messageSource == null)
-            messageSource = CreateAudioSource();
         if (ambienceSource == null)
             ambienceSource = CreateAudioSource();
     }
@@ -644,7 +678,11 @@ public sealed class AudioManager : MonoBehaviour
         musicSource.volume = musicVolume * masterVolume;
         ambienceSource.volume = ambienceVolume * masterVolume;
         sfxSource.volume = sfxVolume * masterVolume;
-        messageSource.volume = sfxVolume * masterVolume;
+        foreach (AudioPlaybackHandle playback in _activeSfxPlaybacks)
+        {
+            if (playback.Source != null)
+                playback.Source.volume = sfxVolume * masterVolume;
+        }
     }
 
     /// <summary>
@@ -868,50 +906,76 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Loads and plays message-detail clips one at a time in their requested order.
+    /// Loads one independently controlled sound effect and starts it if still requested.
     /// </summary>
-    /// <param name="paths">The normalized content addresses to play.</param>
+    /// <param name="playback">The playback awaiting its clip.</param>
+    /// <param name="path">The normalized content address.</param>
     /// <returns>The playback coroutine.</returns>
-    private IEnumerator PlayMessageAudioSequence(IReadOnlyList<string> paths)
+    private IEnumerator LoadAndPlaySfxInstance(AudioPlaybackHandle playback, string path)
     {
-        foreach (string path in paths)
+        Task<AudioClip> load = GetContentAssets().LoadAudioAsync(path);
+        while (!load.IsCompleted)
+            yield return null;
+
+        playback.LoadCoroutine = null;
+        if (!_activeSfxPlaybacks.Contains(playback))
+            yield break;
+
+        if (load.IsCompletedSuccessfully && load.Result != null)
         {
-            AudioClip clip = null;
-            if (
-                !_preloadedSfx.TryGetValue(path, out clip)
-                && !_loadedSfx.TryGetValue(path, out clip)
-            )
-            {
-                Task<AudioClip> load = GetContentAssets().LoadAudioAsync(path);
-                while (!load.IsCompleted)
-                    yield return null;
-
-                if (load.IsCompletedSuccessfully && load.Result != null)
-                {
-                    clip = load.Result;
-                    _loadedSfx[path] = clip;
-                }
-                else if (!load.IsCanceled)
-                {
-                    string failureReason = load.IsFaulted
-                        ? $": {load.Exception?.GetBaseException().Message}"
-                        : ": the loader returned no audio clip";
-                    GameLogger.Warning($"Failed to load message audio '{path}'{failureReason}.");
-                }
-            }
-
-            if (clip == null)
-                continue;
-
-            messageSource.clip = clip;
-            messageSource.loop = false;
-            messageSource.Play();
-            while (messageSource.isPlaying || _messageAudioPaused)
-                yield return null;
+            _loadedSfx[path] = load.Result;
+            StartPlayback(playback, load.Result);
+            yield break;
         }
 
-        messageSource.clip = null;
-        _messagePlaybackCoroutine = null;
+        if (!load.IsCanceled)
+        {
+            string failureReason = load.IsFaulted
+                ? $": {load.Exception?.GetBaseException().Message}"
+                : ": the loader returned no audio clip";
+            GameLogger.Warning($"Failed to load sound effect '{path}'{failureReason}.");
+        }
+
+        StopPlayback(playback);
+    }
+
+    /// <summary>
+    /// Registers a new independently controlled sound-effect playback.
+    /// </summary>
+    /// <returns>The registered playback.</returns>
+    private AudioPlaybackHandle CreatePlayback()
+    {
+        AudioPlaybackHandle playback = new AudioPlaybackHandle(this);
+        _activeSfxPlaybacks.Add(playback);
+        return playback;
+    }
+
+    /// <summary>
+    /// Assigns a loaded clip to one independently controlled playback source.
+    /// </summary>
+    /// <param name="playback">The playback receiving the clip.</param>
+    /// <param name="clip">The loaded clip.</param>
+    private void StartPlayback(AudioPlaybackHandle playback, AudioClip clip)
+    {
+        if (!_activeSfxPlaybacks.Contains(playback) || clip == null)
+            return;
+
+        AudioSource source =
+            _availableSfxSources.Count > 0 ? _availableSfxSources.Pop() : CreateAudioSource();
+        playback.Source = source;
+        source.clip = clip;
+        source.loop = false;
+        source.volume = sfxVolume * masterVolume;
+        source.Play();
+    }
+
+    /// <summary>
+    /// Stops every independently controlled sound effect.
+    /// </summary>
+    private void StopTrackedSfx()
+    {
+        foreach (AudioPlaybackHandle playback in _activeSfxPlaybacks.ToArray())
+            StopPlayback(playback);
     }
 
     /// <summary>

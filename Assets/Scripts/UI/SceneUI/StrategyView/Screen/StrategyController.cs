@@ -382,8 +382,7 @@ public sealed class StrategyController
         );
         messagesWindowController = new MessagesWindowController(
             PlaySfx,
-            resourcePaths => AudioManager.EnsureExists().PlayMessageAudio(resourcePaths),
-            () => AudioManager.EnsureExists().StopMessageAudio(),
+            resourcePath => AudioManager.EnsureExists().PlaySfxInstance(resourcePath),
             () => uiContext,
             strategyWindowLayerView,
             strategyWindowManager,

@@ -37,16 +37,17 @@ public interface IMessagesWindowActions
 public sealed class MessagesWindowController
 {
     private readonly Action<UIWindow> closeWindow;
+    private readonly List<AudioPlaybackHandle> detailAudioPlaybacks =
+        new List<AudioPlaybackHandle>();
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Func<UIContext> getUIContext;
     private readonly Action markDirty;
-    private readonly Action<IReadOnlyList<string>> playMessageAudio;
     private readonly Action<string> playSfx;
+    private readonly Func<string, AudioPlaybackHandle> playSfxInstance;
     private readonly Dictionary<MessagesWindowView, MessagesWindowSession> sessions =
         new Dictionary<MessagesWindowView, MessagesWindowSession>();
     private readonly StrategyWindowLayerView windowLayer;
     private readonly UIWindowManager windowManager;
-    private readonly Action stopMessageAudio;
     private IMessagesWindowActions actions;
 
     /// <summary>
@@ -58,8 +59,7 @@ public sealed class MessagesWindowController
     /// Creates the Messages feature controller with current presentation-resource access.
     /// </summary>
     /// <param name="playSfx">Plays a strategy sound effect path.</param>
-    /// <param name="playMessageAudio">Replaces message-detail audio with an ordered sequence.</param>
-    /// <param name="stopMessageAudio">Stops active message-detail audio.</param>
+    /// <param name="playSfxInstance">Plays an independently controllable sound effect path.</param>
     /// <param name="getUIContext">Resolves the current theme and texture context.</param>
     /// <param name="windowLayer">Provides the authored Messages prefab and modal layer.</param>
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
@@ -68,8 +68,7 @@ public sealed class MessagesWindowController
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     public MessagesWindowController(
         Action<string> playSfx,
-        Action<IReadOnlyList<string>> playMessageAudio,
-        Action stopMessageAudio,
+        Func<string, AudioPlaybackHandle> playSfxInstance,
         Func<UIContext> getUIContext,
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,
@@ -79,10 +78,8 @@ public sealed class MessagesWindowController
     )
     {
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
-        this.playMessageAudio =
-            playMessageAudio ?? throw new ArgumentNullException(nameof(playMessageAudio));
-        this.stopMessageAudio =
-            stopMessageAudio ?? throw new ArgumentNullException(nameof(stopMessageAudio));
+        this.playSfxInstance =
+            playSfxInstance ?? throw new ArgumentNullException(nameof(playSfxInstance));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
@@ -147,7 +144,7 @@ public sealed class MessagesWindowController
     /// <param name="tab">The semantic Messages tab.</param>
     public void OpenTab(MessagesWindowView view, MessagesTab tab)
     {
-        stopMessageAudio();
+        StopMessageDetailAudio();
         MessagesWindowSession session = GetSession(view);
         session.SelectTab(MessagesTabCatalog.Clamp((int)tab));
         RefreshSession(session);
@@ -319,10 +316,10 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
-    /// Returns message detail audio in playback order.
+    /// Returns the available audio paths for one message detail.
     /// </summary>
     /// <param name="message">The source message.</param>
-    /// <returns>The non-empty voice paths associated with the message.</returns>
+    /// <returns>The non-empty audio paths associated with the message.</returns>
     internal static IReadOnlyList<string> GetDetailAudioPaths(Message message)
     {
         if (message == null)
@@ -376,7 +373,13 @@ public sealed class MessagesWindowController
     /// <param name="message">The message whose detail was presented.</param>
     internal void PlayMessageDetailAudio(Message message)
     {
-        playMessageAudio(GetDetailAudioPaths(message));
+        StopMessageDetailAudio();
+        foreach (string path in GetDetailAudioPaths(message))
+        {
+            AudioPlaybackHandle playback = playSfxInstance(path);
+            if (playback != null)
+                detailAudioPlaybacks.Add(playback);
+        }
     }
 
     /// <summary>
@@ -514,7 +517,7 @@ public sealed class MessagesWindowController
         FocusWindow(view);
         if (TryGetSession(view, out MessagesWindowSession session))
         {
-            stopMessageAudio();
+            StopMessageDetailAudio();
             closeWindow(session.Window);
         }
     }
@@ -575,7 +578,7 @@ public sealed class MessagesWindowController
             return;
 
         FocusWindow(view);
-        stopMessageAudio();
+        StopMessageDetailAudio();
         session.HideDetail();
         RequestRender();
     }
@@ -611,7 +614,7 @@ public sealed class MessagesWindowController
         Faction playerFaction = GetPlayerFaction();
         if (RemoveSelectedMessages(playerFaction, session.GetSelectedMessageIDs()))
         {
-            stopMessageAudio();
+            StopMessageDetailAudio();
             session.ClearSelection();
             session.HideDetail();
             RefreshSession(session);
@@ -676,7 +679,7 @@ public sealed class MessagesWindowController
         if (message is not CombatReport report)
             return false;
 
-        stopMessageAudio();
+        StopMessageDetailAudio();
         closeWindow(session.Window);
         actions.OpenCombatReport(report);
         markDirty();
@@ -752,7 +755,7 @@ public sealed class MessagesWindowController
         if (ReferenceEquals(view, null) || !sessions.Remove(view))
             return;
 
-        stopMessageAudio();
+        StopMessageDetailAudio();
         view.ChatRequested -= HandleChatRequested;
         view.CloseRequested -= HandleCloseRequested;
         view.ContextRequested -= HandleContextRequested;
@@ -792,6 +795,17 @@ public sealed class MessagesWindowController
             PlayMessageDetailAudio(message);
         }
         RequestRender();
+    }
+
+    /// <summary>
+    /// Stops every sound owned by the currently displayed message detail.
+    /// </summary>
+    private void StopMessageDetailAudio()
+    {
+        foreach (AudioPlaybackHandle playback in detailAudioPlaybacks)
+            playback.Stop();
+
+        detailAudioPlaybacks.Clear();
     }
 
     /// <summary>
