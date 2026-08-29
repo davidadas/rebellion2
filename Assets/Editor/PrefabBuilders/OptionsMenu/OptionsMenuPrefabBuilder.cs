@@ -2156,11 +2156,25 @@ public static class OptionsMenuPrefabBuilder
     /// <param name="texturePath">The content texture address.</param>
     private static void AttachTextureBinding(RawImage image, string texturePath)
     {
+        string address = ToContentAddress(texturePath);
+        if (image.TryGetComponent(out RawImagePressVisual _))
+        {
+            ContentTextureBinding textureBinding = image.GetComponent<ContentTextureBinding>();
+            if (textureBinding != null)
+                UnityEngine.Object.DestroyImmediate(textureBinding);
+
+            ContentPressVisualBinding pressBinding =
+                image.GetComponent<ContentPressVisualBinding>()
+                ?? image.gameObject.AddComponent<ContentPressVisualBinding>();
+            pressBinding.SetAddresses(address, null);
+            return;
+        }
+
         ContentTextureBinding existing = image.GetComponent<ContentTextureBinding>();
         if (existing != null)
             UnityEngine.Object.DestroyImmediate(existing);
         ContentTextureBinding binding = image.gameObject.AddComponent<ContentTextureBinding>();
-        binding.SetAddress(ToContentAddress(texturePath));
+        binding.SetAddress(address);
     }
 
     /// <summary>

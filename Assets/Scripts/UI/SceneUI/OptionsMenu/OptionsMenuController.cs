@@ -15,6 +15,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly Action<UIWindow> _closeWindow;
     private readonly Action _markDirty;
     private readonly AppBootstrap _bootstrap;
+    private readonly Func<string, string, bool> _saveGame;
     private readonly Func<string, bool> _loadSave;
     private readonly SaveGameManager _saveGameManager;
     private readonly IContentAssetSource _contentAssets;
@@ -50,6 +51,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="getWindowPosition">Returns the Options menu position.</param>
     /// <param name="closeWindow">Closes a registered window.</param>
     /// <param name="bootstrap">The application runtime and service owner.</param>
+    /// <param name="saveGame">Saves through the active game's runtime policy.</param>
     /// <param name="loadSave">Loads a save through the owning scene's hot- or cold-load flow.</param>
     /// <param name="markDirty">Marks the menu data as changed.</param>
     /// <param name="saveGameManager">The save-game persistence service.</param>
@@ -60,6 +62,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
         AppBootstrap bootstrap,
+        Func<string, string, bool> saveGame,
         Func<string, bool> loadSave,
         Action markDirty,
         SaveGameManager saveGameManager
@@ -73,6 +76,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         _markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
+        _saveGame = saveGame ?? throw new ArgumentNullException(nameof(saveGame));
         _loadSave = loadSave ?? throw new ArgumentNullException(nameof(loadSave));
         _saveGameManager =
             saveGameManager ?? throw new ArgumentNullException(nameof(saveGameManager));
@@ -207,6 +211,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _saveSlots,
                 _selectedSlot,
                 HasActiveGame(),
+                CanSaveGame(),
                 _bindingSession.ListeningRow,
                 _bindingSession.ListeningSecondary,
                 _settingsSession.GetGameplayStates(),
@@ -341,14 +346,18 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
 
         if (_saveSlots[slot].IsCreateNew)
         {
-            CreateNamedSave(newName);
+            if (!CreateNamedSave(newName))
+                return;
             _selectedSlot = -1;
         }
         else
         {
             string fileName = _saveSlots[slot].FileName;
             if (submitted && HasActiveGame())
-                OverwriteSave(fileName, newName);
+            {
+                if (!OverwriteSave(fileName, newName))
+                    return;
+            }
             else
                 _saveGameManager.SetSaveDisplayName(fileName, newName);
             RefreshSaveSlots(fileName);
@@ -388,11 +397,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void HandleSaveRequested()
     {
-        if (!HasActiveGame() || !IsSelectedExistingSave())
+        if (!CanSaveGame() || !IsSelectedExistingSave())
             return;
 
         string fileName = _saveSlots[_selectedSlot].FileName;
-        OverwriteSave(fileName, _saveSlots[_selectedSlot].Name);
+        if (!OverwriteSave(fileName, _saveSlots[_selectedSlot].Name))
+            return;
         RefreshSaveSlots(fileName);
         _markDirty();
     }
@@ -435,7 +445,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void RefreshSaveSlots(string selectedFileName = null)
     {
         _saveSlots.Clear();
-        if (HasActiveGame())
+        if (CanSaveGame())
             _saveSlots.Add(new OptionsSaveSlot("Create New Save", string.Empty, null, true, null));
 
         foreach (SaveGameEntry entry in _saveGameManager.GetSavedGames())
@@ -482,14 +492,14 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// Creates a named save from the active game.
     /// </summary>
     /// <param name="displayName">The requested display name.</param>
-    private void CreateNamedSave(string displayName)
+    /// <returns>True when the save was written.</returns>
+    private bool CreateNamedSave(string displayName)
     {
-        GameRoot game = GetActiveGame();
-        if (game == null)
-            return;
+        if (!CanSaveGame())
+            return false;
 
         string fileName = $"save_{DateTime.Now:yyyyMMdd_HHmmss}";
-        _saveGameManager.SaveGameData(game, fileName, displayName);
+        return _saveGame(fileName, displayName);
     }
 
     /// <summary>
@@ -497,13 +507,13 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     /// <param name="fileName">The save identifier.</param>
     /// <param name="displayName">The display name to persist.</param>
-    private void OverwriteSave(string fileName, string displayName)
+    /// <returns>True when the save was written.</returns>
+    private bool OverwriteSave(string fileName, string displayName)
     {
-        GameRoot game = GetActiveGame();
-        if (game == null || string.IsNullOrEmpty(fileName))
-            return;
+        if (!CanSaveGame() || string.IsNullOrEmpty(fileName))
+            return false;
 
-        _saveGameManager.SaveGameData(game, fileName, displayName);
+        return _saveGame(fileName, displayName);
     }
 
     /// <summary>
@@ -844,6 +854,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool HasActiveGame()
     {
         return GetActiveGame() != null;
+    }
+
+    /// <summary>
+    /// Checks whether the active game is at a stable save boundary.
+    /// </summary>
+    /// <returns>True when the runtime permits a new save snapshot.</returns>
+    private bool CanSaveGame()
+    {
+        return _bootstrap.GetRuntime()?.CanSave == true;
     }
 
     /// <summary>

@@ -7,6 +7,8 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Movement;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -136,6 +138,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(new Vector2Int(48, 58), routes[0].Waypoints[0].Position);
             Assert.IsEmpty(fleet.Waypoints);
             Assert.IsNull(fleet.Movement);
+        }
+
+        [Test]
+        public void ProjectWaypointRoutes_CapitalShipPlan_ReturnsSourceFleetPreview()
+        {
+            GalaxyPlanetSector sector = CreateSector("sector", "Sector", 0, 0);
+            Planet origin = CreatePlanet("origin", _playerFactionId, 10, 20);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 40, 50);
+            _game.AttachNode(sector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, sector);
+            _game.AttachNode(destination, sector);
+            GameFleet fleet = new GameFleet(_playerFactionId, "Player Fleet");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "capital-ship",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, origin);
+            _game.AttachNode(ship, fleet);
+            StrategyWindowTargetingSource plan = new StrategyWindowTargetingSource(
+                null,
+                StrategyMenuAction.WaypointMove,
+                0,
+                0,
+                new ISceneNode[] { ship }
+            );
+            plan.TryAppendWaypoint(destination.InstanceID);
+
+            List<GalaxyMapWaypointRouteRenderData> routes = _projector.ProjectWaypointRoutes(
+                _playerFactionId,
+                plan
+            );
+
+            Assert.AreEqual(1, routes.Count);
+            Assert.AreEqual(fleet.InstanceID, routes[0].FleetInstanceId);
+            Assert.AreEqual(new Vector2Int(18, 28), routes[0].Origin);
+            Assert.AreEqual(new Vector2Int(48, 58), routes[0].Waypoints[0].Position);
+            Assert.AreSame(fleet, ship.GetParent());
+            Assert.IsEmpty(fleet.Waypoints);
         }
 
         [Test]

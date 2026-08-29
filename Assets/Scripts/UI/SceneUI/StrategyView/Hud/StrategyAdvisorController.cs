@@ -786,8 +786,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             action,
             text,
             enabled,
-            selected ? StrategyContextMenuIconKeys.CheckMark : StrategyContextMenuIconKeys.None,
-            usesIconColumn: true
+            selected ? StrategyContextMenuIconKeys.CheckMark : StrategyContextMenuIconKeys.None
         );
     }
 

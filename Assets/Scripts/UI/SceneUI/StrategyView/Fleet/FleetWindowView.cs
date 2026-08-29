@@ -133,6 +133,11 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     internal event Action<FleetWindowView, PointerEventData> FleetDestinationDropped;
 
     /// <summary>
+    /// Occurs when a pointer drop is received by the fleet-list surface.
+    /// </summary>
+    internal event Action<FleetWindowView, PointerEventData> FleetListDropped;
+
+    /// <summary>
     /// Occurs when the fleet row is double-clicked.
     /// </summary>
     internal event Action<FleetWindowView, int, PointerEventData> FleetRowDoubleClicked;
@@ -926,7 +931,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
 
         fleetListScrollArea.Dragged += HandleScrollDragged;
         fleetListScrollArea.DragEnded += HandleScrollDragEnded;
-        fleetListScrollArea.Dropped += HandleFleetDestinationDropped;
+        fleetListScrollArea.Dropped += HandleFleetListDropped;
         detailItemsScrollArea.Dragged += HandleScrollDragged;
         detailItemsScrollArea.DragEnded += HandleScrollDragEnded;
         detailItemsScrollArea.Dropped += HandleFleetDestinationDropped;
@@ -943,7 +948,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
 
         fleetListScrollArea.Dragged -= HandleScrollDragged;
         fleetListScrollArea.DragEnded -= HandleScrollDragEnded;
-        fleetListScrollArea.Dropped -= HandleFleetDestinationDropped;
+        fleetListScrollArea.Dropped -= HandleFleetListDropped;
         detailItemsScrollArea.Dragged -= HandleScrollDragged;
         detailItemsScrollArea.DragEnded -= HandleScrollDragEnded;
         detailItemsScrollArea.Dropped -= HandleFleetDestinationDropped;
@@ -1061,6 +1066,16 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     )
     {
         DetailItemDoubleClicked?.Invoke(this, item.Index, eventData);
+    }
+
+    /// <summary>
+    /// Forwards a drop on the fleet-list surface.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleFleetListDropped(PointerEventData eventData)
+    {
+        if (eventData != null)
+            FleetListDropped?.Invoke(this, eventData);
     }
 
     /// <summary>

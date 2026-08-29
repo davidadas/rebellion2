@@ -379,7 +379,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void ScrollGestures_BothScrollAreas_RaiseSharedAndFleetListEvents()
+        public void ScrollGestures_BothScrollAreas_RaiseTheirDestinationEvents()
         {
             _view.Render(
                 CreateRenderData(
@@ -392,9 +392,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             int draggedCount = 0;
             int endedCount = 0;
             int destinationDropCount = 0;
+            int fleetListDropCount = 0;
             _view.ScrollDragged += (_, _) => draggedCount++;
             _view.ScrollDragEnded += (_, _) => endedCount++;
             _view.FleetDestinationDropped += (_, _) => destinationDropCount++;
+            _view.FleetListDropped += (_, _) => fleetListDropCount++;
             ScrollAreaView fleetScrollArea = FindFleetRows()[0]
                 .GetComponentInParent<ScrollAreaView>();
             ScrollAreaView detailScrollArea = FindDetailItems()[0]
@@ -409,7 +411,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
             Assert.AreEqual(2, draggedCount);
             Assert.AreEqual(2, endedCount);
-            Assert.AreEqual(2, destinationDropCount);
+            Assert.AreEqual(1, destinationDropCount);
+            Assert.AreEqual(1, fleetListDropCount);
         }
 
         [Test]
@@ -726,6 +729,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 optionalTexture,
                 optionalTexture,
                 optionalTexture,
+                false,
                 true
             );
         }

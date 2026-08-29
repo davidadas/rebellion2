@@ -3499,6 +3499,94 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void TrySetFleetWaypointRoute_CapitalShip_CreatesFleetAndCompletesRoute()
+        {
+            (
+                _,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet sourceFleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            CapitalShip ship = sourceFleet.GetChildren<CapitalShip>().Single();
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { ship },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+
+            Fleet routeFleet = ship.GetParentOfType<Fleet>();
+            Assert.IsTrue(routeSet);
+            Assert.AreNotSame(sourceFleet, routeFleet);
+            Assert.IsNull(sourceFleet.GetParent());
+            Assert.AreSame(firstDestination, routeFleet.GetParent());
+            Assert.IsNotNull(ship.Movement);
+            CollectionAssert.AreEqual(
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                routeFleet.Waypoints
+            );
+
+            ship.Movement.TicksElapsed = ship.Movement.TransitTicks - 1;
+            movement.ProcessTick();
+            movement.ContinueFleetWaypointRoutes();
+
+            Assert.IsNotNull(routeFleet.Movement);
+            Assert.AreSame(secondDestination, routeFleet.GetParent());
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, routeFleet.Waypoints);
+
+            routeFleet.Movement.TicksElapsed = routeFleet.Movement.TransitTicks - 1;
+            List<GameResult> finalResults = movement.ProcessTick();
+
+            FleetWaypointsCompletedResult completed = finalResults
+                .OfType<FleetWaypointsCompletedResult>()
+                .Single();
+            Assert.AreSame(routeFleet, completed.Fleet);
+            Assert.AreSame(secondDestination, completed.Destination);
+            Assert.IsEmpty(routeFleet.Waypoints);
+        }
+
+        [Test]
+        public void TrySetFleetWaypointRoute_CapitalShipUnderConstruction_PreservesRouteUntilComplete()
+        {
+            (
+                _,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet sourceFleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            CapitalShip ship = sourceFleet.GetChildren<CapitalShip>().Single();
+            ship.ManufacturingStatus = ManufacturingStatus.Building;
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { ship },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+            Fleet routeFleet = ship.GetParentOfType<Fleet>();
+            List<GameResult> buildingResults = movement.ContinueFleetWaypointRoutes();
+
+            Assert.IsTrue(routeSet);
+            Assert.IsEmpty(buildingResults);
+            Assert.AreSame(firstDestination, routeFleet.GetParent());
+            Assert.IsNull(routeFleet.Movement);
+            CollectionAssert.AreEqual(
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                routeFleet.Waypoints
+            );
+
+            ship.ManufacturingStatus = ManufacturingStatus.Complete;
+            movement.ContinueFleetWaypointRoutes();
+
+            Assert.IsNotNull(routeFleet.Movement);
+            Assert.AreSame(secondDestination, routeFleet.GetParent());
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, routeFleet.Waypoints);
+        }
+
+        [Test]
         public void CanSetFleetWaypointRoute_ValidRoute_DoesNotMutateFleet()
         {
             (
@@ -3519,6 +3607,31 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(canSetRoute);
             Assert.AreSame(origin, fleet.GetParent());
             Assert.IsNull(fleet.Movement);
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [Test]
+        public void CanSetFleetWaypointRoute_CapitalShip_DoesNotChangeFleetMembership()
+        {
+            (
+                _,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+
+            bool canSetRoute = movement.CanSetFleetWaypointRoute(
+                new ISceneNode[] { ship },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+
+            Assert.IsTrue(canSetRoute);
+            Assert.AreSame(fleet, ship.GetParent());
+            Assert.IsNull(ship.Movement);
             Assert.IsEmpty(fleet.Waypoints);
         }
 

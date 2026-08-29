@@ -708,6 +708,7 @@ public sealed class FleetWindowController
         view.DetailItemPressed += HandleDetailItemPressed;
         view.DetailItemReleased += HandleDetailItemReleased;
         view.FleetDestinationDropped += HandleFleetDestinationDropped;
+        view.FleetListDropped += HandleFleetListDropped;
         view.FleetRowDoubleClicked += HandleItemDoubleClicked;
         view.FleetRowDropped += HandleFleetRowDropped;
         view.FleetRowPressed += HandleFleetRowPressed;
@@ -1016,6 +1017,17 @@ public sealed class FleetWindowController
     }
 
     /// <summary>
+    /// Handles a fleet-list surface drop as a planet-level targeting selection.
+    /// </summary>
+    /// <param name="view">The destination fleet view.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleFleetListDropped(FleetWindowView view, PointerEventData eventData)
+    {
+        if (TryGetSession(view, out FleetWindowSession session))
+            TrySelectTarget(session, null);
+    }
+
+    /// <summary>
     /// Handles a fleet or detail item double click as a status request.
     /// </summary>
     /// <param name="view">The source fleet view.</param>
@@ -1255,6 +1267,7 @@ public sealed class FleetWindowController
         view.DetailItemPressed -= HandleDetailItemPressed;
         view.DetailItemReleased -= HandleDetailItemReleased;
         view.FleetDestinationDropped -= HandleFleetDestinationDropped;
+        view.FleetListDropped -= HandleFleetListDropped;
         view.FleetRowDoubleClicked -= HandleItemDoubleClicked;
         view.FleetRowDropped -= HandleFleetRowDropped;
         view.FleetRowPressed -= HandleFleetRowPressed;

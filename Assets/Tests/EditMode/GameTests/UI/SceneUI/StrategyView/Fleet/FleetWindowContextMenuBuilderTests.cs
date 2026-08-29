@@ -214,6 +214,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 {
                     StrategyMenuAction.Move,
                     StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.WaypointMove,
                     StrategyMenuAction.CreateFleet,
                     StrategyMenuAction.Rename,
                     StrategyMenuAction.Encyclopedia,
@@ -244,6 +245,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(commands[0].Enabled);
             Assert.IsTrue(commands[1].Enabled);
             Assert.IsTrue(commands[2].Enabled);
+            Assert.IsTrue(commands[3].Enabled);
             Assert.AreEqual(StrategyMenuAction.Stop, commands.Last().Action);
             Assert.AreEqual("Stop", commands.Last().Text);
             Assert.IsTrue(commands.Last().Enabled);
@@ -268,6 +270,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(commands[0].Enabled);
             Assert.IsFalse(commands[1].Enabled);
             Assert.IsFalse(commands[2].Enabled);
+            Assert.IsFalse(commands[3].Enabled);
             Assert.IsFalse(commands.Last().Enabled);
         }
 

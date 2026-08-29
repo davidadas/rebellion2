@@ -292,6 +292,40 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Seed_WithMaximumVariance_IncludesConfiguredExtent()
+        {
+            Officer officer = MakeOfficer("O1", "FNALL1");
+            officer.Ratings[OfficerRating.Espionage] = 5;
+            officer.EspionageVariance = 10;
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new MaximumRNG());
+
+            Assert.AreEqual(15, officer.Ratings[OfficerRating.Espionage]);
+        }
+
+        [Test]
+        public void Seed_UnrecruitedOfficer_RollsRatings()
+        {
+            _rules.Officers.NumStartingOfficers.Small = 0;
+            Officer officer = MakeOfficer("O1", "FNALL1");
+            officer.Ratings[OfficerRating.Espionage] = 5;
+            officer.EspionageVariance = 10;
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { officer },
+                new[] { sector },
+                _rules,
+                _summary,
+                new MaximumRNG()
+            );
+
+            Assert.Contains(officer, results.Unrecruited);
+            Assert.AreEqual(15, officer.Ratings[OfficerRating.Espionage]);
+        }
+
+        [Test]
         public void Seed_WithOwnedPlanet_OfficerAddedToPlanet()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");

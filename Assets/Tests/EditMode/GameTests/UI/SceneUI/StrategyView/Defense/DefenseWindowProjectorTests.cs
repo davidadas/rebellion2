@@ -217,6 +217,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNull(card.DamagedOverlayTexture);
             Assert.IsNotNull(card.BackgroundTexture);
             Assert.IsNotNull(card.EntityTexture);
+            Assert.IsTrue(card.HideBackgroundWhenSelected);
             Assert.IsFalse(card.CanDrag);
         }
 

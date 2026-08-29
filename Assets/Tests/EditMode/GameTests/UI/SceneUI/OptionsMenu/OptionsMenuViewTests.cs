@@ -193,6 +193,38 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies an unsettled simulation disables overwriting the selected save.
+        /// </summary>
+        [Test]
+        public void SaveLoadPage_UnsettledGame_DisablesSaveButton()
+        {
+            OptionsMenuRenderData data = new OptionsMenuRenderData(
+                0,
+                0,
+                OptionsMenuTab.SaveLoad,
+                string.Empty,
+                string.Empty,
+                new Dictionary<UserTacticalOption, bool>(),
+                Array.Empty<float>(),
+                Array.Empty<OptionsBindingRow>(),
+                new[] { new OptionsSaveSlot("Save", "Today", null, false, "save") },
+                0,
+                true,
+                false,
+                -1,
+                false
+            );
+
+            _view.Render(data);
+
+            Button saveButton = (Button)
+                typeof(OptionsSaveListView)
+                    .GetField("_saveButton", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(_saveListView);
+            Assert.IsFalse(saveButton.interactable);
+        }
+
+        /// <summary>
         /// Verifies autosave numbers render in directly editable integer fields.
         /// </summary>
         [Test]
@@ -213,6 +245,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Array.Empty<OptionsBindingRow>(),
                 Array.Empty<OptionsSaveSlot>(),
                 -1,
+                true,
                 true,
                 -1,
                 false,
@@ -269,6 +302,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Array.Empty<OptionsBindingRow>(),
                 Array.Empty<OptionsSaveSlot>(),
                 -1,
+                true,
                 true,
                 -1,
                 false,
@@ -694,6 +728,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Array.Empty<OptionsSaveSlot>(),
                 -1,
                 false,
+                false,
                 -1,
                 false
             );
@@ -738,6 +773,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 },
                 Array.Empty<OptionsSaveSlot>(),
                 -1,
+                true,
                 true,
                 -1,
                 false
@@ -796,6 +832,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 bindings ?? Array.Empty<OptionsBindingRow>(),
                 saveSlots ?? Array.Empty<OptionsSaveSlot>(),
                 -1,
+                true,
                 true,
                 -1,
                 false

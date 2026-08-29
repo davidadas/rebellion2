@@ -18,7 +18,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
         [Test]
-        public void GetDetailAudioPaths_MessageAndOfficerPaths_ReturnsPlaybackOrder()
+        public void GetDetailAudioPaths_MessageAndOfficerPaths_ReturnsBothPaths()
         {
             Message message = new StatusMessage(MessageType.Fleet, "Fleet Arrived")
             {
@@ -35,7 +35,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void GetDetailAudioPaths_MissingMessage_ReturnsEmptyPlaybackOrder()
+        public void GetDetailAudioPaths_MissingMessage_ReturnsEmptyCollection()
         {
             IReadOnlyList<string> paths = MessagesWindowController.GetDetailAudioPaths(null);
 
@@ -43,13 +43,82 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void GetDetailAudioPaths_EmptyPaths_ReturnsEmptyPlaybackOrder()
+        public void GetDetailAudioPaths_EmptyPaths_ReturnsEmptyCollection()
         {
             Message message = new StatusMessage(MessageType.Fleet, "Fleet Arrived");
 
             IReadOnlyList<string> paths = MessagesWindowController.GetDetailAudioPaths(message);
 
             Assert.IsEmpty(paths);
+        }
+
+        [Test]
+        public void PlayMessageDetailAudio_NewMessage_StopsPreviousAudioAndStartsCurrentAudio()
+        {
+            DestroyAudioManagers();
+            AudioManager audioManager = AudioManager.EnsureExists();
+            AudioClip firstBackground = AudioClip.Create("FirstBackground", 1, 1, 44100, false);
+            AudioClip firstVoice = AudioClip.Create("FirstVoice", 1, 1, 44100, false);
+            AudioClip secondBackground = AudioClip.Create("SecondBackground", 1, 1, 44100, false);
+            Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>
+            {
+                ["first-background"] = firstBackground,
+                ["first-voice"] = firstVoice,
+                ["second-background"] = secondBackground,
+            };
+            List<AudioPlaybackHandle> playbacks = new List<AudioPlaybackHandle>();
+            GameObject dependencies = new GameObject("MessagesDependencies");
+
+            try
+            {
+                MessagesWindowController controller = new MessagesWindowController(
+                    _ => { },
+                    path =>
+                    {
+                        AudioPlaybackHandle playback = audioManager.PlaySfxInstance(clips[path]);
+                        playbacks.Add(playback);
+                        return playback;
+                    },
+                    () => null,
+                    dependencies.AddComponent<StrategyWindowLayerView>(),
+                    dependencies.AddComponent<UIWindowManager>(),
+                    () => Vector2Int.zero,
+                    _ => { },
+                    () => { }
+                );
+                Message firstMessage = new StatusMessage(MessageType.Fleet, "First")
+                {
+                    BackgroundAudioPath = "first-background",
+                    OfficerVoicePath = "first-voice",
+                };
+                Message secondMessage = new StatusMessage(MessageType.Fleet, "Second")
+                {
+                    BackgroundAudioPath = "second-background",
+                };
+
+                controller.PlayMessageDetailAudio(firstMessage);
+
+                Assert.AreEqual(2, playbacks.Count);
+                Assert.AreSame(firstBackground, playbacks[0].Source.clip);
+                Assert.AreSame(firstVoice, playbacks[1].Source.clip);
+                Assert.AreNotSame(playbacks[0].Source, playbacks[1].Source);
+
+                controller.PlayMessageDetailAudio(secondMessage);
+
+                Assert.IsNull(playbacks[0].Source);
+                Assert.IsNull(playbacks[1].Source);
+                Assert.AreEqual(3, playbacks.Count);
+                Assert.AreSame(secondBackground, playbacks[2].Source.clip);
+            }
+            finally
+            {
+                audioManager.StopSfx();
+                UnityEngine.Object.DestroyImmediate(firstBackground);
+                UnityEngine.Object.DestroyImmediate(firstVoice);
+                UnityEngine.Object.DestroyImmediate(secondBackground);
+                UnityEngine.Object.DestroyImmediate(dependencies);
+                DestroyAudioManagers();
+            }
         }
 
         [Test]
@@ -233,6 +302,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
                     _ => { },
+                    _ => null,
                     () => uiContext,
                     windowLayer,
                     windowManager,
@@ -293,6 +363,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
                     _ => { },
+                    _ => null,
                     () => uiContext,
                     windowLayer,
                     windowManager,
@@ -346,6 +417,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
                     _ => { },
+                    _ => null,
                     () => uiContext,
                     windowLayer,
                     windowManager,
@@ -374,6 +446,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             finally
             {
                 UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        private static void DestroyAudioManagers()
+        {
+            foreach (AudioManager manager in UnityEngine.Object.FindObjectsByType<AudioManager>())
+            {
+                UnityEngine.Object.DestroyImmediate(manager.gameObject);
             }
         }
 

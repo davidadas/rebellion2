@@ -237,7 +237,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void FleetListDrop_ActiveTargeting_SelectsCurrentFleet()
+        public void FleetListDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -254,8 +254,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
             StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
             Assert.AreSame(_planet, target.Planet);
-            Assert.AreSame(_fleet, target.Item);
-            Assert.AreSame(_fleet, target.GetMoveDestination());
+            Assert.IsNull(target.Item);
+            Assert.AreSame(_planet.Planet, target.GetMoveDestination());
         }
 
         [Test]

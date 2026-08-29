@@ -161,9 +161,21 @@ internal static class FleetWaypointRouteResolver
         )
             return;
 
-        foreach (Fleet selectedFleet in waypointPlan.Items.OfType<Fleet>())
+        IEnumerable<Fleet> selectedFleets = waypointPlan.Items.OfType<Fleet>();
+        if (!selectedFleets.Any())
         {
-            Fleet fleet = game.GetSceneNodeByInstanceID<Fleet>(selectedFleet.InstanceID);
+            selectedFleets = waypointPlan
+                .Items.OfType<CapitalShip>()
+                .Select(ship => game.GetSceneNodeByInstanceID<CapitalShip>(ship.InstanceID))
+                .Where(ship => ship != null)
+                .Select(ship => ship.GetParentOfType<Fleet>());
+        }
+
+        foreach (Fleet selectedFleet in selectedFleets)
+        {
+            Fleet fleet = string.IsNullOrEmpty(selectedFleet?.InstanceID)
+                ? null
+                : game.GetSceneNodeByInstanceID<Fleet>(selectedFleet.InstanceID);
             if (
                 fleet == null
                 || !string.Equals(fleet.OwnerInstanceID, playerFactionId, StringComparison.Ordinal)

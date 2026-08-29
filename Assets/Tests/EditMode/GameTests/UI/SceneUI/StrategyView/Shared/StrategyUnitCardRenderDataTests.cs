@@ -24,6 +24,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 null,
                 null,
                 null,
+                true,
                 true
             );
 
@@ -32,6 +33,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsTrue(card.ShowName);
             Assert.IsTrue(card.UseAlternateNameLayout);
             Assert.AreEqual(4, card.EntityFrameYOffset);
+            Assert.IsTrue(card.HideBackgroundWhenSelected);
             Assert.IsTrue(card.CanDrag);
         }
     }

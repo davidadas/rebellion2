@@ -409,6 +409,9 @@ namespace Rebellion.Game.Events
         public string RelatedSubjectInstanceID { get; set; }
 
         [PersistableAttribute]
+        public bool ShowSubjectImage { get; set; }
+
+        [PersistableAttribute]
         public string LocationInstanceID { get; set; }
 
         [PersistableAttribute]
@@ -469,7 +472,9 @@ namespace Rebellion.Game.Events
                     Body = Body ?? string.Empty,
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = imagePath,
-                    OverlayImagePath = OverlayImage?.Path ?? (subject as Officer)?.MessageImagePath,
+                    OverlayImagePath =
+                        OverlayImage?.Path
+                        ?? (ShowSubjectImage ? (subject as Officer)?.MessageImagePath : null),
                     BackgroundAudioPath = backgroundAudioPath,
                     OfficerVoicePath = OfficerVoice?.ResolvePath(subject as Officer, provider),
                     AdvisorNotification = this.AdvisorNotification,
