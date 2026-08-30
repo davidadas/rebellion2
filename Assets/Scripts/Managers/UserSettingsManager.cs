@@ -54,7 +54,7 @@ public sealed class UserSettingsManager
 
     /// <summary>
     /// Reads the saved content selection from the settings file before the settings
-    /// system is initialized. Never throws.
+    /// system is initialized.
     /// </summary>
     /// <param name="packID">The selected pack ID, or null.</param>
     /// <param name="scenarioID">The selected scenario ID, or null.</param>
