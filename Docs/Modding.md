@@ -30,7 +30,7 @@ to a new directory beneath `Content/Packs/`. In the copied `pack.xml`, give the 
 
 ## Select a pack and scenario
 
-`Content/catalog.xml` sets the default pack and scenario:
+`Content/catalog.xml` selects the active pack and scenario:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -42,10 +42,6 @@ to a new directory beneath `Content/Packs/`. In the copied `pack.xml`, give the 
 
 `ActivePackID` must match the copied pack's `pack.xml` ID. `ActiveScenarioID` must match a scenario
 declared by that pack. If `ActiveScenarioID` is empty, the pack's `DefaultScenarioID` is used.
-
-A content update can overwrite `catalog.xml`, so a player's own choice is stored separately in
-`user-settings.json` (`Content.ActivePackID` / `Content.ActiveScenarioID`). When set, it overrides the
-catalog and survives updates. If the chosen pack is missing, the game falls back to the catalog default.
 
 You can keep an entirely separate `Content` directory and launch the game with it:
 
