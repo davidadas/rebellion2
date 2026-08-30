@@ -142,7 +142,13 @@ public static class HeadlessSimulationRunner
             personnelOutcomeTracker.RecordInitialState(game);
             specialForcesLifecycleTracker.RecordInitialState(game, initialSpecialForces);
             long gameProcessingTimestampCount = 0;
-            long diagnosticTimestampCount = 0;
+            long idleTimestampCount = 0;
+            long manufacturedTimestampCount = 0;
+            long fleetHistoryTimestampCount = 0;
+            long activityTimestampCount = 0;
+            long personnelTimestampCount = 0;
+            long specialForcesTimestampCount = 0;
+            long attackReadinessTimestampCount = 0;
 
             for (int i = 0; i < options.TickCount && victory == null; i++)
             {
@@ -154,20 +160,34 @@ public static class HeadlessSimulationRunner
                 startTimestamp = Stopwatch.GetTimestamp();
                 List<SpecialForces> currentSpecialForces = game.GetSceneNodesByType<SpecialForces>()
                     .ToList();
+                specialForcesTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                startTimestamp = Stopwatch.GetTimestamp();
                 idleTracker.RecordTick(game);
+                idleTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                startTimestamp = Stopwatch.GetTimestamp();
                 manufacturedUnitTracker.RecordTick(game, currentSpecialForces);
+                manufacturedTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                startTimestamp = Stopwatch.GetTimestamp();
                 fleetHistoryTracker.RecordTick(game);
+                fleetHistoryTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                startTimestamp = Stopwatch.GetTimestamp();
                 activityTracker.RecordTick(game);
+                activityTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                startTimestamp = Stopwatch.GetTimestamp();
                 personnelOutcomeTracker.RecordTick(game);
+                personnelTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                startTimestamp = Stopwatch.GetTimestamp();
                 specialForcesLifecycleTracker.RecordTick(game, currentSpecialForces);
+                specialForcesTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                startTimestamp = Stopwatch.GetTimestamp();
                 attackReadinessTracker.RecordTick(game);
-                diagnosticTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                attackReadinessTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
             }
 
             specialForcesLifecycleTracker.RecordFinalState(game);
             LogToFile(
                 logPath,
-                $"[HeadlessSim] timing game={GetElapsedSeconds(gameProcessingTimestampCount):F3}s diagnostics={GetElapsedSeconds(diagnosticTimestampCount):F3}s"
+                $"[HeadlessSim] timing game={GetElapsedSeconds(gameProcessingTimestampCount):F3}s idle={GetElapsedSeconds(idleTimestampCount):F3}s manufactured={GetElapsedSeconds(manufacturedTimestampCount):F3}s fleets={GetElapsedSeconds(fleetHistoryTimestampCount):F3}s activity={GetElapsedSeconds(activityTimestampCount):F3}s personnel={GetElapsedSeconds(personnelTimestampCount):F3}s specialForces={GetElapsedSeconds(specialForcesTimestampCount):F3}s readiness={GetElapsedSeconds(attackReadinessTimestampCount):F3}s"
             );
             string savePath = SaveSimulation(game, options);
             SimulationSummary report = BuildSimulationSummary(
