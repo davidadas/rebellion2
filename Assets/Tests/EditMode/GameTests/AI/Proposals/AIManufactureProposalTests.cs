@@ -405,7 +405,8 @@ namespace Rebellion.Tests.AI.Proposals
                 "GetManufacturedBuildings",
                 new[] { typeof(string), typeof(BuildingType) }
             );
-            recordInitialState.Invoke(tracker, new object[] { game });
+            List<SpecialForces> specialForces = game.GetSceneNodesByType<SpecialForces>();
+            recordInitialState.Invoke(tracker, new object[] { game, specialForces });
 
             Assert.IsTrue(
                 context.Manufacturing.StartManufacturing(
@@ -416,7 +417,7 @@ namespace Rebellion.Tests.AI.Proposals
                     empire.InstanceID
                 )
             );
-            recordTick.Invoke(tracker, new object[] { game });
+            recordTick.Invoke(tracker, new object[] { game, specialForces });
 
             Assert.AreEqual(
                 0,
@@ -431,8 +432,8 @@ namespace Rebellion.Tests.AI.Proposals
                 .OfType<Building>()
                 .Single();
             queuedShipyard.ManufacturingStatus = ManufacturingStatus.Complete;
-            recordTick.Invoke(tracker, new object[] { game });
-            recordTick.Invoke(tracker, new object[] { game });
+            recordTick.Invoke(tracker, new object[] { game, specialForces });
+            recordTick.Invoke(tracker, new object[] { game, specialForces });
 
             Assert.AreEqual(
                 1,
