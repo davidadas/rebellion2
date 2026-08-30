@@ -782,7 +782,7 @@ namespace Rebellion.Game.Factions
         /// </summary>
         /// <param name="participant">The participant to inspect.</param>
         /// <returns>True if the participant can currently receive mission orders.</returns>
-        private bool IsAvailableMissionParticipant(IMissionParticipant participant)
+        public bool IsAvailableMissionParticipant(IMissionParticipant participant)
         {
             if (participant == null || participant.OwnerInstanceID != InstanceID)
                 return false;

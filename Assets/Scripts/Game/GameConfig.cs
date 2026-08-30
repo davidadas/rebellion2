@@ -153,6 +153,8 @@ namespace Rebellion.Game
             public int DiplomacyResourceNodeWeight { get; set; } = 5;
 
             public int HostileOfficerReplacementPenalty { get; set; } = 100;
+
+            public int MaximumOfficerMissionLossProbability { get; set; } = 5;
         }
 
         /// <summary>
@@ -287,7 +289,8 @@ namespace Rebellion.Game
             public int FleetStarfighterDemandPercent { get; set; } = 50;
             public int FleetRegimentDemandPercent { get; set; } = 60;
             public int FleetSeedCapitalShipDemandPercent { get; set; } = 95;
-            public int SpecialForcesTargetCountPerType { get; set; } = 4;
+            public int SpecialForcesTargetCountPerRole { get; set; } = 4;
+            public int SpecialForcesReadyReservePerRole { get; set; } = 1;
             public int SpecialForcesDemandPercent { get; set; } = 25;
             public int StarfighterParentFillPercent { get; set; } = 100;
             public int StarfighterLocalReservePercent { get; set; }

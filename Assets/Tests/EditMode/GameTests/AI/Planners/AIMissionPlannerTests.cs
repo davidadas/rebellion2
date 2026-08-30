@@ -582,7 +582,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithoutQualifiedSpecialForces_AssignsOfficerDecoy()
+        public void Plan_WithoutQualifiedSpecialForces_DoesNotAssignOfficerDecoy()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -609,7 +609,7 @@ namespace Rebellion.Tests.AI.Planners
                     && candidate.Participant == leadSpy
                 );
 
-            CollectionAssert.AreEqual(new[] { officerDecoy }, proposal.DecoyParticipants);
+            Assert.IsEmpty(proposal.DecoyParticipants);
         }
 
         [Test]

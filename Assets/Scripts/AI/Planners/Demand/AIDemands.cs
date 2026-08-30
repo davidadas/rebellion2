@@ -87,19 +87,45 @@ namespace Rebellion.AI.Planners.Demand
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             List<SpecialForces> existingUnits =
                 context.Faction.GetOwnedUnitsByType<SpecialForces>();
+            Dictionary<string, int> inventoryByRole = new Dictionary<string, int>(
+                StringComparer.Ordinal
+            );
+            Dictionary<string, int> readyOrBuildingByRole = new Dictionary<string, int>(
+                StringComparer.Ordinal
+            );
+            foreach (SpecialForces unit in existingUnits)
+            {
+                string roleId = GetRoleId(unit);
+                IncrementCount(inventoryByRole, roleId);
+                if (
+                    context.Faction.IsAvailableMissionParticipant(unit)
+                    || unit.ManufacturingStatus != ManufacturingStatus.Complete
+                )
+                {
+                    IncrementCount(readyOrBuildingByRole, roleId);
+                }
+            }
 
             foreach (
-                SpecialForces template in context
+                IGrouping<string, SpecialForces> role in context
                     .Faction.GetUnlockedTechnologies(ManufacturingType.Troop)
                     .Select(technology => technology.GetReference())
                     .OfType<SpecialForces>()
-                    .OrderBy(template => template.GetTypeID(), StringComparer.Ordinal)
+                    .Where(template => template.AllowedMissionTypeIDs.Count > 0)
+                    .GroupBy(GetRoleId, StringComparer.Ordinal)
+                    .OrderBy(group => group.Key, StringComparer.Ordinal)
             )
             {
-                int currentCount = existingUnits.Count(unit =>
-                    unit.GetTypeID() == template.GetTypeID()
-                );
-                int deficit = config.SpecialForcesTargetCountPerType - currentCount;
+                SpecialForces template = role.OrderBy(candidate => candidate.ConstructionCost)
+                    .ThenBy(candidate => candidate.MaintenanceCost)
+                    .ThenBy(candidate => candidate.GetTypeID(), StringComparer.Ordinal)
+                    .First();
+                inventoryByRole.TryGetValue(role.Key, out int currentCount);
+                readyOrBuildingByRole.TryGetValue(role.Key, out int availableOrBuildingCount);
+                int inventoryDeficit = config.SpecialForcesTargetCountPerRole - currentCount;
+                int readinessDeficit =
+                    config.SpecialForcesReadyReservePerRole - availableOrBuildingCount;
+                int deficit = Math.Max(inventoryDeficit, readinessDeficit);
                 if (deficit <= 0)
                     continue;
 
@@ -121,13 +147,43 @@ namespace Rebellion.AI.Planners.Demand
                         deficit,
                         GetPressure(
                             deficit,
-                            config.SpecialForcesTargetCountPerType,
+                            Math.Max(
+                                config.SpecialForcesTargetCountPerRole,
+                                config.SpecialForcesReadyReservePerRole
+                            ),
                             config.SpecialForcesDemandPercent
                         ),
                         template.GetTypeID()
                     )
                 );
             }
+        }
+
+        /// <summary>
+        /// Increments the count stored for a special-forces role.
+        /// </summary>
+        /// <param name="counts">The role counts to update.</param>
+        /// <param name="roleId">The role identifier to increment.</param>
+        private static void IncrementCount(IDictionary<string, int> counts, string roleId)
+        {
+            counts.TryGetValue(roleId, out int count);
+            counts[roleId] = count + 1;
+        }
+
+        /// <summary>
+        /// Returns the stable role represented by a special-forces unit's mission capabilities.
+        /// </summary>
+        /// <param name="unit">The special-forces unit or template to inspect.</param>
+        /// <returns>The ordered mission-capability identifier.</returns>
+        private static string GetRoleId(SpecialForces unit)
+        {
+            return string.Join(
+                "|",
+                unit.AllowedMissionTypeIDs.OrderBy(
+                    missionTypeId => missionTypeId,
+                    StringComparer.Ordinal
+                )
+            );
         }
 
         /// <summary>

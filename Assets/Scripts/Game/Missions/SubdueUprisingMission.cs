@@ -74,7 +74,8 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Extends base cancellation to also cancel when the uprising ends before execution.
+        /// Extends base cancellation to also cancel when the uprising ends or the target changes
+        /// ownership before execution.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The abort reason, or null when the mission may advance.</returns>
@@ -84,7 +85,10 @@ namespace Rebellion.Game.Missions
             if (reason.HasValue)
                 return reason;
 
-            return GetParent() is Planet p && p.IsInUprising
+            return
+                GetParent() is Planet p
+                && p.IsInUprising
+                && p.GetOwnerInstanceID() == OwnerInstanceID
                 ? null
                 : MissionCompletionReason.Failure;
         }

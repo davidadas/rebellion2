@@ -47,7 +47,7 @@ namespace Rebellion.Tests.Systems
 
             int completedSteps = system.ProcessTickIncrementally(results).Count();
 
-            Assert.AreEqual(4, completedSteps);
+            Assert.AreEqual(5, completedSteps);
             Assert.IsNotNull(fleet.Order);
             Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
         }

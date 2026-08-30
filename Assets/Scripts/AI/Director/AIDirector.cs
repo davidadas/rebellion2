@@ -52,6 +52,7 @@ namespace Rebellion.AI.Director
             _planetaryAssault = planetaryAssault;
             _turnPhases = new List<IAITurnPhase>
             {
+                new AIActiveMissionSafetyPhase(),
                 new AIPlanningPhase(),
                 new AIScoringPhase(),
                 new AISelectionPhase(),

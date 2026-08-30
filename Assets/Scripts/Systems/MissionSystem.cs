@@ -232,13 +232,16 @@ namespace Rebellion.Systems
         /// <returns>The calculated mission odds.</returns>
         public MissionOdds GetMissionOdds(
             Mission mission,
-            IEnumerable<IMissionParticipant> participants
+            IEnumerable<IMissionParticipant> participants,
+            Planet observedPlanet = null
         )
         {
             if (mission == null)
                 throw new ArgumentNullException(nameof(mission));
 
-            return mission.GetMissionOdds(participants, _game);
+            return observedPlanet == null
+                ? mission.GetMissionOdds(participants, _game)
+                : mission.GetMissionOdds(participants, observedPlanet, _game);
         }
 
         /// <summary>
@@ -541,7 +544,9 @@ namespace Rebellion.Systems
                 .ToList();
             if (completedResult != null)
                 completedResult.ReturnDestination = freeParticipants
-                    .Select(_movementManager.ResolveMissionReturnDestination)
+                    .Select(participant =>
+                        _movementManager.ResolveMissionReturnDestination(participant)
+                    )
                     .FirstOrDefault(destination => destination != null);
             List<IMovable> additionalPassengers = GetAdditionalReturnPassengers(
                     mission,
@@ -571,7 +576,11 @@ namespace Rebellion.Systems
                 missionPlanet
             );
             strandedUnits.AddRange(
-                _movementManager.ReturnFromMission(returnParticipants, additionalPassengers)
+                _movementManager.ReturnFromMission(
+                    returnParticipants,
+                    additionalPassengers,
+                    useFallbackDestination: completedResult == null
+                )
             );
             ResolveStrandedMissionUnits(strandedUnits, missionPlanet, results);
 

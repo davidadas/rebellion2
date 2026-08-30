@@ -8,6 +8,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
@@ -690,11 +691,13 @@ namespace Rebellion.Tests.AI.Planners
             );
             SpecialForces commandos = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
-                empire.InstanceID
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
             );
             SpecialForces spies = AITestSceneBuilder.CreateSpecialForces(
                 "spies",
-                empire.InstanceID
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
             );
             empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
             {
@@ -703,12 +706,14 @@ namespace Rebellion.Tests.AI.Planners
             };
             SpecialForces firstCommandos = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
-                empire.InstanceID
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
             );
             firstCommandos.InstanceID = "commandos-1";
             SpecialForces secondCommandos = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
-                empire.InstanceID
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
             );
             secondCommandos.InstanceID = "commandos-2";
             game.AttachNode(firstCommandos, planet);
@@ -1705,6 +1710,8 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.Selection.CapitalMaintenanceAllocationPercent = 30;
+            game.Config.AI.Selection.CapitalMaintenanceSafetyPercent = 90;
             game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 10;
             game.Config.AI.Selection.LocalDuplicatePenaltyPerSelection = 1000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -1965,7 +1972,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction =
                 minimumMaintenanceHeadroom;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "defense-system");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -2012,7 +2019,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction =
                 minimumMaintenanceHeadroom;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
             game.Config.AI.NonCapitalSummary.InteriorStarfighterBaselinePercent = 100;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "defense-system");
@@ -2212,8 +2219,6 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
-            game.Config.AI.Selection.CapitalMaintenanceAllocationPercent = 30;
-            game.Config.AI.Selection.CapitalMaintenanceSafetyPercent = 90;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "capital-system");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -2271,7 +2276,7 @@ namespace Rebellion.Tests.AI.Planners
         ) CreateFacilityUpgradeScene(int maintenanceBudgetOffset)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
             game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 20;

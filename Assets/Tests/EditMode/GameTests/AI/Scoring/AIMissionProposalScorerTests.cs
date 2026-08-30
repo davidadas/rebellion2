@@ -489,6 +489,7 @@ namespace Rebellion.Tests.AI.Scoring
                 "enemy",
                 rebels.InstanceID
             );
+            enemyPlanet.AddVisitor(empire.InstanceID);
             Officer actor = EntityFactory.CreateOfficer("actor", empire.InstanceID);
             actor.Ratings[OfficerRating.Combat] = 100;
             Officer weakTarget = EntityFactory.CreateOfficer("weak", rebels.InstanceID);
@@ -498,6 +499,7 @@ namespace Rebellion.Tests.AI.Scoring
             game.AttachNode(actor, origin);
             game.AttachNode(weakTarget, enemyPlanet);
             game.AttachNode(strongTarget, enemyPlanet);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemyPlanet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 
@@ -523,6 +525,88 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             Assert.Greater(weakTargetScore, strongTargetScore);
+        }
+
+        [Test]
+        public void Score_OfficerMissionAboveLossTolerance_ReturnsZero()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.AddVisitor(empire.InstanceID);
+            Building sabotageTarget = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Regiment detector = AITestSceneBuilder.CreateRegiment("detector", rebels.InstanceID);
+            detector.DetectionRating = 100;
+            game.AttachNode(detector, target);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.Ratings[OfficerRating.Espionage] = 0;
+            officer.Ratings[OfficerRating.Combat] = 0;
+            game.AttachNode(officer, origin);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 100 } };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int> { { 0, 0 } };
+            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 25;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionProposal proposal = new AIMissionProposal(
+                new[] { officer },
+                MissionTypeIDs.Sabotage,
+                target,
+                selectedTarget: sabotageTarget
+            );
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double score = scorer.Score(context, proposal);
+
+            Assert.AreEqual(0, score);
+            Assert.Greater(scorer.GetScoreUpperBound(context, proposal), 0);
+        }
+
+        [Test]
+        public void Score_OfficerMissionBelowLossTolerance_RemainsSelectable()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.AddVisitor(empire.InstanceID);
+            Building sabotageTarget = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Regiment detector = AITestSceneBuilder.CreateRegiment("detector", rebels.InstanceID);
+            detector.DetectionRating = 0;
+            game.AttachNode(detector, target);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.Ratings[OfficerRating.Espionage] = 100;
+            officer.Ratings[OfficerRating.Combat] = 100;
+            game.AttachNode(officer, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 0 } };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int> { { 0, 100 } };
+            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 25;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            double score = new AIMissionProposalScorer().Score(
+                context,
+                new AIMissionProposal(
+                    new[] { officer },
+                    MissionTypeIDs.Sabotage,
+                    target,
+                    selectedTarget: sabotageTarget
+                )
+            );
+
+            Assert.Greater(score, 0);
         }
 
         [Test]
@@ -572,6 +656,40 @@ namespace Rebellion.Tests.AI.Scoring
                     target,
                     selectedTarget: sabotageTarget
                 )
+            );
+
+            Assert.Greater(specialForcesScore, officerScore);
+        }
+
+        [Test]
+        public void Score_EnemyEspionageWithSpecialForcesTechnology_PrefersSpecialForces()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.AddVisitor(empire.InstanceID);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.Ratings[OfficerRating.Espionage] = 100;
+            SpecialForces specialForces = AITestSceneBuilder.CreateSpecialForces(
+                "spy",
+                empire.InstanceID
+            );
+            specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
+            specialForces.Ratings[OfficerRating.Espionage] = 100;
+            game.AttachNode(officer, origin);
+            game.AttachNode(specialForces, origin);
+            empire.RebuildResearchCatalog(new IManufacturable[] { specialForces });
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double officerScore = scorer.Score(
+                context,
+                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Espionage, target)
+            );
+            double specialForcesScore = scorer.Score(
+                context,
+                new AIMissionProposal(new[] { specialForces }, MissionTypeIDs.Espionage, target)
             );
 
             Assert.Greater(specialForcesScore, officerScore);

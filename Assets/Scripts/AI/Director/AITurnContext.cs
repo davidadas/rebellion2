@@ -3,7 +3,9 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -34,6 +36,8 @@ namespace Rebellion.AI.Director
         private readonly List<AIProposal> _proposals = new List<AIProposal>();
         private readonly List<AIProposal> _selectedProposals = new List<AIProposal>();
         private readonly List<GameResult> _results = new List<GameResult>();
+        private readonly Dictionary<string, MissionDetectionSnapshot> _missionDetectionSnapshots =
+            new Dictionary<string, MissionDetectionSnapshot>(System.StringComparer.Ordinal);
 
         /// <summary>
         /// Creates a turn context.
@@ -133,6 +137,39 @@ namespace Rebellion.AI.Director
 
             foreach (GameResult result in results)
                 AddResult(result);
+        }
+
+        /// <summary>
+        /// Calculates mission odds while reusing the target's detector snapshot for this AI turn.
+        /// </summary>
+        /// <param name="mission">The mission whose probability rules apply.</param>
+        /// <param name="participants">The primary participants being evaluated.</param>
+        /// <param name="observedPlanet">The faction-visible mission target.</param>
+        /// <returns>The calculated mission odds.</returns>
+        internal MissionOdds GetMissionOdds(
+            Mission mission,
+            IEnumerable<IMissionParticipant> participants,
+            Planet observedPlanet
+        )
+        {
+            if (mission == null)
+                throw new System.ArgumentNullException(nameof(mission));
+
+            if (observedPlanet == null)
+                return Missions.GetMissionOdds(mission, participants);
+
+            if (
+                !_missionDetectionSnapshots.TryGetValue(
+                    observedPlanet.InstanceID,
+                    out MissionDetectionSnapshot detectionSnapshot
+                )
+            )
+            {
+                detectionSnapshot = mission.GetDetectionSnapshot(observedPlanet);
+                _missionDetectionSnapshots.Add(observedPlanet.InstanceID, detectionSnapshot);
+            }
+
+            return mission.GetMissionOdds(participants, detectionSnapshot, Game);
         }
     }
 }

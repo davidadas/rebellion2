@@ -2053,13 +2053,33 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void TearDownMission_RecordedPlanetCaptured_CapturesOfficerAtMissionPlanet()
+        public void UpdateMission_DiplomacyTargetCaptured_ReturnsOfficerToNearestFriendlyPlanet()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
-            StubMission mission = CreateMission(game, planet, officer);
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly-planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(friendlyPlanet, planet.GetParent());
+            planet.AddVisitor("empire");
+            planet.SetPopularSupport("empire", 50);
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Diplomacy,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            mission.Initiate(0);
             officer.MissionReturnParentInstanceID = planet.InstanceID;
             officer.MissionReturnLocationInstanceID = planet.InstanceID;
             game.MoveNode(officer, mission);
@@ -2072,14 +2092,11 @@ namespace Rebellion.Tests.Sectors
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(officer.IsCaptured);
-            Assert.AreEqual("rebels", officer.CaptorInstanceID);
-            Assert.AreSame(planet, officer.GetParent());
-            Assert.IsTrue(
-                results
-                    .OfType<OfficerCaptureStateResult>()
-                    .Any(result => ReferenceEquals(result.TargetOfficer, officer))
-            );
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.AreSame(friendlyPlanet, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
         }
 
         [Test]

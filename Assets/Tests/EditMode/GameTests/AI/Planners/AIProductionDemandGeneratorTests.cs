@@ -7,6 +7,7 @@ using Rebellion.AI.Planners.Demand;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
@@ -141,7 +142,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithOnlyStaticDefenseEnergyRemaining_DoesNotAddEconomyDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             AITestSceneBuilder.AddPlanet(
                 game,
@@ -165,7 +166,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithOnlyStaticDefenseEnergyRemaining_DoesNotAddFacilityExpansion()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             int staticDefenseEnergy =
                 game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
                 + game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
@@ -211,7 +212,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithReservedHubAndEligibleWorld_TargetsEligibleWorldForExpansion()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             int staticDefenseEnergy =
                 game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
                 + game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
@@ -467,7 +468,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithStaticDefenseDemand_AddsConstructionFacilityDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -558,7 +559,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithIdleTrainingFacility_DoesNotAddTrainingFacilityDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet hub = AITestSceneBuilder.AddPlanet(
                 game,
@@ -581,6 +582,82 @@ namespace Rebellion.Tests.AI.Planners
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.TrainingFacility));
+        }
+
+        [Test]
+        public void Generate_WithFacilityCountBelowPlanetFloor_AddsFacilityDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-hub",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                hub,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            for (
+                int index = 1;
+                index < game.Config.AI.Infrastructure.PlanetsPerShipyard + 1;
+                index++
+            )
+            {
+                AITestSceneBuilder.AddPlanet(game, system, $"colony-{index}", empire.InstanceID);
+            }
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsTrue(demands.Any(item => item.Kind == AIDemandKind.Shipyard));
+        }
+
+        [Test]
+        public void Generate_WithPendingFacilityMeetingPlanetFloor_DoesNotAddFacilityDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-hub",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                hub,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Building pendingShipyard = AITestSceneBuilder.AddProductionFacility(
+                game,
+                hub,
+                "pending-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            pendingShipyard.ManufacturingStatus = ManufacturingStatus.Building;
+            for (
+                int index = 1;
+                index < game.Config.AI.Infrastructure.PlanetsPerShipyard + 1;
+                index++
+            )
+            {
+                AITestSceneBuilder.AddPlanet(game, system, $"colony-{index}", empire.InstanceID);
+            }
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.Shipyard));
         }
 
         [Test]
@@ -1004,7 +1081,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1050,7 +1127,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithCompleteInfrastructureStarfighterReserve_SuppressesDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1095,7 +1172,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithOrdinaryUnthreatenedPlanet_SuppressesStarfighterDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1121,7 +1198,7 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
             game.Config.AI.NonCapitalSummary.InteriorStarfighterBaselinePercent = 100;
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1167,7 +1244,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet infrastructure = AITestSceneBuilder.AddPlanet(
                 game,
@@ -2176,7 +2253,8 @@ namespace Rebellion.Tests.AI.Planners
             );
             SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
-                empire.InstanceID
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
             );
             empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
             {
@@ -2191,9 +2269,140 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual("commandos", demand.ProductTypeId);
             Assert.AreSame(planet, demand.DestinationPlanet);
             Assert.AreEqual(
-                game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType,
+                game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole,
                 demand.QuantityNeeded
             );
+        }
+
+        [Test]
+        public void Generate_WithEquivalentSpecialForcesTemplates_AddsOneRoleDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            AITestSceneBuilder.AddPlanet(game, system, "training-world", empire.InstanceID);
+            SpecialForces expensiveTemplate = AITestSceneBuilder.CreateSpecialForces(
+                "expensive-commandos",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage,
+                MissionTypeIDs.InciteUprising
+            );
+            expensiveTemplate.ConstructionCost = 2;
+            SpecialForces cheapTemplate = AITestSceneBuilder.CreateSpecialForces(
+                "cheap-commandos",
+                empire.InstanceID,
+                MissionTypeIDs.InciteUprising,
+                MissionTypeIDs.Sabotage
+            );
+            empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
+            {
+                new Technology(expensiveTemplate),
+                new Technology(cheapTemplate),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIDemandKind.SpecialForces);
+
+            Assert.AreEqual("cheap-commandos", demand.ProductTypeId);
+            Assert.AreEqual(
+                game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole,
+                demand.QuantityNeeded
+            );
+        }
+
+        [Test]
+        public void Generate_WithBusySpecialForcesAtTarget_AddsReadyReserveDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 1;
+            game.Config.AI.Infrastructure.SpecialForcesReadyReservePerRole = 1;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "training-world",
+                empire.InstanceID
+            );
+            SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
+                "commandos",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
+            {
+                new Technology(template),
+            };
+            SpecialForces busyUnit = AITestSceneBuilder.CreateSpecialForces(
+                "commandos",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            busyUnit.InstanceID = "busy-commandos";
+            StubMission mission = EntityFactory.CreateMission(
+                "active-sabotage",
+                empire.InstanceID,
+                planet.InstanceID
+            );
+            game.AttachNode(mission, planet);
+            game.AttachNode(busyUnit, mission);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIDemandKind.SpecialForces);
+
+            Assert.AreEqual(1, demand.QuantityNeeded);
+        }
+
+        [Test]
+        public void Generate_WithBusySpecialForcesAndReplacementBuilding_DoesNotDuplicateReserveDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 1;
+            game.Config.AI.Infrastructure.SpecialForcesReadyReservePerRole = 1;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "training-world",
+                empire.InstanceID
+            );
+            SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
+                "commandos",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
+            {
+                new Technology(template),
+            };
+            SpecialForces busyUnit = AITestSceneBuilder.CreateSpecialForces(
+                "commandos",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            busyUnit.InstanceID = "busy-commandos";
+            StubMission mission = EntityFactory.CreateMission(
+                "active-sabotage",
+                empire.InstanceID,
+                planet.InstanceID
+            );
+            game.AttachNode(mission, planet);
+            game.AttachNode(busyUnit, mission);
+            SpecialForces buildingUnit = AITestSceneBuilder.CreateSpecialForces(
+                "commandos",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            buildingUnit.InstanceID = "building-commandos";
+            buildingUnit.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(buildingUnit, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.SpecialForces));
         }
 
         [Test]

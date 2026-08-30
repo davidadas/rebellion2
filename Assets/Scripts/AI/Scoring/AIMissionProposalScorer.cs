@@ -46,9 +46,22 @@ namespace Rebellion.AI.Scoring
             if (!TryCreateMission(context, missionProposal, out Mission mission))
                 return 0;
 
-            double successProbability = context
-                .Missions.GetMissionOdds(mission, missionProposal.MainParticipants)
-                .SuccessProbability;
+            MissionOdds odds = context.GetMissionOdds(
+                mission,
+                missionProposal.MainParticipants,
+                missionProposal.TargetPlanet
+            );
+            if (
+                !AIMissionRiskPolicy.AllowsMission(
+                    context,
+                    mission,
+                    missionProposal.TargetPlanet,
+                    odds
+                )
+            )
+                return 0;
+
+            double successProbability = odds.SuccessProbability;
             double score = GetMissionScore(context, missionProposal, successProbability);
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
             score -= GetTravelPenalty(context, missionProposal);
@@ -230,7 +243,11 @@ namespace Rebellion.AI.Scoring
         /// <returns>The calculated value.</returns>
         private int GetOfficerReplacementPenalty(AITurnContext context, AIMissionProposal proposal)
         {
-            if (proposal.Participant is not Officer || !IsHostileMission(proposal.MissionTypeID))
+            if (
+                proposal.Participant is not Officer
+                || proposal.TargetPlanet?.GetOwnerInstanceID() == null
+                || proposal.TargetPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
+            )
                 return 0;
 
             bool hasSpecialForcesReplacement = context
@@ -241,19 +258,6 @@ namespace Rebellion.AI.Scoring
             return hasSpecialForcesReplacement
                 ? context.Game.Config.AI.MissionPlanning.HostileOfficerReplacementPenalty
                 : 0;
-        }
-
-        /// <summary>
-        /// Returns whether hostile mission.
-        /// </summary>
-        /// <param name="missionTypeId">The mission type identifier.</param>
-        /// <returns>True when the condition is satisfied.</returns>
-        private bool IsHostileMission(string missionTypeId)
-        {
-            return missionTypeId == MissionTypeIDs.Sabotage
-                || missionTypeId == MissionTypeIDs.Abduction
-                || missionTypeId == MissionTypeIDs.Assassination
-                || missionTypeId == MissionTypeIDs.InciteUprising;
         }
 
         /// <summary>

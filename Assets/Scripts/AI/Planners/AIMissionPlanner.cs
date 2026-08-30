@@ -498,8 +498,7 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Selects one qualified participant to protect a hostile mission from detection,
-        /// preferring renewable special forces before committing officers.
+        /// Selects one qualified special-forces unit to protect a mission from detection.
         /// </summary>
         /// <param name="availableParticipants">Participants available during this planning turn.</param>
         /// <param name="mainParticipant">The participant performing the mission.</param>
@@ -517,14 +516,14 @@ namespace Rebellion.AI.Planners
             if (!_decoyCandidates.TryGetValue(key, out List<IMissionParticipant> candidates))
             {
                 candidates = availableParticipants
+                    .OfType<SpecialForces>()
                     .Where(candidate => candidate.CanPerformMission(missionTypeId))
-                    .OrderBy(candidate => candidate is SpecialForces ? 0 : 1)
-                    .ThenBy(candidate => candidate is Officer { IsMain: true } ? 1 : 0)
-                    .ThenByDescending(candidate =>
+                    .OrderByDescending(candidate =>
                         candidate.GetEffectiveRating(OfficerRating.Espionage)
                     )
                     .ThenBy(candidate => GetTravelDistance(candidate, target))
                     .ThenBy(candidate => candidate.InstanceID)
+                    .Cast<IMissionParticipant>()
                     .ToList();
                 _decoyCandidates.Add(key, candidates);
             }
