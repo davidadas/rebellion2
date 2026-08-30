@@ -435,6 +435,32 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void SetNodeState_InactiveMissionParticipant_DoesNotDisableOfficer()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = "mission",
+                OwnerInstanceID = "rebels",
+                LocationInstanceID = rebelPlanet.InstanceID,
+            };
+            game.AttachNode(officer, rebelPlanet);
+            game.AttachNode(mission, rebelPlanet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(100);
+
+            new SetNodeStateAction
+            {
+                InstanceID = officer.InstanceID,
+                State = SceneNodeState.Inactive,
+            }.Execute(game);
+
+            Assert.AreSame(mission, officer.GetParent());
+            Assert.IsTrue(officer.IsActive());
+        }
+
+        [Test]
         public void SetNodeState_Selector_DisablesEveryMatchingOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);

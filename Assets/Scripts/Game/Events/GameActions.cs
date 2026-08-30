@@ -2399,7 +2399,23 @@ namespace Rebellion.Game.Events
                 );
 
             foreach (ISceneNode node in nodes)
+            {
+                if (
+                    State == SceneNodeState.Inactive
+                    && node is IMissionParticipant
+                    && node.GetParent() is Mission mission
+                    && mission.GetParent() != null
+                )
+                {
+                    GameLogger.Warning(
+                        $"SetNodeState ignored deactivation of mission participant "
+                            + $"'{node.InstanceID}' on active mission '{mission.InstanceID}'."
+                    );
+                    continue;
+                }
+
                 node.IsEnabled = State == SceneNodeState.Active;
+            }
             return;
         }
     }
