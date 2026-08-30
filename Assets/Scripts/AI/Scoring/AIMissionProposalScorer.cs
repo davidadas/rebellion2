@@ -15,8 +15,6 @@ namespace Rebellion.AI.Scoring
     /// </summary>
     public sealed class AIMissionProposalScorer : IAIProposalScorer
     {
-        private const double _maximumSuccessProbability = 100;
-
         /// <summary>
         /// Returns whether this scorer can score the proposal.
         /// </summary>
@@ -79,7 +77,8 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Returns the highest score a mission proposal can achieve before its odds are resolved.
+        /// Returns the highest score a mission proposal can achieve before personnel risk is
+        /// resolved.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The mission proposal to inspect.</param>
@@ -89,7 +88,13 @@ namespace Rebellion.AI.Scoring
             if (context?.Game?.Config == null || proposal == null)
                 return 0;
 
-            double score = GetMissionScore(context, proposal, _maximumSuccessProbability);
+            if (!TryCreateMission(context, proposal, out Mission mission))
+                return 0;
+
+            double successProbability = context
+                .Missions.GetMissionOdds(mission, proposal.MainParticipants)
+                .SuccessProbability;
+            double score = GetMissionScore(context, proposal, successProbability);
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, proposal);
             score -= GetTravelPenalty(context, proposal);
             score -= GetOfficerReplacementPenalty(context, proposal);
