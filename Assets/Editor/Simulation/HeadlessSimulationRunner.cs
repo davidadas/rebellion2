@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Rebellion.AI.Director;
@@ -140,12 +141,17 @@ public static class HeadlessSimulationRunner
             activityTracker.RecordInitialState(game);
             personnelOutcomeTracker.RecordInitialState(game);
             specialForcesLifecycleTracker.RecordInitialState(game, initialSpecialForces);
+            long gameProcessingTimestampCount = 0;
+            long diagnosticTimestampCount = 0;
 
             for (int i = 0; i < options.TickCount && victory == null; i++)
             {
                 if (i % 25 == 0)
                     LogToFile(logPath, $"[HeadlessSim] tick {i}");
+                long startTimestamp = Stopwatch.GetTimestamp();
                 manager.ProcessTick();
+                gameProcessingTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                startTimestamp = Stopwatch.GetTimestamp();
                 List<SpecialForces> currentSpecialForces = game.GetSceneNodesByType<SpecialForces>()
                     .ToList();
                 idleTracker.RecordTick(game);
@@ -155,9 +161,14 @@ public static class HeadlessSimulationRunner
                 personnelOutcomeTracker.RecordTick(game);
                 specialForcesLifecycleTracker.RecordTick(game, currentSpecialForces);
                 attackReadinessTracker.RecordTick(game);
+                diagnosticTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
             }
 
             specialForcesLifecycleTracker.RecordFinalState(game);
+            LogToFile(
+                logPath,
+                $"[HeadlessSim] timing game={GetElapsedSeconds(gameProcessingTimestampCount):F3}s diagnostics={GetElapsedSeconds(diagnosticTimestampCount):F3}s"
+            );
             string savePath = SaveSimulation(game, options);
             SimulationSummary report = BuildSimulationSummary(
                 game,
@@ -280,6 +291,14 @@ public static class HeadlessSimulationRunner
     {
         File.AppendAllText(logPath, message + Environment.NewLine);
     }
+
+    /// <summary>
+    /// Converts high-resolution timestamp counts to elapsed seconds.
+    /// </summary>
+    /// <param name="timestampCount">The accumulated timestamp count.</param>
+    /// <returns>The corresponding elapsed seconds.</returns>
+    private static double GetElapsedSeconds(long timestampCount) =>
+        timestampCount / (double)Stopwatch.Frequency;
 
     /// <summary>
     /// Builds the JSON summary for a completed simulation.
