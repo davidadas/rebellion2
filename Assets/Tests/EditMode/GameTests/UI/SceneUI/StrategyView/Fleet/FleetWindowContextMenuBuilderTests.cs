@@ -325,7 +325,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void Build_OfficerSelection_ReturnsCommandAndPersonnelOperations()
+        public void Build_OfficerSelection_ReturnsPersonnelOperations()
         {
             Officer officer = new Officer();
 
@@ -343,7 +343,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     StrategyMenuAction.Move,
                     StrategyMenuAction.MoveConfirm,
                     StrategyMenuAction.CreateMission,
-                    StrategyMenuAction.None,
                     StrategyMenuAction.Encyclopedia,
                     StrategyMenuAction.Status,
                     StrategyMenuAction.Retire,
@@ -355,7 +354,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void Build_SpecialForcesSelection_OmitsOfficerCommandOperation()
+        public void Build_SpecialForcesSelection_ReturnsPersonnelOperations()
         {
             SpecialForces specialForces = new SpecialForces();
 
