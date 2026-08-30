@@ -21,12 +21,30 @@ namespace Rebellion.Game.Events
         internal abstract void Execute(GameActionContext context);
 
         /// <summary>
-        /// Executes an ordered action collection against one shared action context.
+        /// Executes an ordered action collection, logging failed actions before continuing with
+        /// the remaining work.
         /// </summary>
+        /// <param name="actions">The actions to execute in authored order.</param>
+        /// <param name="context">The shared event activation context.</param>
         internal static void ExecuteAll(IEnumerable<GameAction> actions, GameActionContext context)
         {
             foreach (GameAction action in actions ?? Enumerable.Empty<GameAction>())
-                action.Execute(context);
+            {
+                try
+                {
+                    action.Execute(context);
+                }
+                catch (Exception exception)
+                {
+                    string eventInstanceId =
+                        context?.Evaluation?.Event?.InstanceID ?? "unknown";
+                    string actionName = action?.GetType().Name ?? "null";
+                    GameLogger.Log(
+                        $"Event '{eventInstanceId}' action '{actionName}' failed: {exception}",
+                        GameLogger.LogLevel.Error
+                    );
+                }
+            }
         }
     }
 
