@@ -41,8 +41,8 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Evaluates queued candidates in descending score-bound order and retains the strongest
-        /// candidates that satisfy officer-risk policy.
+        /// Scores queued candidates cheaply and retains the strongest candidates that satisfy
+        /// officer-risk policy.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposals">The proposal collection receiving retained candidates.</param>
@@ -54,44 +54,25 @@ namespace Rebellion.AI.Planners
             );
             foreach (List<AIMissionProposal> alternatives in _alternatives.Values)
             {
-                List<AIMissionProposal> retained = new List<AIMissionProposal>();
+                foreach (AIMissionProposal proposal in alternatives)
+                    proposal.SetScore(_scorer.Score(context, proposal));
+
+                int retained = 0;
                 foreach (
-                    var candidate in alternatives
-                        .Select(proposal =>
-                            (
-                                Proposal: proposal,
-                                UpperBound: _scorer.GetScoreUpperBound(context, proposal)
-                            )
-                        )
-                        .OrderByDescending(candidate => candidate.UpperBound)
-                        .ThenBy(
-                            candidate => candidate.Proposal.GetSortKey(),
-                            StringComparer.Ordinal
-                        )
+                    AIMissionProposal proposal in alternatives
+                        .Where(proposal => proposal.Score > 0 || proposal.CanExecute(context))
+                        .OrderByDescending(proposal => proposal.Score)
+                        .ThenBy(proposal => proposal.GetSortKey(), StringComparer.Ordinal)
                 )
                 {
-                    AIMissionProposal weakest = GetWeakest(retained);
-                    if (
-                        retained.Count >= retainedAlternatives
-                        && candidate.UpperBound < weakest.Score
-                    )
-                        break;
-
-                    AIMissionProposal proposal = candidate.Proposal;
-                    proposal.SetScore(_scorer.Score(context, proposal));
-                    if (proposal.Score <= 0 && !proposal.CanExecute(context))
-                        continue;
-
                     if (!_scorer.AllowsPersonnelRisk(context, proposal))
                         continue;
 
-                    retained.Add(proposal);
-                    if (retained.Count > retainedAlternatives)
-                        retained.Remove(GetWeakest(retained));
-                }
-
-                foreach (AIMissionProposal proposal in retained)
                     proposals.Add(proposal);
+                    retained++;
+                    if (retained >= retainedAlternatives)
+                        break;
+                }
             }
 
             _alternatives.Clear();
@@ -115,19 +96,6 @@ namespace Rebellion.AI.Planners
             }
 
             return alternatives;
-        }
-
-        /// <summary>
-        /// Returns the weakest retained proposal using deterministic tie-breaking.
-        /// </summary>
-        /// <param name="alternatives">The alternatives to inspect.</param>
-        /// <returns>The weakest proposal, or null when the collection is empty.</returns>
-        private static AIMissionProposal GetWeakest(IEnumerable<AIMissionProposal> alternatives)
-        {
-            return alternatives
-                .OrderBy(proposal => proposal.Score)
-                .ThenByDescending(proposal => proposal.GetSortKey(), StringComparer.Ordinal)
-                .FirstOrDefault();
         }
     }
 }
