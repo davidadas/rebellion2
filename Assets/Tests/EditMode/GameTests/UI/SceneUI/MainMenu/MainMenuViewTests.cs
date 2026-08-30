@@ -360,17 +360,31 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void ExitLever_PointerUp_RaisesExitAudioCue()
+        public void ExitLever_PointerDown_RaisesExitAudioCue()
         {
             string requestedPath = null;
             _view.AudioCueRequested += path => requestedPath = path;
 
             InvokeTrigger(
                 GetField<Button>("exitButton").GetComponent<EventTrigger>(),
+                EventTriggerType.PointerDown
+            );
+
+            Assert.AreEqual("Application/MainMenu/Audio/faction-select", requestedPath);
+        }
+
+        [Test]
+        public void ExitLever_PointerUp_DoesNotRaiseAudioCue()
+        {
+            int cueCount = 0;
+            _view.AudioCueRequested += _ => cueCount++;
+
+            InvokeTrigger(
+                GetField<Button>("exitButton").GetComponent<EventTrigger>(),
                 EventTriggerType.PointerUp
             );
 
-            Assert.AreEqual("Application/MainMenu/Audio/exit-select", requestedPath);
+            Assert.AreEqual(0, cueCount);
         }
 
         [Test]
@@ -381,7 +395,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 {
                     "Application/MainMenu/Audio/select",
                     "Application/MainMenu/Audio/galaxysize-select",
-                    "Application/MainMenu/Audio/exit-select",
                     "Application/MainMenu/Audio/faction-select",
                 },
                 _view.GetAudioCuePaths()
