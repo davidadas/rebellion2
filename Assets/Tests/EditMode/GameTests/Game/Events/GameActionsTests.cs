@@ -435,7 +435,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetNodeState_InactiveMissionParticipant_DoesNotDisableOfficer()
+        public void SetNodeState_InactiveMissionParticipant_ThrowsInvalidOperationException()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
@@ -450,12 +450,13 @@ namespace Rebellion.Tests.Game.Events
             game.MoveNode(officer, mission);
             mission.Initiate(100);
 
-            new SetNodeStateAction
+            TestDelegate execute = () => new SetNodeStateAction
             {
                 InstanceID = officer.InstanceID,
                 State = SceneNodeState.Inactive,
             }.Execute(game);
 
+            Assert.Throws<InvalidOperationException>(execute);
             Assert.AreSame(mission, officer.GetParent());
             Assert.IsTrue(officer.IsActive());
         }
