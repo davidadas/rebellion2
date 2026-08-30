@@ -46,20 +46,28 @@ namespace Rebellion.AI.Scoring
             if (!TryCreateMission(context, missionProposal, out Mission mission))
                 return 0;
 
-            MissionOdds odds = context.GetMissionOdds(
-                mission,
-                missionProposal.MainParticipants,
-                missionProposal.TargetPlanet
-            );
-            if (
-                !AIMissionRiskPolicy.AllowsMission(
-                    context,
+            MissionOdds odds;
+            if (missionProposal.MainParticipants.OfType<Officer>().Any())
+            {
+                odds = context.GetMissionOdds(
                     mission,
-                    missionProposal.TargetPlanet,
-                    odds
+                    missionProposal.MainParticipants,
+                    missionProposal.TargetPlanet
+                );
+                if (
+                    !AIMissionRiskPolicy.AllowsMission(
+                        context,
+                        mission,
+                        missionProposal.TargetPlanet,
+                        odds
+                    )
                 )
-            )
-                return 0;
+                    return 0;
+            }
+            else
+            {
+                odds = context.Missions.GetMissionOdds(mission, missionProposal.MainParticipants);
+            }
 
             double successProbability = odds.SuccessProbability;
             double score = GetMissionScore(context, missionProposal, successProbability);
