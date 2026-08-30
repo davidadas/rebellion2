@@ -133,23 +133,27 @@ public static class HeadlessSimulationRunner
             VictoryResult victory = null;
             manager.PlanetaryAssaultsResolved += planetaryAssaultTracker.Record;
             manager.VictoriesResolved += results => victory ??= results.FirstOrDefault();
-            manufacturedUnitTracker.RecordInitialState(game);
+            List<SpecialForces> initialSpecialForces = game.GetSceneNodesByType<SpecialForces>()
+                .ToList();
+            manufacturedUnitTracker.RecordInitialState(game, initialSpecialForces);
             fleetHistoryTracker.RecordTick(game);
             activityTracker.RecordInitialState(game);
             personnelOutcomeTracker.RecordInitialState(game);
-            specialForcesLifecycleTracker.RecordInitialState(game);
+            specialForcesLifecycleTracker.RecordInitialState(game, initialSpecialForces);
 
             for (int i = 0; i < options.TickCount && victory == null; i++)
             {
                 if (i % 25 == 0)
                     LogToFile(logPath, $"[HeadlessSim] tick {i}");
                 manager.ProcessTick();
+                List<SpecialForces> currentSpecialForces = game.GetSceneNodesByType<SpecialForces>()
+                    .ToList();
                 idleTracker.RecordTick(game);
-                manufacturedUnitTracker.RecordTick(game);
+                manufacturedUnitTracker.RecordTick(game, currentSpecialForces);
                 fleetHistoryTracker.RecordTick(game);
                 activityTracker.RecordTick(game);
                 personnelOutcomeTracker.RecordTick(game);
-                specialForcesLifecycleTracker.RecordTick(game);
+                specialForcesLifecycleTracker.RecordTick(game, currentSpecialForces);
                 attackReadinessTracker.RecordTick(game);
             }
 
@@ -1575,10 +1579,11 @@ public static class HeadlessSimulationRunner
         {
             _knownOfficers.Clear();
             _officers.Clear();
+            HashSet<string> abductionTargetIds = GetAbductionTargetIds(game);
             foreach (Officer officer in game.GetSceneNodesByType<Officer>())
             {
                 _knownOfficers[officer.InstanceID] = officer;
-                _officers[officer.InstanceID] = TrackedOfficer.From(officer, game);
+                _officers[officer.InstanceID] = TrackedOfficer.From(officer, abductionTargetIds);
             }
         }
 
@@ -1590,6 +1595,7 @@ public static class HeadlessSimulationRunner
         {
             Dictionary<string, Officer> currentOfficers = game.GetSceneNodesByType<Officer>()
                 .ToDictionary(officer => officer.InstanceID, StringComparer.Ordinal);
+            HashSet<string> abductionTargetIds = GetAbductionTargetIds(game);
             foreach (Officer officer in currentOfficers.Values)
                 _knownOfficers[officer.InstanceID] = officer;
 
@@ -1633,7 +1639,20 @@ public static class HeadlessSimulationRunner
 
             _officers.Clear();
             foreach (Officer officer in currentOfficers.Values)
-                _officers[officer.InstanceID] = TrackedOfficer.From(officer, game);
+                _officers[officer.InstanceID] = TrackedOfficer.From(officer, abductionTargetIds);
+        }
+
+        /// <summary>
+        /// Indexes officers currently targeted by active abduction missions.
+        /// </summary>
+        /// <param name="game">The game containing active missions.</param>
+        /// <returns>The targeted officer instance identifiers.</returns>
+        private static HashSet<string> GetAbductionTargetIds(GameRoot game)
+        {
+            return game.GetSceneNodesByType<AbductionMission>()
+                .Select(mission => mission.TargetOfficerInstanceID)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToHashSet(StringComparer.Ordinal);
         }
 
         /// <summary>
@@ -1722,9 +1741,9 @@ public static class HeadlessSimulationRunner
             /// Captures the state needed to compare an officer across simulation ticks.
             /// </summary>
             /// <param name="officer">The officer to record.</param>
-            /// <param name="game">The game containing active targeted missions.</param>
+            /// <param name="abductionTargetIds">Officers targeted by active abductions.</param>
             /// <returns>The tracked officer state.</returns>
-            public static TrackedOfficer From(Officer officer, GameRoot game)
+            public static TrackedOfficer From(Officer officer, ISet<string> abductionTargetIds)
             {
                 Mission mission = officer.GetParentOfType<Mission>();
                 return new TrackedOfficer
@@ -1735,8 +1754,7 @@ public static class HeadlessSimulationRunner
                     IsCaptured = officer.IsCaptured,
                     IsKilled = officer.IsKilled,
                     WasOnMission = officer.IsOnMission(),
-                    WasAbductionTarget = game.GetSceneNodesByType<AbductionMission>()
-                        .Any(mission => mission.TargetOfficerInstanceID == officer.InstanceID),
+                    WasAbductionTarget = abductionTargetIds.Contains(officer.InstanceID),
                     PlanetOwnerInstanceId = officer.GetParentOfType<Planet>()?.GetOwnerInstanceID(),
                     MissionTypeId = mission?.GetTypeID(),
                     MissionRole =
@@ -1804,29 +1822,35 @@ public static class HeadlessSimulationRunner
         /// Records the initial special-forces inventory and availability.
         /// </summary>
         /// <param name="game">The initial game state.</param>
-        public void RecordInitialState(GameRoot game)
+        /// <param name="specialForces">The shared initial special-forces snapshot.</param>
+        public void RecordInitialState(
+            GameRoot game,
+            IReadOnlyCollection<SpecialForces> specialForces
+        )
         {
             _units.Clear();
             _counts.Clear();
-            foreach (SpecialForces unit in game.GetSceneNodesByType<SpecialForces>())
+            foreach (SpecialForces unit in specialForces)
             {
                 TrackedSpecialForces tracked = TrackedSpecialForces.From(unit);
                 _units[tracked.InstanceId] = tracked;
                 GetCounts(tracked.OwnerInstanceId, tracked.TypeId).InitialCount++;
             }
 
-            RecordAvailability(game);
+            RecordAvailability(game, specialForces);
         }
 
         /// <summary>
         /// Records special-forces creation, removal, and availability for one tick.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        public void RecordTick(GameRoot game)
+        /// <param name="specialForces">The shared current special-forces snapshot.</param>
+        public void RecordTick(GameRoot game, IReadOnlyCollection<SpecialForces> specialForces)
         {
-            Dictionary<string, SpecialForces> currentUnits =
-                game.GetSceneNodesByType<SpecialForces>()
-                    .ToDictionary(unit => unit.InstanceID, StringComparer.Ordinal);
+            Dictionary<string, SpecialForces> currentUnits = specialForces.ToDictionary(
+                unit => unit.InstanceID,
+                StringComparer.Ordinal
+            );
 
             foreach (TrackedSpecialForces previous in _units.Values)
             {
@@ -1850,7 +1874,7 @@ public static class HeadlessSimulationRunner
             }
 
             if (game.CurrentTick % _availabilitySampleInterval == 0)
-                RecordAvailability(game);
+                RecordAvailability(game, specialForces);
         }
 
         /// <summary>
@@ -1861,7 +1885,7 @@ public static class HeadlessSimulationRunner
         public void RecordFinalState(GameRoot game)
         {
             if (game.CurrentTick != _lastAvailabilitySampleTick)
-                RecordAvailability(game);
+                RecordAvailability(game, game.GetSceneNodesByType<SpecialForces>().ToList());
         }
 
         /// <summary>
@@ -1882,7 +1906,11 @@ public static class HeadlessSimulationRunner
         /// Samples the current state of every known special-forces type.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        private void RecordAvailability(GameRoot game)
+        /// <param name="specialForces">The shared current special-forces snapshot.</param>
+        private void RecordAvailability(
+            GameRoot game,
+            IReadOnlyCollection<SpecialForces> specialForces
+        )
         {
             _lastAvailabilitySampleTick = game.CurrentTick;
             foreach (Faction faction in game.GetFactions())
@@ -1892,8 +1920,9 @@ public static class HeadlessSimulationRunner
                     .OfType<SpecialForces>()
                     .Select(unit => unit.InstanceID)
                     .ToHashSet(StringComparer.Ordinal);
-                List<SpecialForces> factionUnits =
-                    game.GetSceneNodesByOwnerInstanceID<SpecialForces>(faction.InstanceID).ToList();
+                List<SpecialForces> factionUnits = specialForces
+                    .Where(unit => unit.OwnerInstanceID == faction.InstanceID)
+                    .ToList();
 
                 IEnumerable<string> typeIds = faction
                     .GetUnlockedTechnologies(ManufacturingType.Troop)
@@ -2843,7 +2872,11 @@ public static class HeadlessSimulationRunner
         /// Records units present before simulation ticks are processed.
         /// </summary>
         /// <param name="game">The game state to inspect.</param>
-        public void RecordInitialState(GameRoot game)
+        /// <param name="specialForces">The shared initial special-forces snapshot.</param>
+        public void RecordInitialState(
+            GameRoot game,
+            IReadOnlyCollection<SpecialForces> specialForces
+        )
         {
             RecordSeenOnly(
                 game.GetSceneNodesByType<CapitalShip>().Where(IsComplete),
@@ -2854,10 +2887,7 @@ public static class HeadlessSimulationRunner
                 _seenStarfighters
             );
             RecordSeenOnly(game.GetSceneNodesByType<Regiment>().Where(IsComplete), _seenRegiments);
-            RecordSeenOnly(
-                game.GetSceneNodesByType<SpecialForces>().Where(IsComplete),
-                _seenSpecialForces
-            );
+            RecordSeenOnly(specialForces.Where(IsComplete), _seenSpecialForces);
             RecordSeenOnly(game.GetSceneNodesByType<Building>().Where(IsComplete), _seenBuildings);
         }
 
@@ -2865,7 +2895,8 @@ public static class HeadlessSimulationRunner
         /// Records units created during the current simulation tick.
         /// </summary>
         /// <param name="game">The game state to inspect.</param>
-        public void RecordTick(GameRoot game)
+        /// <param name="specialForces">The shared current special-forces snapshot.</param>
+        public void RecordTick(GameRoot game, IReadOnlyCollection<SpecialForces> specialForces)
         {
             RecordNewUnits(
                 game.GetSceneNodesByType<CapitalShip>(),
@@ -2886,7 +2917,7 @@ public static class HeadlessSimulationRunner
                 counts => counts.Regiments++
             );
             RecordNewUnits(
-                game.GetSceneNodesByType<SpecialForces>(),
+                specialForces,
                 _seenSpecialForces,
                 "SpecialForces",
                 counts => counts.SpecialForces++
@@ -2983,6 +3014,7 @@ public static class HeadlessSimulationRunner
         /// <typeparam name="T">The scene node type to record.</typeparam>
         /// <param name="units">The units to inspect.</param>
         /// <param name="seen">The set used to detect new unit IDs.</param>
+        /// <param name="category">The manufactured unit category.</param>
         /// <param name="increment">The count update to apply.</param>
         private void RecordNewUnits<T>(
             IEnumerable<T> units,
@@ -3090,8 +3122,10 @@ public static class HeadlessSimulationRunner
         public int SpecialForces;
         public int Buildings;
         public Dictionary<BuildingType, int> BuildingsByType = new Dictionary<BuildingType, int>();
-        public Dictionary<string, ManufacturedUnitTypeSummary> UnitsByType =
-            new Dictionary<string, ManufacturedUnitTypeSummary>(StringComparer.Ordinal);
+        public Dictionary<string, ManufacturedUnitTypeSummary> UnitsByType = new Dictionary<
+            string,
+            ManufacturedUnitTypeSummary
+        >(StringComparer.Ordinal);
 
         /// <summary>
         /// Records one completed manufactured unit by category and content type.

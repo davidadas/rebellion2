@@ -565,7 +565,7 @@ namespace Rebellion.Game.Missions
         /// detection pass, including the protection supplied by assigned decoys.
         /// </summary>
         /// <param name="participants">The primary participants being evaluated.</param>
-        /// <param name="observedPlanet">The faction-visible mission target.</param>
+        /// <param name="detectors">The faction-visible detectors at the mission target.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>The projected officer-loss probability as a percentage.</returns>
         private double GetProjectedPersonnelLossProbability(

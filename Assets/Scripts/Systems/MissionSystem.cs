@@ -229,6 +229,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission whose probability rules apply.</param>
         /// <param name="participants">The participants to evaluate.</param>
+        /// <param name="observedPlanet">The faction-visible mission target, when available.</param>
         /// <returns>The calculated mission odds.</returns>
         public MissionOdds GetMissionOdds(
             Mission mission,
