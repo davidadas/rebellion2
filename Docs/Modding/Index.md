@@ -8,21 +8,16 @@ directory. Most content can therefore be changed without rebuilding the game.
 The game currently loads complete packs from `Content/Packs/`. It does not support derived packs,
 sparse overlays, base-pack fallback, or a separate `Mods` directory.
 
-**NEVER redistribute the installed `Content` directory, the original content pack, or copyrighted
-assets taken from them.** Players and mod developers must own the original game and obtain its
-content through the ownership-verifying installer.
-
-A complete pack may be distributed only when the author has the right to distribute every file it
-contains. For a classic-based project, distribute only the changes and have each player apply them
-to a private copy of their own installed content. Never distribute that resulting content tree.
-
-Complete, independently authored packs may be installed beneath `Content/Packs/`, but an installer
-repair may remove them. Keep their distributable source elsewhere.
+**Only distribute files you have the right to distribute.** For mods based on the classic pack,
+distribute your changes rather than the modified pack, and have players apply them to their installed
+content. Players and mod developers must own the original game and obtain its content through the
+ownership-verifying installer.
 
 ## Create a private development workspace
 
-Installer updates and repairs own the installed `Content` directory. Copy it to a private workspace
-outside the installation, then copy the base pack inside that workspace:
+Installer updates and repairs own the installed `Content` directory and may remove additional packs
+placed there. Keep your mod source outside the installation. Copy the installed content to a private
+workspace, then copy the base pack inside that workspace:
 
 ```text
 MyModWorkspace/
@@ -95,64 +90,9 @@ Paths in `pack.xml`, faction definitions, and scenario definitions are relative 
 Content addresses beginning with `Application/` resolve from the shared application directory;
 addresses beginning with `Pack/` resolve from the active pack.
 
-The following sections describe complete-pack authoring. A classic-derived result remains private.
+## Guides
 
-## Common changes
-
-### Simulation rules
-
-`Content/Application/Rules/game.xml` contains application defaults and is owned by the game. A pack
-may declare a sparse `GameConfigPath` override in `pack.xml`:
-
-- A leaf value in the pack file replaces the default value.
-- A section merges recursively, so unlisted siblings keep their defaults.
-- A lookup table (repeated `Entry` elements) is replaced wholesale, never merged entry-by-entry.
-
-Omit unchanged values and omit `GameConfigPath` when no override is needed. The merged result must
-match `Content/Application/Schemas/game-config.xsd`.
-
-### Campaign setup
-
-`scenario.xml` selects the scenario identity, factions, default player faction, and generation
-configuration. `generation.xml` controls starting planets, headquarters, garrisons, difficulty,
-and officer counts and must match `Content/Application/Schemas/generation-config.xsd`.
-
-Add a new scenario's `scenario.xml` path to `ScenarioPaths` in `pack.xml`, then select its ID through
-the workspace catalog or user settings.
-
-### Units, officers, planets, and buildings
-
-`pack.xml` and each `faction.xml` reference the entity catalogs. Pack-level catalogs include
-sectors, buildings, events, and messages; faction catalogs include units, officers, themes, and
-encyclopedia entries.
-
-`TypeID` and `InstanceID` values must be present and unique within their respective scopes.
-References between files use the appropriate identifier, so renaming one requires updating every
-reference to it. Event and message catalogs are separate files selected by `GameEventsPath` and
-`MessageDefinitionsPath` in `pack.xml`.
-
-### UI appearance
-
-Faction `ThemePath` files address textures for windows, controls, advisors, and messages. Preserve
-an existing address when replacing media, or update the theme reference.
-
-PNG, JPG, and JPEG images are loaded directly from the content directory. Unity `.meta` files are
-not part of the content format and should not be distributed with a pack.
-
-### Audio and video
-
-Audio and video use extensionless content addresses. Application media belongs under
-`Application/`; faction and scenario media belongs in the pack.
-
-### Game events
-
-See [Creating game events](Events/Index.md) for event lifecycle, targeting, actions, validation,
-and examples.
-
-### Preloaded assets
-
-Preload manifests list media required before a screen is shown. Update the applicable manifest
-under `Application/Preload/` or the pack's `Preload/` directory when adding required media.
+- [Creating game events](Events/Index.md)
 
 ## Compatibility
 
