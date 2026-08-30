@@ -36,8 +36,7 @@ namespace Rebellion.Game.Events
                 }
                 catch (Exception exception)
                 {
-                    string eventInstanceId =
-                        context?.Evaluation?.Event?.InstanceID ?? "unknown";
+                    string eventInstanceId = context?.Evaluation?.Event?.InstanceID ?? "unknown";
                     string actionName = action?.GetType().Name ?? "null";
                     GameLogger.Log(
                         $"Event '{eventInstanceId}' action '{actionName}' failed: {exception}",

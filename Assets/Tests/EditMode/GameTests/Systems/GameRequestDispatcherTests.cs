@@ -56,11 +56,7 @@ namespace Rebellion.Tests.Systems
             List<GameResult> results = dispatcher.Process(
                 new[]
                 {
-                    new TestRequest
-                    {
-                        SourceEventInstanceID = "failed-event",
-                        Throws = true,
-                    },
+                    new TestRequest { SourceEventInstanceID = "failed-event", Throws = true },
                     new TestRequest { SourceEventInstanceID = "successful-event" },
                 }
             );
