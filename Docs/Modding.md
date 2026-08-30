@@ -112,6 +112,26 @@ References between files use the appropriate identifier, so renaming one require
 reference to it. Event and message catalogs are
 separate files selected by `GameEventsPath` and `MessageDefinitionsPath` in `pack.xml`.
 
+Automatic strategy messages are selected from the catalog referenced by
+`MessageDefinitionsPath`. Set the optional `ShowSubjectImage` element to `true` when an
+officer-status message should use its subject officer's current message image as an overlay. The
+setting defaults to `false`:
+
+```xml
+<MessageDefinition>
+  <ResultType>TraitorDiscovered</ResultType>
+  <MessageType>Mission</MessageType>
+  <Subject>{discoverer} Discovers Traitor</Subject>
+  <Body>{discoverer} has discovered that {traitor} betrayed us.</Body>
+  <ShowSubjectImage>true</ShowSubjectImage>
+  <BackgroundImage Key="mission_report"/>
+</MessageDefinition>
+```
+
+Authored event messages expose the same setting as the `ShowSubjectImage` attribute on
+`SendMessage`. See [`SendMessage`](Events/Actions.md#sendmessage) for its complete options and
+overlay precedence.
+
 ### UI appearance
 
 Faction presentation is controlled by its `ThemePath`. Theme XML files contain addressed textures
