@@ -1231,6 +1231,18 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns whether a fleet cannot penetrate shields that prevent its ground assault.
+        /// </summary>
+        /// <param name="fleet">Fleet assigned to the attack.</param>
+        /// <param name="planet">Target planet.</param>
+        /// <returns>True when the fleet must wait for sabotage or choose another target.</returns>
+        public bool IsFleetBlockedByTargetShields(Fleet fleet, Planet planet)
+        {
+            return IsAssaultBlockedByShields(planet)
+                && GetFleetBombardmentStrength(fleet) < GetRequiredBombardmentStrength(planet);
+        }
+
+        /// <summary>
         /// Returns whether shields block a planet selected for attack preparation.
         /// </summary>
         /// <param name="planet">Target planet.</param>

@@ -147,6 +147,34 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(1, context.Results.OfType<BombardmentResult>().Count());
         }
 
+        [Test]
+        public void Execute_WithImpenetrableShields_ReturnsOrderToBuilding()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = target.InstanceID,
+            };
+            AddShield(game, target, "shield-1", rebels.InstanceID);
+            AddShield(game, target, "shield-2", rebels.InstanceID);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Ready,
+                target
+            );
+
+            proposal.Execute(context);
+
+            Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
+        }
+
         private static Fleet AddBattleFleet(GameRoot game, Planet planet, string ownerInstanceId)
         {
             Fleet fleet = EntityFactory.CreateFleet("fleet", ownerInstanceId);
@@ -156,6 +184,22 @@ namespace Rebellion.Tests.AI.Proposals
             ship.SetParent(fleet);
             game.AttachNode(fleet, planet);
             return fleet;
+        }
+
+        private static void AddShield(
+            GameRoot game,
+            Planet planet,
+            string instanceId,
+            string ownerInstanceId
+        )
+        {
+            Building shield = AITestSceneBuilder.CreateBuildingTemplate(
+                instanceId,
+                BuildingType.Defense
+            );
+            shield.OwnerInstanceID = ownerInstanceId;
+            shield.ShieldStrength = 10;
+            game.AttachNode(shield, planet);
         }
     }
 }

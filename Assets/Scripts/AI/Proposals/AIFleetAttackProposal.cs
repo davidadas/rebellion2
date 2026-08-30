@@ -215,7 +215,12 @@ namespace Rebellion.AI.Proposals
             }
 
             if (!canDamageMilitaryTargets)
+            {
+                if (context.Assessment.IsFleetBlockedByTargetShields(Fleet, liveTarget))
+                    Fleet.Order.Status = FleetOrderStatus.Building;
+
                 return;
+            }
 
             BombardmentResult bombardmentResult = context.Bombardment.Execute(
                 attackingFleets,

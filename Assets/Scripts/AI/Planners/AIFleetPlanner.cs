@@ -103,12 +103,33 @@ namespace Rebellion.AI.Planners
             )
                 return;
 
-            proposals.Add(
-                new AIFleetAttackProposal(fleet, order.OrderType, order.Status, targetPlanet)
+            AIFleetAttackProposal continuation = new AIFleetAttackProposal(
+                fleet,
+                order.OrderType,
+                order.Status,
+                targetPlanet
             );
+            if (!CanRetargetAttackOrder(context, fleet))
+            {
+                proposals.Add(continuation);
+                return;
+            }
 
-            if (CanRetargetAttackOrder(context, fleet))
-                AddRetargetAttackOrderProposals(context, fleet, currentPlanet, proposals);
+            bool targetIsImpenetrable = context.Assessment.IsFleetBlockedByTargetShields(
+                fleet,
+                targetPlanet
+            );
+            if (!targetIsImpenetrable)
+                proposals.Add(continuation);
+
+            bool addedAlternative = AddRetargetAttackOrderProposals(
+                context,
+                fleet,
+                currentPlanet,
+                proposals
+            );
+            if (targetIsImpenetrable && !addedAlternative)
+                proposals.Add(continuation);
         }
 
         /// <summary>
@@ -153,7 +174,8 @@ namespace Rebellion.AI.Planners
         /// <param name="fleet">Fleet being retargeted.</param>
         /// <param name="currentPlanet">Fleet's current planet.</param>
         /// <param name="proposals">Proposal list to update.</param>
-        private void AddRetargetAttackOrderProposals(
+        /// <returns>True when at least one alternative target was added.</returns>
+        private bool AddRetargetAttackOrderProposals(
             AITurnContext context,
             Fleet fleet,
             Planet currentPlanet,
@@ -162,10 +184,18 @@ namespace Rebellion.AI.Planners
         {
             Planet currentTarget = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
             string campaignSystemId = context.Assessment.GetPlanetSystemId(currentTarget);
+            bool mayLeaveCampaign = context.Assessment.IsFleetBlockedByTargetShields(
+                fleet,
+                currentTarget
+            );
+            bool addedProposal = false;
             foreach (
                 Planet targetPlanet in context.Assessment.EnemyPlanets.Where(targetPlanet =>
                     targetPlanet.InstanceID != fleet.Order.TargetPlanetId
-                    && context.Assessment.GetPlanetSystemId(targetPlanet) == campaignSystemId
+                    && (
+                        mayLeaveCampaign
+                        || context.Assessment.GetPlanetSystemId(targetPlanet) == campaignSystemId
+                    )
                     && !HasAttackFleetForTarget(context, targetPlanet, fleet)
                 )
             )
@@ -178,7 +208,10 @@ namespace Rebellion.AI.Planners
                         targetPlanet
                     )
                 );
+                addedProposal = true;
             }
+
+            return addedProposal;
         }
 
         /// <summary>
