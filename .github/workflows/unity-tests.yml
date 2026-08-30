@@ -31,7 +31,7 @@ jobs:
       - name: Checkout media metadata
         uses: actions/checkout@v4
         with:
-          repository: davidadas/rebellion2-media
+          repository: adasgames/rebellion2-media
           ref: main
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
           lfs: false
@@ -75,7 +75,7 @@ jobs:
       - name: Checkout media (git only, no LFS)
         uses: actions/checkout@v4
         with:
-          repository: davidadas/rebellion2-media
+          repository: adasgames/rebellion2-media
           ref: ${{ needs.resolve-media.outputs.revision }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
           lfs: false
@@ -254,7 +254,7 @@ jobs:
       - name: Checkout media (git only, no LFS)
         uses: actions/checkout@v4
         with:
-          repository: davidadas/rebellion2-media
+          repository: adasgames/rebellion2-media
           ref: ${{ needs.resolve-media.outputs.revision }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
           lfs: false
