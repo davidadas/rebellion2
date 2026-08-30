@@ -450,11 +450,12 @@ namespace Rebellion.Tests.Game.Events
             game.MoveNode(officer, mission);
             mission.Initiate(100);
 
-            TestDelegate execute = () => new SetNodeStateAction
-            {
-                InstanceID = officer.InstanceID,
-                State = SceneNodeState.Inactive,
-            }.Execute(game);
+            TestDelegate execute = () =>
+                new SetNodeStateAction
+                {
+                    InstanceID = officer.InstanceID,
+                    State = SceneNodeState.Inactive,
+                }.Execute(game);
 
             Assert.Throws<InvalidOperationException>(execute);
             Assert.AreSame(mission, officer.GetParent());
