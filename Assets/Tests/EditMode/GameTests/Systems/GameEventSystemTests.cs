@@ -87,6 +87,29 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void ValidateEvents_BindingWithoutAlias_ThrowsInvalidOperationException()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "INVALID_BINDING",
+                Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                Bindings = new List<GameEventBinding>
+                {
+                    new GameEventBinding
+                    {
+                        RollInteger = new RollInteger { Minimum = 1, Maximum = 1 },
+                    },
+                },
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _system.ValidateEvents(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("missing alias", exception.Message);
+        }
+
+        [Test]
         public void ValidateEvents_BindingWithoutSource_ThrowsInvalidOperationException()
         {
             GameEvent gameEvent = new GameEvent

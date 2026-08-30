@@ -6,7 +6,8 @@ or typed value read from the current game state. A trigger binding contains one 
 documented argument exposed by a matched trigger.
 
 Binding values are temporary. They are rebuilt whenever the event is evaluated and are not stored
-in the save game.
+in the save game. A binding's `As` value is its exact name. Every option that consumes the binding
+must use that same name exactly.
 
 ## Top-level bindings
 
@@ -20,7 +21,7 @@ multiple nodes raises a runtime authoring error.
 
 **Required options**
 
-- `As` **[Required]:** The unique name assigned to the resolved value.
+- `As` **[Required]:** The exact, unique name assigned to the resolved value.
 - Binding source **[Required]:** Provide exactly one:
   - `From`: Contains exactly one supported selector. The schema currently accepts direct planet,
     officer, special-forces, fleet, mission, ship, regiment, building, and manufacturing-order
@@ -34,7 +35,7 @@ multiple nodes raises a runtime authoring error.
 
 ```xml
 <Bindings>
-  <Bind As="planet">
+  <Bind As="$planet">
     <From>
       <SelectRandom Count="1">
         <From>
@@ -50,7 +51,7 @@ Numeric bindings let multiple actions reuse one roll:
 
 ```xml
 <Bindings>
-  <Bind As="resourceChange">
+  <Bind As="$resourceChange">
     <RollInteger Minimum="1" Maximum="5"/>
   </Bind>
 </Bindings>
@@ -69,16 +70,16 @@ property that an event might compare:
 
 ```xml
 <Bindings>
-  <Bind As="hanCombat">
+  <Bind As="$hanCombat">
     <OfficerRating OfficerInstanceID="HAN_SOLO" Rating="Combat"/>
   </Bind>
-  <Bind As="vaderForce">
+  <Bind As="$vaderForce">
     <OfficerForce OfficerInstanceID="DARTH_VADER"/>
   </Bind>
-  <Bind As="nabooResources">
+  <Bind As="$nabooResources">
     <PlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes"/>
   </Bind>
-  <Bind As="imperialFleetCount">
+  <Bind As="$imperialFleetCount">
     <SelectionCount>
       <From>
         <SelectFleets PlanetInstanceID="NABOO" OwnerFactionInstanceID="FNEMP1"/>
@@ -121,14 +122,14 @@ conditionals are evaluated.
 **Required options**
 
 - `Argument` **[Required]:** The trigger argument to expose. Each trigger documents its supported arguments.
-- `As` **[Required]:** The unique name assigned to that argument's value.
+- `As` **[Required]:** The exact, unique name assigned to that argument's value.
 
 ```xml
 <Triggers>
   <UnitArrived UnitInstanceID="EMPEROR_PALPATINE">
     <Bindings>
-      <Bind Argument="Unit" As="unit"/>
-      <Bind Argument="Destination" As="destination"/>
+      <Bind Argument="Unit" As="$unit"/>
+      <Bind Argument="Destination" As="$destination"/>
     </Bindings>
   </UnitArrived>
 </Triggers>
@@ -139,7 +140,7 @@ types so later XML always receives the same contract.
 
 ## Binding references
 
-Prefix a binding name with `$` wherever an option accepts a binding reference:
+Options named `Binding` or ending in `Binding` resolve the exact name declared by `As`:
 
 ```xml
 <SelectBinding Binding="$planet"/>
@@ -158,8 +159,13 @@ Trigger bindings expose the selected argument directly:
 </Actions>
 ```
 
-Binding references never traverse C# properties. An unsupported trigger argument is rejected during
-event validation instead of failing later through reflection.
+The event catalog uses names such as `$planet` to make bindings visually distinct from authored
+instance IDs. The dollar sign is an ordinary part of the name, not special syntax. `planet` and
+`$planet` are different bindings, and either is valid when its declaration and references match.
+
+Binding names never traverse C# properties. A name such as `officer.InstanceID` refers only to a
+binding declared with that exact name. An unsupported trigger argument is rejected during event
+validation instead of being accessed later through reflection.
 
 Binding names must be unique within one evaluation. A trigger binding and a selection binding
 cannot use the same name.

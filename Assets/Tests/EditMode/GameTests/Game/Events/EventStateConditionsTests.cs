@@ -17,7 +17,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out _, out _);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Binding = "$sourceEventInstanceID",
+                Binding = "sourceEventInstanceID",
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = "expected-event",
             };
@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(emperor, ship);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Binding = "$unit",
+                Binding = "unit",
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = emperor.InstanceID,
             };
@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Binding = "$destination",
+                Binding = "destination",
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = empirePlanet.InstanceID,
             };
@@ -93,9 +93,9 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out _, out _);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Binding = "$first",
+                Binding = "first",
                 Comparison = ComparisonOperator.GreaterThan,
-                CompareToBinding = "$second",
+                CompareToBinding = "second",
             };
             GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
@@ -116,9 +116,9 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out _, out _);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Binding = "$first",
+                Binding = "first",
                 Comparison = ComparisonOperator.Equal,
-                CompareToBinding = "$second",
+                CompareToBinding = "second",
             };
             GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out _, out _);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Binding = "$sourceEventInstanceID",
+                Binding = "sourceEventInstanceID",
                 Comparison = comparison,
                 CompareTo = "EXPECTED_SOURCE",
             };
