@@ -3,34 +3,64 @@
 Rebellion 2 loads its art, audio, video, configuration, and game data from an external `Content`
 directory. Most content can therefore be changed without rebuilding the game.
 
+## Current support
+
+The game currently loads complete content packs. A complete pack supplies every catalog, faction,
+scenario, theme, and media file referenced by its `pack.xml` and faction definitions.
+
+The loader does not currently support derived packs, sparse overlays, or fallback to another pack.
+It also does not scan a separate `Mods` directory. Packs must be located beneath `Content/Packs/`
+within the active content root.
+
+These limitations matter when modifying the installed classic pack: a private copy is useful for
+development, but it is not automatically a redistributable mod.
+
 ## Redistribution
 
 **NEVER redistribute the installed `Content` directory, the original content pack, or copyrighted
 assets taken from them.** Every player and mod developer must own a copy of the original game and
 obtain the base content through the ownership-verifying installer.
 
-A distributed mod may contain original work, patch files, or instructions that modify a user's own
-installed copy. It must not include the original pack or unchanged copyrighted assets. When in
-doubt, distribute the changes required to reproduce the mod rather than a copied content tree.
+A complete pack derived from `ClassicGalacticCivilWar` still contains the original pack's files,
+even when only a few were changed. Do not distribute that complete derived pack. A complete pack
+may be distributed only when the author has the right to distribute every file it contains.
 
-## Protect the installed pack
+Until sparse derived packs are supported, a classic-based project must distribute only the
+author's changes and require each player to apply them to a private workspace created from their
+own installed content. Do not distribute the resulting patched content tree.
 
-Do not edit the installed pack in place. Copy the existing pack before making a mod because future
-installer updates may replace files in the original directory and overwrite those edits.
+## Create a private development workspace
 
-Start by copying:
+Do not edit the installed `Content` directory in place. Installer updates and repairs own that
+directory and may replace it.
+
+For local development, privately copy the complete installed `Content` directory to a workspace
+outside the game installation. Then copy the base pack inside that workspace:
 
 ```text
-Content/Packs/ClassicGalacticCivilWar/
+MyModWorkspace/
+  Content/
+    catalog.xml
+    Application/
+    Packs/
+      ClassicGalacticCivilWar/
+      MyPack/
 ```
 
-to a new directory beneath `Content/Packs/`. In the copied `pack.xml`, give the pack a unique `ID`,
-`DisplayName`, and `Version`. The directory name is for organization; the `ID` declared by
-`pack.xml` is the identity used by the game and save files.
+The private `MyPack/` copy may contain the owned base content required for development, but it must
+not be distributed. In `MyPack/pack.xml`, give the pack a unique `ID`, `DisplayName`, and `Version`.
+The directory name is only organizational; the `ID` declared by `pack.xml` is the identity used by
+the game and save files.
+
+Launch the game against the workspace instead of the installed content:
+
+```bash
+"/path/to/Rebellion 2" -contentPath "/path/to/MyModWorkspace/Content"
+```
 
 ## Select a pack and scenario
 
-`Content/catalog.xml` selects the active pack and scenario:
+`Content/catalog.xml` declares the default pack and scenario for a content root:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -40,14 +70,35 @@ to a new directory beneath `Content/Packs/`. In the copied `pack.xml`, give the 
 </ContentCatalog>
 ```
 
-`ActivePackID` must match the copied pack's `pack.xml` ID. `ActiveScenarioID` must match a scenario
-declared by that pack. If `ActiveScenarioID` is empty, the pack's `DefaultScenarioID` is used.
+The catalog selection is the fallback. At startup, a non-empty selection in
+`user-settings.json` overrides it:
 
-You can keep an entirely separate `Content` directory and launch the game with it:
-
-```bash
-"/path/to/Rebellion 2" -contentPath "/path/to/Content"
+```json
+"Content": {
+  "ActivePackID": "my-content-pack",
+  "ActiveScenarioID": "standard"
+}
 ```
+
+`ActivePackID` must match a `pack.xml` ID beneath the active content root's `Packs/` directory.
+`ActiveScenarioID` must match a scenario declared by that pack. If the scenario ID is empty, the
+pack's `DefaultScenarioID` is used. If a saved pack override cannot be opened, the game falls back
+to the catalog selection.
+
+There is no in-game content-pack selector yet. Edit `user-settings.json` only while the game is
+closed. For development, the simpler option is to leave the saved content selection empty and make
+the work-in-progress pack the default in the workspace's `catalog.xml`. Loading errors then remain
+visible instead of being hidden by fallback to a different catalog pack.
+
+## Install a complete third-party pack
+
+The game can load a complete third-party pack placed beneath the installed `Content/Packs/`
+directory and selected through user settings. This is not a patch-safe mod installation location:
+an installer repair may remove the pack. Keep the distributable source outside the installation so
+it can be installed again.
+
+Do not distribute a complete pack derived from the copyrighted classic pack. This installation
+workflow is suitable only for packs whose contents may all be redistributed.
 
 ## Pack structure
 
@@ -70,14 +121,18 @@ Paths in `pack.xml`, faction definitions, and scenario definitions are relative 
 Content addresses beginning with `Application/` resolve from the shared application directory;
 addresses beginning with `Pack/` resolve from the active pack.
 
+The following sections describe authoring a complete pack. When working from the classic pack,
+remember that the complete result is a private development artifact rather than a distributable
+mod.
+
 ## Common changes
 
 ### Simulation rules
 
 Runtime simulation constants are layered. `Content/Application/Rules/game.xml` ships the complete
 application-level defaults and is owned by the game: it changes with engine updates and must not be
-copied into or edited by a mod. A pack that tunes simulation constants declares a `GameConfigPath`
-in `pack.xml` pointing at a sparse override merged over those defaults at load:
+copied into or edited by a distributed pack. A pack that tunes simulation constants declares a
+`GameConfigPath` in `pack.xml` pointing at a sparse override merged over those defaults at load:
 
 - A leaf value in the pack file replaces the default value.
 - A section merges recursively, so unlisted siblings keep their defaults.
@@ -97,8 +152,8 @@ starting officer counts. Generation configuration must conform to
 `Content/Application/Schemas/generation-config.xsd`; invalid scenario rules are rejected when the
 content pack loads.
 
-Add a new scenario's `scenario.xml` path to `ScenarioPaths` in `pack.xml`, then select its ID in
-`catalog.xml`.
+Add a new scenario's `scenario.xml` path to `ScenarioPaths` in `pack.xml`, then select its ID through
+the workspace catalog or user settings.
 
 ### Units, officers, planets, and buildings
 
@@ -109,8 +164,8 @@ events, and messages.
 
 `TypeID` and `InstanceID` values must be present and unique within their respective scopes.
 References between files use the appropriate identifier, so renaming one requires updating every
-reference to it. Event and message catalogs are
-separate files selected by `GameEventsPath` and `MessageDefinitionsPath` in `pack.xml`.
+reference to it. Event and message catalogs are separate files selected by `GameEventsPath` and
+`MessageDefinitionsPath` in `pack.xml`.
 
 ### UI appearance
 
@@ -120,7 +175,7 @@ an existing file while preserving its address, or copy the theme and update the 
 `ThemePath`.
 
 PNG, JPG, and JPEG images are loaded directly from the content directory. Unity `.meta` files are
-not part of the content format and should not be distributed with a mod.
+not part of the content format and should not be distributed with a pack.
 
 ### Audio and video
 
@@ -132,8 +187,8 @@ pack.
 ### Game events
 
 Game events define scheduled and result-triggered narrative behavior without a code rebuild. See
-[Creating game events](Events/Index.md) for lifecycle, scheduling, targeting, conditions,
-actions, schema validation, and complete examples.
+[Creating game events](Events/Index.md) for lifecycle, scheduling, targeting, conditions, actions,
+schema validation, and complete examples.
 
 ### Preloaded assets
 
@@ -144,6 +199,6 @@ the game to fail loudly instead of silently displaying an incomplete interface.
 
 ## Compatibility
 
-Save files record the pack ID, pack version, and scenario ID. Changing those values may make an
-existing save incompatible. Increment the pack version when publishing changes and test a new game
-after modifying definitions or generation rules.
+Save files record the pack ID, pack version, and scenario ID. A save can be loaded only while the
+matching pack version and scenario are active. Increment the pack version when publishing changes
+and test both new-game creation and save loading after modifying definitions or generation rules.
