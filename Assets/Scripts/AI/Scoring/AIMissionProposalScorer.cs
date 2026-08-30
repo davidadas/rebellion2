@@ -46,36 +46,32 @@ namespace Rebellion.AI.Scoring
             if (!TryCreateMission(context, missionProposal, out Mission mission))
                 return 0;
 
-            MissionOdds odds;
-            if (missionProposal.MainParticipants.OfType<Officer>().Any())
-            {
-                odds = context.GetMissionOdds(
-                    mission,
-                    missionProposal.MainParticipants,
-                    missionProposal.TargetPlanet
-                );
-                if (
-                    !AIMissionRiskPolicy.AllowsMission(
-                        context,
-                        mission,
-                        missionProposal.TargetPlanet,
-                        odds
-                    )
-                )
-                    return 0;
-            }
-            else
-            {
-                odds = context.Missions.GetMissionOdds(mission, missionProposal.MainParticipants);
-            }
-
-            double successProbability = odds.SuccessProbability;
+            double successProbability = context
+                .Missions.GetMissionOdds(mission, missionProposal.MainParticipants)
+                .SuccessProbability;
             double score = GetMissionScore(context, missionProposal, successProbability);
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
             score -= GetTravelPenalty(context, missionProposal);
             score -= GetOfficerReplacementPenalty(context, missionProposal);
 
             return score >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? score : 0;
+        }
+
+        /// <summary>
+        /// Returns whether a scored mission candidate satisfies the officer-risk policy.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The mission proposal to inspect.</param>
+        /// <returns>True when the proposal does not expose an officer to excessive loss risk.</returns>
+        internal bool AllowsPersonnelRisk(AITurnContext context, AIMissionProposal proposal)
+        {
+            if (proposal?.MainParticipants.OfType<Officer>().Any() != true)
+                return true;
+
+            if (!TryCreateMission(context, proposal, out Mission mission))
+                return false;
+
+            return AIMissionRiskPolicy.AllowsMission(context, mission, proposal.TargetPlanet);
         }
 
         /// <summary>
