@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
 {
@@ -52,7 +53,8 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Executes requests in authored order and returns only their factual results.
+        /// Executes requests in authored order, logging failed requests before continuing, and
+        /// returns only their factual results.
         /// </summary>
         /// <param name="requests">The requests to dispatch.</param>
         /// <returns>The factual results produced by all matching handlers.</returns>
@@ -64,25 +66,36 @@ namespace Rebellion.Systems
                     ?? Enumerable.Empty<GameRequest>()
             )
             {
-                if (
-                    !_handlers.TryGetValue(
-                        request.GetType(),
-                        out Func<GameRequest, List<GameResult>> handler
-                    )
-                )
-                    throw new InvalidOperationException(
-                        $"No request handler is registered for '{request.GetType().Name}'."
-                    );
-
-                List<GameResult> produced = handler(request);
-                if (produced == null)
-                    continue;
-
-                foreach (GameResult result in produced.Where(result => result != null))
+                try
                 {
-                    if (string.IsNullOrWhiteSpace(result.SourceEventInstanceID))
-                        result.SourceEventInstanceID = request.SourceEventInstanceID;
-                    results.Add(result);
+                    if (
+                        !_handlers.TryGetValue(
+                            request.GetType(),
+                            out Func<GameRequest, List<GameResult>> handler
+                        )
+                    )
+                        throw new InvalidOperationException(
+                            $"No request handler is registered for '{request.GetType().Name}'."
+                        );
+
+                    List<GameResult> produced = handler(request);
+                    if (produced == null)
+                        continue;
+
+                    foreach (GameResult result in produced.Where(result => result != null))
+                    {
+                        if (string.IsNullOrWhiteSpace(result.SourceEventInstanceID))
+                            result.SourceEventInstanceID = request.SourceEventInstanceID;
+                        results.Add(result);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    string eventInstanceId = request.SourceEventInstanceID ?? "unknown";
+                    GameLogger.Log(
+                        $"Event '{eventInstanceId}' request '{request.GetType().Name}' failed: {exception}",
+                        GameLogger.LogLevel.Error
+                    );
                 }
             }
             return results;

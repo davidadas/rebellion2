@@ -197,12 +197,6 @@ internal static class FleetWindowContextMenuBuilder
             new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", canMove),
             new StrategyMenuCommand(StrategyMenuAction.CreateMission, "Mission", canCreateMission),
         };
-        if (!personnel.OfType<SpecialForces>().Any())
-        {
-            commands.Add(
-                new StrategyMenuCommand("Command", canMove, new List<StrategyMenuCommand>())
-            );
-        }
         commands.Add(
             new StrategyMenuCommand(
                 StrategyMenuAction.Encyclopedia,
