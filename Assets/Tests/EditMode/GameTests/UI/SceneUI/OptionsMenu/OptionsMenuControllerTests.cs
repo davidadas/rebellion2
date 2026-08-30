@@ -423,6 +423,15 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 () => new Vector2Int(12, 34),
                 _windowManager.DestroyWindow,
                 _bootstrap,
+                (fileName, displayName) =>
+                {
+                    GameRoot game = _bootstrap.GetRuntime().GetActiveGame();
+                    if (game == null)
+                        return false;
+
+                    _saveGameManager.SaveGameData(game, fileName, displayName);
+                    return true;
+                },
                 fileName =>
                 {
                     _loadedFileName = fileName;

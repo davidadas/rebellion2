@@ -168,7 +168,7 @@ namespace Rebellion.Systems
             )
             {
                 if (
-                    TryExecuteNormalMoveGroup(
+                    TryExecuteMoveGroupClearingWaypoints(
                         units.ToList(),
                         destination,
                         reactions,
@@ -354,7 +354,12 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
-            TryExecuteNormalMoveGroup(units, destination, _pendingResults, sourceEventInstanceID);
+            TryExecuteMoveGroupClearingWaypoints(
+                units,
+                destination,
+                _pendingResults,
+                sourceEventInstanceID
+            );
         }
 
         /// <summary>
@@ -577,7 +582,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Validates and executes a player-controlled movement selection.
+        /// Validates and executes an owner-controlled movement selection.
         /// </summary>
         /// <param name="items">The selected scene nodes or their snapshots.</param>
         /// <param name="destination">The requested destination or its snapshot.</param>
@@ -589,6 +594,37 @@ namespace Rebellion.Systems
             string ownerInstanceId
         )
         {
+            bool accepted = TryExecuteSelectionMove(
+                items,
+                destination,
+                ownerInstanceId,
+                out _,
+                out List<GameResult> results
+            );
+            if (accepted)
+                ResultsProduced?.Invoke(results);
+            return accepted;
+        }
+
+        /// <summary>
+        /// Validates and executes an owner-controlled selection without publishing its results.
+        /// </summary>
+        /// <param name="items">The selected scene nodes or their snapshots.</param>
+        /// <param name="destination">The requested destination or its snapshot.</param>
+        /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
+        /// <param name="createdDestinationFleet">Receives a fleet created for capital ships.</param>
+        /// <param name="results">Receives the movement results produced by the accepted order.</param>
+        /// <returns>True when the complete movement order was accepted.</returns>
+        private bool TryExecuteSelectionMove(
+            IReadOnlyList<ISceneNode> items,
+            ContainerNode destination,
+            string ownerInstanceId,
+            out Fleet createdDestinationFleet,
+            out List<GameResult> results
+        )
+        {
+            createdDestinationFleet = null;
+            results = new List<GameResult>();
             ContainerNode liveDestination = ResolveRegisteredContainer(destination);
             if (
                 liveDestination == null
@@ -600,7 +636,6 @@ namespace Rebellion.Systems
             )
                 return false;
 
-            Fleet createdDestinationFleet = null;
             if (liveDestination is Planet planet && liveItems.Any(item => item is CapitalShip))
             {
                 createdDestinationFleet = _fleetSystem.CreateAtPlanet(planet, ownerInstanceId);
@@ -611,7 +646,7 @@ namespace Rebellion.Systems
             }
 
             if (
-                !TryBuildMoveGroup(
+                !TryResolveSelectionMoveGroup(
                     liveItems,
                     liveDestination,
                     ownerInstanceId,
@@ -624,8 +659,11 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            List<GameResult> results = new List<GameResult>();
-            bool accepted = TryExecuteNormalMoveGroup(movables, liveDestination, results);
+            bool accepted = TryExecuteMoveGroupClearingWaypoints(
+                movables,
+                liveDestination,
+                results
+            );
             if (accepted)
             {
                 foreach (Fleet sourceFleet in sourceFleets.Distinct())
@@ -633,17 +671,14 @@ namespace Rebellion.Systems
             }
 
             _fleetSystem.RemoveIfEmpty(createdDestinationFleet, "transfer");
-            if (accepted)
-                ResultsProduced?.Invoke(results);
-
             return accepted;
         }
 
         /// <summary>
-        /// Determines whether a player-controlled fleet selection can accept one complete waypoint
-        /// route without changing game state.
+        /// Determines whether an owner-controlled fleet or capital-ship selection can accept one
+        /// complete waypoint route without changing game state.
         /// </summary>
-        /// <param name="items">The selected fleets or their visible snapshots.</param>
+        /// <param name="items">The selected fleets, capital ships, or their visible snapshots.</param>
         /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
         /// <param name="ownerInstanceId">The faction authorized to command the fleets.</param>
         /// <returns>True when the complete route is valid.</returns>
@@ -653,19 +688,26 @@ namespace Rebellion.Systems
             string ownerInstanceId
         )
         {
-            return TryPlanFleetWaypointRoute(
-                items,
-                waypointPlanetIds,
-                ownerInstanceId,
-                out _,
-                out _
-            );
+            return TryResolveFleetWaypointRoute(
+                    items,
+                    waypointPlanetIds,
+                    ownerInstanceId,
+                    out _,
+                    out _
+                )
+                || TryResolveCapitalShipWaypointRoute(
+                    items,
+                    waypointPlanetIds,
+                    ownerInstanceId,
+                    out _,
+                    out _
+                );
         }
 
         /// <summary>
-        /// Commits one complete waypoint route and starts its first leg for stationary fleets.
+        /// Commits one complete waypoint route and starts its first leg.
         /// </summary>
-        /// <param name="items">The selected fleets or their visible snapshots.</param>
+        /// <param name="items">The selected fleets, capital ships, or their visible snapshots.</param>
         /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
         /// <param name="ownerInstanceId">The faction authorized to command the fleets.</param>
         /// <returns>True when the route was committed to every selected fleet.</returns>
@@ -676,7 +718,33 @@ namespace Rebellion.Systems
         )
         {
             if (
-                !TryPlanFleetWaypointRoute(
+                TryResolveCapitalShipWaypointRoute(
+                    items,
+                    waypointPlanetIds,
+                    ownerInstanceId,
+                    out List<CapitalShip> capitalShips,
+                    out List<Planet> capitalShipDestinations
+                )
+            )
+            {
+                bool moveAccepted = TryExecuteSelectionMove(
+                    capitalShips.Cast<ISceneNode>().ToList(),
+                    capitalShipDestinations[0],
+                    ownerInstanceId,
+                    out Fleet routeFleet,
+                    out List<GameResult> capitalShipResults
+                );
+                if (!moveAccepted)
+                    return false;
+
+                if (routeFleet?.GetParent() != null)
+                    routeFleet.Waypoints.AddRange(waypointPlanetIds);
+                ResultsProduced?.Invoke(capitalShipResults);
+                return true;
+            }
+
+            if (
+                !TryResolveFleetWaypointRoute(
                     items,
                     waypointPlanetIds,
                     ownerInstanceId,
@@ -686,7 +754,7 @@ namespace Rebellion.Systems
             )
                 return false;
 
-            bool startsRoute = fleets[0].Movement == null;
+            bool startsFirstLeg = fleets[0].Movement == null;
             foreach (Fleet fleet in fleets)
             {
                 if (fleet.Movement != null)
@@ -695,7 +763,7 @@ namespace Rebellion.Systems
                 fleet.Waypoints.AddRange(waypointPlanetIds);
             }
 
-            if (!startsRoute)
+            if (!startsFirstLeg)
                 return true;
 
             List<GameResult> results = new List<GameResult>();
@@ -753,6 +821,9 @@ namespace Rebellion.Systems
                 if (fleet == null)
                     continue;
 
+                if (HasPendingCapitalShipsAtCurrentWaypoint(fleet))
+                    continue;
+
                 if (!fleet.HasOperationalCapitalShips())
                 {
                     fleet.Waypoints.Clear();
@@ -762,14 +833,14 @@ namespace Rebellion.Systems
                 if (fleet.Movement != null || fleet.IsInCombat || !fleet.HasWaypoints())
                     continue;
 
-                TryStartNextFleetWaypoint(fleet, results);
+                AdvanceFleetWaypointRoute(fleet, results);
             }
 
             return results;
         }
 
         /// <summary>
-        /// Estimates transit time for a player-controlled selection without mutating it.
+        /// Estimates transit time for an owner-controlled selection without mutating it.
         /// </summary>
         /// <param name="items">The selected scene nodes or their snapshots.</param>
         /// <param name="destination">The requested destination or its snapshot.</param>
@@ -792,7 +863,7 @@ namespace Rebellion.Systems
                     ownerInstanceId,
                     out List<ISceneNode> liveItems
                 )
-                || !TryBuildMoveGroup(
+                || !TryResolveSelectionMoveGroup(
                     liveItems,
                     liveDestination,
                     ownerInstanceId,
@@ -949,24 +1020,24 @@ namespace Rebellion.Systems
         /// <returns>True if the whole group can move.</returns>
         private bool CanMoveGroup(List<IMovable> units, ContainerNode destination)
         {
-            return TryPlanMoveGroup(units, destination, out _);
+            return TryResolveMoveGroupDestinations(units, destination, out _);
         }
 
         /// <summary>
         /// Resolves destinations for a movement group without mutating scene state.
         /// </summary>
-        /// <param name="units">The units being planned together.</param>
+        /// <param name="units">The units being validated together.</param>
         /// <param name="destination">The shared requested destination.</param>
         /// <param name="resolvedDestinations">The accepted destination for each unit in order.</param>
         /// <returns>True when every unit has an accepted destination.</returns>
-        private bool TryPlanMoveGroup(
+        private bool TryResolveMoveGroupDestinations(
             List<IMovable> units,
             ContainerNode destination,
             out List<ContainerNode> resolvedDestinations
         )
         {
             resolvedDestinations = new List<ContainerNode>();
-            Dictionary<ContainerNode, List<ISceneNode>> plannedChildren =
+            Dictionary<ContainerNode, List<ISceneNode>> reservedChildren =
                 new Dictionary<ContainerNode, List<ISceneNode>>();
             Planet groupOrigin = null;
             foreach (IMovable unit in units)
@@ -1003,21 +1074,21 @@ namespace Rebellion.Systems
                     !TryResolveAcceptedDestination(
                         unit,
                         destination,
-                        plannedChildren,
+                        reservedChildren,
                         out ContainerNode resolvedDestination
                     )
                 )
                     return false;
 
                 if (
-                    !plannedChildren.TryGetValue(
+                    !reservedChildren.TryGetValue(
                         resolvedDestination,
                         out List<ISceneNode> destinationChildren
                     )
                 )
                 {
                     destinationChildren = new List<ISceneNode>();
-                    plannedChildren.Add(resolvedDestination, destinationChildren);
+                    reservedChildren.Add(resolvedDestination, destinationChildren);
                 }
 
                 destinationChildren.Add(unit);
@@ -1039,14 +1110,14 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Submits a normal movement group and replaces any existing fleet waypoint routes.
+        /// Executes a movement group and clears any existing fleet waypoint routes.
         /// </summary>
         /// <param name="units">The movable units in execution order.</param>
         /// <param name="destination">The shared destination.</param>
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
         /// <returns>True when the movement group was accepted.</returns>
-        private bool TryExecuteNormalMoveGroup(
+        private bool TryExecuteMoveGroupClearingWaypoints(
             List<IMovable> units,
             ContainerNode destination,
             ICollection<GameResult> results,
@@ -1081,7 +1152,13 @@ namespace Rebellion.Systems
                 return false;
 
             destination = ResolveLiveContainer(destination);
-            if (!TryPlanMoveGroup(units, destination, out List<ContainerNode> destinations))
+            if (
+                !TryResolveMoveGroupDestinations(
+                    units,
+                    destination,
+                    out List<ContainerNode> destinations
+                )
+            )
                 return false;
 
             string movementGroupID = Guid.NewGuid().ToString("N");
@@ -1138,7 +1215,11 @@ namespace Rebellion.Systems
             }
 
             if (
-                !TryPlanPlacementGroup(liveUnits, destination, out List<ContainerNode> destinations)
+                !TryResolvePlacementGroupDestinations(
+                    liveUnits,
+                    destination,
+                    out List<ContainerNode> destinations
+                )
             )
                 return false;
 
@@ -1163,14 +1244,18 @@ namespace Rebellion.Systems
         /// <summary>
         /// Resolves a valid destination for every unit without mutating scene state.
         /// </summary>
-        private bool TryPlanPlacementGroup(
+        /// <param name="units">The units being placed together.</param>
+        /// <param name="destination">The shared requested destination.</param>
+        /// <param name="resolvedDestinations">The accepted destination for each unit in order.</param>
+        /// <returns>True when every unit has an accepted destination.</returns>
+        private bool TryResolvePlacementGroupDestinations(
             IReadOnlyList<IMovable> units,
             ContainerNode destination,
             out List<ContainerNode> resolvedDestinations
         )
         {
             resolvedDestinations = new List<ContainerNode>();
-            Dictionary<ContainerNode, List<ISceneNode>> plannedChildren =
+            Dictionary<ContainerNode, List<ISceneNode>> reservedChildren =
                 new Dictionary<ContainerNode, List<ISceneNode>>();
             foreach (IMovable unit in units)
             {
@@ -1179,18 +1264,21 @@ namespace Rebellion.Systems
                     || !TryResolveAcceptedDestination(
                         unit,
                         destination,
-                        plannedChildren,
+                        reservedChildren,
                         out ContainerNode resolvedDestination
                     )
                 )
                     return false;
 
                 if (
-                    !plannedChildren.TryGetValue(resolvedDestination, out List<ISceneNode> children)
+                    !reservedChildren.TryGetValue(
+                        resolvedDestination,
+                        out List<ISceneNode> children
+                    )
                 )
                 {
                     children = new List<ISceneNode>();
-                    plannedChildren.Add(resolvedDestination, children);
+                    reservedChildren.Add(resolvedDestination, children);
                 }
                 children.Add(unit);
                 resolvedDestinations.Add(resolvedDestination);
@@ -1199,7 +1287,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves and validates a player-controlled selection before movement planning.
+        /// Resolves and validates an owner-controlled selection before movement execution.
         /// </summary>
         /// <param name="items">The selected scene nodes or their snapshots.</param>
         /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
@@ -1283,8 +1371,8 @@ namespace Rebellion.Systems
         /// <param name="ownerInstanceId">The faction authorized to command the fleets.</param>
         /// <param name="fleets">Receives the registered controlled fleets.</param>
         /// <param name="destinations">Receives the registered destination planets.</param>
-        /// <returns>True when the complete plan is valid.</returns>
-        private bool TryPlanFleetWaypointRoute(
+        /// <returns>True when the complete route is valid.</returns>
+        private bool TryResolveFleetWaypointRoute(
             IReadOnlyList<ISceneNode> items,
             IReadOnlyList<string> waypointPlanetIds,
             string ownerInstanceId,
@@ -1295,9 +1383,8 @@ namespace Rebellion.Systems
             fleets = new List<Fleet>();
             destinations = new List<Planet>();
             if (
-                waypointPlanetIds == null
-                || waypointPlanetIds.Count == 0
-                || !TryResolveControlledFleets(items, ownerInstanceId, out fleets)
+                !TryResolveControlledFleets(items, ownerInstanceId, out fleets)
+                || !TryResolveWaypointDestinations(waypointPlanetIds, out destinations)
             )
                 return false;
 
@@ -1312,24 +1399,6 @@ namespace Rebellion.Systems
                 )
             )
                 return false;
-
-            string previousDestinationId = null;
-            foreach (string waypointPlanetId in waypointPlanetIds)
-            {
-                Planet destination = _game.GetSceneNodeByInstanceID<Planet>(waypointPlanetId);
-                if (
-                    destination?.IsDestroyed != false
-                    || string.Equals(
-                        previousDestinationId,
-                        destination.InstanceID,
-                        StringComparison.Ordinal
-                    )
-                )
-                    return false;
-
-                destinations.Add(destination);
-                previousDestinationId = destination.InstanceID;
-            }
 
             Planet firstDestination = destinations[0];
             if (
@@ -1351,6 +1420,90 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Validates and resolves a capital-ship waypoint route without changing fleet membership.
+        /// </summary>
+        /// <param name="items">The selected capital ships or their snapshots.</param>
+        /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
+        /// <param name="ownerInstanceId">The faction authorized to command the ships.</param>
+        /// <param name="capitalShips">Receives the registered controlled capital ships.</param>
+        /// <param name="destinations">Receives the registered destination planets.</param>
+        /// <returns>True when the complete route is valid.</returns>
+        private bool TryResolveCapitalShipWaypointRoute(
+            IReadOnlyList<ISceneNode> items,
+            IReadOnlyList<string> waypointPlanetIds,
+            string ownerInstanceId,
+            out List<CapitalShip> capitalShips,
+            out List<Planet> destinations
+        )
+        {
+            capitalShips = new List<CapitalShip>();
+            destinations = new List<Planet>();
+            if (
+                !TryResolveControlledSelection(
+                    items,
+                    ownerInstanceId,
+                    out List<ISceneNode> liveItems
+                )
+                || liveItems.Any(item => item is not CapitalShip)
+                || !TryResolveWaypointDestinations(waypointPlanetIds, out destinations)
+            )
+                return false;
+
+            capitalShips = liveItems.Cast<CapitalShip>().ToList();
+            Planet origin = capitalShips[0].GetParentOfType<Planet>();
+            if (
+                origin == null
+                || capitalShips.Any(ship =>
+                    !ReferenceEquals(ship.GetParentOfType<Planet>(), origin)
+                )
+                || ReferenceEquals(origin, destinations[0])
+            )
+                return false;
+
+            return TryGetTransitTicks(
+                capitalShips.Cast<IMovable>().ToList(),
+                destinations[0],
+                out _
+            );
+        }
+
+        /// <summary>
+        /// Resolves an ordered waypoint identifier list into live, valid destination planets.
+        /// </summary>
+        /// <param name="waypointPlanetIds">The ordered destination planet identifiers.</param>
+        /// <param name="destinations">Receives the registered destination planets.</param>
+        /// <returns>True when every destination is valid and consecutive stops are distinct.</returns>
+        private bool TryResolveWaypointDestinations(
+            IReadOnlyList<string> waypointPlanetIds,
+            out List<Planet> destinations
+        )
+        {
+            destinations = new List<Planet>();
+            if (waypointPlanetIds == null || waypointPlanetIds.Count == 0)
+                return false;
+
+            string previousDestinationId = null;
+            foreach (string waypointPlanetId in waypointPlanetIds)
+            {
+                Planet destination = _game.GetSceneNodeByInstanceID<Planet>(waypointPlanetId);
+                if (
+                    destination?.IsDestroyed != false
+                    || string.Equals(
+                        previousDestinationId,
+                        destination.InstanceID,
+                        StringComparison.Ordinal
+                    )
+                )
+                    return false;
+
+                destinations.Add(destination);
+                previousDestinationId = destination.InstanceID;
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Expands selected fleets and records source fleets for post-move cleanup.
         /// </summary>
         /// <param name="items">The registered selected scene nodes.</param>
@@ -1359,7 +1512,7 @@ namespace Rebellion.Systems
         /// <param name="movables">Receives the concrete units to move.</param>
         /// <param name="sourceFleets">Receives fleets that may become empty.</param>
         /// <returns>True when at least one unique movable was produced.</returns>
-        private static bool TryBuildMoveGroup(
+        private static bool TryResolveSelectionMoveGroup(
             IReadOnlyList<ISceneNode> items,
             ContainerNode destination,
             string ownerInstanceId,
@@ -1857,24 +2010,39 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Starts the first valid queued waypoint for one stationary fleet.
+        /// Advances one stationary fleet to its next valid waypoint.
         /// </summary>
         /// <param name="fleet">The fleet whose route should continue.</param>
-        /// <param name="results">The result collection receiving the new movement leg.</param>
-        /// <returns>True when a new movement leg began.</returns>
-        private bool TryStartNextFleetWaypoint(Fleet fleet, List<GameResult> results)
+        /// <param name="results">The result collection receiving route advancement results.</param>
+        private void AdvanceFleetWaypointRoute(Fleet fleet, List<GameResult> results)
         {
             int waypointCount = fleet.Waypoints.Count;
             for (int index = 0; index < waypointCount; index++)
             {
                 string waypointId = fleet.Waypoints[0];
                 Planet destination = _game.GetSceneNodeByInstanceID<Planet>(waypointId);
-                if (
-                    destination?.IsDestroyed != false
-                    || ReferenceEquals(fleet.GetParentOfType<Planet>(), destination)
-                )
+                if (destination?.IsDestroyed != false)
                 {
                     fleet.Waypoints.RemoveAt(0);
+                    continue;
+                }
+
+                if (ReferenceEquals(fleet.GetParentOfType<Planet>(), destination))
+                {
+                    fleet.Waypoints.RemoveAt(0);
+                    if (!fleet.HasWaypoints())
+                    {
+                        results.Add(
+                            new FleetWaypointsCompletedResult
+                            {
+                                Fleet = fleet,
+                                Destination = destination,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
+                        return;
+                    }
+
                     continue;
                 }
 
@@ -1885,10 +2053,38 @@ namespace Rebellion.Systems
                 );
                 if (!accepted)
                     fleet.Waypoints.Clear();
-                return accepted;
+                return;
             }
+        }
 
-            return false;
+        /// <summary>
+        /// Returns whether a fleet has capital ships still reaching or completing at its current
+        /// waypoint before the fleet may continue.
+        /// </summary>
+        /// <param name="fleet">The fleet that owns the committed route.</param>
+        /// <returns>True when at least one capital ship is still moving or under construction.</returns>
+        private static bool HasPendingCapitalShipsAtCurrentWaypoint(Fleet fleet)
+        {
+            if (fleet?.HasWaypoints() != true)
+                return false;
+
+            Planet currentPlanet = fleet.GetParentOfType<Planet>();
+            if (
+                currentPlanet == null
+                || !string.Equals(
+                    fleet.Waypoints[0],
+                    currentPlanet.InstanceID,
+                    StringComparison.Ordinal
+                )
+            )
+                return false;
+
+            return fleet
+                .GetChildren<CapitalShip>()
+                .Any(ship =>
+                    ship.ManufacturingStatus == ManufacturingStatus.Building
+                    || ship.Movement != null
+                );
         }
 
         /// <summary>
@@ -2523,16 +2719,16 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The unit being moved.</param>
         /// <param name="destination">The requested destination.</param>
-        /// <param name="plannedChildren">The children already reserved during group planning.</param>
+        /// <param name="reservedChildren">The children already reserved by the movement group.</param>
         /// <returns>The node that should receive the unit, or null if none is available.</returns>
         private ContainerNode ResolveMoveDestination(
             IMovable unit,
             ContainerNode destination,
-            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> reservedChildren
         )
         {
             if (destination is Fleet targetFleet && !(unit is Fleet) && !(unit is CapitalShip))
-                return ResolveFleetTarget(unit, targetFleet, plannedChildren);
+                return ResolveFleetTarget(unit, targetFleet, reservedChildren);
 
             return destination;
         }
@@ -2583,21 +2779,21 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves a destination against children already reserved by the current group plan.
+        /// Resolves a destination against children already reserved by the movement group.
         /// </summary>
         /// <param name="unit">The unit being moved.</param>
         /// <param name="destination">The requested destination.</param>
-        /// <param name="plannedChildren">The children already reserved by the group plan.</param>
+        /// <param name="reservedChildren">The children already reserved by the movement group.</param>
         /// <param name="resolvedDestination">The resolved destination when accepted.</param>
         /// <returns>True when the destination can receive the unit.</returns>
         private bool TryResolveAcceptedDestination(
             IMovable unit,
             ContainerNode destination,
-            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren,
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> reservedChildren,
             out ContainerNode resolvedDestination
         )
         {
-            resolvedDestination = ResolveMoveDestination(unit, destination, plannedChildren);
+            resolvedDestination = ResolveMoveDestination(unit, destination, reservedChildren);
             if (resolvedDestination == null)
             {
                 GameLogger.Warning(
@@ -2623,7 +2819,7 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            if (CanAcceptPlannedChild(resolvedDestination, unit, plannedChildren))
+            if (CanAcceptReservedChild(resolvedDestination, unit, reservedChildren))
                 return true;
 
             GameLogger.Warning(
@@ -2735,12 +2931,12 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The non-fleet unit being assigned.</param>
         /// <param name="fleet">The fleet to find a suitable ship within.</param>
-        /// <param name="plannedChildren">The children already reserved during group planning.</param>
+        /// <param name="reservedChildren">The children already reserved by the movement group.</param>
         /// <returns>The target ship, or null if no valid ship exists.</returns>
         private ContainerNode ResolveFleetTarget(
             IMovable unit,
             Fleet fleet,
-            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> reservedChildren
         )
         {
             if (unit is Starfighter)
@@ -2753,7 +2949,7 @@ namespace Rebellion.Systems
                     .FirstOrDefault(ship =>
                         ship.ManufacturingStatus == ManufacturingStatus.Complete
                         && ship.Movement == null
-                        && CanAcceptPlannedChild(ship, unit, plannedChildren)
+                        && CanAcceptReservedChild(ship, unit, reservedChildren)
                     );
             }
 
@@ -2767,7 +2963,7 @@ namespace Rebellion.Systems
                     .FirstOrDefault(ship =>
                         ship.ManufacturingStatus == ManufacturingStatus.Complete
                         && ship.Movement == null
-                        && CanAcceptPlannedChild(ship, unit, plannedChildren)
+                        && CanAcceptReservedChild(ship, unit, reservedChildren)
                     );
             }
 
@@ -2784,17 +2980,17 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="destination">The destination being evaluated.</param>
         /// <param name="child">The child proposed for the destination.</param>
-        /// <param name="plannedChildren">The children already reserved by the group plan.</param>
+        /// <param name="reservedChildren">The children already reserved by the movement group.</param>
         /// <returns>True when the destination has capacity for the proposed child.</returns>
-        private static bool CanAcceptPlannedChild(
+        private static bool CanAcceptReservedChild(
             ContainerNode destination,
             ISceneNode child,
-            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> reservedChildren
         )
         {
             IReadOnlyCollection<ISceneNode> destinationChildren =
-                plannedChildren != null
-                && plannedChildren.TryGetValue(
+                reservedChildren != null
+                && reservedChildren.TryGetValue(
                     destination,
                     out List<ISceneNode> existingDestinationChildren
                 )

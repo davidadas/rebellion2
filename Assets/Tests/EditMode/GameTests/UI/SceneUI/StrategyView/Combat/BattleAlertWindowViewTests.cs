@@ -141,7 +141,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(title.GetComponent<Shadow>().enabled);
             Assert.AreEqual("Victory", summary.text);
             Assert.AreEqual(
-                new RectInt(25, 225, 350, 70),
+                new RectInt(25, 215, 350, 70),
                 UILayout.GetSourceRect(summary.rectTransform)
             );
             Assert.AreEqual(18f, summary.fontSize);

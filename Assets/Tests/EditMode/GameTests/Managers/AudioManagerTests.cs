@@ -185,6 +185,97 @@ public sealed class AudioManagerTests
     }
 
     [Test]
+    public void PlaySfxInstance_PreloadedPaths_UsesIndependentSources()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip firstClip = AudioClip.Create("First", 1, 1, 44100, false);
+        AudioClip secondClip = AudioClip.Create("Second", 1, 1, 44100, false);
+        try
+        {
+            GetPreloadedSfx(manager).Add("Audio/SFX/first", firstClip);
+            GetPreloadedSfx(manager).Add("Audio/SFX/second", secondClip);
+
+            AudioPlaybackHandle firstPlayback = manager.PlaySfxInstance("Audio/SFX/first");
+            AudioPlaybackHandle secondPlayback = manager.PlaySfxInstance("Audio/SFX/second");
+
+            Assert.AreSame(firstClip, firstPlayback.Source.clip);
+            Assert.AreSame(secondClip, secondPlayback.Source.clip);
+            Assert.AreNotSame(firstPlayback.Source, secondPlayback.Source);
+
+            firstPlayback.Stop();
+
+            Assert.IsNull(firstPlayback.Source);
+            Assert.AreSame(secondClip, secondPlayback.Source.clip);
+            secondPlayback.Stop();
+        }
+        finally
+        {
+            Object.DestroyImmediate(firstClip);
+            Object.DestroyImmediate(secondClip);
+        }
+    }
+
+    [Test]
+    public void PlaySfxInstance_ReusedSource_AppliesCurrentSfxVolume()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Tracked", 1, 1, 44100, false);
+        try
+        {
+            GetPreloadedSfx(manager).Add("Audio/SFX/tracked", clip);
+            AudioPlaybackHandle firstPlayback = manager.PlaySfxInstance("Audio/SFX/tracked");
+            AudioSource source = firstPlayback.Source;
+            firstPlayback.Stop();
+            manager.SetMasterVolume(0.5f);
+            manager.SetSfxVolume(0.25f);
+
+            AudioPlaybackHandle secondPlayback = manager.PlaySfxInstance("Audio/SFX/tracked");
+
+            Assert.AreSame(source, secondPlayback.Source);
+            Assert.AreEqual(0.125f, secondPlayback.Source.volume);
+            secondPlayback.Stop();
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void PlaySfxInstance_MissingClipOrPath_ReturnsNull()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+
+        AudioPlaybackHandle clipPlayback = manager.PlaySfxInstance((AudioClip)null);
+        AudioPlaybackHandle pathPlayback = manager.PlaySfxInstance(" ");
+
+        Assert.IsNull(clipPlayback);
+        Assert.IsNull(pathPlayback);
+    }
+
+    [Test]
+    public void StopSfx_ActiveSfxInstances_StopsEveryInstance()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Tracked", 1, 1, 44100, false);
+        try
+        {
+            GetPreloadedSfx(manager).Add("Audio/SFX/tracked", clip);
+            AudioPlaybackHandle firstPlayback = manager.PlaySfxInstance("Audio/SFX/tracked");
+            AudioPlaybackHandle secondPlayback = manager.PlaySfxInstance("Audio/SFX/tracked");
+
+            manager.StopSfx();
+
+            Assert.IsNull(firstPlayback.Source);
+            Assert.IsNull(secondPlayback.Source);
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
     public void PlayTrack_LoadedClip_AssignsLoopingMusicUntilStopped()
     {
         AudioManager manager = AudioManager.EnsureExists();

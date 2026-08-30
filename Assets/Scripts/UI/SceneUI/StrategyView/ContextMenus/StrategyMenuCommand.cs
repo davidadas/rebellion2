@@ -28,7 +28,7 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
 
     public bool IsSubmenu { get; }
 
-    public bool UsesIconColumn { get; }
+    public bool UsesIconColumn => HasIcon || IsSubmenu;
 
     /// <summary>
     /// Creates one strategy context-menu command.
@@ -38,14 +38,12 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
     /// <param name="enabled">Whether the command can be selected.</param>
     /// <param name="iconKey">The optional semantic icon identifier.</param>
     /// <param name="submenuCommands">The ordered child commands.</param>
-    /// <param name="usesIconColumn">Whether the row reserves space for an icon.</param>
     public StrategyMenuCommand(
         StrategyMenuAction action,
         string text,
         bool enabled,
         int iconKey = 0,
-        IReadOnlyList<StrategyMenuCommand> submenuCommands = null,
-        bool usesIconColumn = false
+        IReadOnlyList<StrategyMenuCommand> submenuCommands = null
     )
     {
         Action = action;
@@ -54,7 +52,6 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
         IconKey = iconKey;
         SubmenuCommands = submenuCommands?.ToList() ?? new List<StrategyMenuCommand>();
         IsSubmenu = submenuCommands != null;
-        UsesIconColumn = usesIconColumn || HasIcon || IsSubmenu;
     }
 
     /// <summary>

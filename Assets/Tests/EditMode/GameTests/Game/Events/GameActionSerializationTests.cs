@@ -93,6 +93,7 @@ namespace Rebellion.Tests.Game.Events
                                         RecipientFactionInstanceID = "FNALL1",
                                         SubjectInstanceID = "LUKE",
                                         RelatedSubjectInstanceID = "VADER",
+                                        ShowSubjectImage = true,
                                         MessageType = MessageType.Advice,
                                         BackgroundAudio = new MessageAudio
                                         {
@@ -134,6 +135,7 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsNotNull(message);
             Assert.AreEqual("LUKE", message.SubjectInstanceID);
             Assert.AreEqual("VADER", message.RelatedSubjectInstanceID);
+            Assert.IsTrue(message.ShowSubjectImage);
             Assert.AreEqual("Story/dialogue", message.BackgroundAudio.Path);
             Assert.AreEqual("Story/advisor", message.AdvisorNotification.Protocol.AnimationPath);
             Assert.AreEqual(3, message.AdvisorNotification.Protocol.FrameCount);

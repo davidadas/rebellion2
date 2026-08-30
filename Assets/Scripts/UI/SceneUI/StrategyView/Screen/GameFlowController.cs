@@ -76,7 +76,7 @@ public sealed class GameFlowController : MonoBehaviour
             if (GameLaunchContext.IsLoadGame)
             {
                 LoadGame();
-                GameManager gameManager = StartGameSession();
+                GameManager gameManager = StartGameSession(loadedGame: true);
                 InitializeStrategy(gameManager);
                 ActivateGameplay(gameManager, false);
             }
@@ -131,7 +131,7 @@ public sealed class GameFlowController : MonoBehaviour
         GameStartupTrace.Log("Game generation complete.");
         bool playBriefing = GameLaunchContext.PlayIntroCutscene;
         Task intro = PlayFactionIntroAsync(game.GetPlayerFaction());
-        GameManager gameManager = StartGameSession();
+        GameManager gameManager = StartGameSession(loadedGame: false);
         InitializeStrategy(gameManager);
         Task briefingReady = playBriefing
             ? strategyController.PrepareBriefingAsync()
@@ -193,13 +193,14 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Starts the built game in the active runtime.
     /// </summary>
+    /// <param name="loadedGame">Whether the game was restored from persisted state.</param>
     /// <returns>The active game manager.</returns>
-    private GameManager StartGameSession()
+    private GameManager StartGameSession(bool loadedGame)
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameRuntime runtime = bootstrap.GetRuntime();
         GameStartupTrace.Log("Creating the active game session.");
-        return runtime.StartGame(game);
+        return loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
     }
 
     /// <summary>

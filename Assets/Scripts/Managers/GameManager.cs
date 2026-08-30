@@ -16,6 +16,16 @@ using Rebellion.Util.Extensions;
 /// </summary>
 public sealed class GameManager
 {
+    /// <summary>
+    /// Identifies whether the manager is idle, advancing a tick, or waiting for combat input.
+    /// </summary>
+    private enum TickExecutionState
+    {
+        Idle,
+        Processing,
+        AwaitingCombatDecision,
+    }
+
     // Game State.
     private GameRoot _game;
     private readonly GameDataCatalog _gameData;
@@ -70,10 +80,17 @@ public sealed class GameManager
     private float? _tickInterval;
     private float _tickTimer;
     private bool _tickInProgress;
+    private TickExecutionState _tickState;
 
     // Game Events.
     public event Action GameSpeedChanged;
     public event Action TickCompleted;
+
+    /// <summary>
+    /// Raised when tick processing pauses for a player-controlled space-combat decision.
+    /// </summary>
+    public event Action CombatDecisionRequired;
+
     public event Action<GameRoot> GameReplaced;
     public event Action<HeadquartersLostResult> HeadquartersLost;
     public event Action<VictoryResult> VictoryDeclared;
@@ -113,6 +130,11 @@ public sealed class GameManager
     internal PlanetaryAssaultSystem PlanetaryAssaultSystem => _planetaryAssaultSystem;
 
     /// <summary>
+    /// Gets whether the simulation is between ticks with no unresolved decision.
+    /// </summary>
+    internal bool IsTickSettled => _tickState == TickExecutionState.Idle;
+
+    /// <summary>
     /// Creates a new GameManager for the given game instance.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
@@ -131,6 +153,14 @@ public sealed class GameManager
     {
         InitializeGame(game);
         GameReplaced?.Invoke(_game);
+    }
+
+    /// <summary>
+    /// Reconstructs unresolved runtime decisions represented by loaded game state.
+    /// </summary>
+    internal void ReconcileLoadedState()
+    {
+        ReconcileLoadedCombatState();
     }
 
     /// <summary>
@@ -226,7 +256,7 @@ public sealed class GameManager
         if (
             elapsedSeconds <= 0f
             || _tickInProgress
-            || _spaceCombatSystem.HasPendingDecision
+            || _tickState != TickExecutionState.Idle
             || _tickInterval == null
         )
             return false;
@@ -263,12 +293,13 @@ public sealed class GameManager
     {
         if (
             _tickInProgress
-            || _spaceCombatSystem.HasPendingDecision
+            || _tickState != TickExecutionState.Idle
             || _game.GetGameSpeed() == TickSpeed.Paused
         )
             yield break;
 
         _tickInProgress = true;
+        _tickState = TickExecutionState.Processing;
         try
         {
             foreach (object step in ProcessTickCore())
@@ -277,6 +308,8 @@ public sealed class GameManager
         finally
         {
             _tickInProgress = false;
+            if (_tickState == TickExecutionState.Processing)
+                _tickState = TickExecutionState.Idle;
         }
     }
 
@@ -315,12 +348,22 @@ public sealed class GameManager
         if (_spaceCombatSystem.HasPendingDecision)
         {
             StoreDeferredMessageResults(movementPhaseResults);
-            TickCompleted?.Invoke();
+            BeginPendingCombatDecision();
             yield break;
         }
 
         ProcessMessageReactions(movementPhaseResults);
 
+        foreach (object step in ProcessRemainingTickPhases())
+            yield return step;
+    }
+
+    /// <summary>
+    /// Processes the phases that run after movement and space combat have settled.
+    /// </summary>
+    /// <returns>A sequence containing one step per completed AI phase.</returns>
+    private IEnumerable<object> ProcessRemainingTickPhases()
+    {
         ProcessResults(_missionSystem.ProcessTick());
         ProcessResults(_eventSystem.ProcessEvents(_game.GetEventPool()));
         _namingSystem.ProcessTick();
@@ -336,6 +379,7 @@ public sealed class GameManager
         ProcessResults(_researchSystem.ProcessTick());
         ProcessResults(_jediSystem.ProcessTick());
         ProcessResults(_victorySystem.ProcessTick());
+        _tickState = TickExecutionState.Idle;
         TickCompleted?.Invoke();
     }
 
@@ -381,6 +425,8 @@ public sealed class GameManager
         _game.RebuildSceneState();
 
         _randomProvider = _game.Random;
+        _deferredMessageResults.Clear();
+        _tickState = TickExecutionState.Idle;
         InitializeSystems();
         RebuildDerivedState();
         _tickTimer = 0f;
@@ -522,17 +568,70 @@ public sealed class GameManager
     /// <returns>The space-combat result in the routed batch, when present.</returns>
     private SpaceCombatResult CompleteCombatResolution(List<GameResult> combatResults)
     {
-        combatResults = ProcessResults(combatResults, processMessages: false);
+        _tickInProgress = true;
+        _tickState = TickExecutionState.Processing;
+        try
+        {
+            combatResults = ProcessResults(combatResults, processMessages: false);
+            SpaceCombatResult completedCombat = combatResults
+                .OfType<SpaceCombatResult>()
+                .FirstOrDefault();
 
-        List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
+            List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
+            List<GameResult> additionalCombatResults = ProcessResults(
+                _spaceCombatSystem.ProcessTick(),
+                processMessages: false
+            );
+            _deferredMessageResults.AddRange(combatResults);
+            _deferredMessageResults.AddRange(waypointResults);
+            _deferredMessageResults.AddRange(additionalCombatResults);
 
-        List<GameResult> movementPhaseResults = TakeDeferredMessageResults();
-        movementPhaseResults.AddRange(combatResults);
-        movementPhaseResults.AddRange(waypointResults);
-        _messageSystem.ProcessResults(movementPhaseResults);
-        _tickTimer = 0f;
+            if (_spaceCombatSystem.HasPendingDecision)
+            {
+                BeginPendingCombatDecision();
+                return completedCombat;
+            }
 
-        return combatResults.OfType<SpaceCombatResult>().FirstOrDefault();
+            ProcessMessageReactions(TakeDeferredMessageResults());
+            IEnumerator remainingTick = ProcessRemainingTickPhases().GetEnumerator();
+            try
+            {
+                while (remainingTick.MoveNext()) { }
+            }
+            finally
+            {
+                (remainingTick as IDisposable)?.Dispose();
+            }
+
+            _tickTimer = 0f;
+            return completedCombat;
+        }
+        finally
+        {
+            _tickInProgress = false;
+            if (_tickState == TickExecutionState.Processing)
+                _tickState = TickExecutionState.Idle;
+        }
+    }
+
+    /// <summary>
+    /// Reconstructs unresolved space combat represented by loaded fleet locations without
+    /// advancing the game tick.
+    /// </summary>
+    private void ReconcileLoadedCombatState()
+    {
+        List<GameResult> combatResults = ProcessResults(
+            _spaceCombatSystem.ProcessTick(),
+            processMessages: false
+        );
+        if (_spaceCombatSystem.HasPendingDecision)
+        {
+            StoreDeferredMessageResults(combatResults);
+            BeginPendingCombatDecision();
+            return;
+        }
+
+        ProcessMessageReactions(combatResults);
     }
 
     /// <summary>
@@ -630,6 +729,15 @@ public sealed class GameManager
         _deferredMessageResults.Clear();
         if (results != null)
             _deferredMessageResults.AddRange(results);
+    }
+
+    /// <summary>
+    /// Suspends the active tick and notifies presentation that player combat input is required.
+    /// </summary>
+    private void BeginPendingCombatDecision()
+    {
+        _tickState = TickExecutionState.AwaitingCombatDecision;
+        CombatDecisionRequired?.Invoke();
     }
 
     /// <summary>

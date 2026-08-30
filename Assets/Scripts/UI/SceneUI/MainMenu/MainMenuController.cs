@@ -284,6 +284,7 @@ public sealed class MainMenuController : MonoBehaviour
             () => view.GetOptionsWindowPosition(_optionsMenuPrefab),
             windowManager.DestroyWindow,
             bootstrap,
+            bootstrap.GetRuntime().SaveGame,
             RequestSavedGameLaunch,
             MarkOptionsDirty,
             SaveGameManager.Instance

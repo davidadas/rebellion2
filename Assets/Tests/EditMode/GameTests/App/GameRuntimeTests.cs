@@ -2,6 +2,9 @@ using System;
 using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.App
 {
@@ -36,7 +39,59 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void QuickSaveThenQuickLoad_ReplacesMutatedGameWithSavedState()
+        public void StartGame_PendingCombat_DefersAutosaveUntilResolution()
+        {
+            GameRoot game = CreateContestedGame();
+            game.CurrentTick = 39;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            GameManager manager = _runtime.StartGame(game);
+            string autosavePath = _saveGameManager.GetSaveFilePath(
+                SaveGameManager.AutosaveFilePrefix + "0000000040"
+            );
+
+            manager.ProcessTick();
+
+            Assert.IsFalse(File.Exists(autosavePath));
+            Assert.IsFalse(_runtime.CanSave);
+
+            manager.ResolveCombat(true);
+
+            Assert.IsTrue(File.Exists(autosavePath));
+            Assert.IsTrue(_runtime.CanSave);
+        }
+
+        [Test]
+        public void QuickSave_PendingCombat_DoesNotWriteSave()
+        {
+            GameRoot game = CreateContestedGame();
+            _runtime.StartLoadedGame(game);
+
+            bool saved = _runtime.QuickSave();
+
+            Assert.IsFalse(saved);
+            Assert.IsFalse(
+                File.Exists(_saveGameManager.GetSaveFilePath(SaveGameManager.QuickSaveFileName))
+            );
+        }
+
+        [Test]
+        public void SaveGame_PendingCombat_DoesNotWriteSave()
+        {
+            GameRoot game = CreateContestedGame();
+            game.CurrentTick = 40;
+            GameManager manager = _runtime.StartLoadedGame(game);
+
+            bool saved = _runtime.SaveGame("pending_combat", "Pending Combat");
+
+            Assert.IsTrue(manager.SpaceCombatSystem.HasPendingDecision);
+            Assert.IsFalse(_runtime.CanSave);
+            Assert.IsFalse(saved);
+            Assert.IsFalse(File.Exists(_saveGameManager.GetSaveFilePath("pending_combat")));
+            Assert.AreEqual(40, game.CurrentTick);
+        }
+
+        [Test]
+        public void QuickLoad_AfterQuickSave_ReplacesMutatedGameWithSavedState()
         {
             GameRoot game = CreateGame();
             game.CurrentTick = 123;
@@ -108,6 +163,59 @@ namespace Rebellion.Tests.App
                     ScenarioID = _contentPack.Scenario.ID,
                 },
             };
+        }
+
+        private GameRoot CreateContestedGame()
+        {
+            GameRoot game = CreateGame();
+            Faction alliance = new Faction
+            {
+                InstanceID = "FNALL1",
+                DisplayName = "Alliance",
+                PlayerID = "player",
+            };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            game.GetFactions().Add(alliance);
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                DisplayName = "Planet",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            AddFleet(game, planet, "ALLIANCE_FLEET", alliance.InstanceID);
+            AddFleet(game, planet, "EMPIRE_FLEET", empire.InstanceID);
+            return game;
+        }
+
+        private static void AddFleet(
+            GameRoot game,
+            Planet planet,
+            string instanceId,
+            string ownerId
+        )
+        {
+            Fleet fleet = new Fleet
+            {
+                InstanceID = instanceId,
+                DisplayName = instanceId,
+                OwnerInstanceID = ownerId,
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = instanceId + "_SHIP",
+                DisplayName = instanceId + " Ship",
+                OwnerInstanceID = ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+                MaxHullStrength = 100,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
         }
     }
 }

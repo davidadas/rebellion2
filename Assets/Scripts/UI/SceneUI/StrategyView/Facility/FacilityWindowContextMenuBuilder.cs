@@ -91,8 +91,7 @@ internal static class FacilityWindowContextMenuBuilder
                     playerControlsPlanet,
                     planet?.IsManufacturingReserved(manufacturingType.Value) == true
                         ? StrategyContextMenuIconKeys.CheckMark
-                        : StrategyContextMenuIconKeys.None,
-                    usesIconColumn: true
+                        : StrategyContextMenuIconKeys.None
                 )
             );
         }

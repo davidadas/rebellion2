@@ -77,6 +77,59 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ReconcileLoadedState_ContestedPlayerFleet_RestoresPendingCombat()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create()) { CurrentTick = 40 };
+            Faction alliance = new Faction
+            {
+                InstanceID = "FNALL1",
+                DisplayName = "Alliance",
+                PlayerID = "player",
+            };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            game.GetFactions().Add(alliance);
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet planet = CreatePlanet("PLANET", empire.InstanceID, 0);
+            game.AttachNode(planet, sector);
+            CreateCombatFleet(
+                game,
+                "ALLIANCE_FLEET",
+                alliance.InstanceID,
+                planet,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            CreateCombatFleet(
+                game,
+                "EMPIRE_FLEET",
+                empire.InstanceID,
+                planet,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            GameManager manager = TestContent.CreateGameManager(game);
+            int decisionsRequired = 0;
+            int completedTicks = 0;
+            manager.CombatDecisionRequired += () => decisionsRequired++;
+            manager.TickCompleted += () => completedTicks++;
+
+            manager.ReconcileLoadedState();
+
+            Assert.AreEqual(40, game.CurrentTick);
+            Assert.IsTrue(manager.SpaceCombatSystem.HasPendingDecision);
+            Assert.IsFalse(manager.IsTickSettled);
+            Assert.AreEqual(1, decisionsRequired);
+
+            manager.ResolveCombat(true);
+
+            Assert.AreEqual(40, game.CurrentTick);
+            Assert.AreEqual(1, completedTicks);
+            Assert.IsTrue(manager.IsTickSettled);
+        }
+
+        [Test]
         public void ProcessFactionAutomation_ManageNaming_AssignsNameImmediately()
         {
             GameRoot game = new GameRoot();
@@ -669,7 +722,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_PendingCombat_CompletesOnlyStartedTick()
+        public void ProcessTick_PendingCombat_CompletesTickAfterResolution()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction alliance = new Faction
@@ -724,7 +777,13 @@ namespace Rebellion.Tests.Managers
             manager.ProcessTick();
 
             Assert.AreEqual(pendingCombatTick, game.CurrentTick);
+            Assert.AreEqual(0, completedTicks);
+            Assert.IsFalse(manager.IsTickSettled);
+
+            manager.ResolveCombat(true);
+
             Assert.AreEqual(1, completedTicks);
+            Assert.IsTrue(manager.IsTickSettled);
         }
 
         [Test]

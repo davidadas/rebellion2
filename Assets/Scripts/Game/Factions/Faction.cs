@@ -287,18 +287,24 @@ namespace Rebellion.Game.Factions
         /// Returns a list of units of a specific type owned by the faction.
         /// </summary>
         /// <typeparam name="T">The type of unit to get.</typeparam>
+        /// <param name="includeDisabled">Whether to include disabled units.</param>
         /// <returns>A list of owned units of the specified type.</returns>
-        public List<T> GetOwnedUnitsByType<T>()
+        public List<T> GetOwnedUnitsByType<T>(bool includeDisabled = false)
             where T : ISceneNode
         {
             if (_ownedEntities.TryGetValue(typeof(T), out List<ISceneNode> exactMatches))
-                return exactMatches.Where(node => node.IsActive()).Cast<T>().ToList();
+            {
+                return exactMatches
+                    .Where(node => includeDisabled || node.IsActive())
+                    .Cast<T>()
+                    .ToList();
+            }
 
             return _ownedEntities
                 .Where(entry => typeof(T).IsAssignableFrom(entry.Key))
                 .SelectMany(entry => entry.Value)
                 .Distinct()
-                .Where(node => node.IsActive())
+                .Where(node => includeDisabled || node.IsActive())
                 .Cast<T>()
                 .ToList();
         }

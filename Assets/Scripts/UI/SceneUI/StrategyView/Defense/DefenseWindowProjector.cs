@@ -288,6 +288,8 @@ internal sealed class DefenseWindowProjector
             starfighterBadgeTexture: null,
             troopBadgeTexture: null,
             personnelBadgeTexture: null,
+            hideBackgroundWhenSelected: item
+                is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building },
             canDrag: DefenseWindowSession.CanDragItem(item)
         );
     }

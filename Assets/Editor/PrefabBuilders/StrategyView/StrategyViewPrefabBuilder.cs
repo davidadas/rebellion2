@@ -5523,7 +5523,7 @@ public static class StrategyViewPrefabBuilder
             "ResultSummaryTextField",
             window.transform,
             "Battle summary",
-            new RectInt(25, 225, 350, 70),
+            new RectInt(25, 215, 350, 70),
             18,
             FontStyles.Normal,
             TextAlignmentOptions.TopLeft
@@ -7547,8 +7547,24 @@ public static class StrategyViewPrefabBuilder
     /// <param name="texturePath">The authored content texture asset path.</param>
     private static void AttachTextureBinding(RawImage image, string texturePath)
     {
-        ContentTextureBinding binding = image.gameObject.AddComponent<ContentTextureBinding>();
-        binding.SetAddress(ToContentAddress(texturePath));
+        string address = ToContentAddress(texturePath);
+        if (image.TryGetComponent(out RawImagePressVisual _))
+        {
+            ContentTextureBinding textureBinding = image.GetComponent<ContentTextureBinding>();
+            if (textureBinding != null)
+                UnityEngine.Object.DestroyImmediate(textureBinding);
+
+            ContentPressVisualBinding pressBinding =
+                image.GetComponent<ContentPressVisualBinding>()
+                ?? image.gameObject.AddComponent<ContentPressVisualBinding>();
+            pressBinding.SetAddresses(address, null);
+            return;
+        }
+
+        ContentTextureBinding binding = image.GetComponent<ContentTextureBinding>();
+        if (binding == null)
+            binding = image.gameObject.AddComponent<ContentTextureBinding>();
+        binding.SetAddress(address);
     }
 
     /// <summary>
