@@ -16,6 +16,7 @@ public static class StandalonePlayerBuild
     private const string _buildTargetArgument = "-buildTarget";
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
+    private const string _buildVersionEnvironmentVariable = "REB2_BUILD_VERSION";
 
     /// <summary>
     /// Builds an external-content player for the active desktop target from the Unity editor.
@@ -93,7 +94,28 @@ public static class StandalonePlayerBuild
         string outputPath = ResolveProjectPath(
             GetRequiredArgument(_buildPlayerPathArgument, _gameCIBuildPathArgument)
         );
-        BuildPlayer(target, outputPath);
+        string originalVersion = UnityEditor.PlayerSettings.bundleVersion;
+        try
+        {
+            ApplyBuildVersion();
+            BuildPlayer(target, outputPath);
+        }
+        finally
+        {
+            UnityEditor.PlayerSettings.bundleVersion = originalVersion;
+        }
+    }
+
+    /// <summary>
+    /// Applies the release version supplied by the build environment, when present.
+    /// </summary>
+    private static void ApplyBuildVersion()
+    {
+        string buildVersion = Environment.GetEnvironmentVariable(_buildVersionEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(buildVersion))
+            return;
+
+        UnityEditor.PlayerSettings.bundleVersion = buildVersion.Trim();
     }
 
     /// <summary>
