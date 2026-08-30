@@ -93,6 +93,7 @@ addresses beginning with `Pack/` resolve from the active pack.
 ## Guides
 
 - [Creating game events](Events/Index.md)
+- [Creating and modifying units](Units/Index.md)
 
 ## Compatibility
 
