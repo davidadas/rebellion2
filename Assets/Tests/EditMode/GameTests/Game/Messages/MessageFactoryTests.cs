@@ -2332,7 +2332,7 @@ namespace Rebellion.Tests.Game.Messages
                             "recruited:{officer}:{system}",
                             "body:{officer}:{system}",
                             DefaultImage("fallback-card"),
-                            showOfficerOverlay: true
+                            showSubjectImage: true
                         ),
                     },
                     new OfficerRecruitedResult
@@ -2486,7 +2486,7 @@ namespace Rebellion.Tests.Game.Messages
                             "recovered:{officer}:{system}",
                             "body:{officer}:{system}",
                             DefaultImage("fallback-card"),
-                            showOfficerOverlay: true
+                            showSubjectImage: true
                         ),
                     },
                     new OfficerInjuredResult { Officer = officer, Severity = 0 }
@@ -2806,7 +2806,7 @@ namespace Rebellion.Tests.Game.Messages
                         MessageType.Mission,
                         "{discoverer} Discovers Traitor",
                         "Through the use of the Force, I have discovered that {traitor} has betrayed us to the {enemy}.",
-                        showOfficerOverlay: true
+                        showSubjectImage: true
                     ),
                 },
                 new TraitorDiscoveredResult
@@ -4068,7 +4068,7 @@ namespace Rebellion.Tests.Game.Messages
             string voicePath = null,
             Dictionary<string, string> imagePaths = null,
             Dictionary<string, string> voicePaths = null,
-            bool showOfficerOverlay = false,
+            bool showSubjectImage = false,
             bool planetDestroyed = false
         )
         {
@@ -4084,7 +4084,7 @@ namespace Rebellion.Tests.Game.Messages
                 ManufacturingType = manufacturingType,
                 Subject = titleTemplate,
                 Body = bodyTemplate,
-                ShowOfficerOverlay = showOfficerOverlay,
+                ShowSubjectImage = showSubjectImage,
                 BackgroundImage =
                     string.IsNullOrWhiteSpace(imageKey) && string.IsNullOrWhiteSpace(imagePath)
                         ? null
