@@ -53,6 +53,37 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
+    /// Reads the saved content selection from the settings file before the settings
+    /// system is initialized.
+    /// </summary>
+    /// <param name="packID">The selected pack ID, or null.</param>
+    /// <param name="scenarioID">The selected scenario ID, or null.</param>
+    /// <returns>True if a non-empty pack selection was read.</returns>
+    public static bool TryReadContentSelection(out string packID, out string scenarioID)
+    {
+        packID = null;
+        scenarioID = null;
+        try
+        {
+            string path = Path.Combine(Application.persistentDataPath, _settingsFileName);
+            if (!File.Exists(path))
+                return false;
+
+            UserSettings settings = JsonUtility.FromJson<UserSettings>(File.ReadAllText(path));
+            if (settings?.Content == null)
+                return false;
+
+            packID = settings.Content.ActivePackID;
+            scenarioID = settings.Content.ActiveScenarioID;
+            return !string.IsNullOrWhiteSpace(packID);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Returns the path used for user settings persistence.
     /// </summary>
     /// <returns>The absolute user settings file path.</returns>
