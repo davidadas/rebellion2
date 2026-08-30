@@ -60,6 +60,7 @@ namespace Rebellion.Tests.Game.Events
     <Bindings>
       <Bind As=""#@$#@binding""><RollInteger Minimum=""1"" Maximum=""1""/></Bind>
     </Bindings>
+    <Schedule><At Tick=""1""/></Schedule>
     <Conditionals>
       <EvaluateBinding Binding=""#@$#@binding"" Comparison=""Equal"" CompareTo=""1""/>
     </Conditionals>

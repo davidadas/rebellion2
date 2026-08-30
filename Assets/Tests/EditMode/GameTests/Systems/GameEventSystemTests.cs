@@ -299,7 +299,7 @@ namespace Rebellion.Tests.Sectors
                         {
                             new PlanetStatBindingSource
                             {
-                                PlanetBinding = "$planet",
+                                PlanetBinding = "planet",
                                 Stat = PlanetStat.RawResourceNodes,
                             },
                         },
@@ -314,7 +314,7 @@ namespace Rebellion.Tests.Sectors
                         {
                             new EvaluateBindingConditional
                             {
-                                Binding = "$rawResourceNodes",
+                                Binding = "rawResourceNodes",
                                 Comparison = ComparisonOperator.Equal,
                                 CompareTo = "0",
                             },
@@ -522,7 +522,7 @@ namespace Rebellion.Tests.Sectors
                 },
                 Conditionals = new List<GameConditional>
                 {
-                    new IsOwnedConditional { PlanetBinding = "$target" },
+                    new IsOwnedConditional { PlanetBinding = "target" },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -568,7 +568,7 @@ namespace Rebellion.Tests.Sectors
                 },
                 Conditionals = new List<GameConditional>
                 {
-                    new IsOwnedConditional { PlanetBinding = "$target" },
+                    new IsOwnedConditional { PlanetBinding = "target" },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -615,7 +615,7 @@ namespace Rebellion.Tests.Sectors
                 },
                 Conditionals = new List<GameConditional>
                 {
-                    new IsOwnedConditional { PlanetBinding = "$target" },
+                    new IsOwnedConditional { PlanetBinding = "target" },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -997,7 +997,7 @@ namespace Rebellion.Tests.Sectors
         private static EvaluateBindingConditional BindingEquals(string name, string value) =>
             new EvaluateBindingConditional
             {
-                Binding = "$" + name,
+                Binding = name,
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = value,
             };
