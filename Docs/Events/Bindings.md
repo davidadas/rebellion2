@@ -1,8 +1,9 @@
 # Bindings
 
 Bindings assign names to values that schedules, selectors, conditionals, and actions can reuse
-during one event evaluation. A top-level binding contains one selected scene node or numeric roll.
-A trigger binding contains one explicitly documented argument exposed by a matched trigger.
+during one event evaluation. A top-level binding contains one selected scene node, numeric roll,
+or typed value read from the current game state. A trigger binding contains one explicitly
+documented argument exposed by a matched trigger.
 
 Binding values are temporary. They are rebuilt whenever the event is evaluated and are not stored
 in the save game.
@@ -26,6 +27,10 @@ multiple nodes raises a runtime authoring error.
     selectors, plus `SelectRandom` and `SelectBinding`.
   - `RollInteger`: Produces an integer from its inclusive `Minimum` and `Maximum`.
   - `RollDouble`: Produces a double from its inclusive `Minimum` and exclusive `Maximum`.
+  - `OfficerRating`: Produces one officer's effective rating.
+  - `OfficerForce`: Produces one officer's current Force rank.
+  - `PlanetStat`: Produces one current planet statistic.
+  - `SelectionCount`: Produces the number of distinct scene nodes returned by its selectors.
 
 ```xml
 <Bindings>
@@ -58,6 +63,54 @@ Numeric bindings let multiple actions reuse one roll:
   </ChangeEnergyCapacity>
 </Actions>
 ```
+
+Typed value bindings read current game state without introducing a separate conditional for every
+property that an event might compare:
+
+```xml
+<Bindings>
+  <Bind As="hanCombat">
+    <OfficerRating OfficerInstanceID="HAN_SOLO" Rating="Combat"/>
+  </Bind>
+  <Bind As="vaderForce">
+    <OfficerForce OfficerInstanceID="DARTH_VADER"/>
+  </Bind>
+  <Bind As="nabooResources">
+    <PlanetStat PlanetInstanceID="NABOO" Stat="RawResourceNodes"/>
+  </Bind>
+  <Bind As="imperialFleetCount">
+    <SelectionCount>
+      <From>
+        <SelectFleets PlanetInstanceID="NABOO" OwnerFactionInstanceID="FNEMP1"/>
+      </From>
+    </SelectionCount>
+  </Bind>
+</Bindings>
+```
+
+`OfficerRating` options:
+
+- Officer source **[Required]:** Provide exactly one:
+  - `OfficerInstanceID`: The `InstanceID` of the officer to evaluate.
+  - `OfficerBinding`: A binding that resolves the officer to evaluate.
+- `Rating` **[Required]:** The officer rating to read.
+
+`OfficerForce` options:
+
+- Officer source **[Required]:** Provide exactly one:
+  - `OfficerInstanceID`: The `InstanceID` of the officer to evaluate.
+  - `OfficerBinding`: A binding that resolves the officer to evaluate.
+
+`PlanetStat` options:
+
+- Planet source **[Required]:** Provide exactly one:
+  - `PlanetInstanceID`: The `InstanceID` of the planet to evaluate.
+  - `PlanetBinding`: A binding that resolves the planet to evaluate.
+- `Stat` **[Required]:** The planet statistic to read.
+
+`SelectionCount` options:
+
+- `From` **[Required]:** One or more selectors whose distinct results are counted.
 
 ## Trigger bindings
 

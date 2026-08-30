@@ -269,6 +269,18 @@ namespace Rebellion.Tests.Sectors
                             new SelectPlanets { InstanceID = planet.InstanceID },
                         },
                     },
+                    new GameEventBinding
+                    {
+                        As = "rawResourceNodes",
+                        Sources = new List<GameEventBindingSource>
+                        {
+                            new PlanetStatBindingSource
+                            {
+                                PlanetBinding = "$planet",
+                                Stat = PlanetStat.RawResourceNodes,
+                            },
+                        },
+                    },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -277,12 +289,11 @@ namespace Rebellion.Tests.Sectors
                         Ticks = 5,
                         Until = new List<GameConditional>
                         {
-                            new ComparePlanetStatConditional
+                            new EvaluateBindingConditional
                             {
-                                PlanetBinding = "$planet",
-                                Stat = PlanetStat.RawResourceNodes,
+                                Binding = "$rawResourceNodes",
                                 Comparison = ComparisonOperator.Equal,
-                                Value = 0,
+                                CompareTo = "0",
                             },
                         },
                     },

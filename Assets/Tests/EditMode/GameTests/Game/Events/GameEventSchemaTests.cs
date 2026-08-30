@@ -67,6 +67,37 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void Validate_TypedBindingsAndBindingComparison_AcceptsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>EVENT</InstanceID>
+    <Bindings>
+      <Bind As=""combat""><OfficerRating OfficerInstanceID=""HAN_SOLO"" Rating=""Combat""/></Bind>
+      <Bind As=""force""><OfficerForce OfficerInstanceID=""DARTH_VADER""/></Bind>
+      <Bind As=""resources""><PlanetStat PlanetInstanceID=""NABOO"" Stat=""RawResourceNodes""/></Bind>
+      <Bind As=""fleetCount"">
+        <SelectionCount>
+          <From><SelectFleets PlanetInstanceID=""CORUSCANT""/></From>
+        </SelectionCount>
+      </Bind>
+    </Bindings>
+    <Schedule><At Tick=""1""/></Schedule>
+    <Conditionals>
+      <EvaluateBinding Binding=""$combat"" Comparison=""GreaterThan"" CompareToBinding=""$force""/>
+      <EvaluateBinding Binding=""$resources"" Comparison=""GreaterThan"" CompareTo=""0""/>
+      <EvaluateBinding Binding=""$fleetCount"" Comparison=""Equal"" CompareTo=""0""/>
+    </Conditionals>
+    <Actions/>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.DoesNotThrow(() => Validate(xml));
+        }
+
+        [Test]
         public void Validate_RandomAndSupportActions_AcceptsDocument()
         {
             const string xml =

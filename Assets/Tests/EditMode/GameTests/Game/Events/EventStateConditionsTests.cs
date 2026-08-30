@@ -87,6 +87,54 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("cannot be compared", exception.Message);
         }
 
+        [Test]
+        public void EvaluateBinding_CompatibleBindingComparison_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "$first",
+                Comparison = ComparisonOperator.GreaterThan,
+                CompareToBinding = "$second",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("first", 80);
+            context.Bind("second", 60);
+
+            bool result = conditional.IsMet(game, context);
+
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void EvaluateBinding_IncompatibleBindingComparison_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "$first",
+                Comparison = ComparisonOperator.Equal,
+                CompareToBinding = "$second",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("first", 80);
+            context.Bind("second", "80");
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                conditional.IsMet(game, context)
+            );
+
+            StringAssert.Contains("incompatible value types", exception.Message);
+        }
+
         [TestCase(ComparisonOperator.Equal, false)]
         [TestCase(ComparisonOperator.NotEqual, true)]
         [TestCase(ComparisonOperator.GreaterThan, false)]
