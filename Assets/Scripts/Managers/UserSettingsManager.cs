@@ -53,9 +53,8 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
-    /// Reads just the content selection (active pack/scenario) from the settings
-    /// file, if present. Safe to call before the settings system is initialized —
-    /// used at boot to pick the pack before content loads. Never throws.
+    /// Reads the saved content selection from the settings file before the settings
+    /// system is initialized. Never throws.
     /// </summary>
     /// <param name="packID">The selected pack ID, or null.</param>
     /// <param name="scenarioID">The selected scenario ID, or null.</param>

@@ -109,9 +109,7 @@ public sealed class AppBootstrap : MonoBehaviour
         _sceneLoader = GetComponent<SceneLoader>();
         if (_sceneLoader == null)
             _sceneLoader = gameObject.AddComponent<SceneLoader>();
-        // Prefer the player's saved pack/scenario selection over the catalog default
-        // so a content update never resets their choice. Read straight from the
-        // settings file since the full settings system loads after content.
+        // Read the saved selection directly; the settings system loads after content.
         UserSettingsManager.TryReadContentSelection(
             out string selectedPackID,
             out string selectedScenarioID

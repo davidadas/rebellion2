@@ -47,12 +47,10 @@ public static class ContentPackLoader
     }
 
     /// <summary>
-    /// Opens the pack/scenario the player selected in user settings, falling back
-    /// to the catalog default when no selection is given. Empty overrides mean
-    /// "use the catalog default".
+    /// Opens the selected pack/scenario, or the catalog default when either is empty.
     /// </summary>
-    /// <param name="packIdOverride">Player-selected pack ID, or null/empty.</param>
-    /// <param name="scenarioIdOverride">Player-selected scenario ID, or null/empty.</param>
+    /// <param name="packIdOverride">Selected pack ID, or null/empty for the catalog default.</param>
+    /// <param name="scenarioIdOverride">Selected scenario ID, or null/empty for the catalog default.</param>
     /// <returns>The loaded active content pack.</returns>
     public static ContentPack OpenActive(string packIdOverride, string scenarioIdOverride)
     {
@@ -70,13 +68,12 @@ public static class ContentPackLoader
     }
 
     /// <summary>
-    /// Opens the selected pack from an explicit content root, preferring the given
-    /// overrides over the catalog. If the overridden pack can't be opened, falls
-    /// back to the catalog default so a stale selection never blocks startup.
+    /// Opens the selected pack from an explicit content root, falling back to the
+    /// catalog default when the selection can't be opened.
     /// </summary>
     /// <param name="contentRootPath">The external content root to inspect.</param>
-    /// <param name="packIdOverride">Player-selected pack ID, or null/empty.</param>
-    /// <param name="scenarioIdOverride">Player-selected scenario ID, or null/empty.</param>
+    /// <param name="packIdOverride">Selected pack ID, or null/empty for the catalog default.</param>
+    /// <param name="scenarioIdOverride">Selected scenario ID, or null/empty for the catalog default.</param>
     /// <returns>The loaded active content pack.</returns>
     internal static ContentPack OpenActive(
         string contentRootPath,
@@ -111,8 +108,7 @@ public static class ContentPackLoader
         }
         catch (Exception) when (usingOverride && !string.IsNullOrWhiteSpace(catalog.ActivePackID))
         {
-            // The player's selected pack is unavailable — fall back to the shipped
-            // default so a removed/renamed mod can't brick startup.
+            // Selected pack unavailable; fall back to the shipped default.
             return OpenPack(absoluteContentRoot, catalog.ActivePackID, catalog.ActiveScenarioID);
         }
     }
