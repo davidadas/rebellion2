@@ -528,26 +528,8 @@ namespace Rebellion.Game.Missions
                 .Where(participant => participant != null)
                 .ToList();
             MissionOdds successOdds = GetMissionOdds(evaluatedParticipants, game);
-            return GetMissionOdds(evaluatedParticipants, detectionSnapshot, game, successOdds);
-        }
-
-        /// <summary>
-        /// Adds personnel-loss risk to previously calculated mission success odds.
-        /// </summary>
-        /// <param name="participants">The primary participants being evaluated.</param>
-        /// <param name="detectionSnapshot">The target's cached hostile detectors.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="successOdds">The previously calculated mission success odds.</param>
-        /// <returns>The combined mission odds.</returns>
-        internal MissionOdds GetMissionOdds(
-            IReadOnlyList<IMissionParticipant> participants,
-            MissionDetectionSnapshot detectionSnapshot,
-            GameRoot game,
-            MissionOdds successOdds
-        )
-        {
             double lossPerDetectionPass = GetProjectedPersonnelLossProbability(
-                participants,
+                evaluatedParticipants,
                 detectionSnapshot?.Detectors,
                 game
             );

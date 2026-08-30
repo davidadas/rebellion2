@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -39,26 +38,6 @@ namespace Rebellion.AI.Director
         private readonly List<GameResult> _results = new List<GameResult>();
         private readonly Dictionary<string, MissionDetectionSnapshot> _missionDetectionSnapshots =
             new Dictionary<string, MissionDetectionSnapshot>(System.StringComparer.Ordinal);
-        private readonly Dictionary<
-            (
-                string PlanetId,
-                string MissionTypeId,
-                double Success,
-                string MainIds,
-                string DecoyIds
-            ),
-            MissionOdds
-        > _missionOdds =
-            new Dictionary<
-                (
-                    string PlanetId,
-                    string MissionTypeId,
-                    double Success,
-                    string MainIds,
-                    string DecoyIds
-                ),
-                MissionOdds
-            >();
 
         /// <summary>
         /// Creates a turn context.
@@ -179,22 +158,6 @@ namespace Rebellion.AI.Director
             if (observedPlanet == null)
                 return Missions.GetMissionOdds(mission, participants);
 
-            List<IMissionParticipant> evaluatedParticipants = (
-                participants ?? Enumerable.Empty<IMissionParticipant>()
-            )
-                .Where(participant => participant != null)
-                .ToList();
-            MissionOdds successOdds = mission.GetMissionOdds(evaluatedParticipants, Game);
-            var oddsKey = (
-                observedPlanet.InstanceID,
-                mission.GetTypeID(),
-                successOdds.SuccessProbability,
-                GetParticipantKey(evaluatedParticipants),
-                GetParticipantKey(mission.GetDecoyParticipants())
-            );
-            if (_missionOdds.TryGetValue(oddsKey, out MissionOdds cachedOdds))
-                return cachedOdds;
-
             if (
                 !_missionDetectionSnapshots.TryGetValue(
                     observedPlanet.InstanceID,
@@ -206,28 +169,7 @@ namespace Rebellion.AI.Director
                 _missionDetectionSnapshots.Add(observedPlanet.InstanceID, detectionSnapshot);
             }
 
-            MissionOdds odds = mission.GetMissionOdds(
-                evaluatedParticipants,
-                detectionSnapshot,
-                Game,
-                successOdds
-            );
-            _missionOdds.Add(oddsKey, odds);
-            return odds;
+            return mission.GetMissionOdds(participants, detectionSnapshot, Game);
         }
-
-        /// <summary>
-        /// Builds a deterministic identity for one participant set.
-        /// </summary>
-        /// <param name="participants">The participants to identify.</param>
-        /// <returns>The ordered participant instance identifiers.</returns>
-        private static string GetParticipantKey(IEnumerable<IMissionParticipant> participants) =>
-            string.Join(
-                "\u001f",
-                (participants ?? Enumerable.Empty<IMissionParticipant>())
-                    .Where(participant => !string.IsNullOrEmpty(participant?.InstanceID))
-                    .Select(participant => participant.InstanceID)
-                    .OrderBy(id => id, System.StringComparer.Ordinal)
-            );
     }
 }
