@@ -672,6 +672,21 @@ namespace Rebellion.Systems
                 result.Planet,
                 result.DefenderOutcome
             );
+            UpdateCombatEncounterWinner(result);
+        }
+
+        /// <summary>
+        /// Aligns the encounter winner with the sides that remain active after resolution.
+        /// </summary>
+        /// <param name="result">The encounter result to update.</param>
+        private static void UpdateCombatEncounterWinner(SpaceCombatResult result)
+        {
+            bool attackerActive = result.AttackerOutcome == SpaceCombatSideOutcome.Active;
+            bool defenderActive = result.DefenderOutcome == SpaceCombatSideOutcome.Active;
+            if (attackerActive == defenderActive)
+                return;
+
+            result.Winner = attackerActive ? CombatSide.Attacker : CombatSide.Defender;
         }
 
         /// <summary>Returns the final destination ID recorded for a withdrawn fleet.</summary>
@@ -809,16 +824,8 @@ namespace Rebellion.Systems
             SpaceCombatResult encounterResult
         )
         {
-            bool attackerRetreated = TryRetreatFleets(
-                attackerFleets,
-                defenderFleets,
-                ignoreGravityWell: true
-            );
-            bool defenderRetreated = TryRetreatFleets(
-                defenderFleets,
-                attackerFleets,
-                ignoreGravityWell: true
-            );
+            TryRetreatFleets(attackerFleets, defenderFleets, ignoreGravityWell: true);
+            TryRetreatFleets(defenderFleets, attackerFleets, ignoreGravityWell: true);
 
             if (!AreForcesContestingPlanet(decision))
                 return;
@@ -832,32 +839,12 @@ namespace Rebellion.Systems
                 defenderFleets,
                 planet
             );
-            bool hasOperationalWeapons =
-                HasOperationalSpaceWeapons(
-                    strandedAttackerFleets,
-                    planet,
-                    decision.AttackerOwnerInstanceID
-                )
-                || HasOperationalSpaceWeapons(
-                    strandedDefenderFleets,
-                    planet,
-                    decision.DefenderOwnerInstanceID
-                );
-            if (!hasOperationalWeapons)
-            {
-                DestroyStalematedForces(
-                    decision,
-                    strandedAttackerFleets,
-                    strandedDefenderFleets,
-                    encounterResult
-                );
-                return;
-            }
-
-            if (!attackerRetreated)
-                RemoveFleetsUnableToRetreat(strandedAttackerFleets);
-            if (!defenderRetreated)
-                RemoveFleetsUnableToRetreat(strandedDefenderFleets);
+            DestroyStalematedForces(
+                decision,
+                strandedAttackerFleets,
+                strandedDefenderFleets,
+                encounterResult
+            );
         }
 
         /// <summary>
@@ -996,19 +983,6 @@ namespace Rebellion.Systems
         {
             List<ISceneNode> destroyedUnits = ships.Cast<ISceneNode>().Concat(fighters).ToList();
             CombatUnitSnapshot.RecordOutcomes(snapshots, destroyedUnits, destroyedUnits);
-        }
-
-        /// <summary>
-        /// Removes an armed stalemated fleet that cannot leave the contested planet.
-        /// </summary>
-        /// <param name="fleets">Fleets to remove.</param>
-        private void RemoveFleetsUnableToRetreat(IEnumerable<Fleet> fleets)
-        {
-            foreach (Fleet fleet in fleets.Where(fleet => fleet != null).ToList())
-            {
-                _game.DetachNode(fleet);
-                GameLogger.Log($"Fleet removed after stalemated combat: {fleet.GetDisplayName()}");
-            }
         }
 
         /// <summary>

@@ -609,6 +609,45 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(HasOpposingReadyFleets(planet));
         }
 
+        [TestCase(true, CombatSide.Defender)]
+        [TestCase(false, CombatSide.Attacker)]
+        public void Resolve_OnlyOneUnarmedSideCanEvacuate_ReportsRemainingSideVictory(
+            bool attackerCanEvacuate,
+            CombatSide expectedWinner
+        )
+        {
+            GameRoot game = CreateGame();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            string fallbackOwner = attackerCanEvacuate ? "empire" : "alliance";
+            (Planet fallbackPlanet, _) = CreatePlanet(game, "fallback", owner: fallbackOwner);
+            Fleet attacker = CreateFleet(game, "attacker", "empire", combatPlanet, 1, 100, 0);
+            Fleet defender = CreateFleet(game, "defender", "alliance", combatPlanet, 1, 100, 0);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
+
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            Fleet retreatingFleet = attackerCanEvacuate ? attacker : defender;
+            Fleet remainingFleet = attackerCanEvacuate ? defender : attacker;
+            Assert.AreEqual(expectedWinner, combatResult.Winner);
+            Assert.AreEqual(
+                attackerCanEvacuate
+                    ? SpaceCombatSideOutcome.Withdrawn
+                    : SpaceCombatSideOutcome.Active,
+                combatResult.AttackerOutcome
+            );
+            Assert.AreEqual(
+                attackerCanEvacuate
+                    ? SpaceCombatSideOutcome.Active
+                    : SpaceCombatSideOutcome.Withdrawn,
+                combatResult.DefenderOutcome
+            );
+            Assert.AreSame(fallbackPlanet, retreatingFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(retreatingFleet.Movement);
+            Assert.AreSame(combatPlanet, remainingFleet.GetParentOfType<Planet>());
+            Assert.IsNull(remainingFleet.Movement);
+        }
+
         [Test]
         public void Resolve_WeaponFire_DamagesTargets()
         {
@@ -740,6 +779,8 @@ namespace Rebellion.Tests.Systems
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
+            CreatePlanet(game, "empireFallback", owner: "empire");
+            CreatePlanet(game, "allianceFallback", owner: "alliance");
 
             Fleet attacker = CreateFleet(
                 game,
@@ -821,7 +862,7 @@ namespace Rebellion.Tests.Systems
 
         [Test]
         [Timeout(5000)]
-        public void Resolve_ShieldDamageFullyRecharged_EndsAsStalemate()
+        public void Resolve_ShieldDamageFullyRecharged_DestroysStrandedFleetsAndRecordsLosses()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
@@ -854,14 +895,44 @@ namespace Rebellion.Tests.Systems
                 1,
                 shieldRechargeRate: 4
             );
-            attacker.GetChildren<CapitalShip>()[0].MaxShieldStrength = 100;
-            defender.GetChildren<CapitalShip>()[0].MaxShieldStrength = 100;
+            CapitalShip attackerShip = attacker.GetChildren<CapitalShip>().Single();
+            CapitalShip defenderShip = defender.GetChildren<CapitalShip>().Single();
+            attackerShip.MaxShieldStrength = 100;
+            defenderShip.MaxShieldStrength = 100;
             SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
 
             TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
 
             SpaceCombatResult result = GetCombatResult(results);
-            Assert.That(result.ShipDamage, Is.Empty);
+            string[] expectedShipIds = { attackerShip.InstanceID, defenderShip.InstanceID };
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(attacker.InstanceID));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(defender.InstanceID));
+            CollectionAssert.AreEquivalent(
+                expectedShipIds,
+                result
+                    .ShipDamage.Where(damage => damage.HullAfter == 0)
+                    .Select(damage => damage.Ship.InstanceID)
+            );
+            CollectionAssert.AreEquivalent(
+                expectedShipIds,
+                result
+                    .AttackingUnits.Concat(result.DefendingUnits)
+                    .Where(unit => unit.Destroyed)
+                    .Select(unit => unit.Unit.GetInstanceID())
+            );
+            CombatReport report = CombatReport.Capture(
+                result,
+                "empire",
+                "Battle",
+                "Both fleets were destroyed."
+            );
+            CollectionAssert.AreEquivalent(
+                expectedShipIds,
+                report
+                    .AttackingUnits.Concat(report.DefendingUnits)
+                    .Where(unit => unit.Destroyed)
+                    .Select(unit => unit.InstanceID)
+            );
             Assert.That(HasOpposingReadyFleets(planet), Is.False);
         }
 
@@ -879,6 +950,8 @@ namespace Rebellion.Tests.Systems
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
+            CreatePlanet(game, "empireFallback", owner: "empire");
+            CreatePlanet(game, "allianceFallback", owner: "alliance");
 
             Fleet attacker = CreateFleet(
                 game,
@@ -971,6 +1044,8 @@ namespace Rebellion.Tests.Systems
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
+            CreatePlanet(game, "empireFallback", owner: "empire");
+            CreatePlanet(game, "allianceFallback", owner: "alliance");
 
             Fleet attacker = CreateFleetWithFighters(game, "f1", "empire", planet, 1, 100, 0, 12);
             Fleet defender = CreateFleet(
