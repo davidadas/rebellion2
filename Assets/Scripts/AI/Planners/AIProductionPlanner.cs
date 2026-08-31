@@ -19,6 +19,7 @@ namespace Rebellion.AI.Planners
     {
         private const int _primaryLaserDivisor = 6;
         private const int _primaryWeaponWeight = 100;
+        private const int _productionRateMetricScale = 1000;
         private const int _roleMetricScale = 10;
         private const int _weaponArcCount = 4;
 
@@ -1011,17 +1012,20 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns unlocked capital ship technology.
+        /// Selects an unlocked capital ship technology for a fleet-production demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The selected technology, or null when no eligible ship is affordable.</returns>
         private Technology GetUnlockedCapitalShipTechnology(AITurnContext context, AIDemand demand)
         {
             if (context?.Faction == null || demand == null)
                 return null;
 
             int maintenanceBudget = GetCapitalShipMaintenanceBudget(context);
+            bool prioritizeGeneralDelivery =
+                demand.CapitalShipRole == AICapitalShipProductionRole.General
+                && !HasCommittedCombatCapitalShip(demand.DestinationFleet);
             List<Technology> rankedTechnologies = new List<Technology>();
 
             foreach (
@@ -1041,7 +1045,8 @@ namespace Rebellion.AI.Planners
                     context,
                     rankedTechnologies,
                     technology,
-                    demand.CapitalShipRole
+                    demand.CapitalShipRole,
+                    prioritizeGeneralDelivery
                 );
             }
 
@@ -1056,26 +1061,38 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Inserts capital ship technology.
+        /// Inserts a capital ship technology into the ascending role-metric ranking.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="rankedTechnologies">The ranked technologies.</param>
         /// <param name="candidate">The candidate.</param>
         /// <param name="role">The role.</param>
+        /// <param name="prioritizeGeneralDelivery">
+        /// Whether an unready fleet needs its first combat ship delivered quickly.
+        /// </param>
         private static void InsertCapitalShipTechnology(
             AITurnContext context,
             List<Technology> rankedTechnologies,
             Technology candidate,
-            AICapitalShipProductionRole role
+            AICapitalShipProductionRole role,
+            bool prioritizeGeneralDelivery
         )
         {
             CapitalShip candidateShip = (CapitalShip)candidate.GetReference();
-            long candidateMetric = GetCapitalShipRoleMetric(candidateShip, role);
+            long candidateMetric = GetCapitalShipRoleMetric(
+                candidateShip,
+                role,
+                prioritizeGeneralDelivery
+            );
 
             for (int index = 0; index < rankedTechnologies.Count; index++)
             {
                 CapitalShip rankedShip = (CapitalShip)rankedTechnologies[index].GetReference();
-                long rankedMetric = GetCapitalShipRoleMetric(rankedShip, role);
+                long rankedMetric = GetCapitalShipRoleMetric(
+                    rankedShip,
+                    role,
+                    prioritizeGeneralDelivery
+                );
                 if (
                     candidateMetric < rankedMetric
                     || (
@@ -1093,10 +1110,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether insert capital ship before equal.
+        /// Resolves the configured random ordering between equally ranked capital ships.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the new candidate should precede the existing candidate.</returns>
         private static bool ShouldInsertCapitalShipBeforeEqual(AITurnContext context)
         {
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
@@ -1105,10 +1122,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns capital ship maintenance budget.
+        /// Gets the remaining maintenance budget available to new capital ships this turn.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The available capital-ship maintenance capacity.</returns>
         private int GetCapitalShipMaintenanceBudget(AITurnContext context)
         {
             if (_capitalShipMaintenanceBudget.HasValue)
@@ -1135,10 +1152,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether committed capital ship.
+        /// Returns whether a capital ship is complete or already under construction.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when production planning must account for the ship.</returns>
         private static bool IsCommittedCapitalShip(CapitalShip capitalShip)
         {
             return capitalShip?.ManufacturingStatus
@@ -1147,11 +1164,26 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether fill capital ship role.
+        /// Returns whether a fleet has a completed or constructing combat capital ship.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>True when the fleet has committed capital-ship combat capability.</returns>
+        private static bool HasCommittedCombatCapitalShip(Fleet fleet)
+        {
+            return fleet
+                    ?.GetChildren<CapitalShip>()
+                    .Any(capitalShip =>
+                        IsCommittedCapitalShip(capitalShip)
+                        && GetMaximumPrimaryWeaponWeight(capitalShip) > 0
+                    ) == true;
+        }
+
+        /// <summary>
+        /// Returns whether a capital ship is eligible for a production role.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="role">The role.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the ship satisfies the role requirements.</returns>
         private static bool CanFillCapitalShipRole(
             CapitalShip capitalShip,
             AICapitalShipProductionRole role
@@ -1174,26 +1206,36 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns capital ship role metric.
+        /// Calculates a capital ship's production priority for a requested fleet role.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="role">The role.</param>
-        /// <returns>The calculated value.</returns>
+        /// <param name="prioritizeGeneralDelivery">
+        /// Whether an unready fleet needs its first combat ship delivered quickly.
+        /// </param>
+        /// <returns>The ship's comparable role-priority metric.</returns>
         private static long GetCapitalShipRoleMetric(
             CapitalShip capitalShip,
-            AICapitalShipProductionRole role
+            AICapitalShipProductionRole role,
+            bool prioritizeGeneralDelivery
         )
         {
-            return role switch
+            int constructionCost = Math.Max(1, capitalShip.ConstructionCost);
+            long capabilityMetric = role switch
             {
                 AICapitalShipProductionRole.General => GetPrimaryWeaponMetric(capitalShip)
                     * _roleMetricScale
                     / Math.Max(1, capitalShip.MaintenanceCost),
                 AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
-                AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0 ? 1 : 0,
+                AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment,
                 AICapitalShipProductionRole.Interdiction => capitalShip.ShieldRechargeRate,
                 _ => 0,
             };
+            bool prioritizeConstructionRate =
+                role != AICapitalShipProductionRole.General || prioritizeGeneralDelivery;
+            return prioritizeConstructionRate
+                ? capabilityMetric * _productionRateMetricScale / constructionCost
+                : capabilityMetric;
         }
 
         /// <summary>

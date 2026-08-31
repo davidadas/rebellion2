@@ -20,6 +20,8 @@ namespace Rebellion.AI.Planners.Demand
         /// <param name="demands">The demand collection to update.</param>
         internal override void AddDemands(AITurnContext context, ICollection<AIDemand> demands)
         {
+            int plannedMines = context.Faction.GetTotalRawMinedResources();
+            int plannedRefineries = context.Faction.GetTotalRawRefinementCapacity();
             foreach (
                 Planet planet in context
                     .Assessment.OwnedPlanets.Where(planet =>
@@ -29,10 +31,11 @@ namespace Rebellion.AI.Planners.Demand
                     .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
-                BuildingType buildingType =
-                    planet.GetUnminedResourceNodeCount() > 0
-                        ? BuildingType.Mine
-                        : BuildingType.Refinery;
+                BuildingType buildingType = GetFoundingBuildingType(
+                    planet,
+                    plannedMines,
+                    plannedRefineries
+                );
                 demands.Add(
                     new AIDemand(
                         AIDemand.CreateId(
@@ -48,7 +51,30 @@ namespace Rebellion.AI.Planners.Demand
                         context.Game.Config.AI.Infrastructure.EconomySevereDemandPercent
                     )
                 );
+
+                if (buildingType == BuildingType.Mine)
+                    plannedMines++;
+                else
+                    plannedRefineries++;
             }
+        }
+
+        /// <summary>
+        /// Selects a colony's founding facility without worsening the faction's resource balance.
+        /// </summary>
+        /// <param name="planet">Planet receiving its first economic facility.</param>
+        /// <param name="plannedMines">Current and queued mine output.</param>
+        /// <param name="plannedRefineries">Current and queued refinery capacity.</param>
+        /// <returns>The preferred founding facility type.</returns>
+        private static BuildingType GetFoundingBuildingType(
+            Planet planet,
+            int plannedMines,
+            int plannedRefineries
+        )
+        {
+            return planet.GetUnminedResourceNodeCount() > 0 && plannedMines <= plannedRefineries
+                ? BuildingType.Mine
+                : BuildingType.Refinery;
         }
 
         /// <summary>

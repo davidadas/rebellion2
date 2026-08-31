@@ -888,7 +888,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithCombatAndTroopTransportDeficits_SelectsTransport()
+        public void Plan_WithCombatAndTransportDeficits_SelectsEfficientTransport()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -940,12 +940,23 @@ namespace Rebellion.Tests.AI.Planners
                 starfighterCapacity: 0
             );
             transport.TypeID = "transport";
-            transport.ConstructionCost = 0;
+            transport.ConstructionCost = 10;
             transport.Roles.Add(CapitalShipRole.Transport);
+            CapitalShip slowTransport = AITestSceneBuilder.CreateCapitalShip(
+                "slow-transport-template",
+                empire.InstanceID,
+                combatStrength: 0,
+                regimentCapacity: 2,
+                starfighterCapacity: 0
+            );
+            slowTransport.TypeID = "slow-transport";
+            slowTransport.ConstructionCost = 100;
+            slowTransport.Roles.Add(CapitalShipRole.Transport);
             empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
             {
                 new Technology(lineShip),
                 new Technology(transport),
+                new Technology(slowTransport),
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -1131,8 +1142,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(lineShip, proposal.Product.GetReference());
         }
 
-        [Test]
-        public void Plan_WithGeneralRole_SelectsHighestEfficiencyMetric()
+        [TestCase(false, TestName = "Plan_WithNoCommittedCombatShip_PrioritizesConstructionRate")]
+        [TestCase(true, TestName = "Plan_WithCommittedCombatShip_PrioritizesCombatQuality")]
+        public void Plan_GeneralRoleSelectionReflectsFleetReadiness(bool hasCommittedCombatShip)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -1154,14 +1166,29 @@ namespace Rebellion.Tests.AI.Planners
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             fleet.RoleType = FleetRoleType.Battle;
             game.AttachNode(fleet, planet);
-            game.AttachNode(
-                AITestSceneBuilder.CreateCapitalShip(
-                    "existing-ship",
-                    empire.InstanceID,
-                    combatStrength: 100
-                ),
-                fleet
-            );
+            if (hasCommittedCombatShip)
+            {
+                game.AttachNode(
+                    AITestSceneBuilder.CreateCapitalShip(
+                        "existing-ship",
+                        empire.InstanceID,
+                        combatStrength: 100
+                    ),
+                    fleet
+                );
+            }
+            else
+            {
+                game.AttachNode(
+                    AITestSceneBuilder.CreateCapitalShip(
+                        "existing-transport",
+                        empire.InstanceID,
+                        combatStrength: 0,
+                        regimentCapacity: 1
+                    ),
+                    fleet
+                );
+            }
 
             CapitalShip lowerMetricTemplate = AITestSceneBuilder.CreateCapitalShip(
                 "lower-metric-template",
@@ -1195,11 +1222,14 @@ namespace Rebellion.Tests.AI.Planners
                     item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
-            Assert.AreSame(higherMetricTemplate, proposal.Product.GetReference());
+            Assert.AreSame(
+                hasCommittedCombatShip ? higherMetricTemplate : lowerMetricTemplate,
+                proposal.Product.GetReference()
+            );
         }
 
         [Test]
-        public void Plan_WithBombardmentDeficit_SelectsBombardmentCapableCapitalShip()
+        public void Plan_WithBombardmentDeficit_SelectsEfficientBombardmentShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -1267,10 +1297,22 @@ namespace Rebellion.Tests.AI.Planners
             bombardmentShip.TypeID = "bombardment";
             bombardmentShip.Bombardment = 20;
             bombardmentShip.HasGravityWell = true;
+            bombardmentShip.ConstructionCost = 20;
+            CapitalShip slowBombardmentShip = AITestSceneBuilder.CreateCapitalShip(
+                "slow-bombardment-template",
+                empire.InstanceID,
+                combatStrength: 100,
+                regimentCapacity: 0,
+                starfighterCapacity: 0
+            );
+            slowBombardmentShip.TypeID = "slow-bombardment";
+            slowBombardmentShip.Bombardment = 20;
+            slowBombardmentShip.ConstructionCost = 200;
             empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
             {
                 new Technology(lineShip),
                 new Technology(bombardmentShip),
+                new Technology(slowBombardmentShip),
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -1289,7 +1331,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithInterdictionDemand_SelectsHighestShieldRechargeGravityWellShip()
+        public void Plan_WithInterdictionDemand_SelectsHighestRechargePerConstructionCost()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -1341,6 +1383,7 @@ namespace Rebellion.Tests.AI.Planners
             lowerRecharge.TypeID = "lower-recharge";
             lowerRecharge.HasGravityWell = true;
             lowerRecharge.ShieldRechargeRate = 10;
+            lowerRecharge.ConstructionCost = 10;
             lowerRecharge.MaintenanceCost = 0;
             CapitalShip higherRecharge = AITestSceneBuilder.CreateCapitalShip(
                 "higher-recharge-template",
@@ -1349,6 +1392,7 @@ namespace Rebellion.Tests.AI.Planners
             higherRecharge.TypeID = "higher-recharge";
             higherRecharge.HasGravityWell = true;
             higherRecharge.ShieldRechargeRate = 20;
+            higherRecharge.ConstructionCost = 100;
             higherRecharge.MaintenanceCost = 0;
             empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
             {
@@ -1364,7 +1408,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
-            Assert.AreSame(higherRecharge, proposal.Product.GetReference());
+            Assert.AreSame(lowerRecharge, proposal.Product.GetReference());
             Assert.AreEqual(
                 AICapitalShipProductionRole.Interdiction,
                 proposal.Demand.CapitalShipRole
