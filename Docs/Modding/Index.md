@@ -94,8 +94,8 @@ addresses beginning with `Pack/` resolve from the active pack.
 
 Automatic strategy messages are selected from the catalog referenced by
 `MessageDefinitionsPath`. Set the optional `ShowSubjectImage` element to `true` when an
-officer-status message should use its subject officer's current message image as an overlay. The
-setting defaults to `false`:
+automatic message should use its subject officer's current message image as an overlay. Every
+automatic message honors this setting, which defaults to `false`:
 
 ```xml
 <MessageDefinition>

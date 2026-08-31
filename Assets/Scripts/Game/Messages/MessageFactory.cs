@@ -412,9 +412,7 @@ namespace Rebellion.Game.Messages
                         },
                         { "system", planet?.GetDisplayName() ?? string.Empty },
                     },
-                    overlayImagePath: definition?.ShowSubjectImage == true
-                        ? GetMessageImagePath(officer)
-                        : null,
+                    overlayImagePath: GetMessageImagePath(officer),
                     officerVoicePath: GetOfficerMessageVoicePath(resultType, officer, game)
                 ),
                 planet,
@@ -938,7 +936,7 @@ namespace Rebellion.Game.Messages
         /// <param name="values">The values to substitute into the templates.</param>
         /// <param name="imageFaction">The faction used for faction-specific image selection.</param>
         /// <param name="imageOverride">The explicit image path to use before definition image lookup.</param>
-        /// <param name="overlayImagePath">The optional image path to render over the message background.</param>
+        /// <param name="overlayImagePath">The subject image candidate used when the definition enables it.</param>
         /// <param name="officerVoicePath">The optional officer voice line to play for this message.</param>
         /// <returns>The created message, or null when the definition is missing.</returns>
         private MessageDeliveryRequest CreateMessage(
@@ -958,7 +956,7 @@ namespace Rebellion.Game.Messages
                     values,
                     imageFaction,
                     imageOverride,
-                    overlayImagePath,
+                    definition?.ShowSubjectImage == true ? overlayImagePath : null,
                     officerVoicePath
                 ),
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
@@ -2003,7 +2001,7 @@ namespace Rebellion.Game.Messages
                 faction,
                 values,
                 imageOverride: imageOverride,
-                overlayImagePath: overlayImagePath,
+                overlayImagePath: definition?.ShowSubjectImage == true ? overlayImagePath : null,
                 officerVoicePath: officerVoicePath
             );
             return WithAdvisorNotification(
