@@ -1,7 +1,12 @@
 # Selectors
 
-Selectors find typed collections of scene nodes for bindings, conditionals, and actions. Direct
-selectors return every active matching object when no optional filter is supplied.
+Selectors find typed collections of scene nodes for bindings, conditionals, and actions. They
+return active matching objects by default. Set `IncludeInactive="true"` when a collection scan must
+also include retained objects that have been removed from normal gameplay. Direct instance-ID
+references on bindings, conditionals, and actions resolve retained objects regardless of activity;
+an `InstanceID` filter on a selector still requires `IncludeInactive="true"` to match an inactive
+object. Actions such as `SendUnits` still reject inactive objects when the operation itself requires
+active participation.
 
 ## Planet selectors
 
@@ -12,6 +17,7 @@ Selects active, non-destroyed planets.
 **Optional options**
 
 - `InstanceID` **[Optional]:** The `InstanceID` of the planet to select.
+- `IncludeInactive` **[Optional]:** Include inactive retained planets; defaults to `false`.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must currently own the planet.
 - `SectorType` **[Optional]:** Require `Core` or `OuterRim`.
 
@@ -26,6 +32,7 @@ Selects planet sectors.
 **Optional options**
 
 - `InstanceID` **[Optional]:** The `InstanceID` of the planet sector to select.
+- `IncludeInactive` **[Optional]:** Include inactive retained planet sectors; defaults to `false`.
 - `SectorType` **[Optional]:** `Core` or `OuterRim` filter.
 
 ```xml
@@ -43,7 +50,7 @@ Selects officers.
 - `InstanceID` **[Optional]:** The `InstanceID` of the officer to select.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the officer.
 - `IsCaptured` **[Optional]:** Capture-state filter.
-- `IncludeInactive` **[Optional]:** Include inactive officers; defaults to `false`.
+- `IncludeInactive` **[Optional]:** Include inactive retained officers; defaults to `false`.
 - `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the officer must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
 
@@ -60,6 +67,7 @@ Selects special-forces units.
 **Optional options**
 
 - `InstanceID` **[Optional]:** The `InstanceID` of the special-forces unit to select.
+- `IncludeInactive` **[Optional]:** Include inactive retained special-forces units; defaults to `false`.
 - `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the unit must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the unit.
@@ -75,6 +83,7 @@ Selects missions.
 **Optional options**
 
 - `InstanceID` **[Optional]:** The `InstanceID` of the mission to select.
+- `IncludeInactive` **[Optional]:** Include inactive retained missions; defaults to `false`.
 - `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the mission must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the mission.
@@ -92,6 +101,7 @@ Selects fleets.
 **Optional options**
 
 - `InstanceID` **[Optional]:** The `InstanceID` of the fleet to select.
+- `IncludeInactive` **[Optional]:** Include inactive retained fleets; defaults to `false`.
 - `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the fleet must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the fleet.
@@ -107,6 +117,7 @@ Selects capital ships.
 **Optional options**
 
 - `InstanceID` **[Optional]:** The `InstanceID` of the capital ship to select.
+- `IncludeInactive` **[Optional]:** Include inactive retained capital ships; defaults to `false`.
 - `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the capital ship must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the capital ship.
@@ -115,6 +126,8 @@ Selects capital ships.
 
 ```xml
 <SelectCapitalShips TypeID="ALCS008" ManufacturingStatus="Complete"/>
+
+<SelectCapitalShips InstanceID="RETAINED_SHIP" IncludeInactive="true"/>
 ```
 
 ### SelectStarfighters
@@ -124,6 +137,7 @@ Selects starfighters. It supports the same filters as `SelectCapitalShips`.
 **Optional options**
 
 - `InstanceID` **[Optional]:** The `InstanceID` of the starfighter to select.
+- `IncludeInactive` **[Optional]:** Include inactive retained starfighters; defaults to `false`.
 - `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the starfighter must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the starfighter.
@@ -143,6 +157,7 @@ Selects regiments. It supports the same filters as `SelectCapitalShips`.
 **Optional options**
 
 - `InstanceID` **[Optional]:** The `InstanceID` of the regiment to select.
+- `IncludeInactive` **[Optional]:** Include inactive retained regiments; defaults to `false`.
 - `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the regiment must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the regiment.
@@ -160,6 +175,7 @@ Selects buildings.
 **Optional options**
 
 - `InstanceID` **[Optional]:** The `InstanceID` of the building to select.
+- `IncludeInactive` **[Optional]:** Include inactive retained buildings; defaults to `false`.
 - `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet where the building must be located.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the building.
@@ -181,6 +197,7 @@ Selects queued manufacturing items.
 **Optional options**
 
 - `PlanetInstanceID` **[Optional]:** The `InstanceID` of the planet whose manufacturing orders are selected.
+- `IncludeInactive` **[Optional]:** Include orders from inactive retained planets; defaults to `false`.
 - `PlanetBinding` **[Optional]:** Bound location. Takes precedence over `PlanetInstanceID`.
 - `OwnerFactionInstanceID` **[Optional]:** The `InstanceID` of the faction that must own the manufacturing planet.
 - `ManufacturingType` **[Optional]:** `Ship`, `Building`, or `Troop` filter.
@@ -256,8 +273,8 @@ checks candidates in authored order and uses the first one that accepts the unit
 
 ### SelectBinding
 
-Returns the scene node or scene-node collection stored by an explicit event binding. Its runtime
-type must be valid for the consumer.
+Returns the retained scene node or scene-node collection stored by an explicit event binding,
+including inactive nodes. Its runtime type must be valid for the consumer.
 
 **Required options**
 
@@ -291,7 +308,8 @@ Maps each source to its nearest parent of the requested type. It never returns t
 
 ### SelectPreviousLocation
 
-Returns a unit's registered `LastParentInstanceID` when that node still resolves.
+Returns a retained unit's registered `LastParentInstanceID` when that node still resolves. Both the
+unit and remembered location may be inactive.
 
 **Required options**
 

@@ -19,17 +19,23 @@ namespace Rebellion.Game.Events
         where T : class, ISceneNode
     {
         [PersistableAttribute]
+        public bool IncludeInactive { get; set; }
+
+        [PersistableAttribute]
         public string InstanceID { get; set; }
 
         [PersistableAttribute]
         public string OwnerFactionInstanceID { get; set; }
 
         /// <summary>
-        /// Returns active nodes that match the authored identity filters.
+        /// Returns registered nodes that match the authored activity and identity filters.
         /// </summary>
         protected IEnumerable<T> SelectOwned(GameRoot game)
         {
-            return SelectOwned(Active<T>(game));
+            IEnumerable<T> nodes = IncludeInactive
+                ? game.GetRegisteredSceneNodesByType<T>(includeDisabled: true)
+                : Active<T>(game);
+            return SelectOwned(nodes.Where(node => node.GetParent() != null));
         }
 
         /// <summary>
@@ -131,6 +137,9 @@ namespace Rebellion.Game.Events
     public sealed class SelectPlanetSectors : GameEventSelector
     {
         [PersistableAttribute]
+        public bool IncludeInactive { get; set; }
+
+        [PersistableAttribute]
         public string InstanceID { get; set; }
 
         [PersistableAttribute]
@@ -144,7 +153,10 @@ namespace Rebellion.Game.Events
             IRandomNumberProvider provider,
             GameEventEvaluationContext context
         ) =>
-            Active<PlanetSector>(game)
+            (IncludeInactive
+                ? game.GetRegisteredSceneNodesByType<PlanetSector>(includeDisabled: true)
+                : Active<PlanetSector>(game))
+                .Where(sector => sector.GetParent() != null)
                 .Where(sector =>
                     string.IsNullOrWhiteSpace(InstanceID) || sector.InstanceID == InstanceID
                 )
@@ -162,9 +174,6 @@ namespace Rebellion.Game.Events
     public sealed class SelectOfficers : LocatedSceneNodeSelector<Officer>
     {
         [PersistableAttribute]
-        public bool IncludeInactive { get; set; }
-
-        [PersistableAttribute]
         public bool? IsCaptured { get; set; }
 
         /// <summary>
@@ -176,10 +185,7 @@ namespace Rebellion.Game.Events
             GameEventEvaluationContext context
         )
         {
-            IEnumerable<Officer> officers = IncludeInactive
-                ? game.GetRegisteredSceneNodesByType<Officer>(includeDisabled: true)
-                : Active<Officer>(game);
-            return SelectOwned(officers)
+            return SelectOwned(game)
                 .Where(node => MatchesLocation(node, context, PlanetInstanceID, PlanetBinding))
                 .Where(officer => !IsCaptured.HasValue || officer.IsCaptured == IsCaptured.Value);
         }
@@ -334,6 +340,9 @@ namespace Rebellion.Game.Events
     public sealed class SelectManufacturingOrders : GameEventSelector
     {
         [PersistableAttribute]
+        public bool IncludeInactive { get; set; }
+
+        [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
 
         [PersistableAttribute]
@@ -358,7 +367,10 @@ namespace Rebellion.Game.Events
                 ? context?.GetBindingReference<Planet>(PlanetBinding)
                 : null;
             string planetID = boundPlanet?.InstanceID ?? PlanetInstanceID;
-            IEnumerable<Planet> planets = Active<Planet>(game)
+            IEnumerable<Planet> planets = (IncludeInactive
+                ? game.GetRegisteredSceneNodesByType<Planet>(includeDisabled: true)
+                : Active<Planet>(game))
+                .Where(planet => planet.GetParent() != null)
                 .Where(planet =>
                     string.IsNullOrWhiteSpace(planetID) || planet.InstanceID == planetID
                 )
@@ -515,7 +527,10 @@ namespace Rebellion.Game.Events
                 ISceneNode canonical =
                     node == null
                         ? null
-                        : game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID);
+                        : game.GetSceneNodeByInstanceID<ISceneNode>(
+                            node.InstanceID,
+                            includeDisabled: true
+                        );
                 if (canonical == null)
                     throw new InvalidOperationException(
                         $"SelectBinding '{Binding}' contains an unregistered scene node."
@@ -583,11 +598,15 @@ namespace Rebellion.Game.Events
                 );
             ISceneNode unit = hasBinding
                 ? context?.GetBindingReference<ISceneNode>(UnitBinding)
-                : game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
+                : game.GetSceneNodeByInstanceID<ISceneNode>(
+                    UnitInstanceID,
+                    includeDisabled: true
+                );
             if (unit == null)
                 return Enumerable.Empty<ISceneNode>();
             ISceneNode parent = game.GetSceneNodeByInstanceID<ISceneNode>(
-                unit.LastParentInstanceID
+                unit.LastParentInstanceID,
+                includeDisabled: true
             );
             return parent == null ? Enumerable.Empty<ISceneNode>() : new[] { parent };
         }

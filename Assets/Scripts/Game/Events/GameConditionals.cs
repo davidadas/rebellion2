@@ -502,7 +502,10 @@ namespace Rebellion.Game.Events
         /// <returns>True when the Force-rank comparison succeeds.</returns>
         public override bool IsMet(GameConditionContext context)
         {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
+                OfficerInstanceID,
+                includeDisabled: true
+            );
             if (officer == null)
                 return false;
 
@@ -533,7 +536,10 @@ namespace Rebellion.Game.Events
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
+                : context.Game.GetSceneNodeByInstanceID<Planet>(
+                    PlanetInstanceID,
+                    includeDisabled: true
+                );
             return planet
                     ?.GetChildren<Building>()
                     .Any(building =>
@@ -562,7 +568,10 @@ namespace Rebellion.Game.Events
         {
             GameRoot game = context.Game;
             Planet planet = string.IsNullOrWhiteSpace(PlanetBinding)
-                ? game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID)
+                ? game.GetSceneNodeByInstanceID<Planet>(
+                    PlanetInstanceID,
+                    includeDisabled: true
+                )
                 : context.Evaluation?.GetBindingReference<Planet>(PlanetBinding);
             if (planet?.IsDestroyed != false)
                 return false;
@@ -596,7 +605,10 @@ namespace Rebellion.Game.Events
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
+                : context.Game.GetSceneNodeByInstanceID<Planet>(
+                    PlanetInstanceID,
+                    includeDisabled: true
+                );
             if (planet == null || string.IsNullOrWhiteSpace(FactionInstanceID))
                 return false;
 
@@ -688,7 +700,12 @@ namespace Rebellion.Game.Events
             List<string> ids = references.Select(reference => reference.UnitInstanceID).ToList();
             if (ids.Any(string.IsNullOrWhiteSpace) || ids.Distinct().Count() != ids.Count)
                 return null;
-            List<ISceneNode> nodes = game.GetSceneNodesByInstanceIDs(ids);
+            List<ISceneNode> nodes = ids
+                .Select(id =>
+                    game.GetSceneNodeByInstanceID<ISceneNode>(id, includeDisabled: true)
+                )
+                .Where(node => node != null)
+                .ToList();
             return nodes.Count == ids.Count ? nodes : null;
         }
     }
@@ -713,7 +730,12 @@ namespace Rebellion.Game.Events
         {
             GameRoot game = context.Game;
             // Get the scene nodes for the units.
-            List<ISceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(UnitInstanceIDs);
+            List<ISceneNode> sceneNodes = UnitInstanceIDs
+                .Select(id =>
+                    game.GetSceneNodeByInstanceID<ISceneNode>(id, includeDisabled: true)
+                )
+                .Where(node => node != null)
+                .ToList();
 
             // Check if the units are on opposing factions.
             return sceneNodes.Count == 2
@@ -738,7 +760,8 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             ISceneNode sceneNode = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
-                UnitInstanceID
+                UnitInstanceID,
+                includeDisabled: true
             );
             // Check if the unit is on a mission.
             return sceneNode?.GetParent() is Mission;
@@ -779,7 +802,10 @@ namespace Rebellion.Game.Events
         public string UnitInstanceID { get; set; }
 
         public override bool IsMet(GameConditionContext context) =>
-            context.Game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID)
+            context.Game.GetSceneNodeByInstanceID<ISceneNode>(
+                UnitInstanceID,
+                includeDisabled: true
+            )
                 is IMovable { Movement: not null };
     }
 
@@ -800,8 +826,14 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             GameRoot game = context.Game;
-            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
-            ISceneNode location = game.GetSceneNodeByInstanceID<ISceneNode>(LocationInstanceID);
+            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(
+                UnitInstanceID,
+                includeDisabled: true
+            );
+            ISceneNode location = game.GetSceneNodeByInstanceID<ISceneNode>(
+                LocationInstanceID,
+                includeDisabled: true
+            );
             for (ISceneNode current = unit; current != null; current = current.GetParent())
             {
                 if (current == location)

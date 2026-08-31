@@ -120,6 +120,94 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void Bind_TypedOfficerSourcesWithInactiveOfficer_StoresResolvedValues()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "faction" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", faction.InstanceID);
+            officer.SetBaseRating(OfficerRating.Combat, 82);
+            officer.ForceValue = 41;
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            game.AttachNode(officer, planet);
+            officer.IsEnabled = false;
+            int expectedCombatRating = officer.GetEffectiveRating(OfficerRating.Combat);
+            int expectedForceRank = officer.ForceRank;
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                null
+            );
+            IRandomNumberProvider random = new FixedRandomProvider(new[] { 0.5 });
+
+            new GameEventBinding
+            {
+                As = "combat",
+                Sources = new List<GameEventBindingSource>
+                {
+                    new OfficerRatingBindingSource
+                    {
+                        OfficerInstanceID = officer.InstanceID,
+                        Rating = OfficerRating.Combat,
+                    },
+                },
+            }.Bind(game, random, context);
+            new GameEventBinding
+            {
+                As = "force",
+                Sources = new List<GameEventBindingSource>
+                {
+                    new OfficerForceBindingSource { OfficerInstanceID = officer.InstanceID },
+                },
+            }.Bind(game, random, context);
+
+            Assert.AreEqual(expectedCombatRating, context.GetBinding<int>("combat"));
+            Assert.AreEqual(expectedForceRank, context.GetBinding<int>("force"));
+        }
+
+        [Test]
+        public void Bind_PlanetStatWithInactivePlanet_StoresResolvedValue()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                NumRawResourceNodes = 7,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            planet.IsEnabled = false;
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                null
+            );
+            GameEventBinding binding = new GameEventBinding
+            {
+                As = "resources",
+                Sources = new List<GameEventBindingSource>
+                {
+                    new PlanetStatBindingSource
+                    {
+                        PlanetInstanceID = planet.InstanceID,
+                        Stat = PlanetStat.RawResourceNodes,
+                    },
+                },
+            };
+
+            binding.Bind(game, new FixedRandomProvider(new[] { 0.5 }), context);
+
+            Assert.AreEqual(7, context.GetBinding<int>("resources"));
+        }
+
+        [Test]
         public void RoundTrip_NumericRanges_RestoresConcreteRolls()
         {
             GameEvent gameEvent = new GameEvent

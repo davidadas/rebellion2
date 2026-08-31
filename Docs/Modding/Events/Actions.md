@@ -3,6 +3,10 @@
 Actions change game state. They execute from top to bottom against one shared context, so later
 actions observe earlier state changes.
 
+Direct `InstanceID` and binding targets resolve retained inactive objects. Collection selectors are
+active-only unless `IncludeInactive="true"` is set. Actions that inherently require active
+participation, such as `SendUnits` and `TriggerDuel`, still reject inactive targets.
+
 Requests and results produced by event actions retain the source event's `InstanceID`. They can
 activate other result-triggered events, but they do not generate automatic strategy messages.
 Use `SendMessage` when the event should communicate with a player.

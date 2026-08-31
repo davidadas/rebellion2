@@ -191,6 +191,26 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(isMet);
         }
 
+        [Test]
+        public void HasForceRank_InactiveOfficer_UsesConfiguredMinimum()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            officer.ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight);
+            game.AttachNode(officer, planet);
+            officer.IsEnabled = false;
+            HasForceRankConditional condition = new HasForceRankConditional
+            {
+                OfficerInstanceID = officer.InstanceID,
+                Comparison = ComparisonOperator.GreaterThanOrEqual,
+                Rank = ForceRankLabel.ForceKnight,
+            };
+
+            bool isMet = condition.IsMet(game);
+
+            Assert.IsTrue(isMet);
+        }
+
         private static GameRoot BuildHierarchy(
             out Planet planet,
             out Fleet fleet,
