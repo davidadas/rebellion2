@@ -244,6 +244,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string CompareToBinding { get; set; }
 
+        /// <summary>
+        /// Evaluates the configured scalar comparison against the current bindings.
+        /// </summary>
+        /// <param name="context">The context providing the game and event bindings.</param>
+        /// <returns>True when the configured comparison succeeds.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             bool hasLiteral = CompareTo != null;
@@ -385,6 +390,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns whether the authored operator requires ordered scalar values.
         /// </summary>
+        /// <returns>True when the operator compares relative ordering.</returns>
         private bool IsOrderedComparison() =>
             Comparison
                 is ComparisonOperator.GreaterThan

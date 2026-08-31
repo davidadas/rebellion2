@@ -54,6 +54,13 @@ namespace Rebellion.Game.Events
 
         internal override Type ValueType => typeof(int);
 
+        /// <summary>
+        /// Resolves the selected officer's effective rating.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">The random provider available to binding sources.</param>
+        /// <param name="context">The current event evaluation context.</param>
+        /// <returns>The officer's effective rating.</returns>
         internal override object Resolve(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -90,6 +97,13 @@ namespace Rebellion.Game.Events
 
         internal override Type ValueType => typeof(int);
 
+        /// <summary>
+        /// Resolves the selected officer's current Force rank.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">The random provider available to binding sources.</param>
+        /// <param name="context">The current event evaluation context.</param>
+        /// <returns>The officer's current Force rank.</returns>
         internal override object Resolve(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -130,6 +144,13 @@ namespace Rebellion.Game.Events
 
         internal override Type ValueType => typeof(int);
 
+        /// <summary>
+        /// Resolves the selected planet's configured statistic.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">The random provider available to binding sources.</param>
+        /// <param name="context">The current event evaluation context.</param>
+        /// <returns>The planet statistic value.</returns>
         internal override object Resolve(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -162,6 +183,13 @@ namespace Rebellion.Game.Events
 
         internal override Type ValueType => typeof(int);
 
+        /// <summary>
+        /// Counts the distinct scene nodes returned by the configured selectors.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">The random provider used by the selectors.</param>
+        /// <param name="context">The current event evaluation context.</param>
+        /// <returns>The number of distinct selected scene nodes.</returns>
         internal override object Resolve(
             GameRoot game,
             IRandomNumberProvider provider,
