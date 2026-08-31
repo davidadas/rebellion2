@@ -17,8 +17,8 @@ namespace Rebellion.Systems
     /// </summary>
     internal sealed class SpaceCombatDecision
     {
-        public string AttackerFleetInstanceID { get; set; }
-        public string DefenderFleetInstanceID { get; set; }
+        public List<string> AttackerFleetInstanceIDs { get; set; } = new List<string>();
+        public List<string> DefenderFleetInstanceIDs { get; set; } = new List<string>();
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
         public string PlanetInstanceID { get; set; }
@@ -120,27 +120,25 @@ namespace Rebellion.Systems
 
             if (IsEncounterStillContested(decision))
             {
-                if (!string.IsNullOrEmpty(decision.AttackerFleetInstanceID))
-                    resolvedFleetIds.Add(decision.AttackerFleetInstanceID);
-                if (!string.IsNullOrEmpty(decision.DefenderFleetInstanceID))
-                    resolvedFleetIds.Add(decision.DefenderFleetInstanceID);
+                resolvedFleetIds.UnionWith(decision.AttackerFleetInstanceIDs);
+                resolvedFleetIds.UnionWith(decision.DefenderFleetInstanceIDs);
             }
 
             return true;
         }
 
         /// <summary>
-        /// Checks whether both fleets in the encounter still occupy a contested planet.
+        /// Checks whether both sides in the encounter still occupy a contested planet.
         /// </summary>
         /// <param name="decision">The combat decision to evaluate.</param>
-        /// <returns>True when both fleets still contest the same planet.</returns>
+        /// <returns>True when both sides still contest the same planet.</returns>
         private bool IsEncounterStillContested(SpaceCombatDecision decision)
         {
             return AreForcesContestingPlanet(decision);
         }
 
         /// <summary>
-        /// Returns whether both fleets belong to AI-controlled factions.
+        /// Returns whether both sides belong to AI-controlled factions.
         /// </summary>
         /// <param name="decision">The combat decision to evaluate.</param>
         /// <returns>True when both sides are AI-controlled.</returns>
@@ -161,12 +159,10 @@ namespace Rebellion.Systems
         /// <returns>The pending-combat result.</returns>
         private PendingCombatResult BuildPendingCombatResult(SpaceCombatDecision decision)
         {
-            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.AttackerFleetInstanceID
-            );
-            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.DefenderFleetInstanceID
-            );
+            List<Fleet> attackerFleets = GetFleets(decision.AttackerFleetInstanceIDs);
+            List<Fleet> defenderFleets = GetFleets(decision.DefenderFleetInstanceIDs);
+            Fleet attacker = GetRepresentativeFleet(attackerFleets);
+            Fleet defender = GetRepresentativeFleet(defenderFleets);
 
             return new PendingCombatResult
             {
@@ -175,8 +171,8 @@ namespace Rebellion.Systems
                 AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID,
                 DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
                 Planet = ResolveCombatPlanet(decision),
-                AttackerCanRetreat = CanRetreatFleet(attacker, defender),
-                DefenderCanRetreat = CanRetreatFleet(defender, attacker),
+                AttackerCanRetreat = CanRetreatFleets(attackerFleets, defenderFleets),
+                DefenderCanRetreat = CanRetreatFleets(defenderFleets, attackerFleets),
                 Tick = _game.CurrentTick,
             };
         }
@@ -207,24 +203,12 @@ namespace Rebellion.Systems
             if (_pendingDecision == null)
                 throw new InvalidOperationException("No pending combat to resolve.");
 
-            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
-                _pendingDecision.AttackerFleetInstanceID
-            );
-            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
-                _pendingDecision.DefenderFleetInstanceID
-            );
-
-            string retreatingFleetInstanceId = null;
-            if (_pendingDecision.AttackerOwnerInstanceID == retreatingFactionInstanceId)
-                retreatingFleetInstanceId = attacker?.GetInstanceID();
-            else if (_pendingDecision.DefenderOwnerInstanceID == retreatingFactionInstanceId)
-                retreatingFleetInstanceId = defender?.GetInstanceID();
-
             if (
-                string.IsNullOrEmpty(retreatingFleetInstanceId)
+                retreatingFactionInstanceId != _pendingDecision.AttackerOwnerInstanceID
+                    && retreatingFactionInstanceId != _pendingDecision.DefenderOwnerInstanceID
                 || !TryResolveRetreat(
                     _pendingDecision,
-                    retreatingFleetInstanceId,
+                    retreatingFactionInstanceId,
                     out List<GameResult> results
                 )
             )
@@ -235,33 +219,41 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Attempts to resolve a pending combat decision by withdrawing one fleet.
+        /// Attempts to resolve a pending combat decision by withdrawing one side.
         /// </summary>
         /// <param name="decision">The pending combat decision.</param>
-        /// <param name="retreatingFleetInstanceId">The fleet requested to withdraw.</param>
+        /// <param name="retreatingFactionInstanceId">The faction requested to withdraw.</param>
         /// <param name="results">Receives the generated combat result.</param>
-        /// <returns>True when the fleet withdrew successfully.</returns>
+        /// <returns>True when the side withdrew successfully.</returns>
         private bool TryResolveRetreat(
             SpaceCombatDecision decision,
-            string retreatingFleetInstanceId,
+            string retreatingFactionInstanceId,
             out List<GameResult> results
         )
         {
-            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.AttackerFleetInstanceID
-            );
-            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.DefenderFleetInstanceID
-            );
             Planet planet = ResolveCombatPlanet(decision);
             results = new List<GameResult>();
 
-            if (!TryRetreatFleet(decision, retreatingFleetInstanceId))
+            List<Fleet> attackerFleets = GetFleets(decision.AttackerFleetInstanceIDs);
+            List<Fleet> defenderFleets = GetFleets(decision.DefenderFleetInstanceIDs);
+            bool attackerRetreated =
+                retreatingFactionInstanceId == decision.AttackerOwnerInstanceID;
+            List<Fleet> retreatingFleets = attackerRetreated ? attackerFleets : defenderFleets;
+            List<Fleet> opposingFleets = attackerRetreated ? defenderFleets : attackerFleets;
+
+            if (!TryRetreatFleets(retreatingFleets, opposingFleets, ignoreGravityWell: false))
                 return false;
 
             results.Add(
-                BuildRetreatResult(decision, retreatingFleetInstanceId, attacker, defender, planet)
+                BuildRetreatResult(
+                    decision,
+                    attackerRetreated,
+                    attackerFleets,
+                    defenderFleets,
+                    planet
+                )
             );
+            ClearCombatFlags(decision);
             return true;
         }
 
@@ -269,20 +261,21 @@ namespace Rebellion.Systems
         /// Builds the combat result emitted after a successful fleet withdrawal.
         /// </summary>
         /// <param name="decision">The resolved combat decision.</param>
-        /// <param name="retreatingFleetInstanceId">The fleet that withdrew.</param>
-        /// <param name="attacker">The attacking fleet.</param>
-        /// <param name="defender">The defending fleet.</param>
+        /// <param name="attackerRetreated">Whether the attacking side withdrew.</param>
+        /// <param name="attackerFleets">The attacking fleets.</param>
+        /// <param name="defenderFleets">The defending fleets.</param>
         /// <param name="planet">The combat location.</param>
         /// <returns>The withdrawal combat result.</returns>
         private SpaceCombatResult BuildRetreatResult(
             SpaceCombatDecision decision,
-            string retreatingFleetInstanceId,
-            Fleet attacker,
-            Fleet defender,
+            bool attackerRetreated,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets,
             Planet planet
         )
         {
-            bool attackerRetreated = retreatingFleetInstanceId == decision.AttackerFleetInstanceID;
+            Fleet attacker = GetRepresentativeFleet(attackerFleets);
+            Fleet defender = GetRepresentativeFleet(defenderFleets);
             SpaceCombatResult result = new SpaceCombatResult
             {
                 AttackerFleet = attacker,
@@ -308,13 +301,13 @@ namespace Rebellion.Systems
             };
 
             (List<ShipSnap> attackerShips, List<FighterSnap> attackerFighters) = SnapshotForce(
-                attacker,
+                attackerFleets,
                 planet,
                 decision.AttackerOwnerInstanceID,
                 _game.Config.Combat.SpaceCombat
             );
             (List<ShipSnap> defenderShips, List<FighterSnap> defenderFighters) = SnapshotForce(
-                defender,
+                defenderFleets,
                 planet,
                 decision.DefenderOwnerInstanceID,
                 _game.Config.Combat.SpaceCombat
@@ -344,19 +337,23 @@ namespace Rebellion.Systems
                     out Planet planet,
                     out string attackerOwnerInstanceId,
                     out string defenderOwnerInstanceId,
-                    out Fleet attacker,
-                    out Fleet defender
+                    out List<Fleet> attackerFleets,
+                    out List<Fleet> defenderFleets
                 )
             )
                 return false;
 
-            attacker?.SetCombatState(true);
-            defender?.SetCombatState(true);
+            foreach (Fleet fleet in attackerFleets.Concat(defenderFleets))
+                fleet.SetCombatState(true);
 
             decision = new SpaceCombatDecision
             {
-                AttackerFleetInstanceID = attacker?.GetInstanceID(),
-                DefenderFleetInstanceID = defender?.GetInstanceID(),
+                AttackerFleetInstanceIDs = attackerFleets.ConvertAll(fleet =>
+                    fleet.GetInstanceID()
+                ),
+                DefenderFleetInstanceIDs = defenderFleets.ConvertAll(fleet =>
+                    fleet.GetInstanceID()
+                ),
                 AttackerOwnerInstanceID = attackerOwnerInstanceId,
                 DefenderOwnerInstanceID = defenderOwnerInstanceId,
                 PlanetInstanceID = planet.GetInstanceID(),
@@ -372,23 +369,23 @@ namespace Rebellion.Systems
         /// <param name="contestedPlanet">The planet occupied by both sides.</param>
         /// <param name="attackerOwnerInstanceId">The attacking owner identifier.</param>
         /// <param name="defenderOwnerInstanceId">The defending owner identifier.</param>
-        /// <param name="attacker">The attacking fleet, when that side has one.</param>
-        /// <param name="defender">The defending fleet, when that side has one.</param>
+        /// <param name="attackerFleets">The attacking fleets.</param>
+        /// <param name="defenderFleets">The defending fleets.</param>
         /// <returns>True if hostile space forces were found.</returns>
         private bool TryFindContestedForces(
             HashSet<string> excludedFleetIds,
             out Planet contestedPlanet,
             out string attackerOwnerInstanceId,
             out string defenderOwnerInstanceId,
-            out Fleet attacker,
-            out Fleet defender
+            out List<Fleet> attackerFleets,
+            out List<Fleet> defenderFleets
         )
         {
             contestedPlanet = null;
             attackerOwnerInstanceId = null;
             defenderOwnerInstanceId = null;
-            attacker = null;
-            defender = null;
+            attackerFleets = null;
+            defenderFleets = null;
 
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
@@ -418,25 +415,25 @@ namespace Rebellion.Systems
 
                 string firstOwnerInstanceId = ownerInstanceIds[0];
                 string secondOwnerInstanceId = ownerInstanceIds[1];
-                Fleet firstFleet = fleets.FirstOrDefault(fleet =>
-                    fleet.GetOwnerInstanceID() == firstOwnerInstanceId
-                );
-                Fleet secondFleet = fleets.FirstOrDefault(fleet =>
-                    fleet.GetOwnerInstanceID() == secondOwnerInstanceId
-                );
+                List<Fleet> firstFleets = fleets
+                    .Where(fleet => fleet.GetOwnerInstanceID() == firstOwnerInstanceId)
+                    .ToList();
+                List<Fleet> secondFleets = fleets
+                    .Where(fleet => fleet.GetOwnerInstanceID() == secondOwnerInstanceId)
+                    .ToList();
 
                 attackerOwnerInstanceId = firstOwnerInstanceId;
                 defenderOwnerInstanceId = secondOwnerInstanceId;
-                attacker = firstFleet;
-                defender = secondFleet;
+                attackerFleets = firstFleets;
+                defenderFleets = secondFleets;
 
-                if (attacker == null && defender != null)
+                if (attackerFleets.Count == 0 && defenderFleets.Count > 0)
                 {
                     (attackerOwnerInstanceId, defenderOwnerInstanceId) = (
                         defenderOwnerInstanceId,
                         attackerOwnerInstanceId
                     );
-                    (attacker, defender) = (defender, attacker);
+                    (attackerFleets, defenderFleets) = (defenderFleets, attackerFleets);
                 }
 
                 contestedPlanet = planet;
@@ -448,7 +445,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Resolves a pending combat encounter. Applies damage to the game world and clears
-        /// IsInCombat on both fleets regardless of outcome.
+        /// IsInCombat on every participating fleet regardless of outcome.
         /// </summary>
         /// <param name="decision">The combat decision to resolve.</param>
         /// <param name="autoResolve">True to use auto-resolve; false to use manual combat.</param>
@@ -486,12 +483,8 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
             SpaceCombatResult combatEncounterResult = null;
-            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.AttackerFleetInstanceID
-            );
-            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.DefenderFleetInstanceID
-            );
+            List<Fleet> attackerFleets = GetFleets(decision.AttackerFleetInstanceIDs);
+            List<Fleet> defenderFleets = GetFleets(decision.DefenderFleetInstanceIDs);
             _battleHullStrengths.Clear();
             _battleShieldStrengths.Clear();
             _battleTacticalStateChanged = false;
@@ -503,14 +496,19 @@ namespace Rebellion.Systems
                     Planet planet = ResolveCombatPlanet(decision);
                     if (
                         allowRetreatBeforeCombat
-                        && TryRetreatOutmatchedFleet(decision, attacker, defender, planet)
+                        && TryRetreatOutmatchedFleets(
+                            decision,
+                            attackerFleets,
+                            defenderFleets,
+                            planet
+                        )
                     )
                         break;
 
                     SpaceCombatResult combatResult = ResolveCombatRound(
                         decision,
-                        attacker,
-                        defender,
+                        attackerFleets,
+                        defenderFleets,
                         _provider
                     );
                     if (combatResult != null)
@@ -519,19 +517,27 @@ namespace Rebellion.Systems
                         AddCombatRoundResult(combatEncounterResult, combatResult);
                     }
 
-                    attacker = _game.GetSceneNodeByInstanceID<Fleet>(
-                        decision.AttackerFleetInstanceID
-                    );
-                    defender = _game.GetSceneNodeByInstanceID<Fleet>(
-                        decision.DefenderFleetInstanceID
-                    );
+                    attackerFleets = GetFleets(decision.AttackerFleetInstanceIDs);
+                    defenderFleets = GetFleets(decision.DefenderFleetInstanceIDs);
 
                     if (!AreForcesContestingPlanet(decision))
                         break;
 
-                    if (IsSpaceCombatStalemated(decision, attacker, defender, combatResult))
+                    if (
+                        IsSpaceCombatStalemated(
+                            decision,
+                            attackerFleets,
+                            defenderFleets,
+                            combatResult
+                        )
+                    )
                     {
-                        SeparateStalematedFleets(attacker, defender);
+                        ResolveStalematedForces(
+                            decision,
+                            attackerFleets,
+                            defenderFleets,
+                            combatEncounterResult
+                        );
                         break;
                     }
                 }
@@ -544,7 +550,7 @@ namespace Rebellion.Systems
                 ClearCombatFlags(decision);
             }
 
-            UpdateCombatEncounterResultOutcomes(combatEncounterResult);
+            UpdateCombatEncounterResultOutcomes(combatEncounterResult, decision);
 
             if (combatEncounterResult != null)
                 results.Add(combatEncounterResult);
@@ -633,58 +639,81 @@ namespace Rebellion.Systems
         /// Updates encounter outcomes from each fleet's final runtime state.
         /// </summary>
         /// <param name="result">The encounter result to update.</param>
-        private static void UpdateCombatEncounterResultOutcomes(SpaceCombatResult result)
+        /// <param name="decision">The combat decision identifying both sides.</param>
+        private void UpdateCombatEncounterResultOutcomes(
+            SpaceCombatResult result,
+            SpaceCombatDecision decision
+        )
         {
             if (result == null)
                 return;
 
+            List<Fleet> attackerFleets = GetFleets(decision.AttackerFleetInstanceIDs);
+            List<Fleet> defenderFleets = GetFleets(decision.DefenderFleetInstanceIDs);
             result.AttackerOutcome = GetCombatSideOutcome(
-                result.AttackerFleet,
+                attackerFleets,
                 result.AttackerOwnerInstanceID,
                 result.Planet,
                 result.AttackerOutcome
             );
             result.DefenderOutcome = GetCombatSideOutcome(
-                result.DefenderFleet,
+                defenderFleets,
                 result.DefenderOwnerInstanceID,
                 result.Planet,
                 result.DefenderOutcome
             );
             result.AttackerRetreatPlanetInstanceID = GetRetreatPlanetInstanceID(
-                result.AttackerFleet,
+                attackerFleets,
                 result.Planet,
                 result.AttackerOutcome
             );
             result.DefenderRetreatPlanetInstanceID = GetRetreatPlanetInstanceID(
-                result.DefenderFleet,
+                defenderFleets,
                 result.Planet,
                 result.DefenderOutcome
             );
+            UpdateCombatEncounterWinner(result);
+        }
+
+        /// <summary>
+        /// Aligns the encounter winner with the sides that remain active after resolution.
+        /// </summary>
+        /// <param name="result">The encounter result to update.</param>
+        private static void UpdateCombatEncounterWinner(SpaceCombatResult result)
+        {
+            bool attackerActive = result.AttackerOutcome == SpaceCombatSideOutcome.Active;
+            bool defenderActive = result.DefenderOutcome == SpaceCombatSideOutcome.Active;
+            if (attackerActive == defenderActive)
+                return;
+
+            result.Winner = attackerActive ? CombatSide.Attacker : CombatSide.Defender;
         }
 
         /// <summary>Returns the final destination ID recorded for a withdrawn fleet.</summary>
         private static string GetRetreatPlanetInstanceID(
-            Fleet fleet,
+            IReadOnlyList<Fleet> fleets,
             Planet battlePlanet,
             SpaceCombatSideOutcome outcome
         )
         {
             if (outcome != SpaceCombatSideOutcome.Withdrawn)
                 return null;
-            Planet destination = fleet?.GetParentOfType<Planet>();
+            Planet destination = fleets
+                ?.Select(fleet => fleet?.GetParentOfType<Planet>())
+                .FirstOrDefault(planet => planet != null && planet != battlePlanet);
             return destination == battlePlanet ? null : destination?.InstanceID;
         }
 
         /// <summary>
         /// Resolves a combat side's final encounter outcome.
         /// </summary>
-        /// <param name="fleet">The participating fleet.</param>
+        /// <param name="fleets">The participating fleets.</param>
         /// <param name="ownerInstanceId">The participating owner's identifier.</param>
         /// <param name="battlePlanet">The encounter location.</param>
         /// <param name="roundOutcome">The outcome recorded by the final combat round.</param>
         /// <returns>The final encounter outcome.</returns>
         private static SpaceCombatSideOutcome GetCombatSideOutcome(
-            Fleet fleet,
+            IReadOnlyList<Fleet> fleets,
             string ownerInstanceId,
             Planet battlePlanet,
             SpaceCombatSideOutcome roundOutcome
@@ -693,17 +722,22 @@ namespace Rebellion.Systems
             if (roundOutcome == SpaceCombatSideOutcome.Destroyed)
                 return SpaceCombatSideOutcome.Destroyed;
 
-            if (HasActiveSpaceUnits(fleet, battlePlanet, ownerInstanceId))
+            if (HasActiveSpaceUnits(fleets, battlePlanet, ownerInstanceId))
                 return SpaceCombatSideOutcome.Active;
 
-            if (fleet?.Movement != null)
+            if (fleets?.Any(fleet => fleet?.Movement != null) == true)
                 return SpaceCombatSideOutcome.Withdrawn;
 
-            Planet currentPlanet = fleet?.GetParentOfType<Planet>();
-            if (currentPlanet == null)
+            List<Planet> currentPlanets =
+                fleets
+                    ?.Select(fleet => fleet?.GetParentOfType<Planet>())
+                    .Where(planet => planet != null)
+                    .ToList()
+                ?? new List<Planet>();
+            if (currentPlanets.Count == 0)
                 return SpaceCombatSideOutcome.Destroyed;
 
-            if (battlePlanet != null && currentPlanet != battlePlanet)
+            if (battlePlanet != null && currentPlanets.Any(planet => planet != battlePlanet))
                 return SpaceCombatSideOutcome.Withdrawn;
 
             return SpaceCombatSideOutcome.Active;
@@ -776,35 +810,179 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Separates fleets that cannot produce a further combat outcome.
+        /// Attempts to withdraw stalemated forces and destroys any forces left contesting the
+        /// battle planet.
         /// </summary>
-        /// <param name="attacker">Attacking fleet.</param>
-        /// <param name="defender">Defending fleet.</param>
-        private void SeparateStalematedFleets(Fleet attacker, Fleet defender)
+        /// <param name="decision">The combat decision identifying both sides.</param>
+        /// <param name="attackerFleets">Attacking fleets.</param>
+        /// <param name="defenderFleets">Defending fleets.</param>
+        /// <param name="encounterResult">The encounter result that receives forced losses.</param>
+        private void ResolveStalematedForces(
+            SpaceCombatDecision decision,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets,
+            SpaceCombatResult encounterResult
+        )
         {
-            bool attackerRetreated = TryRetreatFleet(attacker, defender, ignoreGravityWell: true);
-            bool defenderRetreated = TryRetreatFleet(defender, attacker, ignoreGravityWell: true);
+            TryRetreatFleets(attackerFleets, defenderFleets, ignoreGravityWell: true);
+            TryRetreatFleets(defenderFleets, attackerFleets, ignoreGravityWell: true);
 
-            if (!AreFleetsContestingPlanet(attacker, defender))
+            if (!AreForcesContestingPlanet(decision))
                 return;
 
-            if (!attackerRetreated)
-                RemoveFleetUnableToRetreat(attacker);
-            if (!defenderRetreated)
-                RemoveFleetUnableToRetreat(defender);
+            Planet planet = ResolveCombatPlanet(decision);
+            List<Fleet> strandedAttackerFleets = GetStationaryFleetsAtPlanet(
+                attackerFleets,
+                planet
+            );
+            List<Fleet> strandedDefenderFleets = GetStationaryFleetsAtPlanet(
+                defenderFleets,
+                planet
+            );
+            DestroyStalematedForces(
+                decision,
+                strandedAttackerFleets,
+                strandedDefenderFleets,
+                encounterResult
+            );
         }
 
         /// <summary>
-        /// Removes a stalemated fleet that cannot leave the contested planet.
+        /// Records and applies destruction for every force unable to leave a stalemated battle.
         /// </summary>
-        /// <param name="fleet">Fleet to remove.</param>
-        private void RemoveFleetUnableToRetreat(Fleet fleet)
+        /// <param name="decision">The combat decision identifying both sides.</param>
+        /// <param name="attackerFleets">Attacking fleets.</param>
+        /// <param name="defenderFleets">Defending fleets.</param>
+        /// <param name="encounterResult">The encounter result that receives forced losses.</param>
+        private void DestroyStalematedForces(
+            SpaceCombatDecision decision,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets,
+            SpaceCombatResult encounterResult
+        )
         {
-            if (fleet == null)
-                return;
+            Planet planet = ResolveCombatPlanet(decision);
+            List<CapitalShip> attackerShips = attackerFleets
+                .SelectMany(GetActiveCapitalShips)
+                .Distinct()
+                .ToList();
+            List<CapitalShip> defenderShips = defenderFleets
+                .SelectMany(GetActiveCapitalShips)
+                .Distinct()
+                .ToList();
+            List<Starfighter> attackerFighters = GetStalematedStarfighters(
+                attackerFleets,
+                planet,
+                decision.AttackerOwnerInstanceID
+            );
+            List<Starfighter> defenderFighters = GetStalematedStarfighters(
+                defenderFleets,
+                planet,
+                decision.DefenderOwnerInstanceID
+            );
 
-            _game.DetachNode(fleet);
-            GameLogger.Log($"Fleet removed after stalemated combat: {fleet.GetDisplayName()}");
+            RecordForcedDestruction(
+                encounterResult.AttackingUnits,
+                attackerShips,
+                attackerFighters
+            );
+            RecordForcedDestruction(
+                encounterResult.DefendingUnits,
+                defenderShips,
+                defenderFighters
+            );
+
+            List<ShipDamageResult> forcedShipDamage = attackerShips
+                .Concat(defenderShips)
+                .Select(ship => new ShipDamageResult
+                {
+                    Ship = ship,
+                    HullBefore = ship.CurrentHullStrength,
+                    HullAfter = 0,
+                })
+                .ToList();
+            List<FighterLossResult> forcedFighterLosses = attackerFighters
+                .Concat(defenderFighters)
+                .Select(fighter => new FighterLossResult
+                {
+                    Fighter = fighter,
+                    SquadsBefore = fighter.CurrentSquadronSize,
+                    SquadsAfter = 0,
+                })
+                .ToList();
+
+            AddShipDamage(encounterResult.ShipDamage, forcedShipDamage);
+            AddFighterLosses(encounterResult.FighterLosses, forcedFighterLosses);
+            encounterResult.Events.AddRange(
+                ApplyCombatLosses(
+                    forcedShipDamage,
+                    forcedFighterLosses,
+                    attackerFleets,
+                    defenderFleets
+                )
+            );
+
+            GameLogger.Log(
+                $"Stalemated forces destroyed at {planet.GetDisplayName()}: "
+                    + $"{attackerShips.Count + attackerFighters.Count} attacker units and "
+                    + $"{defenderShips.Count + defenderFighters.Count} defender units."
+            );
+        }
+
+        /// <summary>
+        /// Returns participating fleets that remain stationary at the battle planet.
+        /// </summary>
+        /// <param name="fleets">Fleets to inspect.</param>
+        /// <param name="planet">The battle planet.</param>
+        /// <returns>The stationary fleets at the battle planet.</returns>
+        private static List<Fleet> GetStationaryFleetsAtPlanet(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet
+        )
+        {
+            return (fleets ?? Array.Empty<Fleet>())
+                .Where(fleet =>
+                    fleet != null
+                    && fleet.Movement == null
+                    && fleet.GetParentOfType<Planet>() == planet
+                )
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns active starfighters stranded in fleets or deployed at the battle planet.
+        /// </summary>
+        /// <param name="fleets">Stationary fleets to inspect.</param>
+        /// <param name="planet">The battle planet.</param>
+        /// <param name="ownerInstanceId">The owner of planetary starfighters to include.</param>
+        /// <returns>The stranded active starfighters.</returns>
+        private static List<Starfighter> GetStalematedStarfighters(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            string ownerInstanceId
+        )
+        {
+            return (fleets ?? Array.Empty<Fleet>())
+                .SelectMany(GetActiveStarfighters)
+                .Concat(GetActivePlanetStarfighters(planet, ownerInstanceId))
+                .Distinct()
+                .ToList();
+        }
+
+        /// <summary>
+        /// Marks forced ship and fighter losses in one side's encounter snapshot.
+        /// </summary>
+        /// <param name="snapshots">The encounter snapshots to update.</param>
+        /// <param name="ships">Ships destroyed by the stalemate resolution.</param>
+        /// <param name="fighters">Starfighters destroyed by the stalemate resolution.</param>
+        private static void RecordForcedDestruction(
+            IEnumerable<CombatUnitSnapshot> snapshots,
+            IEnumerable<CapitalShip> ships,
+            IEnumerable<Starfighter> fighters
+        )
+        {
+            List<ISceneNode> destroyedUnits = ships.Cast<ISceneNode>().Concat(fighters).ToList();
+            CombatUnitSnapshot.RecordOutcomes(snapshots, destroyedUnits, destroyedUnits);
         }
 
         /// <summary>
@@ -813,112 +991,84 @@ namespace Rebellion.Systems
         /// <param name="decision">Encounter identifying the affected fleets.</param>
         private void ClearCombatFlags(SpaceCombatDecision decision)
         {
-            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.AttackerFleetInstanceID
-            );
-            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.DefenderFleetInstanceID
-            );
-            attacker?.SetCombatState(false);
-            defender?.SetCombatState(false);
+            foreach (
+                Fleet fleet in GetFleets(decision.AttackerFleetInstanceIDs)
+                    .Concat(GetFleets(decision.DefenderFleetInstanceIDs))
+            )
+            {
+                fleet.SetCombatState(false);
+            }
         }
 
         /// <summary>
         /// Attempts to retreat the weaker fleet before combat begins.
         /// </summary>
         /// <param name="decision">The combat decision identifying both sides.</param>
-        /// <param name="attacker">Attacking fleet.</param>
-        /// <param name="defender">Defending fleet.</param>
+        /// <param name="attackerFleets">Attacking fleets.</param>
+        /// <param name="defenderFleets">Defending fleets.</param>
         /// <param name="planet">The combat location.</param>
         /// <returns>True when at least one fleet retreats.</returns>
-        private bool TryRetreatOutmatchedFleet(
+        private bool TryRetreatOutmatchedFleets(
             SpaceCombatDecision decision,
-            Fleet attacker,
-            Fleet defender,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets,
             Planet planet
         )
         {
             int attackerPower = GetCombatValue(
-                attacker,
+                attackerFleets,
                 GetActivePlanetStarfighters(planet, decision.AttackerOwnerInstanceID)
             );
             int defenderPower = GetCombatValue(
-                defender,
+                defenderFleets,
                 GetActivePlanetStarfighters(planet, decision.DefenderOwnerInstanceID)
             );
+            Fleet attacker = GetRepresentativeFleet(attackerFleets);
+            Fleet defender = GetRepresentativeFleet(defenderFleets);
 
             if (attackerPower == defenderPower)
             {
                 bool attackerRetreated =
                     _aiCombatPolicy.ShouldRetreat(attacker, planet, attackerPower, defenderPower)
-                    && TryRetreatFleet(attacker, defender, ignoreGravityWell: false);
+                    && TryRetreatFleets(attackerFleets, defenderFleets, ignoreGravityWell: false);
                 bool defenderRetreated =
                     _aiCombatPolicy.ShouldRetreat(defender, planet, defenderPower, attackerPower)
-                    && TryRetreatFleet(defender, attacker, ignoreGravityWell: false);
+                    && TryRetreatFleets(defenderFleets, attackerFleets, ignoreGravityWell: false);
                 return attackerRetreated || defenderRetreated;
             }
 
             if (attackerPower < defenderPower)
             {
                 return _aiCombatPolicy.ShouldRetreat(attacker, planet, attackerPower, defenderPower)
-                    && TryRetreatFleet(attacker, defender, ignoreGravityWell: false);
+                    && TryRetreatFleets(attackerFleets, defenderFleets, ignoreGravityWell: false);
             }
 
             return _aiCombatPolicy.ShouldRetreat(defender, planet, defenderPower, attackerPower)
-                && TryRetreatFleet(defender, attacker, ignoreGravityWell: false);
+                && TryRetreatFleets(defenderFleets, attackerFleets, ignoreGravityWell: false);
         }
 
         /// <summary>
         /// Reports whether a fleet can withdraw from its opponent.
         /// </summary>
-        /// <param name="fleet">The fleet requesting withdrawal.</param>
-        /// <param name="opponent">The opposing fleet.</param>
+        /// <param name="fleets">The fleets requesting withdrawal.</param>
+        /// <param name="opponents">The opposing fleets.</param>
         /// <returns>True when no opposing gravity well prevents withdrawal.</returns>
-        private static bool CanRetreatFleet(Fleet fleet, Fleet opponent)
+        private static bool CanRetreatFleets(
+            IReadOnlyList<Fleet> fleets,
+            IReadOnlyList<Fleet> opponents
+        )
         {
-            return fleet != null && !IsRetreatBlockedByGravityWell(fleet, opponent);
-        }
-
-        /// <summary>
-        /// Withdraws one side from an encounter and clears its combat flags.
-        /// </summary>
-        /// <param name="decision">The encounter context.</param>
-        /// <param name="retreatingFleetInstanceId">The withdrawing fleet identifier.</param>
-        /// <returns>True when the fleet withdrew successfully.</returns>
-        private bool TryRetreatFleet(SpaceCombatDecision decision, string retreatingFleetInstanceId)
-        {
-            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.AttackerFleetInstanceID
-            );
-            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.DefenderFleetInstanceID
-            );
-
-            bool retreated =
-                retreatingFleetInstanceId == decision.AttackerFleetInstanceID
-                    ? TryRetreatFleet(attacker, defender, ignoreGravityWell: false)
-                    : retreatingFleetInstanceId == decision.DefenderFleetInstanceID
-                        && TryRetreatFleet(defender, attacker, ignoreGravityWell: false);
-
-            if (retreated)
-                ClearCombatFlags(decision);
-
-            return retreated;
+            return fleets?.Count > 0 && !IsRetreatBlockedByGravityWell(fleets, opponents);
         }
 
         /// <summary>
         /// Attempts to evacuate a fleet to the nearest friendly planet.
         /// </summary>
         /// <param name="fleet">Fleet attempting to retreat.</param>
-        /// <param name="opponent">Opposing fleet that may block retreat.</param>
-        /// <param name="ignoreGravityWell">Whether gravity-well interdiction is ignored.</param>
         /// <returns>True when the fleet leaves or begins movement away from the planet.</returns>
-        private bool TryRetreatFleet(Fleet fleet, Fleet opponent, bool ignoreGravityWell)
+        private bool TryRetreatFleet(Fleet fleet)
         {
             if (fleet == null)
-                return false;
-
-            if (!ignoreGravityWell && IsRetreatBlockedByGravityWell(fleet, opponent))
                 return false;
 
             Planet originalPlanet = fleet.GetParentOfType<Planet>();
@@ -927,21 +1077,50 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Determines whether an opposing gravity-well ship prevents retreat.
+        /// Attempts to evacuate every fleet on one combat side.
         /// </summary>
-        /// <param name="fleet">Fleet attempting to retreat.</param>
-        /// <param name="opponent">Opposing fleet.</param>
-        /// <returns>True when an active opposing ship projects a gravity well at the planet.</returns>
-        private static bool IsRetreatBlockedByGravityWell(Fleet fleet, Fleet opponent)
+        /// <param name="fleets">The fleets attempting to retreat.</param>
+        /// <param name="opponents">The opposing fleets that may block retreat.</param>
+        /// <param name="ignoreGravityWell">Whether gravity-well interdiction is ignored.</param>
+        /// <returns>True when every fleet leaves or begins movement away from the planet.</returns>
+        private bool TryRetreatFleets(
+            IReadOnlyList<Fleet> fleets,
+            IReadOnlyList<Fleet> opponents,
+            bool ignoreGravityWell
+        )
         {
-            if (fleet == null || opponent == null)
+            if (fleets == null || fleets.Count == 0)
                 return false;
 
-            Planet fleetPlanet = fleet.GetParentOfType<Planet>();
-            if (fleetPlanet == null || fleetPlanet != opponent.GetParentOfType<Planet>())
+            if (!ignoreGravityWell && IsRetreatBlockedByGravityWell(fleets, opponents))
                 return false;
 
-            return GetActiveCapitalShips(opponent).Any(ship => ship.HasGravityWell);
+            bool allRetreated = true;
+            foreach (Fleet fleet in fleets)
+                allRetreated &= TryRetreatFleet(fleet);
+
+            return allRetreated;
+        }
+
+        /// <summary>
+        /// Determines whether any opposing fleet projects a gravity well at the combat planet.
+        /// </summary>
+        /// <param name="fleets">The fleets attempting to retreat.</param>
+        /// <param name="opponents">The opposing fleets.</param>
+        /// <returns>True when an active opposing ship blocks withdrawal.</returns>
+        private static bool IsRetreatBlockedByGravityWell(
+            IReadOnlyList<Fleet> fleets,
+            IReadOnlyList<Fleet> opponents
+        )
+        {
+            Planet fleetPlanet = fleets
+                ?.Select(fleet => fleet?.GetParentOfType<Planet>())
+                .FirstOrDefault(planet => planet != null);
+            return fleetPlanet != null
+                && opponents?.Any(opponent =>
+                    opponent?.GetParentOfType<Planet>() == fleetPlanet
+                    && GetActiveCapitalShips(opponent).Any(ship => ship.HasGravityWell)
+                ) == true;
         }
 
         /// <summary>
@@ -955,17 +1134,36 @@ namespace Rebellion.Systems
             if (planet != null)
                 return planet;
 
-            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.AttackerFleetInstanceID
-            );
+            Fleet attacker = GetRepresentativeFleet(GetFleets(decision.AttackerFleetInstanceIDs));
             planet = attacker?.GetParentOfType<Planet>();
             if (planet != null)
                 return planet;
 
-            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.DefenderFleetInstanceID
-            );
+            Fleet defender = GetRepresentativeFleet(GetFleets(decision.DefenderFleetInstanceIDs));
             return defender?.GetParentOfType<Planet>();
+        }
+
+        /// <summary>
+        /// Resolves the participating fleets that still exist in the scene graph.
+        /// </summary>
+        /// <param name="fleetInstanceIds">The participating fleet identifiers.</param>
+        /// <returns>The live fleets in encounter order.</returns>
+        private List<Fleet> GetFleets(IEnumerable<string> fleetInstanceIds)
+        {
+            return (fleetInstanceIds ?? Enumerable.Empty<string>())
+                .Select(fleetInstanceId => _game.GetSceneNodeByInstanceID<Fleet>(fleetInstanceId))
+                .Where(fleet => fleet != null)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns the fleet used to identify a multi-fleet combat side.
+        /// </summary>
+        /// <param name="fleets">The participating fleets.</param>
+        /// <returns>The first fleet in encounter order, or null.</returns>
+        private static Fleet GetRepresentativeFleet(IReadOnlyList<Fleet> fleets)
+        {
+            return fleets == null || fleets.Count == 0 ? null : fleets[0];
         }
 
         /// <summary>
@@ -1002,16 +1200,12 @@ namespace Rebellion.Systems
             if (planet == null)
                 return false;
 
-            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.AttackerFleetInstanceID
-            );
-            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
-                decision.DefenderFleetInstanceID
-            );
+            List<Fleet> attackerFleets = GetFleets(decision.AttackerFleetInstanceIDs);
+            List<Fleet> defenderFleets = GetFleets(decision.DefenderFleetInstanceIDs);
 
             return decision.AttackerOwnerInstanceID != decision.DefenderOwnerInstanceID
-                && HasActiveSpaceUnits(attacker, planet, decision.AttackerOwnerInstanceID)
-                && HasActiveSpaceUnits(defender, planet, decision.DefenderOwnerInstanceID);
+                && HasActiveSpaceUnits(attackerFleets, planet, decision.AttackerOwnerInstanceID)
+                && HasActiveSpaceUnits(defenderFleets, planet, decision.DefenderOwnerInstanceID);
         }
 
         /// <summary>
@@ -1028,21 +1222,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns whether an owner has active fleet or planetary space units at a planet.
+        /// Returns whether an owner has active units across any participating fleet or the planet.
         /// </summary>
-        /// <param name="fleet">The owner's participating fleet, when present.</param>
+        /// <param name="fleets">The owner's participating fleets.</param>
         /// <param name="planet">The encounter planet.</param>
         /// <param name="ownerInstanceId">The owner whose forces are being inspected.</param>
-        /// <returns>True when at least one active space unit remains at the planet.</returns>
-        private static bool HasActiveSpaceUnits(Fleet fleet, Planet planet, string ownerInstanceId)
+        /// <returns>True when at least one active space unit remains.</returns>
+        private static bool HasActiveSpaceUnits(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            string ownerInstanceId
+        )
         {
-            bool hasActiveFleetUnits =
-                fleet != null
-                && fleet.Movement == null
-                && fleet.GetParentOfType<Planet>() == planet
-                && HasActiveSpaceUnits(fleet);
-
-            return hasActiveFleetUnits
+            return fleets?.Any(fleet =>
+                    fleet != null
+                    && fleet.Movement == null
+                    && fleet.GetParentOfType<Planet>() == planet
+                    && HasActiveSpaceUnits(fleet)
+                ) == true
                 || GetActivePlanetStarfighters(planet, ownerInstanceId).Any();
         }
 
@@ -1050,21 +1247,25 @@ namespace Rebellion.Systems
         /// Determines whether another combat round cannot change the encounter.
         /// </summary>
         /// <param name="decision">The combat decision identifying both sides.</param>
-        /// <param name="attacker">Attacking fleet after the round.</param>
-        /// <param name="defender">Defending fleet after the round.</param>
+        /// <param name="attackerFleets">Attacking fleets after the round.</param>
+        /// <param name="defenderFleets">Defending fleets after the round.</param>
         /// <param name="combatResult">Result of the latest combat round.</param>
         /// <returns>True when neither side can inflict damage or the round changed no state.</returns>
         private bool IsSpaceCombatStalemated(
             SpaceCombatDecision decision,
-            Fleet attacker,
-            Fleet defender,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets,
             SpaceCombatResult combatResult
         )
         {
             Planet planet = combatResult?.Planet;
-            return !HasOperationalSpaceWeapons(attacker, planet, decision.AttackerOwnerInstanceID)
+            return !HasOperationalSpaceWeapons(
+                    attackerFleets,
+                    planet,
+                    decision.AttackerOwnerInstanceID
+                )
                     && !HasOperationalSpaceWeapons(
-                        defender,
+                        defenderFleets,
                         planet,
                         decision.DefenderOwnerInstanceID
                     )
@@ -1102,19 +1303,19 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns whether an owner has operational fleet or planetary space weapons.
+        /// Returns whether an owner has operational weapons across its fleets or planet.
         /// </summary>
-        /// <param name="fleet">The owner's participating fleet, when present.</param>
+        /// <param name="fleets">The owner's participating fleets.</param>
         /// <param name="planet">The encounter planet.</param>
         /// <param name="ownerInstanceId">The owner whose weapons are being inspected.</param>
         /// <returns>True when an active unit can attack.</returns>
         private static bool HasOperationalSpaceWeapons(
-            Fleet fleet,
+            IReadOnlyList<Fleet> fleets,
             Planet planet,
             string ownerInstanceId
         )
         {
-            return HasOperationalSpaceWeapons(fleet)
+            return fleets?.Any(HasOperationalSpaceWeapons) == true
                 || GetActivePlanetStarfighters(planet, ownerInstanceId).Any(IsArmedStarfighter);
         }
 
@@ -1171,17 +1372,17 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Calculates combined combat value for a fleet and its deployed planetary starfighters.
+        /// Calculates combined combat value for fleets and their deployed planetary starfighters.
         /// </summary>
-        /// <param name="fleet">The participating fleet, when present.</param>
+        /// <param name="fleets">The participating fleets, when present.</param>
         /// <param name="planetaryStarfighters">The deployed starfighters to include.</param>
         /// <returns>The combined current combat value.</returns>
         private static int GetCombatValue(
-            Fleet fleet,
+            IReadOnlyList<Fleet> fleets,
             IEnumerable<Starfighter> planetaryStarfighters
         )
         {
-            int combatValue = fleet?.GetCombatValue() ?? 0;
+            int combatValue = fleets?.Sum(fleet => fleet?.GetCombatValue() ?? 0) ?? 0;
             foreach (Starfighter fighter in planetaryStarfighters)
             {
                 int weaponStrength = fighter.LaserCannon + fighter.IonCannon + fighter.Torpedoes;
@@ -1242,14 +1443,14 @@ namespace Rebellion.Systems
         /// Resolves one space-combat round and applies it to the game state.
         /// </summary>
         /// <param name="decision">The combat decision identifying both sides.</param>
-        /// <param name="attacker">Attacking fleet.</param>
-        /// <param name="defender">Defending fleet.</param>
+        /// <param name="attackerFleets">Attacking fleets.</param>
+        /// <param name="defenderFleets">Defending fleets.</param>
         /// <param name="rng">Random-number provider for the round.</param>
         /// <returns>The applied round result, or null when the encounter is no longer valid.</returns>
         private SpaceCombatResult ResolveCombatRound(
             SpaceCombatDecision decision,
-            Fleet attacker,
-            Fleet defender,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets,
             IRandomNumberProvider rng
         )
         {
@@ -1261,8 +1462,8 @@ namespace Rebellion.Systems
             }
 
             SpaceCombatResult result = ResolveSpace(
-                attacker,
-                defender,
+                attackerFleets,
+                defenderFleets,
                 decision.AttackerOwnerInstanceID,
                 decision.DefenderOwnerInstanceID,
                 planet,
@@ -1270,12 +1471,12 @@ namespace Rebellion.Systems
                 _game.CurrentTick,
                 _game.Config.Combat.SpaceCombat
             );
-            result.Events = ApplyCombatResult(result);
+            result.Events = ApplyCombatResult(result, attackerFleets, defenderFleets);
 
             GameLogger.Log(
                 $"Combat at {planet.GetDisplayName()}: "
-                    + $"{attacker?.GetDisplayName() ?? decision.AttackerOwnerInstanceID} vs "
-                    + $"{defender?.GetDisplayName() ?? decision.DefenderOwnerInstanceID} — "
+                    + $"{decision.AttackerOwnerInstanceID} vs "
+                    + $"{decision.DefenderOwnerInstanceID} — "
                     + $"Winner: {result.Winner}"
             );
 
@@ -1291,8 +1492,8 @@ namespace Rebellion.Systems
         /// 7-phase space combat pipeline: snapshot -> composition -> weapon fire -> fighter
         /// engagement -> result. Shield absorption and hull damage happen inside weapon fire.
         /// </summary>
-        /// <param name="attackerFleet">The attacking fleet.</param>
-        /// <param name="defenderFleet">The defending fleet.</param>
+        /// <param name="attackerFleets">The attacking fleets.</param>
+        /// <param name="defenderFleets">The defending fleets.</param>
         /// <param name="attackerOwnerInstanceId">The attacking owner identifier.</param>
         /// <param name="defenderOwnerInstanceId">The defending owner identifier.</param>
         /// <param name="planet">Planet where combat occurs.</param>
@@ -1301,8 +1502,8 @@ namespace Rebellion.Systems
         /// <param name="config">Combat configuration supplying damage/variance tuning values.</param>
         /// <returns>The combat result with winner, per-ship damage, and fighter losses.</returns>
         private SpaceCombatResult ResolveSpace(
-            Fleet attackerFleet,
-            Fleet defenderFleet,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets,
             string attackerOwnerInstanceId,
             string defenderOwnerInstanceId,
             Planet planet,
@@ -1313,13 +1514,13 @@ namespace Rebellion.Systems
         {
             _battleTacticalStateChanged = false;
             (List<ShipSnap> atkShips, List<FighterSnap> atkFighters) = SnapshotForce(
-                attackerFleet,
+                attackerFleets,
                 planet,
                 attackerOwnerInstanceId,
                 config
             );
             (List<ShipSnap> defShips, List<FighterSnap> defFighters) = SnapshotForce(
-                defenderFleet,
+                defenderFleets,
                 planet,
                 defenderOwnerInstanceId,
                 config
@@ -1329,8 +1530,8 @@ namespace Rebellion.Systems
             RechargeShields(defShips);
 
             bool anyArmed =
-                HasOperationalSpaceWeapons(attackerFleet, planet, attackerOwnerInstanceId)
-                || HasOperationalSpaceWeapons(defenderFleet, planet, defenderOwnerInstanceId);
+                HasOperationalSpaceWeapons(attackerFleets, planet, attackerOwnerInstanceId)
+                || HasOperationalSpaceWeapons(defenderFleets, planet, defenderOwnerInstanceId);
 
             if (anyArmed)
             {
@@ -1343,8 +1544,8 @@ namespace Rebellion.Systems
             StoreShieldStrengths(defShips);
 
             return BuildSpaceResult(
-                attackerFleet,
-                defenderFleet,
+                GetRepresentativeFleet(attackerFleets),
+                GetRepresentativeFleet(defenderFleets),
                 attackerOwnerInstanceId,
                 defenderOwnerInstanceId,
                 planet,
@@ -1385,13 +1586,13 @@ namespace Rebellion.Systems
         /// <summary>
         /// Builds mutable per-battle snapshots for one side's fleet and planetary starfighters.
         /// </summary>
-        /// <param name="fleet">Fleet to snapshot.</param>
+        /// <param name="fleets">Fleets to snapshot.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The side's owner identifier.</param>
         /// <param name="config">Combat configuration supplying fighter durability.</param>
         /// <returns>Ship and fighter snapshots for the represented side.</returns>
         private (List<ShipSnap> ships, List<FighterSnap> fighters) SnapshotForce(
-            Fleet fleet,
+            IReadOnlyList<Fleet> fleets,
             Planet planet,
             string ownerInstanceId,
             GameConfig.SpaceCombatConfig config
@@ -1399,7 +1600,11 @@ namespace Rebellion.Systems
         {
             List<ShipSnap> ships = new List<ShipSnap>();
 
-            foreach (CapitalShip ship in GetActiveCapitalShips(fleet))
+            foreach (
+                CapitalShip ship in (fleets ?? Array.Empty<Fleet>()).SelectMany(
+                    GetActiveCapitalShips
+                )
+            )
             {
                 int shieldMax = Math.Max(ship.MaxShieldStrength, 0);
                 float shieldCurrent = shieldMax;
@@ -1958,16 +2163,50 @@ namespace Rebellion.Systems
         /// destroyed ships and depleted fighter squadrons, cleans up empty fleets.
         /// </summary>
         /// <param name="result">The combat result to apply.</param>
+        /// <param name="attackerFleets">The attacking fleets to clean up.</param>
+        /// <param name="defenderFleets">The defending fleets to clean up.</param>
         /// <returns>Events generated from ship damage and destruction.</returns>
-        private List<GameResult> ApplyCombatResult(SpaceCombatResult result)
+        private List<GameResult> ApplyCombatResult(
+            SpaceCombatResult result,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets
+        )
         {
-            List<GameResult> events = ApplyShipDamage(result.ShipDamage);
-            ApplyFighterSquadronLosses(result.FighterLosses);
+            return ApplyCombatLosses(
+                result.ShipDamage,
+                result.FighterLosses,
+                attackerFleets,
+                defenderFleets
+            );
+        }
 
-            if (result.AttackerFleet?.GetChildren<CapitalShip>().Count == 0)
-                RemoveFleetFromScene(result.AttackerFleet);
-            if (result.DefenderFleet?.GetChildren<CapitalShip>().Count == 0)
-                RemoveFleetFromScene(result.DefenderFleet);
+        /// <summary>
+        /// Applies ship and fighter losses and removes fleet containers left without capital ships.
+        /// </summary>
+        /// <param name="shipDamage">Ship damage to apply.</param>
+        /// <param name="fighterLosses">Fighter losses to apply.</param>
+        /// <param name="attackerFleets">The attacking fleets to clean up.</param>
+        /// <param name="defenderFleets">The defending fleets to clean up.</param>
+        /// <returns>Events generated from ship damage and destruction.</returns>
+        private List<GameResult> ApplyCombatLosses(
+            List<ShipDamageResult> shipDamage,
+            List<FighterLossResult> fighterLosses,
+            IReadOnlyList<Fleet> attackerFleets,
+            IReadOnlyList<Fleet> defenderFleets
+        )
+        {
+            List<GameResult> events = ApplyShipDamage(shipDamage);
+            ApplyFighterSquadronLosses(fighterLosses);
+
+            foreach (
+                Fleet fleet in attackerFleets
+                    .Concat(defenderFleets)
+                    .Where(fleet => fleet?.GetChildren<CapitalShip>().Count == 0)
+                    .ToList()
+            )
+            {
+                RemoveFleetFromScene(fleet);
+            }
 
             return events;
         }
