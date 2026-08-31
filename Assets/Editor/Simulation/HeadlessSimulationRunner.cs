@@ -1990,6 +1990,12 @@ public static class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Gets or creates the lifecycle counters for one faction and special-forces type.
+        /// </summary>
+        /// <param name="factionId">The owning faction instance identifier.</param>
+        /// <param name="typeId">The special-forces type identifier.</param>
+        /// <returns>The counters associated with the faction and unit type.</returns>
         private SpecialForcesLifecycleCounts GetCounts(string factionId, string typeId)
         {
             string key = $"{factionId ?? string.Empty}\u001f{typeId ?? string.Empty}";
@@ -2019,12 +2025,25 @@ public static class HeadlessSimulationRunner
             private int _maximumAvailable;
             private int _zeroAvailableTicks;
 
+            /// <summary>
+            /// Creates lifecycle counters for one faction and special-forces type.
+            /// </summary>
+            /// <param name="ownerInstanceId">The owning faction instance identifier.</param>
+            /// <param name="typeId">The special-forces type identifier.</param>
             public SpecialForcesLifecycleCounts(string ownerInstanceId, string typeId)
             {
                 OwnerInstanceId = ownerInstanceId;
                 TypeId = typeId;
             }
 
+            /// <summary>
+            /// Records one sampled distribution of the tracked special-forces type.
+            /// </summary>
+            /// <param name="available">The units available for new missions.</param>
+            /// <param name="onMission">The units assigned to missions.</param>
+            /// <param name="inTransit">The units currently traveling.</param>
+            /// <param name="building">The units currently under construction.</param>
+            /// <param name="total">The total units present in the sample.</param>
             public void RecordSample(
                 int available,
                 int onMission,
@@ -2045,6 +2064,10 @@ public static class HeadlessSimulationRunner
                     _zeroAvailableTicks++;
             }
 
+            /// <summary>
+            /// Builds the simulation summary represented by the accumulated samples.
+            /// </summary>
+            /// <returns>The completed lifecycle summary.</returns>
             public SpecialForcesLifecycleSimulationSummary BuildSummary()
             {
                 return new SpecialForcesLifecycleSimulationSummary
@@ -2066,6 +2089,12 @@ public static class HeadlessSimulationRunner
                 };
             }
 
+            /// <summary>
+            /// Calculates a sampled average while handling an empty sample set.
+            /// </summary>
+            /// <param name="value">The accumulated sample value.</param>
+            /// <param name="count">The number of samples.</param>
+            /// <returns>The average value, or zero when no samples were recorded.</returns>
             private static double Divide(int value, int count) =>
                 count == 0 ? 0 : (double)value / count;
         }
@@ -2076,6 +2105,11 @@ public static class HeadlessSimulationRunner
             public string OwnerInstanceId;
             public string TypeId;
 
+            /// <summary>
+            /// Captures the stable identity fields needed to track a special-forces unit.
+            /// </summary>
+            /// <param name="unit">The unit to snapshot.</param>
+            /// <returns>The tracked identity snapshot.</returns>
             public static TrackedSpecialForces From(SpecialForces unit)
             {
                 return new TrackedSpecialForces
