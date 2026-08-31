@@ -421,6 +421,75 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void GetAvailableMissionOptions_CapitalShipTarget_ReturnsOnlyEntityMissions()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            CapitalShip target = new CapitalShip
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            game.AttachNode(fleet, planet);
+            game.AttachNode(target, fleet);
+            MissionContext context = CreateContext(
+                game,
+                null,
+                "empire",
+                officer,
+                planet,
+                selectedTarget: target
+            );
+
+            List<MissionOption> options = factory.GetAvailableMissionOptions(context);
+
+            Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
+            Assert.IsTrue(options.All(option => option.TargetKind != MissionTargetKind.Planet));
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_PlanetTarget_ReturnsOnlyPlanetMissions()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            planet.AddVisitor("empire");
+            MissionContext context = CreateContext(game, null, "empire", officer, planet);
+
+            List<MissionOption> options = factory.GetAvailableMissionOptions(context);
+
+            Assert.IsNotEmpty(options);
+            Assert.IsTrue(options.All(option => option.TargetKind == MissionTargetKind.Planet));
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_DisallowedEntityMission_ExcludesMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            game.GetFactions()[0].DisallowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
+            CapitalShip target = new CapitalShip
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            game.AttachNode(fleet, planet);
+            game.AttachNode(target, fleet);
+            MissionContext context = CreateContext(
+                game,
+                null,
+                "empire",
+                officer,
+                planet,
+                selectedTarget: target
+            );
+
+            List<MissionOption> options = factory.GetAvailableMissionOptions(context);
+
+            Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
+        }
+
+        [Test]
         public void GetAvailableMissionOptions_RecruitmentAndDiplomacy_ListsRecruitmentFirst()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();

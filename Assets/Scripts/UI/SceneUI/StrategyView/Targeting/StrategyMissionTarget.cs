@@ -47,23 +47,18 @@ public sealed class StrategyMissionTarget : ITargetable
     }
 
     /// <summary>
-    /// Resolves the explicit scene-node target used by one mission type.
+    /// Resolves the scene node targeted by one mission option.
     /// </summary>
-    /// <param name="missionTypeID">The requested mission type identifier.</param>
-    /// <returns>The specific mission target, or null for location-only missions.</returns>
-    public ISceneNode GetSpecificMissionTarget(string missionTypeID)
+    /// <param name="targetKind">The kind of target accepted by the mission option.</param>
+    /// <returns>The selected target when it satisfies the requested target kind.</returns>
+    public ISceneNode GetMissionTarget(MissionTargetKind targetKind)
     {
-        if (
-            Item != null
-            && (
-                missionTypeID == MissionTypeIDs.Sabotage
-                || missionTypeID == MissionTypeIDs.Abduction
-                || missionTypeID == MissionTypeIDs.Assassination
-                || missionTypeID == MissionTypeIDs.Rescue
-            )
-        )
-            return Item;
-
-        return null;
+        return targetKind switch
+        {
+            MissionTargetKind.Planet => Planet?.Planet,
+            MissionTargetKind.Manufacturable when Item is IManufacturable => Item,
+            MissionTargetKind.Officer when Item is Officer => Item,
+            _ => null,
+        };
     }
 }

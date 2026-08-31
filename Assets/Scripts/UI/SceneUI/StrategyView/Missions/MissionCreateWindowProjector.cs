@@ -45,7 +45,9 @@ internal sealed class MissionCreateWindowProjector
             .GetPlayerFactionTheme()
             ?.StrategyWindows?.MissionCreate;
         StrategyMissionChoice selectedChoice = session.SelectedChoice;
-        ISceneNode target = session.Target.Item ?? session.Target.Planet?.Planet;
+        ISceneNode target = session.Target.GetMissionTarget(
+            selectedChoice?.TargetKind ?? MissionTargetKind.Planet
+        );
         return new MissionCreateWindowRenderData(
             window.X,
             window.Y,
