@@ -328,7 +328,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DiplomacyCompletion_ParticipantRemainsAtTargetPlanet()
+        public void UpdateMission_DiplomacyCompletionFromFleet_ParticipantRemainsAtTargetPlanet()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "empire" };
@@ -359,8 +359,17 @@ namespace Rebellion.Tests.Sectors
             target.AddVisitor(faction.InstanceID);
             game.AttachNode(origin, planetSector);
             game.AttachNode(target, planetSector);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", faction.InstanceID);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
             Officer officer = EntityFactory.CreateOfficer("diplomat", faction.InstanceID);
-            game.AttachNode(officer, origin);
+            game.AttachNode(officer, ship);
             game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
             {
                 { -200, 100 },

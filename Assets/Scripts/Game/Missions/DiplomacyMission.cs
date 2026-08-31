@@ -15,6 +15,11 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "Diplomacy";
 
+        /// <summary>
+        /// Returns whether successful participants remain on the target planet.
+        /// </summary>
+        internal override bool SuccessfulParticipantsRemainAtLocation => true;
+
         /// <summary>Creates an empty diplomacy mission copy.</summary>
         /// <returns>An empty diplomacy mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new DiplomacyMission();

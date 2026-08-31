@@ -2241,7 +2241,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ReturnFromMission_MissingRecordedLocation_ReturnsParticipantAsStranded()
+        public void ReturnFromMission_MissingRecordedLocation_ReturnsToNearestFriendlyPlanet()
         {
             (
                 GameRoot game,
@@ -2262,12 +2262,12 @@ namespace Rebellion.Tests.Sectors
                 new IMovable[0]
             );
 
-            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
-            Assert.AreEqual(mission, officer.GetParent());
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(origin, officer.GetParent());
         }
 
         [Test]
-        public void ReturnFromMission_RecordedPlanetCaptured_ReturnsParticipantAsStranded()
+        public void ReturnFromMission_RecordedPlanetCaptured_ReturnsToNearestFriendlyPlanet()
         {
             (
                 GameRoot game,
@@ -2281,18 +2281,27 @@ namespace Rebellion.Tests.Sectors
             movement.SendToMission(officer, mission);
             officer.Movement = null;
             origin.OwnerInstanceID = "rebels";
+            Planet fallback = new Planet
+            {
+                InstanceID = "fallback",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 200,
+            };
+            game.AttachNode(fallback, destination.GetParent());
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[0]
             );
 
-            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
-            Assert.AreSame(mission, officer.GetParent());
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(fallback, officer.GetParent());
         }
 
         [Test]
-        public void ReturnFromMission_MissingRecordedLocation_DoesNotChooseAnotherFleet()
+        public void ReturnFromMission_MissingRecordedLocation_UsesFriendlyPlanetInsteadOfUnrelatedFleet()
         {
             (
                 GameRoot game,
@@ -2323,8 +2332,8 @@ namespace Rebellion.Tests.Sectors
                 new IMovable[0]
             );
 
-            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
-            Assert.AreSame(mission, officer.GetParent());
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(origin, officer.GetParent());
         }
 
         [Test]
