@@ -67,13 +67,13 @@ namespace Rebellion.Tests.Game.Missions
             Fleet fleet = new Fleet
             {
                 InstanceID = "moving-fleet",
-                OwnerInstanceID = "empire",
+                OwnerInstanceID = "rebels",
                 Movement = new MovementState(),
             };
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = "carrier",
-                OwnerInstanceID = "empire",
+                OwnerInstanceID = "rebels",
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 RegimentCapacity = 1,
             };
@@ -427,10 +427,10 @@ namespace Rebellion.Tests.Game.Missions
             CapitalShip target = new CapitalShip
             {
                 InstanceID = "target",
-                OwnerInstanceID = "empire",
+                OwnerInstanceID = "rebels",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "rebels");
             game.AttachNode(fleet, planet);
             game.AttachNode(target, fleet);
             MissionContext context = CreateContext(
@@ -446,6 +446,121 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
             Assert.IsTrue(options.All(option => option.TargetKind != MissionTargetKind.Planet));
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_SabotageUnitTargets_ReturnSabotage()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            planet.EnergyCapacity = 100;
+            ISceneNode[] targets =
+            {
+                EntityFactory.CreateBuilding("building", "rebels"),
+                EntityFactory.CreateRegiment("regiment", "rebels"),
+                EntityFactory.CreateStarfighter("starfighter", "rebels"),
+                new SpecialForces { InstanceID = "special-forces", OwnerInstanceID = "rebels" },
+            };
+
+            foreach (ISceneNode target in targets)
+            {
+                target.OwnerInstanceID = "empire";
+                ((IManufacturable)target).ManufacturingStatus = ManufacturingStatus.Complete;
+                game.AttachNode(target, planet);
+                target.OwnerInstanceID = "rebels";
+                MissionContext context = CreateContext(
+                    game,
+                    null,
+                    "empire",
+                    officer,
+                    planet,
+                    selectedTarget: target
+                );
+
+                List<MissionOption> options = factory.GetAvailableMissionOptions(context);
+
+                Assert.AreEqual(1, options.Count);
+                Assert.AreEqual(MissionTypeIDs.Sabotage, options[0].MissionTypeID);
+            }
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_EnemyOfficerTarget_ReturnsHostileOfficerMissions()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            Fleet fleet = EntityFactory.CreateFleet("target-fleet", "rebels");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "target-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(target, ship);
+            MissionContext context = CreateContext(
+                game,
+                null,
+                "empire",
+                officer,
+                planet,
+                selectedTarget: target
+            );
+
+            List<MissionOption> options = factory.GetAvailableMissionOptions(context);
+
+            CollectionAssert.AreEquivalent(
+                new[] { MissionTypeIDs.Abduction, MissionTypeIDs.Assassination },
+                options.Select(option => option.MissionTypeID)
+            );
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_FleetTarget_ReturnsNoMissions()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Fleet target = EntityFactory.CreateFleet("target", "rebels");
+            game.AttachNode(target, planet);
+            MissionContext context = CreateContext(
+                game,
+                null,
+                "empire",
+                officer,
+                planet,
+                selectedTarget: target
+            );
+
+            List<MissionOption> options = factory.GetAvailableMissionOptions(context);
+
+            Assert.IsEmpty(options);
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_PlanetDestroyingCapitalShipTarget_ExcludesSabotage()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "rebels");
+            CapitalShip target = new CapitalShip
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CanDestroyPlanets = true,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(target, fleet);
+            MissionContext context = CreateContext(
+                game,
+                null,
+                "empire",
+                officer,
+                planet,
+                selectedTarget: target
+            );
+
+            List<MissionOption> options = factory.GetAvailableMissionOptions(context);
+
+            Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
         }
 
         [Test]
@@ -469,10 +584,10 @@ namespace Rebellion.Tests.Game.Missions
             CapitalShip target = new CapitalShip
             {
                 InstanceID = "target",
-                OwnerInstanceID = "empire",
+                OwnerInstanceID = "rebels",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "rebels");
             game.AttachNode(fleet, planet);
             game.AttachNode(target, fleet);
             MissionContext context = CreateContext(
@@ -562,6 +677,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Faction empire = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(empire);
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -604,6 +720,7 @@ namespace Rebellion.Tests.Game.Missions
             Regiment target = EntityFactory.CreateRegiment("sabotage-target", "empire");
             target.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(target, planet);
+            target.OwnerInstanceID = "rebels";
             return target;
         }
 
