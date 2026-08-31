@@ -58,7 +58,7 @@ This repeating event selects one Alliance-owned core planet and adds a raw-resou
 <GameEvent MaximumActivations="5">
   <InstanceID>MOD_RESOURCE_DISCOVERY</InstanceID>
   <Bindings>
-    <Bind As="planet">
+    <Bind As="$planet">
       <From>
         <!-- A binding must resolve exactly one node. -->
         <SelectRandom Count="1">
@@ -133,7 +133,7 @@ units, records the changes as an incident, and sends a message to the Alliance.
 <GameEvent>
   <InstanceID>MOD_PLANETARY_ATTACK</InstanceID>
   <Bindings>
-    <Bind As="planet">
+    <Bind As="$planet">
       <From>
         <SelectRandom Count="1">
           <From>

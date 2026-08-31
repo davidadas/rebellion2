@@ -186,7 +186,7 @@ namespace Rebellion.Game.Messages
         public string Body { get; set; }
         public string DetailListHeaderTemplate { get; set; }
         public string DetailListItemTemplate { get; set; }
-        public bool ShowOfficerOverlay { get; set; }
+        public bool ShowSubjectImage { get; set; }
         public MessageBackgroundImage BackgroundImage { get; set; }
         public Dictionary<string, string> ImagePaths { get; set; } =
             new Dictionary<string, string>();

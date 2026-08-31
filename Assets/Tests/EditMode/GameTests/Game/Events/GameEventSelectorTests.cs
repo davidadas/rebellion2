@@ -136,7 +136,7 @@ namespace Rebellion.Tests.Game.Events
             );
             context.Bind("officer", stale);
 
-            ISceneNode selected = new SelectBinding { Binding = "$officer" }
+            ISceneNode selected = new SelectBinding { Binding = "officer" }
                 .Select(game, new FixedRNG(0), context)
                 .Single();
 

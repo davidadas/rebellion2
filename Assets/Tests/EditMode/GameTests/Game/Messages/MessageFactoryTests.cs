@@ -402,7 +402,8 @@ namespace Rebellion.Tests.Game.Messages
                             MessageResultType.PersonnelArrivedByOfficerWithCompany,
                             MessageType.Mission,
                             "{officer}:{system}",
-                            "{personnel}"
+                            "{personnel}",
+                            showSubjectImage: true
                         ),
                     },
                     new UnitArrivedResult
@@ -433,8 +434,12 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(reporter.InstanceID, message.NavigationTargetInstanceID);
         }
 
-        [Test]
-        public void CreateMessages_PersonnelArrivalsWithSameMovementGroup_UsesPersonnelReport()
+        [TestCase(true, "luke-card")]
+        [TestCase(false, null)]
+        public void CreateMessages_PersonnelArrivalsWithSameMovementGroup_RespectsSubjectImageSetting(
+            bool showSubjectImage,
+            string expectedOverlayImagePath
+        )
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
             Officer firstOfficer = new Officer
@@ -463,7 +468,8 @@ namespace Rebellion.Tests.Game.Messages
                         MessageType.Mission,
                         "personnel:{system}",
                         "body:{personnel}",
-                        imageKey: "mission_report"
+                        imageKey: "mission_report",
+                        showSubjectImage: showSubjectImage
                     ),
                 },
                 new UnitArrivedResult
@@ -486,7 +492,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("personnel:Yavin", message.Title);
             Assert.AreEqual("body:Luke Skywalker\nHan Solo", message.Body);
             Assert.AreEqual("mission_report", message.BackgroundImageKey);
-            Assert.AreEqual("luke-card", message.OverlayImagePath);
+            Assert.AreEqual(expectedOverlayImagePath, message.OverlayImagePath);
         }
 
         [Test]
@@ -2012,7 +2018,8 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{mission}:{system}",
                             outcome: MessageResultOutcome.Success,
                             missionTypeId: MissionTypeIDs.Reconnaissance,
-                            imageKey: "mission_report"
+                            imageKey: "mission_report",
+                            showSubjectImage: true
                         ),
                     },
                     new MissionCompletedResult
@@ -2079,7 +2086,8 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{participant}",
                             outcome: MessageResultOutcome.Success,
                             missionTypeId: MissionTypeIDs.JediTraining,
-                            imageKey: "mission_report"
+                            imageKey: "mission_report",
+                            showSubjectImage: true
                         ),
                     },
                     new MissionCompletedResult
@@ -2140,7 +2148,8 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{participant}:{officer}:{system}",
                             DefaultImage("recruitment-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeId: MissionTypeIDs.Recruitment
+                            missionTypeId: MissionTypeIDs.Recruitment,
+                            showSubjectImage: true
                         ),
                     },
                     new MissionCompletedResult
@@ -2271,7 +2280,8 @@ namespace Rebellion.Tests.Game.Messages
                         "actor-foiled:{mission}:{system}",
                         "body:{mission}:{system}",
                         imagePaths: FactionImages(),
-                        outcome: MessageResultOutcome.Foiled
+                        outcome: MessageResultOutcome.Foiled,
+                        showSubjectImage: true
                     ),
                     Definition(
                         MessageResultType.EnemyMissionFoiled,
@@ -2332,7 +2342,7 @@ namespace Rebellion.Tests.Game.Messages
                             "recruited:{officer}:{system}",
                             "body:{officer}:{system}",
                             DefaultImage("fallback-card"),
-                            showOfficerOverlay: true
+                            showSubjectImage: true
                         ),
                     },
                     new OfficerRecruitedResult
@@ -2486,7 +2496,7 @@ namespace Rebellion.Tests.Game.Messages
                             "recovered:{officer}:{system}",
                             "body:{officer}:{system}",
                             DefaultImage("fallback-card"),
-                            showOfficerOverlay: true
+                            showSubjectImage: true
                         ),
                     },
                     new OfficerInjuredResult { Officer = officer, Severity = 0 }
@@ -2615,7 +2625,8 @@ namespace Rebellion.Tests.Game.Messages
                             MessageResultType.ForceGrowth,
                             MessageType.Mission,
                             "force",
-                            "body:{rank}"
+                            "body:{rank}",
+                            showSubjectImage: true
                         ),
                     },
                     new ForceExperienceResult
@@ -2748,13 +2759,15 @@ namespace Rebellion.Tests.Game.Messages
                             MessageResultType.ForceUserDiscovered,
                             MessageType.Mission,
                             "qualified",
-                            "discovered:{officer}"
+                            "discovered:{officer}",
+                            showSubjectImage: true
                         ),
                         Definition(
                             MessageResultType.ForceUserDiscoveredByStudent,
                             MessageType.Mission,
                             "student",
-                            "discovered:{officer}"
+                            "discovered:{officer}",
+                            showSubjectImage: true
                         ),
                     },
                     new ForceExperienceResult { Officer = candidate, ExperienceGained = 5 },
@@ -2773,8 +2786,12 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("discoverer-card", message.OverlayImagePath);
         }
 
-        [Test]
-        public void CreateMessages_TraitorDiscovered_UsesReportAndDiscovererPresentation()
+        [TestCase(true, "luke-card")]
+        [TestCase(false, null)]
+        public void CreateMessages_TraitorDiscovered_RespectsSubjectImageSetting(
+            bool showSubjectImage,
+            string expectedOverlayImagePath
+        )
         {
             (GameRoot game, Faction alliance, _, Planet origin, _) = BuildTwoFactionMessageScene();
             Officer discoverer = new Officer
@@ -2806,7 +2823,7 @@ namespace Rebellion.Tests.Game.Messages
                         MessageType.Mission,
                         "{discoverer} Discovers Traitor",
                         "Through the use of the Force, I have discovered that {traitor} has betrayed us to the {enemy}.",
-                        showOfficerOverlay: true
+                        showSubjectImage: showSubjectImage
                     ),
                 },
                 new TraitorDiscoveredResult
@@ -2825,7 +2842,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Through the use of the Force, I have discovered that Lando Calrissian has betrayed us to the Empire.",
                 message.Body
             );
-            Assert.AreEqual("luke-card", message.OverlayImagePath);
+            Assert.AreEqual(expectedOverlayImagePath, message.OverlayImagePath);
             Assert.AreEqual("luke-discovers-traitor", message.OfficerVoicePath);
             Assert.AreEqual(origin.InstanceID, message.EventLocationInstanceID);
             Assert.AreEqual(traitor.InstanceID, message.NavigationTargetInstanceID);
@@ -2873,7 +2890,8 @@ namespace Rebellion.Tests.Game.Messages
                             MessageResultType.ForceUserDiscovered,
                             MessageType.Mission,
                             "future jedi",
-                            "body:{officer}"
+                            "body:{officer}",
+                            showSubjectImage: true
                         ),
                     },
                     new ForceDiscoveryResult
@@ -4068,7 +4086,7 @@ namespace Rebellion.Tests.Game.Messages
             string voicePath = null,
             Dictionary<string, string> imagePaths = null,
             Dictionary<string, string> voicePaths = null,
-            bool showOfficerOverlay = false,
+            bool showSubjectImage = false,
             bool planetDestroyed = false
         )
         {
@@ -4084,7 +4102,7 @@ namespace Rebellion.Tests.Game.Messages
                 ManufacturingType = manufacturingType,
                 Subject = titleTemplate,
                 Body = bodyTemplate,
-                ShowOfficerOverlay = showOfficerOverlay,
+                ShowSubjectImage = showSubjectImage,
                 BackgroundImage =
                     string.IsNullOrWhiteSpace(imageKey) && string.IsNullOrWhiteSpace(imagePath)
                         ? null

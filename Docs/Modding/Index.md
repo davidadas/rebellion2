@@ -90,6 +90,28 @@ Paths in `pack.xml`, faction definitions, and scenario definitions are relative 
 Content addresses beginning with `Application/` resolve from the shared application directory;
 addresses beginning with `Pack/` resolve from the active pack.
 
+## Messages
+
+Automatic strategy messages are selected from the catalog referenced by
+`MessageDefinitionsPath`. Set the optional `ShowSubjectImage` element to `true` when an
+automatic message should use its subject officer's current message image as an overlay. Every
+automatic message honors this setting, which defaults to `false`:
+
+```xml
+<MessageDefinition>
+  <ResultType>TraitorDiscovered</ResultType>
+  <MessageType>Mission</MessageType>
+  <Subject>{discoverer} Discovers Traitor</Subject>
+  <Body>{discoverer} has discovered that {traitor} betrayed us.</Body>
+  <ShowSubjectImage>true</ShowSubjectImage>
+  <BackgroundImage Key="mission_report"/>
+</MessageDefinition>
+```
+
+Authored event messages expose the same setting as the `ShowSubjectImage` attribute on
+`SendMessage`. See [`SendMessage`](Events/Actions.md#sendmessage) for its complete options and
+overlay precedence.
+
 ## Guides
 
 - [Creating game events](Events/Index.md)

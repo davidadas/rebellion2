@@ -87,6 +87,29 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void ValidateEvents_BindingWithoutAlias_ThrowsInvalidOperationException()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "INVALID_BINDING",
+                Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                Bindings = new List<GameEventBinding>
+                {
+                    new GameEventBinding
+                    {
+                        RollInteger = new RollInteger { Minimum = 1, Maximum = 1 },
+                    },
+                },
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _system.ValidateEvents(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("missing alias", exception.Message);
+        }
+
+        [Test]
         public void ValidateEvents_BindingWithoutSource_ThrowsInvalidOperationException()
         {
             GameEvent gameEvent = new GameEvent
@@ -269,6 +292,18 @@ namespace Rebellion.Tests.Sectors
                             new SelectPlanets { InstanceID = planet.InstanceID },
                         },
                     },
+                    new GameEventBinding
+                    {
+                        As = "rawResourceNodes",
+                        Sources = new List<GameEventBindingSource>
+                        {
+                            new PlanetStatBindingSource
+                            {
+                                PlanetBinding = "planet",
+                                Stat = PlanetStat.RawResourceNodes,
+                            },
+                        },
+                    },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -277,12 +312,11 @@ namespace Rebellion.Tests.Sectors
                         Ticks = 5,
                         Until = new List<GameConditional>
                         {
-                            new ComparePlanetStatConditional
+                            new EvaluateBindingConditional
                             {
-                                PlanetBinding = "$planet",
-                                Stat = PlanetStat.RawResourceNodes,
+                                Binding = "rawResourceNodes",
                                 Comparison = ComparisonOperator.Equal,
-                                Value = 0,
+                                CompareTo = "0",
                             },
                         },
                     },
@@ -488,7 +522,7 @@ namespace Rebellion.Tests.Sectors
                 },
                 Conditionals = new List<GameConditional>
                 {
-                    new IsOwnedConditional { PlanetBinding = "$target" },
+                    new IsOwnedConditional { PlanetBinding = "target" },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -534,7 +568,7 @@ namespace Rebellion.Tests.Sectors
                 },
                 Conditionals = new List<GameConditional>
                 {
-                    new IsOwnedConditional { PlanetBinding = "$target" },
+                    new IsOwnedConditional { PlanetBinding = "target" },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -581,7 +615,7 @@ namespace Rebellion.Tests.Sectors
                 },
                 Conditionals = new List<GameConditional>
                 {
-                    new IsOwnedConditional { PlanetBinding = "$target" },
+                    new IsOwnedConditional { PlanetBinding = "target" },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -963,7 +997,7 @@ namespace Rebellion.Tests.Sectors
         private static EvaluateBindingConditional BindingEquals(string name, string value) =>
             new EvaluateBindingConditional
             {
-                Binding = "$" + name,
+                Binding = name,
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = value,
             };

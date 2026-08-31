@@ -23,7 +23,7 @@ namespace Rebellion.Tests.Game.Events
                 new RollAgainstPopularSupportConditional
                 {
                     FactionInstanceID = "faction",
-                    PlanetBinding = "$target",
+                    PlanetBinding = "target",
                 };
             GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent { InstanceID = "INFORMANTS" },

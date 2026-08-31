@@ -428,8 +428,8 @@ Activates after a duel resolves.
   <DuelCompleted FirstOfficerInstanceID="LUKE_SKYWALKER"
                  SecondOfficerInstanceID="DARTH_VADER">
     <Bindings>
-      <Bind Argument="ImagePath" As="imagePath"/>
-      <Bind Argument="AudioPath" As="audioPath"/>
+      <Bind Argument="ImagePath" As="$imagePath"/>
+      <Bind Argument="AudioPath" As="$audioPath"/>
     </Bindings>
   </DuelCompleted>
 </Triggers>
@@ -454,8 +454,8 @@ Activates when a manufactured unit is deployed.
   <ManufacturingCompleted FactionInstanceID="FNALL1"
                           LocationInstanceID="YAVIN">
     <Bindings>
-      <Bind Argument="DeployedObject" As="unit"/>
-      <Bind Argument="Location" As="location"/>
+      <Bind Argument="DeployedObject" As="$unit"/>
+      <Bind Argument="Location" As="$location"/>
     </Bindings>
   </ManufacturingCompleted>
 </Triggers>

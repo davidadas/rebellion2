@@ -227,6 +227,7 @@ Delivers a strategy message to an explicitly identified faction.
 
 - `SubjectInstanceID` **[Optional]:** The `InstanceID` of the message subject; `SubjectBinding` takes precedence when both are provided.
 - `SubjectBinding` **[Optional]:** A binding that resolves the message subject; takes precedence over `SubjectInstanceID`.
+- `ShowSubjectImage` **[Optional]:** Whether to use the subject officer's current message image as the overlay; defaults to `false`. Only officer subjects currently provide a subject image, and an explicit `OverlayImage` takes precedence.
 - `RelatedSubjectInstanceID` **[Optional]:** The `InstanceID` of a secondary subject associated with the message.
 - `LocationInstanceID` **[Optional]:** The `InstanceID` of the message location; `LocationBinding` takes precedence when both are provided.
 - `LocationBinding` **[Optional]:** A binding that resolves the message location; takes precedence over `LocationInstanceID`.
@@ -234,7 +235,7 @@ Delivers a strategy message to an explicitly identified faction.
 - `Subject` **[Optional]:** The message title; supports context tokens such as `{subject}` and `{location}`.
 - `Body` **[Optional]:** The message body; supports context tokens such as `{subject}` and `{location}`.
 - `BackgroundImage` **[Optional]:** The message background, supplied by exactly one `Key`, `Path`, or string-valued `Binding`.
-- `OverlayImage` **[Optional]:** The `Path` to the message overlay; when omitted, an officer subject supplies its current message image.
+- `OverlayImage` **[Optional]:** The `Path` to an explicit message overlay; takes precedence over the image selected by `ShowSubjectImage`.
 - `BackgroundAudio` **[Optional]:** The message background audio, supplied by exactly one `Path` or string-valued `Binding`.
 - `OfficerVoice` **[Optional]:** Explicit `Path` or `Preset`; presets are `Order`, `PersonnelArrived`, `MissionSuccess`, `MissionFailure`, `MissionAbort`, `Released`, `Recovered`, `EnemyDetected`, `ForceGrowth`, `ForceUserDiscovered`, `TraitorDiscovered`, and `RescueAttempt`, and require an officer subject.
 - `AdvisorNotification` **[Optional]:** Optional `LifetimeTicks`, `Droid`, and `Protocol` settings plus a `Preset` of `None`, `PositivePopularSupport`, `NegativePopularSupport`, `Manufacturing`, `Research`, `FleetArrived`, `UnitsArrived`, `CapitalShipRepaired`, `StarfighterRepaired`, `Maintenance`, `BlockadeInitiated`, `BlockadeDetected`, `FieldPersonnel`, `AgentReport`, `PlanetaryStatus`, `PrisonerEscaped`, `InterceptedCommunication`, `Bombardment`, `PlanetaryAssault`, `SubjectReport`, `SubjectCaptured`, or `SubjectReleased`.
@@ -243,11 +244,11 @@ Delivers a strategy message to an explicitly identified faction.
 <SendMessage RecipientFactionInstanceID="FNALL1"
              SubjectInstanceID="LUKE_SKYWALKER"
              LocationInstanceID="YAVIN"
-             Type="Mission">
+             Type="Mission"
+             ShowSubjectImage="true">
   <Subject>Luke Returns</Subject>
   <Body>Luke has completed his training.</Body>
   <BackgroundImage Key="mission_report"/>
-  <OverlayImage Path="Pack/Factions/Alliance/Units/Officers/OFAL003/message"/>
   <BackgroundAudio Path="Pack/Factions/Alliance/Strategy/Messages/Audio/message-faction-report"/>
   <OfficerVoice Path="Pack/Factions/Alliance/Units/Officers/OFAL003/Voice/dagobah-completed-01"/>
   <AdvisorNotification Preset="SubjectReport"/>
