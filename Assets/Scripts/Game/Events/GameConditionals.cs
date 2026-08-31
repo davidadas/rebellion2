@@ -327,7 +327,14 @@ namespace Rebellion.Game.Events
                 return number;
             }
             if (actual is Enum)
-                return literal;
+            {
+                Type enumType = actual.GetType();
+                if (!Enum.GetNames(enumType).Contains(literal))
+                    throw new InvalidOperationException(
+                        $"'{literal}' is not a valid {enumType.Name} value."
+                    );
+                return Enum.Parse(enumType, literal, false);
+            }
             if (actual is string)
                 return literal;
             throw new InvalidOperationException(
@@ -352,8 +359,6 @@ namespace Rebellion.Game.Events
                 return actual == null && expected == null ? 0 : 1;
             }
 
-            if (expected is string enumName && actual is Enum)
-                return string.Compare(actual.ToString(), enumName, StringComparison.Ordinal);
             if (actual.GetType() != expected.GetType())
                 throw new InvalidOperationException(
                     $"Bindings '{Binding}' and '{CompareToBinding}' have incompatible value types '{actual.GetType().Name}' and '{expected.GetType().Name}'."

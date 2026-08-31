@@ -135,6 +135,75 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("incompatible value types", exception.Message);
         }
 
+        [Test]
+        public void EvaluateBinding_EnumLiteralComparison_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "comparison",
+                Comparison = ComparisonOperator.Equal,
+                CompareTo = "GreaterThan",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("comparison", ComparisonOperator.GreaterThan);
+
+            Assert.IsTrue(conditional.IsMet(game, context));
+        }
+
+        [Test]
+        public void EvaluateBinding_EnumAndStringBindings_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "first",
+                Comparison = ComparisonOperator.Equal,
+                CompareToBinding = "second",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("first", ComparisonOperator.GreaterThan);
+            context.Bind("second", "GreaterThan");
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                conditional.IsMet(game, context)
+            );
+
+            StringAssert.Contains("incompatible value types", exception.Message);
+        }
+
+        [Test]
+        public void EvaluateBinding_OrderedEnumComparison_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "comparison",
+                Comparison = ComparisonOperator.GreaterThan,
+                CompareTo = "Equal",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("comparison", ComparisonOperator.GreaterThan);
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                conditional.IsMet(game, context)
+            );
+
+            StringAssert.Contains("ordered comparisons only for numeric values", exception.Message);
+        }
+
         [TestCase(ComparisonOperator.Equal, false)]
         [TestCase(ComparisonOperator.NotEqual, true)]
         [TestCase(ComparisonOperator.GreaterThan, false)]
