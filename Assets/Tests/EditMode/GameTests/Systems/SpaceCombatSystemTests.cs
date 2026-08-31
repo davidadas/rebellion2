@@ -1421,6 +1421,81 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_MultipleUnarmedFleetsWithRetreatDestinations_RetreatsEveryFleet()
+        {
+            GameRoot game = CreateGame();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            (Planet allianceHome, _) = CreatePlanet(game, "allianceHome", owner: "alliance");
+            List<Fleet> empireFleets = new List<Fleet>
+            {
+                CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 0),
+                CreateFleet(game, "ef2", "empire", combatPlanet, 1, 100, 0),
+            };
+            List<Fleet> allianceFleets = new List<Fleet>
+            {
+                CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0),
+                CreateFleet(game, "af2", "alliance", combatPlanet, 1, 100, 0),
+            };
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            manager.ProcessTick();
+
+            Assert.IsTrue(empireFleets.All(fleet => fleet.GetParentOfType<Planet>() == empireHome));
+            Assert.IsTrue(
+                allianceFleets.All(fleet => fleet.GetParentOfType<Planet>() == allianceHome)
+            );
+            Assert.IsTrue(empireFleets.Concat(allianceFleets).All(fleet => !fleet.IsInCombat));
+            Assert.IsFalse(HasHostileFleets(combatPlanet));
+        }
+
+        [Test]
+        public void ProcessTick_MultipleUnarmedFleetsWithoutRetreatDestinations_DestroysEveryFleetAndReportsEveryShip()
+        {
+            GameRoot game = CreateGame();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            List<Fleet> fleets = new List<Fleet>
+            {
+                CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 0),
+                CreateFleet(game, "ef2", "empire", combatPlanet, 1, 100, 0),
+                CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0),
+                CreateFleet(game, "af2", "alliance", combatPlanet, 1, 100, 0),
+            };
+            HashSet<string> expectedFleetIds = fleets.Select(fleet => fleet.InstanceID).ToHashSet();
+            HashSet<string> expectedShipIds = fleets
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Select(ship => ship.InstanceID)
+                .ToHashSet();
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            List<GameResult> results = manager.ProcessTick();
+
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            Assert.IsTrue(
+                expectedFleetIds.All(fleetId =>
+                    game.GetSceneNodeByInstanceID<Fleet>(fleetId) == null
+                )
+            );
+            Assert.AreEqual(CombatSide.Draw, combatResult.Winner);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, combatResult.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, combatResult.DefenderOutcome);
+            CollectionAssert.AreEquivalent(
+                expectedShipIds,
+                combatResult
+                    .AttackingUnits.Concat(combatResult.DefendingUnits)
+                    .Where(unit => unit.Destroyed)
+                    .Select(unit => unit.Unit.GetInstanceID())
+            );
+            CollectionAssert.AreEquivalent(
+                expectedShipIds,
+                combatResult
+                    .ShipDamage.Where(damage => damage.HullAfter == 0)
+                    .Select(damage => damage.Ship.InstanceID)
+            );
+            Assert.IsFalse(HasHostileFleets(combatPlanet));
+        }
+
+        [Test]
         public void ProcessTick_PlayerInvolvedEncounter_ReturnsPendingDecision()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -1628,6 +1703,109 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ResolvePending_MultipleColocatedFleets_DestroysEveryLosingFleetAndReportsEveryShip()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire", PlayerID = "player1" });
+            game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
+            List<Fleet> winningFleets = new List<Fleet>
+            {
+                CreateFleet(game, "ef1", "empire", planet, 1, 1000, 100, 0),
+                CreateFleet(game, "ef2", "empire", planet, 1, 1000, 100, 0),
+            };
+            List<Fleet> losingFleets = new List<Fleet>
+            {
+                CreateFleet(game, "af1", "alliance", planet, 1, 1, 0, 0),
+                CreateFleet(game, "af2", "alliance", planet, 1, 1, 0, 0),
+            };
+            HashSet<string> expectedLosingShipIds = losingFleets
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Select(ship => ship.InstanceID)
+                .ToHashSet();
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5));
+
+            manager.ProcessTick();
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.IsTrue(
+                losingFleets.All(fleet =>
+                    game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID) == null
+                )
+            );
+            Assert.IsTrue(
+                winningFleets.All(fleet =>
+                    game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID) == fleet
+                    && fleet.GetParentOfType<Planet>() == planet
+                    && !fleet.IsInCombat
+                )
+            );
+            IEnumerable<CombatUnitSnapshot> losingSnapshots =
+                result.AttackerOwnerInstanceID == "alliance"
+                    ? result.AttackingUnits
+                    : result.DefendingUnits;
+            SpaceCombatSideOutcome losingOutcome =
+                result.AttackerOwnerInstanceID == "alliance"
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, losingOutcome);
+            CollectionAssert.AreEquivalent(
+                expectedLosingShipIds,
+                losingSnapshots
+                    .Where(snapshot => snapshot.Destroyed)
+                    .Select(snapshot => snapshot.Unit.GetInstanceID())
+            );
+            Assert.IsFalse(HasHostileFleets(planet));
+        }
+
+        [Test]
+        public void ResolvePending_MultipleColocatedFleets_ExcludesInTransitSiblingFleet()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire", PlayerID = "player1" });
+            game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
+            Fleet stationaryFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 100, 0);
+            Fleet inTransitFleet = CreateFleet(game, "ef2", "empire", planet, 1, 1000, 100, 0);
+            Fleet opposingFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1, 0, 0);
+            inTransitFleet.Movement = new MovementState
+            {
+                TransitTicks = 5,
+                TicksElapsed = 1,
+                OriginPosition = planet.GetPosition(),
+                CurrentPosition = planet.GetPosition(),
+            };
+            string inTransitShipId = inTransitFleet.GetChildren<CapitalShip>().Single().InstanceID;
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5));
+
+            manager.ProcessTick();
+
+            Assert.IsTrue(stationaryFleet.IsInCombat);
+            Assert.IsFalse(inTransitFleet.IsInCombat);
+            Assert.IsTrue(opposingFleet.IsInCombat);
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+            HashSet<string> participatingShipIds = result
+                .AttackingUnits.Concat(result.DefendingUnits)
+                .Select(snapshot => snapshot.Unit.GetInstanceID())
+                .ToHashSet();
+            Assert.IsFalse(participatingShipIds.Contains(inTransitShipId));
+            Assert.AreSame(inTransitFleet, game.GetSceneNodeByInstanceID<Fleet>("ef2"));
+            Assert.IsFalse(inTransitFleet.IsInCombat);
+        }
+
+        [Test]
         public void ResolvePending_PlanetaryStarfighters_ParticipateInCombat()
         {
             GameRoot game = CreateGame();
@@ -1775,6 +1953,57 @@ namespace Rebellion.Tests.Systems
                 SpaceCombatSideOutcome.Active,
                 empireWasAttacker ? combatResult.DefenderOutcome : combatResult.AttackerOutcome
             );
+        }
+
+        [Test]
+        public void ResolvePendingRetreat_MultipleColocatedFleets_RetreatsEveryFleetAndReportsEveryShip()
+        {
+            GameRoot game = CreateGame();
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            empireHome.PositionX = 100;
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            List<Fleet> retreatingFleets = new List<Fleet>
+            {
+                CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1),
+                CreateFleet(game, "ef2", "empire", combatPlanet, 1, 100, 1),
+            };
+            Fleet opposingFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+            HashSet<string> expectedRetreatingShipIds = retreatingFleets
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Select(ship => ship.InstanceID)
+                .ToHashSet();
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            manager.ProcessTick();
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+
+            Assert.IsTrue(
+                retreatingFleets.All(fleet =>
+                    fleet.GetParentOfType<Planet>() == empireHome
+                    && fleet.Movement != null
+                    && !fleet.IsInCombat
+                )
+            );
+            Assert.AreSame(combatPlanet, opposingFleet.GetParentOfType<Planet>());
+            Assert.IsFalse(opposingFleet.IsInCombat);
+            SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
+            IEnumerable<CombatUnitSnapshot> retreatingSnapshots =
+                combatResult.AttackerOwnerInstanceID == "empire"
+                    ? combatResult.AttackingUnits
+                    : combatResult.DefendingUnits;
+            SpaceCombatSideOutcome retreatingOutcome =
+                combatResult.AttackerOwnerInstanceID == "empire"
+                    ? combatResult.AttackerOutcome
+                    : combatResult.DefenderOutcome;
+            CollectionAssert.AreEquivalent(
+                expectedRetreatingShipIds,
+                retreatingSnapshots.Select(snapshot => snapshot.Unit.GetInstanceID())
+            );
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, retreatingOutcome);
+            Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
         [Test]
