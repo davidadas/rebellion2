@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -269,7 +270,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Resolve_MultipleAttackerFleets_OnlyFirstPairFights()
+        public void Resolve_MultipleAttackerFleets_IncludesEveryFleet()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
@@ -292,16 +293,17 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
 
-            TryResolveCombat(manager, empireFleet1, allianceFleet, out List<GameResult> results);
+            TryRunCombat(manager, out List<GameResult> results);
 
-            bool firstPairFought =
-                HasDamageFor(results, empireShip1) || HasDamageFor(results, allianceShip);
-            Assert.IsTrue(firstPairFought, "First fleet fights");
-            Assert.IsFalse(HasDamageFor(results, empireShip2), "Second fleet does not fight");
-            Assert.AreEqual(
-                100,
-                empireFleet2.GetChildren<CapitalShip>()[0].CurrentHullStrength,
-                "Second fleet does not fight"
+            HashSet<string> participatingShipIds = GetCombatResult(results)
+                .AttackingUnits.Concat(GetCombatResult(results).DefendingUnits)
+                .Select(unit => unit.Unit)
+                .OfType<CapitalShip>()
+                .Select(ship => ship.InstanceID)
+                .ToHashSet();
+            CollectionAssert.AreEquivalent(
+                new[] { empireShip1.InstanceID, empireShip2.InstanceID, allianceShip.InstanceID },
+                participatingShipIds
             );
         }
 
@@ -572,7 +574,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Resolve_BothSidesZeroWeapons_AppliesNoDamageAndSeparatesFleets()
+        public void Resolve_BothSidesZeroWeapons_DestroysFleetsAndRecordsLosses()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
@@ -587,29 +589,24 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 0);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 0);
-
-            empireFleet.GetChildren<CapitalShip>()[0].PrimaryWeapons.Clear();
-            allianceFleet.GetChildren<CapitalShip>()[0].PrimaryWeapons.Clear();
-
+            CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>().Single();
+            CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>().Single();
+            empireShip.PrimaryWeapons.Clear();
+            allianceShip.PrimaryWeapons.Clear();
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
 
-            RunCombat(manager);
+            TryResolveCombat(manager, empireFleet, allianceFleet, out List<GameResult> results);
 
-            Assert.AreEqual(
-                100,
-                empireFleet.GetChildren<CapitalShip>()[0].CurrentHullStrength,
-                "No damage without weapons"
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(allianceFleet.InstanceID));
+            CollectionAssert.AreEquivalent(
+                new[] { empireShip.InstanceID, allianceShip.InstanceID },
+                GetCombatResult(results)
+                    .ShipDamage.Where(damage => damage.HullAfter == 0)
+                    .Select(damage => damage.Ship.InstanceID)
             );
-            Assert.AreEqual(
-                100,
-                allianceFleet.GetChildren<CapitalShip>()[0].CurrentHullStrength,
-                "No damage without weapons"
-            );
-            Assert.IsFalse(
-                HasOpposingReadyFleets(planet),
-                "Opposing fleets should not remain ready at the same planet"
-            );
+            Assert.IsFalse(HasOpposingReadyFleets(planet));
         }
 
         [Test]
@@ -1376,6 +1373,54 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_UnarmedFleetsWithoutRetreatDestinations_DestroysAndReportsBoth()
+        {
+            GameRoot game = CreateGame();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 0);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
+            CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>().Single();
+            CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>().Single();
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            List<GameResult> results = manager.ProcessTick();
+
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(allianceFleet.InstanceID));
+            Assert.AreEqual(CombatSide.Draw, combatResult.Winner);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, combatResult.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, combatResult.DefenderOutcome);
+            CollectionAssert.AreEquivalent(
+                new[] { empireShip.InstanceID, allianceShip.InstanceID },
+                combatResult
+                    .ShipDamage.Where(damage => damage.HullAfter == 0)
+                    .Select(damage => damage.Ship.InstanceID)
+            );
+            CollectionAssert.AreEquivalent(
+                new[] { empireShip.InstanceID, allianceShip.InstanceID },
+                combatResult
+                    .AttackingUnits.Concat(combatResult.DefendingUnits)
+                    .Where(unit => unit.Destroyed)
+                    .Select(unit => unit.Unit.GetInstanceID())
+            );
+
+            CombatReport report = CombatReport.Capture(
+                combatResult,
+                "empire",
+                "Battle",
+                "Both fleets were destroyed."
+            );
+            CollectionAssert.AreEquivalent(
+                new[] { empireShip.InstanceID, allianceShip.InstanceID },
+                report
+                    .AttackingUnits.Concat(report.DefendingUnits)
+                    .Where(unit => unit.Destroyed)
+                    .Select(unit => unit.InstanceID)
+            );
+        }
+
+        [Test]
         public void ProcessTick_PlayerInvolvedEncounter_ReturnsPendingDecision()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -1530,6 +1575,56 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsFalse(empireCanRetreat);
             Assert.IsTrue(allianceCanRetreat);
+        }
+
+        [Test]
+        public void ResolvePending_MultipleColocatedFleets_IncludesEveryFleet()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire", PlayerID = "player1" });
+            game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(planetSector, game.Galaxy);
+            game.AttachNode(planet, planetSector);
+
+            Fleet firstEmpireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 100, 10);
+            Fleet secondEmpireFleet = CreateFleet(game, "ef2", "empire", planet, 1, 100, 10);
+            Fleet firstAllianceFleet = CreateFleet(game, "af1", "alliance", planet, 1, 100, 10);
+            Fleet secondAllianceFleet = CreateFleet(game, "af2", "alliance", planet, 1, 100, 10);
+            List<Fleet> fleets = new List<Fleet>
+            {
+                firstEmpireFleet,
+                secondEmpireFleet,
+                firstAllianceFleet,
+                secondAllianceFleet,
+            };
+            HashSet<string> expectedShipIds = fleets
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Select(ship => ship.InstanceID)
+                .ToHashSet();
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5));
+
+            PendingCombatResult pending = manager
+                .ProcessTick()
+                .OfType<PendingCombatResult>()
+                .Single();
+            Assert.IsTrue(fleets.All(fleet => fleet.IsInCombat));
+
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            HashSet<string> actualShipIds = result
+                .AttackingUnits.Concat(result.DefendingUnits)
+                .Select(unit => unit.Unit)
+                .OfType<CapitalShip>()
+                .Select(ship => ship.InstanceID)
+                .ToHashSet();
+            CollectionAssert.AreEquivalent(expectedShipIds, actualShipIds);
+            Assert.AreSame(planet, pending.Planet);
+            Assert.IsFalse(HasHostileFleets(planet));
         }
 
         [Test]
@@ -1833,8 +1928,8 @@ namespace Rebellion.Tests.Systems
             results = manager.Resolve(
                 new SpaceCombatDecision
                 {
-                    AttackerFleetInstanceID = attacker.InstanceID,
-                    DefenderFleetInstanceID = defender.InstanceID,
+                    AttackerFleetInstanceIDs = new List<string> { attacker.InstanceID },
+                    DefenderFleetInstanceIDs = new List<string> { defender.InstanceID },
                     AttackerOwnerInstanceID = attacker.OwnerInstanceID,
                     DefenderOwnerInstanceID = defender.OwnerInstanceID,
                     PlanetInstanceID = planet?.InstanceID,

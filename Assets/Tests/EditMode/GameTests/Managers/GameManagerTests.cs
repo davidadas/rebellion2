@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
@@ -595,6 +596,122 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(
                 conflictMessages.Any(message => message.Title == "Battle at Destination")
             );
+        }
+
+        [Test]
+        public void ProcessTick_LoadedConvergingMultipleFleets_ResolvesSingleCombinedCombat()
+        {
+            string saveDirectoryPath = Path.Combine(
+                Path.GetTempPath(),
+                nameof(GameManagerTests),
+                Guid.NewGuid().ToString("N")
+            );
+
+            try
+            {
+                GameConfig config = TestConfig.Create();
+                GameRoot game = new GameRoot(config);
+                Faction alliance = new Faction
+                {
+                    InstanceID = "FNALL1",
+                    DisplayName = "Alliance",
+                    PlayerID = "player",
+                };
+                Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+                game.GetFactions().Add(alliance);
+                game.GetFactions().Add(empire);
+
+                PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+                game.AttachNode(sector, game.GetGalaxyMap());
+                Planet origin = CreatePlanet("ORIGIN", alliance.InstanceID, 0);
+                Planet destination = CreatePlanet("DESTINATION", empire.InstanceID, 1);
+                game.AttachNode(origin, sector);
+                game.AttachNode(destination, sector);
+
+                List<Fleet> attackingFleets = new List<Fleet>
+                {
+                    CreateCombatFleet(game, "ATTACKER_1", alliance.InstanceID, origin, 1, 0),
+                    CreateCombatFleet(game, "ATTACKER_2", alliance.InstanceID, origin, 1, 0),
+                    CreateCombatFleet(game, "ATTACKER_3", alliance.InstanceID, origin, 1, 0),
+                };
+                List<Fleet> defendingFleets = new List<Fleet>
+                {
+                    CreateCombatFleet(
+                        game,
+                        "DEFENDER_1",
+                        empire.InstanceID,
+                        destination,
+                        1000,
+                        100
+                    ),
+                    CreateCombatFleet(
+                        game,
+                        "DEFENDER_2",
+                        empire.InstanceID,
+                        destination,
+                        1000,
+                        100
+                    ),
+                };
+                foreach (Fleet fleet in defendingFleets)
+                    fleet.GetChildren<CapitalShip>().Single().HasGravityWell = true;
+
+                GameManager initialManager = new GameManager(game, TestGameData.Create(config));
+                foreach (Fleet fleet in attackingFleets)
+                {
+                    initialManager.MovementSystem.RequestMove(
+                        new List<IMovable> { fleet },
+                        destination
+                    );
+                }
+
+                HashSet<string> expectedShipIds = attackingFleets
+                    .Concat(defendingFleets)
+                    .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                    .Select(ship => ship.InstanceID)
+                    .ToHashSet();
+                SaveGameManager saveManager = new SaveGameManager(saveDirectoryPath);
+                saveManager.SaveGameData(game, "multi-fleet-combat");
+
+                GameRoot loadedGame = saveManager.LoadGameData("multi-fleet-combat");
+                GameManager loadedManager = new GameManager(
+                    loadedGame,
+                    TestGameData.Create(config)
+                );
+                for (
+                    int tick = 0;
+                    tick < 100 && !loadedManager.SpaceCombatSystem.HasPendingDecision;
+                    tick++
+                )
+                {
+                    loadedManager.ProcessTick();
+                }
+
+                Assert.IsTrue(loadedManager.SpaceCombatSystem.HasPendingDecision);
+                SpaceCombatResult result = loadedManager.ResolveCombat(autoResolve: true);
+                HashSet<string> participatingShipIds = result
+                    .AttackingUnits.Concat(result.DefendingUnits)
+                    .Select(unit => unit.Unit)
+                    .OfType<CapitalShip>()
+                    .Select(ship => ship.InstanceID)
+                    .ToHashSet();
+                CollectionAssert.AreEquivalent(expectedShipIds, participatingShipIds);
+                Assert.IsTrue(
+                    attackingFleets.All(fleet =>
+                        loadedGame.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID) == null
+                    )
+                );
+                Assert.IsTrue(
+                    defendingFleets.All(fleet =>
+                        loadedGame.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID) != null
+                    )
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(saveDirectoryPath))
+                    Directory.Delete(saveDirectoryPath, recursive: true);
+            }
         }
 
         [Test]
