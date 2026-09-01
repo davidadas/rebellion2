@@ -2754,9 +2754,7 @@ public sealed class StrategyController
     /// <returns>True when the sector was opened or focused.</returns>
     private bool OpenPlanetSectorWindow(PlanetSector planetSector)
     {
-        GalaxyMapSector sector = Sectors.FirstOrDefault(candidate =>
-            candidate.PlanetSector == planetSector
-        );
+        GalaxyMapSector sector = galaxyMapController.FindSector(planetSector?.InstanceID);
         return OpenPlanetSectorWindow(sector);
     }
 
