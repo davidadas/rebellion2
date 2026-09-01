@@ -1420,7 +1420,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_OfficerEvadesDetector_StillAppliesCaptureEvasionInjury()
+        public void UpdateMission_OfficerEvadesDetector_DoesNotApplyCaptureEvasionInjury()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
                 BuildDetectionScene();
@@ -1446,6 +1446,38 @@ namespace Rebellion.Tests.Sectors
             List<GameResult> results = system.UpdateMission(mission);
 
             Assert.IsFalse(spy.IsCaptured);
+            Assert.AreEqual(0, spy.InjuryPoints);
+            Assert.IsFalse(results.OfType<OfficerInjuredResult>().Any());
+        }
+
+        [Test]
+        public void UpdateMission_OfficerFailsToEvadeDetector_AppliesCaptureEvasionInjury()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            spy.IsMain = true;
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 100;
+            game.Config.DuelResolution.MinimumInjuryChance = 100;
+            game.Config.DuelResolution.InjuryBase = 1;
+            game.Config.DuelResolution.InjurySecondaryRollMaximum = 0;
+            game.Config.Recovery.MaxInjuryPoints = 100;
+            game.Config.Assassination.KillProbability = 0;
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(spy.IsCaptured);
             Assert.Greater(spy.InjuryPoints, 0);
             Assert.IsTrue(results.OfType<OfficerInjuredResult>().Any());
         }
@@ -1476,7 +1508,7 @@ namespace Rebellion.Tests.Sectors
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             SetDecoyTable(game, new Dictionary<int, int> { { -1000, 0 } });
-            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             mission.AddDecoyParticipant(decoy);
