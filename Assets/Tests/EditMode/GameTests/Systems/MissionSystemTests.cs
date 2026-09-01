@@ -162,9 +162,8 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_CompletedParticipantOnNeutralPlanet_DoesNotChooseAnotherPlanet()
+        public void UpdateMission_CompletedParticipantOnNeutralPlanet_ReturnsToNearestFriendlyPlanet()
         {
-            // A missing recorded return location must not be replaced with another friendly planet.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -220,9 +219,9 @@ namespace Rebellion.Tests.Sectors
                 mission.IncrementProgress();
 
             Assert.DoesNotThrow(() => missionSystem.UpdateMission(mission));
-            Assert.AreSame(planet, officer.GetParent());
-            Assert.AreNotSame(homePlanet, officer.GetParent());
-            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreSame(homePlanet, officer.GetParent());
+            Assert.AreNotSame(planet, officer.GetParent());
+            Assert.IsFalse(officer.IsCaptured);
         }
 
         [Test]
@@ -524,7 +523,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DiplomacyOnNeutralPlanetWithHostileDetector_CanBeFoiled()
+        public void UpdateMission_DiplomacyWithHostileDetector_DoesNotFoilOrInjureParticipant()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
@@ -542,7 +541,6 @@ namespace Rebellion.Tests.Sectors
             );
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
-            DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             mission.Initiate(0);
@@ -555,11 +553,14 @@ namespace Rebellion.Tests.Sectors
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(
+            Assert.IsFalse(
                 results
                     .OfType<MissionCompletedResult>()
                     .Any(result => result.Outcome == MissionOutcome.Foiled)
             );
+            Assert.IsFalse(spy.IsCaptured);
+            Assert.Zero(spy.InjuryPoints);
+            Assert.IsFalse(results.OfType<OfficerInjuredResult>().Any());
         }
 
         [Test]
