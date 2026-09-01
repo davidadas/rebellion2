@@ -8,8 +8,8 @@ using UnityEngine.Video;
 /// Responsibilities:
 /// - Instantiates and controls a <see cref="CutscenePlayer"/>
 /// - Ensures only one cutscene plays at a time
-/// - Pauses gameplay time during playback
-/// - Restores time and invokes a completion callback when finished
+/// - Pauses gameplay time and application audio during playback
+/// - Restores application state and invokes a completion callback when finished
 /// </summary>
 public sealed class CutsceneManager : MonoBehaviour
 {
@@ -21,7 +21,9 @@ public sealed class CutsceneManager : MonoBehaviour
     private AudioManager audioManager;
 
     private CutscenePlayer activePlayer;
+    private bool ownsAudioPause;
     private bool ownsTimePause;
+    private bool previousAudioPause;
     private float previousTimeScale = _runningTimeScale;
 
     /// <summary>
@@ -54,11 +56,12 @@ public sealed class CutsceneManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Cancels active playback and restores scaled application time on destruction.
+    /// Cancels active playback and restores application state on destruction.
     /// </summary>
     private void OnDestroy()
     {
         DestroyActivePlayer();
+        RestoreApplicationAudio();
         RestoreTimeScale();
     }
 
@@ -128,6 +131,7 @@ public sealed class CutsceneManager : MonoBehaviour
 
         activePlayer = player;
         player.SetVolume(GetVideoVolume());
+        PauseApplicationAudio();
         PauseTimeScale();
         try
         {
@@ -136,6 +140,7 @@ public sealed class CutsceneManager : MonoBehaviour
         catch
         {
             DestroyActivePlayer();
+            RestoreApplicationAudio();
             RestoreTimeScale();
             throw;
         }
@@ -163,6 +168,7 @@ public sealed class CutsceneManager : MonoBehaviour
 
         activePlayer = player;
         player.SetVolume(GetVideoVolume());
+        PauseApplicationAudio();
         PauseTimeScale();
         try
         {
@@ -171,6 +177,7 @@ public sealed class CutsceneManager : MonoBehaviour
         catch
         {
             DestroyActivePlayer();
+            RestoreApplicationAudio();
             RestoreTimeScale();
             throw;
         }
@@ -186,7 +193,7 @@ public sealed class CutsceneManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Restores application time, destroys the active player, and completes the request.
+    /// Restores application state, destroys the active player, and completes the request.
     /// </summary>
     /// <param name="player">The player that completed playback.</param>
     /// <param name="onFinished">The callback supplied with the playback request.</param>
@@ -195,10 +202,35 @@ public sealed class CutsceneManager : MonoBehaviour
         if (activePlayer != player)
             return;
 
-        RestoreTimeScale();
         DestroyActivePlayer();
+        RestoreApplicationAudio();
+        RestoreTimeScale();
 
         onFinished?.Invoke();
+    }
+
+    /// <summary>
+    /// Pauses application audio while allowing the cutscene player to remain audible.
+    /// </summary>
+    private void PauseApplicationAudio()
+    {
+        if (!ownsAudioPause)
+            previousAudioPause = AudioListener.pause;
+
+        AudioListener.pause = true;
+        ownsAudioPause = true;
+    }
+
+    /// <summary>
+    /// Restores the audio-listener state that preceded cutscene playback.
+    /// </summary>
+    private void RestoreApplicationAudio()
+    {
+        if (!ownsAudioPause)
+            return;
+
+        AudioListener.pause = previousAudioPause;
+        ownsAudioPause = false;
     }
 
     /// <summary>
@@ -247,6 +279,7 @@ public sealed class CutsceneManager : MonoBehaviour
     private void CancelPlayback()
     {
         DestroyActivePlayer();
+        RestoreApplicationAudio();
         RestoreTimeScale();
     }
 }
