@@ -49,10 +49,12 @@ namespace Rebellion.Systems
         {
             foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
             {
-                if (officer.InjuryPoints <= 0 || !officer.CanHeal || officer.IsCaptured)
+                if (!officer.CanHeal())
                     continue;
 
-                int amount = officer.FastHeal ? _config.FastHealAmount : _config.NormalHealAmount;
+                int amount = officer.HealsFast(_game.Config.Jedi.FastHealThreshold)
+                    ? _config.FastHealAmount
+                    : _config.NormalHealAmount;
                 officer.Heal(amount);
 
                 if (officer.InjuryPoints == 0)

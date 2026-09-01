@@ -144,6 +144,8 @@ namespace Rebellion.Game.Missions
 
         internal virtual bool AppliesFoiledParticipantConsequences => true;
 
+        internal virtual bool CanBeFoiled => true;
+
         internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
 
         /// <summary>
@@ -1044,7 +1046,7 @@ namespace Rebellion.Game.Missions
             }
 
             List<IMissionParticipant> participantsBeforeDetection = GetAllParticipants();
-            if (runtime.ResolveDetection(this, results))
+            if (CanBeFoiled && runtime.ResolveDetection(this, results))
             {
                 AddMissionResults(ResolveInterruption(game, provider), results);
                 MissionCompletedResult completed = BuildTerminatingResult(

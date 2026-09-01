@@ -515,7 +515,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves a participant's recorded container or recorded planet.
+        /// Resolves a participant's recorded container, recorded planet, or nearest friendly planet.
         /// </summary>
         /// <param name="participant">The participant whose return destination is required.</param>
         /// <returns>The first valid return container, or null when none can receive the participant.</returns>
@@ -542,7 +542,13 @@ namespace Rebellion.Systems
                     return returnLocation;
             }
 
-            return null;
+            string ownerInstanceID = GetMovementControlOwner(participant);
+            if (string.IsNullOrEmpty(ownerInstanceID))
+                return null;
+
+            Faction owner = _game.GetFactionByOwnerInstanceID(ownerInstanceID);
+            Planet missionPlanet = participant.GetParentOfType<Planet>();
+            return FindEvacuationDestinations(owner, participant, missionPlanet).FirstOrDefault();
         }
 
         /// <summary>

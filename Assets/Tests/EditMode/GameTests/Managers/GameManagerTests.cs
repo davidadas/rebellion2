@@ -224,6 +224,33 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessTick_InjuredOfficerAtFriendlyPlanet_Heals()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Recovery.NormalHealAmount = 1;
+            GameRoot game = new GameRoot(config);
+            Faction faction = new Faction { InstanceID = "FNALL1" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            Officer officer = EntityFactory.CreateOfficer("OFFICER", faction.InstanceID);
+            officer.InjuryPoints = 2;
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            game.AttachNode(officer, planet);
+            GameManager manager = TestContent.CreateGameManager(game);
+
+            manager.ProcessTick();
+
+            Assert.AreEqual(1, officer.InjuryPoints);
+        }
+
+        [Test]
         public void ProcessTick_EventCapturesMissionParticipant_TearsDownMission()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -1369,7 +1396,6 @@ namespace Rebellion.Tests.Managers
             Officer officer = EntityFactory.CreateOfficer("OFFICER", faction.InstanceID);
             officer.DisplayName = "Officer";
             officer.InjuryPoints = 1;
-            officer.CanHeal = true;
             Fleet fleet = EntityFactory.CreateFleet("FLEET", faction.InstanceID);
             fleet.DisplayName = "Fleet";
             CapitalShip ship = new CapitalShip
