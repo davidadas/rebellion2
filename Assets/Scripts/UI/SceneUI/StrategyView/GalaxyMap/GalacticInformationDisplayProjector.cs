@@ -59,11 +59,7 @@ public sealed class GalacticInformationDisplayProjector
             theme.GetBackgroundColor(),
             ProjectFrame(theme.Frame, selector.Width, selector.Height, context),
             categories,
-            ProjectDisplayOffRow(
-                theme,
-                state.DisplayOffHovered,
-                highlightColor
-            )
+            ProjectDisplayOffRow(theme, state.DisplayOffHovered, highlightColor)
         );
     }
 
