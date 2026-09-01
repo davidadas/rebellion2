@@ -145,6 +145,47 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Seed_DifferentDifficulties_UseSamePlanetOwnershipProfile()
+        {
+            GameGenerationConfig rules = CreateRules(
+                allianceStrongPct: 20,
+                allianceWeakPct: 0,
+                empireStrongPct: 25,
+                empireWeakPct: 10
+            );
+            DifficultyProfile mediumProfile = rules.GalaxyClassification.Profiles.Single();
+            mediumProfile.Name = "Alliance_Medium";
+            mediumProfile.PlayerFactionID = "FNALL1";
+            mediumProfile.Difficulty = (int)GameDifficulty.Medium;
+            rules.GalaxyClassification.Profiles.Insert(
+                0,
+                CreateProfile("Alliance_Easy", GameDifficulty.Easy, 5, 0, 5, 0)
+            );
+            rules.GalaxyClassification.Profiles.Add(
+                CreateProfile("Alliance_Hard", GameDifficulty.Hard, 5, 0, 50, 20)
+            );
+
+            string[] easyOwners = ClassifyForDifficulty(GameDifficulty.Easy);
+            string[] mediumOwners = ClassifyForDifficulty(GameDifficulty.Medium);
+            string[] hardOwners = ClassifyForDifficulty(GameDifficulty.Hard);
+
+            CollectionAssert.AreEqual(mediumOwners, easyOwners);
+            CollectionAssert.AreEqual(mediumOwners, hardOwners);
+
+            string[] ClassifyForDifficulty(GameDifficulty difficulty)
+            {
+                _summary.Difficulty = difficulty;
+                PlanetSector[] sectors = CreateCoreGalaxy(20);
+                Classify(sectors, _factions, _summary, rules, new StubRNG());
+                return sectors
+                    .SelectMany(sector => sector.GetChildren<Planet>())
+                    .OrderBy(planet => planet.InstanceID)
+                    .Select(planet => planet.OwnerInstanceID)
+                    .ToArray();
+            }
+        }
+
+        [Test]
         public void Seed_ProfileWithStrongAndWeakBuckets_OwnsSumOfBoth()
         {
             PlanetSector[] sectors = CreateCoreGalaxy(20);
@@ -265,6 +306,38 @@ namespace Rebellion.Tests.Generation
                                 },
                             },
                         },
+                    },
+                },
+            };
+        }
+
+        private static DifficultyProfile CreateProfile(
+            string name,
+            GameDifficulty difficulty,
+            int allianceStrongPct,
+            int allianceWeakPct,
+            int empireStrongPct,
+            int empireWeakPct
+        )
+        {
+            return new DifficultyProfile
+            {
+                Name = name,
+                PlayerFactionID = "FNALL1",
+                Difficulty = (int)difficulty,
+                FactionBuckets = new List<FactionBucketConfig>
+                {
+                    new FactionBucketConfig
+                    {
+                        FactionID = "FNALL1",
+                        StrongPct = allianceStrongPct,
+                        WeakPct = allianceWeakPct,
+                    },
+                    new FactionBucketConfig
+                    {
+                        FactionID = "FNEMP1",
+                        StrongPct = empireStrongPct,
+                        WeakPct = empireWeakPct,
                     },
                 },
             };

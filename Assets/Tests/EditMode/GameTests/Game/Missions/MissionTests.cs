@@ -16,6 +16,43 @@ namespace Rebellion.Tests.Game.Missions
     public class MissionTests
     {
         [Test]
+        public void GetMissionOdds_AIControlledFaction_AppliesDifficultyModifier()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.Summary.PlayerFactionID = "rebels";
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new GameModifier
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            double modifiedProbability = mission
+                .GetMissionOdds(new[] { officer }, game)
+                .SuccessProbability;
+            game.Config.DifficultyModifiers.Clear();
+            double neutralProbability = mission
+                .GetMissionOdds(new[] { officer }, game)
+                .SuccessProbability;
+
+            Assert.AreEqual(neutralProbability + 15, modifiedProbability, 0.0001);
+        }
+
+        [Test]
         public void GetChildren_ParticipantAssignedBeforeMissionInitiates_ReturnsParticipant()
         {
             (

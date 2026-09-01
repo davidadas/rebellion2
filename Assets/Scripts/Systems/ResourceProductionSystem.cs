@@ -451,6 +451,15 @@ namespace Rebellion.Systems
             int support = Math.Max(1, planet?.GetPopularSupport(faction.InstanceID) ?? 0);
             int supportModifier = config.ResourceCollectionBasePercent * _percentScale / support;
             int duration = Math.Max(1, baseDuration * supportModifier / _percentScale);
+            GameModifier difficultyModifier = _game.GetDifficultyModifier(faction);
+            int outputPercent =
+                facility.BuildingType == BuildingType.Mine
+                    ? difficultyModifier.MineOutputPercent
+                    : difficultyModifier.RefineryOutputPercent;
+            if (outputPercent <= 0)
+                return int.MaxValue;
+
+            duration = Math.Max(1, DivideRoundingUp(duration * _percentScale, outputPercent));
             if (!facility.ResourceStartupCyclePending)
                 return duration;
 

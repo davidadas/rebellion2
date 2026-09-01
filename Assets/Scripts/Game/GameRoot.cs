@@ -163,6 +163,42 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Returns the runtime difficulty modifier for a faction.
+        /// </summary>
+        /// <param name="faction">The faction whose modifier is requested.</param>
+        /// <returns>The configured AI modifier, or a neutral modifier.</returns>
+        public GameModifier GetDifficultyModifier(Faction faction)
+        {
+            if (
+                faction?.IsAIControlled() == true
+                && Summary != null
+                && !string.IsNullOrEmpty(Summary.PlayerFactionID)
+                && faction.InstanceID != Summary.PlayerFactionID
+                && Config?.DifficultyModifiers != null
+                && Config.DifficultyModifiers.TryGetValue(
+                    Summary.Difficulty,
+                    out GameModifier modifier
+                )
+            )
+            {
+                return modifier;
+            }
+
+            return GameModifier.Neutral;
+        }
+
+        /// <summary>
+        /// Returns the runtime difficulty modifier for an owning faction identifier.
+        /// </summary>
+        /// <param name="ownerInstanceId">The owning faction identifier.</param>
+        /// <returns>The configured AI modifier, or a neutral modifier.</returns>
+        public GameModifier GetDifficultyModifier(string ownerInstanceId)
+        {
+            Faction faction = _factions.Find(candidate => candidate.InstanceID == ownerInstanceId);
+            return GetDifficultyModifier(faction);
+        }
+
+        /// <summary>
         /// Sets the game speed for tick processing.
         /// Affects how quickly the game state updates and events are processed.
         /// </summary>

@@ -80,6 +80,52 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void GetDifficultyModifier_AIControlledFaction_ReturnsSelectedDifficultyModifier()
+        {
+            GameModifier expected = new GameModifier { MissionSuccessChancePoints = 15 };
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = expected;
+
+            GameModifier actual = _game.GetDifficultyModifier(_faction2);
+
+            Assert.AreSame(expected, actual);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_PlayerControlledFaction_ReturnsNeutralModifier()
+        {
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new GameModifier
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            GameModifier actual = _game.GetDifficultyModifier(_faction1);
+
+            Assert.AreSame(GameModifier.Neutral, actual);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_MissingDifficulty_ReturnsNeutralModifier()
+        {
+            GameModifier actual = _game.GetDifficultyModifier(_faction2);
+
+            Assert.AreSame(GameModifier.Neutral, actual);
+        }
+
+        [Test]
+        public void Serialize_RuntimeDifficultyModifiers_DoesNotPersistConfiguration()
+        {
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new GameModifier
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            string xml = SerializationHelper.Serialize(_game);
+
+            StringAssert.DoesNotContain("DifficultyModifiers", xml);
+            StringAssert.DoesNotContain("MissionSuccessChancePoints", xml);
+        }
+
+        [Test]
         public void Constructor_WithSummary_InitializesCorrectly()
         {
             // Verify game initialization.
