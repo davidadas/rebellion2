@@ -199,6 +199,31 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessTick_FullyRecoveredUnits_DeliversRecoveryMessages()
+        {
+            (GameManager manager, Officer officer, CapitalShip ship, Starfighter fighter) =
+                CreateRecoveryGame();
+            List<MessageResultType> deliveredResultTypes = new List<MessageResultType>();
+            manager.MessageDelivered += result =>
+                deliveredResultTypes.Add(result.Message.ResultType);
+
+            manager.ProcessTick();
+
+            Assert.AreEqual(0, officer.InjuryPoints);
+            Assert.AreEqual(ship.MaxHullStrength, ship.CurrentHullStrength);
+            Assert.AreEqual(fighter.MaxSquadronSize, fighter.CurrentSquadronSize);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    MessageResultType.OfficerRecovered,
+                    MessageResultType.CapitalShipRepaired,
+                    MessageResultType.StarfighterRepaired,
+                },
+                deliveredResultTypes
+            );
+        }
+
+        [Test]
         public void ProcessTick_EventCapturesMissionParticipant_TearsDownMission()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -1307,6 +1332,91 @@ namespace Rebellion.Tests.Managers
                 IsColonized = true,
                 EnergyCapacity = 10,
                 PositionX = positionX,
+            };
+        }
+
+        private static (
+            GameManager manager,
+            Officer officer,
+            CapitalShip ship,
+            Starfighter fighter
+        ) CreateRecoveryGame()
+        {
+            GameConfig config = new GameConfig();
+            config.Recovery.NormalHealAmount = 1;
+            config.Recovery.FastRepairAmount = 1;
+            config.Recovery.FastReplacementAmount = 1;
+            config.Smuggling.LossPercentByMinimumSupport[0] = 0;
+            GameRoot game = new GameRoot(config);
+            Faction faction = new Faction
+            {
+                InstanceID = "FACTION",
+                DisplayName = "Faction",
+                PlayerID = "PLAYER",
+            };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                DisplayName = "Planet",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+
+            Officer officer = EntityFactory.CreateOfficer("OFFICER", faction.InstanceID);
+            officer.DisplayName = "Officer";
+            officer.InjuryPoints = 1;
+            officer.CanHeal = true;
+            Fleet fleet = EntityFactory.CreateFleet("FLEET", faction.InstanceID);
+            fleet.DisplayName = "Fleet";
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP",
+                DisplayName = "Ship",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 99,
+                StarfighterCapacity = 1,
+            };
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "FIGHTER",
+                DisplayName = "Fighter",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 11,
+            };
+            game.AttachNode(officer, planet);
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(fighter, ship);
+
+            MessageDefinition[] definitions =
+            {
+                CreateMessageDefinition(MessageResultType.OfficerRecovered, MessageType.Mission),
+                CreateMessageDefinition(MessageResultType.CapitalShipRepaired, MessageType.Fleet),
+                CreateMessageDefinition(MessageResultType.StarfighterRepaired, MessageType.Fleet),
+            };
+            GameManager manager = new GameManager(game, TestGameData.Create(config, definitions));
+            return (manager, officer, ship, fighter);
+        }
+
+        private static MessageDefinition CreateMessageDefinition(
+            MessageResultType resultType,
+            MessageType messageType
+        )
+        {
+            return new MessageDefinition
+            {
+                ResultType = resultType,
+                MessageType = messageType,
+                Subject = resultType.ToString(),
+                Body = resultType.ToString(),
             };
         }
 
