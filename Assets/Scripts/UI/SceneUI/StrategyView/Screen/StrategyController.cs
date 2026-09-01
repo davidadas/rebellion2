@@ -2323,28 +2323,6 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Opens a category window for an authoritative planet entity.
-    /// </summary>
-    /// <param name="planet">The planet whose feature window should open.</param>
-    /// <param name="icon">The requested feature category.</param>
-    /// <param name="sourceX">The source-space horizontal position.</param>
-    /// <param name="sourceY">The source-space vertical position.</param>
-    private void OpenPlanetWindow(Planet planet, PlanetIcon icon, int sourceX, int sourceY)
-    {
-        if (planet == null || icon == PlanetIcon.None)
-            return;
-
-        GalaxyMapPlanet strategyPlanet = Sectors
-            .SelectMany(sector => sector.Planets)
-            .FirstOrDefault(item => item.Planet?.InstanceID == planet.InstanceID);
-        if (strategyPlanet == null)
-            return;
-
-        OpenPlanetWindowAt(strategyPlanet, icon, sourceX, sourceY);
-        MarkDirty();
-    }
-
-    /// <summary>
     /// Opens the most specific strategy location represented by message identifiers.
     /// </summary>
     /// <param name="targetInstanceId">The preferred target identifier.</param>
