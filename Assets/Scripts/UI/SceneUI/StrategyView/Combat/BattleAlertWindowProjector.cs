@@ -556,6 +556,8 @@ internal sealed class BattleAlertWindowProjector
         {
             if (child is Fleet || child is Starfighter fighter && IsActiveStarfighter(fighter))
                 continue;
+            if (child is IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete })
+                continue;
 
             rows.Add(
                 new BattleAlertRowRenderData(
@@ -596,6 +598,9 @@ internal sealed class BattleAlertWindowProjector
 
         foreach (ISceneNode child in node.GetChildren())
         {
+            if (child is IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete })
+                continue;
+
             rows.Add(
                 new BattleAlertRowRenderData(
                     child.GetDisplayName(),
