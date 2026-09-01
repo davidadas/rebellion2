@@ -2128,7 +2128,12 @@ public sealed class StrategyController
     /// <param name="sourceY">The source window's vertical coordinate.</param>
     void IBattleAlertWindowActions.OpenBattleResultFleet(Planet planet, int sourceX, int sourceY)
     {
-        OpenPlanetWindow(planet, PlanetIcon.Fleet, sourceX, sourceY);
+        GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
+        if (strategyPlanet == null || !OpenPlanetSectorWindow(strategyPlanet.Sector))
+            return;
+
+        OpenPlanetWindowAt(strategyPlanet, PlanetIcon.Fleet, sourceX, sourceY);
+        MarkDirty();
     }
 
     /// <summary>
