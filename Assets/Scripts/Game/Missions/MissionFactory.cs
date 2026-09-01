@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game.Missions
@@ -20,76 +21,94 @@ namespace Rebellion.Game.Missions
                 ResearchMission.MissionTypeID,
                 "Ship Design Research",
                 OfficerRating.ShipResearch,
+                MissionTargetKind.Planet,
                 discipline: ResearchDiscipline.ShipDesign
             ),
             new MissionOption(
                 ResearchMission.MissionTypeID,
                 "Troop Training Research",
                 OfficerRating.TroopResearch,
+                MissionTargetKind.Planet,
                 discipline: ResearchDiscipline.TroopTraining
             ),
             new MissionOption(
                 ResearchMission.MissionTypeID,
                 "Facility Design Research",
                 OfficerRating.FacilityResearch,
+                MissionTargetKind.Planet,
                 discipline: ResearchDiscipline.FacilityDesign
             ),
             new MissionOption(
                 RecruitmentMission.MissionTypeID,
                 "Recruitment",
-                OfficerRating.Leadership
+                OfficerRating.Leadership,
+                MissionTargetKind.Planet
             ),
-            new MissionOption(DiplomacyMission.MissionTypeID, "Diplomacy", OfficerRating.Diplomacy),
+            new MissionOption(
+                DiplomacyMission.MissionTypeID,
+                "Diplomacy",
+                OfficerRating.Diplomacy,
+                MissionTargetKind.Planet
+            ),
             new MissionOption(
                 RescueMission.MissionTypeID,
                 "Rescue",
                 OfficerRating.Combat,
+                MissionTargetKind.Officer,
                 OfficerRating.Espionage
             ),
             new MissionOption(
                 SabotageMission.MissionTypeID,
                 "Sabotage",
                 OfficerRating.Combat,
+                MissionTargetKind.Manufacturable,
                 OfficerRating.Espionage
             ),
             new MissionOption(
                 AbductionMission.MissionTypeID,
                 "Abduction",
                 OfficerRating.Combat,
+                MissionTargetKind.Officer,
                 OfficerRating.Espionage
             ),
             new MissionOption(
                 SubdueUprisingMission.MissionTypeID,
                 "Subdue Uprising",
-                OfficerRating.Leadership
+                OfficerRating.Leadership,
+                MissionTargetKind.Planet
             ),
             new MissionOption(
                 AssassinationMission.MissionTypeID,
                 "Assassination",
                 OfficerRating.Combat,
+                MissionTargetKind.Officer,
                 OfficerRating.Espionage
             ),
             new MissionOption(
                 InciteUprisingMission.MissionTypeID,
                 "Incite Uprising",
                 OfficerRating.Leadership,
+                MissionTargetKind.Planet,
                 OfficerRating.Espionage
             ),
             new MissionOption(
                 ReconnaissanceMission.MissionTypeID,
                 "Reconnaissance",
                 OfficerRating.Espionage,
+                MissionTargetKind.Planet,
                 OfficerRating.Espionage
             ),
             new MissionOption(
                 JediTrainingMission.MissionTypeID,
                 "Jedi Training",
-                OfficerRating.Diplomacy
+                OfficerRating.Diplomacy,
+                MissionTargetKind.Planet
             ),
             new MissionOption(
                 EspionageMission.MissionTypeID,
                 "Espionage",
                 OfficerRating.Espionage,
+                MissionTargetKind.Planet,
                 OfficerRating.Espionage
             ),
         };
@@ -116,6 +135,9 @@ namespace Rebellion.Game.Missions
 
             foreach (MissionOption option in _options)
             {
+                if (!AcceptsTarget(context, option.TargetKind))
+                    continue;
+
                 MissionContext optionContext = CreateOptionContext(context, option);
                 if (TryCreateMission(optionContext, out _))
                     options.Add(option);
@@ -134,6 +156,13 @@ namespace Rebellion.Game.Missions
         {
             mission = null;
             if (_game == null || context == null || string.IsNullOrEmpty(context.MissionTypeID))
+                return false;
+
+            MissionOption option = _options.Find(candidate =>
+                candidate.MissionTypeID == context.MissionTypeID
+                && candidate.Discipline == context.Discipline
+            );
+            if (option == null || !AcceptsTarget(context, option.TargetKind))
                 return false;
 
             MissionContext resolvedContext = new MissionContext
@@ -198,6 +227,26 @@ namespace Rebellion.Game.Missions
                     && !string.IsNullOrEmpty(participant.InstanceID)
                     && participantIds.Add(participant.InstanceID)
                 );
+        }
+
+        /// <summary>
+        /// Determines whether a mission context supplies the target required by an option.
+        /// </summary>
+        /// <param name="context">The mission context containing the selected target.</param>
+        /// <param name="targetKind">The target kind required by the mission option.</param>
+        /// <returns>True when the selected target satisfies the option contract.</returns>
+        private static bool AcceptsTarget(MissionContext context, MissionTargetKind targetKind)
+        {
+            return targetKind switch
+            {
+                MissionTargetKind.Planet => context.Location != null
+                    && (
+                        context.SelectedTarget == null || context.SelectedTarget == context.Location
+                    ),
+                MissionTargetKind.Manufacturable => context.SelectedTarget is IManufacturable,
+                MissionTargetKind.Officer => context.SelectedTarget is Officer,
+                _ => false,
+            };
         }
 
         /// <summary>

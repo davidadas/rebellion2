@@ -242,11 +242,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
-        public void Build_EntityTarget_ReturnsEntityPreview()
+        public void Build_EntityTargetedMission_ReturnsEntityPreview()
         {
             Officer target = CreateOfficer("target", "Target Officer", false);
-            MissionCreateWindowSession session = CreateSession(
+            MissionCreateWindowSession session = new MissionCreateWindowSession(
+                _window,
                 new StrategyMissionTarget(_planet, target),
+                new[]
+                {
+                    CreateChoice(
+                        MissionTypeIDs.Assassination,
+                        "Assassination",
+                        MissionTargetKind.Officer
+                    ),
+                },
                 Array.Empty<IMissionParticipant>()
             );
 
@@ -255,6 +264,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual("Target Officer", data.TargetName);
             Assert.AreSame(_uiContext.GetTexture(_entityImagePath), data.TargetTexture);
             Assert.IsFalse(data.UsePlanetTargetPreview);
+        }
+
+        [Test]
+        public void Build_LocationMissionSelectedFromCapitalShip_ReturnsPlanetPreview()
+        {
+            CapitalShip ship = new CapitalShip { DisplayName = "Target Ship" };
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, ship),
+                Array.Empty<IMissionParticipant>()
+            );
+
+            MissionCreateWindowRenderData data = _projector.Build(session, _window);
+
+            Assert.AreEqual("Corellia", data.TargetName);
+            Assert.AreSame(_uiContext.GetTexture(_entityImagePath), data.TargetTexture);
+            Assert.IsTrue(data.UsePlanetTargetPreview);
         }
 
         [Test]
@@ -273,10 +298,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(data.SelectedMissionTexture);
         }
 
-        private StrategyMissionChoice CreateChoice(string missionTypeId, string name)
+        private StrategyMissionChoice CreateChoice(
+            string missionTypeId,
+            string name,
+            MissionTargetKind targetKind = MissionTargetKind.Planet
+        )
         {
             return new StrategyMissionChoice(
-                new MissionOption(missionTypeId, name, OfficerRating.Diplomacy)
+                new MissionOption(missionTypeId, name, OfficerRating.Diplomacy, targetKind)
             );
         }
 

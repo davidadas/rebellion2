@@ -3,6 +3,9 @@
 Conditionals inspect game state without changing it. Every top-level conditional must pass before
 an event activates.
 
+Conditionals that name an object by `InstanceID` inspect retained inactive objects as well as active
+objects. Use `IsActive` when activity itself is part of the condition.
+
 ```xml
 <Conditionals>
   <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
@@ -152,22 +155,31 @@ Compares a saved integer event variable.
                        CompareTo="3"/>
 ```
 
-## Trigger bindings
+## Binding values
 
 ### EvaluateBinding
 
-Compares a scalar value supplied by a trigger binding. Ordered comparisons require an integer
-binding.
+Compares a scalar binding with an authored value or another scalar binding. The binding may come
+from a trigger or a top-level typed value source. Ordered comparisons require numeric values.
 
 **Required options**
 
 - `Binding` **[Required]:** `$alias` reference.
 - `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
-- `CompareTo` **[Required]:** The scalar value to compare against.
+- Comparison value **[Required]:** Provide exactly one:
+  - `CompareTo`: The authored scalar value to compare against.
+  - `CompareToBinding`: The `$alias` of another compatible scalar binding.
 
 ```xml
 <!-- Given a MissionCompleted trigger that binds Outcome as missionOutcome. -->
 <EvaluateBinding Binding="$missionOutcome" Comparison="Equal" CompareTo="Success"/>
+```
+
+```xml
+<!-- Given top-level bindings named hanCombat and vaderForce. -->
+<EvaluateBinding Binding="$hanCombat"
+                 Comparison="GreaterThan"
+                 CompareToBinding="$vaderForce"/>
 ```
 
 ### BindingIncludesUnit
@@ -398,60 +410,6 @@ Compares an officer's effective Force rank against a named rank.
 <HasForceRank OfficerInstanceID="LUKE_SKYWALKER"
               Comparison="GreaterThanOrEqual"
               Rank="ForceKnight"/>
-```
-
-### CompareOfficerRating
-
-Compares one effective officer rating against an integer.
-
-**Required options**
-
-- `OfficerInstanceID` **[Required]:** The `InstanceID` of the officer to evaluate.
-- `Rating` **[Required]:** `Diplomacy`, `Espionage`, `Combat`, `Leadership`, `ShipResearch`, `TroopResearch`, or `FacilityResearch`.
-- `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
-- `Value` **[Required]:** Integer.
-
-```xml
-<CompareOfficerRating OfficerInstanceID="HAN_SOLO"
-                      Rating="Combat"
-                      Comparison="GreaterThanOrEqual"
-                      Value="80"/>
-```
-
-### CompareOfficerForce
-
-Compares an officer's effective Force value against an integer.
-
-**Required options**
-
-- `OfficerInstanceID` **[Required]:** The `InstanceID` of the officer to evaluate.
-- `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
-- `Value` **[Required]:** Integer.
-
-```xml
-<CompareOfficerForce OfficerInstanceID="LUKE_SKYWALKER"
-                     Comparison="GreaterThanOrEqual"
-                     Value="100"/>
-```
-
-### ComparePlanetStat
-
-Compares one planet stat against an integer.
-
-**Required options**
-
-- `Stat` **[Required]:** `RawResourceNodes` or `EnergyCapacity`.
-- `Comparison` **[Required]:** `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, or `LessThanOrEqual`.
-- `Value` **[Required]:** Integer.
-- Planet source **[Required]:** Provide exactly one:
-  - `PlanetInstanceID`: The `InstanceID` of the planet to evaluate.
-  - `PlanetBinding`: A binding that resolves the planet to evaluate.
-
-```xml
-<ComparePlanetStat PlanetInstanceID="NABOO"
-                   Stat="EnergyCapacity"
-                   Comparison="GreaterThan"
-                   Value="0"/>
 ```
 
 ### HasBuildingType

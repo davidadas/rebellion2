@@ -35,11 +35,11 @@ public static class MainMenuPrefabBuilder
     private const string _empireFactionId = "FNEMP1";
     private const string _rebelFactionId = "FNALL1";
 
-    // Resource paths for the SFX cues authored on the pointer-up event triggers.
+    // Resource paths for the SFX cues authored on pointer event triggers.
     private const string _selectSfxPath = "Application/MainMenu/Audio/select";
-    private const string _exitSelectSfxPath = "Application/MainMenu/Audio/exit-select";
     private const string _galaxySizeSelectSfxPath = "Application/MainMenu/Audio/galaxysize-select";
     private const string _factionSelectSfxPath = "Application/MainMenu/Audio/faction-select";
+    private const string _exitSelectSfxPath = _factionSelectSfxPath;
 
     // Icon turntable speed: one full revolution per second (matched the original 2D flipbook loop).
     private const float _iconTurnDegreesPerSecond = 360f;
@@ -290,7 +290,7 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Collects the authored pointer-up audio-cue bindings in the same control order the prefab
+    /// Collects the authored pointer audio-cue bindings in the same control order the prefab
     /// serializes: the difficulty toggles, galaxy toggles, then the command controls.
     /// </summary>
     /// <param name="root">The prefab root.</param>
@@ -301,32 +301,28 @@ public static class MainMenuPrefabBuilder
         string ResourcePath
     )> CollectAudioCueBindings(GameObject root)
     {
-        (string Name, string ResourcePath)[] order =
+        (string Name, EventTriggerType EventType, string ResourcePath)[] order =
         {
-            ("EasyDifficultyToggle", _selectSfxPath),
-            ("MediumDifficultyToggle", _selectSfxPath),
-            ("HardDifficultyToggle", _selectSfxPath),
-            ("SmallGalaxyToggle", _galaxySizeSelectSfxPath),
-            ("MediumGalaxyToggle", _galaxySizeSelectSfxPath),
-            ("LargeGalaxyToggle", _galaxySizeSelectSfxPath),
-            ("ExitButton", _exitSelectSfxPath),
-            ("CreditsButton", _selectSfxPath),
-            ("LeftFactionLaunchButton", _factionSelectSfxPath),
-            ("RightFactionLaunchButton", _factionSelectSfxPath),
-            ("VictoryConditionButton", _selectSfxPath),
-            ("VictoryConditionIcon", _selectSfxPath),
+            ("EasyDifficultyToggle", EventTriggerType.PointerUp, _selectSfxPath),
+            ("MediumDifficultyToggle", EventTriggerType.PointerUp, _selectSfxPath),
+            ("HardDifficultyToggle", EventTriggerType.PointerUp, _selectSfxPath),
+            ("SmallGalaxyToggle", EventTriggerType.PointerUp, _galaxySizeSelectSfxPath),
+            ("MediumGalaxyToggle", EventTriggerType.PointerUp, _galaxySizeSelectSfxPath),
+            ("LargeGalaxyToggle", EventTriggerType.PointerUp, _galaxySizeSelectSfxPath),
+            ("ExitButton", EventTriggerType.PointerDown, _exitSelectSfxPath),
+            ("CreditsButton", EventTriggerType.PointerUp, _selectSfxPath),
+            ("LeftFactionLaunchButton", EventTriggerType.PointerUp, _factionSelectSfxPath),
+            ("RightFactionLaunchButton", EventTriggerType.PointerUp, _factionSelectSfxPath),
+            ("VictoryConditionButton", EventTriggerType.PointerUp, _selectSfxPath),
+            ("VictoryConditionIcon", EventTriggerType.PointerUp, _selectSfxPath),
         };
 
         List<(EventTrigger Trigger, EventTriggerType EventType, string ResourcePath)> bindings =
             new List<(EventTrigger Trigger, EventTriggerType EventType, string ResourcePath)>();
-        foreach ((string name, string resourcePath) in order)
+        foreach ((string name, EventTriggerType eventType, string resourcePath) in order)
         {
             bindings.Add(
-                (
-                    FindRequiredComponent<EventTrigger>(root, name),
-                    EventTriggerType.PointerUp,
-                    resourcePath
-                )
+                (FindRequiredComponent<EventTrigger>(root, name), eventType, resourcePath)
             );
         }
 
@@ -816,7 +812,11 @@ public static class MainMenuPrefabBuilder
         );
         pressed.GetComponent<RectTransform>().pivot = new Vector2(1f, 1f);
 
-        AddPointerUpTrigger(buttonObject.GetComponent<EventTrigger>(), _exitSelectSfxPath);
+        AddPointerTrigger(
+            buttonObject.GetComponent<EventTrigger>(),
+            EventTriggerType.PointerDown,
+            _exitSelectSfxPath
+        );
     }
 
     /// <summary>
@@ -1112,13 +1112,28 @@ public static class MainMenuPrefabBuilder
     /// <param name="resourcePath">The cue resource path recorded on the view binding.</param>
     private static void AddPointerUpTrigger(EventTrigger trigger, string resourcePath)
     {
+        AddPointerTrigger(trigger, EventTriggerType.PointerUp, resourcePath);
+    }
+
+    /// <summary>
+    /// Adds one authored pointer event-trigger entry with an empty persistent callback.
+    /// </summary>
+    /// <param name="trigger">The event trigger to populate.</param>
+    /// <param name="eventType">The pointer event that emits the cue.</param>
+    /// <param name="resourcePath">The cue resource path recorded on the view binding.</param>
+    private static void AddPointerTrigger(
+        EventTrigger trigger,
+        EventTriggerType eventType,
+        string resourcePath
+    )
+    {
         _ = resourcePath;
         if (trigger.triggers == null)
             trigger.triggers = new List<EventTrigger.Entry>();
         trigger.triggers.Add(
             new EventTrigger.Entry
             {
-                eventID = EventTriggerType.PointerUp,
+                eventID = eventType,
                 callback = new EventTrigger.TriggerEvent(),
             }
         );
@@ -1851,6 +1866,7 @@ public static class MainMenuPrefabBuilder
         foreach ((EventTrigger trigger, EventTriggerType eventType, _) in audioCues)
             AddEventType(eventTypes, trigger, eventType);
         AddEventType(eventTypes, exitTrigger, EventTriggerType.PointerDown);
+        AddEventType(eventTypes, exitTrigger, EventTriggerType.PointerUp);
         AddEventType(eventTypes, exitTrigger, EventTriggerType.PointerExit);
 
         EventTriggerType[] authoredOrder =

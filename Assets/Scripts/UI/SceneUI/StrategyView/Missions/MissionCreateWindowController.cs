@@ -552,7 +552,7 @@ public sealed class MissionCreateWindowController
         {
             MissionTypeID = choice.MissionTypeID,
             Location = missionPlanet,
-            SelectedTarget = session.Target.GetSpecificMissionTarget(choice.MissionTypeID),
+            SelectedTarget = session.Target.GetMissionTarget(choice.TargetKind),
             Discipline = choice.Discipline,
             MainParticipants = session.Agents.ToList(),
             DecoyParticipants = session.Decoys.ToList(),

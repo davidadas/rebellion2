@@ -45,8 +45,8 @@ shared under any circumstances.**
 ## Documentation
 
 - [Development setup and commands](Docs/Development.md)
-- [Modding and content packs](Docs/Modding.md)
-- [Creating game events](Docs/Events/Index.md)
+- [Modding and content packs](Docs/Modding/Index.md)
+- [Creating game events](Docs/Modding/Events/Index.md)
 
 Game assets and generated UI artifacts are intentionally kept outside this source repository.
 For a development checkout, obtain the separate `rebellion2-media` repository and populate the

@@ -43,7 +43,18 @@ public static class ContentPackLoader
     /// <returns>The loaded active content pack.</returns>
     public static ContentPack OpenActive()
     {
-        return OpenActive(ResolveContentRootPath());
+        return OpenActive(null, null);
+    }
+
+    /// <summary>
+    /// Opens the selected pack/scenario, or the catalog default when either is empty.
+    /// </summary>
+    /// <param name="packIdOverride">Selected pack ID, or null/empty for the catalog default.</param>
+    /// <param name="scenarioIdOverride">Selected scenario ID, or null/empty for the catalog default.</param>
+    /// <returns>The loaded active content pack.</returns>
+    public static ContentPack OpenActive(string packIdOverride, string scenarioIdOverride)
+    {
+        return OpenActive(ResolveContentRootPath(), packIdOverride, scenarioIdOverride);
     }
 
     /// <summary>
@@ -53,26 +64,79 @@ public static class ContentPackLoader
     /// <returns>The loaded active content pack.</returns>
     internal static ContentPack OpenActive(string contentRootPath)
     {
+        return OpenActive(contentRootPath, null, null);
+    }
+
+    /// <summary>
+    /// Opens the selected pack from an explicit content root, falling back to the
+    /// catalog default when the selection can't be opened.
+    /// </summary>
+    /// <param name="contentRootPath">The external content root to inspect.</param>
+    /// <param name="packIdOverride">Selected pack ID, or null/empty for the catalog default.</param>
+    /// <param name="scenarioIdOverride">Selected scenario ID, or null/empty for the catalog default.</param>
+    /// <returns>The loaded active content pack.</returns>
+    internal static ContentPack OpenActive(
+        string contentRootPath,
+        string packIdOverride,
+        string scenarioIdOverride
+    )
+    {
         string absoluteContentRoot = Path.GetFullPath(
             contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath))
         );
         ContentCatalogDefinition catalog = DeserializeXml<ContentCatalogDefinition>(
             Path.Combine(absoluteContentRoot, _catalogFileName)
         );
-        if (string.IsNullOrWhiteSpace(catalog.ActivePackID))
-            throw new InvalidDataException("ContentCatalog.ActivePackID is required.");
 
+        string packID = string.IsNullOrWhiteSpace(packIdOverride)
+            ? catalog.ActivePackID
+            : packIdOverride;
+        string scenarioID = string.IsNullOrWhiteSpace(scenarioIdOverride)
+            ? catalog.ActiveScenarioID
+            : scenarioIdOverride;
+        if (string.IsNullOrWhiteSpace(packID))
+            throw new InvalidDataException(
+                "No active content pack is selected (set ContentCatalog.ActivePackID or a user selection)."
+            );
+
+        bool usingOverride =
+            !string.IsNullOrWhiteSpace(packIdOverride)
+            && !string.Equals(packID, catalog.ActivePackID, StringComparison.Ordinal);
+        try
+        {
+            return OpenPack(absoluteContentRoot, packID, scenarioID);
+        }
+        catch (Exception) when (usingOverride && !string.IsNullOrWhiteSpace(catalog.ActivePackID))
+        {
+            // Selected pack unavailable; fall back to the shipped default.
+            return OpenPack(absoluteContentRoot, catalog.ActivePackID, catalog.ActiveScenarioID);
+        }
+    }
+
+    /// <summary>
+    /// Loads and validates a specific pack + scenario from a resolved content root.
+    /// </summary>
+    /// <param name="absoluteContentRoot">The resolved external content root.</param>
+    /// <param name="packID">The pack ID to open.</param>
+    /// <param name="scenarioID">The scenario ID to open, or empty for the pack default.</param>
+    /// <returns>The loaded content pack.</returns>
+    private static ContentPack OpenPack(
+        string absoluteContentRoot,
+        string packID,
+        string scenarioID
+    )
+    {
         string packRoot = ResolvePackRoot(
             Path.Combine(absoluteContentRoot, _packsDirectoryName),
-            catalog.ActivePackID
+            packID
         );
         ContentPackDefinition pack = DeserializeXml<ContentPackDefinition>(
             Path.Combine(packRoot, _packFileName)
         );
-        if (!string.Equals(pack.ID, catalog.ActivePackID, StringComparison.Ordinal))
+        if (!string.Equals(pack.ID, packID, StringComparison.Ordinal))
         {
             throw new InvalidDataException(
-                $"Content pack '{pack.ID}' does not match catalog selection '{catalog.ActivePackID}'."
+                $"Content pack '{pack.ID}' does not match selection '{packID}'."
             );
         }
 
@@ -84,15 +148,15 @@ public static class ContentPackLoader
             packRoot,
             pack.ScenarioPaths
         );
-        string scenarioID = string.IsNullOrWhiteSpace(catalog.ActiveScenarioID)
+        string resolvedScenarioID = string.IsNullOrWhiteSpace(scenarioID)
             ? pack.DefaultScenarioID
-            : catalog.ActiveScenarioID;
+            : scenarioID;
         ContentScenarioDefinition scenario =
             scenarios.SingleOrDefault(candidate =>
-                string.Equals(candidate.ID, scenarioID, StringComparison.Ordinal)
+                string.Equals(candidate.ID, resolvedScenarioID, StringComparison.Ordinal)
             )
             ?? throw new InvalidDataException(
-                $"Content pack '{pack.ID}' has no scenario '{scenarioID}'."
+                $"Content pack '{pack.ID}' has no scenario '{resolvedScenarioID}'."
             );
 
         ValidateDefinitions(pack, factions, scenarios, scenario);

@@ -16,6 +16,7 @@ public static class StandalonePlayerBuild
     private const string _buildTargetArgument = "-buildTarget";
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
+    private const string _buildVersionArgument = "-buildVersion";
 
     /// <summary>
     /// Builds an external-content player for the active desktop target from the Unity editor.
@@ -93,7 +94,28 @@ public static class StandalonePlayerBuild
         string outputPath = ResolveProjectPath(
             GetRequiredArgument(_buildPlayerPathArgument, _gameCIBuildPathArgument)
         );
-        BuildPlayer(target, outputPath);
+        string originalVersion = UnityEditor.PlayerSettings.bundleVersion;
+        try
+        {
+            ApplyBuildVersion();
+            BuildPlayer(target, outputPath);
+        }
+        finally
+        {
+            UnityEditor.PlayerSettings.bundleVersion = originalVersion;
+        }
+    }
+
+    /// <summary>
+    /// Applies the release version supplied by the build environment, when present.
+    /// </summary>
+    private static void ApplyBuildVersion()
+    {
+        string buildVersion = GetOptionalArgument(_buildVersionArgument);
+        if (string.IsNullOrWhiteSpace(buildVersion))
+            return;
+
+        UnityEditor.PlayerSettings.bundleVersion = buildVersion.Trim();
     }
 
     /// <summary>
@@ -263,6 +285,19 @@ public static class StandalonePlayerBuild
     /// <returns>The non-empty value following the argument.</returns>
     private static string GetRequiredArgument(params string[] arguments)
     {
+        return GetOptionalArgument(arguments)
+            ?? throw new InvalidOperationException(
+                $"Required argument missing: {string.Join(" or ", arguments)}."
+            );
+    }
+
+    /// <summary>
+    /// Reads an optional command-line argument value.
+    /// </summary>
+    /// <param name="arguments">The equivalent argument names to find.</param>
+    /// <returns>The non-empty value following the argument, or null when it is absent.</returns>
+    private static string GetOptionalArgument(params string[] arguments)
+    {
         string[] args = Environment.GetCommandLineArgs();
         for (int i = 0; i < args.Length - 1; i++)
         {
@@ -280,9 +315,7 @@ public static class StandalonePlayerBuild
             }
         }
 
-        throw new InvalidOperationException(
-            $"Required argument missing: {string.Join(" or ", arguments)}."
-        );
+        return null;
     }
 
     /// <summary>

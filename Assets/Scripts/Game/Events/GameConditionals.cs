@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -226,7 +227,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Compares one typed trigger binding with an authored scalar value.
+    /// Compares one scalar binding with an authored scalar or another scalar binding.
     /// </summary>
     [PersistableObject(Name = "EvaluateBinding")]
     public sealed class EvaluateBindingConditional : GameConditional
@@ -240,34 +241,37 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string CompareTo { get; set; }
 
+        [PersistableAttribute]
+        public string CompareToBinding { get; set; }
+
         public override bool IsMet(GameConditionContext context)
         {
+            bool hasLiteral = CompareTo != null;
+            bool hasBinding = !string.IsNullOrWhiteSpace(CompareToBinding);
+            if (hasLiteral == hasBinding)
+                throw new InvalidOperationException(
+                    "EvaluateBinding requires exactly one CompareTo or CompareToBinding."
+                );
             if (
                 context.Evaluation == null
                 || !context.Evaluation.TryGetBindingReference(Binding, out object actual)
             )
                 return false;
 
-            // Trigger contracts may expose optional reference values. A present binding whose
-            // value is null is valid runtime data, not an unsupported authored type. Since the
-            // XML scalar has no null literal, null cannot equal an authored value and it cannot
-            // participate in an ordered comparison.
-            if (actual == null)
-                return Comparison == ComparisonOperator.NotEqual;
+            object expected;
+            if (hasBinding)
+            {
+                if (!context.Evaluation.TryGetBindingReference(CompareToBinding, out expected))
+                    return false;
+            }
+            else
+            {
+                if (actual == null)
+                    return Comparison == ComparisonOperator.NotEqual;
+                expected = ConvertLiteral(actual, CompareTo);
+            }
 
-            if (
-                Comparison
-                    is ComparisonOperator.GreaterThan
-                        or ComparisonOperator.GreaterThanOrEqual
-                        or ComparisonOperator.LessThan
-                        or ComparisonOperator.LessThanOrEqual
-                && actual is not int
-            )
-                throw new InvalidOperationException(
-                    $"Binding '{Binding}' supports ordered comparisons only when it contains an integer."
-                );
-
-            int comparison = Compare(actual, CompareTo);
+            int comparison = Compare(actual, expected);
             return Comparison switch
             {
                 ComparisonOperator.Equal => comparison == 0,
@@ -282,26 +286,111 @@ namespace Rebellion.Game.Events
             };
         }
 
-        private static int Compare(object actual, string expected)
+        /// <summary>
+        /// Converts an authored literal to the runtime type supplied by the compared binding.
+        /// </summary>
+        /// <param name="actual">The runtime value that establishes the required type.</param>
+        /// <param name="literal">The authored scalar text.</param>
+        /// <returns>The converted scalar value.</returns>
+        private static object ConvertLiteral(object actual, string literal)
         {
-            if (actual is bool boolean && bool.TryParse(expected, out bool expectedBoolean))
-                return boolean.CompareTo(expectedBoolean);
+            if (actual == null)
+                return null;
+            if (actual is bool && bool.TryParse(literal, out bool boolean))
+                return boolean;
             if (actual is bool)
-                throw new InvalidOperationException($"'{expected}' is not a Boolean value.");
-            if (actual is int integer)
+                throw new InvalidOperationException($"'{literal}' is not a Boolean value.");
+            if (actual is int)
             {
-                if (!int.TryParse(expected, out int expectedInteger))
-                    throw new InvalidOperationException($"'{expected}' is not an integer value.");
-                return integer.CompareTo(expectedInteger);
+                if (
+                    !int.TryParse(
+                        literal,
+                        NumberStyles.Integer,
+                        CultureInfo.InvariantCulture,
+                        out int integer
+                    )
+                )
+                    throw new InvalidOperationException($"'{literal}' is not an integer value.");
+                return integer;
+            }
+            if (actual is double)
+            {
+                if (
+                    !double.TryParse(
+                        literal,
+                        NumberStyles.Float,
+                        CultureInfo.InvariantCulture,
+                        out double number
+                    )
+                )
+                    throw new InvalidOperationException($"'{literal}' is not a double value.");
+                return number;
             }
             if (actual is Enum)
-                return string.Compare(actual.ToString(), expected, StringComparison.Ordinal);
-            if (actual is string text)
-                return string.Compare(text, expected, StringComparison.Ordinal);
+            {
+                Type enumType = actual.GetType();
+                if (!Enum.GetNames(enumType).Contains(literal))
+                    throw new InvalidOperationException(
+                        $"'{literal}' is not a valid {enumType.Name} value."
+                    );
+                return Enum.Parse(enumType, literal, false);
+            }
+            if (actual is string)
+                return literal;
             throw new InvalidOperationException(
                 $"Binding values of type '{actual?.GetType().Name ?? "null"}' cannot be compared."
             );
         }
+
+        /// <summary>
+        /// Compares two compatible runtime scalar values.
+        /// </summary>
+        /// <param name="actual">The value exposed by the primary binding.</param>
+        /// <param name="expected">The authored or bound comparison value.</param>
+        /// <returns>A negative, zero, or positive comparison result.</returns>
+        private int Compare(object actual, object expected)
+        {
+            if (actual == null || expected == null)
+            {
+                if (IsOrderedComparison())
+                    throw new InvalidOperationException(
+                        "Null bindings cannot participate in ordered comparisons."
+                    );
+                return actual == null && expected == null ? 0 : 1;
+            }
+
+            if (actual.GetType() != expected.GetType())
+                throw new InvalidOperationException(
+                    $"Bindings '{Binding}' and '{CompareToBinding}' have incompatible value types '{actual.GetType().Name}' and '{expected.GetType().Name}'."
+                );
+            if (actual is int integer)
+                return integer.CompareTo((int)expected);
+            if (actual is double number)
+                return number.CompareTo((double)expected);
+            if (IsOrderedComparison())
+                throw new InvalidOperationException(
+                    $"Binding '{Binding}' supports ordered comparisons only for numeric values."
+                );
+            if (actual is bool boolean)
+                return boolean.CompareTo((bool)expected);
+            if (actual is string text)
+                return string.Compare(text, (string)expected, StringComparison.Ordinal);
+            if (actual is Enum)
+                return Equals(actual, expected) ? 0 : 1;
+            throw new InvalidOperationException(
+                $"Binding values of type '{actual.GetType().Name}' cannot be compared."
+            );
+        }
+
+        /// <summary>
+        /// Returns whether the authored operator requires ordered scalar values.
+        /// </summary>
+        private bool IsOrderedComparison() =>
+            Comparison
+                is ComparisonOperator.GreaterThan
+                    or ComparisonOperator.GreaterThanOrEqual
+                    or ComparisonOperator.LessThan
+                    or ComparisonOperator.LessThanOrEqual;
     }
 
     /// <summary>
@@ -413,7 +502,10 @@ namespace Rebellion.Game.Events
         /// <returns>True when the Force-rank comparison succeeds.</returns>
         public override bool IsMet(GameConditionContext context)
         {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
+                OfficerInstanceID,
+                includeDisabled: true
+            );
             if (officer == null)
                 return false;
 
@@ -425,91 +517,9 @@ namespace Rebellion.Game.Events
         }
     }
 
-    [PersistableObject(Name = "CompareOfficerRating")]
-    public sealed class CompareOfficerRatingConditional : GameConditional
-    {
-        [PersistableAttribute]
-        public string OfficerInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public OfficerRating Rating { get; set; }
-
-        [PersistableAttribute]
-        public ComparisonOperator Comparison { get; set; }
-
-        [PersistableAttribute]
-        public int Value { get; set; }
-
-        public override bool IsMet(GameConditionContext context)
-        {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
-            if (officer == null)
-                return false;
-            int current = officer.GetEffectiveRating(Rating);
-            return IntegerComparison.Evaluate(current, Comparison, Value);
-        }
-    }
-
-    /// <summary>
-    /// Compares an officer's current Force rank with an authored value.
-    /// </summary>
-    [PersistableObject(Name = "CompareOfficerForce")]
-    public sealed class CompareOfficerForceConditional : GameConditional
-    {
-        [PersistableAttribute]
-        public string OfficerInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public ComparisonOperator Comparison { get; set; }
-
-        [PersistableAttribute]
-        public int Value { get; set; }
-
-        /// <summary>
-        /// Evaluates the configured comparison against the officer's effective Force rank.
-        /// </summary>
-        public override bool IsMet(GameConditionContext context)
-        {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
-            if (officer == null)
-                return false;
-            int current = officer.ForceRank;
-            return IntegerComparison.Evaluate(current, Comparison, Value);
-        }
-    }
     #endregion
 
     #region SceneConditions
-    [PersistableObject(Name = "ComparePlanetStat")]
-    public sealed class ComparePlanetStatConditional : GameConditional
-    {
-        [PersistableAttribute]
-        public PlanetStat Stat { get; set; }
-
-        [PersistableAttribute]
-        public ComparisonOperator Comparison { get; set; }
-
-        [PersistableAttribute]
-        public int Value { get; set; }
-
-        [PersistableAttribute]
-        public string PlanetInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public string PlanetBinding { get; set; }
-
-        public override bool IsMet(GameConditionContext context)
-        {
-            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
-            if (planet == null)
-                return false;
-            int current = planet.GetStatValue(Stat);
-            return IntegerComparison.Evaluate(current, Comparison, Value);
-        }
-    }
-
     [PersistableObject(Name = "HasBuildingType")]
     public sealed class HasBuildingTypeConditional : GameConditional
     {
@@ -526,11 +536,15 @@ namespace Rebellion.Game.Events
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
+                : context.Game.GetSceneNodeByInstanceID<Planet>(
+                    PlanetInstanceID,
+                    includeDisabled: true
+                );
             return planet
-                    ?.GetChildren<Building>()
+                    ?.GetChildren<Building>(includeDisabled: true)
                     .Any(building =>
-                        building.BuildingType == Type
+                        building.IsEnabled
+                        && building.BuildingType == Type
                         && building.ManufacturingStatus == ManufacturingStatus.Complete
                     ) == true;
         }
@@ -555,7 +569,7 @@ namespace Rebellion.Game.Events
         {
             GameRoot game = context.Game;
             Planet planet = string.IsNullOrWhiteSpace(PlanetBinding)
-                ? game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID)
+                ? game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID, includeDisabled: true)
                 : context.Evaluation?.GetBindingReference<Planet>(PlanetBinding);
             if (planet?.IsDestroyed != false)
                 return false;
@@ -589,7 +603,10 @@ namespace Rebellion.Game.Events
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
+                : context.Game.GetSceneNodeByInstanceID<Planet>(
+                    PlanetInstanceID,
+                    includeDisabled: true
+                );
             if (planet == null || string.IsNullOrWhiteSpace(FactionInstanceID))
                 return false;
 
@@ -681,7 +698,11 @@ namespace Rebellion.Game.Events
             List<string> ids = references.Select(reference => reference.UnitInstanceID).ToList();
             if (ids.Any(string.IsNullOrWhiteSpace) || ids.Distinct().Count() != ids.Count)
                 return null;
-            List<ISceneNode> nodes = game.GetSceneNodesByInstanceIDs(ids);
+            List<ISceneNode> nodes = ids.Select(id =>
+                    game.GetSceneNodeByInstanceID<ISceneNode>(id, includeDisabled: true)
+                )
+                .Where(node => node != null)
+                .ToList();
             return nodes.Count == ids.Count ? nodes : null;
         }
     }
@@ -706,7 +727,10 @@ namespace Rebellion.Game.Events
         {
             GameRoot game = context.Game;
             // Get the scene nodes for the units.
-            List<ISceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(UnitInstanceIDs);
+            List<ISceneNode> sceneNodes = UnitInstanceIDs
+                .Select(id => game.GetSceneNodeByInstanceID<ISceneNode>(id, includeDisabled: true))
+                .Where(node => node != null)
+                .ToList();
 
             // Check if the units are on opposing factions.
             return sceneNodes.Count == 2
@@ -731,7 +755,8 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             ISceneNode sceneNode = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
-                UnitInstanceID
+                UnitInstanceID,
+                includeDisabled: true
             );
             // Check if the unit is on a mission.
             return sceneNode?.GetParent() is Mission;
@@ -772,7 +797,7 @@ namespace Rebellion.Game.Events
         public string UnitInstanceID { get; set; }
 
         public override bool IsMet(GameConditionContext context) =>
-            context.Game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID)
+            context.Game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID, includeDisabled: true)
                 is IMovable { Movement: not null };
     }
 
@@ -793,8 +818,14 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context)
         {
             GameRoot game = context.Game;
-            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
-            ISceneNode location = game.GetSceneNodeByInstanceID<ISceneNode>(LocationInstanceID);
+            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(
+                UnitInstanceID,
+                includeDisabled: true
+            );
+            ISceneNode location = game.GetSceneNodeByInstanceID<ISceneNode>(
+                LocationInstanceID,
+                includeDisabled: true
+            );
             for (ISceneNode current = unit; current != null; current = current.GetParent())
             {
                 if (current == location)

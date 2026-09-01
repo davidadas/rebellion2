@@ -23,7 +23,7 @@ namespace Rebellion.Tests.Game.Events
                 new RollAgainstPopularSupportConditional
                 {
                     FactionInstanceID = "faction",
-                    PlanetBinding = "$target",
+                    PlanetBinding = "target",
                 };
             GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
@@ -173,12 +173,82 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void HasBuildingType_InactivePlanetWithEnabledBuilding_ReturnsTrue()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            planet.EnergyCapacity = 1;
+            Building building = new Building
+            {
+                InstanceID = "building",
+                OwnerInstanceID = "faction",
+                BuildingType = BuildingType.Defense,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, planet);
+            planet.IsEnabled = false;
+            HasBuildingTypeConditional condition = new HasBuildingTypeConditional
+            {
+                PlanetInstanceID = planet.InstanceID,
+                Type = BuildingType.Defense,
+            };
+
+            bool isMet = condition.IsMet(game);
+
+            Assert.IsTrue(isMet);
+        }
+
+        [Test]
+        public void HasBuildingType_DisabledBuilding_ReturnsFalse()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            planet.EnergyCapacity = 1;
+            Building building = new Building
+            {
+                InstanceID = "building",
+                OwnerInstanceID = "faction",
+                BuildingType = BuildingType.Defense,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                IsEnabled = false,
+            };
+            game.AttachNode(building, planet);
+            HasBuildingTypeConditional condition = new HasBuildingTypeConditional
+            {
+                PlanetInstanceID = planet.InstanceID,
+                Type = BuildingType.Defense,
+            };
+
+            bool isMet = condition.IsMet(game);
+
+            Assert.IsFalse(isMet);
+        }
+
+        [Test]
         public void HasForceRank_ConfiguredSemanticRank_UsesConfiguredMinimum()
         {
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             officer.ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight);
             game.AttachNode(officer, planet);
+            HasForceRankConditional condition = new HasForceRankConditional
+            {
+                OfficerInstanceID = officer.InstanceID,
+                Comparison = ComparisonOperator.GreaterThanOrEqual,
+                Rank = ForceRankLabel.ForceKnight,
+            };
+
+            bool isMet = condition.IsMet(game);
+
+            Assert.IsTrue(isMet);
+        }
+
+        [Test]
+        public void HasForceRank_InactiveOfficer_UsesConfiguredMinimum()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            officer.ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight);
+            game.AttachNode(officer, planet);
+            officer.IsEnabled = false;
             HasForceRankConditional condition = new HasForceRankConditional
             {
                 OfficerInstanceID = officer.InstanceID,

@@ -102,6 +102,30 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void SelectCapitalShips_IncludeInactive_ReturnsCapitalShip()
+        {
+            GameRoot game = BuildGame(out Planet planet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "capital-ship",
+                OwnerInstanceID = "faction",
+            };
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "faction" };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            ship.IsEnabled = false;
+            SelectCapitalShips selector = new SelectCapitalShips
+            {
+                InstanceID = ship.InstanceID,
+                IncludeInactive = true,
+            };
+
+            ISceneNode selected = selector.Select(game, new FixedRNG(0), null).Single();
+
+            Assert.AreSame(ship, selected);
+        }
+
+        [Test]
         public void SelectOfficers_IncludeInactiveAtCurrentPlanet_ReturnsOfficer()
         {
             GameRoot game = BuildGame(out Planet planet);
@@ -136,11 +160,50 @@ namespace Rebellion.Tests.Game.Events
             );
             context.Bind("officer", stale);
 
-            ISceneNode selected = new SelectBinding { Binding = "$officer" }
+            ISceneNode selected = new SelectBinding { Binding = "officer" }
                 .Select(game, new FixedRNG(0), context)
                 .Single();
 
             Assert.AreSame(canonical, selected);
+        }
+
+        [Test]
+        public void SelectBinding_InactiveRegisteredNode_ReturnsCanonicalNode()
+        {
+            GameRoot game = BuildGame(out Planet origin);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, origin);
+            officer.IsEnabled = false;
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                null,
+                null
+            );
+            context.Bind("officer", officer);
+
+            ISceneNode selected = new SelectBinding { Binding = "officer" }
+                .Select(game, new FixedRNG(0), context)
+                .Single();
+
+            Assert.AreSame(officer, selected);
+        }
+
+        [Test]
+        public void SelectPreviousLocation_InactiveUnit_ReturnsPreviousLocation()
+        {
+            GameRoot game = BuildGame(out Planet planet);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, planet);
+            officer.LastParentInstanceID = planet.InstanceID;
+            officer.IsEnabled = false;
+            SelectPreviousLocation selector = new SelectPreviousLocation
+            {
+                UnitInstanceID = officer.InstanceID,
+            };
+
+            ISceneNode selected = selector.Select(game, new FixedRNG(0), null).Single();
+
+            Assert.AreSame(planet, selected);
         }
 
         private static GameRoot BuildGame(out Planet planet)

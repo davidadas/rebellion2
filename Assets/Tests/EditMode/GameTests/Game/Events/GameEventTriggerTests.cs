@@ -288,19 +288,5 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.AreSame(officer, context.GetBinding<Officer>("officer"));
         }
-
-        [Test]
-        public void GetBindingReference_PropertyTraversal_ThrowsInvalidOperationException()
-        {
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState()
-            );
-            context.Bind("officer", new Officer { InstanceID = "luke" });
-
-            Assert.Throws<System.InvalidOperationException>(() =>
-                context.GetBindingReference<string>("$officer.InstanceID")
-            );
-        }
     }
 }

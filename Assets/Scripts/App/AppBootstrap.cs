@@ -109,7 +109,12 @@ public sealed class AppBootstrap : MonoBehaviour
         _sceneLoader = GetComponent<SceneLoader>();
         if (_sceneLoader == null)
             _sceneLoader = gameObject.AddComponent<SceneLoader>();
-        _contentPack = ContentPackLoader.OpenActive();
+        // Read the saved selection directly; the settings system loads after content.
+        UserSettingsManager.TryReadContentSelection(
+            out string selectedPackID,
+            out string selectedScenarioID
+        );
+        _contentPack = ContentPackLoader.OpenActive(selectedPackID, selectedScenarioID);
         _mainMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
             _contentPack.ContentRootPath,
             _mainMenuPreloadID

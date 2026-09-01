@@ -21,6 +21,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 MissionTypeIDs.Research,
                 "Research Facilities",
                 OfficerRating.FacilityResearch,
+                MissionTargetKind.Planet,
                 OfficerRating.None,
                 ResearchDiscipline.FacilityDesign
             );
@@ -31,6 +32,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(ResearchDiscipline.FacilityDesign, choice.Discipline);
             Assert.AreEqual("Research Facilities", choice.Name);
             Assert.AreEqual(MissionIconKeys.ResearchFacilityDesign, choice.IconKey);
+            Assert.AreEqual(MissionTargetKind.Planet, choice.TargetKind);
         }
     }
 }

@@ -5,7 +5,6 @@ using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -126,20 +125,22 @@ namespace Rebellion.Systems
                     int bindingModeCount =
                         (binding.Selectors.Count > 0 ? 1 : 0)
                         + (binding.RollInteger != null ? 1 : 0)
-                        + (binding.RollDouble != null ? 1 : 0);
+                        + (binding.RollDouble != null ? 1 : 0)
+                        + (binding.Sources.Count > 0 ? 1 : 0);
                     if (bindingModeCount != 1)
                         throw new InvalidOperationException(
-                            $"Event '{gameEvent.InstanceID}' binding '{binding.As}' requires exactly one source: From, RollInteger, or RollDouble."
+                            $"Event '{gameEvent.InstanceID}' binding '{binding.As}' requires exactly one source: From, RollInteger, RollDouble, or a typed value source."
+                        );
+                    if (binding.Sources.Count > 1)
+                        throw new InvalidOperationException(
+                            $"Event '{gameEvent.InstanceID}' binding '{binding.As}' has multiple typed value sources."
                         );
                     if (string.IsNullOrWhiteSpace(binding.As))
                         throw new InvalidOperationException(
                             $"Event '{gameEvent.InstanceID}' has a binding with a missing alias."
                         );
 
-                    Type bindingType =
-                        binding.RollInteger != null ? typeof(int)
-                        : binding.RollDouble != null ? typeof(double)
-                        : typeof(ISceneNode);
+                    Type bindingType = binding.GetValueType();
                     if (!aliases.TryAdd(binding.As, bindingType))
                         throw new InvalidOperationException(
                             $"Event '{gameEvent.InstanceID}' has duplicate binding alias '{binding.As}'."

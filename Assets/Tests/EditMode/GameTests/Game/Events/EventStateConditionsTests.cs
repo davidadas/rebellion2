@@ -17,7 +17,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out _, out _);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Binding = "$sourceEventInstanceID",
+                Binding = "sourceEventInstanceID",
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = "expected-event",
             };
@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(emperor, ship);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Binding = "$unit",
+                Binding = "unit",
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = emperor.InstanceID,
             };
@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Binding = "$destination",
+                Binding = "destination",
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = empirePlanet.InstanceID,
             };
@@ -87,6 +87,123 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("cannot be compared", exception.Message);
         }
 
+        [Test]
+        public void EvaluateBinding_CompatibleBindingComparison_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "first",
+                Comparison = ComparisonOperator.GreaterThan,
+                CompareToBinding = "second",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("first", 80);
+            context.Bind("second", 60);
+
+            bool result = conditional.IsMet(game, context);
+
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void EvaluateBinding_IncompatibleBindingComparison_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "first",
+                Comparison = ComparisonOperator.Equal,
+                CompareToBinding = "second",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("first", 80);
+            context.Bind("second", "80");
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                conditional.IsMet(game, context)
+            );
+
+            StringAssert.Contains("incompatible value types", exception.Message);
+        }
+
+        [Test]
+        public void EvaluateBinding_EnumLiteralComparison_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "comparison",
+                Comparison = ComparisonOperator.Equal,
+                CompareTo = "GreaterThan",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("comparison", ComparisonOperator.GreaterThan);
+
+            Assert.IsTrue(conditional.IsMet(game, context));
+        }
+
+        [Test]
+        public void EvaluateBinding_EnumAndStringBindings_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "first",
+                Comparison = ComparisonOperator.Equal,
+                CompareToBinding = "second",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("first", ComparisonOperator.GreaterThan);
+            context.Bind("second", "GreaterThan");
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                conditional.IsMet(game, context)
+            );
+
+            StringAssert.Contains("incompatible value types", exception.Message);
+        }
+
+        [Test]
+        public void EvaluateBinding_OrderedEnumComparison_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
+            {
+                Binding = "comparison",
+                Comparison = ComparisonOperator.GreaterThan,
+                CompareTo = "Equal",
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
+            );
+            context.Bind("comparison", ComparisonOperator.GreaterThan);
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                conditional.IsMet(game, context)
+            );
+
+            StringAssert.Contains("ordered comparisons only for numeric values", exception.Message);
+        }
+
         [TestCase(ComparisonOperator.Equal, false)]
         [TestCase(ComparisonOperator.NotEqual, true)]
         [TestCase(ComparisonOperator.GreaterThan, false)]
@@ -101,7 +218,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out _, out _);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Binding = "$sourceEventInstanceID",
+                Binding = "sourceEventInstanceID",
                 Comparison = comparison,
                 CompareTo = "EXPECTED_SOURCE",
             };

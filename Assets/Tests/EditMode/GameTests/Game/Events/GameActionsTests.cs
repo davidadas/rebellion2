@@ -245,7 +245,7 @@ namespace Rebellion.Tests.Game.Events
                 @"
                 <PlaceUnits>
                   <Units>
-                    <SelectBinding Binding=""$participants""/>
+                    <SelectBinding Binding=""participants""/>
                   </Units>
                   <Destination>
                     <SelectFirst>
@@ -260,7 +260,7 @@ namespace Rebellion.Tests.Game.Events
             PlaceUnitsAction action = (PlaceUnitsAction)
                 SerializationHelper.Deserialize<GameAction>(xml);
 
-            Assert.AreEqual("$participants", action.Units.OfType<SelectBinding>().Single().Binding);
+            Assert.AreEqual("participants", action.Units.OfType<SelectBinding>().Single().Binding);
             SelectFirst destination = action.Destination.OfType<SelectFirst>().Single();
             Assert.AreEqual(
                 "LUKE_SKYWALKER",
@@ -273,13 +273,37 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void PlaceUnits_InactiveExistingUnit_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out Planet destination, out _);
+            Officer officer = new Officer
+            {
+                InstanceID = "inactive-officer",
+                OwnerInstanceID = "empire",
+                IsEnabled = false,
+            };
+            game.AttachNode(officer, destination);
+            PlaceUnitsAction action = new PlaceUnitsAction
+            {
+                UnitInstanceID = officer.InstanceID,
+                DestinationInstanceID = destination.InstanceID,
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                action.ExecuteRequests(game)
+            );
+
+            StringAssert.Contains("requires existing units to be active", exception.Message);
+        }
+
+        [Test]
         public void PlaceUnits_Selectors_RoundTripsTransferStructure()
         {
             PlaceUnitsAction action = new PlaceUnitsAction
             {
                 Units = new List<GameEventSelector>
                 {
-                    new SelectBinding { Binding = "$participants" },
+                    new SelectBinding { Binding = "participants" },
                 },
                 Destination = new List<GameEventSelector>
                 {
@@ -299,7 +323,7 @@ namespace Rebellion.Tests.Game.Events
                 SerializationHelper.Deserialize<GameAction>(xml);
 
             Assert.AreEqual(
-                "$participants",
+                "participants",
                 restored.Units.OfType<SelectBinding>().Single().Binding
             );
             SelectFirst destination = restored.Destination.OfType<SelectFirst>().Single();
@@ -399,7 +423,7 @@ namespace Rebellion.Tests.Game.Events
                 {
                     new SelectOfficers
                     {
-                        PlanetBinding = "$destination",
+                        PlanetBinding = "destination",
                         IsCaptured = true,
                         IncludeInactive = true,
                     },
@@ -412,7 +436,7 @@ namespace Rebellion.Tests.Game.Events
 
             SelectOfficers selector = restored.Selectors.OfType<SelectOfficers>().Single();
             Assert.AreEqual(SceneNodeState.Active, restored.State);
-            Assert.AreEqual("$destination", selector.PlanetBinding);
+            Assert.AreEqual("destination", selector.PlanetBinding);
             Assert.AreEqual(true, selector.IsCaptured);
             Assert.IsTrue(selector.IncludeInactive);
         }
@@ -815,7 +839,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 RecipientFactionInstanceID = "rebels",
                 SubjectInstanceID = luke.InstanceID,
-                BackgroundAudio = new MessageAudio { Binding = "$audioPath" },
+                BackgroundAudio = new MessageAudio { Binding = "audioPath" },
             };
             DuelResult encounter = new DuelResult
             {
@@ -1496,7 +1520,7 @@ namespace Rebellion.Tests.Game.Events
             planet.EnergyCapacity = 8;
             ChangeRawResourceNodesAction action = new ChangeRawResourceNodesAction
             {
-                PlanetBinding = "$target",
+                PlanetBinding = "target",
                 Amount = 1,
             };
             GameEventEvaluationContext context = new GameEventEvaluationContext(
@@ -1523,7 +1547,7 @@ namespace Rebellion.Tests.Game.Events
             planet.EnergyCapacity = 8;
             ChangeRawResourceNodesAction action = new ChangeRawResourceNodesAction
             {
-                PlanetBinding = "$target",
+                PlanetBinding = "target",
                 Amount = 1,
             };
             GameEventEvaluationContext context = new GameEventEvaluationContext(
@@ -1554,7 +1578,7 @@ namespace Rebellion.Tests.Game.Events
             ChangeRawResourceNodesAction action = new ChangeRawResourceNodesAction
             {
                 PlanetInstanceID = planet.InstanceID,
-                AmountBinding = "$change",
+                AmountBinding = "change",
             };
 
             action.Execute(game, new ThrowingRNG(), context);
@@ -1630,7 +1654,7 @@ namespace Rebellion.Tests.Game.Events
             planet.EnergyCapacity = 3;
             DamagePlanetResourcesAction action = new DamagePlanetResourcesAction
             {
-                PlanetBinding = "$target",
+                PlanetBinding = "target",
                 LossProbabilityPerResource = 0,
                 MinimumTotalLoss = 1,
             };

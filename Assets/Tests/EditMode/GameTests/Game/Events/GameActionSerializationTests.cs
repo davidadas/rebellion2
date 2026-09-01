@@ -25,8 +25,8 @@ namespace Rebellion.Tests.Game.Events
                     new ChangePopularSupportAction
                     {
                         FactionInstanceID = "FNALL1",
-                        PlanetBinding = "$planet",
-                        AmountBinding = "$supportChange",
+                        PlanetBinding = "planet",
+                        AmountBinding = "supportChange",
                     },
                     new ChangeRawResourceNodesAction
                     {
@@ -35,8 +35,8 @@ namespace Rebellion.Tests.Game.Events
                     },
                     new DamagePlanetResourcesAction
                     {
-                        PlanetBinding = "$planet",
-                        ProbabilityBinding = "$damageProbability",
+                        PlanetBinding = "planet",
+                        ProbabilityBinding = "damageProbability",
                         MinimumTotalLoss = 2,
                     },
                     new SetPopularSupportAction
@@ -59,14 +59,14 @@ namespace Rebellion.Tests.Game.Events
                 restored.Actions[1] as ChangePopularSupportAction;
             Assert.IsNotNull(changeSupport);
             Assert.AreEqual("FNALL1", changeSupport.FactionInstanceID);
-            Assert.AreEqual("$supportChange", changeSupport.AmountBinding);
+            Assert.AreEqual("supportChange", changeSupport.AmountBinding);
             Assert.AreEqual(
                 25,
                 ((ChangeRawResourceNodesAction)restored.Actions[2]).PercentOfCurrent
             );
             DamagePlanetResourcesAction damage = restored.Actions[3] as DamagePlanetResourcesAction;
             Assert.IsNotNull(damage);
-            Assert.AreEqual("$damageProbability", damage.ProbabilityBinding);
+            Assert.AreEqual("damageProbability", damage.ProbabilityBinding);
             Assert.AreEqual(2, damage.MinimumTotalLoss);
             Assert.AreEqual(50, ((SetPopularSupportAction)restored.Actions[4]).Support);
         }
@@ -156,7 +156,7 @@ namespace Rebellion.Tests.Game.Events
                 {
                     new RollChanceAction
                     {
-                        ProbabilityBinding = "$probability",
+                        ProbabilityBinding = "probability",
                         Actions = new List<GameAction>
                         {
                             new SetEventVariableAction
@@ -181,7 +181,7 @@ namespace Rebellion.Tests.Game.Events
 
             RollChanceAction chance = restored.Actions[0] as RollChanceAction;
             Assert.IsNotNull(chance);
-            Assert.AreEqual("$probability", chance.ProbabilityBinding);
+            Assert.AreEqual("probability", chance.ProbabilityBinding);
             SetEventVariableAction setVariable = chance.Actions.Single() as SetEventVariableAction;
             Assert.IsNotNull(setVariable);
             Assert.AreEqual(1, setVariable.RollInteger.Minimum);

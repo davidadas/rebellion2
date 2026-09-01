@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_PlanetAlreadyInUprising_ReturnsMission()
+        public void TryCreate_PlanetAlreadyInUprising_ReturnsNull()
         {
             (
                 GameRoot game,
@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
             enemyPlanet.BeginUprising();
 
-            Assert.IsNotNull(
+            Assert.IsNull(
                 CreateInciteUprisingMission(
                     "empire",
                     enemyPlanet,

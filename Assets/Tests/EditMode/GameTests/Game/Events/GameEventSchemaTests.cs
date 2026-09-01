@@ -50,20 +50,55 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void Validate_DottedBindingReference_RejectsDocument()
+        public void Validate_OpaqueBindingName_AcceptsDocument()
         {
             const string xml =
                 @"
 <GameEvents>
   <GameEvent>
     <InstanceID>EVENT</InstanceID>
+    <Bindings>
+      <Bind As=""#@$#@binding""><RollInteger Minimum=""1"" Maximum=""1""/></Bind>
+    </Bindings>
+    <Schedule><At Tick=""1""/></Schedule>
     <Conditionals>
-      <EvaluateBinding Binding=""$production.Tick"" Comparison=""Equal"" CompareTo=""1""/>
+      <EvaluateBinding Binding=""#@$#@binding"" Comparison=""Equal"" CompareTo=""1""/>
     </Conditionals>
   </GameEvent>
 </GameEvents>";
 
-            Assert.Throws<XmlSchemaValidationException>(() => Validate(xml));
+            Assert.DoesNotThrow(() => Validate(xml));
+        }
+
+        [Test]
+        public void Validate_TypedBindingsAndBindingComparison_AcceptsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>EVENT</InstanceID>
+    <Bindings>
+      <Bind As=""combat""><OfficerRating OfficerInstanceID=""HAN_SOLO"" Rating=""Combat""/></Bind>
+      <Bind As=""force""><OfficerForce OfficerInstanceID=""DARTH_VADER""/></Bind>
+      <Bind As=""resources""><PlanetStat PlanetInstanceID=""NABOO"" Stat=""RawResourceNodes""/></Bind>
+      <Bind As=""fleetCount"">
+        <SelectionCount>
+          <From><SelectFleets PlanetInstanceID=""CORUSCANT""/></From>
+        </SelectionCount>
+      </Bind>
+    </Bindings>
+    <Schedule><At Tick=""1""/></Schedule>
+    <Conditionals>
+      <EvaluateBinding Binding=""combat"" Comparison=""GreaterThan"" CompareToBinding=""force""/>
+      <EvaluateBinding Binding=""resources"" Comparison=""GreaterThan"" CompareTo=""0""/>
+      <EvaluateBinding Binding=""fleetCount"" Comparison=""Equal"" CompareTo=""0""/>
+    </Conditionals>
+    <Actions/>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.DoesNotThrow(() => Validate(xml));
         }
 
         [Test]
@@ -80,10 +115,10 @@ namespace Rebellion.Tests.Game.Events
     </Bindings>
     <Schedule><At Tick=""1""/></Schedule>
     <Actions>
-      <RollChance ProbabilityBinding=""$chance"">
+      <RollChance ProbabilityBinding=""chance"">
         <Actions>
           <ChangeRawResourceNodes PlanetInstanceID=""NABOO"">
-            <AmountBinding>$damage</AmountBinding>
+            <AmountBinding>damage</AmountBinding>
           </ChangeRawResourceNodes>
           <SetPopularSupport PlanetInstanceID=""NABOO"" FactionInstanceID=""FNALL1"">
             <Support>20</Support>

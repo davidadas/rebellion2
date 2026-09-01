@@ -1,4 +1,5 @@
 using System;
+using UnityEngine.Scripting;
 
 namespace Rebellion.Util.Serialization
 {
@@ -14,7 +15,7 @@ namespace Rebellion.Util.Serialization
         Inherited = true,
         AllowMultiple = false
     )]
-    public class PersistableObjectAttribute : Attribute
+    public class PersistableObjectAttribute : PreserveAttribute
     {
         public string Name { get; set; }
 

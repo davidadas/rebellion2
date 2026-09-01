@@ -14,6 +14,8 @@ public sealed class StrategyMissionChoice
 
     public string IconKey { get; }
 
+    public MissionTargetKind TargetKind { get; }
+
     /// <summary>
     /// Creates a strategy mission choice from one available game option.
     /// </summary>
@@ -27,5 +29,6 @@ public sealed class StrategyMissionChoice
         Discipline = option.Discipline;
         Name = option.DisplayName;
         IconKey = MissionIconKeys.GetMissionIconKey(option.MissionTypeID, option.Discipline);
+        TargetKind = option.TargetKind;
     }
 }
