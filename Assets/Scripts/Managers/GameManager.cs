@@ -458,6 +458,7 @@ public sealed class GameManager
         _recoverySystem = new RecoverySystem(_game);
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
         _namingSystem = new NamingSystem(_game);
+        _recoverySystem = new RecoverySystem(_game);
         _factionAutomationSystem = new FactionAutomationSystem(
             _game,
             _gameData,

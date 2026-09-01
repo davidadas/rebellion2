@@ -36,9 +36,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 null,
                 null,
                 null,
-                false,
                 null,
-                false,
                 false,
                 false,
                 Array.Empty<StrategyDropdownItemRenderData>()
@@ -75,9 +73,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 "2",
                 "3",
                 "4",
-                true,
                 "5",
-                true,
                 false,
                 true,
                 items

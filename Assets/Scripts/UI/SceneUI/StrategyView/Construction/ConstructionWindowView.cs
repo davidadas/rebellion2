@@ -74,16 +74,10 @@ public sealed class ConstructionWindowView
     private TextMeshProUGUI completionValueTextField;
 
     [SerializeField]
-    private TextMeshProUGUI completionDaysTextField;
-
-    [SerializeField]
     private TextMeshProUGUI deploymentLabelTextField;
 
     [SerializeField]
     private TextMeshProUGUI deploymentValueTextField;
-
-    [SerializeField]
-    private TextMeshProUGUI deploymentDaysTextField;
 
     [Header("Commands")]
     [SerializeField]
@@ -490,18 +484,8 @@ public sealed class ConstructionWindowView
             buildCountInputField.SetTextWithoutNotify(data.BuildCount.ToString());
         UILayout.SetTextContent(constructionCostTextField, data.ConstructionCost);
         UILayout.SetTextContent(maintenanceCostTextField, data.MaintenanceCost);
-        RenderEstimate(
-            completionValueTextField,
-            completionDaysTextField,
-            data.CompletionEstimate,
-            data.CompletionHasDays
-        );
-        RenderEstimate(
-            deploymentValueTextField,
-            deploymentDaysTextField,
-            data.DeploymentEstimate,
-            data.DeploymentHasDays
-        );
+        UILayout.SetTextContent(completionValueTextField, data.CompletionEstimate);
+        UILayout.SetTextContent(deploymentValueTextField, data.DeploymentEstimate);
         incrementButtonPressVisual.SetInteractiveTextures(
             incrementButtonUpTexture,
             incrementButtonDownTexture
@@ -540,10 +524,8 @@ public sealed class ConstructionWindowView
             maintenanceCostTextField.gameObject,
             completionLabelTextField.gameObject,
             completionValueTextField.gameObject,
-            completionDaysTextField.gameObject,
             deploymentLabelTextField.gameObject,
             deploymentValueTextField.gameObject,
-            deploymentDaysTextField.gameObject,
             incrementButtonImage.gameObject,
             decrementButtonImage.gameObject,
             dropdownButtonImage.gameObject,
@@ -553,24 +535,6 @@ public sealed class ConstructionWindowView
         };
         foreach (GameObject item in objects)
             item.SetActive(visible);
-    }
-
-    /// <summary>
-    /// Applies one projected estimate and its optional days suffix.
-    /// </summary>
-    /// <param name="valueTextField">The estimate value field.</param>
-    /// <param name="daysTextField">The authored days field.</param>
-    /// <param name="value">The displayed estimate value.</param>
-    /// <param name="showDays">Whether the days field is visible.</param>
-    private static void RenderEstimate(
-        TextMeshProUGUI valueTextField,
-        TextMeshProUGUI daysTextField,
-        string value,
-        bool showDays
-    )
-    {
-        UILayout.SetTextContent(valueTextField, value);
-        daysTextField.gameObject.SetActive(showDays);
     }
 
     /// <summary>
@@ -771,14 +735,10 @@ public sealed class ConstructionWindowView
             throw new MissingReferenceException($"{name}/CompletionLabelTextField is missing.");
         if (completionValueTextField == null)
             throw new MissingReferenceException($"{name}/CompletionValueTextField is missing.");
-        if (completionDaysTextField == null)
-            throw new MissingReferenceException($"{name}/CompletionDaysTextField is missing.");
         if (deploymentLabelTextField == null)
             throw new MissingReferenceException($"{name}/DeploymentLabelTextField is missing.");
         if (deploymentValueTextField == null)
             throw new MissingReferenceException($"{name}/DeploymentValueTextField is missing.");
-        if (deploymentDaysTextField == null)
-            throw new MissingReferenceException($"{name}/DeploymentDaysTextField is missing.");
         if (dropdownButtonImage == null)
             throw new MissingReferenceException($"{name}/DropdownButtonImage is missing.");
         if (dropdownButtonPressVisual == null)

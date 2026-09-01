@@ -8,9 +8,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Heals injured officers and repairs damaged ships each tick.
-    /// Officers heal while resting at a friendly location. Ships repair hull damage
-    /// at a rate determined by whether they are at a friendly planet.
+    /// Heals injured officers, repairs capital ships, and replenishes fighter squadrons each tick.
     /// </summary>
     public class RecoverySystem
     {

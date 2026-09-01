@@ -25,11 +25,7 @@ public sealed class ConstructionWindowRenderData
 
     public string CompletionEstimate { get; }
 
-    public bool CompletionHasDays { get; }
-
     public string DeploymentEstimate { get; }
-
-    public bool DeploymentHasDays { get; }
 
     public bool DropdownOpen { get; }
 
@@ -51,9 +47,7 @@ public sealed class ConstructionWindowRenderData
     /// <param name="constructionCost">The total construction cost.</param>
     /// <param name="maintenanceCost">The total maintenance cost.</param>
     /// <param name="completionEstimate">The displayed completion estimate.</param>
-    /// <param name="completionHasDays">Whether the completion estimate includes a days label.</param>
     /// <param name="deploymentEstimate">The displayed deployment estimate.</param>
-    /// <param name="deploymentHasDays">Whether the deployment estimate includes a days label.</param>
     /// <param name="dropdownOpen">Whether the build-item dropdown is open.</param>
     /// <param name="canStart">Whether construction can start for the current selection.</param>
     /// <param name="dropdownItems">The available build-item presentations.</param>
@@ -67,9 +61,7 @@ public sealed class ConstructionWindowRenderData
         string constructionCost,
         string maintenanceCost,
         string completionEstimate,
-        bool completionHasDays,
         string deploymentEstimate,
-        bool deploymentHasDays,
         bool dropdownOpen,
         bool canStart,
         IReadOnlyList<StrategyDropdownItemRenderData> dropdownItems
@@ -84,9 +76,7 @@ public sealed class ConstructionWindowRenderData
         ConstructionCost = constructionCost ?? string.Empty;
         MaintenanceCost = maintenanceCost ?? string.Empty;
         CompletionEstimate = completionEstimate ?? string.Empty;
-        CompletionHasDays = completionHasDays;
         DeploymentEstimate = deploymentEstimate ?? string.Empty;
-        DeploymentHasDays = deploymentHasDays;
         DropdownOpen = dropdownOpen;
         CanStart = canStart;
         DropdownItems = new List<StrategyDropdownItemRenderData>(
