@@ -543,6 +543,9 @@ namespace Rebellion.Systems
             }
 
             string ownerInstanceID = GetMovementControlOwner(participant);
+            if (string.IsNullOrEmpty(ownerInstanceID))
+                return null;
+
             Faction owner = _game.GetFactionByOwnerInstanceID(ownerInstanceID);
             Planet missionPlanet = participant.GetParentOfType<Planet>();
             return FindEvacuationDestinations(owner, participant, missionPlanet).FirstOrDefault();

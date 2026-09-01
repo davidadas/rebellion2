@@ -135,8 +135,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 .Where(template => template.ManufacturingFactionInstanceIDs?.Count > 0)
                 .ToList();
             string ownerId = templates
-                .SelectMany(template => template.ManufacturingFactionInstanceIDs)
-                .First();
+                .SelectMany(template =>
+                    template.ManufacturingFactionInstanceIDs.Select(factionId =>
+                        (FactionId: factionId, Building: (Building)template)
+                    )
+                )
+                .GroupBy(candidate => candidate.FactionId)
+                .First(group =>
+                    group.Any(candidate =>
+                        candidate.Building.GetBuildingType() == BuildingType.Defense
+                    )
+                    && group.Any(candidate =>
+                        candidate.Building.GetBuildingType() == BuildingType.Weapon
+                    )
+                )
+                .Key;
             IManufacturable[] applicableTemplates = templates
                 .Where(template => template.ManufacturingFactionInstanceIDs.Contains(ownerId))
                 .ToArray();

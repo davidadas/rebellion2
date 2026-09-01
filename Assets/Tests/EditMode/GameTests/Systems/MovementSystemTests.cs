@@ -2267,6 +2267,28 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void ReturnFromMission_MissingOwnerAndRecordedLocation_ReturnsParticipantAsStranded()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementSystem movement) =
+                BuildScene();
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            officer.OwnerInstanceID = null;
+            officer.MissionReturnParentInstanceID = "missing-parent";
+            officer.MissionReturnLocationInstanceID = "missing-location";
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0]
+            );
+
+            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
+            Assert.AreSame(mission, officer.GetParent());
+        }
+
+        [Test]
         public void ReturnFromMission_RecordedPlanetCaptured_ReturnsToNearestFriendlyPlanet()
         {
             (
