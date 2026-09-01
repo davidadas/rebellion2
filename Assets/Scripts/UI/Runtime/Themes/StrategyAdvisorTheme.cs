@@ -17,6 +17,9 @@ public class StrategyAdvisorAnimationTheme
 
     public string Audio { get; set; }
 
+    [PersistableCollectionItem(Name = "Audio")]
+    public List<string> AudioOptions { get; set; } = new List<string>();
+
     public string AudioPath { get; set; }
 
     public float DelayBeforeSeconds { get; set; }
