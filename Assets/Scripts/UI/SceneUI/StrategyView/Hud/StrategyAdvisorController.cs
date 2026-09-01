@@ -676,6 +676,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="playbacks">The destination playback batch.</param>
     /// <param name="animation">The configured animation.</param>
     /// <param name="usesDroid">Whether the droid image presents the animation.</param>
+    /// <param name="audio">The optional audio name selected for this playback.</param>
     /// <returns>True when the animation is absent, empty, or fully available.</returns>
     private bool TryAddPlayback(
         ICollection<StrategyAdvisorAnimationViewData> playbacks,
