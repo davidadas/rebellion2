@@ -889,7 +889,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_CapitalShipRepaired_UsesDefinitionImageInsteadOfUnitCard()
+        public void CreateMessages_CapitalShipRepaired_UsesUnitEncyclopediaImage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Fleet fleet = new Fleet
@@ -905,6 +905,7 @@ namespace Rebellion.Tests.Game.Messages
                 MaxHullStrength = 100,
                 CurrentHullStrength = 100,
                 DisplayImagePath = "unit-card",
+                EncyclopediaImagePath = "unit-message-image",
             };
             game.AttachNode(fleet, origin);
             game.AttachNode(ship, fleet);
@@ -938,7 +939,7 @@ namespace Rebellion.Tests.Game.Messages
                 alliance
             );
 
-            Assert.AreEqual("repair-background", message.DisplayImagePath);
+            Assert.AreEqual("unit-message-image", message.DisplayImagePath);
             Assert.IsNull(message.OverlayImagePath);
         }
 
@@ -964,6 +965,7 @@ namespace Rebellion.Tests.Game.Messages
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 12,
                 DisplayImagePath = "fighter-card",
+                EncyclopediaImagePath = "fighter-message-image",
             };
             game.AttachNode(fleet, origin);
             game.AttachNode(carrier, fleet);
@@ -996,7 +998,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("full", message.Title);
             Assert.AreEqual("body:X-Wing Squadron:Carrier", message.Body);
             Assert.AreEqual("starfighter_repaired", message.BackgroundImageKey);
-            Assert.IsNull(message.DisplayImagePath);
+            Assert.AreEqual("fighter-message-image", message.DisplayImagePath);
             Assert.IsNull(message.OverlayImagePath);
         }
 
@@ -2470,7 +2472,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_OfficerRecovered_UsesBackgroundWithoutSubjectImage()
+        public void CreateMessages_OfficerRecovered_UsesBackgroundAndSubjectImage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer officer = new Officer
@@ -2495,7 +2497,8 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "recovered:{officer}:{system}",
                             "body:{officer}:{system}",
-                            DefaultImage("fallback-card")
+                            DefaultImage("fallback-card"),
+                            showSubjectImage: true
                         ),
                     },
                     new OfficerInjuredResult { Officer = officer, Severity = 0 }
@@ -2505,7 +2508,7 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual("recovered:Agent:Coruscant", message.Title);
             Assert.AreEqual("fallback-card", message.DisplayImagePath);
-            Assert.IsNull(message.OverlayImagePath);
+            Assert.AreEqual("agent-card", message.OverlayImagePath);
             Assert.AreEqual("recovered-voice", message.OfficerVoicePath);
         }
 
