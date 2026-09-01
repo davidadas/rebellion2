@@ -68,10 +68,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 FindComponent<TextMeshProUGUI>("ConstructionCostTextField").text
             );
             Assert.AreEqual("16", FindComponent<TextMeshProUGUI>("MaintenanceCostTextField").text);
-            Assert.AreEqual("9", FindComponent<TextMeshProUGUI>("CompletionValueTextField").text);
-            Assert.AreEqual("12", FindComponent<TextMeshProUGUI>("DeploymentValueTextField").text);
-            Assert.IsTrue(FindObject("CompletionDaysTextField").activeSelf);
-            Assert.IsTrue(FindObject("DeploymentDaysTextField").activeSelf);
+            Assert.AreEqual(
+                "9 Days",
+                FindComponent<TextMeshProUGUI>("CompletionValueTextField").text
+            );
+            Assert.AreEqual(
+                "12 Days",
+                FindComponent<TextMeshProUGUI>("DeploymentValueTextField").text
+            );
             Assert.IsTrue(FindObject("Dropdown").activeSelf);
             Assert.IsTrue(FindComponent<Button>("OkButtonImage").interactable);
             StrategyDropdownItemView[] rows = _viewObject
@@ -149,14 +153,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsFalse(FindObject("SelectedItemImage").activeSelf);
             Assert.IsFalse(FindObject("SelectedNameTextField").activeSelf);
             Assert.IsFalse(FindObject("BuildCountInputField").activeSelf);
-            Assert.IsFalse(FindObject("CompletionDaysTextField").activeSelf);
-            Assert.IsFalse(FindObject("DeploymentDaysTextField").activeSelf);
             Assert.IsFalse(FindObject("Dropdown").activeSelf);
             Assert.IsFalse(row.gameObject.activeSelf);
         }
 
         [Test]
-        public void Render_UnavailableSelection_DisablesStartAndDayLabels()
+        public void Render_UnavailableSelection_DisablesStartAndShowsUnavailableEstimates()
         {
             ConstructionWindowRenderData data = new ConstructionWindowRenderData(
                 0,
@@ -168,9 +170,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 "1",
                 "1",
                 "N/A",
-                false,
                 "N/A",
-                false,
                 false,
                 false,
                 new[] { new StrategyDropdownItemRenderData(_texture, "Selected", Color.white) }
@@ -179,8 +179,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _view.Render(data);
 
             Assert.IsFalse(FindComponent<Button>("OkButtonImage").interactable);
-            Assert.IsFalse(FindObject("CompletionDaysTextField").activeSelf);
-            Assert.IsFalse(FindObject("DeploymentDaysTextField").activeSelf);
+            Assert.AreEqual(
+                "N/A",
+                FindComponent<TextMeshProUGUI>("CompletionValueTextField").text
+            );
+            Assert.AreEqual(
+                "N/A",
+                FindComponent<TextMeshProUGUI>("DeploymentValueTextField").text
+            );
         }
 
         [Test]
@@ -384,10 +390,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 4,
                 "120",
                 "16",
-                "9",
-                true,
-                "12",
-                true,
+                "9 Days",
+                "12 Days",
                 dropdownOpen,
                 canStart,
                 items
