@@ -915,7 +915,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_EspionageDetected_FoilsWithoutCaptureOrKill()
+        public void UpdateMission_EspionageDetected_AppliesFoiledParticipantConsequences()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
@@ -931,6 +931,8 @@ namespace Rebellion.Tests.Sectors
             );
             Assert.IsNotNull(mission);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
 
@@ -942,9 +944,9 @@ namespace Rebellion.Tests.Sectors
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsFalse(spy.IsCaptured);
+            Assert.IsTrue(spy.IsCaptured);
             Assert.IsFalse(spy.IsKilled);
-            Assert.IsFalse(results.Any(r => r is OfficerCaptureStateResult));
+            Assert.IsTrue(results.Any(r => r is OfficerCaptureStateResult));
             Assert.IsFalse(results.Any(r => r is OfficerKilledResult));
             Assert.IsTrue(
                 results
