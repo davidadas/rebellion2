@@ -179,14 +179,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _view.Render(data);
 
             Assert.IsFalse(FindComponent<Button>("OkButtonImage").interactable);
-            Assert.AreEqual(
-                "N/A",
-                FindComponent<TextMeshProUGUI>("CompletionValueTextField").text
-            );
-            Assert.AreEqual(
-                "N/A",
-                FindComponent<TextMeshProUGUI>("DeploymentValueTextField").text
-            );
+            Assert.AreEqual("N/A", FindComponent<TextMeshProUGUI>("CompletionValueTextField").text);
+            Assert.AreEqual("N/A", FindComponent<TextMeshProUGUI>("DeploymentValueTextField").text);
         }
 
         [Test]
