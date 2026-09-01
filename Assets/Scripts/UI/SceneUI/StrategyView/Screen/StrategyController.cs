@@ -510,6 +510,7 @@ public sealed class StrategyController
             RebuildSnapshot,
             MarkDirty,
             () => gameManager.HeadquartersSystem,
+            strategyHudController.PlayInvalidOrderRejected,
             strategyHudController.PlayInTransitOrderRejected,
             strategyHudController.PlayUnitUnderConstructionOrderRejected
         );

@@ -113,7 +113,7 @@ public sealed class MissionCreateWindowController
     )
     {
         UIWindow window = view == null ? null : view.GetComponent<UIWindow>();
-        if (view == null || window == null || target == null || target.Item is Fleet)
+        if (view == null || window == null || target?.Item == null || target.Item is Fleet)
             return false;
 
         List<IMissionParticipant> participants = GetMissionSourceParticipants(
@@ -552,7 +552,7 @@ public sealed class MissionCreateWindowController
         {
             MissionTypeID = choice.MissionTypeID,
             Location = missionPlanet,
-            SelectedTarget = session.Target.GetMissionTarget(choice.TargetKind),
+            SelectedTarget = session.Target.Item,
             Discipline = choice.Discipline,
             MainParticipants = session.Agents.ToList(),
             DecoyParticipants = session.Decoys.ToList(),

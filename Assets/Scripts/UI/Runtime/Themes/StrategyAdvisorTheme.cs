@@ -219,6 +219,8 @@ public class StrategyAdvisorTheme
 
     public int RepeatCooldownTicks { get; set; }
 
+    public StrategyAdvisorAnimationTheme InvalidOrderRejected { get; set; }
+
     public StrategyAdvisorAnimationTheme InTransitOrderRejected { get; set; }
 
     public StrategyAdvisorAnimationTheme UnitUnderConstructionOrderRejected { get; set; }

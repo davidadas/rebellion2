@@ -280,6 +280,14 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Immediately plays the authored response for an invalid order.
+    /// </summary>
+    public void PlayInvalidOrderRejected()
+    {
+        PlayOrderRejected(theme?.InvalidOrderRejected);
+    }
+
+    /// <summary>
     /// Immediately plays the authored response for an order targeting a unit under construction.
     /// </summary>
     public void PlayUnitUnderConstructionOrderRejected()

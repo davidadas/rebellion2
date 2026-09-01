@@ -147,7 +147,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsTrue(found);
             Assert.IsNotNull(target);
             Assert.AreSame(_sector.Planets[0], target.Planet);
-            Assert.IsNull(target.Item);
+            Assert.AreSame(_sector.Planets[0].Planet, target.Item);
         }
 
         [Test]

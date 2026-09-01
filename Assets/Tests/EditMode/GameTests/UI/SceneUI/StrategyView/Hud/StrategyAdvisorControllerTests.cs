@@ -354,13 +354,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void PlayUnitUnderConstructionOrderRejected_AuthoredResponse_ReplacesPlayback()
+        public void PlayInvalidOrderRejected_AuthoredResponse_ReplacesPlayback()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
             StrategyAdvisorTheme advisorTheme = CreateTheme();
             advisorTheme.AudioRoot = "Audio";
-            advisorTheme.UnitUnderConstructionOrderRejected = new StrategyAdvisorAnimationTheme
+            advisorTheme.InvalidOrderRejected = new StrategyAdvisorAnimationTheme
             {
                 Animation = "Rejected",
                 FrameCount = 1,
@@ -383,7 +383,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 StrategyAdvisorAnimationViewData playback = null;
                 view.PlaybackStarted += data => playback = data;
 
-                controller.PlayUnitUnderConstructionOrderRejected();
+                controller.PlayInvalidOrderRejected();
 
                 Assert.IsNotNull(playback);
                 Assert.AreSame(rejectedFrame, playback.Frames.Single());
