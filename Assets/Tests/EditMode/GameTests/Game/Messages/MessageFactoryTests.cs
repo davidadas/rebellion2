@@ -2470,7 +2470,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_OfficerRecovered_OmitsOfficerImage()
+        public void CreateMessages_OfficerRecovered_UsesBackgroundWithoutSubjectImage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer officer = new Officer
@@ -2495,8 +2495,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "recovered:{officer}:{system}",
                             "body:{officer}:{system}",
-                            DefaultImage("fallback-card"),
-                            showSubjectImage: true
+                            DefaultImage("fallback-card")
                         ),
                     },
                     new OfficerInjuredResult { Officer = officer, Severity = 0 }
