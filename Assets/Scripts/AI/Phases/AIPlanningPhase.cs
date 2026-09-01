@@ -19,6 +19,7 @@ namespace Rebellion.AI.Phases
             : this(
                 new IAIProposalPlanner[]
                 {
+                    new AIAbortMissionPlanner(),
                     new AIMissionPlanner(),
                     new AIOrbitalEngagementPlanner(),
                     new AIFleetPlanner(),

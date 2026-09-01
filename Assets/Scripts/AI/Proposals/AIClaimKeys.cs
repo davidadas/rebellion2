@@ -98,6 +98,11 @@ namespace Rebellion.AI.Proposals
         internal static string MissionActor(string participantId) =>
             $"mission:actor:{participantId}";
 
+        /// <summary>Creates a claim for an active mission.</summary>
+        /// <param name="missionId">The mission instance ID.</param>
+        /// <returns>The active-mission claim.</returns>
+        internal static string Mission(string missionId) => $"mission:{missionId}";
+
         /// <summary>Creates a claim for a faction recruitment mission.</summary>
         /// <param name="factionId">The faction instance ID.</param>
         /// <returns>The mission-recruitment claim.</returns>

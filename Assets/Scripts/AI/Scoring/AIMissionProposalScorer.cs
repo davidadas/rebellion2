@@ -55,13 +55,12 @@ namespace Rebellion.AI.Scoring
                     missionProposal.TargetPlanet
                 );
                 if (
-                    !AIMissionRiskPolicy.AllowsMission(
-                        context,
-                        mission,
-                        missionProposal.TargetPlanet,
-                        odds
-                    )
+                    odds.PersonnelLossProbability
+                    > context.Game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability
                 )
+                    return 0;
+
+                if (!HasUsableHostileTargetIntelligence(context, missionProposal))
                     return 0;
             }
             else
@@ -76,6 +75,27 @@ namespace Rebellion.AI.Scoring
             score -= GetOfficerReplacementPenalty(context, missionProposal);
 
             return score >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? score : 0;
+        }
+
+        /// <summary>
+        /// Returns whether a hostile mission has current intelligence or a decoy that offsets
+        /// uncertainty about the target.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The mission proposal to inspect.</param>
+        /// <returns>True when target intelligence permits the proposed mission.</returns>
+        private static bool HasUsableHostileTargetIntelligence(
+            AITurnContext context,
+            AIMissionProposal proposal
+        )
+        {
+            if (proposal.DecoyParticipants.Count > 0)
+                return true;
+
+            string targetOwnerId = proposal.TargetPlanet.GetOwnerInstanceID();
+            return string.IsNullOrEmpty(targetOwnerId)
+                || targetOwnerId == context.Faction.InstanceID
+                || context.Assessment.GetPlanetIntelAge(proposal.TargetPlanet) == 0;
         }
 
         /// <summary>
