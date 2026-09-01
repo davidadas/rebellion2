@@ -3041,7 +3041,9 @@ public static class HeadlessSimulationRunner
         private static GameDifficulty ParseDifficulty(string[] args)
         {
             string value = ParseString(args, _difficultyFlag, null);
-            return Enum.TryParse(value, ignoreCase: true, out GameDifficulty difficulty)
+            return
+                Enum.TryParse(value, ignoreCase: true, out GameDifficulty difficulty)
+                && Enum.IsDefined(typeof(GameDifficulty), difficulty)
                 ? difficulty
                 : GameDifficulty.Medium;
         }

@@ -1043,7 +1043,7 @@ namespace Rebellion.Systems
             facility.ProductionCycleProgress += cycleIncrement;
             if (facility.ProductionCycleProgress >= processRate)
             {
-                facility.ProductionCycleProgress = 0;
+                facility.ProductionCycleProgress -= processRate;
                 facility.ProductionInputReserved = false;
                 facility.ProductionPointReady = true;
             }
