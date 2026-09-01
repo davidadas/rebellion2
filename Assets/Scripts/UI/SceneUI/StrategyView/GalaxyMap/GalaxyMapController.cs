@@ -38,9 +38,9 @@ public sealed class GalaxyMapController
         string,
         GalaxyMapPlanet
     >(StringComparer.Ordinal);
-    private readonly Dictionary<string, PlanetSector> sectorsByInstanceId = new Dictionary<
+    private readonly Dictionary<string, GalaxyMapSector> sectorsByInstanceId = new Dictionary<
         string,
-        PlanetSector
+        GalaxyMapSector
     >(StringComparer.Ordinal);
 
     private IGalaxyMapActions actions;
@@ -277,6 +277,20 @@ public sealed class GalaxyMapController
     }
 
     /// <summary>
+    /// Finds a sector projection in the current galaxy-map snapshot.
+    /// </summary>
+    /// <param name="instanceId">The planet-sector instance identifier.</param>
+    /// <returns>The matching projected sector, or null when it is not visible.</returns>
+    public GalaxyMapSector FindSector(string instanceId)
+    {
+        return
+            !string.IsNullOrEmpty(instanceId)
+            && sectorsByInstanceId.TryGetValue(instanceId, out GalaxyMapSector sector)
+            ? sector
+            : null;
+    }
+
+    /// <summary>
     /// Handles a cluster hover transition emitted by the authored map view.
     /// </summary>
     /// <param name="sectorInstanceId">The hovered planet-sector identifier.</param>
@@ -309,9 +323,9 @@ public sealed class GalaxyMapController
     {
         if (
             !string.IsNullOrEmpty(sectorInstanceId)
-            && sectorsByInstanceId.TryGetValue(sectorInstanceId, out PlanetSector sector)
+            && sectorsByInstanceId.TryGetValue(sectorInstanceId, out GalaxyMapSector sector)
         )
-            actions.OpenPlanetSectorWindow(sector, sourceX, sourceY);
+            actions.OpenPlanetSectorWindow(sector.PlanetSector, sourceX, sourceY);
     }
 
     /// <summary>
@@ -375,7 +389,7 @@ public sealed class GalaxyMapController
         foreach (GalaxyMapSector sector in sectors)
         {
             if (!string.IsNullOrEmpty(sector?.PlanetSector?.InstanceID))
-                sectorsByInstanceId[sector.PlanetSector.InstanceID] = sector.PlanetSector;
+                sectorsByInstanceId[sector.PlanetSector.InstanceID] = sector;
 
             if (sector?.Planets == null)
                 continue;

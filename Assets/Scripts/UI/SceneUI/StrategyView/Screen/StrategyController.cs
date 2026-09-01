@@ -2128,7 +2128,12 @@ public sealed class StrategyController
     /// <param name="sourceY">The source window's vertical coordinate.</param>
     void IBattleAlertWindowActions.OpenBattleResultFleet(Planet planet, int sourceX, int sourceY)
     {
-        OpenPlanetWindow(planet, PlanetIcon.Fleet, sourceX, sourceY);
+        GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
+        if (strategyPlanet == null || !OpenPlanetSectorWindow(strategyPlanet.Sector))
+            return;
+
+        OpenPlanetWindowAt(strategyPlanet, PlanetIcon.Fleet, sourceX, sourceY);
+        MarkDirty();
     }
 
     /// <summary>
@@ -2315,28 +2320,6 @@ public sealed class StrategyController
             PlayPlanetWindowOpenSound(bookmark != null);
 
         return window;
-    }
-
-    /// <summary>
-    /// Opens a category window for an authoritative planet entity.
-    /// </summary>
-    /// <param name="planet">The planet whose feature window should open.</param>
-    /// <param name="icon">The requested feature category.</param>
-    /// <param name="sourceX">The source-space horizontal position.</param>
-    /// <param name="sourceY">The source-space vertical position.</param>
-    private void OpenPlanetWindow(Planet planet, PlanetIcon icon, int sourceX, int sourceY)
-    {
-        if (planet == null || icon == PlanetIcon.None)
-            return;
-
-        GalaxyMapPlanet strategyPlanet = Sectors
-            .SelectMany(sector => sector.Planets)
-            .FirstOrDefault(item => item.Planet?.InstanceID == planet.InstanceID);
-        if (strategyPlanet == null)
-            return;
-
-        OpenPlanetWindowAt(strategyPlanet, icon, sourceX, sourceY);
-        MarkDirty();
     }
 
     /// <summary>
@@ -2754,9 +2737,7 @@ public sealed class StrategyController
     /// <returns>True when the sector was opened or focused.</returns>
     private bool OpenPlanetSectorWindow(PlanetSector planetSector)
     {
-        GalaxyMapSector sector = Sectors.FirstOrDefault(candidate =>
-            candidate.PlanetSector == planetSector
-        );
+        GalaxyMapSector sector = galaxyMapController.FindSector(planetSector?.InstanceID);
         return OpenPlanetSectorWindow(sector);
     }
 
