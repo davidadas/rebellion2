@@ -201,6 +201,7 @@ namespace Rebellion.Game.Missions
                 if (
                     missionParticipant?.GetOwnerInstanceID() != resolvedContext.OwnerInstanceId
                     || !missionParticipant.IsActive()
+                    || missionParticipant is Officer { InjuryPoints: > 0 }
                     || missionParticipant.IsOnMission()
                     || !missionParticipant.IsMovable()
                     || missionParticipant.GetTransitMovement() != null
