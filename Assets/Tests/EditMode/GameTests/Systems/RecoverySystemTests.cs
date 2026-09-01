@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -14,13 +15,12 @@ namespace Rebellion.Tests.Systems
     public class RecoverySystemTests
     {
         [Test]
-        public void ProcessTick_InjuredOfficerCanHeal_ReducesInjury()
+        public void ProcessTick_InjuredOfficerAtFriendlyPlanet_ReducesInjury()
         {
             (GameRoot game, Planet planet) = BuildScene();
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.InjuryPoints = 10;
-            officer.CanHeal = true;
             game.AttachNode(officer, planet);
 
             RecoverySystem system = new RecoverySystem(game);
@@ -31,14 +31,14 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_InjuredOfficerFastHeal_HealsMorePerTick()
+        public void ProcessTick_InjuredHighRankForceSensitiveOfficer_HealsMorePerTick()
         {
             (GameRoot game, Planet planet) = BuildScene();
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.InjuryPoints = 10;
-            officer.CanHeal = true;
-            officer.FastHeal = true;
+            officer.IsForceSensitive = true;
+            officer.ForceValue = game.Config.Jedi.FastHealThreshold;
             game.AttachNode(officer, planet);
 
             RecoverySystem system = new RecoverySystem(game);
@@ -48,25 +48,69 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(
                 7,
                 officer.InjuryPoints,
-                "FastHeal officer should heal 3 points per tick"
+                "High-rank Force-sensitive officer should heal 3 points per tick"
             );
         }
 
         [Test]
-        public void ProcessTick_InjuredOfficerCannotHeal_NoChange()
+        public void ProcessTick_InjuredLowRankForceSensitiveOfficer_HealsNormally()
         {
             (GameRoot game, Planet planet) = BuildScene();
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.InjuryPoints = 10;
-            officer.CanHeal = false;
+            officer.IsForceSensitive = true;
+            officer.ForceValue = game.Config.Jedi.FastHealThreshold - 1;
             game.AttachNode(officer, planet);
 
             RecoverySystem system = new RecoverySystem(game);
 
             system.ProcessTick();
 
-            Assert.AreEqual(10, officer.InjuryPoints, "Officer with CanHeal=false should not heal");
+            Assert.AreEqual(9, officer.InjuryPoints);
+        }
+
+        [Test]
+        public void ProcessTick_InjuredOfficerAtEnemyPlanet_DoesNotHeal()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.InjuryPoints = 10;
+            game.AttachNode(officer, planet);
+            planet.OwnerInstanceID = "rebels";
+
+            RecoverySystem system = new RecoverySystem(game);
+
+            system.ProcessTick();
+
+            Assert.AreEqual(10, officer.InjuryPoints, "Officer at enemy planet should not heal");
+        }
+
+        [Test]
+        public void ProcessTick_InjuredOfficerAboardFriendlyFleet_ReducesInjury()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.InjuryPoints = 10;
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(officer, ship);
+            planet.OwnerInstanceID = "rebels";
+
+            RecoverySystem system = new RecoverySystem(game);
+
+            system.ProcessTick();
+
+            Assert.AreEqual(9, officer.InjuryPoints, "Officer aboard friendly fleet should heal");
         }
 
         [Test]
@@ -76,7 +120,6 @@ namespace Rebellion.Tests.Systems
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.InjuryPoints = 10;
-            officer.CanHeal = true;
             officer.IsCaptured = true;
             game.AttachNode(officer, planet);
 
@@ -88,13 +131,47 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_OfficerInTransit_DoesNotHeal()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.InjuryPoints = 10;
+            officer.Movement = new MovementState { TransitTicks = 10 };
+            game.AttachNode(officer, planet);
+
+            RecoverySystem system = new RecoverySystem(game);
+
+            system.ProcessTick();
+
+            Assert.AreEqual(10, officer.InjuryPoints, "Officer in transit should not heal");
+        }
+
+        [Test]
+        public void ProcessTick_OfficerOnMission_DoesNotHeal()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.InjuryPoints = 10;
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            game.AttachNode(officer, mission);
+
+            RecoverySystem system = new RecoverySystem(game);
+
+            system.ProcessTick();
+
+            Assert.AreEqual(10, officer.InjuryPoints, "Officer on mission should not heal");
+        }
+
+        [Test]
         public void ProcessTick_OfficerFullyHealed_EmitsResult()
         {
             (GameRoot game, Planet planet) = BuildScene();
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.InjuryPoints = 1;
-            officer.CanHeal = true;
             game.AttachNode(officer, planet);
 
             RecoverySystem system = new RecoverySystem(game);
@@ -114,7 +191,6 @@ namespace Rebellion.Tests.Systems
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.InjuryPoints = 10;
-            officer.CanHeal = true;
             game.AttachNode(officer, planet);
 
             RecoverySystem system = new RecoverySystem(game);
@@ -134,8 +210,7 @@ namespace Rebellion.Tests.Systems
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.InjuryPoints = 1;
-            officer.CanHeal = true;
-            officer.FastHeal = true;
+            officer.IsForceSensitive = true;
             game.AttachNode(officer, planet);
 
             RecoverySystem system = new RecoverySystem(game);

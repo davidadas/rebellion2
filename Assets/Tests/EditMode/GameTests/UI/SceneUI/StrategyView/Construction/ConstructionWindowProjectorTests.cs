@@ -170,10 +170,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(3, data.BuildCount);
             Assert.AreEqual("150", data.ConstructionCost);
             Assert.AreEqual("18", data.MaintenanceCost);
-            Assert.AreEqual("8", data.CompletionEstimate);
-            Assert.IsTrue(data.CompletionHasDays);
-            Assert.AreEqual("13", data.DeploymentEstimate);
-            Assert.IsTrue(data.DeploymentHasDays);
+            Assert.AreEqual("8 Days", data.CompletionEstimate);
+            Assert.AreEqual("13 Days", data.DeploymentEstimate);
             Assert.IsTrue(data.DropdownOpen);
             Assert.IsTrue(data.CanStart);
             Assert.AreEqual(2, data.DropdownItems.Count);
@@ -247,8 +245,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 false
             );
 
-            Assert.AreEqual("9999", data.CompletionEstimate);
-            Assert.AreEqual("0", data.DeploymentEstimate);
+            Assert.AreEqual("9999 Days", data.CompletionEstimate);
+            Assert.AreEqual("0 Days", data.DeploymentEstimate);
             Assert.IsFalse(data.CanStart);
         }
 
@@ -271,9 +269,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
 
             Assert.AreEqual("N/A", data.CompletionEstimate);
-            Assert.IsFalse(data.CompletionHasDays);
             Assert.AreEqual("N/A", data.DeploymentEstimate);
-            Assert.IsFalse(data.DeploymentHasDays);
             Assert.IsTrue(data.CanStart);
         }
 
@@ -295,10 +291,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 false
             );
 
-            Assert.AreEqual("8", data.CompletionEstimate);
-            Assert.IsTrue(data.CompletionHasDays);
+            Assert.AreEqual("8 Days", data.CompletionEstimate);
             Assert.AreEqual("N/A", data.DeploymentEstimate);
-            Assert.IsFalse(data.DeploymentHasDays);
         }
 
         [Test]

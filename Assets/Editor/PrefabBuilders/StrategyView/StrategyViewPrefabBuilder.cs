@@ -1414,17 +1414,7 @@ public static class StrategyViewPrefabBuilder
         completionValue.color = Color.white;
         completionValue.fontSize = 11;
         completionValue.alignment = TextAlignmentOptions.TopRight;
-        SetSourceRect(completionValue.rectTransform, 139, 148, 30, 18);
-
-        TextMeshProUGUI completionDays = CreateTextLabel(
-            "CompletionDaysTextField",
-            window.transform
-        );
-        completionDays.text = "Days";
-        completionDays.color = Color.white;
-        completionDays.fontSize = 11;
-        completionDays.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(completionDays.rectTransform, 170, 148, 30, 18);
+        SetSourceRect(completionValue.rectTransform, 139, 148, 61, 18);
 
         TextMeshProUGUI deploymentLabel = CreateTextLabel(
             "DeploymentLabelTextField",
@@ -1444,17 +1434,7 @@ public static class StrategyViewPrefabBuilder
         deploymentValue.color = Color.white;
         deploymentValue.fontSize = 11;
         deploymentValue.alignment = TextAlignmentOptions.TopRight;
-        SetSourceRect(deploymentValue.rectTransform, 139, 169, 30, 18);
-
-        TextMeshProUGUI deploymentDays = CreateTextLabel(
-            "DeploymentDaysTextField",
-            window.transform
-        );
-        deploymentDays.text = "Days";
-        deploymentDays.color = Color.white;
-        deploymentDays.fontSize = 11;
-        deploymentDays.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(deploymentDays.rectTransform, 170, 169, 30, 18);
+        SetSourceRect(deploymentValue.rectTransform, 139, 169, 61, 18);
 
         RawImage dropdownButton = CreateRawImage(
             "DropdownButtonImage",
@@ -1595,10 +1575,8 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "maintenanceCostTextField", maintenanceCost);
         AssignReference(view, "completionLabelTextField", completionLabel);
         AssignReference(view, "completionValueTextField", completionValue);
-        AssignReference(view, "completionDaysTextField", completionDays);
         AssignReference(view, "deploymentLabelTextField", deploymentLabel);
         AssignReference(view, "deploymentValueTextField", deploymentValue);
-        AssignReference(view, "deploymentDaysTextField", deploymentDays);
         AssignReference(view, "dropdownButtonImage", dropdownButton);
         AssignReference(
             view,

@@ -8,9 +8,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Heals injured officers and repairs damaged ships each tick.
-    /// Officers heal based on CanHeal/FastHeal flags. Ships repair hull damage
-    /// at a rate determined by whether they are at a friendly planet.
+    /// Heals injured officers, repairs capital ships, and replenishes fighter squadrons each tick.
     /// </summary>
     public class RecoverySystem
     {
@@ -51,10 +49,12 @@ namespace Rebellion.Systems
         {
             foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
             {
-                if (officer.InjuryPoints <= 0 || !officer.CanHeal || officer.IsCaptured)
+                if (!officer.CanHeal())
                     continue;
 
-                int amount = officer.FastHeal ? _config.FastHealAmount : _config.NormalHealAmount;
+                int amount = officer.HealsFast(_game.Config.Jedi.FastHealThreshold)
+                    ? _config.FastHealAmount
+                    : _config.NormalHealAmount;
                 officer.Heal(amount);
 
                 if (officer.InjuryPoints == 0)

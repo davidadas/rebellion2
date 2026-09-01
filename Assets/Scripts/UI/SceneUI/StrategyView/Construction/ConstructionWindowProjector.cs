@@ -82,9 +82,7 @@ internal sealed class ConstructionWindowProjector
                 ? string.Empty
                 : FormatTotalCost(selected.GetMaintenanceCost(), buildCount),
             FormatEstimate(selectedEstimate?.CompletionTicks),
-            selectedEstimate?.CompletionTicks.HasValue == true,
             FormatEstimate(selectedEstimate?.DeploymentTicks),
-            selectedEstimate?.DeploymentTicks.HasValue == true,
             dropdownOpen,
             selected != null && canStartSelections.Contains(selectedIndex),
             CreateDropdownItems(uiContext, items, selectedIndex)
@@ -125,14 +123,14 @@ internal sealed class ConstructionWindowProjector
     }
 
     /// <summary>
-    /// Formats an estimate for the authored fixed-width value field.
+    /// Formats an estimate with its unit for the authored value field.
     /// </summary>
     /// <param name="ticks">The estimated tick count, when available.</param>
     /// <returns>The displayed estimate value.</returns>
     private static string FormatEstimate(int? ticks)
     {
         return ticks.HasValue
-            ? Math.Max(0, Math.Min(ticks.Value, _maximumDisplayedEstimate)).ToString()
+            ? $"{Math.Max(0, Math.Min(ticks.Value, _maximumDisplayedEstimate))} Days"
             : "N/A";
     }
 

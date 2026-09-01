@@ -386,12 +386,10 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="participants">The mission participants that are free to return.</param>
         /// <param name="additionalPassengers">Additional units that must travel with the first return group.</param>
-        /// <param name="useFallbackDestination">Whether an interrupted mission may return participants to the nearest friendly planet.</param>
         /// <returns>Units that could not be assigned to a return destination.</returns>
         internal List<IMovable> ReturnFromMission(
             IReadOnlyList<IMissionParticipant> participants,
-            IReadOnlyList<IMovable> additionalPassengers,
-            bool useFallbackDestination = false
+            IReadOnlyList<IMovable> additionalPassengers
         )
         {
             if (participants == null)
@@ -412,10 +410,7 @@ namespace Rebellion.Systems
                 if (!returningUnits.Add(participant))
                     continue;
 
-                ContainerNode destination = ResolveMissionReturnDestination(
-                    participant,
-                    useFallbackDestination
-                );
+                ContainerNode destination = ResolveMissionReturnDestination(participant);
                 if (destination == null)
                 {
                     strandedUnits.Add(participant);
@@ -520,16 +515,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves a participant's recorded container or recorded planet, with an optional
-        /// nearest-friendly fallback for an interrupted mission.
+        /// Resolves a participant's recorded container, recorded planet, or nearest friendly planet.
         /// </summary>
         /// <param name="participant">The participant whose return destination is required.</param>
-        /// <param name="useFallbackDestination">Whether to consider the nearest friendly planet after recorded destinations fail.</param>
         /// <returns>The first valid return container, or null when none can receive the participant.</returns>
-        internal ContainerNode ResolveMissionReturnDestination(
-            IMissionParticipant participant,
-            bool useFallbackDestination = false
-        )
+        internal ContainerNode ResolveMissionReturnDestination(IMissionParticipant participant)
         {
             Planet returnLocation = _game.GetSceneNodeByInstanceID<Planet>(
                 participant.MissionReturnLocationInstanceID
@@ -552,12 +542,13 @@ namespace Rebellion.Systems
                     return returnLocation;
             }
 
-            if (!useFallbackDestination)
+            string ownerInstanceID = GetMovementControlOwner(participant);
+            if (string.IsNullOrEmpty(ownerInstanceID))
                 return null;
 
-            Faction owner = _game.GetFactionByOwnerInstanceID(GetMovementControlOwner(participant));
-            Planet currentPlanet = participant.GetParentOfType<Planet>();
-            return FindEvacuationDestinations(owner, participant, currentPlanet).FirstOrDefault();
+            Faction owner = _game.GetFactionByOwnerInstanceID(ownerInstanceID);
+            Planet missionPlanet = participant.GetParentOfType<Planet>();
+            return FindEvacuationDestinations(owner, participant, missionPlanet).FirstOrDefault();
         }
 
         /// <summary>

@@ -16,11 +16,6 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "Espionage";
 
-        /// <summary>
-        /// Returns whether detected participants receive the standard foiled-mission consequences.
-        /// </summary>
-        internal override bool AppliesFoiledParticipantConsequences => false;
-
         /// <summary>Creates an empty espionage mission copy.</summary>
         /// <returns>An empty espionage mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new EspionageMission();

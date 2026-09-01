@@ -577,11 +577,7 @@ namespace Rebellion.Systems
                 missionPlanet
             );
             strandedUnits.AddRange(
-                _movementManager.ReturnFromMission(
-                    returnParticipants,
-                    additionalPassengers,
-                    useFallbackDestination: completedResult == null
-                )
+                _movementManager.ReturnFromMission(returnParticipants, additionalPassengers)
             );
             ResolveStrandedMissionUnits(strandedUnits, missionPlanet, results);
 
@@ -806,11 +802,12 @@ namespace Rebellion.Systems
             int defenderCombat = detector.Commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
             int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
             bool evaded = _provider.NextDouble() * 100 < GetEvasionProbability(score);
+            if (evaded)
+                return;
 
             if (participant is SpecialForces specialForces)
             {
-                if (!evaded)
-                    DestroySpecialForces(specialForces, planet, results);
+                DestroySpecialForces(specialForces, planet, results);
                 return;
             }
 
@@ -832,8 +829,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            if (!evaded)
-                CaptureOfficer(officer, planet, results);
+            CaptureOfficer(officer, planet, results);
         }
 
         /// <summary>

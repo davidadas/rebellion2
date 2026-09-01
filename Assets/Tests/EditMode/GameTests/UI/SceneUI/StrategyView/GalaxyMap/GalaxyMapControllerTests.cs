@@ -166,6 +166,39 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void FindSector_CurrentSnapshot_ReturnsProjectedSectorByInstanceID()
+        {
+            _controller.Render(
+                new[] { _sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff
+            );
+            GalaxyPlanetSector liveSector = new GalaxyPlanetSector
+            {
+                InstanceID = _sector.PlanetSector.InstanceID,
+            };
+
+            GalaxyMapSector sector = _controller.FindSector(liveSector.InstanceID);
+
+            Assert.AreSame(_sector, sector);
+            Assert.AreNotSame(liveSector, sector.PlanetSector);
+        }
+
+        [Test]
+        public void FindSector_SectorOutsideCurrentSnapshot_ReturnsNull()
+        {
+            _controller.Render(
+                new[] { _sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff
+            );
+
+            GalaxyMapSector sector = _controller.FindSector("hidden-sector");
+
+            Assert.IsNull(sector);
+        }
+
+        [Test]
         public void ClearHover_NoHoveredSector_ReturnsFalse()
         {
             Assert.IsFalse(_controller.ClearHover());

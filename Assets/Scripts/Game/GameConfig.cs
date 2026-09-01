@@ -618,6 +618,8 @@ namespace Rebellion.Game
 
             public int ForceQualifiedThreshold { get; set; }
 
+            public int FastHealThreshold { get; set; }
+
             public int ForceGrowthPerMission { get; set; }
 
             public int TrainingCatchUpPercent { get; set; }
