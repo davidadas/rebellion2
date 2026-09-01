@@ -2389,6 +2389,25 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Determines whether a unit has a valid friendly evacuation destination.
+        /// </summary>
+        /// <param name="unit">The unit that would evacuate.</param>
+        /// <returns>True when at least one owned colonized planet can receive the unit.</returns>
+        internal bool CanEvacuateToNearestFriendlyPlanet(IMovable unit)
+        {
+            if (unit == null)
+                return false;
+
+            string ownerId = GetMovementControlOwner(unit);
+            if (string.IsNullOrEmpty(ownerId))
+                return false;
+
+            Faction owner = _game.GetFactionByOwnerInstanceID(ownerId);
+            Planet currentPlanet = unit.GetParentOfType<Planet>();
+            return FindEvacuationDestinations(owner, unit, currentPlanet).Any();
+        }
+
+        /// <summary>
         /// Captures an officer stranded on a planet claimed by an enemy faction.
         /// </summary>
         /// <param name="officer">The stranded officer.</param>

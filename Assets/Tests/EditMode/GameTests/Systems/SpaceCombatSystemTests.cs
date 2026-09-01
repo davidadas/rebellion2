@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -10,14 +9,12 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.Systems
 {
     /// <summary>
-    /// Tests for SpaceCombatSystem.
-    /// Validates the 7-phase combat pipeline.
+    /// Tests strategy-level space combat detection, application, and reporting.
     /// </summary>
     [TestFixture]
     public class SpaceCombatSystemTests : CombatTestBase
@@ -41,9 +38,7 @@ namespace Rebellion.Tests.Systems
             CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>()[0];
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
             empireShip.DisplayName = "Empire Ship";
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, empireFleet, allianceFleet, out List<GameResult> results);
 
@@ -70,7 +65,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Resolve_MultipleCombatRounds_ReturnsAggregateDamage()
+        public void Resolve_CompletedEncounter_ReturnsAggregateDamage()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
@@ -103,28 +98,22 @@ namespace Rebellion.Tests.Systems
                 10,
                 shieldRechargeRate: 0
             );
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, empireFleet, allianceFleet, out List<GameResult> results);
 
             SpaceCombatResult combatResult = GetCombatResult(results);
-            ShipDamageResult repeatedDamage = combatResult.ShipDamage.FirstOrDefault(damage =>
-                combatResult
+            Assert.IsNotEmpty(combatResult.ShipDamage);
+            foreach (ShipDamageResult damage in combatResult.ShipDamage)
+            {
+                int reportedDamage = combatResult
                     .Events.OfType<GameObjectDamagedResult>()
-                    .Count(result => result.GameObject == damage.Ship) > 1
-            );
-            List<GameObjectDamagedResult> repeatedDamageEvents = combatResult
-                .Events.OfType<GameObjectDamagedResult>()
-                .Where(result => result.GameObject == repeatedDamage?.Ship)
-                .ToList();
-
-            Assert.IsNotNull(repeatedDamage);
-            Assert.AreEqual(100, repeatedDamage.HullBefore);
-            Assert.AreEqual(repeatedDamage.Ship.CurrentHullStrength, repeatedDamage.HullAfter);
-            Assert.AreEqual(
-                repeatedDamage.HullBefore - repeatedDamage.HullAfter,
-                repeatedDamageEvents.Sum(result => result.DamageValue)
-            );
+                    .Where(result => result.GameObject == damage.Ship)
+                    .Sum(result => result.DamageValue);
+                Assert.AreEqual(100, damage.HullBefore);
+                Assert.AreEqual(damage.Ship.CurrentHullStrength, damage.HullAfter);
+                Assert.AreEqual(damage.HullBefore - damage.HullAfter, reportedDamage);
+            }
         }
 
         [Test]
@@ -141,9 +130,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet fleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             int initialHull = fleet.GetChildren<CapitalShip>()[0].CurrentHullStrength;
-
-            QueueRNG rng = new QueueRNG();
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             bool detected = RunCombat(manager);
 
@@ -192,7 +179,7 @@ namespace Rebellion.Tests.Systems
             );
             allianceFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, empireFleet, allianceFleet, out _);
 
@@ -238,7 +225,7 @@ namespace Rebellion.Tests.Systems
             );
             allianceFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, empireFleet, allianceFleet, out _);
 
@@ -259,9 +246,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet fleet1 = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet fleet2 = CreateFleet(game, "f2", "empire", planet, 1, 100, 10);
-
-            QueueRNG rng = new QueueRNG();
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             RunCombat(manager);
 
@@ -289,9 +274,7 @@ namespace Rebellion.Tests.Systems
             CapitalShip empireShip1 = empireFleet1.GetChildren<CapitalShip>()[0];
             CapitalShip empireShip2 = empireFleet2.GetChildren<CapitalShip>()[0];
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryRunCombat(manager, out List<GameResult> results);
 
@@ -323,9 +306,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             RunCombat(manager);
 
@@ -352,9 +333,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1, 0);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1000, 100);
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             RunCombat(manager);
 
@@ -399,9 +378,7 @@ namespace Rebellion.Tests.Systems
                 3,
                 shieldRechargeRate: 0
             );
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             RunCombat(manager);
 
@@ -431,9 +408,7 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
             CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>()[0];
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryRunCombat(manager, out List<GameResult> results);
 
@@ -459,9 +434,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             RunCombat(manager);
 
@@ -506,9 +479,7 @@ namespace Rebellion.Tests.Systems
                 1,
                 10
             );
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             RunCombat(manager);
 
@@ -554,9 +525,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             RunCombat(manager);
 
@@ -593,8 +562,7 @@ namespace Rebellion.Tests.Systems
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>().Single();
             empireShip.PrimaryWeapons.Clear();
             allianceShip.PrimaryWeapons.Clear();
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, empireFleet, allianceFleet, out List<GameResult> results);
 
@@ -609,9 +577,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(HasOpposingReadyFleets(planet));
         }
 
-        [TestCase(true, CombatSide.Defender)]
-        [TestCase(false, CombatSide.Attacker)]
-        public void Resolve_OnlyOneUnarmedSideCanEvacuate_ReportsRemainingSideVictory(
+        [TestCase(true, CombatSide.Attacker)]
+        [TestCase(false, CombatSide.Defender)]
+        public void Resolve_OnlyOneUnarmedSideCanEvacuate_ReportsSurvivingSideVictory(
             bool attackerCanEvacuate,
             CombatSide expectedWinner
         )
@@ -622,30 +590,29 @@ namespace Rebellion.Tests.Systems
             (Planet fallbackPlanet, _) = CreatePlanet(game, "fallback", owner: fallbackOwner);
             Fleet attacker = CreateFleet(game, "attacker", "empire", combatPlanet, 1, 100, 0);
             Fleet defender = CreateFleet(game, "defender", "alliance", combatPlanet, 1, 100, 0);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
 
             SpaceCombatResult combatResult = GetCombatResult(results);
             Fleet retreatingFleet = attackerCanEvacuate ? attacker : defender;
-            Fleet remainingFleet = attackerCanEvacuate ? defender : attacker;
+            Fleet destroyedFleet = attackerCanEvacuate ? defender : attacker;
             Assert.AreEqual(expectedWinner, combatResult.Winner);
             Assert.AreEqual(
                 attackerCanEvacuate
                     ? SpaceCombatSideOutcome.Withdrawn
-                    : SpaceCombatSideOutcome.Active,
+                    : SpaceCombatSideOutcome.Destroyed,
                 combatResult.AttackerOutcome
             );
             Assert.AreEqual(
                 attackerCanEvacuate
-                    ? SpaceCombatSideOutcome.Active
+                    ? SpaceCombatSideOutcome.Destroyed
                     : SpaceCombatSideOutcome.Withdrawn,
                 combatResult.DefenderOutcome
             );
             Assert.AreSame(fallbackPlanet, retreatingFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(retreatingFleet.Movement);
-            Assert.AreSame(combatPlanet, remainingFleet.GetParentOfType<Planet>());
-            Assert.IsNull(remainingFleet.Movement);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(destroyedFleet.InstanceID));
         }
 
         [Test]
@@ -666,9 +633,7 @@ namespace Rebellion.Tests.Systems
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
             CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>()[0];
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryRunCombat(manager, out List<GameResult> results);
 
@@ -713,57 +678,12 @@ namespace Rebellion.Tests.Systems
             CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.MaxShieldStrength = 100;
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
 
             Assert.AreEqual(100, defenderShip.CurrentHullStrength);
             Assert.IsFalse(HasDamageFor(results, defenderShip));
-        }
-
-        [Test]
-        public void Resolve_ShieldRechargeRateWithoutShieldStrength_DoesNotAbsorbDamage()
-        {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire" };
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.GetFactions().Add(empire);
-            game.GetFactions().Add(alliance);
-
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
-            Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(planetSector, game.Galaxy);
-            game.AttachNode(planet, planetSector);
-
-            Fleet attacker = CreateFleet(
-                game,
-                "f1",
-                "empire",
-                planet,
-                1,
-                1,
-                10,
-                shieldRechargeRate: 0
-            );
-            Fleet defender = CreateFleet(
-                game,
-                "f2",
-                "alliance",
-                planet,
-                1,
-                100,
-                100,
-                shieldRechargeRate: 15
-            );
-            CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
-            defenderShip.MaxShieldStrength = 0;
-
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
-
-            TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
-
-            Assert.AreEqual(60, defenderShip.CurrentHullStrength);
-            Assert.AreEqual(40, GetDamageFor(results, defenderShip));
         }
 
         [Test]
@@ -805,7 +725,7 @@ namespace Rebellion.Tests.Systems
             CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.MaxShieldStrength = 50;
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
 
@@ -850,7 +770,7 @@ namespace Rebellion.Tests.Systems
             CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.MaxShieldStrength = 50;
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
 
@@ -899,7 +819,7 @@ namespace Rebellion.Tests.Systems
             CapitalShip defenderShip = defender.GetChildren<CapitalShip>().Single();
             attackerShip.MaxShieldStrength = 100;
             defenderShip.MaxShieldStrength = 100;
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
 
@@ -977,7 +897,7 @@ namespace Rebellion.Tests.Systems
             defenderShip.CurrentHullStrength = 50;
             defenderShip.MaxShieldStrength = 100;
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
 
@@ -1024,7 +944,7 @@ namespace Rebellion.Tests.Systems
             defenderShip.CurrentHullStrength = 50;
             defenderShip.MaxShieldStrength = 100;
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, attacker, defender, out _);
 
@@ -1061,7 +981,7 @@ namespace Rebellion.Tests.Systems
             CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
             defenderShip.MaxShieldStrength = 200;
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
 
@@ -1070,7 +990,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Resolve_FightersAttackCapitalShips_AppliesDamage()
+        public void Resolve_FightersAttackCapitalShips_ReportsDamage()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
@@ -1094,48 +1014,14 @@ namespace Rebellion.Tests.Systems
                 12
             );
             Fleet targetFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1000, 5);
+            CapitalShip targetShip = targetFleet.GetChildren<CapitalShip>().Single();
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            TryRunCombat(manager, out List<GameResult> results);
 
-            RunCombat(manager);
-
-            Fleet target = game.GetSceneNodeByInstanceID<Fleet>("f2");
-            Assert.IsNotNull(target, "Target fleet should still exist");
-            Assert.Less(
-                target.GetChildren<CapitalShip>()[0].CurrentHullStrength,
-                1000,
-                "Fighters should damage capital ships"
-            );
-        }
-
-        [Test]
-        public void Resolve_DifferentRNGValues_ProducesDifferentDamage()
-        {
-            int damage1 = ResolveDamageValues(0.0).First();
-            int damage2 = ResolveDamageValues(1.0).First();
-
-            Assert.AreNotEqual(damage1, damage2, "Damage should vary with different RNG");
-        }
-
-        [Test]
-        public void Resolve_SameRNGSeed_ProducesSameOutcome()
-        {
-            CollectionAssert.AreEqual(
-                ResolveDamageValues(0.5),
-                ResolveDamageValues(0.5),
-                "Same RNG should produce identical results"
-            );
-        }
-
-        [Test]
-        public void Resolve_DifferentRNGSeeds_ProduceDifferentOutcomes()
-        {
-            CollectionAssert.AreNotEqual(
-                ResolveDamageValues(0.0),
-                ResolveDamageValues(1.0),
-                "Different RNG should produce different results"
-            );
+            ShipDamageResult damage = GetCombatResult(results)
+                .ShipDamage.Single(result => result.Ship == targetShip);
+            Assert.Less(damage.HullAfter, damage.HullBefore);
         }
 
         [Test]
@@ -1156,9 +1042,7 @@ namespace Rebellion.Tests.Systems
             Fleet allianceFleet = new Fleet { InstanceID = "f2", OwnerInstanceID = "alliance" };
             game.AttachNode(empireFleet, planet);
             game.AttachNode(allianceFleet, planet);
-
-            QueueRNG rng = new QueueRNG();
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             RunCombat(manager);
 
@@ -1181,9 +1065,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 10000, 1);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 10000, 1);
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
 
@@ -1225,9 +1107,7 @@ namespace Rebellion.Tests.Systems
             // Weak empire fleet vs strong alliance fleet — alliance defends
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1, 0);
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 3, 1000, 100);
-
-            QueueRNG rng = new QueueRNG(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             RunCombat(manager);
 
@@ -1254,7 +1134,7 @@ namespace Rebellion.Tests.Systems
                 CurrentPosition = planet.GetPosition(),
             };
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             List<GameResult> results = manager.ProcessTick();
 
@@ -1286,7 +1166,7 @@ namespace Rebellion.Tests.Systems
                 CurrentPosition = planet.GetPosition(),
             };
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             List<GameResult> results = manager.ProcessTick();
 
@@ -1316,9 +1196,7 @@ namespace Rebellion.Tests.Systems
                 CreateFleet(game, $"ef{i}", "empire", planet, 1, 1000, 20);
                 CreateFleet(game, $"af{i}", "alliance", planet, 1, 1000, 20);
             }
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             List<GameResult> results = manager.ProcessTick();
 
@@ -1343,9 +1221,9 @@ namespace Rebellion.Tests.Systems
             CreatePlanet(game, "allianceHome", owner: "alliance");
 
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
-            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 10);
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
 
@@ -1377,7 +1255,7 @@ namespace Rebellion.Tests.Systems
                 100,
                 shieldRechargeRate: 0
             );
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
 
@@ -1416,7 +1294,7 @@ namespace Rebellion.Tests.Systems
             );
             allianceFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
 
@@ -1438,7 +1316,7 @@ namespace Rebellion.Tests.Systems
             empireFleet.GetChildren<CapitalShip>()[0].PrimaryWeapons.Clear();
             allianceFleet.GetChildren<CapitalShip>()[0].PrimaryWeapons.Clear();
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
 
@@ -1456,7 +1334,7 @@ namespace Rebellion.Tests.Systems
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
             CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>().Single();
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>().Single();
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             List<GameResult> results = manager.ProcessTick();
 
@@ -1512,7 +1390,7 @@ namespace Rebellion.Tests.Systems
                 CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0),
                 CreateFleet(game, "af2", "alliance", combatPlanet, 1, 100, 0),
             };
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
 
@@ -1541,7 +1419,7 @@ namespace Rebellion.Tests.Systems
                 .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                 .Select(ship => ship.InstanceID)
                 .ToHashSet();
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             List<GameResult> results = manager.ProcessTick();
 
@@ -1585,9 +1463,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(planet, planetSector);
             CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
-
-            QueueRNG rng = new QueueRNG();
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             List<GameResult> results = manager.ProcessTick();
             PendingCombatResult pending = results.OfType<PendingCombatResult>().SingleOrDefault();
@@ -1622,7 +1498,7 @@ namespace Rebellion.Tests.Systems
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
             empireFleet.Waypoints.Add("empire-next");
             allianceFleet.Waypoints.Add("alliance-next");
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             List<GameResult> results = manager.ProcessTick();
 
@@ -1638,6 +1514,7 @@ namespace Rebellion.Tests.Systems
             game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
                 "player1";
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            CreatePlanet(game, "empire-fallback", owner: "empire");
             Fleet fleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             Starfighter defender = new Starfighter
             {
@@ -1649,7 +1526,7 @@ namespace Rebellion.Tests.Systems
                 LaserCannon = 5,
             };
             game.AttachNode(defender, planet);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             PendingCombatResult pending = manager
                 .ProcessTick()
@@ -1683,7 +1560,7 @@ namespace Rebellion.Tests.Systems
                 LaserCannon = 5,
             };
             game.AttachNode(defender, planet);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             List<GameResult> results = manager.ProcessTick();
 
@@ -1705,11 +1582,13 @@ namespace Rebellion.Tests.Systems
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
             game.AttachNode(planet, planetSector);
+            CreatePlanet(game, "empire-fallback", owner: "empire");
+            CreatePlanet(game, "alliance-fallback", owner: "alliance");
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
             allianceFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             PendingCombatResult pending = manager
                 .ProcessTick()
@@ -1753,7 +1632,7 @@ namespace Rebellion.Tests.Systems
                 .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                 .Select(ship => ship.InstanceID)
                 .ToHashSet();
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             PendingCombatResult pending = manager
                 .ProcessTick()
@@ -1801,7 +1680,7 @@ namespace Rebellion.Tests.Systems
                 .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                 .Select(ship => ship.InstanceID)
                 .ToHashSet();
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
             SpaceCombatResult result = manager
@@ -1860,7 +1739,7 @@ namespace Rebellion.Tests.Systems
                 CurrentPosition = planet.GetPosition(),
             };
             string inTransitShipId = inTransitFleet.GetChildren<CapitalShip>().Single().InstanceID;
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
 
@@ -1907,7 +1786,7 @@ namespace Rebellion.Tests.Systems
                 LaserCannon = 100,
             };
             game.AttachNode(defender, planet);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
             SpaceCombatResult result = manager
@@ -1948,7 +1827,7 @@ namespace Rebellion.Tests.Systems
             tie.ManufacturingStatus = ManufacturingStatus.Complete;
             tie.Movement = null;
             game.AttachNode(tie, planet);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5));
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
             SpaceCombatResult result = manager
@@ -1960,32 +1839,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(500, corvette.CurrentHullStrength);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(tie.InstanceID));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("alliance-fleet"));
-        }
-
-        [Test]
-        public void ResolvePending_WhenResolveThrows_KeepsPendingDecision()
-        {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.GetFactions().Add(empire);
-            game.GetFactions().Add(alliance);
-
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
-            Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(planetSector, game.Galaxy);
-            game.AttachNode(planet, planetSector);
-            CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
-            CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
-
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new ThrowingRNG());
-
-            manager.ProcessTick();
-
-            Assert.Throws<InvalidOperationException>(() =>
-                manager.ResolvePending(autoResolve: true)
-            );
-            Assert.IsTrue(manager.HasPendingDecision);
         }
 
         [Test]
@@ -2001,7 +1854,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
             List<GameResult> results = manager.ResolvePendingRetreat("empire");
@@ -2050,7 +1903,7 @@ namespace Rebellion.Tests.Systems
                 .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                 .Select(ship => ship.InstanceID)
                 .ToHashSet();
-            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
             List<GameResult> results = manager.ResolvePendingRetreat("empire");
@@ -2133,9 +1986,7 @@ namespace Rebellion.Tests.Systems
                 100,
                 shieldRechargeRate: 0
             );
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            TryResolveCombat(MakeSpaceCombat(game, rng), empireFleet, allianceFleet, out _);
+            TryResolveCombat(MakeSpaceCombat(game), empireFleet, allianceFleet, out _);
 
             Assert.Contains(
                 officer,
@@ -2194,9 +2045,7 @@ namespace Rebellion.Tests.Systems
                 100,
                 shieldRechargeRate: 0
             );
-
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            TryResolveCombat(MakeSpaceCombat(game, rng), empireFleet, allianceFleet, out _);
+            TryResolveCombat(MakeSpaceCombat(game), empireFleet, allianceFleet, out _);
 
             Assert.Contains(
                 officer,
@@ -2249,14 +2098,6 @@ namespace Rebellion.Tests.Systems
                 .Any(result => result.GameObject == ship && result.DamageValue > 0);
         }
 
-        private static int GetDamageFor(List<GameResult> results, CapitalShip ship)
-        {
-            GameObjectDamagedResult damageResult = GetDamageResults(results)
-                .FirstOrDefault(result => result.GameObject == ship);
-
-            return damageResult?.DamageValue ?? 0;
-        }
-
         private static IEnumerable<GameObjectDamagedResult> GetDamageResults(
             List<GameResult> results
         )
@@ -2270,40 +2111,6 @@ namespace Rebellion.Tests.Systems
         private static SpaceCombatResult GetCombatResult(List<GameResult> results)
         {
             return results.OfType<SpaceCombatResult>().Single();
-        }
-
-        private List<int> ResolveDamageValues(double randomValue)
-        {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire" };
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.GetFactions().Add(empire);
-            game.GetFactions().Add(alliance);
-
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
-            Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(planetSector, game.Galaxy);
-            game.AttachNode(planet, planetSector);
-
-            CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
-            CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
-
-            QueueRNG rng = new QueueRNG(
-                randomValue,
-                randomValue,
-                randomValue,
-                randomValue,
-                randomValue,
-                randomValue
-            );
-            TryRunCombat(MakeSpaceCombat(game, rng), out List<GameResult> results);
-
-            List<int> damageValues = GetDamageResults(results)
-                .Select(result => result.DamageValue)
-                .ToList();
-
-            CollectionAssert.IsNotEmpty(damageValues, "Combat should emit damage results.");
-            return damageValues;
         }
 
         private bool HasOpposingReadyFleets(Planet planet)
@@ -2340,6 +2147,7 @@ namespace Rebellion.Tests.Systems
                     CurrentHullStrength = hullStrength,
                     ShieldRechargeRate = shieldRechargeRate,
                     ManufacturingStatus = ManufacturingStatus.Complete,
+                    WeaponRecharge = 1,
                 };
 
                 // Add weapon arcs

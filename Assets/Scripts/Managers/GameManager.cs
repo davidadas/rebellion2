@@ -482,7 +482,7 @@ public sealed class GameManager
             _officerLoyaltySystem,
             _personnelSystem
         );
-        _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementSystem);
+        _spaceCombatSystem = new SpaceCombatSystem(_game, _movementSystem);
         _bombardmentSystem = new BombardmentSystem(
             _game,
             _randomProvider,

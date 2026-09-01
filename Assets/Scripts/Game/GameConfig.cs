@@ -518,7 +518,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Combat resolution parameters for assault, bombardment, and dogfights.
+        /// Combat resolution parameters for assault and bombardment.
         /// </summary>
         [PersistableObject]
         public class CombatConfig
@@ -527,8 +527,6 @@ namespace Rebellion.Game
 
             public PlanetaryAssaultConfig PlanetaryAssault { get; set; } =
                 new PlanetaryAssaultConfig();
-
-            public SpaceCombatConfig SpaceCombat { get; set; } = new SpaceCombatConfig();
         }
 
         /// <summary>
@@ -567,23 +565,6 @@ namespace Rebellion.Game
             public int DefenderWinsMaximum { get; set; }
             public int AttackerWinsMinimum { get; set; }
             public int CaptureGarrisonCount { get; set; }
-        }
-
-        /// <summary>
-        /// Space combat damage and loss parameters.
-        /// </summary>
-        [PersistableObject]
-        public class SpaceCombatConfig
-        {
-            public int FighterTacticalDurability { get; set; }
-
-            public int WeaponDamageVariancePercent { get; set; }
-
-            public int FighterDogfightLossRatePercent { get; set; }
-
-            public int FighterDamageBasePercent { get; set; }
-
-            public int FighterDamageSpreadPercent { get; set; }
         }
 
         /// <summary>
