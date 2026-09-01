@@ -998,7 +998,12 @@ namespace Rebellion.Systems
                 config.CapitalShipProductionPenaltyPercent,
                 config.FighterProductionPenaltyPercent
             );
-            return (double)modifier / _productionRateScale;
+            int difficultyModifier = _game
+                .GetDifficultyModifier(planet.GetOwnerInstanceID())
+                .ManufacturingSpeedPercent;
+            return (double)modifier
+                * difficultyModifier
+                / (_productionRateScale * _productionRateScale);
         }
 
         /// <summary>

@@ -10,7 +10,7 @@ namespace Rebellion.Generation
 {
     /// <summary>
     /// Seeds starting territory: assigns ownership and a Strong / Weak / Neutral
-    /// strength tag to every core planet based on difficulty-driven percentages,
+    /// strength tag to every core planet based on the standard ownership profile,
     /// places named starting planets, and records each faction's headquarters.
     /// </summary>
     public sealed class GalaxySeeder : IGameSeeder
@@ -259,21 +259,23 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Finds the difficulty profile matching the player's faction and difficulty level.
-        /// Falls back through progressively looser matches: exact -> faction wildcard ->
-        /// any wildcard -> "Default" name -> first entry.
+        /// Finds the standard profile matching the player's faction.
+        /// Difficulty modifies runtime outcomes and never changes initial planet ownership.
         /// </summary>
         /// <param name="config">Galaxy classification config with difficulty profiles.</param>
-        /// <param name="summary">Game summary with player faction and difficulty.</param>
+        /// <param name="summary">Game summary with the player faction.</param>
         /// <returns>The best-matching difficulty profile.</returns>
         private DifficultyProfile ResolveDifficultyProfile(
             GalaxyClassificationSection config,
             GameSummary summary
         )
         {
-            int difficulty = (int)summary.Difficulty;
+            int difficulty = (int)GameDifficulty.Medium;
             return config.Profiles.FirstOrDefault(p =>
                     p.PlayerFactionID == summary.PlayerFactionID && p.Difficulty == difficulty
+                )
+                ?? config.Profiles.FirstOrDefault(p =>
+                    string.IsNullOrEmpty(p.PlayerFactionID) && p.Difficulty == difficulty
                 )
                 ?? config.Profiles.FirstOrDefault(p =>
                     p.PlayerFactionID == summary.PlayerFactionID && p.Difficulty == -1

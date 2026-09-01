@@ -12,6 +12,9 @@ namespace Rebellion.Game
     [PersistableObject]
     public class GameConfig
     {
+        public Dictionary<GameDifficulty, GameModifier> DifficultyModifiers { get; set; } =
+            new Dictionary<GameDifficulty, GameModifier>();
+
         public AIConfig AI { get; set; } = new AIConfig();
 
         public MovementConfig Movement { get; set; } = new MovementConfig();

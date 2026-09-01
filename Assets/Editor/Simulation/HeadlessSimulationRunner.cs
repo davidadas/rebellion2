@@ -25,6 +25,7 @@ public static class HeadlessSimulationRunner
     private const string _tickCountFlag = "-simTicks";
     private const string _outputPathFlag = "-simOut";
     private const string _seedFlag = "-simSeed";
+    private const string _difficultyFlag = "-simDifficulty";
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
     private const string _savedSimulationPlayerId = "PLAYER1";
     private const int _percentScale = 100;
@@ -97,7 +98,7 @@ public static class HeadlessSimulationRunner
             GameSummary summary = new GameSummary
             {
                 GalaxySize = GameSize.Large,
-                Difficulty = GameDifficulty.Easy,
+                Difficulty = options.Difficulty,
                 VictoryCondition = GameVictoryCondition.Conquest,
                 ResourceAvailability = GameResourceAvailability.Normal,
                 StartingResearchLevel = 1,
@@ -111,7 +112,7 @@ public static class HeadlessSimulationRunner
                 summary.Seed = options.Seed.Value;
 
             string startMessage =
-                $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} galaxySize={summary.GalaxySize}";
+                $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} galaxySize={summary.GalaxySize} difficulty={summary.Difficulty}";
             UnityEngine.Debug.Log(startMessage);
             LogToFile(logPath, startMessage);
 
@@ -3007,6 +3008,7 @@ public static class HeadlessSimulationRunner
         public int TickCount { get; set; }
         public string OutputPath { get; set; }
         public int? Seed { get; set; }
+        public GameDifficulty Difficulty { get; set; } = GameDifficulty.Medium;
         public string SaveFileName { get; set; }
         public string SaveDisplayName { get; set; }
         public string PlayerFactionId { get; set; }
@@ -3027,7 +3029,21 @@ public static class HeadlessSimulationRunner
                     "SimulationResults/headless-simulation-summary.json"
                 ),
                 Seed = ParseNullableInt(args, _seedFlag),
+                Difficulty = ParseDifficulty(args),
             };
+        }
+
+        /// <summary>
+        /// Parses the optional simulation difficulty.
+        /// </summary>
+        /// <param name="args">The command-line arguments.</param>
+        /// <returns>The requested difficulty, or Medium when absent or invalid.</returns>
+        private static GameDifficulty ParseDifficulty(string[] args)
+        {
+            string value = ParseString(args, _difficultyFlag, null);
+            return Enum.TryParse(value, ignoreCase: true, out GameDifficulty difficulty)
+                ? difficulty
+                : GameDifficulty.Medium;
         }
 
         /// <summary>

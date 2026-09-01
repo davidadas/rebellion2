@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -379,7 +380,7 @@ namespace Rebellion.Generation
                 if (faction == null)
                     continue;
 
-                int deployBudget = CalculateDeployBudget(ctx, faction, budget, config);
+                int deployBudget = CalculateDeployBudget(ctx, faction, budget);
                 if (deployBudget <= 0)
                     continue;
 
@@ -510,29 +511,26 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Calculates the deployment budget for a faction based on available maintenance
-        /// capacity. Selects the appropriate budget level from config using galaxy size,
-        /// difficulty, and whether the faction is AI-controlled.
+        /// capacity. Selects the standard budget level using galaxy size and whether the
+        /// faction is AI-controlled. Difficulty modifies runtime outcomes instead.
         /// </summary>
         /// <param name="ctx">The generation context.</param>
         /// <param name="faction">The faction to calculate budget for.</param>
         /// <param name="budget">The faction's budget config with level entries.</param>
-        /// <param name="config">Unit deployment config.</param>
         /// <returns>The deployment budget in maintenance cost units.</returns>
         private int CalculateDeployBudget(
             GenerationContext ctx,
             Faction faction,
-            FactionBudget budget,
-            UnitDeploymentSection config
+            FactionBudget budget
         )
         {
             bool isAI =
                 ctx.Summary.PlayerFactionID != null
                 && faction.InstanceID != ctx.Summary.PlayerFactionID;
-            int effectiveDifficulty = ResolveBudgetDifficulty(config, (int)ctx.Summary.Difficulty);
             BudgetLevel level = ResolveBudgetLevel(
                 budget,
                 (int)ctx.Summary.GalaxySize,
-                effectiveDifficulty,
+                (int)GameDifficulty.Medium,
                 isAI
             );
             int maintenanceCapacity = CalculateMaintenanceCapacity(ctx.Sectors, faction);
@@ -540,21 +538,6 @@ namespace Rebellion.Generation
             int availableCapacity = Math.Max(0, maintenanceCapacity - maintenanceUsed);
 
             return availableCapacity * level.Percentage / 100;
-        }
-
-        /// <summary>
-        /// Resolves the budget difficulty used by unit deployment.
-        /// </summary>
-        /// <param name="config">Unit deployment config.</param>
-        /// <param name="difficulty">Requested game difficulty.</param>
-        /// <returns>The mapped budget difficulty.</returns>
-        private int ResolveBudgetDifficulty(UnitDeploymentSection config, int difficulty)
-        {
-            BudgetDifficultyMapping mapping = config.BudgetDifficultyMappings?.FirstOrDefault(m =>
-                m.Difficulty == difficulty
-            );
-
-            return mapping?.BudgetDifficulty ?? difficulty;
         }
 
         /// <summary>
