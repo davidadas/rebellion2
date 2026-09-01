@@ -556,6 +556,8 @@ internal sealed class BattleAlertWindowProjector
         {
             if (child is Fleet || child is Starfighter fighter && IsActiveStarfighter(fighter))
                 continue;
+            if (!IsConstructed(child))
+                continue;
 
             rows.Add(
                 new BattleAlertRowRenderData(
@@ -596,6 +598,9 @@ internal sealed class BattleAlertWindowProjector
 
         foreach (ISceneNode child in node.GetChildren())
         {
+            if (!IsConstructed(child))
+                continue;
+
             rows.Add(
                 new BattleAlertRowRenderData(
                     child.GetDisplayName(),
@@ -604,6 +609,17 @@ internal sealed class BattleAlertWindowProjector
             );
             AddDescendantRows(rows, child, uiContext);
         }
+    }
+
+    /// <summary>
+    /// Returns whether a scene node is available outside the manufacturing pipeline.
+    /// </summary>
+    /// <param name="node">The scene node to inspect.</param>
+    /// <returns>True when the node is not manufacturable or has completed manufacturing.</returns>
+    private static bool IsConstructed(ISceneNode node)
+    {
+        return node is not IManufacturable manufacturable
+            || manufacturable.ManufacturingStatus == ManufacturingStatus.Complete;
     }
 
     /// <summary>
