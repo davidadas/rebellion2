@@ -1095,11 +1095,37 @@ namespace Rebellion.Tests.AI.Director
                 TargetPlanetId = enemy.InstanceID,
             };
             game.AttachNode(fleet, owned);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
             Planet target = assessment.GetAttackTargetPlanet(fleet);
 
-            Assert.AreSame(enemy, target);
+            Assert.AreEqual(enemy.InstanceID, target.InstanceID);
+            Assert.AreEqual(rebels.InstanceID, target.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void GetAttackTargetPlanet_StaleEnemySnapshot_ReturnsKnownTarget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = enemy.InstanceID,
+            };
+            game.AttachNode(fleet, owned);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
+            enemy.OwnerInstanceID = null;
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Planet target = assessment.GetAttackTargetPlanet(fleet);
+
+            Assert.IsNotNull(target);
+            Assert.AreEqual(rebels.InstanceID, target.GetOwnerInstanceID());
         }
 
         [Test]

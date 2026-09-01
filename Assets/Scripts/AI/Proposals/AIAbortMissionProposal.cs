@@ -20,7 +20,10 @@ namespace Rebellion.AI.Proposals
             Mission = mission;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns the claim that prevents another action from modifying the mission.
+        /// </summary>
+        /// <returns>The mission claim, or no claims when the mission is unavailable.</returns>
         public override IReadOnlyList<string> GetClaimKeys()
         {
             return Mission == null
@@ -28,25 +31,39 @@ namespace Rebellion.AI.Proposals
                 : new List<string> { AIClaimKeys.Mission(Mission.InstanceID) };
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns a stable sort key for the mission-abort proposal.
+        /// </summary>
+        /// <returns>A stable sort key.</returns>
         public override string GetSortKey()
         {
             return $"mission-abort:{Mission?.InstanceID}";
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns whether the mission-abort proposal may be selected.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the mission remains eligible for abortion.</returns>
         public override bool CanSelect(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns whether the mission-abort proposal may execute.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the mission can still be aborted.</returns>
         public override bool CanExecute(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Aborts the active mission when it remains valid.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         public override void Execute(AITurnContext context)
         {
             if (CanExecute(context))

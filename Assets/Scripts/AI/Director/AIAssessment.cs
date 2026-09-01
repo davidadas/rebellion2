@@ -1400,7 +1400,7 @@ namespace Rebellion.AI.Director
             )
                 return null;
 
-            Planet targetPlanet = _context?.Game?.GetSceneNodeByInstanceID<Planet>(targetPlanetId);
+            Planet targetPlanet = GetKnownPlanet(targetPlanetId);
             return IsEnemyPlanet(targetPlanet) ? targetPlanet : null;
         }
 

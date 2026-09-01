@@ -13,7 +13,11 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIAbortMissionPlanner : IAIProposalPlanner
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns proposals for active missions that should be aborted.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>Mission-abort proposals.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
             List<AIProposal> proposals = new List<AIProposal>();
