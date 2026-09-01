@@ -2470,7 +2470,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_OfficerRecovered_UsesRecoveredDefinition()
+        public void CreateMessages_OfficerRecovered_OmitsOfficerImage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer officer = new Officer
@@ -2506,7 +2506,7 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual("recovered:Agent:Coruscant", message.Title);
             Assert.AreEqual("fallback-card", message.DisplayImagePath);
-            Assert.AreEqual("agent-card", message.OverlayImagePath);
+            Assert.IsNull(message.OverlayImagePath);
             Assert.AreEqual("recovered-voice", message.OfficerVoicePath);
         }
 

@@ -412,7 +412,9 @@ namespace Rebellion.Game.Messages
                         },
                         { "system", planet?.GetDisplayName() ?? string.Empty },
                     },
-                    overlayImagePath: GetMessageImagePath(officer),
+                    overlayImagePath: resultType == MessageResultType.OfficerRecovered
+                        ? null
+                        : GetMessageImagePath(officer),
                     officerVoicePath: GetOfficerMessageVoicePath(resultType, officer, game)
                 ),
                 planet,
