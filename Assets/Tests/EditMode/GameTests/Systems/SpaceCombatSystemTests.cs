@@ -1244,7 +1244,7 @@ namespace Rebellion.Tests.Systems
             game.GetFactions().Single(faction => faction.InstanceID == "empire").HQInstanceID =
                 headquarters.InstanceID;
 
-            CreateFleet(game, "ef1", "empire", headquarters, 1, 1, 1, shieldRechargeRate: 0);
+            CreateFleet(game, "ef1", "empire", headquarters, 1, 100, 1, shieldRechargeRate: 0);
             Fleet allianceFleet = CreateFleet(
                 game,
                 "af1",
@@ -1252,7 +1252,7 @@ namespace Rebellion.Tests.Systems
                 headquarters,
                 1,
                 1000,
-                100,
+                10,
                 shieldRechargeRate: 0
             );
             SpaceCombatSystem manager = MakeSpaceCombat(game);
