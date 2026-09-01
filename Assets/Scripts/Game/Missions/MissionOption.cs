@@ -4,6 +4,16 @@ using Rebellion.Game.Research;
 namespace Rebellion.Game.Missions
 {
     /// <summary>
+    /// Identifies the kind of target accepted by a mission option.
+    /// </summary>
+    public enum MissionTargetKind
+    {
+        Planet,
+        Manufacturable,
+        Officer,
+    }
+
+    /// <summary>
     /// Represents a selectable mission option exposed to planning or UI code.
     /// </summary>
     public sealed class MissionOption
@@ -13,6 +23,7 @@ namespace Rebellion.Game.Missions
         public OfficerRating ParticipantRating { get; }
         public OfficerRating DecoyParticipantRating { get; }
         public ResearchDiscipline? Discipline { get; }
+        public MissionTargetKind TargetKind { get; }
 
         /// <summary>
         /// Creates a selectable mission option.
@@ -20,12 +31,14 @@ namespace Rebellion.Game.Missions
         /// <param name="missionTypeID">The mission type ID used to start the mission.</param>
         /// <param name="displayName">The display name for this option.</param>
         /// <param name="participantRating">The rating primary participants use for the mission.</param>
+        /// <param name="targetKind">The kind of target accepted by the mission.</param>
         /// <param name="decoyParticipantRating">The rating decoy participants use for the mission.</param>
         /// <param name="discipline">The research discipline used by research options.</param>
         public MissionOption(
             string missionTypeID,
             string displayName,
             OfficerRating participantRating,
+            MissionTargetKind targetKind,
             OfficerRating decoyParticipantRating = OfficerRating.None,
             ResearchDiscipline? discipline = null
         )
@@ -36,6 +49,7 @@ namespace Rebellion.Game.Missions
             MissionTypeID = missionTypeID;
             DisplayName = displayName ?? missionTypeID;
             ParticipantRating = participantRating;
+            TargetKind = targetKind;
             DecoyParticipantRating = decoyParticipantRating;
             Discipline = discipline;
         }

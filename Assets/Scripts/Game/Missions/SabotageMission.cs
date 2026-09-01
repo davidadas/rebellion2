@@ -80,10 +80,7 @@ namespace Rebellion.Game.Missions
                 return null;
 
             ISceneNode selectedTarget = ctx.SelectedTarget ?? ctx.Location;
-            if (selectedTarget is not IManufacturable)
-                return null;
-
-            if (!IsOperationalTarget(selectedTarget))
+            if (!IsValidTarget(selectedTarget, ctx.OwnerInstanceId))
                 return null;
 
             Planet missionPlanet =
@@ -142,13 +139,29 @@ namespace Rebellion.Game.Missions
         private bool HasValidTarget(GameRoot game)
         {
             ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(SabotageTargetInstanceID);
-            if (target is not IManufacturable)
-                return false;
-
-            if (!IsOperationalTarget(target))
+            if (!IsValidTarget(target, OwnerInstanceID))
                 return false;
 
             return target.GetParentOfType<Planet>() == GetParent() as Planet;
+        }
+
+        /// <summary>
+        /// Returns whether a scene node is an eligible regular sabotage target.
+        /// </summary>
+        /// <param name="target">The scene node selected for sabotage.</param>
+        /// <param name="ownerInstanceId">The faction attempting the mission.</param>
+        /// <returns>True when the target is an operational enemy manufacturable other than a planet-destroying ship.</returns>
+        private static bool IsValidTarget(ISceneNode target, string ownerInstanceId)
+        {
+            if (
+                target is not IManufacturable
+                || target is CapitalShip { CanDestroyPlanets: true }
+                || string.IsNullOrEmpty(target.GetOwnerInstanceID())
+                || target.GetOwnerInstanceID() == ownerInstanceId
+            )
+                return false;
+
+            return IsOperationalTarget(target);
         }
 
         /// <summary>

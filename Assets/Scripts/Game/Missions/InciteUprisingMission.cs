@@ -63,7 +63,7 @@ namespace Rebellion.Game.Missions
                 return null;
 
             string owner = planet.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(owner) || owner == ctx.OwnerInstanceId)
+            if (string.IsNullOrEmpty(owner) || owner == ctx.OwnerInstanceId || planet.IsInUprising)
                 return null;
 
             return new InciteUprisingMission(

@@ -226,7 +226,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private static StrategyMissionChoice CreateChoice(string typeId, string displayName)
         {
             return new StrategyMissionChoice(
-                new MissionOption(typeId, displayName, OfficerRating.Diplomacy)
+                new MissionOption(
+                    typeId,
+                    displayName,
+                    OfficerRating.Diplomacy,
+                    MissionTargetKind.Planet
+                )
             );
         }
 

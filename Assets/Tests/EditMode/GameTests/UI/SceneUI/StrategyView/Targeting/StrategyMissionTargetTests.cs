@@ -101,35 +101,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(mapPlanet.Planet, destination);
         }
 
-        [TestCase(MissionTypeIDs.Sabotage)]
-        [TestCase(MissionTypeIDs.Abduction)]
-        [TestCase(MissionTypeIDs.Assassination)]
-        [TestCase(MissionTypeIDs.Rescue)]
-        public void GetSpecificMissionTarget_TargetedMission_ReturnsItem(string missionTypeId)
+        [Test]
+        public void GetMissionTarget_OfficerTarget_ReturnsOfficer()
         {
             Officer officer = new Officer();
             StrategyMissionTarget target = new StrategyMissionTarget(null, officer);
 
-            ISceneNode specificTarget = target.GetSpecificMissionTarget(missionTypeId);
+            ISceneNode specificTarget = target.GetMissionTarget(MissionTargetKind.Officer);
 
             Assert.AreSame(officer, specificTarget);
         }
 
         [Test]
-        public void GetSpecificMissionTarget_MissingItemOrLocationMission_ReturnsNull()
+        public void GetMissionTarget_LocationMission_ReturnsPlanet()
         {
-            StrategyMissionTarget missingItem = new StrategyMissionTarget(null, null);
-            StrategyMissionTarget locationMission = new StrategyMissionTarget(null, new Officer());
-
-            ISceneNode missingItemTarget = missingItem.GetSpecificMissionTarget(
-                MissionTypeIDs.Sabotage
-            );
-            ISceneNode locationTarget = locationMission.GetSpecificMissionTarget(
-                MissionTypeIDs.Diplomacy
+            GalaxyMapPlanet mapPlanet = CreateMapPlanet("planet", "player");
+            StrategyMissionTarget locationMission = new StrategyMissionTarget(
+                mapPlanet,
+                new CapitalShip()
             );
 
-            Assert.IsNull(missingItemTarget);
-            Assert.IsNull(locationTarget);
+            ISceneNode locationTarget = locationMission.GetMissionTarget(MissionTargetKind.Planet);
+
+            Assert.AreSame(mapPlanet.Planet, locationTarget);
+        }
+
+        [Test]
+        public void GetMissionTarget_TargetedMissionWithoutItem_ReturnsNull()
+        {
+            GalaxyMapPlanet mapPlanet = CreateMapPlanet("planet", "player");
+            StrategyMissionTarget target = new StrategyMissionTarget(mapPlanet, null);
+
+            ISceneNode missionTarget = target.GetMissionTarget(MissionTargetKind.Manufacturable);
+
+            Assert.IsNull(missionTarget);
         }
 
         private static GalaxyMapPlanet CreateMapPlanet(string instanceId, string ownerId)

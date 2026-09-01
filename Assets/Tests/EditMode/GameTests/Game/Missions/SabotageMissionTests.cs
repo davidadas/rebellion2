@@ -80,6 +80,51 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_FriendlyTarget_ReturnsNull()
+        {
+            var (game, empirePlanet, _, officer, _) = MissionSceneBuilder.Build();
+            Regiment target = EntityFactory.CreateRegiment("target", "empire");
+            target.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(target, empirePlanet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                empirePlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
+        public void TryCreate_PlanetDestroyingCapitalShip_ReturnsNull()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "rebels");
+            CapitalShip target = new CapitalShip
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CanDestroyPlanets = true,
+            };
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(target, fleet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
         public void ResolveObjective_BuildingOnEnemyPlanet_RemovesBuilding()
         {
             (
