@@ -103,6 +103,20 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TransferPlanet_InactivePlanet_TransfersRetainedBuildingsToNewOwner()
+        {
+            _game.ChangeOwnership(_targetPlanet, "empire");
+            _targetPlanet.EnergyCapacity = 1;
+            Building building = new Building { InstanceID = "b1", OwnerInstanceID = "empire" };
+            _game.AttachNode(building, _targetPlanet);
+            _targetPlanet.IsEnabled = false;
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.AreEqual("rebels", building.GetOwnerInstanceID());
+        }
+
+        [Test]
         public void TransferPlanet_HiddenObserverSnapshot_NotRefreshed()
         {
             Faction observer = AddFaction("observer");

@@ -3,6 +3,9 @@
 Conditionals inspect game state without changing it. Every top-level conditional must pass before
 an event activates.
 
+Conditionals that name an object by `InstanceID` inspect retained inactive objects as well as active
+objects. Use `IsActive` when activity itself is part of the condition.
+
 ```xml
 <Conditionals>
   <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>

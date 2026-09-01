@@ -273,6 +273,30 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void PlaceUnits_InactiveExistingUnit_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out Planet destination, out _);
+            Officer officer = new Officer
+            {
+                InstanceID = "inactive-officer",
+                OwnerInstanceID = "empire",
+                IsEnabled = false,
+            };
+            game.AttachNode(officer, destination);
+            PlaceUnitsAction action = new PlaceUnitsAction
+            {
+                UnitInstanceID = officer.InstanceID,
+                DestinationInstanceID = destination.InstanceID,
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                action.ExecuteRequests(game)
+            );
+
+            StringAssert.Contains("requires existing units to be active", exception.Message);
+        }
+
+        [Test]
         public void PlaceUnits_Selectors_RoundTripsTransferStructure()
         {
             PlaceUnitsAction action = new PlaceUnitsAction

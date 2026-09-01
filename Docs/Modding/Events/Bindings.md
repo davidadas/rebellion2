@@ -9,6 +9,10 @@ Binding values are temporary. They are rebuilt whenever the event is evaluated a
 in the save game. A binding's `As` value is its exact name. Every option that consumes the binding
 must use that same name exactly.
 
+An explicit `OfficerInstanceID`, `PlanetInstanceID`, or scene-node binding resolves retained
+inactive objects as well as active objects. Collection selectors remain active-only unless they set
+`IncludeInactive="true"`.
+
 ## Top-level bindings
 
 Each top-level `Bind` resolves exactly one value and exposes it under its `As` name for the complete
