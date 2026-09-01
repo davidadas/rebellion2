@@ -2393,7 +2393,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The unit that would evacuate.</param>
         /// <returns>True when at least one owned colonized planet can receive the unit.</returns>
-        internal bool HasEvacuationDestination(IMovable unit)
+        internal bool CanEvacuateToNearestFriendlyPlanet(IMovable unit)
         {
             if (unit == null)
                 return false;

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Combat;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -30,7 +29,6 @@ namespace Rebellion.Systems
     public class SpaceCombatSystem
     {
         private readonly GameRoot _game;
-        private readonly AISpaceCombatPolicy _aiCombatPolicy;
         private readonly MovementSystem _movement;
         private readonly SpaceCombatAutoResolver _autoResolver = new SpaceCombatAutoResolver();
         private SpaceCombatDecision _pendingDecision;
@@ -59,7 +57,6 @@ namespace Rebellion.Systems
         public SpaceCombatSystem(GameRoot game, MovementSystem movement)
         {
             _game = game;
-            _aiCombatPolicy = new AISpaceCombatPolicy(game);
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
         }
 
@@ -614,25 +611,7 @@ namespace Rebellion.Systems
         {
             return fleets?.Count > 0
                 && !IsRetreatBlockedByGravityWell(fleets, opponents)
-                && fleets.All(_movement.HasEvacuationDestination);
-        }
-
-        /// <summary>
-        /// Determines whether the automatic combat controller may withdraw one side.
-        /// </summary>
-        /// <param name="fleets">The fleets requesting withdrawal.</param>
-        /// <param name="opponents">The opposing fleets.</param>
-        /// <param name="planet">The combat location.</param>
-        /// <returns>True when withdrawal is both physically possible and permitted by policy.</returns>
-        private bool CanAutomaticallyWithdraw(
-            IReadOnlyList<Fleet> fleets,
-            IReadOnlyList<Fleet> opponents,
-            Planet planet
-        )
-        {
-            Fleet fleet = GetRepresentativeFleet(fleets);
-            return CanRetreatFleets(fleets, opponents)
-                && _aiCombatPolicy.CanWithdraw(fleet, planet);
+                && fleets.All(_movement.CanEvacuateToNearestFriendlyPlanet);
         }
 
         /// <summary>
@@ -1006,8 +985,8 @@ namespace Rebellion.Systems
                 attackerFighters,
                 defenderShips,
                 defenderFighters,
-                CanAutomaticallyWithdraw(attackerFleets, defenderFleets, planet),
-                CanAutomaticallyWithdraw(defenderFleets, attackerFleets, planet)
+                CanRetreatFleets(attackerFleets, defenderFleets),
+                CanRetreatFleets(defenderFleets, attackerFleets)
             );
             List<ShipSnap> attackerShipSnapshots = CreateShipSnapshots(
                 attackerShips,
