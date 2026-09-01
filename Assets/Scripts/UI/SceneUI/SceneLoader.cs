@@ -51,11 +51,13 @@ public sealed class SceneLoader : MonoBehaviour
         {
             _loadCoroutine = null;
             GameStartupTrace.Complete($"Content initialization for '{sceneName}' failed.");
-            Debug.LogException(
+            FatalErrorScreen.Show(
                 initialization.Exception?.GetBaseException()
                     ?? new InvalidOperationException(
                         "Local content initialization failed without an exception."
-                    )
+                    ),
+                $"{sceneName} content loading",
+                allowMainMenuReturn: sceneName == "StrategyView"
             );
             yield break;
         }
@@ -66,7 +68,11 @@ public sealed class SceneLoader : MonoBehaviour
         {
             _loadCoroutine = null;
             GameStartupTrace.Complete($"Unity could not start loading '{sceneName}'.");
-            Debug.LogException(new InvalidOperationException($"Scene was not found: {sceneName}"));
+            FatalErrorScreen.Show(
+                new InvalidOperationException($"Scene was not found: {sceneName}"),
+                $"{sceneName} scene loading",
+                allowMainMenuReturn: sceneName == "StrategyView"
+            );
             yield break;
         }
 

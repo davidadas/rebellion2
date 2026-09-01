@@ -32,7 +32,7 @@ public sealed class BootController : MonoBehaviour
         }
         catch (Exception exception)
         {
-            Debug.LogException(exception);
+            FatalErrorScreen.Show(exception, "Boot content loading");
         }
     }
 

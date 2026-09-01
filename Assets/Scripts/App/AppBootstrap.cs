@@ -92,10 +92,11 @@ public sealed class AppBootstrap : MonoBehaviour
         {
             InitializeRuntimeCore();
         }
-        catch
+        catch (System.Exception exception)
         {
             ReleaseRuntimeServices();
             Instance = null;
+            FatalErrorScreen.Show(exception, "Application initialization");
             throw;
         }
     }

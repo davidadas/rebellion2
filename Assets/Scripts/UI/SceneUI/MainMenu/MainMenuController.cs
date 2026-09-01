@@ -102,7 +102,7 @@ public sealed class MainMenuController : MonoBehaviour
         }
         catch (System.Exception exception)
         {
-            Debug.LogException(exception);
+            FatalErrorScreen.Show(exception, "Main menu loading");
         }
     }
 

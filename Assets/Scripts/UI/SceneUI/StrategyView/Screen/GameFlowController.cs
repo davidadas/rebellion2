@@ -86,7 +86,7 @@ public sealed class GameFlowController : MonoBehaviour
         catch (Exception exception)
         {
             GameStartupTrace.Complete("Game flow startup failed.");
-            Debug.LogException(exception);
+            FatalErrorScreen.Show(exception, "Game loading", allowMainMenuReturn: true);
         }
     }
 
