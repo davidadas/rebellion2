@@ -34,7 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 new Planet { InstanceID = "planet" },
                 string.Empty
             );
-            _target = new StrategyMissionTarget(planet, null);
+            _target = new StrategyMissionTarget(planet, planet.Planet);
             _choices = new List<StrategyMissionChoice>
             {
                 CreateChoice(MissionTypeIDs.Diplomacy, "Diplomacy"),

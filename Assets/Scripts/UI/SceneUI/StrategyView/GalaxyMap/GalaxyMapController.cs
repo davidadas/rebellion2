@@ -220,7 +220,7 @@ public sealed class GalaxyMapController
         )
             return false;
 
-        target = new StrategyMissionTarget(planet, null);
+        target = new StrategyMissionTarget(planet, planet.Planet);
         return true;
     }
 

@@ -18,6 +18,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private readonly Func<Faction> getPlayerFaction;
     private readonly Func<string, Texture2D> getTexture;
     private readonly Action<string> playSfx;
+    private readonly Func<int, int> selectRandomIndex;
     private readonly Dictionary<string, StrategyAdvisorNotificationTheme> pendingNotifications =
         new Dictionary<string, StrategyAdvisorNotificationTheme>();
     private readonly Dictionary<string, int> pendingExpirationTicks = new Dictionary<string, int>();
@@ -36,16 +37,19 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="getPlayerFaction">Resolves the current player faction.</param>
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
+    /// <param name="selectRandomIndex">Selects a zero-based index below the supplied count.</param>
     public StrategyAdvisorController(
         Func<Faction> getPlayerFaction,
         Func<string, Texture2D> getTexture,
-        Action<string> playSfx
+        Action<string> playSfx,
+        Func<int, int> selectRandomIndex = null
     )
     {
         this.getPlayerFaction =
             getPlayerFaction ?? throw new ArgumentNullException(nameof(getPlayerFaction));
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
+        this.selectRandomIndex = selectRandomIndex ?? (count => UnityEngine.Random.Range(0, count));
     }
 
     /// <summary>
@@ -280,6 +284,14 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Immediately plays the authored response for an invalid order.
+    /// </summary>
+    public void PlayInvalidOrderRejected()
+    {
+        PlayOrderRejected(theme?.InvalidOrderRejected);
+    }
+
+    /// <summary>
     /// Immediately plays the authored response for an order targeting a unit under construction.
     /// </summary>
     public void PlayUnitUnderConstructionOrderRejected()
@@ -295,7 +307,13 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     {
         List<StrategyAdvisorAnimationViewData> playbacks =
             new List<StrategyAdvisorAnimationViewData>();
-        if (!TryAddPlayback(playbacks, animationTheme, false))
+        string audio = animationTheme?.Audio;
+        if (animationTheme?.AudioOptions?.Count > 0)
+            audio = animationTheme.AudioOptions[
+                selectRandomIndex(animationTheme.AudioOptions.Count)
+            ];
+
+        if (!TryAddPlayback(playbacks, animationTheme, false, audio))
             return;
 
         StrategyAdvisorAnimationViewData playback = playbacks.FirstOrDefault();
@@ -658,11 +676,13 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="playbacks">The destination playback batch.</param>
     /// <param name="animation">The configured animation.</param>
     /// <param name="usesDroid">Whether the droid image presents the animation.</param>
+    /// <param name="audio">The optional audio name selected for this playback.</param>
     /// <returns>True when the animation is absent, empty, or fully available.</returns>
     private bool TryAddPlayback(
         ICollection<StrategyAdvisorAnimationViewData> playbacks,
         StrategyAdvisorAnimationTheme animation,
-        bool usesDroid
+        bool usesDroid,
+        string audio = null
     )
     {
         if (animation == null || animation.FrameCount <= 0)
@@ -687,8 +707,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
                 frames,
                 usesDroid,
                 !string.IsNullOrWhiteSpace(animation.AudioPath) ? animation.AudioPath
-                    : string.IsNullOrWhiteSpace(animation.Audio) ? null
-                    : theme.GetAudioPath(animation.Audio),
+                    : string.IsNullOrWhiteSpace(audio ?? animation.Audio) ? null
+                    : theme.GetAudioPath(audio ?? animation.Audio),
                 animation.DelayBeforeSeconds
             )
         );

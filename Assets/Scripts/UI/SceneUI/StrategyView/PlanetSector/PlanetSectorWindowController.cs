@@ -813,7 +813,7 @@ public sealed class PlanetSectorWindowController
         if (hit.Icon == PlanetIcon.Fleet && IsMoveTargetingRequest(request))
             return new StrategyMissionTarget(hit.GalaxyMapPlanet, fleetTarget);
         if (hit.Icon != PlanetIcon.None || hit.PlanetImage)
-            return new StrategyMissionTarget(hit.GalaxyMapPlanet, null);
+            return new StrategyMissionTarget(hit.GalaxyMapPlanet, hit.GalaxyMapPlanet.Planet);
         return null;
     }
 

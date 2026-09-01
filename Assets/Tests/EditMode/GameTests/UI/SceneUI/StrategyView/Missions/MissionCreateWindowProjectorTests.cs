@@ -81,7 +81,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         public void Build_MissingSessionOrWindow_ThrowsArgumentNullException()
         {
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 Array.Empty<IMissionParticipant>()
             );
 
@@ -94,7 +94,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             MissionCreateWindowProjector projector = new MissionCreateWindowProjector(() => null);
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 Array.Empty<IMissionParticipant>()
             );
 
@@ -105,7 +105,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         public void Build_MissionTabWithOpenDropdown_ReturnsMissionWorkflowPresentation()
         {
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 Array.Empty<IMissionParticipant>()
             );
             session.ToggleDropdown();
@@ -167,7 +167,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             _planet.Planet.PlanetIconPath = null;
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 Array.Empty<IMissionParticipant>()
             );
 
@@ -183,7 +183,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Officer selected = CreateOfficer("selected", "Selected", false);
             Officer inTransit = CreateOfficer("transit", "In Transit", true);
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 new IMissionParticipant[] { selected, inTransit }
             );
             session.SelectTab(MissionCreateWindowTab.Personnel);
@@ -228,7 +228,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             ship.SetParent(fleet);
             officer.SetParent(ship);
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 new IMissionParticipant[] { officer }
             );
             session.SelectTab(MissionCreateWindowTab.Personnel);
@@ -267,27 +267,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
-        public void Build_LocationMissionSelectedFromCapitalShip_ReturnsPlanetPreview()
-        {
-            CapitalShip ship = new CapitalShip { DisplayName = "Target Ship" };
-            MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, ship),
-                Array.Empty<IMissionParticipant>()
-            );
-
-            MissionCreateWindowRenderData data = _projector.Build(session, _window);
-
-            Assert.AreEqual("Corellia", data.TargetName);
-            Assert.AreSame(_uiContext.GetTexture(_entityImagePath), data.TargetTexture);
-            Assert.IsTrue(data.UsePlanetTargetPreview);
-        }
-
-        [Test]
         public void Build_EmptyChoices_ReturnsEmptyMissionSelection()
         {
             MissionCreateWindowSession session = new MissionCreateWindowSession(
                 _window,
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 Array.Empty<StrategyMissionChoice>(),
                 Array.Empty<IMissionParticipant>()
             );

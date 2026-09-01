@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -354,17 +355,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void PlayUnitUnderConstructionOrderRejected_AuthoredResponse_ReplacesPlayback()
+        public void PlayInvalidOrderRejected_AuthoredResponse_ReplacesPlayback()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
             StrategyAdvisorTheme advisorTheme = CreateTheme();
             advisorTheme.AudioRoot = "Audio";
-            advisorTheme.UnitUnderConstructionOrderRejected = new StrategyAdvisorAnimationTheme
+            advisorTheme.InvalidOrderRejected = new StrategyAdvisorAnimationTheme
             {
                 Animation = "Rejected",
                 FrameCount = 1,
-                Audio = "Rejected",
+                AudioOptions = new List<string> { "First", "Second" },
             };
             Texture2D idle = new Texture2D(1, 1);
             Texture2D rejectedFrame = new Texture2D(1, 1);
@@ -377,17 +378,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             try
             {
                 UIComponentTestHelper.InvokeLifecycle(view, "Awake");
-                StrategyAdvisorController controller = CreateController(textures);
+                StrategyAdvisorController controller = CreateController(textures, _ => 1);
                 controller.BindView(view);
                 controller.Render(advisorTheme);
                 StrategyAdvisorAnimationViewData playback = null;
                 view.PlaybackStarted += data => playback = data;
 
-                controller.PlayUnitUnderConstructionOrderRejected();
+                controller.PlayInvalidOrderRejected();
 
                 Assert.IsNotNull(playback);
                 Assert.AreSame(rejectedFrame, playback.Frames.Single());
-                Assert.AreEqual("Audio/Rejected", playback.AudioPath);
+                Assert.AreEqual("Audio/Second", playback.AudioPath);
             }
             finally
             {
@@ -519,13 +520,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         private static StrategyAdvisorController CreateController(
-            IReadOnlyDictionary<string, Texture2D> textures
+            IReadOnlyDictionary<string, Texture2D> textures,
+            Func<int, int> selectRandomIndex = null
         )
         {
             StrategyAdvisorController controller = new StrategyAdvisorController(
                 () => new Faction(),
                 path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
-                _ => { }
+                _ => { },
+                selectRandomIndex
             );
             controller.Initialize(new TestActions());
             return controller;

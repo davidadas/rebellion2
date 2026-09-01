@@ -373,7 +373,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             Assert.IsNotNull(target);
             Assert.AreSame(hit.GalaxyMapPlanet, target.Planet);
-            Assert.IsNull(target.Item);
+            Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
         }
 
         [Test]
@@ -391,7 +391,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             Assert.IsNotNull(target);
             Assert.AreSame(hit.GalaxyMapPlanet, target.Planet);
-            Assert.IsNull(target.Item);
+            Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
         }
 
         [Test]
