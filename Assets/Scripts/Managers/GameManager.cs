@@ -455,7 +455,6 @@ public sealed class GameManager
         _duelSystem = new DuelSystem(_game, _randomProvider);
         _movementSystem = new MovementSystem(_game, _fogOfWarSystem, _fleetSystem, _blockadeSystem);
         _headquartersSystem = new HeadquartersSystem(_game, _movementSystem);
-        _recoverySystem = new RecoverySystem(_game);
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
         _namingSystem = new NamingSystem(_game);
         _recoverySystem = new RecoverySystem(_game);
