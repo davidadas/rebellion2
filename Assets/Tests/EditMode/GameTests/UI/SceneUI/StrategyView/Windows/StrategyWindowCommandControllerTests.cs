@@ -361,6 +361,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void ExecuteTargetedCommand_CreateMissionWithoutValidOption_PlaysAdvisorRejection()
+        {
+            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
+                _opponentFactionId,
+                "target-fleet"
+            );
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "target-ship",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, _missionTarget.Planet);
+            _game.AttachNode(ship, fleet);
+
+            _controller.ExecuteTargetedCommand(
+                new StrategyWindowTargetingSource(
+                    _sourceWindow,
+                    StrategyMenuAction.CreateMission,
+                    0,
+                    0,
+                    new ISceneNode[] { _specialForces }
+                ),
+                new StrategyMissionTarget(_missionTarget, ship)
+            );
+
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.AreEqual(1, _invalidOrderRejectionCount);
+        }
+
+        [Test]
         public void OpenMoveConfirmWindow_ConfirmedMove_MovesUnitAndRefreshesSource()
         {
             _controller.OpenMoveConfirmWindow(

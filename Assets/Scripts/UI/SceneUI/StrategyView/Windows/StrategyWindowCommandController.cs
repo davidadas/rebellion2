@@ -136,13 +136,11 @@ public sealed class StrategyWindowCommandController
         IReadOnlyList<ISceneNode> items
     )
     {
-        if (target?.Item == null)
+        if (target?.Item == null || !missionCreateWindowController.Open(target, items))
         {
             playInvalidOrderRejected();
             return;
         }
-
-        missionCreateWindowController.Open(target, items);
     }
 
     /// <summary>

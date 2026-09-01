@@ -143,7 +143,8 @@ public sealed class MissionCreateWindowController
     /// </summary>
     /// <param name="target">The selected mission target.</param>
     /// <param name="sourceItems">The source selection in visual order.</param>
-    public void Open(StrategyMissionTarget target, IReadOnlyList<ISceneNode> sourceItems)
+    /// <returns>True when the request was valid or toggled an existing window closed.</returns>
+    public bool Open(StrategyMissionTarget target, IReadOnlyList<ISceneNode> sourceItems)
     {
         Vector2Int position = getWindowPosition();
         UIWindow window = windowManager.ToggleExclusiveWindow(
@@ -160,7 +161,7 @@ public sealed class MissionCreateWindowController
             out MissionCreateWindowView view
         );
         if (window == null)
-            return;
+            return true;
 
         if (
             !TryInitializeWindow(
@@ -172,10 +173,11 @@ public sealed class MissionCreateWindowController
         )
         {
             windowManager.DestroyWindow(window);
-            return;
+            return false;
         }
 
         markDirty();
+        return true;
     }
 
     /// <summary>
