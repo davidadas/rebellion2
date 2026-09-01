@@ -454,10 +454,7 @@ namespace Rebellion.Game.Events
             Faction recipient = game.GetFactionByOwnerInstanceID(RecipientFactionInstanceID);
             Planet location = !string.IsNullOrWhiteSpace(LocationBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(LocationBinding)
-                : game.GetSceneNodeByInstanceID<Planet>(
-                    LocationInstanceID,
-                    includeDisabled: true
-                );
+                : game.GetSceneNodeByInstanceID<Planet>(LocationInstanceID, includeDisabled: true);
             if (location == null && subject != null)
                 location = subject as Planet ?? subject.GetParentOfType<Planet>();
 
@@ -1764,10 +1761,7 @@ namespace Rebellion.Game.Events
             GameRoot game = context.Game;
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : game.GetSceneNodeByInstanceID<Planet>(
-                    PlanetInstanceID,
-                    includeDisabled: true
-                );
+                : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID, includeDisabled: true);
             if (planet == null)
                 throw new InvalidOperationException("DamagePlanetResources requires a planet.");
 
@@ -1925,10 +1919,7 @@ namespace Rebellion.Game.Events
             ).SelectMany(selector => selector.Select(game, context.Random, context.Evaluation));
             Planet explicitPlanet = !string.IsNullOrWhiteSpace(planetBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(planetBinding)
-                : game.GetSceneNodeByInstanceID<Planet>(
-                    planetInstanceID,
-                    includeDisabled: true
-                );
+                : game.GetSceneNodeByInstanceID<Planet>(planetInstanceID, includeDisabled: true);
             if (explicitPlanet != null)
                 selected = new ISceneNode[] { explicitPlanet }.Concat(selected);
             List<ISceneNode> nodes = selected.Distinct().ToList();
@@ -1983,10 +1974,7 @@ namespace Rebellion.Game.Events
 
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : game.GetSceneNodeByInstanceID<Planet>(
-                    PlanetInstanceID,
-                    includeDisabled: true
-                );
+                : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID, includeDisabled: true);
 
             context.Record(
                 destroyed.ConvertAll<GameResult>(unit => new GameObjectDestroyedResult
@@ -2267,6 +2255,14 @@ namespace Rebellion.Game.Events
                 allowSpawn: true,
                 includeDisabled: true
             );
+            if (
+                units.Any(unit =>
+                    unit is ISceneNode node && node.GetParent() != null && !node.IsActive()
+                )
+            )
+                throw new InvalidOperationException(
+                    "PlaceUnits requires existing units to be active."
+                );
             context.Request(
                 new UnitPlacementRequest
                 {

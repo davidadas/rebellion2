@@ -110,11 +110,7 @@ namespace Rebellion.Tests.Game.Events
                 InstanceID = "capital-ship",
                 OwnerInstanceID = "faction",
             };
-            Fleet fleet = new Fleet
-            {
-                InstanceID = "fleet",
-                OwnerInstanceID = "faction",
-            };
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "faction" };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             ship.IsEnabled = false;

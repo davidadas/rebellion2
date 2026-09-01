@@ -68,10 +68,7 @@ namespace Rebellion.Game.Events
                 );
             Officer officer = hasBinding
                 ? context?.GetBindingReference<Officer>(OfficerBinding)
-                : game.GetSceneNodeByInstanceID<Officer>(
-                    OfficerInstanceID,
-                    includeDisabled: true
-                );
+                : game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID, includeDisabled: true);
             if (officer == null)
                 throw new InvalidOperationException("OfficerRating could not resolve its officer.");
             return officer.GetEffectiveRating(Rating);
@@ -107,10 +104,7 @@ namespace Rebellion.Game.Events
                 );
             Officer officer = hasBinding
                 ? context?.GetBindingReference<Officer>(OfficerBinding)
-                : game.GetSceneNodeByInstanceID<Officer>(
-                    OfficerInstanceID,
-                    includeDisabled: true
-                );
+                : game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID, includeDisabled: true);
             if (officer == null)
                 throw new InvalidOperationException("OfficerForce could not resolve its officer.");
             return officer.ForceRank;
@@ -150,10 +144,7 @@ namespace Rebellion.Game.Events
                 );
             Planet planet = hasBinding
                 ? context?.GetBindingReference<Planet>(PlanetBinding)
-                : game.GetSceneNodeByInstanceID<Planet>(
-                    PlanetInstanceID,
-                    includeDisabled: true
-                );
+                : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID, includeDisabled: true);
             if (planet == null)
                 throw new InvalidOperationException("PlanetStat could not resolve its planet.");
             return planet.GetStatValue(Stat);

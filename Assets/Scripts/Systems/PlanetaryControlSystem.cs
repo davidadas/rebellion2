@@ -699,7 +699,7 @@ namespace Rebellion.Systems
         /// <param name="newOwner">The faction receiving ownership of the buildings.</param>
         private void TransferBuildings(Planet planet, Faction newOwner)
         {
-            foreach (Building building in planet.GetChildren<Building>())
+            foreach (Building building in planet.GetChildren<Building>(includeDisabled: true))
             {
                 _game.ChangeOwnership(building, newOwner.InstanceID);
             }

@@ -153,9 +153,11 @@ namespace Rebellion.Game.Events
             IRandomNumberProvider provider,
             GameEventEvaluationContext context
         ) =>
-            (IncludeInactive
-                ? game.GetRegisteredSceneNodesByType<PlanetSector>(includeDisabled: true)
-                : Active<PlanetSector>(game))
+            (
+                IncludeInactive
+                    ? game.GetRegisteredSceneNodesByType<PlanetSector>(includeDisabled: true)
+                    : Active<PlanetSector>(game)
+            )
                 .Where(sector => sector.GetParent() != null)
                 .Where(sector =>
                     string.IsNullOrWhiteSpace(InstanceID) || sector.InstanceID == InstanceID
@@ -367,9 +369,11 @@ namespace Rebellion.Game.Events
                 ? context?.GetBindingReference<Planet>(PlanetBinding)
                 : null;
             string planetID = boundPlanet?.InstanceID ?? PlanetInstanceID;
-            IEnumerable<Planet> planets = (IncludeInactive
-                ? game.GetRegisteredSceneNodesByType<Planet>(includeDisabled: true)
-                : Active<Planet>(game))
+            IEnumerable<Planet> planets = (
+                IncludeInactive
+                    ? game.GetRegisteredSceneNodesByType<Planet>(includeDisabled: true)
+                    : Active<Planet>(game)
+            )
                 .Where(planet => planet.GetParent() != null)
                 .Where(planet =>
                     string.IsNullOrWhiteSpace(planetID) || planet.InstanceID == planetID
@@ -598,10 +602,7 @@ namespace Rebellion.Game.Events
                 );
             ISceneNode unit = hasBinding
                 ? context?.GetBindingReference<ISceneNode>(UnitBinding)
-                : game.GetSceneNodeByInstanceID<ISceneNode>(
-                    UnitInstanceID,
-                    includeDisabled: true
-                );
+                : game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID, includeDisabled: true);
             if (unit == null)
                 return Enumerable.Empty<ISceneNode>();
             ISceneNode parent = game.GetSceneNodeByInstanceID<ISceneNode>(

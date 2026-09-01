@@ -177,11 +177,7 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
-            Planet planet = new Planet
-            {
-                InstanceID = "planet",
-                NumRawResourceNodes = 7,
-            };
+            Planet planet = new Planet { InstanceID = "planet", NumRawResourceNodes = 7 };
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(planet, sector);
             planet.IsEnabled = false;

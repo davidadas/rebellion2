@@ -541,9 +541,10 @@ namespace Rebellion.Game.Events
                     includeDisabled: true
                 );
             return planet
-                    ?.GetChildren<Building>()
+                    ?.GetChildren<Building>(includeDisabled: true)
                     .Any(building =>
-                        building.BuildingType == Type
+                        building.IsEnabled
+                        && building.BuildingType == Type
                         && building.ManufacturingStatus == ManufacturingStatus.Complete
                     ) == true;
         }
@@ -568,10 +569,7 @@ namespace Rebellion.Game.Events
         {
             GameRoot game = context.Game;
             Planet planet = string.IsNullOrWhiteSpace(PlanetBinding)
-                ? game.GetSceneNodeByInstanceID<Planet>(
-                    PlanetInstanceID,
-                    includeDisabled: true
-                )
+                ? game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID, includeDisabled: true)
                 : context.Evaluation?.GetBindingReference<Planet>(PlanetBinding);
             if (planet?.IsDestroyed != false)
                 return false;
@@ -700,8 +698,7 @@ namespace Rebellion.Game.Events
             List<string> ids = references.Select(reference => reference.UnitInstanceID).ToList();
             if (ids.Any(string.IsNullOrWhiteSpace) || ids.Distinct().Count() != ids.Count)
                 return null;
-            List<ISceneNode> nodes = ids
-                .Select(id =>
+            List<ISceneNode> nodes = ids.Select(id =>
                     game.GetSceneNodeByInstanceID<ISceneNode>(id, includeDisabled: true)
                 )
                 .Where(node => node != null)
@@ -731,9 +728,7 @@ namespace Rebellion.Game.Events
             GameRoot game = context.Game;
             // Get the scene nodes for the units.
             List<ISceneNode> sceneNodes = UnitInstanceIDs
-                .Select(id =>
-                    game.GetSceneNodeByInstanceID<ISceneNode>(id, includeDisabled: true)
-                )
+                .Select(id => game.GetSceneNodeByInstanceID<ISceneNode>(id, includeDisabled: true))
                 .Where(node => node != null)
                 .ToList();
 
@@ -802,10 +797,7 @@ namespace Rebellion.Game.Events
         public string UnitInstanceID { get; set; }
 
         public override bool IsMet(GameConditionContext context) =>
-            context.Game.GetSceneNodeByInstanceID<ISceneNode>(
-                UnitInstanceID,
-                includeDisabled: true
-            )
+            context.Game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID, includeDisabled: true)
                 is IMovable { Movement: not null };
     }
 
