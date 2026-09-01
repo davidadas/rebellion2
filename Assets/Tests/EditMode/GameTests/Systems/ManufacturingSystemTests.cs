@@ -1668,7 +1668,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_ManufacturingSpeedModifier_AdjustsProductionProgress()
+        public void ProcessTick_ManufacturingSpeedModifier_PreservesFractionalThroughput()
         {
             GameConfig config = TestConfig.Create();
             config.DifficultyModifiers[GameDifficulty.Hard] = new GameModifier
@@ -1681,7 +1681,7 @@ namespace Rebellion.Tests.Systems
             Faction empire = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(game, "p1", empire.InstanceID);
-            empire.RefinedMaterialStockpile = 1;
+            empire.RefinedMaterialStockpile = 3;
             Building yard = new Building
             {
                 InstanceID = "cy1",
@@ -1707,6 +1707,17 @@ namespace Rebellion.Tests.Systems
             manufacturing.ProcessTick();
 
             Assert.AreEqual(1.5, yard.ProductionCycleProgress, 0.0001);
+            Assert.AreEqual(0, mine.ManufacturingProgress);
+
+            manufacturing.ProcessTick();
+
+            Assert.AreEqual(1, yard.ProductionCycleProgress, 0.0001);
+            Assert.AreEqual(1, mine.ManufacturingProgress);
+
+            manufacturing.ProcessTick();
+
+            Assert.AreEqual(0.5, yard.ProductionCycleProgress, 0.0001);
+            Assert.AreEqual(2, mine.ManufacturingProgress);
         }
 
         [Test]
