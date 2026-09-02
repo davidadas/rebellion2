@@ -75,6 +75,36 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
+        public void Resolve_MixedTargetTypes_UsesEachUnitTypesPreferredTargetForWithdrawalStrength()
+        {
+            CapitalShip attackerShip = CreatePassiveTarget("attacker-ship", hull: 10000);
+            Starfighter attackerFighter = CreateFighter(
+                "attacker-fighter",
+                squadronSize: 12,
+                weaponStrength: 100
+            );
+            attackerFighter.ShieldStrength = 1000;
+            CapitalShip defenderShip = CreateShip("defender-ship", hull: 100, weaponStrength: 0);
+            defenderShip.PrimaryWeapons[PrimaryWeaponType.IonCannon][0] = 100;
+            Starfighter defenderFighter = CreateFighter(
+                "defender-fighter",
+                squadronSize: 12,
+                weaponStrength: 10
+            );
+
+            SpaceCombatAutoResult result = Resolve(
+                new[] { attackerShip },
+                new[] { attackerFighter },
+                new[] { defenderShip },
+                new[] { defenderFighter },
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(0, GetShipOutcome(result, defenderShip).HullAfter);
+        }
+
+        [Test]
         public void Resolve_LargerFighterSquadron_DealsMoreDamage()
         {
             Starfighter singleFighter = CreateFighter(
@@ -207,6 +237,25 @@ namespace Rebellion.Tests.Game.Combat
                     : SpaceCombatSideOutcome.Destroyed,
                 result.DefenderOutcome
             );
+        }
+
+        [Test]
+        public void Resolve_FighterForceReachesOneThirdStrength_WithdrawsForce()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 9);
+            Starfighter defender = CreateFighter("defender", squadronSize: 12, weaponStrength: 1);
+
+            SpaceCombatAutoResult result = new SpaceCombatAutoResolver(CreateConfig()).Resolve(
+                new[] { attacker },
+                new List<Starfighter>(),
+                new List<CapitalShip>(),
+                new[] { defender },
+                attackerCanWithdraw: false,
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(3, GetFighterOutcome(result, defender).SquadronSizeAfter);
         }
 
         [Test]

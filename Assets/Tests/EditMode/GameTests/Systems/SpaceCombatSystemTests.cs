@@ -1801,6 +1801,182 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ResolvePending_PlanetaryHyperdriveFightersReachWithdrawalThreshold_WithdrawsFighters()
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            (Planet allianceFallback, _) = CreatePlanet(
+                game,
+                "alliance-fallback",
+                owner: "alliance"
+            );
+            CreatePlanet(game, "empire-fallback", owner: "empire");
+            CreateFleet(
+                game,
+                "attacker",
+                "empire",
+                combatPlanet,
+                1,
+                1000,
+                9,
+                shieldRechargeRate: 0
+            );
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "planet-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                ShieldStrength = 1,
+                Hyperdrive = 60,
+                LaserCannon = 1,
+            };
+            game.AttachNode(fighter, combatPlanet);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
+
+            manager.ProcessTick();
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+            SpaceCombatSideOutcome allianceOutcome =
+                result.AttackerOwnerInstanceID == "alliance"
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            Assert.AreSame(fighter, game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
+            Assert.AreSame(allianceFallback, fighter.GetParentOfType<Planet>());
+            Assert.IsNotNull(fighter.Movement);
+        }
+
+        [Test]
+        public void ResolvePending_PlanetaryNonHyperdriveFightersReachWithdrawalThreshold_DestroysFighters()
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            CreatePlanet(game, "alliance-fallback", owner: "alliance");
+            CreatePlanet(game, "empire-fallback", owner: "empire");
+            CreateFleet(
+                game,
+                "attacker",
+                "empire",
+                combatPlanet,
+                1,
+                1000,
+                9,
+                shieldRechargeRate: 0
+            );
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "planet-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                ShieldStrength = 1,
+                Hyperdrive = 0,
+                LaserCannon = 1,
+            };
+            game.AttachNode(fighter, combatPlanet);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
+
+            manager.ProcessTick();
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+            SpaceCombatSideOutcome allianceOutcome =
+                result.AttackerOwnerInstanceID == "alliance"
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, allianceOutcome);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
+        }
+
+        [Test]
+        public void ResolvePending_FleetAndPlanetaryNonHyperdriveFightersWithdraw_DestroysStrandedFighters()
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            (Planet allianceFallback, _) = CreatePlanet(
+                game,
+                "alliance-fallback",
+                owner: "alliance"
+            );
+            CreatePlanet(game, "empire-fallback", owner: "empire");
+            Fleet attackerFleet = CreateFleet(
+                game,
+                "attacker",
+                "empire",
+                combatPlanet,
+                1,
+                1000,
+                70,
+                shieldRechargeRate: 0
+            );
+            Starfighter attackerFighter = new Starfighter
+            {
+                InstanceID = "attacker-fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 9,
+                CurrentSquadronSize = 9,
+                ShieldStrength = 1,
+                LaserCannon = 1,
+            };
+            CapitalShip attackerShip = attackerFleet.GetChildren<CapitalShip>().Single();
+            attackerShip.StarfighterCapacity = 1;
+            game.AttachNode(attackerFighter, attackerShip);
+            Fleet defenderFleet = CreateFleet(
+                game,
+                "defender",
+                "alliance",
+                combatPlanet,
+                1,
+                100,
+                1,
+                shieldRechargeRate: 0
+            );
+            Starfighter defenderFighter = new Starfighter
+            {
+                InstanceID = "defender-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                ShieldStrength = 1,
+                Hyperdrive = 0,
+                LaserCannon = 1,
+            };
+            game.AttachNode(defenderFighter, combatPlanet);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
+
+            manager.ProcessTick();
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+            SpaceCombatSideOutcome allianceOutcome =
+                result.AttackerOwnerInstanceID == "alliance"
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            Assert.AreSame(allianceFallback, defenderFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(defenderFleet.Movement);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(defenderFighter.InstanceID));
+        }
+
+        [Test]
         public void ResolvePending_CorellianCorvetteAgainstPlanetaryTie_DestroysTie()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -2111,6 +2287,35 @@ namespace Rebellion.Tests.Systems
         private static SpaceCombatResult GetCombatResult(List<GameResult> results)
         {
             return results.OfType<SpaceCombatResult>().Single();
+        }
+
+        private static GameRoot CreateAutomaticCombatGame()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceScale = 1,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+                Combat = new GameConfig.CombatConfig
+                {
+                    SpaceCombat = new GameConfig.SpaceCombatConfig
+                    {
+                        AutoResolveRandomSeed = 1894809716,
+                        AutoResolveMaximumIterations = 4096,
+                        AutoResolveStagnationIterations = 1200,
+                        AutoResolveRetreatStrengthRatio = 0.33,
+                        AutoResolveMinimumManeuverRatio = 0.1,
+                    },
+                },
+            };
+            GameRoot game = new GameRoot(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            return game;
         }
 
         private bool HasOpposingReadyFleets(Planet planet)

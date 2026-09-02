@@ -203,10 +203,16 @@ namespace Rebellion.Game.Combat
         )
         {
             Dictionary<TacticalUnit, double> pendingDamage = new Dictionary<TacticalUnit, double>();
+            List<CapitalShipState> survivingShips = targetForce
+                .Ships.Where(ship => ship.IsAlive)
+                .ToList();
+            List<StarfighterState> survivingFighters = targetForce
+                .Fighters.Where(fighter => fighter.IsAlive)
+                .ToList();
 
             foreach (CapitalShipState ship in firingForce.Ships.Where(ship => ship.IsAlive))
             {
-                TacticalUnit target = SelectCapitalShipTarget(targetForce);
+                TacticalUnit target = SelectCapitalShipTarget(survivingShips, survivingFighters);
                 QueueAttack(pendingDamage, ship, target);
             }
 
@@ -214,7 +220,7 @@ namespace Rebellion.Game.Combat
                 StarfighterState fighter in firingForce.Fighters.Where(fighter => fighter.IsAlive)
             )
             {
-                TacticalUnit target = SelectStarfighterTarget(targetForce);
+                TacticalUnit target = SelectStarfighterTarget(survivingShips, survivingFighters);
                 QueueAttack(pendingDamage, fighter, target);
             }
 
@@ -224,34 +230,34 @@ namespace Rebellion.Game.Combat
         /// <summary>
         /// Chooses a target for a capital ship.
         /// </summary>
-        /// <param name="targetForce">The opposing force.</param>
+        /// <param name="ships">The opposing surviving capital ships.</param>
+        /// <param name="fighters">The opposing surviving fighter squadrons.</param>
         /// <returns>A surviving capital ship, or a fighter when no ship remains.</returns>
-        private TacticalUnit SelectCapitalShipTarget(CombatForce targetForce)
+        private TacticalUnit SelectCapitalShipTarget(
+            IReadOnlyList<CapitalShipState> ships,
+            IReadOnlyList<StarfighterState> fighters
+        )
         {
-            List<CapitalShipState> ships = targetForce.Ships.Where(ship => ship.IsAlive).ToList();
             if (ships.Count > 0)
                 return ships[_random.NextInt(0, ships.Count)];
 
-            List<StarfighterState> fighters = targetForce
-                .Fighters.Where(fighter => fighter.IsAlive)
-                .ToList();
             return fighters.Count == 0 ? null : fighters[_random.NextInt(0, fighters.Count)];
         }
 
         /// <summary>
         /// Chooses a target for a fighter squadron.
         /// </summary>
-        /// <param name="targetForce">The opposing force.</param>
+        /// <param name="ships">The opposing surviving capital ships.</param>
+        /// <param name="fighters">The opposing surviving fighter squadrons.</param>
         /// <returns>A surviving fighter, or a capital ship when no fighter remains.</returns>
-        private TacticalUnit SelectStarfighterTarget(CombatForce targetForce)
+        private TacticalUnit SelectStarfighterTarget(
+            IReadOnlyList<CapitalShipState> ships,
+            IReadOnlyList<StarfighterState> fighters
+        )
         {
-            List<StarfighterState> fighters = targetForce
-                .Fighters.Where(fighter => fighter.IsAlive)
-                .ToList();
             if (fighters.Count > 0)
                 return fighters[_random.NextInt(0, fighters.Count)];
 
-            List<CapitalShipState> ships = targetForce.Ships.Where(ship => ship.IsAlive).ToList();
             return ships.Count == 0 ? null : ships[_random.NextInt(0, ships.Count)];
         }
 
@@ -325,13 +331,14 @@ namespace Rebellion.Game.Combat
         /// <returns>The force's remaining tactical strength.</returns>
         private static double GetTacticalStrength(CombatForce force, CombatForce opponent)
         {
-            bool targetsFighters = opponent.Fighters.Any(fighter => fighter.IsAlive);
+            bool hasCapitalShipTargets = opponent.Ships.Any(ship => ship.IsAlive);
+            bool hasFighterTargets = opponent.Fighters.Any(fighter => fighter.IsAlive);
             return force
                     .Ships.Where(ship => ship.IsAlive)
-                    .Sum(ship => ship.GetEffectiveness(targetsFighters))
+                    .Sum(ship => ship.GetEffectiveness(!hasCapitalShipTargets && hasFighterTargets))
                 + force
                     .Fighters.Where(fighter => fighter.IsAlive)
-                    .Sum(fighter => fighter.GetEffectiveness(targetsFighters));
+                    .Sum(fighter => fighter.GetEffectiveness(hasFighterTargets));
         }
 
         /// <summary>
