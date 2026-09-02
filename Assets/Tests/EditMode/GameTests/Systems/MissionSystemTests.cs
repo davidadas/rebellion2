@@ -1203,7 +1203,7 @@ namespace Rebellion.Tests.Sectors
                 MovementSystem movement
             ) = BuildOrbitalDetectionScene(planetOwnerId: "empire");
 
-            List<GameResult> results = RunOrbitalCaptureMission(game, planet, spy, movement);
+            RunOrbitalCaptureMission(game, planet, spy, movement);
 
             Assert.IsTrue(spy.IsCaptured);
             Assert.AreEqual(
@@ -1268,28 +1268,6 @@ namespace Rebellion.Tests.Sectors
                 "An officer caught by a planet's own garrison stays on that captor world"
             );
             Assert.IsNull(spy.GetParentOfType<CapitalShip>());
-        }
-
-        private List<GameResult> RunOrbitalCaptureMission(
-            GameRoot game,
-            Planet planet,
-            Officer spy,
-            MovementSystem movement
-        )
-        {
-            StubMission mission = new StubMission("empire", planet.InstanceID);
-            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
-            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
-            DisableCaptureEvasionInjury(game);
-            game.AttachNode(mission, planet);
-            game.MoveNode(spy, mission);
-
-            MissionSystem system = TestSystems.CreateMissionSystem(
-                game,
-                new FixedRNG(0.01),
-                movement
-            );
-            return system.UpdateMission(mission);
         }
 
         [Test]
@@ -3718,6 +3696,28 @@ namespace Rebellion.Tests.Sectors
                 new FleetSystem(game)
             );
             return (game, planet, spy, captorShip, movement);
+        }
+
+        private void RunOrbitalCaptureMission(
+            GameRoot game,
+            Planet planet,
+            Officer spy,
+            MovementSystem movement
+        )
+        {
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+            system.UpdateMission(mission);
         }
 
         private (

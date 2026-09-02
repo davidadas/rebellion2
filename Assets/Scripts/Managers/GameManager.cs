@@ -47,6 +47,7 @@ public sealed class GameManager
     private HeadquartersSystem _headquartersSystem;
     private NamingSystem _namingSystem;
     private RecoverySystem _recoverySystem;
+    private CaptiveSystem _captiveSystem;
 
     // Economy Systems.
     private ManufacturingSystem _manufacturingSystem;
@@ -329,6 +330,7 @@ public sealed class GameManager
         ProcessResults(_manufacturingSystem.ProcessTick());
         ProcessResults(_maintenanceSystem.ProcessTick());
         ProcessResults(_recoverySystem.ProcessTick());
+        ProcessResults(_captiveSystem.ProcessTick());
 
         List<GameResult> movementResults = ProcessResults(
             _movementSystem.ProcessTick(),
@@ -458,6 +460,7 @@ public sealed class GameManager
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
         _namingSystem = new NamingSystem(_game);
         _recoverySystem = new RecoverySystem(_game);
+        _captiveSystem = new CaptiveSystem(_game, _randomProvider, _movementSystem);
         _factionAutomationSystem = new FactionAutomationSystem(
             _game,
             _gameData,

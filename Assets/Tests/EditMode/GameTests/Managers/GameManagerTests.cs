@@ -251,6 +251,35 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessTick_CapturedOfficerCanEscape()
+        {
+            GameConfig config = new GameConfig();
+            config.Captive.EscapeTable = new Dictionary<int, int> { { 0, 100 } };
+            config.Smuggling.LossPercentByMinimumSupport[0] = 0;
+            GameRoot game = new GameRoot(config);
+            Faction owner = new Faction { InstanceID = "OWNER" };
+            Faction captor = new Faction { InstanceID = "CAPTOR" };
+            game.GetFactions().Add(owner);
+            game.GetFactions().Add(captor);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet ownerPlanet = CreatePlanet("OWNER_PLANET", owner.InstanceID, 0);
+            Planet captorPlanet = CreatePlanet("CAPTOR_PLANET", captor.InstanceID, 100);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(ownerPlanet, sector);
+            game.AttachNode(captorPlanet, sector);
+            Officer captive = EntityFactory.CreateOfficer("CAPTIVE", owner.InstanceID);
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = captor.InstanceID;
+            captive.CanEscape = true;
+            game.AttachNode(captive, captorPlanet);
+            GameManager manager = new GameManager(game, TestGameData.Create(config));
+
+            manager.ProcessTick();
+
+            Assert.IsFalse(captive.IsCaptured);
+        }
+
+        [Test]
         public void ProcessTick_EventCapturesMissionParticipant_TearsDownMission()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
