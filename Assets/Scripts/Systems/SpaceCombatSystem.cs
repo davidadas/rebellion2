@@ -30,7 +30,7 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot _game;
         private readonly MovementSystem _movement;
-        private readonly SpaceCombatAutoResolver _autoResolver = new SpaceCombatAutoResolver();
+        private readonly SpaceCombatAutoResolver _autoResolver;
         private SpaceCombatDecision _pendingDecision;
 
         /// <summary>
@@ -56,8 +56,9 @@ namespace Rebellion.Systems
         /// <param name="movement">Movement system used for retreats and evacuation.</param>
         public SpaceCombatSystem(GameRoot game, MovementSystem movement)
         {
-            _game = game;
+            _game = game ?? throw new ArgumentNullException(nameof(game));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
+            _autoResolver = new SpaceCombatAutoResolver(game.Config.Combat.SpaceCombat);
         }
 
         /// <summary>

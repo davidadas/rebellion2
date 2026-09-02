@@ -518,7 +518,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Combat resolution parameters for assault and bombardment.
+        /// Combat resolution parameters for space combat, assault, and bombardment.
         /// </summary>
         [PersistableObject]
         public class CombatConfig
@@ -527,6 +527,8 @@ namespace Rebellion.Game
 
             public PlanetaryAssaultConfig PlanetaryAssault { get; set; } =
                 new PlanetaryAssaultConfig();
+
+            public SpaceCombatConfig SpaceCombat { get; set; } = new SpaceCombatConfig();
         }
 
         /// <summary>
@@ -565,6 +567,23 @@ namespace Rebellion.Game
             public int DefenderWinsMaximum { get; set; }
             public int AttackerWinsMinimum { get; set; }
             public int CaptureGarrisonCount { get; set; }
+        }
+
+        /// <summary>
+        /// Automatic space-combat resolution parameters.
+        /// </summary>
+        [PersistableObject]
+        public class SpaceCombatConfig
+        {
+            public int AutoResolveRandomSeed { get; set; }
+
+            public int AutoResolveMaximumIterations { get; set; }
+
+            public int AutoResolveStagnationIterations { get; set; }
+
+            public double AutoResolveRetreatStrengthRatio { get; set; }
+
+            public double AutoResolveMinimumManeuverRatio { get; set; }
         }
 
         /// <summary>

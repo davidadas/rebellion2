@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
@@ -60,7 +61,7 @@ namespace Rebellion.Tests.Systems
             attacker.PrimaryWeapons[PrimaryWeaponType.IonCannon][0] = 100;
             Starfighter defender = CreateFighter("defender", squadronSize: 12, weaponStrength: 0);
 
-            SpaceCombatAutoResolution result = new SpaceCombatAutoResolver().Resolve(
+            SpaceCombatAutoResolution result = new SpaceCombatAutoResolver(CreateConfig()).Resolve(
                 new[] { attacker },
                 new List<Starfighter>(),
                 new List<CapitalShip>(),
@@ -222,17 +223,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1200, result.IterationsCompleted);
         }
 
-        [Test]
-        public void Next_AfterOriginalWarmup_ReturnsOriginalSequence()
-        {
-            SpaceCombatAutoResolver.OriginalRandom random =
-                new SpaceCombatAutoResolver.OriginalRandom(12345678);
-
-            List<int> values = Enumerable.Range(0, 5).Select(_ => random.Next(0, 1000)).ToList();
-
-            CollectionAssert.AreEqual(new[] { 798, 700, 354, 618, 13 }, values);
-        }
-
         private static SpaceCombatAutoResolution ResolveSymmetricBattle()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
@@ -266,7 +256,7 @@ namespace Rebellion.Tests.Systems
             bool defenderCanWithdraw = false
         )
         {
-            return new SpaceCombatAutoResolver().Resolve(
+            return new SpaceCombatAutoResolver(CreateConfig()).Resolve(
                 attackerShips,
                 attackerFighters,
                 defenderShips,
@@ -274,6 +264,18 @@ namespace Rebellion.Tests.Systems
                 attackerCanWithdraw,
                 defenderCanWithdraw
             );
+        }
+
+        private static GameConfig.SpaceCombatConfig CreateConfig()
+        {
+            return new GameConfig.SpaceCombatConfig
+            {
+                AutoResolveRandomSeed = 1894809716,
+                AutoResolveMaximumIterations = 4096,
+                AutoResolveStagnationIterations = 1200,
+                AutoResolveRetreatStrengthRatio = 0.33,
+                AutoResolveMinimumManeuverRatio = 0.1,
+            };
         }
 
         private static CapitalShip CreateShip(

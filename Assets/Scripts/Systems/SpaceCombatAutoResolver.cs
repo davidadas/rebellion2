@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
 {
@@ -10,13 +12,17 @@ namespace Rebellion.Systems
     /// </summary>
     internal sealed class SpaceCombatAutoResolver
     {
-        private const int _randomSeed = 12345678;
-        private const int _maximumIterations = 4096;
-        private const int _stagnationIterations = 1200;
-        private const double _retreatStrengthRatio = 0.33;
-        private const double _minimumManeuverRatio = 0.1;
+        private readonly GameConfig.SpaceCombatConfig _config;
+        private IRandomNumberProvider _random;
 
-        private OriginalRandom _random;
+        /// <summary>
+        /// Creates an automatic resolver using the supplied combat parameters.
+        /// </summary>
+        /// <param name="config">The automatic space-combat resolution parameters.</param>
+        internal SpaceCombatAutoResolver(GameConfig.SpaceCombatConfig config)
+        {
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+        }
 
         /// <summary>
         /// Resolves the supplied forces until one side is destroyed, withdraws, or combat stalls.
@@ -37,16 +43,18 @@ namespace Rebellion.Systems
             bool defenderCanWithdraw
         )
         {
-            _random = new OriginalRandom(_randomSeed);
+            _random = new SystemRandomProvider(_config.AutoResolveRandomSeed);
             CombatForce attacker = new CombatForce(
                 attackerShips,
                 attackerFighters,
-                attackerCanWithdraw
+                attackerCanWithdraw,
+                _config.AutoResolveMinimumManeuverRatio
             );
             CombatForce defender = new CombatForce(
                 defenderShips,
                 defenderFighters,
-                defenderCanWithdraw
+                defenderCanWithdraw,
+                _config.AutoResolveMinimumManeuverRatio
             );
             attacker.InitialStrength = GetTacticalStrength(attacker, defender);
             defender.InitialStrength = GetTacticalStrength(defender, attacker);
@@ -56,7 +64,7 @@ namespace Rebellion.Systems
             int stagnantIterations = 0;
             int iterationsCompleted = 0;
 
-            for (int iteration = 0; iteration < _maximumIterations; iteration++)
+            for (int iteration = 0; iteration < _config.AutoResolveMaximumIterations; iteration++)
             {
                 iterationsCompleted = iteration + 1;
                 if (CompleteEliminatedForces(attacker, defender))
@@ -82,7 +90,7 @@ namespace Rebellion.Systems
                 previousAttackerDurability = attackerDurability;
                 previousDefenderDurability = defenderDurability;
 
-                if (stagnantIterations >= _stagnationIterations)
+                if (stagnantIterations >= _config.AutoResolveStagnationIterations)
                 {
                     ResolveStalemate(attacker, defender, attackerStrength, defenderStrength);
                     break;
@@ -137,7 +145,7 @@ namespace Rebellion.Systems
         /// <param name="attacker">The attacking force.</param>
         /// <param name="defender">The defending force.</param>
         /// <returns>True when either side leaves combat.</returns>
-        private static bool CompleteWithdrawingForce(CombatForce attacker, CombatForce defender)
+        private bool CompleteWithdrawingForce(CombatForce attacker, CombatForce defender)
         {
             bool attackerExhausted = HasReachedWithdrawalThreshold(attacker, defender);
             bool defenderExhausted = HasReachedWithdrawalThreshold(defender, attacker);
@@ -155,13 +163,13 @@ namespace Rebellion.Systems
         /// <param name="force">The force to inspect.</param>
         /// <param name="opponent">The opposing force.</param>
         /// <returns>True when the withdrawal threshold has been reached.</returns>
-        private static bool HasReachedWithdrawalThreshold(CombatForce force, CombatForce opponent)
+        private bool HasReachedWithdrawalThreshold(CombatForce force, CombatForce opponent)
         {
             if (!force.HasSurvivors || force.InitialStrength <= 0)
                 return false;
 
             return GetTacticalStrength(force, opponent) / force.InitialStrength
-                <= _retreatStrengthRatio;
+                <= _config.AutoResolveRetreatStrengthRatio;
         }
 
         /// <summary>
@@ -222,12 +230,12 @@ namespace Rebellion.Systems
         {
             List<CapitalShipState> ships = targetForce.Ships.Where(ship => ship.IsAlive).ToList();
             if (ships.Count > 0)
-                return ships[_random.Next(0, ships.Count)];
+                return ships[_random.NextInt(0, ships.Count)];
 
             List<StarfighterState> fighters = targetForce
                 .Fighters.Where(fighter => fighter.IsAlive)
                 .ToList();
-            return fighters.Count == 0 ? null : fighters[_random.Next(0, fighters.Count)];
+            return fighters.Count == 0 ? null : fighters[_random.NextInt(0, fighters.Count)];
         }
 
         /// <summary>
@@ -241,10 +249,10 @@ namespace Rebellion.Systems
                 .Fighters.Where(fighter => fighter.IsAlive)
                 .ToList();
             if (fighters.Count > 0)
-                return fighters[_random.Next(0, fighters.Count)];
+                return fighters[_random.NextInt(0, fighters.Count)];
 
             List<CapitalShipState> ships = targetForce.Ships.Where(ship => ship.IsAlive).ToList();
-            return ships.Count == 0 ? null : ships[_random.Next(0, ships.Count)];
+            return ships.Count == 0 ? null : ships[_random.NextInt(0, ships.Count)];
         }
 
         /// <summary>
@@ -434,19 +442,21 @@ namespace Rebellion.Systems
             /// <param name="ships">The force's capital ships.</param>
             /// <param name="fighters">The force's fighter squadrons.</param>
             /// <param name="canWithdraw">Whether the force can leave combat.</param>
+            /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
             internal CombatForce(
                 IReadOnlyList<CapitalShip> ships,
                 IReadOnlyList<Starfighter> fighters,
-                bool canWithdraw
+                bool canWithdraw,
+                double minimumManeuverRatio
             )
             {
                 Ships = (ships ?? Array.Empty<CapitalShip>())
                     .Where(ship => ship != null)
-                    .Select(ship => new CapitalShipState(ship))
+                    .Select(ship => new CapitalShipState(ship, minimumManeuverRatio))
                     .ToList();
                 Fighters = (fighters ?? Array.Empty<Starfighter>())
                     .Where(fighter => fighter != null)
-                    .Select(fighter => new StarfighterState(fighter))
+                    .Select(fighter => new StarfighterState(fighter, minimumManeuverRatio))
                     .ToList();
                 CanWithdraw = canWithdraw;
                 Outcome = SpaceCombatAutoSideOutcome.Active;
@@ -458,6 +468,9 @@ namespace Rebellion.Systems
         /// </summary>
         private abstract class TacticalUnit
         {
+            private readonly double _minimumManeuverRatio;
+
+            protected double MinimumManeuverRatio => _minimumManeuverRatio;
             internal abstract bool IsAlive { get; }
             internal abstract double ManeuverRate { get; }
             internal abstract bool IsStarfighter { get; }
@@ -481,24 +494,26 @@ namespace Rebellion.Systems
             internal abstract void Destroy();
 
             /// <summary>
+            /// Creates tactical state using the configured maneuver floor.
+            /// </summary>
+            /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
+            protected TacticalUnit(double minimumManeuverRatio)
+            {
+                _minimumManeuverRatio = minimumManeuverRatio;
+            }
+
+            /// <summary>
             /// Calculates the original maneuver-rate adjustment used against fighter targets.
             /// </summary>
-            /// <param name="attacker">The attacking unit.</param>
             /// <param name="target">The target unit.</param>
             /// <returns>The attack multiplier.</returns>
-            protected static double GetManeuverMultiplier(
-                TacticalUnit attacker,
-                TacticalUnit target
-            )
+            protected double GetManeuverMultiplier(TacticalUnit target)
             {
                 if (!target.IsStarfighter)
                     return 1;
 
                 double targetRate = Math.Max(target.ManeuverRate, _minimumManeuverRatio);
-                return Math.Max(
-                    Math.Min(attacker.ManeuverRate / targetRate, 1),
-                    _minimumManeuverRatio
-                );
+                return Math.Max(Math.Min(ManeuverRate / targetRate, 1), _minimumManeuverRatio);
             }
         }
 
@@ -518,13 +533,15 @@ namespace Rebellion.Systems
             internal override bool IsStarfighter => false;
             internal override double RemainingDurability => CurrentHull + CurrentShields;
             internal override double ManeuverRate =>
-                Math.Max(Ship.SublightSpeed + Ship.Maneuverability, _minimumManeuverRatio);
+                Math.Max(Ship.SublightSpeed + Ship.Maneuverability, MinimumManeuverRatio);
 
             /// <summary>
             /// Creates tactical state from a capital ship's current strategic state.
             /// </summary>
             /// <param name="ship">The capital ship entering combat.</param>
-            internal CapitalShipState(CapitalShip ship)
+            /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
+            internal CapitalShipState(CapitalShip ship, double minimumManeuverRatio)
+                : base(minimumManeuverRatio)
             {
                 Ship = ship;
                 InitialHull = Math.Max(ship.CurrentHullStrength, 0);
@@ -540,7 +557,7 @@ namespace Rebellion.Systems
                 double condition = CurrentHull / _maximumHull;
                 double recharge = Math.Max(Ship.WeaponRecharge, 0);
                 return GetStrongestArcStrength(target.IsStarfighter)
-                    * GetManeuverMultiplier(this, target)
+                    * GetManeuverMultiplier(target)
                     * condition
                     * recharge;
             }
@@ -634,13 +651,15 @@ namespace Rebellion.Systems
             internal override bool IsStarfighter => true;
             internal override double RemainingDurability => _currentDurability;
             internal override double ManeuverRate =>
-                Math.Max(Fighter.SublightSpeed + Fighter.Agility, _minimumManeuverRatio);
+                Math.Max(Fighter.SublightSpeed + Fighter.Agility, MinimumManeuverRatio);
 
             /// <summary>
             /// Creates tactical state from a fighter squadron's current strategic state.
             /// </summary>
             /// <param name="fighter">The fighter squadron entering combat.</param>
-            internal StarfighterState(Starfighter fighter)
+            /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
+            internal StarfighterState(Starfighter fighter, double minimumManeuverRatio)
+                : base(minimumManeuverRatio)
             {
                 Fighter = fighter;
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
@@ -652,7 +671,7 @@ namespace Rebellion.Systems
             internal override double GetAttackStrength(TacticalUnit target)
             {
                 return GetWeaponStrength(target.IsStarfighter)
-                    * GetManeuverMultiplier(this, target)
+                    * GetManeuverMultiplier(target)
                     * GetRemainingFighterCount();
             }
 
@@ -690,56 +709,6 @@ namespace Rebellion.Systems
                 if (!targetsFighters)
                     strength += Math.Max(Fighter.IonCannon, 0);
                 return strength;
-            }
-        }
-
-        /// <summary>
-        /// Implements the original tactical auto-resolver's seeded random-number sequence.
-        /// </summary>
-        internal sealed class OriginalRandom
-        {
-            private const int _maximumRandomValue = int.MaxValue;
-            private int _state;
-
-            /// <summary>
-            /// Initializes and warms the original tactical random-number sequence.
-            /// </summary>
-            /// <param name="seed">The initial random state.</param>
-            internal OriginalRandom(int seed)
-            {
-                _state = seed;
-                for (int i = 0; i < 16; i++)
-                    _state = GenerateNext(_state);
-            }
-
-            /// <summary>
-            /// Returns the next integer in a half-open range.
-            /// </summary>
-            /// <param name="minimum">The inclusive lower bound.</param>
-            /// <param name="maximum">The exclusive upper bound.</param>
-            /// <returns>The next generated value.</returns>
-            internal int Next(int minimum, int maximum)
-            {
-                int range = maximum - minimum;
-                if (range <= 1)
-                    return minimum;
-
-                _state = GenerateNext(_state);
-                int divisor = (_maximumRandomValue - 1) / range;
-                return Math.Min(minimum + _state / divisor, maximum - 1);
-            }
-
-            /// <summary>
-            /// Advances the original multiplicative random-number generator.
-            /// </summary>
-            /// <param name="state">The current random state.</param>
-            /// <returns>The next random state.</returns>
-            private static int GenerateNext(int state)
-            {
-                int result = unchecked(state * 41358 + (state / 51924) * -_maximumRandomValue);
-                if (result < 0)
-                    result += _maximumRandomValue;
-                return result;
             }
         }
     }
