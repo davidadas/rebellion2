@@ -1,13 +1,12 @@
 using System.Collections.Generic;
-using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
-namespace Rebellion.Game.Combat
+namespace Rebellion.Game.Results
 {
     /// <summary>
-    /// Contains the resolved unit and side states from automatic space combat.
+    /// Contains the unapplied result of automatic space combat.
     /// </summary>
-    internal sealed class SpaceCombatAutoResolution
+    internal sealed class SpaceCombatAutoResult
     {
         internal SpaceCombatSideOutcome AttackerOutcome { get; }
         internal SpaceCombatSideOutcome DefenderOutcome { get; }
@@ -16,14 +15,14 @@ namespace Rebellion.Game.Combat
         internal IReadOnlyList<SpaceCombatAutoFighterOutcome> Fighters { get; }
 
         /// <summary>
-        /// Creates an automatic-combat resolution.
+        /// Creates an automatic space-combat result.
         /// </summary>
         /// <param name="attackerOutcome">The attacker's final state.</param>
         /// <param name="defenderOutcome">The defender's final state.</param>
         /// <param name="iterationsCompleted">The number of resolution iterations.</param>
         /// <param name="ships">The resolved capital ships.</param>
         /// <param name="fighters">The resolved fighter squadrons.</param>
-        internal SpaceCombatAutoResolution(
+        internal SpaceCombatAutoResult(
             SpaceCombatSideOutcome attackerOutcome,
             SpaceCombatSideOutcome defenderOutcome,
             int iterationsCompleted,

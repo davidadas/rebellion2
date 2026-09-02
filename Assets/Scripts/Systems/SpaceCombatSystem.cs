@@ -982,7 +982,7 @@ namespace Rebellion.Systems
                 .Where(IsActiveStarfighter)
                 .Distinct()
                 .ToList();
-            SpaceCombatAutoResolution resolution = _autoResolver.Resolve(
+            SpaceCombatAutoResult autoResult = _autoResolver.Resolve(
                 attackerShips,
                 attackerFighters,
                 defenderShips,
@@ -992,19 +992,19 @@ namespace Rebellion.Systems
             );
             List<ShipSnap> attackerShipSnapshots = CreateShipSnapshots(
                 attackerShips,
-                resolution.Ships
+                autoResult.Ships
             );
             List<ShipSnap> defenderShipSnapshots = CreateShipSnapshots(
                 defenderShips,
-                resolution.Ships
+                autoResult.Ships
             );
             List<FighterSnap> attackerFighterSnapshots = CreateFighterSnapshots(
                 attackerFighters,
-                resolution.Fighters
+                autoResult.Fighters
             );
             List<FighterSnap> defenderFighterSnapshots = CreateFighterSnapshots(
                 defenderFighters,
-                resolution.Fighters
+                autoResult.Fighters
             );
 
             SpaceCombatResult result = BuildSpaceResult(
@@ -1019,8 +1019,8 @@ namespace Rebellion.Systems
                 defenderFighterSnapshots,
                 tick
             );
-            result.AttackerOutcome = resolution.AttackerOutcome;
-            result.DefenderOutcome = resolution.DefenderOutcome;
+            result.AttackerOutcome = autoResult.AttackerOutcome;
+            result.DefenderOutcome = autoResult.DefenderOutcome;
             result.Winner = DetermineWinner(
                 result.AttackerOutcome,
                 result.DefenderOutcome,

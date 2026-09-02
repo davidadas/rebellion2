@@ -14,8 +14,8 @@ namespace Rebellion.Tests.Game.Combat
         [Test]
         public void Resolve_EquivalentBattles_ReturnsDeterministicResults()
         {
-            SpaceCombatAutoResolution first = ResolveSymmetricBattle();
-            SpaceCombatAutoResolution second = ResolveSymmetricBattle();
+            SpaceCombatAutoResult first = ResolveSymmetricBattle();
+            SpaceCombatAutoResult second = ResolveSymmetricBattle();
 
             Assert.AreEqual(first.AttackerOutcome, second.AttackerOutcome);
             Assert.AreEqual(first.DefenderOutcome, second.DefenderOutcome);
@@ -38,12 +38,12 @@ namespace Rebellion.Tests.Game.Combat
             CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
             CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
 
-            SpaceCombatAutoResolution first = Resolve(
+            SpaceCombatAutoResult first = Resolve(
                 new[] { singleArc },
                 new[] { firstTarget },
                 defenderCanWithdraw: true
             );
-            SpaceCombatAutoResolution second = Resolve(
+            SpaceCombatAutoResult second = Resolve(
                 new[] { severalArcs },
                 new[] { secondTarget },
                 defenderCanWithdraw: true
@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Game.Combat
             attacker.PrimaryWeapons[PrimaryWeaponType.IonCannon][0] = 100;
             Starfighter defender = CreateFighter("defender", squadronSize: 12, weaponStrength: 0);
 
-            SpaceCombatAutoResolution result = new SpaceCombatAutoResolver(CreateConfig()).Resolve(
+            SpaceCombatAutoResult result = new SpaceCombatAutoResolver(CreateConfig()).Resolve(
                 new[] { attacker },
                 new List<Starfighter>(),
                 new List<CapitalShip>(),
@@ -90,14 +90,14 @@ namespace Rebellion.Tests.Game.Combat
             CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
             CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
 
-            SpaceCombatAutoResolution first = Resolve(
+            SpaceCombatAutoResult first = Resolve(
                 new List<CapitalShip>(),
                 new[] { singleFighter },
                 new[] { firstTarget },
                 new List<Starfighter>(),
                 defenderCanWithdraw: true
             );
-            SpaceCombatAutoResolution second = Resolve(
+            SpaceCombatAutoResult second = Resolve(
                 new List<CapitalShip>(),
                 new[] { fullSquadron },
                 new[] { secondTarget },
@@ -120,12 +120,12 @@ namespace Rebellion.Tests.Game.Combat
             CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 1000);
             CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 1000);
 
-            SpaceCombatAutoResolution first = Resolve(
+            SpaceCombatAutoResult first = Resolve(
                 new[] { undamaged },
                 new[] { firstTarget },
                 defenderCanWithdraw: true
             );
-            SpaceCombatAutoResolution second = Resolve(
+            SpaceCombatAutoResult second = Resolve(
                 new[] { damaged },
                 new[] { secondTarget },
                 defenderCanWithdraw: true
@@ -142,7 +142,7 @@ namespace Rebellion.Tests.Game.Combat
             defender.MaxShieldStrength = 100;
             defender.ShieldRechargeRate = 1;
 
-            SpaceCombatAutoResolution result = Resolve(
+            SpaceCombatAutoResult result = Resolve(
                 new[] { attacker },
                 new[] { defender },
                 defenderCanWithdraw: true
@@ -159,7 +159,7 @@ namespace Rebellion.Tests.Game.Combat
             defender.MaxShieldStrength = 0;
             defender.ShieldRechargeRate = 100;
 
-            SpaceCombatAutoResolution result = Resolve(
+            SpaceCombatAutoResult result = Resolve(
                 new[] { attacker },
                 new[] { defender },
                 defenderCanWithdraw: true
@@ -175,7 +175,7 @@ namespace Rebellion.Tests.Game.Combat
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 0);
             defender.MaxShieldStrength = 500;
 
-            SpaceCombatAutoResolution result = Resolve(
+            SpaceCombatAutoResult result = Resolve(
                 new[] { attacker },
                 new[] { defender },
                 defenderCanWithdraw: true
@@ -195,7 +195,7 @@ namespace Rebellion.Tests.Game.Combat
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
 
-            SpaceCombatAutoResolution result = Resolve(
+            SpaceCombatAutoResult result = Resolve(
                 new[] { attacker },
                 new[] { defender },
                 defenderCanWithdraw: canWithdraw
@@ -215,7 +215,7 @@ namespace Rebellion.Tests.Game.Combat
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 0);
 
-            SpaceCombatAutoResolution result = Resolve(new[] { attacker }, new[] { defender });
+            SpaceCombatAutoResult result = Resolve(new[] { attacker }, new[] { defender });
 
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
@@ -224,14 +224,14 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(1200, result.IterationsCompleted);
         }
 
-        private static SpaceCombatAutoResolution ResolveSymmetricBattle()
+        private static SpaceCombatAutoResult ResolveSymmetricBattle()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 10);
             return Resolve(new[] { attacker }, new[] { defender });
         }
 
-        private static SpaceCombatAutoResolution Resolve(
+        private static SpaceCombatAutoResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
             IReadOnlyList<CapitalShip> defenderShips,
             bool attackerCanWithdraw = false,
@@ -248,7 +248,7 @@ namespace Rebellion.Tests.Game.Combat
             );
         }
 
-        private static SpaceCombatAutoResolution Resolve(
+        private static SpaceCombatAutoResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
             IReadOnlyList<Starfighter> attackerFighters,
             IReadOnlyList<CapitalShip> defenderShips,
@@ -325,7 +325,7 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         private static SpaceCombatAutoShipOutcome GetShipOutcome(
-            SpaceCombatAutoResolution result,
+            SpaceCombatAutoResult result,
             CapitalShip ship
         )
         {
@@ -333,7 +333,7 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         private static SpaceCombatAutoFighterOutcome GetFighterOutcome(
-            SpaceCombatAutoResolution result,
+            SpaceCombatAutoResult result,
             Starfighter fighter
         )
         {

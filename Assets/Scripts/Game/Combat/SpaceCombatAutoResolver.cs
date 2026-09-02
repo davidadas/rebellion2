@@ -34,7 +34,7 @@ namespace Rebellion.Game.Combat
         /// <param name="attackerCanWithdraw">Whether the attacking force can leave combat.</param>
         /// <param name="defenderCanWithdraw">Whether the defending force can leave combat.</param>
         /// <returns>The resolved tactical state for both forces.</returns>
-        internal SpaceCombatAutoResolution Resolve(
+        internal SpaceCombatAutoResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
             IReadOnlyList<Starfighter> attackerFighters,
             IReadOnlyList<CapitalShip> defenderShips,
@@ -110,7 +110,7 @@ namespace Rebellion.Game.Combat
                 );
             }
 
-            return new SpaceCombatAutoResolution(
+            return new SpaceCombatAutoResult(
                 attacker.Outcome,
                 defender.Outcome,
                 iterationsCompleted,
