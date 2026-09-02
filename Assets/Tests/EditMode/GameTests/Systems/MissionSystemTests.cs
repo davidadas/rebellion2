@@ -1222,7 +1222,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DetectorWithoutCommander_CannotFoil()
+        public void UpdateMission_DetectorWithoutCommander_CanFoil()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
@@ -1246,13 +1246,13 @@ namespace Rebellion.Tests.Sectors
             List<GameResult> results = system.UpdateMission(mission);
 
             Assert.IsFalse(spy.IsKilled);
-            Assert.IsFalse(spy.IsCaptured);
-            Assert.IsFalse(
+            Assert.IsTrue(spy.IsCaptured);
+            Assert.IsTrue(
                 results
                     .OfType<MissionCompletedResult>()
                     .Any(result => result.Outcome == MissionOutcome.Foiled)
             );
-            Assert.AreEqual(1, mission.CurrentProgress);
+            Assert.AreEqual(0, mission.CurrentProgress);
         }
 
         [Test]

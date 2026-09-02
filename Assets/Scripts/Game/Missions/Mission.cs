@@ -774,8 +774,7 @@ namespace Rebellion.Game.Missions
             )
                 return false;
 
-            return (candidate is Regiment or Starfighter or CapitalShip)
-                && FindDetectorCommander(candidate) != null;
+            return candidate is Regiment or Starfighter or CapitalShip;
         }
 
         /// <summary>
