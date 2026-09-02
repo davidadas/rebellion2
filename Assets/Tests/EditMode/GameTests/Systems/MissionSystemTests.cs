@@ -988,6 +988,46 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void UpdateMission_InTransitFleetDetector_DoesNotFoilMission()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            game.DeleteNode(planet.GetChildren<Regiment>().Single());
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "fleet",
+                OwnerInstanceID = "rebels",
+                Movement = new MovementState { TransitTicks = 10 },
+            };
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(capitalShip, fleet);
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.SetExecutionTick(5);
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
+            Assert.AreEqual(1, mission.CurrentProgress);
+        }
+
+        [Test]
         public void UpdateMission_FriendlyBuildingBlocksFleetDetection()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
