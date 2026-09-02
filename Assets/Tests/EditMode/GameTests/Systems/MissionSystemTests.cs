@@ -1193,6 +1193,35 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void UpdateMission_EvasionFailsToHostileDetectorOnOwnPlanet_CaptorIsDetectorOwner()
+        {
+            (GameRoot game, Planet planet, Officer spy, MovementSystem movement) =
+                BuildOwnPlanetDetectionScene();
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(spy.IsCaptured);
+            Assert.AreEqual(
+                "rebels",
+                spy.CaptorInstanceID,
+                "Captor should be the hostile detector's faction, not the planet owner"
+            );
+        }
+
+        [Test]
         public void UpdateMission_EspionageDetected_AppliesFoiledParticipantConsequences()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
@@ -3551,6 +3580,64 @@ namespace Rebellion.Tests.Sectors
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
             };
+        }
+
+        private (
+            GameRoot game,
+            Planet planet,
+            Officer spy,
+            MovementSystem movement
+        ) BuildOwnPlanetDetectionScene()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "sector1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sector, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
+            };
+            game.AttachNode(planet, sector);
+
+            Officer spy = EntityFactory.CreateOfficer("spy", "empire");
+            spy.MissionReturnParentInstanceID = planet.InstanceID;
+            spy.MissionReturnLocationInstanceID = planet.InstanceID;
+            game.AttachNode(spy, planet);
+
+            // A hostile unit over one of your own planets rides in an orbiting fleet;
+            // a colonized planet only accepts owner-owned regiments/starfighters directly.
+            Fleet fleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "rebels" };
+            game.AttachNode(fleet, planet);
+
+            CapitalShip detectorShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(detectorShip, fleet);
+
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            return (game, planet, spy, movement);
         }
 
         private (
