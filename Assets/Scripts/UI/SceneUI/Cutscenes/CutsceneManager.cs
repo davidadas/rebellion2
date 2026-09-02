@@ -21,7 +21,7 @@ public sealed class CutsceneManager : MonoBehaviour
     private AudioManager audioManager;
 
     private CutscenePlayer activePlayer;
-    private bool ownsAudioPause;
+    private bool _audioPauseApplied;
     private bool ownsTimePause;
     private bool previousAudioPause;
     private float previousTimeScale = _runningTimeScale;
@@ -214,11 +214,11 @@ public sealed class CutsceneManager : MonoBehaviour
     /// </summary>
     private void PauseApplicationAudio()
     {
-        if (!ownsAudioPause)
+        if (!_audioPauseApplied)
             previousAudioPause = AudioListener.pause;
 
         AudioListener.pause = true;
-        ownsAudioPause = true;
+        _audioPauseApplied = true;
     }
 
     /// <summary>
@@ -226,11 +226,11 @@ public sealed class CutsceneManager : MonoBehaviour
     /// </summary>
     private void RestoreApplicationAudio()
     {
-        if (!ownsAudioPause)
+        if (!_audioPauseApplied)
             return;
 
         AudioListener.pause = previousAudioPause;
-        ownsAudioPause = false;
+        _audioPauseApplied = false;
     }
 
     /// <summary>
