@@ -8,7 +8,7 @@ namespace Rebellion.AI.Phases
     /// <summary>
     /// Generates proposals for the current faction turn.
     /// </summary>
-    public sealed class AIPlanningPhase : IAITurnPhase, IAIIncrementalTurnPhase
+    public sealed class AIPlanningPhase : IAIIncrementalTurnPhase
     {
         private readonly List<IAIProposalPlanner> _planners;
 

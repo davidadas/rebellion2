@@ -7,7 +7,7 @@ namespace Rebellion.AI.Phases
     /// <summary>
     /// Executes proposals selected for the turn.
     /// </summary>
-    public sealed class AIExecutionPhase : IAITurnPhase, IAIIncrementalTurnPhase
+    public sealed class AIExecutionPhase : IAIIncrementalTurnPhase
     {
         /// <summary>
         /// Executes selected proposals that still pass validation.
