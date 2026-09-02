@@ -126,6 +126,14 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Plays the protocol advisor's authored rejection for an invalid order.
+    /// </summary>
+    public void PlayInvalidOrderRejected()
+    {
+        advisorController.PlayInvalidOrderRejected();
+    }
+
+    /// <summary>
     /// Plays the protocol advisor's authored rejection for a destination under construction.
     /// </summary>
     public void PlayUnitUnderConstructionOrderRejected()

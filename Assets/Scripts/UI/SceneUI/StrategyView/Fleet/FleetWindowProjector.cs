@@ -275,8 +275,6 @@ internal sealed class FleetWindowProjector
                         capitalShip?.GetChildren<Officer>().Any() == true,
                         badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
                     ),
-                    hideBackgroundWhenSelected: item
-                        is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building },
                     canDrag: true
                 )
             );

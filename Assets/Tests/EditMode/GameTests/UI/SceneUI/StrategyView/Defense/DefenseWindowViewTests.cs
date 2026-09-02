@@ -104,26 +104,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void RenderItemSelection_UnderConstructionItem_ReplacesConstructionBackground()
+        public void RenderItemSelection_ItemWithBackground_PreservesBackground()
         {
             _view.Render(
                 CreateRenderData(
                     DefenseWindowTab.Starfighters,
-                    new[]
-                    {
-                        CreateItem(
-                            "Fighter Squadron",
-                            backgroundTexture: _backgroundTexture,
-                            hideBackgroundWhenSelected: true
-                        ),
-                    }
+                    new[] { CreateItem("Fighter Squadron", backgroundTexture: _backgroundTexture) }
                 )
             );
             StrategyUnitCardView card = FindItemCards()[0];
 
             _view.RenderItemSelection(new[] { 0 }, _texture);
 
-            Assert.IsFalse(FindCardObject(card, "BackgroundImage").activeSelf);
+            Assert.IsTrue(FindCardObject(card, "BackgroundImage").activeSelf);
             Assert.IsTrue(FindCardObject(card, "SelectionImage").activeSelf);
 
             _view.RenderItemSelection(Array.Empty<int>(), _texture);
@@ -547,8 +540,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             bool canDrag = false,
             bool showOptionalImages = false,
             bool alternateNameLayout = false,
-            Texture backgroundTexture = null,
-            bool hideBackgroundWhenSelected = false
+            Texture backgroundTexture = null
         )
         {
             Texture optionalTexture = showOptionalImages ? _texture : null;
@@ -568,7 +560,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 optionalTexture,
                 optionalTexture,
                 optionalTexture,
-                hideBackgroundWhenSelected,
                 canDrag
             );
         }

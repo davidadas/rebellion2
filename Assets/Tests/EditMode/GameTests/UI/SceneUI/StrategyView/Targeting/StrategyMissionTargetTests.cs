@@ -118,12 +118,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             GalaxyMapPlanet mapPlanet = CreateMapPlanet("planet", "player");
             StrategyMissionTarget locationMission = new StrategyMissionTarget(
                 mapPlanet,
-                new CapitalShip()
+                mapPlanet.Planet
             );
 
             ISceneNode locationTarget = locationMission.GetMissionTarget(MissionTargetKind.Planet);
 
             Assert.AreSame(mapPlanet.Planet, locationTarget);
+        }
+
+        [Test]
+        public void GetMissionTarget_PlanetMissionFromCapitalShip_ReturnsNull()
+        {
+            GalaxyMapPlanet mapPlanet = CreateMapPlanet("planet", "player");
+            StrategyMissionTarget target = new StrategyMissionTarget(mapPlanet, new CapitalShip());
+
+            ISceneNode missionTarget = target.GetMissionTarget(MissionTargetKind.Planet);
+
+            Assert.IsNull(missionTarget);
         }
 
         [Test]

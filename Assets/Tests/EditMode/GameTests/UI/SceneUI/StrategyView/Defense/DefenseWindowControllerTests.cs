@@ -179,7 +179,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
             StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
             Assert.AreSame(_planet, target.Planet);
-            Assert.IsNull(target.Item);
+            Assert.AreSame(_planet.Planet, target.Item);
             Assert.AreSame(_planet.Planet, target.GetMoveDestination());
         }
 

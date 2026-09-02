@@ -58,7 +58,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
             };
             _game.AttachNode(_specialForces, origin);
-            _target = new StrategyMissionTarget(targetPlanet, null);
+            _target = new StrategyMissionTarget(targetPlanet, targetPlanet.Planet);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);

@@ -1148,13 +1148,15 @@ public sealed class FleetWindowController
     /// Completes the active targeting request with one fleet-window target.
     /// </summary>
     /// <param name="session">The controller-owned fleet session.</param>
-    /// <param name="item">The optional item within the represented planet.</param>
+    /// <param name="item">The selected item, or null for the represented planet.</param>
     /// <returns>True when an active targeting request completed.</returns>
     private bool TrySelectTarget(FleetWindowSession session, ISceneNode item)
     {
         return targetingController.IsTargeting
             && session?.Planet?.Planet != null
-            && targetingController.TrySelectTarget(new StrategyMissionTarget(session.Planet, item));
+            && targetingController.TrySelectTarget(
+                new StrategyMissionTarget(session.Planet, item ?? session.Planet.Planet)
+            );
     }
 
     /// <summary>

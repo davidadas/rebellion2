@@ -113,7 +113,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 null,
                 null,
                 null,
-                false,
                 false
             );
         }

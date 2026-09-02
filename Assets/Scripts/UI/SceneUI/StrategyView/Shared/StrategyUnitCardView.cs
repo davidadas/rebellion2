@@ -49,7 +49,6 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
 
     private bool canDrag;
     private RectInt entityFrameRect;
-    private bool hideBackgroundWhenSelected;
     private bool layoutCaptured;
     private UIPointerGestureRelay pointerGestures;
 
@@ -125,7 +124,6 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
         VerifyReferences();
         CaptureLayout();
         canDrag = data.CanDrag;
-        hideBackgroundWhenSelected = data.HideBackgroundWhenSelected;
 
         RectInt entityRenderFrameRect = GetEntityRenderFrameRect(data.EntityFrameYOffset);
         SetOptionalImageTexture(backgroundImage, data.BackgroundTexture);
@@ -161,8 +159,6 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     {
         VerifyReferences();
         SetOptionalImageTexture(selectionImage, texture);
-        if (backgroundImage != null && hideBackgroundWhenSelected)
-            backgroundImage.gameObject.SetActive(texture == null);
     }
 
     /// <summary>
@@ -422,8 +418,6 @@ public sealed class StrategyUnitCardRenderData
 
     public Texture PersonnelBadgeTexture { get; }
 
-    public bool HideBackgroundWhenSelected { get; }
-
     public bool CanDrag { get; }
 
     /// <summary>
@@ -443,7 +437,6 @@ public sealed class StrategyUnitCardRenderData
     /// <param name="starfighterBadgeTexture">The optional starfighter badge.</param>
     /// <param name="troopBadgeTexture">The optional troop badge.</param>
     /// <param name="personnelBadgeTexture">The optional personnel badge.</param>
-    /// <param name="hideBackgroundWhenSelected">Whether selection replaces the card background.</param>
     /// <param name="canDrag">Whether the card can initiate a move drag.</param>
     public StrategyUnitCardRenderData(
         string name,
@@ -460,7 +453,6 @@ public sealed class StrategyUnitCardRenderData
         Texture starfighterBadgeTexture,
         Texture troopBadgeTexture,
         Texture personnelBadgeTexture,
-        bool hideBackgroundWhenSelected,
         bool canDrag
     )
     {
@@ -478,7 +470,6 @@ public sealed class StrategyUnitCardRenderData
         StarfighterBadgeTexture = starfighterBadgeTexture;
         TroopBadgeTexture = troopBadgeTexture;
         PersonnelBadgeTexture = personnelBadgeTexture;
-        HideBackgroundWhenSelected = hideBackgroundWhenSelected;
         CanDrag = canDrag;
     }
 }
