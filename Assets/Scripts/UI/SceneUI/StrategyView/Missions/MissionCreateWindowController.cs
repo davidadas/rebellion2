@@ -113,7 +113,7 @@ public sealed class MissionCreateWindowController
     )
     {
         UIWindow window = view == null ? null : view.GetComponent<UIWindow>();
-        if (view == null || window == null || target == null || target.Item is Fleet)
+        if (view == null || window == null || target?.Item == null || target.Item is Fleet)
             return false;
 
         List<IMissionParticipant> participants = GetMissionSourceParticipants(
@@ -143,7 +143,8 @@ public sealed class MissionCreateWindowController
     /// </summary>
     /// <param name="target">The selected mission target.</param>
     /// <param name="sourceItems">The source selection in visual order.</param>
-    public void Open(StrategyMissionTarget target, IReadOnlyList<ISceneNode> sourceItems)
+    /// <returns>True when the request was valid or toggled an existing window closed.</returns>
+    public bool Open(StrategyMissionTarget target, IReadOnlyList<ISceneNode> sourceItems)
     {
         Vector2Int position = getWindowPosition();
         UIWindow window = windowManager.ToggleExclusiveWindow(
@@ -160,7 +161,7 @@ public sealed class MissionCreateWindowController
             out MissionCreateWindowView view
         );
         if (window == null)
-            return;
+            return true;
 
         if (
             !TryInitializeWindow(
@@ -172,10 +173,11 @@ public sealed class MissionCreateWindowController
         )
         {
             windowManager.DestroyWindow(window);
-            return;
+            return false;
         }
 
         markDirty();
+        return true;
     }
 
     /// <summary>
@@ -552,7 +554,7 @@ public sealed class MissionCreateWindowController
         {
             MissionTypeID = choice.MissionTypeID,
             Location = missionPlanet,
-            SelectedTarget = session.Target.GetMissionTarget(choice.TargetKind),
+            SelectedTarget = session.Target.Item,
             Discipline = choice.Discipline,
             MainParticipants = session.Agents.ToList(),
             DecoyParticipants = session.Decoys.ToList(),

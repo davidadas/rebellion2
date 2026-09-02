@@ -19,10 +19,13 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         private GameObject _managerObject;
         private GameObject _playerPrefab;
         private AudioManager _audioManager;
+        private bool _previousAudioPause;
 
         [SetUp]
         public void SetUp()
         {
+            _previousAudioPause = AudioListener.pause;
+            AudioListener.pause = false;
             _playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
             _managerObject = new GameObject("CutsceneManager");
             _manager = _managerObject.AddComponent<CutsceneManager>();
@@ -49,6 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             }
 
             Time.timeScale = 1f;
+            AudioListener.pause = _previousAudioPause;
         }
 
         [Test]
@@ -62,7 +66,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         }
 
         [Test]
-        public void Play_NullClip_InvokesCompletionWithoutChangingTimeScale()
+        public void Play_NullClip_InvokesCompletionWithoutChangingApplicationState()
         {
             int completedCount = 0;
             Time.timeScale = 0.75f;
@@ -71,16 +75,18 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 
             Assert.AreEqual(1, completedCount);
             Assert.AreEqual(0.75f, Time.timeScale);
+            Assert.IsFalse(AudioListener.pause);
         }
 
         [Test]
-        public void Play_ValidClip_PausesTimeAndCreatesPlayer()
+        public void Play_ValidClip_PausesApplicationAndCreatesPlayer()
         {
             _manager.Play(_clip, null);
             CutscenePlayer player = GetField<CutscenePlayer>("activePlayer");
 
             Assert.IsNotNull(player);
             Assert.AreEqual(0f, Time.timeScale);
+            Assert.IsTrue(AudioListener.pause);
             Assert.AreSame(_clip, player.GetComponent<VideoPlayer>().clip);
         }
 
@@ -117,7 +123,21 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         }
 
         [Test]
-        public void OnDestroy_ActivePlayback_RestoresPreviousTimeScale()
+        public void Play_ReplacementClip_PreservesInitialAudioPauseForRestoration()
+        {
+            AudioListener.pause = true;
+            _manager.Play(_clip, null);
+            _manager.Play(_clip, null);
+
+            UIComponentTestHelper.InvokeLifecycle(_manager, "OnDestroy");
+            UnityEngine.Object.DestroyImmediate(_manager.gameObject);
+            _manager = null;
+
+            Assert.IsTrue(AudioListener.pause);
+        }
+
+        [Test]
+        public void OnDestroy_ActivePlayback_RestoresPreviousApplicationState()
         {
             Time.timeScale = 0.75f;
             _manager.Play(_clip, null);
@@ -127,6 +147,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             _manager = null;
 
             Assert.AreEqual(0.75f, Time.timeScale);
+            Assert.IsFalse(AudioListener.pause);
         }
 
         private T GetField<T>(string fieldName)

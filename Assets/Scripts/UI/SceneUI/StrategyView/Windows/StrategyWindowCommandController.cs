@@ -27,6 +27,7 @@ public sealed class StrategyWindowCommandController
     private readonly Action<UIWindow> clearWindowSelection;
     private readonly Action rebuildSnapshot;
     private readonly Action markDirty;
+    private readonly Action playInvalidOrderRejected;
     private readonly Action playInTransitOrderRejected;
     private readonly Action playUnitUnderConstructionOrderRejected;
 
@@ -45,6 +46,7 @@ public sealed class StrategyWindowCommandController
     /// <param name="rebuildSnapshot">Rebuilds the visible strategy snapshot.</param>
     /// <param name="markDirty">Invalidates the strategy presentation.</param>
     /// <param name="getHeadquartersSystem">Returns the mobile-headquarters system.</param>
+    /// <param name="playInvalidOrderRejected">Plays the advisor's invalid-order rejection.</param>
     /// <param name="playInTransitOrderRejected">Plays the advisor's in-transit rejection.</param>
     /// <param name="playUnitUnderConstructionOrderRejected">Plays the advisor's under-construction rejection.</param>
     public StrategyWindowCommandController(
@@ -60,6 +62,7 @@ public sealed class StrategyWindowCommandController
         Action rebuildSnapshot,
         Action markDirty,
         Func<HeadquartersSystem> getHeadquartersSystem = null,
+        Action playInvalidOrderRejected = null,
         Action playInTransitOrderRejected = null,
         Action playUnitUnderConstructionOrderRejected = null
     )
@@ -87,6 +90,7 @@ public sealed class StrategyWindowCommandController
         this.rebuildSnapshot =
             rebuildSnapshot ?? throw new ArgumentNullException(nameof(rebuildSnapshot));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.playInvalidOrderRejected = playInvalidOrderRejected ?? (() => { });
         this.playInTransitOrderRejected = playInTransitOrderRejected ?? (() => { });
         this.playUnitUnderConstructionOrderRejected =
             playUnitUnderConstructionOrderRejected ?? (() => { });
@@ -132,7 +136,11 @@ public sealed class StrategyWindowCommandController
         IReadOnlyList<ISceneNode> items
     )
     {
-        missionCreateWindowController.Open(target, items);
+        if (target?.Item == null || !missionCreateWindowController.Open(target, items))
+        {
+            playInvalidOrderRejected();
+            return;
+        }
     }
 
     /// <summary>

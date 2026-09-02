@@ -1011,14 +1011,16 @@ public sealed class FacilityWindowController
     /// Attempts to complete strategy targeting from a facility view.
     /// </summary>
     /// <param name="view">The source facility view.</param>
-    /// <param name="item">The optional targeted inventory item.</param>
+    /// <param name="item">The selected item, or null for the represented planet.</param>
     /// <returns>True when an active targeting request accepted the target.</returns>
     private bool TrySelectTarget(FacilityWindowView view, ISceneNode item)
     {
         return targetingController.IsTargeting
             && TryGetSession(view, out FacilityWindowSession session)
-            && session.Planet != null
-            && targetingController.TrySelectTarget(new StrategyMissionTarget(session.Planet, item));
+            && session.Planet?.Planet != null
+            && targetingController.TrySelectTarget(
+                new StrategyMissionTarget(session.Planet, item ?? session.Planet.Planet)
+            );
     }
 
     /// <summary>

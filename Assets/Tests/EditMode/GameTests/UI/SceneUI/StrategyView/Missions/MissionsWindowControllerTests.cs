@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
@@ -141,6 +142,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(firstWindow, secondWindow);
             Assert.AreEqual(1, _windowManager.Windows.Count);
             Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void SurfaceClicked_ActiveTargeting_SelectsPlanetNode()
+        {
+            MissionsWindowView view = OpenWindow(out UIWindow _);
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Select target", null, receiver));
+
+            view.OnPointerClick(
+                new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+            );
+
+            StrategyMissionTarget target = receiver.Target as StrategyMissionTarget;
+            Assert.IsNotNull(target);
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_planet.Planet, target.Item);
         }
 
         [Test]
@@ -328,6 +346,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             public void OpenMissionsStatus(StrategyStatusTarget target) { }
 
             public void OpenMissionsInfo(StrategyStatusTarget target) { }
+        }
+
+        private sealed class RecordingTargetingReceiver : ITargetingReceiver
+        {
+            public object Target { get; private set; }
+
+            public void OnTargetSelected(TargetingRequest request, object target)
+            {
+                Target = target;
+            }
+
+            public void OnTargetingCancelled(TargetingRequest request) { }
         }
 
         private sealed class TestMission : Mission

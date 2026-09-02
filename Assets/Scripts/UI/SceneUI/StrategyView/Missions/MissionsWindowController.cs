@@ -650,9 +650,9 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
         )
             return false;
 
-        return targetingController.TrySelectTarget(
-            new StrategyMissionTarget(session.Planet, session.GetMission(missionIndex))
-        );
+        ISceneNode item =
+            missionIndex < 0 ? session.Planet.Planet : session.GetMission(missionIndex);
+        return targetingController.TrySelectTarget(new StrategyMissionTarget(session.Planet, item));
     }
 
     /// <summary>

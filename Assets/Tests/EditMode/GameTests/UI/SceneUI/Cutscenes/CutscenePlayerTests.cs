@@ -59,6 +59,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsFalse(_videoPlayer.isLooping);
             Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
             Assert.IsFalse(_audioSource.playOnAwake);
+            Assert.IsTrue(_audioSource.ignoreListenerPause);
             Assert.AreEqual(Color.black, _screen.color);
             Assert.IsTrue(_screen.raycastTarget);
             Assert.AreEqual(VideoRenderMode.APIOnly, _videoPlayer.renderMode);

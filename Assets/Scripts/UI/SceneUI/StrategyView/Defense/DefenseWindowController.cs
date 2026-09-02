@@ -832,7 +832,9 @@ public sealed class DefenseWindowController
         if (!targetingController.IsTargeting || session?.Planet == null)
             return false;
 
-        return targetingController.TrySelectTarget(new StrategyMissionTarget(session.Planet, item));
+        return targetingController.TrySelectTarget(
+            new StrategyMissionTarget(session.Planet, item ?? session.Planet.Planet)
+        );
     }
 
     /// <summary>
