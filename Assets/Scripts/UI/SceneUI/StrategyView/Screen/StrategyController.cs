@@ -295,7 +295,8 @@ public sealed class StrategyController
         windowPlacementController = new StrategyWindowPlacementController(
             uiContext,
             strategyWindowLayerView,
-            strategyWindowManager
+            strategyWindowManager,
+            galaxyMap.Background
         );
         bool hasModalWindow = strategyWindowManager.HasModalWindow();
         strategyWindowLayerView.RenderModalState(hasModalWindow, hasModalWindow);

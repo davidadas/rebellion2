@@ -9,6 +9,7 @@ public sealed class StrategyWindowPlacementController
     private readonly UIContext uiContext;
     private readonly StrategyWindowLayerView windowLayer;
     private readonly UIWindowManager windowManager;
+    private readonly RectTransform movementBounds;
 
     /// <summary>
     /// Creates a placement controller for the active presentation context and window layer.
@@ -16,16 +17,20 @@ public sealed class StrategyWindowPlacementController
     /// <param name="uiContext">The active strategy presentation context.</param>
     /// <param name="windowLayer">The authored strategy window layer.</param>
     /// <param name="windowManager">The authoritative strategy-window registry.</param>
+    /// <param name="movementBounds">The authored free-form window movement region.</param>
     public StrategyWindowPlacementController(
         UIContext uiContext,
         StrategyWindowLayerView windowLayer,
-        UIWindowManager windowManager
+        UIWindowManager windowManager,
+        RectTransform movementBounds
     )
     {
         this.uiContext = uiContext ?? throw new ArgumentNullException(nameof(uiContext));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
             windowManager ?? throw new ArgumentNullException(nameof(windowManager));
+        this.movementBounds =
+            movementBounds ?? throw new ArgumentNullException(nameof(movementBounds));
         ApplyMovementBounds();
     }
 
@@ -221,7 +226,7 @@ public sealed class StrategyWindowPlacementController
     /// </summary>
     private void ApplyMovementBounds()
     {
-        windowManager.SetMovementBounds(GetWindowBounds());
+        windowManager.SetMovementBounds(movementBounds);
     }
 
     /// <summary>
@@ -257,13 +262,7 @@ public sealed class StrategyWindowPlacementController
     /// <returns>The validated source-space movement bounds.</returns>
     private RectInt GetWindowBounds()
     {
-        SourceRectLayout bounds = GetPlacements().WindowBounds;
-        if (bounds == null)
-            throw new MissingReferenceException(
-                "StrategyWindowPlacements/WindowBounds is missing."
-            );
-
-        return new RectInt(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+        return UILayout.GetSourceRect(movementBounds);
     }
 
     /// <summary>

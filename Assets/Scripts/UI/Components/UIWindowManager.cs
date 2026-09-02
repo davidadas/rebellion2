@@ -12,7 +12,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     private readonly List<UIWindow> windows = new();
     private UIWindow exclusiveWindow;
     private RectTransform rectTransform;
-    private RectInt? movementBounds;
+    private RectTransform movementBounds;
     private int nextWindowId = 1;
     private IContentAssetSource contentAssets;
 
@@ -66,12 +66,12 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     public UIWindow ActiveWindow { get; private set; }
 
     /// <summary>
-    /// Restricts movable windows to a source-space desktop rectangle.
+    /// Restricts movable windows to an authored desktop region.
     /// </summary>
-    /// <param name="bounds">The allowed source-space movement bounds.</param>
-    public void SetMovementBounds(RectInt bounds)
+    /// <param name="bounds">The transform defining the allowed movement region.</param>
+    public void SetMovementBounds(RectTransform bounds)
     {
-        movementBounds = bounds;
+        movementBounds = bounds ?? throw new ArgumentNullException(nameof(bounds));
     }
 
     /// <summary>
@@ -552,8 +552,8 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     /// <returns>The active movement bounds.</returns>
     private RectInt GetMovementBounds()
     {
-        if (movementBounds.HasValue)
-            return movementBounds.Value;
+        if (movementBounds != null)
+            return UILayout.GetSourceRect(movementBounds);
 
         Vector2Int managerSize = GetSize();
         return new RectInt(0, 0, managerSize.x, managerSize.y);

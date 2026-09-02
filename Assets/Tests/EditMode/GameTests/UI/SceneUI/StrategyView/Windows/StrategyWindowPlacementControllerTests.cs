@@ -15,6 +15,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
         private GameObject _rootObject;
         private UIContext _uiContext;
+        private RectTransform _movementBounds;
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
         private StrategyWindowPlacements _placements;
@@ -26,12 +27,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
+            _movementBounds = _rootObject.GetComponentInChildren<GalaxyMapView>(true).Background;
             _uiContext = CreateContext();
             _placements = _uiContext.GetPlayerFactionTheme().StrategyWindowPlacements;
             _controller = new StrategyWindowPlacementController(
                 _uiContext,
                 _windowLayer,
-                _windowManager
+                _windowManager,
+                _movementBounds
             );
         }
 
@@ -46,20 +49,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         public void Constructor_NullDependency_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyWindowPlacementController(null, _windowLayer, _windowManager)
+                new StrategyWindowPlacementController(
+                    null,
+                    _windowLayer,
+                    _windowManager,
+                    _movementBounds
+                )
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyWindowPlacementController(_uiContext, null, _windowManager)
+                new StrategyWindowPlacementController(
+                    _uiContext,
+                    null,
+                    _windowManager,
+                    _movementBounds
+                )
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyWindowPlacementController(_uiContext, _windowLayer, null)
+                new StrategyWindowPlacementController(
+                    _uiContext,
+                    _windowLayer,
+                    null,
+                    _movementBounds
+                )
+            );
+            Assert.Throws<ArgumentNullException>(() =>
+                new StrategyWindowPlacementController(
+                    _uiContext,
+                    _windowLayer,
+                    _windowManager,
+                    null
+                )
             );
         }
 
         [Test]
-        public void Constructor_ConfiguredBounds_AppliesMovementBoundsToManager()
+        public void Constructor_AuthoredMovementBounds_AppliesMovementBoundsToManager()
         {
-            SourceRectLayout bounds = _placements.WindowBounds;
+            RectInt bounds = UILayout.GetSourceRect(_movementBounds);
             Vector2Int windowSize = new Vector2Int(100, 80);
 
             Vector2Int minimum = _windowManager.ClampPosition(
@@ -73,11 +99,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 windowSize
             );
 
-            Assert.AreEqual(new Vector2Int(bounds.X, bounds.Y), minimum);
-            Assert.AreEqual(
-                new Vector2Int(bounds.X + bounds.Width - 100, bounds.Y + bounds.Height - 80),
-                maximum
-            );
+            Assert.AreEqual(new Vector2Int(bounds.x, bounds.y), minimum);
+            Assert.AreEqual(new Vector2Int(bounds.xMax - 100, bounds.yMax - 80), maximum);
         }
 
         [Test]
@@ -98,6 +121,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.Throws<ArgumentOutOfRangeException>(() =>
                 _controller.GetSectorWindowPosition(-1)
             );
+        }
+
+        [Test]
+        public void MovementBounds_AuthoredRegionChanges_UsesCurrentBounds()
+        {
+            UILayout.SetSourceRect(_movementBounds, 123, 43, 693, 348);
+            Vector2Int windowSize = new Vector2Int(235, 304);
+
+            Vector2Int minimum = _windowManager.ClampPosition(
+                int.MinValue,
+                int.MinValue,
+                windowSize
+            );
+            Vector2Int maximum = _windowManager.ClampPosition(
+                int.MaxValue,
+                int.MaxValue,
+                windowSize
+            );
+
+            Assert.AreEqual(new Vector2Int(123, 43), minimum);
+            Assert.AreEqual(new Vector2Int(581, 87), maximum);
         }
 
         [Test]
@@ -227,22 +271,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
         private Vector2Int GetCenteredPosition(MonoBehaviour prefab)
         {
-            SourceRectLayout bounds = _placements.WindowBounds;
+            RectInt bounds = UILayout.GetSourceRect(_movementBounds);
             Vector2Int size = _windowLayer.GetWindowSize(prefab);
             return new Vector2Int(
-                bounds.X + Mathf.RoundToInt((bounds.Width - size.x) / 2f),
-                bounds.Y + Mathf.RoundToInt((bounds.Height - size.y) / 2f)
+                bounds.x + Mathf.RoundToInt((bounds.width - size.x) / 2f),
+                bounds.y + Mathf.RoundToInt((bounds.height - size.y) / 2f)
             );
         }
 
         private Vector2Int GetMaximumPosition(MonoBehaviour prefab)
         {
-            SourceRectLayout bounds = _placements.WindowBounds;
+            RectInt bounds = UILayout.GetSourceRect(_movementBounds);
             Vector2Int size = _windowLayer.GetWindowSize(prefab);
-            return new Vector2Int(
-                bounds.X + bounds.Width - size.x,
-                bounds.Y + bounds.Height - size.y
-            );
+            return new Vector2Int(bounds.xMax - size.x, bounds.yMax - size.y);
         }
     }
 }

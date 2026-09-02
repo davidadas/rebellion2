@@ -6,8 +6,6 @@ using Rebellion.Util.Serialization;
 [PersistableObject]
 public class StrategyWindowPlacements
 {
-    public SourceRectLayout WindowBounds { get; set; }
-
     public SourcePointLayout SectorLeftPosition { get; set; }
 
     public SourcePointLayout SectorMiddlePosition { get; set; }
