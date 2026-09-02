@@ -1270,7 +1270,13 @@ namespace Rebellion.Systems
         /// <returns>The condition-adjusted value.</returns>
         private static int ScaleByCondition(int value, int current, int maximum)
         {
-            return maximum > 0 ? value * Math.Max(0, current) / maximum : value;
+            // Original REBEXE scales by hull as value - floor(value * damage / maximum), flooring
+            // the loss rather than the result, so a 1-strength ship keeps its point until destroyed.
+            if (maximum <= 0)
+                return value;
+
+            int damage = maximum - Math.Min(maximum, Math.Max(0, current));
+            return value - value * damage / maximum;
         }
 
         /// <summary>
