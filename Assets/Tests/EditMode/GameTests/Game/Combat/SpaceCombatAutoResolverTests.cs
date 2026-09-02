@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.Game.Combat
 {
     [TestFixture]
     public class SpaceCombatAutoResolverTests
