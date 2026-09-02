@@ -680,9 +680,9 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void RollFoilCheck_DetectorRatingAndRank_SelectMatchingCommander()
+        public void UpdateMission_DetectorRatingAndRank_SelectMatchingCommander()
         {
-            (GameRoot game, Planet planet, Officer spy, Officer general, MovementSystem _) =
+            (GameRoot game, Planet planet, Officer spy, Officer general, MovementSystem movement) =
                 BuildDetectionScene();
             general.SetBaseRating(OfficerRating.Espionage, 40);
             Officer admiral = EntityFactory.CreateOfficer("admiral", "rebels");
@@ -699,10 +699,20 @@ namespace Rebellion.Tests.Sectors
             game.MoveNode(spy, mission);
 
             Regiment selectedDetector = planet.GetChildren<Regiment>().Single();
-            bool foiled = mission.RollFoilCheck(new FixedRNG(0.0), game, selectedDetector);
-
-            Assert.IsTrue(foiled);
             Assert.AreSame(general, mission.FindDetectorCommander(selectedDetector));
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
         }
 
         [Test]

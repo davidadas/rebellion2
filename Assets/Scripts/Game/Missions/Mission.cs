@@ -482,33 +482,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the probability that enemy forces detect the mission.
-        /// </summary>
-        /// <param name="detectorRating">The selected enemy detector's detection rating.</param>
-        /// <param name="defender">The commander paired with the selected detector, if present.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The foil probability.</returns>
-        protected virtual double GetFoilProbability(
-            int detectorRating,
-            Officer defender,
-            GameRoot game
-        )
-        {
-            int defenderEspionage = defender?.GetEffectiveRating(OfficerRating.Espionage) ?? 0;
-            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
-            int scaledDefender =
-                defenderEspionage * missionTables.FoilDefenderScalingPercent / _ratingPercentScale;
-            int specialForcesPenalty = GetMainParticipants().OfType<SpecialForces>().Count();
-            int score =
-                GetAveragedRating(OfficerRating.Espionage)
-                - scaledDefender
-                - detectorRating
-                - specialForcesPenalty
-                - missionTables.FoilFlatScoreAdjustment;
-            return LookupProbability(missionTables.Foil, score);
-        }
-
-        /// <summary>
         /// Returns the success probability for this mission's configured table.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -564,20 +537,6 @@ namespace Rebellion.Game.Missions
                 return defaultValue;
 
             return new ProbabilityTable(entries).Lookup(score);
-        }
-
-        /// <summary>
-        /// Returns the average effective rating for the mission's main participants.
-        /// </summary>
-        /// <param name="rating">The rating to average.</param>
-        /// <returns>The averaged effective rating, or 0 when no main participants exist.</returns>
-        private int GetAveragedRating(OfficerRating rating)
-        {
-            if (GetMainParticipants().Count == 0)
-                return 0;
-
-            return GetMainParticipants().Sum(participant => participant.GetEffectiveRating(rating))
-                / GetMainParticipants().Count;
         }
 
         /// <summary>
@@ -867,34 +826,6 @@ namespace Rebellion.Game.Missions
                 && officer.CurrentRank == requiredRank
                 && IsEligibleDetectorCommander(officer)
             );
-        }
-
-        /// <summary>
-        /// Rolls one detector's mission foil check.
-        /// </summary>
-        /// <param name="provider">RNG provider for the foil roll.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="detector">The detector making this attempt.</param>
-        /// <returns>True if the mission is detected this tick.</returns>
-        internal bool RollFoilCheck(
-            IRandomNumberProvider provider,
-            GameRoot game,
-            ISceneNode detector
-        )
-        {
-            if (detector == null)
-                return false;
-
-            double foilProbability = GetFoilProbability(
-                GetDetectorRating(detector),
-                FindDetectorCommander(detector),
-                game
-            );
-
-            if (foilProbability <= 0)
-                return false;
-
-            return IsSuccessfulProbabilityRoll(provider.NextDouble() * 100, foilProbability);
         }
 
         /// <summary>

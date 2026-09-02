@@ -18,6 +18,11 @@ namespace Rebellion.Game.Missions
         public const string MissionTypeID = "JediTraining";
 
         /// <summary>
+        /// Returns whether hostile forces can foil the mission.
+        /// </summary>
+        internal override bool CanBeFoiled => false;
+
+        /// <summary>
         /// Instance ID of the officer selected as the trainer.
         /// </summary>
         public string TrainerInstanceID { get; set; }
@@ -198,19 +203,6 @@ namespace Rebellion.Game.Missions
                 ? null
                 : MissionCompletionReason.Failure;
         }
-
-        /// <summary>
-        /// Jedi training targets own planets and is never foiled.
-        /// </summary>
-        /// <param name="detectorRating">The detector rating, unused because training cannot be foiled.</param>
-        /// <param name="defender">The defender, unused because training cannot be foiled.</param>
-        /// <param name="game">The current game state, unused because training cannot be foiled.</param>
-        /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(
-            int detectorRating,
-            Officer defender,
-            GameRoot game
-        ) => 0;
 
         /// <summary>
         /// Calculates the probability that at least one student makes Force training progress.

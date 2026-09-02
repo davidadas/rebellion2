@@ -19,6 +19,11 @@ namespace Rebellion.Game.Missions
         public const string MissionTypeID = "Research";
 
         /// <summary>
+        /// Returns whether hostile forces can foil the mission.
+        /// </summary>
+        internal override bool CanBeFoiled => false;
+
+        /// <summary>
         /// Research discipline advanced by this mission.
         /// </summary>
         public ResearchDiscipline Discipline { get; set; }
@@ -170,19 +175,6 @@ namespace Rebellion.Game.Missions
                 _ => false,
             };
         }
-
-        /// <summary>
-        /// Research missions target own planets and are never foiled.
-        /// </summary>
-        /// <param name="detectorRating">The detector rating (unused).</param>
-        /// <param name="defender">The defender (unused).</param>
-        /// <param name="game">The current game state, unused because research cannot be foiled.</param>
-        /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(
-            int detectorRating,
-            Officer defender,
-            GameRoot game
-        ) => 0;
 
         /// <summary>
         /// Calculates the probability that at least one researcher produces research progress.

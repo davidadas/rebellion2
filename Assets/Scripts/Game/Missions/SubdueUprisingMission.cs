@@ -14,6 +14,11 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "SubdueUprising";
 
+        /// <summary>
+        /// Returns whether hostile forces can foil the mission.
+        /// </summary>
+        internal override bool CanBeFoiled => false;
+
         /// <summary>Creates an empty subdue-uprising mission copy.</summary>
         /// <returns>An empty subdue-uprising mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new SubdueUprisingMission();
@@ -88,19 +93,6 @@ namespace Rebellion.Game.Missions
                 ? null
                 : MissionCompletionReason.Failure;
         }
-
-        /// <summary>
-        /// Subdue Uprising missions are never foiled — they target own planets.
-        /// </summary>
-        /// <param name="detectorRating">The detector rating, unused because subdue uprising cannot be foiled.</param>
-        /// <param name="defender">The defender, unused because subdue uprising cannot be foiled.</param>
-        /// <param name="game">The current game state, unused because subdue uprising cannot be foiled.</param>
-        /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(
-            int detectorRating,
-            Officer defender,
-            GameRoot game
-        ) => 0;
 
         /// <summary>
         /// Returns a participant's raw score for subduing the target uprising.

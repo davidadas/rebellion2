@@ -708,7 +708,7 @@ namespace Rebellion.Systems
             ResolveDecoys(mission, activeDetectors, planet, results);
 
             ISceneNode foilingDetector = activeDetectors.FirstOrDefault(detector =>
-                mission.RollFoilCheck(_provider, _game, detector)
+                IsMissionDetected(mission, detector)
             );
             if (foilingDetector == null)
                 return false;
@@ -720,6 +720,41 @@ namespace Rebellion.Systems
                 ResolveFoiledParticipant(mission, participant, activeDetectors, planet, results);
 
             return true;
+        }
+
+        /// <summary>
+        /// Rolls one hostile unit's detection attempt against a mission.
+        /// </summary>
+        /// <param name="mission">The mission attempting to remain undetected.</param>
+        /// <param name="detector">The hostile unit making the detection attempt.</param>
+        /// <returns>True when the detector foils the mission.</returns>
+        private bool IsMissionDetected(Mission mission, ISceneNode detector)
+        {
+            if (mission == null || detector == null)
+                return false;
+
+            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
+            Officer commander = mission.FindDetectorCommander(detector);
+            int commanderEspionage = commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0;
+            int scaledCommanderEspionage =
+                commanderEspionage * missionTables.FoilDefenderScalingPercent / 100;
+            IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
+            int averageEspionage =
+                participants.Count == 0
+                    ? 0
+                    : participants.Sum(participant =>
+                        participant.GetEffectiveRating(OfficerRating.Espionage)
+                    ) / participants.Count;
+            int detectorRating = GetDetectorRating(detector);
+            int specialForcesPenalty = participants.OfType<SpecialForces>().Count();
+            int score =
+                averageEspionage
+                - scaledCommanderEspionage
+                - detectorRating
+                - specialForcesPenalty
+                - missionTables.FoilFlatScoreAdjustment;
+            int detectionProbability = LookupProbability(missionTables.Foil, score);
+            return detectionProbability > 0 && _provider.NextDouble() * 100 < detectionProbability;
         }
 
         /// <summary>
@@ -892,6 +927,20 @@ namespace Rebellion.Systems
                     detectors.Add(candidate);
             }
         }
+
+        /// <summary>
+        /// Returns the authored detection rating for a detector unit.
+        /// </summary>
+        /// <param name="detector">The detector unit.</param>
+        /// <returns>The detector's authored rating.</returns>
+        private static int GetDetectorRating(ISceneNode detector) =>
+            detector switch
+            {
+                Regiment regiment => regiment.DetectionRating,
+                Starfighter starfighter => starfighter.DetectionRating,
+                CapitalShip capitalShip => capitalShip.DetectionRating,
+                _ => 0,
+            };
 
         /// <summary>
         /// Removes a special-forces unit and records its destruction.
