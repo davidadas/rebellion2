@@ -729,7 +729,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 optionalTexture,
                 optionalTexture,
                 optionalTexture,
-                false,
                 true
             );
         }
