@@ -51,6 +51,7 @@ namespace Rebellion.Game.Units
         public int ShieldStrength { get; set; }
         public int WeaponPower { get; set; }
         public DefenseWeaponEffect DefenseWeaponEffect { get; set; }
+        public bool IsDetectionBlocker { get; set; }
         public List<string> ProtectedUnitTypeIDs { get; set; } = new List<string>();
         public int ProductionModifier { get; set; }
         public List<string> Upgrades { get; set; } = new List<string>();
@@ -101,6 +102,7 @@ namespace Rebellion.Game.Units
             copy.ShieldStrength = ShieldStrength;
             copy.WeaponPower = WeaponPower;
             copy.DefenseWeaponEffect = DefenseWeaponEffect;
+            copy.IsDetectionBlocker = IsDetectionBlocker;
             copy.ProtectedUnitTypeIDs =
                 ProtectedUnitTypeIDs == null
                     ? new List<string>()

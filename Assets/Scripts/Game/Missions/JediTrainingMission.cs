@@ -200,19 +200,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Jedi training targets own planets and is never foiled.
-        /// </summary>
-        /// <param name="detectorRating">The detector rating, unused because training cannot be foiled.</param>
-        /// <param name="defender">The defender, unused because training cannot be foiled.</param>
-        /// <param name="game">The current game state, unused because training cannot be foiled.</param>
-        /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(
-            int detectorRating,
-            Officer defender,
-            GameRoot game
-        ) => 0;
-
-        /// <summary>
         /// Calculates the probability that at least one student makes Force training progress.
         /// </summary>
         /// <param name="participants">The training participants to evaluate.</param>
