@@ -698,12 +698,11 @@ namespace Rebellion.Tests.Sectors
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
 
-            MissionDetector selectedDetector = mission.GetDetectors().Single();
+            Regiment selectedDetector = planet.GetChildren<Regiment>().Single();
             bool foiled = mission.RollFoilCheck(new FixedRNG(0.0), game, selectedDetector);
 
             Assert.IsTrue(foiled);
-            Assert.AreEqual(17, selectedDetector.Rating);
-            Assert.AreSame(general, selectedDetector.Commander);
+            Assert.AreSame(general, mission.FindDetectorCommander(selectedDetector));
         }
 
         [Test]
@@ -818,6 +817,51 @@ namespace Rebellion.Tests.Sectors
             game.MoveNode(spy, mission);
             mission.AddDecoyParticipant(decoy);
             game.AttachNode(decoy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
+            Assert.AreEqual(1, mission.CurrentProgress);
+        }
+
+        [Test]
+        public void UpdateMission_FriendlyBuildingBlocksFleetDetection()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            game.DeleteNode(planet.GetChildren<Regiment>().Single());
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            planet.OwnerInstanceID = "empire";
+            planet.EnergyCapacity = 1;
+            Building building = new Building
+            {
+                InstanceID = "detection-blocker",
+                OwnerInstanceID = "empire",
+                IsDetectionBlocker = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(capitalShip, fleet);
+            game.AttachNode(building, planet);
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.SetExecutionTick(5);
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
 
             MissionSystem system = TestSystems.CreateMissionSystem(
                 game,

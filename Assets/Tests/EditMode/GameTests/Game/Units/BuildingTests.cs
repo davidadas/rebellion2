@@ -339,6 +339,7 @@ namespace Rebellion.Tests.Game.Units
                 ProductionInputReserved = true,
                 ResourceMaintenanceAllocation = 12,
                 ResourceStartupCyclePending = false,
+                IsDetectionBlocker = true,
                 Upgrades = { "advanced-building" },
                 Movement = null,
             };
@@ -357,6 +358,7 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(building.WeaponStrength, deserializedBuilding.WeaponStrength);
             Assert.AreEqual(building.ShieldStrength, deserializedBuilding.ShieldStrength);
             Assert.AreEqual(building.DefenseWeaponEffect, deserializedBuilding.DefenseWeaponEffect);
+            Assert.AreEqual(building.IsDetectionBlocker, deserializedBuilding.IsDetectionBlocker);
             CollectionAssert.AreEqual(
                 building.ProtectedUnitTypeIDs,
                 deserializedBuilding.ProtectedUnitTypeIDs

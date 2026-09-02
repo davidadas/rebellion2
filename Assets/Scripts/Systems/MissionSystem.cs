@@ -701,13 +701,13 @@ namespace Rebellion.Systems
             if (mission.GetParent() is not Planet planet)
                 return false;
 
-            List<MissionDetector> activeDetectors = mission.GetDetectors();
+            List<ISceneNode> activeDetectors = GetDetectors(mission, planet);
             if (activeDetectors.Count == 0)
                 return false;
 
             ResolveDecoys(mission, activeDetectors, planet, results);
 
-            MissionDetector foilingDetector = activeDetectors.FirstOrDefault(detector =>
+            ISceneNode foilingDetector = activeDetectors.FirstOrDefault(detector =>
                 mission.RollFoilCheck(_provider, _game, detector)
             );
             if (foilingDetector == null)
@@ -717,7 +717,7 @@ namespace Rebellion.Systems
                 return true;
 
             foreach (IMissionParticipant participant in mission.GetMainParticipants().ToList())
-                ResolveFoiledParticipant(participant, activeDetectors, planet, results);
+                ResolveFoiledParticipant(mission, participant, activeDetectors, planet, results);
 
             return true;
         }
@@ -732,12 +732,12 @@ namespace Rebellion.Systems
         /// <param name="results">The result collection receiving confrontation outcomes.</param>
         private void ResolveDecoys(
             Mission mission,
-            List<MissionDetector> activeDetectors,
+            List<ISceneNode> activeDetectors,
             Planet planet,
             List<GameResult> results
         )
         {
-            foreach (MissionDetector detector in activeDetectors.ToList())
+            foreach (ISceneNode detector in activeDetectors.ToList())
             {
                 List<IMissionParticipant> decoys = mission
                     .GetDecoyParticipants()
@@ -753,20 +753,22 @@ namespace Rebellion.Systems
                     continue;
                 }
 
-                ResolveEvasion(decoy, detector, planet, results);
+                ResolveEvasion(mission, decoy, detector, planet, results);
             }
         }
 
         /// <summary>
         /// Applies the post-foil confrontation to one mission participant.
         /// </summary>
+        /// <param name="mission">The mission whose participant was detected.</param>
         /// <param name="participant">The exposed participant.</param>
         /// <param name="detectors">The detectors that were not diverted.</param>
         /// <param name="planet">The mission planet.</param>
         /// <param name="results">Collection to append generated results to.</param>
         private void ResolveFoiledParticipant(
+            Mission mission,
             IMissionParticipant participant,
-            IReadOnlyList<MissionDetector> detectors,
+            IReadOnlyList<ISceneNode> detectors,
             Planet planet,
             List<GameResult> results
         )
@@ -774,26 +776,30 @@ namespace Rebellion.Systems
             if (!IsFreeParticipant(participant))
                 return;
 
-            MissionDetector detector = Mission.SelectDetector(detectors, _provider);
+            ISceneNode detector =
+                detectors.Count == 0 ? null : detectors[_provider.NextInt(0, detectors.Count)];
             if (detector != null)
-                ResolveEvasion(participant, detector, planet, results);
+                ResolveEvasion(mission, participant, detector, planet, results);
         }
 
         /// <summary>
         /// Resolves whether a participant evades the detector that confronted them.
         /// </summary>
+        /// <param name="mission">The mission whose participant was detected.</param>
         /// <param name="participant">The participant attempting to evade.</param>
         /// <param name="detector">The detector confronting the participant.</param>
         /// <param name="planet">The planet where the confrontation occurs.</param>
         /// <param name="results">The result collection receiving capture or destruction outcomes.</param>
         private void ResolveEvasion(
+            Mission mission,
             IMissionParticipant participant,
-            MissionDetector detector,
+            ISceneNode detector,
             Planet planet,
             List<GameResult> results
         )
         {
-            int defenderCombat = detector.Commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
+            Officer commander = mission.FindDetectorCommander(detector);
+            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
             int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
             bool evaded = _provider.NextDouble() * 100 < GetEvasionProbability(score);
             if (evaded)
@@ -811,7 +817,7 @@ namespace Rebellion.Systems
             if (
                 Mission.ApplyCaptureEvasionInjury(
                     officer,
-                    detector.Unit,
+                    detector,
                     planet,
                     _game,
                     _provider,
@@ -824,6 +830,67 @@ namespace Rebellion.Systems
             }
 
             CaptureOfficer(officer, planet, results);
+        }
+
+        /// <summary>
+        /// Returns hostile detector units in the original traversal order.
+        /// </summary>
+        /// <param name="mission">The mission being checked for detection.</param>
+        /// <param name="planet">The planet where the mission is operating.</param>
+        /// <returns>The ordered detector units.</returns>
+        private static List<ISceneNode> GetDetectors(Mission mission, Planet planet)
+        {
+            List<ISceneNode> detectors = new List<ISceneNode>();
+            AddEligibleDetectors(mission, planet.GetChildren<Starfighter>(), detectors);
+            AddEligibleDetectors(mission, planet.GetChildren<Regiment>(), detectors);
+
+            bool blocksFleetDetection = planet
+                .GetChildren<Building>()
+                .Any(building =>
+                    building.IsDetectionBlocker
+                    && building.OwnerInstanceID == mission.OwnerInstanceID
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                );
+            if (blocksFleetDetection)
+                return detectors;
+
+            foreach (Fleet fleet in planet.GetChildren<Fleet>())
+            {
+                foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
+                {
+                    if (mission.IsEligibleDetector(capitalShip))
+                        detectors.Add(capitalShip);
+
+                    AddEligibleDetectors(
+                        mission,
+                        capitalShip.GetChildren<Starfighter>(),
+                        detectors
+                    );
+                    AddEligibleDetectors(mission, capitalShip.GetChildren<Regiment>(), detectors);
+                }
+            }
+
+            return detectors;
+        }
+
+        /// <summary>
+        /// Appends eligible detector units without changing their scene order.
+        /// </summary>
+        /// <param name="mission">The mission being checked for detection.</param>
+        /// <param name="candidates">The candidate detector units.</param>
+        /// <param name="detectors">The collection receiving eligible detectors.</param>
+        private static void AddEligibleDetectors(
+            Mission mission,
+            IEnumerable<ISceneNode> candidates,
+            ICollection<ISceneNode> detectors
+        )
+        {
+            foreach (ISceneNode candidate in candidates)
+            {
+                if (mission.IsEligibleDetector(candidate))
+                    detectors.Add(candidate);
+            }
         }
 
         /// <summary>

@@ -62,35 +62,6 @@ namespace Rebellion.Game.Missions
     }
 
     /// <summary>
-    /// Describes one hostile unit that can detect a mission or confront a detected participant.
-    /// </summary>
-    internal sealed class MissionDetector
-    {
-        internal ISceneNode Unit { get; }
-
-        internal Officer Commander { get; }
-
-        internal int Rating { get; }
-
-        internal bool IsFleetBased { get; }
-
-        /// <summary>
-        /// Creates a detector with its original detection context.
-        /// </summary>
-        /// <param name="unit">The detecting regiment, starfighter, or capital ship.</param>
-        /// <param name="commander">The matching local commander, when one is present.</param>
-        /// <param name="rating">The unit's authored detection rating.</param>
-        /// <param name="isFleetBased">Whether the detector belongs to a fleet.</param>
-        internal MissionDetector(ISceneNode unit, Officer commander, int rating, bool isFleetBased)
-        {
-            Unit = unit;
-            Commander = commander;
-            Rating = rating;
-            IsFleetBased = isFleetBased;
-        }
-    }
-
-    /// <summary>
     /// Base scene node for missions and their assigned participants.
     /// </summary>
     public abstract class Mission : ContainerNode
@@ -491,20 +462,22 @@ namespace Rebellion.Game.Missions
         /// <returns>The decoy success probability.</returns>
         private double GetDecoyProbability(
             IMissionParticipant decoy,
-            MissionDetector detector,
+            ISceneNode detector,
             GameRoot game
         )
         {
             int decoyEspionage = decoy.GetEffectiveRating(OfficerRating.Espionage);
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
+            Officer commander = FindDetectorCommander(detector);
             int scaledDefender =
-                (detector.Commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
+                (commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
                 * missionTables.DecoyDefenderScalingPercent
                 / _ratingPercentScale;
-            int score = decoyEspionage - detector.Rating - scaledDefender;
-            Dictionary<int, int> table = detector.IsFleetBased
-                ? missionTables.FleetDecoy
-                : missionTables.PlanetaryDecoy;
+            int score = decoyEspionage - GetDetectorRating(detector) - scaledDefender;
+            Dictionary<int, int> table =
+                detector.GetParentOfType<Fleet>() != null
+                    ? missionTables.FleetDecoy
+                    : missionTables.PlanetaryDecoy;
             return LookupProbability(table, score);
         }
 
@@ -814,7 +787,7 @@ namespace Rebellion.Game.Missions
             IMissionParticipant decoy,
             IRandomNumberProvider provider,
             GameRoot game,
-            MissionDetector detector
+            ISceneNode detector
         )
         {
             if (decoy == null || detector == null)
@@ -827,90 +800,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns hostile detector units in the original foil traversal order.
-        /// </summary>
-        /// <returns>The ordered detector collection.</returns>
-        internal List<MissionDetector> GetDetectors()
-        {
-            if (GetParent() is not Planet planet)
-                return new List<MissionDetector>();
-
-            List<MissionDetector> detectors = new List<MissionDetector>();
-            foreach (Starfighter starfighter in planet.GetChildren<Starfighter>())
-            {
-                if (IsEligibleDetector(starfighter))
-                    detectors.Add(CreateDetector(planet, starfighter));
-            }
-
-            foreach (Regiment regiment in planet.GetChildren<Regiment>())
-            {
-                if (IsEligibleDetector(regiment))
-                    detectors.Add(CreateDetector(planet, regiment));
-            }
-
-            foreach (Fleet fleet in planet.GetChildren<Fleet>())
-            {
-                foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
-                {
-                    if (IsEligibleDetector(capitalShip))
-                        detectors.Add(CreateDetector(planet, capitalShip));
-
-                    foreach (Starfighter starfighter in capitalShip.GetChildren<Starfighter>())
-                    {
-                        if (IsEligibleDetector(starfighter))
-                            detectors.Add(CreateDetector(planet, starfighter));
-                    }
-
-                    foreach (Regiment regiment in capitalShip.GetChildren<Regiment>())
-                    {
-                        if (IsEligibleDetector(regiment))
-                            detectors.Add(CreateDetector(planet, regiment));
-                    }
-                }
-            }
-
-            return detectors;
-        }
-
-        /// <summary>
-        /// Creates a detector and resolves its matching local commander.
-        /// </summary>
-        /// <param name="planet">The mission planet.</param>
-        /// <param name="unit">The detecting unit.</param>
-        /// <returns>The resolved detector.</returns>
-        private static MissionDetector CreateDetector(Planet planet, ISceneNode unit)
-        {
-            return new MissionDetector(
-                unit,
-                FindDetectorCommander(planet, unit),
-                GetDetectorRating(unit),
-                unit.GetParentOfType<Fleet>() != null
-            );
-        }
-
-        /// <summary>
-        /// Selects one detector uniformly for a post-foil participant encounter.
-        /// </summary>
-        /// <param name="detectors">The remaining active detectors.</param>
-        /// <param name="provider">RNG provider used for selection.</param>
-        /// <returns>The selected detector, or null when none remain.</returns>
-        internal static MissionDetector SelectDetector(
-            IReadOnlyList<MissionDetector> detectors,
-            IRandomNumberProvider provider
-        )
-        {
-            if (detectors == null || detectors.Count == 0)
-                return null;
-
-            return detectors[provider.NextInt(0, detectors.Count)];
-        }
-
-        /// <summary>
         /// Returns whether a scene object may attempt to detect this mission.
         /// </summary>
         /// <param name="candidate">The potential hostile detector.</param>
         /// <returns>True for a completed, stationary hostile unit with a detection rating.</returns>
-        private bool IsEligibleDetector(ISceneNode candidate)
+        internal bool IsEligibleDetector(ISceneNode candidate)
         {
             string candidateOwnerId = candidate?.GetOwnerInstanceID();
             if (
@@ -943,11 +837,13 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Finds the commander type paired with the selected detector in its local container.
         /// </summary>
-        /// <param name="planet">The mission planet.</param>
         /// <param name="detector">The selected hostile detector.</param>
         /// <returns>The matching commander, or null when none is assigned.</returns>
-        private static Officer FindDetectorCommander(Planet planet, ISceneNode detector)
+        internal Officer FindDetectorCommander(ISceneNode detector)
         {
+            if (GetParent() is not Planet planet)
+                return null;
+
             OfficerRank requiredRank = detector switch
             {
                 Starfighter => OfficerRank.Commander,
@@ -983,13 +879,17 @@ namespace Rebellion.Game.Missions
         internal bool RollFoilCheck(
             IRandomNumberProvider provider,
             GameRoot game,
-            MissionDetector detector
+            ISceneNode detector
         )
         {
             if (detector == null)
                 return false;
 
-            double foilProbability = GetFoilProbability(detector.Rating, detector.Commander, game);
+            double foilProbability = GetFoilProbability(
+                GetDetectorRating(detector),
+                FindDetectorCommander(detector),
+                game
+            );
 
             if (foilProbability <= 0)
                 return false;
@@ -1009,7 +909,7 @@ namespace Rebellion.Game.Missions
             IRandomNumberProvider provider,
             GameRoot game,
             IMissionParticipant decoy,
-            MissionDetector detector
+            ISceneNode detector
         )
         {
             return CheckDecoySuccessful(decoy, provider, game, detector);
