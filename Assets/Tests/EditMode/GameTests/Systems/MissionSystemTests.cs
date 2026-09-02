@@ -1222,6 +1222,36 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void UpdateMission_NeutralOwnedDetector_DoesNotFoilMission()
+        {
+            (GameRoot game, Planet planet, Officer spy, MovementSystem movement) =
+                BuildOwnPlanetDetectionScene(detectorOwnerId: "neutral");
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(spy.IsCaptured, "A non-belligerent unit should not detect the mission");
+            Assert.IsFalse(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(r => r.Outcome == MissionOutcome.Foiled),
+                "Mission should not be foiled by a neutral-owned unit"
+            );
+        }
+
+        [Test]
         public void UpdateMission_EspionageDetected_AppliesFoiledParticipantConsequences()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
@@ -3587,7 +3617,7 @@ namespace Rebellion.Tests.Sectors
             Planet planet,
             Officer spy,
             MovementSystem movement
-        ) BuildOwnPlanetDetectionScene()
+        ) BuildOwnPlanetDetectionScene(string detectorOwnerId = "rebels")
         {
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
@@ -3618,14 +3648,19 @@ namespace Rebellion.Tests.Sectors
             spy.MissionReturnLocationInstanceID = planet.InstanceID;
             game.AttachNode(spy, planet);
 
-            Regiment regiment = new Regiment
+            // A hostile unit over one of your own planets rides in an orbiting fleet;
+            // a colonized planet only accepts owner-owned regiments/starfighters directly.
+            Fleet fleet = new Fleet { InstanceID = "f1", OwnerInstanceID = detectorOwnerId };
+            game.AttachNode(fleet, planet);
+
+            CapitalShip detectorShip = new CapitalShip
             {
-                InstanceID = "r1",
-                OwnerInstanceID = "rebels",
+                InstanceID = "cs1",
+                OwnerInstanceID = detectorOwnerId,
                 DetectionRating = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            game.AttachNode(regiment, planet);
+            game.AttachNode(detectorShip, fleet);
 
             MovementSystem movement = new MovementSystem(
                 game,
