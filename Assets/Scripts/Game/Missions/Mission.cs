@@ -38,7 +38,7 @@ namespace Rebellion.Game.Missions
     internal interface IMissionExecutionRuntime
     {
         /// <summary>
-        /// Resolves this tick's detection attempt.
+        /// Resolves the mission's initial detection attempt.
         /// </summary>
         /// <param name="mission">The mission executing its lifecycle.</param>
         /// <param name="results">The result collection receiving detection consequences.</param>
@@ -163,10 +163,9 @@ namespace Rebellion.Game.Missions
         // Mission progress.
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }
+        public bool DetectionResolved { get; set; }
 
         internal virtual bool AppliesFoiledParticipantConsequences => true;
-
-        internal virtual bool CanBeFoiled => true;
 
         internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
 
@@ -235,6 +234,7 @@ namespace Rebellion.Game.Missions
             copy.HasInitiated = HasInitiated;
             copy.MaxProgress = MaxProgress;
             copy.CurrentProgress = CurrentProgress;
+            copy.DetectionResolved = DetectionResolved;
         }
 
         /// <summary>
@@ -334,6 +334,7 @@ namespace Rebellion.Game.Missions
         {
             CurrentProgress = 0;
             MaxProgress = maxProgress;
+            DetectionResolved = false;
             CaptureMainParticipantIDs();
             HasInitiated = true;
         }
@@ -648,48 +649,23 @@ namespace Rebellion.Game.Missions
         /// <returns>The decoy success probability.</returns>
         private double GetDecoyProbability(
             IMissionParticipant decoy,
-            MissionDetector detector,
+            ISceneNode detector,
             GameRoot game
         )
         {
             int decoyEspionage = decoy.GetEffectiveRating(OfficerRating.Espionage);
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
+            Officer commander = FindDetectorCommander(detector);
             int scaledDefender =
-                (detector.Commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
+                (commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
                 * missionTables.DecoyDefenderScalingPercent
                 / _ratingPercentScale;
-            int score = decoyEspionage - detector.Rating - scaledDefender;
-            Dictionary<int, int> table = detector.IsFleetBased
-                ? missionTables.FleetDecoy
-                : missionTables.PlanetaryDecoy;
+            int score = decoyEspionage - GetDetectorRating(detector) - scaledDefender;
+            Dictionary<int, int> table =
+                detector.GetParentOfType<Fleet>() != null
+                    ? missionTables.FleetDecoy
+                    : missionTables.PlanetaryDecoy;
             return LookupProbability(table, score);
-        }
-
-        /// <summary>
-        /// Returns the probability that enemy forces detect the mission.
-        /// </summary>
-        /// <param name="detectorRating">The selected enemy detector's detection rating.</param>
-        /// <param name="defender">The commander paired with the selected detector, if present.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The foil probability.</returns>
-        protected virtual double GetFoilProbability(
-            int detectorRating,
-            Officer defender,
-            GameRoot game
-        )
-        {
-            int defenderEspionage = defender?.GetEffectiveRating(OfficerRating.Espionage) ?? 0;
-            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
-            int scaledDefender =
-                defenderEspionage * missionTables.FoilDefenderScalingPercent / _ratingPercentScale;
-            int specialForcesPenalty = GetMainParticipants().OfType<SpecialForces>().Count();
-            int score =
-                GetAveragedRating(OfficerRating.Espionage)
-                - scaledDefender
-                - detectorRating
-                - specialForcesPenalty
-                - missionTables.FoilFlatScoreAdjustment;
-            return LookupProbability(missionTables.Foil, score);
         }
 
         /// <summary>
@@ -748,20 +724,6 @@ namespace Rebellion.Game.Missions
                 return defaultValue;
 
             return new ProbabilityTable(entries).Lookup(score);
-        }
-
-        /// <summary>
-        /// Returns the average effective rating for the mission's main participants.
-        /// </summary>
-        /// <param name="rating">The rating to average.</param>
-        /// <returns>The averaged effective rating, or 0 when no main participants exist.</returns>
-        private int GetAveragedRating(OfficerRating rating)
-        {
-            if (GetMainParticipants().Count == 0)
-                return 0;
-
-            return GetMainParticipants().Sum(participant => participant.GetEffectiveRating(rating))
-                / GetMainParticipants().Count;
         }
 
         /// <summary>
@@ -971,7 +933,7 @@ namespace Rebellion.Game.Missions
             IMissionParticipant decoy,
             IRandomNumberProvider provider,
             GameRoot game,
-            MissionDetector detector
+            ISceneNode detector
         )
         {
             if (decoy == null || detector == null)
@@ -1090,7 +1052,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="candidate">The potential hostile detector.</param>
         /// <returns>True for a completed, stationary hostile unit with a detection rating.</returns>
-        private bool IsEligibleDetector(ISceneNode candidate)
+        internal bool IsEligibleDetector(ISceneNode candidate)
         {
             string candidateOwnerId = candidate?.GetOwnerInstanceID();
             if (
@@ -1099,6 +1061,8 @@ namespace Rebellion.Game.Missions
                 || candidate
                     is not IManufacturable { ManufacturingStatus: ManufacturingStatus.Complete }
                 || candidate is IMovable movable && movable.GetTransitMovement() != null
+                || candidate.GetParentOfType<CapitalShip>()
+                    is IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete }
                 || candidate.GetParentOfType<Fleet>()?.GetTransitMovement() != null
             )
                 return false;
@@ -1123,11 +1087,13 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Finds the commander type paired with the selected detector in its local container.
         /// </summary>
-        /// <param name="planet">The mission planet.</param>
         /// <param name="detector">The selected hostile detector.</param>
         /// <returns>The matching commander, or null when none is assigned.</returns>
-        private static Officer FindDetectorCommander(Planet planet, ISceneNode detector)
+        internal Officer FindDetectorCommander(ISceneNode detector)
         {
+            if (GetParent() is not Planet planet)
+                return null;
+
             OfficerRank requiredRank = detector switch
             {
                 Starfighter => OfficerRank.Commander,
@@ -1154,30 +1120,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Rolls one detector's mission foil check.
-        /// </summary>
-        /// <param name="provider">RNG provider for the foil roll.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="detector">The detector making this attempt.</param>
-        /// <returns>True if the mission is detected this tick.</returns>
-        internal bool RollFoilCheck(
-            IRandomNumberProvider provider,
-            GameRoot game,
-            MissionDetector detector
-        )
-        {
-            if (detector == null)
-                return false;
-
-            double foilProbability = GetFoilProbability(detector.Rating, detector.Commander, game);
-
-            if (foilProbability <= 0)
-                return false;
-
-            return IsSuccessfulProbabilityRoll(provider.NextDouble() * 100, foilProbability);
-        }
-
-        /// <summary>
         /// Rolls the decoy response check.
         /// </summary>
         /// <param name="provider">RNG provider for decoy rolls.</param>
@@ -1189,7 +1131,7 @@ namespace Rebellion.Game.Missions
             IRandomNumberProvider provider,
             GameRoot game,
             IMissionParticipant decoy,
-            MissionDetector detector
+            ISceneNode detector
         )
         {
             return CheckDecoySuccessful(decoy, provider, game, detector);
@@ -1226,7 +1168,13 @@ namespace Rebellion.Game.Missions
             }
 
             List<IMissionParticipant> participantsBeforeDetection = GetAllParticipants();
-            if (CanBeFoiled && runtime.ResolveDetection(this, results))
+            bool wasDetected = false;
+            if (!DetectionResolved)
+            {
+                DetectionResolved = true;
+                wasDetected = runtime.ResolveDetection(this, results);
+            }
+            if (wasDetected)
             {
                 AddMissionResults(ResolveInterruption(game, provider), results);
                 MissionCompletedResult completed = BuildTerminatingResult(

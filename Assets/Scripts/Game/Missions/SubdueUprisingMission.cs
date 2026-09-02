@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Missions
@@ -94,19 +93,6 @@ namespace Rebellion.Game.Missions
                 ? null
                 : MissionCompletionReason.Failure;
         }
-
-        /// <summary>
-        /// Subdue Uprising missions are never foiled — they target own planets.
-        /// </summary>
-        /// <param name="detectorRating">The detector rating, unused because subdue uprising cannot be foiled.</param>
-        /// <param name="defender">The defender, unused because subdue uprising cannot be foiled.</param>
-        /// <param name="game">The current game state, unused because subdue uprising cannot be foiled.</param>
-        /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(
-            int detectorRating,
-            Officer defender,
-            GameRoot game
-        ) => 0;
 
         /// <summary>
         /// Returns a participant's raw score for subduing the target uprising.
