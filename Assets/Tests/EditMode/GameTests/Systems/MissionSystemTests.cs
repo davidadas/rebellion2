@@ -1193,10 +1193,57 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_EvasionFailsToHostileDetectorOnOwnPlanet_CaptorIsDetectorOwner()
+        public void UpdateMission_CapturedByOrbitalFleetOverOwnPlanet_BoardsCaptorShip()
         {
-            (GameRoot game, Planet planet, Officer spy, MovementSystem movement) =
-                BuildOwnPlanetDetectionScene();
+            (
+                GameRoot game,
+                Planet planet,
+                Officer spy,
+                CapitalShip captorShip,
+                MovementSystem movement
+            ) = BuildOrbitalDetectionScene(planetOwnerId: "empire");
+
+            List<GameResult> results = RunOrbitalCaptureMission(game, planet, spy, movement);
+
+            Assert.IsTrue(spy.IsCaptured);
+            Assert.AreEqual(
+                "rebels",
+                spy.CaptorInstanceID,
+                "Captor should be the hostile detector's faction, not the planet owner"
+            );
+            Assert.AreSame(
+                captorShip,
+                spy.GetParent(),
+                "Captive should be loaded onto the capturing ship, not left on its own planet"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_CapturedByOrbitalFleetOverNeutralPlanet_BoardsCaptorShip()
+        {
+            (
+                GameRoot game,
+                Planet planet,
+                Officer spy,
+                CapitalShip captorShip,
+                MovementSystem movement
+            ) = BuildOrbitalDetectionScene(planetOwnerId: null);
+
+            RunOrbitalCaptureMission(game, planet, spy, movement);
+
+            Assert.IsTrue(spy.IsCaptured);
+            Assert.AreSame(
+                captorShip,
+                spy.GetParent(),
+                "Captive should ride the capturing ship off a neutral planet"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_CapturedByGarrisonOnEnemyPlanet_StaysOnCaptorPlanet()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
@@ -1211,14 +1258,38 @@ namespace Rebellion.Tests.Sectors
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            system.UpdateMission(mission);
 
             Assert.IsTrue(spy.IsCaptured);
-            Assert.AreEqual(
-                "rebels",
-                spy.CaptorInstanceID,
-                "Captor should be the hostile detector's faction, not the planet owner"
+            Assert.AreEqual("rebels", spy.CaptorInstanceID);
+            Assert.AreSame(
+                planet,
+                spy.GetParent(),
+                "An officer caught by a planet's own garrison stays on that captor world"
             );
+            Assert.IsNull(spy.GetParentOfType<CapitalShip>());
+        }
+
+        private List<GameResult> RunOrbitalCaptureMission(
+            GameRoot game,
+            Planet planet,
+            Officer spy,
+            MovementSystem movement
+        )
+        {
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
+            DisableCaptureEvasionInjury(game);
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+            return system.UpdateMission(mission);
         }
 
         [Test]
@@ -3586,8 +3657,9 @@ namespace Rebellion.Tests.Sectors
             GameRoot game,
             Planet planet,
             Officer spy,
+            CapitalShip captorShip,
             MovementSystem movement
-        ) BuildOwnPlanetDetectionScene()
+        ) BuildOrbitalDetectionScene(string planetOwnerId = "empire")
         {
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
@@ -3602,42 +3674,50 @@ namespace Rebellion.Tests.Sectors
             };
             game.AttachNode(sector, game.Galaxy);
 
+            Planet homePlanet = new Planet
+            {
+                InstanceID = "empire-home",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = -100,
+                PositionY = 0,
+            };
+            game.AttachNode(homePlanet, sector);
+
             Planet planet = new Planet
             {
                 InstanceID = "p1",
-                OwnerInstanceID = "empire",
+                OwnerInstanceID = planetOwnerId,
                 IsColonized = true,
                 PositionX = 0,
                 PositionY = 0,
-                PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
             };
             game.AttachNode(planet, sector);
 
             Officer spy = EntityFactory.CreateOfficer("spy", "empire");
-            spy.MissionReturnParentInstanceID = planet.InstanceID;
-            spy.MissionReturnLocationInstanceID = planet.InstanceID;
-            game.AttachNode(spy, planet);
+            spy.MissionReturnParentInstanceID = homePlanet.InstanceID;
+            spy.MissionReturnLocationInstanceID = homePlanet.InstanceID;
+            game.AttachNode(spy, homePlanet);
 
-            // A hostile unit over one of your own planets rides in an orbiting fleet;
-            // a colonized planet only accepts owner-owned regiments/starfighters directly.
+            // The hostile detector rides an orbiting fleet: a capital ship carries the capture.
             Fleet fleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "rebels" };
             game.AttachNode(fleet, planet);
 
-            CapitalShip detectorShip = new CapitalShip
+            CapitalShip captorShip = new CapitalShip
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "rebels",
                 DetectionRating = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            game.AttachNode(detectorShip, fleet);
+            game.AttachNode(captorShip, fleet);
 
             MovementSystem movement = new MovementSystem(
                 game,
                 new FogOfWarSystem(game),
                 new FleetSystem(game)
             );
-            return (game, planet, spy, movement);
+            return (game, planet, spy, captorShip, movement);
         }
 
         private (
