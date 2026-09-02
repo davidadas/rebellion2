@@ -34,7 +34,7 @@ namespace Rebellion.Game.Missions
     internal interface IMissionExecutionRuntime
     {
         /// <summary>
-        /// Resolves this tick's detection attempt.
+        /// Resolves the mission's initial detection attempt.
         /// </summary>
         /// <param name="mission">The mission executing its lifecycle.</param>
         /// <param name="results">The result collection receiving detection consequences.</param>
@@ -112,6 +112,7 @@ namespace Rebellion.Game.Missions
         // Mission progress.
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }
+        public bool DetectionResolved { get; set; }
 
         internal virtual bool AppliesFoiledParticipantConsequences => true;
 
@@ -182,6 +183,7 @@ namespace Rebellion.Game.Missions
             copy.HasInitiated = HasInitiated;
             copy.MaxProgress = MaxProgress;
             copy.CurrentProgress = CurrentProgress;
+            copy.DetectionResolved = DetectionResolved;
         }
 
         /// <summary>
@@ -281,6 +283,7 @@ namespace Rebellion.Game.Missions
         {
             CurrentProgress = 0;
             MaxProgress = maxProgress;
+            DetectionResolved = false;
             CaptureMainParticipantIDs();
             HasInitiated = true;
         }
@@ -770,6 +773,8 @@ namespace Rebellion.Game.Missions
                 || candidate
                     is not IManufacturable { ManufacturingStatus: ManufacturingStatus.Complete }
                 || candidate is IMovable movable && movable.GetTransitMovement() != null
+                || candidate.GetParentOfType<CapitalShip>()
+                    is IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete }
                 || candidate.GetParentOfType<Fleet>()?.GetTransitMovement() != null
             )
                 return false;
@@ -875,7 +880,13 @@ namespace Rebellion.Game.Missions
             }
 
             List<IMissionParticipant> participantsBeforeDetection = GetAllParticipants();
-            if (runtime.ResolveDetection(this, results))
+            bool wasDetected = false;
+            if (!DetectionResolved)
+            {
+                DetectionResolved = true;
+                wasDetected = runtime.ResolveDetection(this, results);
+            }
+            if (wasDetected)
             {
                 AddMissionResults(ResolveInterruption(game, provider), results);
                 MissionCompletedResult completed = BuildTerminatingResult(

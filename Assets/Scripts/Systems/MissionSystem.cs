@@ -447,7 +447,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves this tick's mission detection through the mission system's external services.
+        /// Resolves the mission's initial detection through the mission system's external services.
         /// </summary>
         /// <param name="mission">The mission executing its lifecycle.</param>
         /// <param name="results">The result collection receiving detection consequences.</param>
