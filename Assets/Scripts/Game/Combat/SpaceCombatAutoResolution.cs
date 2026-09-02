@@ -1,25 +1,16 @@
 using System.Collections.Generic;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Game.Combat
 {
     /// <summary>
-    /// Identifies a force's final state after automatic space combat.
-    /// </summary>
-    internal enum SpaceCombatAutoSideOutcome
-    {
-        Active,
-        Destroyed,
-        Withdrawn,
-    }
-
-    /// <summary>
     /// Contains the resolved unit and side states from automatic space combat.
     /// </summary>
     internal sealed class SpaceCombatAutoResolution
     {
-        internal SpaceCombatAutoSideOutcome AttackerOutcome { get; }
-        internal SpaceCombatAutoSideOutcome DefenderOutcome { get; }
+        internal SpaceCombatSideOutcome AttackerOutcome { get; }
+        internal SpaceCombatSideOutcome DefenderOutcome { get; }
         internal int IterationsCompleted { get; }
         internal IReadOnlyList<SpaceCombatAutoShipOutcome> Ships { get; }
         internal IReadOnlyList<SpaceCombatAutoFighterOutcome> Fighters { get; }
@@ -33,8 +24,8 @@ namespace Rebellion.Game.Combat
         /// <param name="ships">The resolved capital ships.</param>
         /// <param name="fighters">The resolved fighter squadrons.</param>
         internal SpaceCombatAutoResolution(
-            SpaceCombatAutoSideOutcome attackerOutcome,
-            SpaceCombatAutoSideOutcome defenderOutcome,
+            SpaceCombatSideOutcome attackerOutcome,
+            SpaceCombatSideOutcome defenderOutcome,
             int iterationsCompleted,
             IReadOnlyList<SpaceCombatAutoShipOutcome> ships,
             IReadOnlyList<SpaceCombatAutoFighterOutcome> fighters

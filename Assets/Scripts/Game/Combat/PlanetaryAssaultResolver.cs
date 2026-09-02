@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 
@@ -36,7 +37,7 @@ namespace Rebellion.Game.Combat
         /// <param name="attackingFleets">The fleets supplying assault troops.</param>
         /// <param name="defendingPlanet">The planet and garrison being assaulted.</param>
         /// <returns>The casualties, collateral damage, and capture outcome.</returns>
-        internal PlanetaryAssaultResolution Resolve(
+        internal PlanetaryAssaultResult Resolve(
             IReadOnlyList<Fleet> attackingFleets,
             Planet defendingPlanet
         )
@@ -84,19 +85,21 @@ namespace Rebellion.Game.Combat
                     .ToList()
                 : new List<Regiment>();
 
-            return new PlanetaryAssaultResolution(
-                attackers.Count,
-                survivingAttackers.Count,
-                defenders.Count,
-                survivingDefenderCount,
-                energyCapacityDamage,
-                allocatedEnergyDamage,
-                capturesPlanet,
-                destroyedAttackers,
-                destroyedDefenders,
-                destroyedBuildings,
-                regimentsToLand
-            );
+            PlanetaryAssaultResult result = new PlanetaryAssaultResult
+            {
+                InitialAttackerRegimentCount = attackers.Count,
+                RemainingAttackerRegimentCount = survivingAttackers.Count,
+                InitialDefenderRegimentCount = defenders.Count,
+                RemainingDefenderRegimentCount = survivingDefenderCount,
+                EnergyCapacityDamage = energyCapacityDamage,
+                AllocatedEnergyDamage = allocatedEnergyDamage,
+                Success = capturesPlanet,
+            };
+            result.DestroyedAttackerRegiments.AddRange(destroyedAttackers);
+            result.DestroyedDefenderRegiments.AddRange(destroyedDefenders);
+            result.CollateralDestroyedBuildings.AddRange(destroyedBuildings);
+            result.LandedRegiments.AddRange(regimentsToLand);
+            return result;
         }
 
         /// <summary>

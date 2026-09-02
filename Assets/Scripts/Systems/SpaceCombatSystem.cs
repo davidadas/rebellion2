@@ -1019,8 +1019,8 @@ namespace Rebellion.Systems
                 defenderFighterSnapshots,
                 tick
             );
-            result.AttackerOutcome = ConvertOutcome(resolution.AttackerOutcome);
-            result.DefenderOutcome = ConvertOutcome(resolution.DefenderOutcome);
+            result.AttackerOutcome = resolution.AttackerOutcome;
+            result.DefenderOutcome = resolution.DefenderOutcome;
             result.Winner = DetermineWinner(
                 result.AttackerOutcome,
                 result.DefenderOutcome,
@@ -1080,21 +1080,6 @@ namespace Rebellion.Systems
                     CurrentSquadronSize = outcome.SquadronSizeAfter,
                 })
                 .ToList();
-        }
-
-        /// <summary>
-        /// Converts a headless resolver side outcome into the strategy result outcome.
-        /// </summary>
-        /// <param name="outcome">The resolver outcome.</param>
-        /// <returns>The corresponding strategy result outcome.</returns>
-        private static SpaceCombatSideOutcome ConvertOutcome(SpaceCombatAutoSideOutcome outcome)
-        {
-            return outcome switch
-            {
-                SpaceCombatAutoSideOutcome.Destroyed => SpaceCombatSideOutcome.Destroyed,
-                SpaceCombatAutoSideOutcome.Withdrawn => SpaceCombatSideOutcome.Withdrawn,
-                _ => SpaceCombatSideOutcome.Active,
-            };
         }
 
         /// <summary>

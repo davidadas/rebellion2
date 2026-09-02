@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Combat
@@ -180,7 +181,7 @@ namespace Rebellion.Tests.Game.Combat
                 defenderCanWithdraw: true
             );
 
-            Assert.AreEqual(SpaceCombatAutoSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(0, GetShipOutcome(result, defender).HullAfter);
         }
 
@@ -202,8 +203,8 @@ namespace Rebellion.Tests.Game.Combat
 
             Assert.AreEqual(
                 expectsWithdrawal
-                    ? SpaceCombatAutoSideOutcome.Withdrawn
-                    : SpaceCombatAutoSideOutcome.Destroyed,
+                    ? SpaceCombatSideOutcome.Withdrawn
+                    : SpaceCombatSideOutcome.Destroyed,
                 result.DefenderOutcome
             );
         }
@@ -216,8 +217,8 @@ namespace Rebellion.Tests.Game.Combat
 
             SpaceCombatAutoResolution result = Resolve(new[] { attacker }, new[] { defender });
 
-            Assert.AreEqual(SpaceCombatAutoSideOutcome.Destroyed, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatAutoSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(0, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(0, GetShipOutcome(result, defender).HullAfter);
             Assert.AreEqual(1200, result.IterationsCompleted);

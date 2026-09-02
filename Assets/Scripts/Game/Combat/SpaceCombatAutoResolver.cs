@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 
@@ -97,8 +98,8 @@ namespace Rebellion.Game.Combat
             }
 
             if (
-                attacker.Outcome == SpaceCombatAutoSideOutcome.Active
-                && defender.Outcome == SpaceCombatAutoSideOutcome.Active
+                attacker.Outcome == SpaceCombatSideOutcome.Active
+                && defender.Outcome == SpaceCombatSideOutcome.Active
             )
             {
                 ResolveStalemate(
@@ -132,9 +133,9 @@ namespace Rebellion.Game.Combat
                 return false;
 
             if (!attackerAlive)
-                attacker.Outcome = SpaceCombatAutoSideOutcome.Destroyed;
+                attacker.Outcome = SpaceCombatSideOutcome.Destroyed;
             if (!defenderAlive)
-                defender.Outcome = SpaceCombatAutoSideOutcome.Destroyed;
+                defender.Outcome = SpaceCombatSideOutcome.Destroyed;
             return true;
         }
 
@@ -183,7 +184,7 @@ namespace Rebellion.Game.Combat
 
             if (force.CanWithdraw)
             {
-                force.Outcome = SpaceCombatAutoSideOutcome.Withdrawn;
+                force.Outcome = SpaceCombatSideOutcome.Withdrawn;
                 return;
             }
 
@@ -381,7 +382,7 @@ namespace Rebellion.Game.Combat
         private static void CompleteStalematedForce(CombatForce force)
         {
             if (force.CanWithdraw)
-                force.Outcome = SpaceCombatAutoSideOutcome.Withdrawn;
+                force.Outcome = SpaceCombatSideOutcome.Withdrawn;
             else
                 DestroyForce(force);
         }
@@ -394,7 +395,7 @@ namespace Rebellion.Game.Combat
         {
             foreach (TacticalUnit unit in force.Units)
                 unit.Destroy();
-            force.Outcome = SpaceCombatAutoSideOutcome.Destroyed;
+            force.Outcome = SpaceCombatSideOutcome.Destroyed;
         }
 
         /// <summary>
@@ -433,7 +434,7 @@ namespace Rebellion.Game.Combat
             internal IEnumerable<TacticalUnit> Units => Ships.Cast<TacticalUnit>().Concat(Fighters);
             internal bool HasSurvivors => Units.Any(unit => unit.IsAlive);
             internal double InitialStrength { get; set; }
-            internal SpaceCombatAutoSideOutcome Outcome { get; set; }
+            internal SpaceCombatSideOutcome Outcome { get; set; }
 
             /// <summary>
             /// Creates tactical state for one combat force.
@@ -458,7 +459,7 @@ namespace Rebellion.Game.Combat
                     .Select(fighter => new StarfighterState(fighter, minimumManeuverRatio))
                     .ToList();
                 CanWithdraw = canWithdraw;
-                Outcome = SpaceCombatAutoSideOutcome.Active;
+                Outcome = SpaceCombatSideOutcome.Active;
             }
         }
 

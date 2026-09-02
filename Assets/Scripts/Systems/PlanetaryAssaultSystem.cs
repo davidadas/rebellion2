@@ -116,11 +116,20 @@ namespace Rebellion.Systems
             SetAssaultCombatState(attackingFleets, defendingPlanet, true);
             try
             {
-                PlanetaryAssaultResolution resolution = _resolver.Resolve(
+                PlanetaryAssaultResult resolvedResult = _resolver.Resolve(
                     attackingFleets,
                     defendingPlanet
                 );
-                ApplyResolution(resolution, defendingPlanet, result.AttackingFaction, result);
+                resolvedResult.Planet = result.Planet;
+                resolvedResult.Tick = result.Tick;
+                resolvedResult.AttackingFaction = result.AttackingFaction;
+                resolvedResult.AttackerOwnerInstanceID = result.AttackerOwnerInstanceID;
+                resolvedResult.DefenderOwnerInstanceID = result.DefenderOwnerInstanceID;
+                resolvedResult.AttackingUnits = result.AttackingUnits;
+                resolvedResult.DefendingUnits = result.DefendingUnits;
+                result = resolvedResult;
+
+                ApplyResult(result, defendingPlanet, result.AttackingFaction);
 
                 if (result.DestroyedDefenderRegiments.Count > 0 || result.LandedRegiments.Count > 0)
                 {
@@ -185,50 +194,29 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies a resolved assault to the scene graph and result record.
+        /// Applies a resolved assault result to the scene graph.
         /// </summary>
-        /// <param name="resolution">The calculated assault outcome.</param>
+        /// <param name="result">The resolved assault result.</param>
         /// <param name="planet">The assaulted planet.</param>
         /// <param name="attacker">The faction performing the assault.</param>
-        /// <param name="result">The public result receiving the applied outcome.</param>
-        private void ApplyResolution(
-            PlanetaryAssaultResolution resolution,
-            Planet planet,
-            Faction attacker,
-            PlanetaryAssaultResult result
-        )
+        private void ApplyResult(PlanetaryAssaultResult result, Planet planet, Faction attacker)
         {
-            result.InitialAttackerRegimentCount = resolution.InitialAttackerRegimentCount;
-            result.RemainingAttackerRegimentCount = resolution.RemainingAttackerRegimentCount;
-            result.InitialDefenderRegimentCount = resolution.InitialDefenderRegimentCount;
-            result.RemainingDefenderRegimentCount = resolution.RemainingDefenderRegimentCount;
-            result.EnergyCapacityDamage = resolution.EnergyCapacityDamage;
-            result.AllocatedEnergyDamage = resolution.AllocatedEnergyDamage;
-            result.DestroyedAttackerRegiments.AddRange(resolution.DestroyedAttackerRegiments);
-            result.DestroyedDefenderRegiments.AddRange(resolution.DestroyedDefenderRegiments);
-            result.CollateralDestroyedBuildings.AddRange(resolution.DestroyedBuildings);
-
-            foreach (Regiment regiment in resolution.DestroyedAttackerRegiments)
+            foreach (Regiment regiment in result.DestroyedAttackerRegiments)
                 _game.DeleteNode(regiment);
-            foreach (Regiment regiment in resolution.DestroyedDefenderRegiments)
+            foreach (Regiment regiment in result.DestroyedDefenderRegiments)
                 _game.DeleteNode(regiment);
-            foreach (Building building in resolution.DestroyedBuildings)
+            foreach (Building building in result.CollateralDestroyedBuildings)
                 _game.DeleteNode(building);
 
-            planet.EnergyCapacity -= resolution.EnergyCapacityDamage;
-            planet.AllocatedEnergy -= resolution.AllocatedEnergyDamage;
+            planet.EnergyCapacity -= result.EnergyCapacityDamage;
+            planet.AllocatedEnergy -= result.AllocatedEnergyDamage;
 
-            if (!resolution.CapturesPlanet)
+            if (!result.Success)
                 return;
 
             result.OwnershipChange = _ownership.TransferPlanet(planet, attacker);
-            foreach (Regiment regiment in resolution.RegimentsToLand)
-            {
+            foreach (Regiment regiment in result.LandedRegiments)
                 _game.MoveNode(regiment, planet);
-                result.LandedRegiments.Add(regiment);
-            }
-
-            result.Success = true;
         }
 
         /// <summary>

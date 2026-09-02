@@ -4,6 +4,7 @@ using Rebellion.Game;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Combat
@@ -68,13 +69,10 @@ namespace Rebellion.Tests.Game.Combat
                 new SequenceRNG(intValues: new[] { 0, 6, 99 })
             );
 
-            PlanetaryAssaultResolution resolution = resolver.Resolve(
-                new List<Fleet> { fleet },
-                planet
-            );
+            PlanetaryAssaultResult result = resolver.Resolve(new List<Fleet> { fleet }, planet);
 
-            Assert.IsTrue(resolution.CapturesPlanet);
-            CollectionAssert.Contains(resolution.DestroyedDefenderRegiments, defender);
+            Assert.IsTrue(result.Success);
+            CollectionAssert.Contains(result.DestroyedDefenderRegiments, defender);
             Assert.AreSame(ship, attacker.GetParent());
             Assert.AreSame(planet, defender.GetParent());
             Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
