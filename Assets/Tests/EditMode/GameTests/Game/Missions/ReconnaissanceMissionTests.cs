@@ -78,6 +78,9 @@ namespace Rebellion.Tests.Game.Missions
             detector.DetectionRating = 100;
             detector.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(detector, enemyPlanet);
+            Officer commander = EntityFactory.CreateOfficer("commander", "rebels");
+            commander.CurrentRank = OfficerRank.General;
+            game.AttachNode(commander, enemyPlanet);
 
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
             {

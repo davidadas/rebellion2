@@ -523,7 +523,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DiplomacyWithHostileDetector_DoesNotFoilOrInjureParticipant()
+        public void UpdateMission_DiplomacyWithHostileDetector_CanBeFoiled()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
@@ -553,13 +553,53 @@ namespace Rebellion.Tests.Sectors
 
             List<GameResult> results = system.UpdateMission(mission);
 
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
+        }
+
+        [Test]
+        public void UpdateMission_DiplomacyWithoutHostileDetector_DoesNotInjureParticipant()
+        {
+            (GameRoot game, Planet planet, Officer diplomat, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            planet.OwnerInstanceID = null;
+            planet.PopularSupport["empire"] = 50;
+            planet.AddVisitor("empire");
+            foreach (Regiment regiment in planet.GetChildren<Regiment>().ToList())
+                game.DeleteNode(regiment);
+
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Diplomacy,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { diplomat },
+                new List<IMissionParticipant>()
+            );
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            game.AttachNode(mission, planet);
+            game.MoveNode(diplomat, mission);
+            mission.Initiate(0);
+
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
             Assert.IsFalse(
                 results
                     .OfType<MissionCompletedResult>()
                     .Any(result => result.Outcome == MissionOutcome.Foiled)
             );
-            Assert.IsFalse(spy.IsCaptured);
-            Assert.Zero(spy.InjuryPoints);
+            Assert.IsFalse(diplomat.IsCaptured);
+            Assert.Zero(diplomat.InjuryPoints);
             Assert.IsFalse(results.OfType<OfficerInjuredResult>().Any());
         }
 
@@ -1182,7 +1222,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_DetectorWithoutCommander_CanFoil()
+        public void UpdateMission_DetectorWithoutCommander_CannotFoil()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
@@ -1206,13 +1246,13 @@ namespace Rebellion.Tests.Sectors
             List<GameResult> results = system.UpdateMission(mission);
 
             Assert.IsFalse(spy.IsKilled);
-            Assert.IsTrue(spy.IsCaptured);
-            Assert.IsTrue(
+            Assert.IsFalse(spy.IsCaptured);
+            Assert.IsFalse(
                 results
                     .OfType<MissionCompletedResult>()
                     .Any(result => result.Outcome == MissionOutcome.Foiled)
             );
-            Assert.AreEqual(0, mission.CurrentProgress);
+            Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]

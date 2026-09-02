@@ -19,11 +19,6 @@ namespace Rebellion.Game.Missions
         public const string MissionTypeID = "Research";
 
         /// <summary>
-        /// Returns whether hostile forces can foil the mission.
-        /// </summary>
-        internal override bool CanBeFoiled => false;
-
-        /// <summary>
         /// Research discipline advanced by this mission.
         /// </summary>
         public ResearchDiscipline Discipline { get; set; }

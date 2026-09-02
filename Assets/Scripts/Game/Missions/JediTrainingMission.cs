@@ -18,11 +18,6 @@ namespace Rebellion.Game.Missions
         public const string MissionTypeID = "JediTraining";
 
         /// <summary>
-        /// Returns whether hostile forces can foil the mission.
-        /// </summary>
-        internal override bool CanBeFoiled => false;
-
-        /// <summary>
         /// Instance ID of the officer selected as the trainer.
         /// </summary>
         public string TrainerInstanceID { get; set; }

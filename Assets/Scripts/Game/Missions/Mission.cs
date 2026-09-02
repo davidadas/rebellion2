@@ -115,8 +115,6 @@ namespace Rebellion.Game.Missions
 
         internal virtual bool AppliesFoiledParticipantConsequences => true;
 
-        internal virtual bool CanBeFoiled => true;
-
         internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
 
         /// <summary>
@@ -776,7 +774,8 @@ namespace Rebellion.Game.Missions
             )
                 return false;
 
-            return candidate is Regiment or Starfighter or CapitalShip;
+            return (candidate is Regiment or Starfighter or CapitalShip)
+                && FindDetectorCommander(candidate) != null;
         }
 
         /// <summary>
@@ -877,7 +876,7 @@ namespace Rebellion.Game.Missions
             }
 
             List<IMissionParticipant> participantsBeforeDetection = GetAllParticipants();
-            if (CanBeFoiled && runtime.ResolveDetection(this, results))
+            if (runtime.ResolveDetection(this, results))
             {
                 AddMissionResults(ResolveInterruption(game, provider), results);
                 MissionCompletedResult completed = BuildTerminatingResult(
