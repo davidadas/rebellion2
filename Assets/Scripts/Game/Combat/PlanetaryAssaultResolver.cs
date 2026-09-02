@@ -22,7 +22,7 @@ namespace Rebellion.Game.Combat
         /// </summary>
         /// <param name="config">The planetary-assault resolution parameters.</param>
         /// <param name="provider">The random-number provider used during resolution.</param>
-        internal PlanetaryAssaultResolver(
+        public PlanetaryAssaultResolver(
             GameConfig.PlanetaryAssaultConfig config,
             IRandomNumberProvider provider
         )
@@ -37,7 +37,7 @@ namespace Rebellion.Game.Combat
         /// <param name="attackingFleets">The fleets supplying assault troops.</param>
         /// <param name="defendingPlanet">The planet and garrison being assaulted.</param>
         /// <returns>The casualties, collateral damage, and capture outcome.</returns>
-        internal PlanetaryAssaultResult Resolve(
+        public PlanetaryAssaultResult Resolve(
             IReadOnlyList<Fleet> attackingFleets,
             Planet defendingPlanet
         )

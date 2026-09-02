@@ -10,7 +10,7 @@ namespace Rebellion.Game.Combat
     /// <summary>
     /// Resolves a space battle without constructing or rendering the tactical scene.
     /// </summary>
-    internal sealed class SpaceCombatAutoResolver
+    public sealed class SpaceCombatAutoResolver
     {
         private readonly GameConfig.SpaceCombatConfig _config;
         private IRandomNumberProvider _random;
@@ -19,7 +19,7 @@ namespace Rebellion.Game.Combat
         /// Creates an automatic resolver using the supplied combat parameters.
         /// </summary>
         /// <param name="config">The automatic space-combat resolution parameters.</param>
-        internal SpaceCombatAutoResolver(GameConfig.SpaceCombatConfig config)
+        public SpaceCombatAutoResolver(GameConfig.SpaceCombatConfig config)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
         }
@@ -34,7 +34,7 @@ namespace Rebellion.Game.Combat
         /// <param name="attackerCanWithdraw">Whether the attacking force can leave combat.</param>
         /// <param name="defenderCanWithdraw">Whether the defending force can leave combat.</param>
         /// <returns>The resolved tactical state for both forces.</returns>
-        internal SpaceCombatAutoResult Resolve(
+        public SpaceCombatAutoResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
             IReadOnlyList<Starfighter> attackerFighters,
             IReadOnlyList<CapitalShip> defenderShips,
