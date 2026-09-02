@@ -349,6 +349,7 @@ namespace Rebellion.AI.Planners
                 .ThenByDescending(systemId =>
                     GetAttackSystemReadinessGateCount(context, fleet, systemId)
                 )
+                .ThenByDescending(context.Assessment.GetEnemySystemSupportLeverage)
                 .ThenBy(context.Assessment.GetEnemyPlanetCountInSystem)
                 .ThenBy(context.Assessment.GetRequiredAttackCampaignCombatStrength)
                 .ThenBy(context.Assessment.GetRequiredAttackCampaignRegimentCount)

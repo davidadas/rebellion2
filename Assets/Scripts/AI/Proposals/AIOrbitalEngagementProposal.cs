@@ -10,13 +10,19 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIOrbitalEngagementProposal : AIProposal
     {
-        /// <summary>Gets the fleet assigned to the engagement.</summary>
+        /// <summary>
+        /// Gets the fleet assigned to the engagement.
+        /// </summary>
         public Fleet Fleet { get; }
 
-        /// <summary>Gets the planet containing the hostile fleet.</summary>
+        /// <summary>
+        /// Gets the planet containing the hostile fleet.
+        /// </summary>
         public Planet TargetPlanet { get; }
 
-        /// <summary>Gets the friendly planet to which the fleet should return.</summary>
+        /// <summary>
+        /// Gets the friendly planet to which the fleet should return.
+        /// </summary>
         public Planet OriginPlanet { get; }
 
         /// <summary>

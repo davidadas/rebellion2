@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -149,14 +150,18 @@ public static class HeadlessSimulationRunner
             long personnelTimestampCount = 0;
             long specialForcesTimestampCount = 0;
             long attackReadinessTimestampCount = 0;
+            List<long> gameProcessingSamples = new List<long>(options.TickCount);
+            List<long> gameProcessingStepSamples = new List<long>(options.TickCount * 8);
 
             for (int i = 0; i < options.TickCount && victory == null; i++)
             {
                 if (i % 25 == 0)
                     LogToFile(logPath, $"[HeadlessSim] tick {i}");
                 long startTimestamp = Stopwatch.GetTimestamp();
-                manager.ProcessTick();
-                gameProcessingTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                ProcessTickIncrementally(manager, gameProcessingStepSamples);
+                long gameProcessingElapsed = Stopwatch.GetTimestamp() - startTimestamp;
+                gameProcessingTimestampCount += gameProcessingElapsed;
+                gameProcessingSamples.Add(gameProcessingElapsed);
                 startTimestamp = Stopwatch.GetTimestamp();
                 List<SpecialForces> currentSpecialForces = game.GetSceneNodesByType<SpecialForces>()
                     .ToList();
@@ -188,6 +193,14 @@ public static class HeadlessSimulationRunner
             LogToFile(
                 logPath,
                 $"[HeadlessSim] timing game={GetElapsedSeconds(gameProcessingTimestampCount):F3}s idle={GetElapsedSeconds(idleTimestampCount):F3}s manufactured={GetElapsedSeconds(manufacturedTimestampCount):F3}s fleets={GetElapsedSeconds(fleetHistoryTimestampCount):F3}s activity={GetElapsedSeconds(activityTimestampCount):F3}s personnel={GetElapsedSeconds(personnelTimestampCount):F3}s specialForces={GetElapsedSeconds(specialForcesTimestampCount):F3}s readiness={GetElapsedSeconds(attackReadinessTimestampCount):F3}s"
+            );
+            LogToFile(
+                logPath,
+                $"[HeadlessSim] game-tick median={GetPercentileMilliseconds(gameProcessingSamples, 50):F3}ms p90={GetPercentileMilliseconds(gameProcessingSamples, 90):F3}ms p99={GetPercentileMilliseconds(gameProcessingSamples, 99):F3}ms max={GetPercentileMilliseconds(gameProcessingSamples, 100):F3}ms"
+            );
+            LogToFile(
+                logPath,
+                $"[HeadlessSim] game-step median={GetPercentileMilliseconds(gameProcessingStepSamples, 50):F3}ms p90={GetPercentileMilliseconds(gameProcessingStepSamples, 90):F3}ms p99={GetPercentileMilliseconds(gameProcessingStepSamples, 99):F3}ms max={GetPercentileMilliseconds(gameProcessingStepSamples, 100):F3}ms"
             );
             string savePath = SaveSimulation(game, options);
             SimulationSummary report = BuildSimulationSummary(
@@ -319,6 +332,50 @@ public static class HeadlessSimulationRunner
     /// <returns>The corresponding elapsed seconds.</returns>
     private static double GetElapsedSeconds(long timestampCount) =>
         timestampCount / (double)Stopwatch.Frequency;
+
+    /// <summary>
+    /// Drains one incremental game tick while recording each scheduled step.
+    /// </summary>
+    /// <param name="manager">The game manager processing the tick.</param>
+    /// <param name="stepSamples">The collection receiving step durations.</param>
+    private static void ProcessTickIncrementally(GameManager manager, ICollection<long> stepSamples)
+    {
+        IEnumerator tick = manager.ProcessTickIncrementally();
+        try
+        {
+            bool hasNext;
+            do
+            {
+                long startTimestamp = Stopwatch.GetTimestamp();
+                hasNext = tick.MoveNext();
+                stepSamples.Add(Stopwatch.GetTimestamp() - startTimestamp);
+            } while (hasNext);
+        }
+        finally
+        {
+            (tick as IDisposable)?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Returns the nearest-rank percentile in milliseconds for timestamp samples.
+    /// </summary>
+    /// <param name="samples">Elapsed timestamp counts to evaluate.</param>
+    /// <param name="percentile">Percentile from zero through one hundred.</param>
+    /// <returns>The requested percentile in milliseconds, or zero when no samples exist.</returns>
+    private static double GetPercentileMilliseconds(
+        IReadOnlyCollection<long> samples,
+        int percentile
+    )
+    {
+        if (samples == null || samples.Count == 0)
+            return 0;
+
+        long[] ordered = samples.OrderBy(sample => sample).ToArray();
+        int rank = (int)Math.Ceiling(percentile / 100d * ordered.Length);
+        int index = Math.Clamp(rank - 1, 0, ordered.Length - 1);
+        return ordered[index] * 1000d / Stopwatch.Frequency;
+    }
 
     /// <summary>
     /// Builds the JSON summary for a completed simulation.

@@ -48,6 +48,9 @@ namespace Rebellion.Tests.AI.Helpers
 
         public override void Execute(AITurnContext context)
         {
+            if (!CanExecute(context))
+                return;
+
             ExecuteCount++;
         }
     }

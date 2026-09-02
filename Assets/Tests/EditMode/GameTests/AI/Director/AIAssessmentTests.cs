@@ -148,6 +148,45 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
+        public void GetOffensiveSupportLeverage_WithFavoredTargetAndExposedPlanet_ReturnsBoth()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, 55);
+            target.SetPopularSupport(rebels.InstanceID, 45);
+            Planet exposed = AITestSceneBuilder.AddPlanet(game, system, "exposed", null);
+            exposed.SetPopularSupport(empire.InstanceID, 55);
+            exposed.SetPopularSupport(rebels.InstanceID, 45);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITestSceneBuilder.RevealPlanet(game, empire, exposed);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(2, assessment.GetOffensiveSupportLeverage(target));
+        }
+
+        [Test]
+        public void GetDefensiveSupportRisk_WithFavoredEnemyAndExposedPlanet_ReturnsBoth()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", empire.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, 45);
+            target.SetPopularSupport(rebels.InstanceID, 55);
+            Planet exposed = AITestSceneBuilder.AddPlanet(game, system, "exposed", null);
+            exposed.SetPopularSupport(empire.InstanceID, 45);
+            exposed.SetPopularSupport(rebels.InstanceID, 55);
+            AITestSceneBuilder.RevealPlanet(game, empire, exposed);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(2, assessment.GetDefensiveSupportRisk(target));
+        }
+
+        [Test]
         public void Constructor_WithUnobservedForeignPlanet_DoesNotExposePlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

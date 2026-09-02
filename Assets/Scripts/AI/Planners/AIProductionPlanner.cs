@@ -763,6 +763,18 @@ namespace Rebellion.AI.Planners
             return int.MaxValue;
         }
 
+        /// <summary>
+        /// Returns the remaining number of one unit type allowed before another available type
+        /// should be selected for fleet diversity.
+        /// </summary>
+        /// <typeparam name="T">The manufacturable fleet-unit type.</typeparam>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The destination fleet.</param>
+        /// <param name="selectedTypeId">The selected unit type identifier.</param>
+        /// <param name="manufacturingType">The manufacturing category.</param>
+        /// <param name="maximumDuplicateCount">The preferred duplicate limit.</param>
+        /// <param name="getUnit">Resolves the unit represented by a technology.</param>
+        /// <returns>The remaining allowed quantity, or no effective limit when diversity is unavailable.</returns>
         private int GetFleetUnitDiversityLimit<T>(
             AITurnContext context,
             Fleet fleet,
@@ -1728,13 +1740,19 @@ namespace Rebellion.AI.Planners
         /// </summary>
         private enum ProducerMode
         {
-            /// <summary>Requires currently available manufacturing capacity.</summary>
+            /// <summary>
+            /// Requires currently available manufacturing capacity.
+            /// </summary>
             AvailableCapacity,
 
-            /// <summary>Requires an appropriate manufacturing facility.</summary>
+            /// <summary>
+            /// Requires an appropriate manufacturing facility.
+            /// </summary>
             Distributed,
 
-            /// <summary>Requires a planet eligible for facility expansion.</summary>
+            /// <summary>
+            /// Requires a planet eligible for facility expansion.
+            /// </summary>
             FacilityExpansion,
         }
     }

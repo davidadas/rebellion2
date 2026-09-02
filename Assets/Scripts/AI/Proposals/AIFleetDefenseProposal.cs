@@ -5,12 +5,20 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Proposals
 {
+    /// <summary>
+    /// Proposal to assign a fleet to defend a planet.
+    /// </summary>
     public sealed class AIFleetDefenseProposal : AIProposal
     {
         public Fleet Fleet { get; }
 
         public Planet TargetPlanet { get; }
 
+        /// <summary>
+        /// Creates a defense proposal for the supplied fleet and planet.
+        /// </summary>
+        /// <param name="fleet">The fleet assigned to defend.</param>
+        /// <param name="targetPlanet">The planet to defend.</param>
         public AIFleetDefenseProposal(Fleet fleet, Planet targetPlanet)
         {
             Fleet = fleet;

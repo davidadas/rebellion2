@@ -4,12 +4,20 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Proposals
 {
+    /// <summary>
+    /// Proposal to clear a fleet order that is no longer valid.
+    /// </summary>
     public sealed class AIClearFleetOrderProposal : AIProposal
     {
         private readonly FleetOrder _expectedOrder;
 
         public Fleet Fleet { get; }
 
+        /// <summary>
+        /// Creates a proposal for the supplied fleet and current order.
+        /// </summary>
+        /// <param name="fleet">The fleet whose order should be cleared.</param>
+        /// <param name="expectedOrder">The order expected to remain assigned.</param>
         public AIClearFleetOrderProposal(Fleet fleet, FleetOrder expectedOrder)
         {
             Fleet = fleet;

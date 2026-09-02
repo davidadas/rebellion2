@@ -6,6 +6,9 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Proposals
 {
+    /// <summary>
+    /// Proposal to start or advance a fleet colonization order.
+    /// </summary>
     public sealed class AIColonizationProposal : AIProposal
     {
         public Fleet Fleet { get; }
@@ -14,6 +17,12 @@ namespace Rebellion.AI.Proposals
 
         public Planet TargetPlanet { get; }
 
+        /// <summary>
+        /// Creates a colonization proposal for the supplied fleet and planet.
+        /// </summary>
+        /// <param name="fleet">The fleet assigned to colonize.</param>
+        /// <param name="status">The proposed order status.</param>
+        /// <param name="targetPlanet">The planet to colonize.</param>
         public AIColonizationProposal(Fleet fleet, FleetOrderStatus status, Planet targetPlanet)
         {
             Fleet = fleet;
@@ -87,6 +96,9 @@ namespace Rebellion.AI.Proposals
         /// <param name="context">The current AI turn context.</param>
         public override void Execute(AITurnContext context)
         {
+            if (!CanExecute(context))
+                return;
+
             EnsureOrder();
 
             if (Fleet.IsInCombat || Fleet.Movement != null)

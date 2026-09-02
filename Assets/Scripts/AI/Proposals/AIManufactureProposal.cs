@@ -64,6 +64,13 @@ namespace Rebellion.AI.Proposals
         public AIManufactureProposal(AIDemand demand, Planet producerPlanet, Technology product)
             : this(demand, producerPlanet, product, false) { }
 
+        /// <summary>
+        /// Creates a manufacture proposal from one demand and producer.
+        /// </summary>
+        /// <param name="demand">Production demand served by the proposal.</param>
+        /// <param name="producerPlanet">Planet that will produce the item.</param>
+        /// <param name="product">Technology to manufacture.</param>
+        /// <param name="distributesDemand">Whether the proposal may satisfy demand across producers.</param>
         internal AIManufactureProposal(
             AIDemand demand,
             Planet producerPlanet,
@@ -72,6 +79,13 @@ namespace Rebellion.AI.Proposals
         )
             : this(demand, new[] { producerPlanet }, product, distributesDemand) { }
 
+        /// <summary>
+        /// Creates a manufacture proposal from one demand and multiple producers.
+        /// </summary>
+        /// <param name="demand">Production demand served by the proposal.</param>
+        /// <param name="producerPlanets">Planets eligible to produce the item.</param>
+        /// <param name="product">Technology to manufacture.</param>
+        /// <param name="distributesDemand">Whether the proposal may satisfy demand across producers.</param>
         internal AIManufactureProposal(
             AIDemand demand,
             IReadOnlyList<Planet> producerPlanets,
@@ -87,6 +101,12 @@ namespace Rebellion.AI.Proposals
             DistributesDemand = distributesDemand;
         }
 
+        /// <summary>
+        /// Creates a manufacture proposal from precomputed producer options.
+        /// </summary>
+        /// <param name="producerOptions">Eligible demand and producer combinations.</param>
+        /// <param name="product">Technology to manufacture.</param>
+        /// <param name="distributesDemand">Whether the proposal may satisfy demand across producers.</param>
         internal AIManufactureProposal(
             IReadOnlyList<AIManufactureOption> producerOptions,
             Technology product,
@@ -222,7 +242,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this proposal may be selected.</returns>
         public override bool CanSelect(AITurnContext context)
         {
-            return IsStillValid(context);
+            return IsStillValid(context, validateOrderAcceptance: true);
         }
 
         /// <summary>
@@ -232,7 +252,8 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this proposal may execute.</returns>
         public override bool CanExecute(AITurnContext context)
         {
-            return IsStillValid(context) && HasMaintenanceHeadroom(context);
+            return IsStillValid(context, validateOrderAcceptance: false)
+                && HasMaintenanceHeadroom(context);
         }
 
         /// <summary>
@@ -317,7 +338,9 @@ namespace Rebellion.AI.Proposals
             return totalMaintenanceCost > int.MaxValue ? int.MaxValue : (int)totalMaintenanceCost;
         }
 
-        /// <summary>Returns the maintenance headroom required after manufacture.</summary>
+        /// <summary>
+        /// Returns the maintenance headroom required after manufacture.
+        /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>The required maintenance headroom.</returns>
         public int GetMinimumMaintenanceHeadroom(AITurnContext context)
@@ -359,8 +382,9 @@ namespace Rebellion.AI.Proposals
         /// Returns whether the manufacture proposal still has valid inputs.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
+        /// <param name="validateOrderAcceptance">Whether to validate structural order acceptance.</param>
         /// <returns>True if the proposal is still valid.</returns>
-        private bool IsStillValid(AITurnContext context)
+        private bool IsStillValid(AITurnContext context, bool validateOrderAcceptance)
         {
             if (
                 context?.Faction == null
@@ -375,6 +399,9 @@ namespace Rebellion.AI.Proposals
                 return false;
 
             if (!ProducerPlanet.IsColonized || ProducerPlanet.IsDestroyed)
+                return false;
+
+            if (Destination is Fleet destinationFleet && destinationFleet.Movement != null)
                 return false;
 
             if (IsFacilityExpansionDemand())
@@ -404,6 +431,7 @@ namespace Rebellion.AI.Proposals
             if (
                 Demand.Kind != AIDemandKind.BuildingUpgrade
                 && IsCountedManufacturingDemand()
+                && validateOrderAcceptance
                 && !context.Manufacturing.CanAcceptManufacturingOrder(
                     ProducerPlanet,
                     Product.GetReference(),
@@ -632,7 +660,9 @@ namespace Rebellion.AI.Proposals
             );
         }
 
-        /// <summary>Returns the number of units represented by the proposal.</summary>
+        /// <summary>
+        /// Returns the number of units represented by the proposal.
+        /// </summary>
         /// <returns>The manufacturing count.</returns>
         internal int GetManufacturingCount()
         {
@@ -745,7 +775,9 @@ namespace Rebellion.AI.Proposals
                 && IManufacturable.CanBeManufacturedBy(specialForces, context.Faction.InstanceID);
         }
 
-        /// <summary>Returns the shared producer-capacity claim key.</summary>
+        /// <summary>
+        /// Returns the shared producer-capacity claim key.
+        /// </summary>
         /// <returns>The capacity key.</returns>
         internal string GetProducerCapacityKey()
         {

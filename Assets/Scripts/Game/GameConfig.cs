@@ -144,13 +144,15 @@ namespace Rebellion.Game
 
             public int DiplomacySupportDeficitWeight { get; set; } = 1;
 
-            public int DiplomacyConstructionFacilityWeight { get; set; } = 20;
+            public int DiplomacyConstructionFacilityWeight { get; set; } = 25;
 
-            public int DiplomacyShipyardWeight { get; set; } = 25;
+            public int DiplomacyShipyardWeight { get; set; } = 20;
 
             public int DiplomacyTrainingFacilityWeight { get; set; } = 5;
 
             public int DiplomacyResourceNodeWeight { get; set; } = 5;
+
+            public int DiplomacySectorSupportRiskWeight { get; set; } = 25;
 
             public int HostileOfficerReplacementPenalty { get; set; } = 100;
 
@@ -183,6 +185,8 @@ namespace Rebellion.Game
 
             public int AttackStrategicValueWeight { get; set; } = 55;
 
+            public int AttackSectorSupportLeverageWeight { get; set; } = 30;
+
             public int AttackReadinessWeight { get; set; } = 35;
 
             public int AttackCaptureViabilityWeight { get; set; } = 45;
@@ -198,6 +202,8 @@ namespace Rebellion.Game
             public int HeadquartersAttackBonus { get; set; } = 45;
 
             public int OrbitalResponseBonus { get; set; } = 250;
+
+            public int DefenseSectorSupportRiskWeight { get; set; } = 30;
 
             public int ColonizationBaseScore { get; set; } = 45;
 

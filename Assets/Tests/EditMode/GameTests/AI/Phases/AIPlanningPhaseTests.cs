@@ -67,6 +67,33 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreSame(proposal, context.Proposals.Single());
         }
 
+        [Test]
+        public void ExecuteIncrementally_WithInjectedPlanners_YieldsAfterEachPlanner()
+        {
+            TestAIProposal first = new TestAIProposal();
+            TestAIProposal second = new TestAIProposal();
+            AIPlanningPhase phase = new AIPlanningPhase(
+                new IAIProposalPlanner[] { new TestPlanner(first), new TestPlanner(second) }
+            );
+            AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
+            IEnumerator<object> planning = phase.ExecuteIncrementally(context).GetEnumerator();
+
+            Assert.IsTrue(planning.MoveNext());
+            Assert.AreSame(first, context.Proposals.Single());
+            Assert.IsTrue(planning.MoveNext());
+            CollectionAssert.AreEqual(new[] { first, second }, context.Proposals);
+            Assert.IsFalse(planning.MoveNext());
+        }
+
         private sealed class TestPlanner : IAIProposalPlanner
         {
             private readonly AIProposal _proposal;

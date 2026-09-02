@@ -97,6 +97,30 @@ namespace Rebellion.AI.Director
         private readonly Dictionary<string, Planet> _knownPlanets = new Dictionary<string, Planet>(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<string, IReadOnlyList<Planet>> _knownPlanetsBySystemId =
+            new Dictionary<string, IReadOnlyList<Planet>>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _offensiveSupportLeverage = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _defensiveSupportRisks = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<
+            string,
+            IReadOnlyList<Planet>
+        > _attackCampaignPlanetsBySystemId = new Dictionary<string, IReadOnlyList<Planet>>(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, int> _enemySystemSupportLeverage = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly HashSet<string> _knownGarrisonedPlanetIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
+        private readonly IReadOnlyList<string> _opposingFactionIds;
 
         // Planet Intelligence.
         public IReadOnlyList<Planet> KnownColonizedPlanets { get; }
@@ -148,6 +172,13 @@ namespace Rebellion.AI.Director
         public AIAssessment(AITurnContext context)
         {
             _context = context;
+            _opposingFactionIds =
+                context
+                    ?.Game?.GetFactions()
+                    .Where(candidate => candidate.InstanceID != context.Faction?.InstanceID)
+                    .Select(candidate => candidate.InstanceID)
+                    .ToList()
+                ?? new List<string>();
             _sabotageTargets = new AISabotageTargetPolicy(
                 this,
                 context?.Game?.Config?.AI?.MissionPlanning
@@ -185,6 +216,28 @@ namespace Rebellion.AI.Director
                 )
             )
                 _knownPlanets[planet.InstanceID] = planet;
+            foreach (
+                IGrouping<string, Planet> system in _knownPlanets
+                    .Values.GroupBy(GetPlanetSystemId)
+                    .Where(system => !string.IsNullOrEmpty(system.Key))
+            )
+            {
+                _knownPlanetsBySystemId[system.Key] = system
+                    .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                    .ToList();
+            }
+            foreach (Planet planet in _knownPlanets.Values)
+            {
+                if (
+                    planet
+                        .GetAllRegiments()
+                        .Any(regiment =>
+                            regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                            && regiment.Movement == null
+                        )
+                )
+                    _knownGarrisonedPlanetIds.Add(planet.InstanceID);
+            }
             OwnedPlanets = BuildOwnedPlanets();
             EnemyPlanets = BuildEnemyPlanets();
             NeutralPlanets = BuildNeutralPlanets();
@@ -404,10 +457,15 @@ namespace Rebellion.AI.Director
             if (string.IsNullOrEmpty(systemId))
                 return Array.Empty<Planet>();
 
-            return EnemyPlanets
-                .Where(planet => GetPlanetSystemId(planet) == systemId)
-                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                .ToList();
+            return GetOrAdd(
+                _attackCampaignPlanetsBySystemId,
+                systemId,
+                () =>
+                    EnemyPlanets
+                        .Where(planet => GetPlanetSystemId(planet) == systemId)
+                        .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                        .ToList()
+            );
         }
 
         /// <summary>
@@ -499,6 +557,134 @@ namespace Rebellion.AI.Director
                 return 0;
 
             return planet.GetPopularSupport(_context.Faction.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns the known support leverage gained by capturing a planet.
+        /// </summary>
+        /// <param name="planet">The prospective attack target.</param>
+        /// <returns>The target and follow-on planets exposed by the resulting support shift.</returns>
+        public int GetOffensiveSupportLeverage(Planet planet)
+        {
+            if (planet == null || _context?.Faction == null)
+                return 0;
+
+            return GetOrAdd(
+                _offensiveSupportLeverage,
+                planet.InstanceID,
+                () => CalculateSupportLeverage(planet, _context.Faction.InstanceID)
+            );
+        }
+
+        /// <summary>
+        /// Returns the known sector-wide support risk created by losing an owned planet.
+        /// </summary>
+        /// <param name="planet">The owned planet being evaluated.</param>
+        /// <returns>The target and follow-on planets exposed to the opposing faction.</returns>
+        public int GetDefensiveSupportRisk(Planet planet)
+        {
+            if (planet == null || _context?.Faction == null || _context.Game == null)
+                return 0;
+
+            return GetOrAdd(
+                _defensiveSupportRisks,
+                planet.InstanceID,
+                () => CalculateSupportLeverage(planet, GetLeadingOpposingFactionId(planet))
+            );
+        }
+
+        /// <summary>
+        /// Returns the combined offensive support leverage for known enemy planets in a system.
+        /// </summary>
+        /// <param name="systemId">The system identifier.</param>
+        /// <returns>The combined support leverage.</returns>
+        public int GetEnemySystemSupportLeverage(string systemId)
+        {
+            if (string.IsNullOrEmpty(systemId))
+                return 0;
+
+            return GetOrAdd(
+                _enemySystemSupportLeverage,
+                systemId,
+                () => GetAttackCampaignPlanets(systemId).Sum(GetOffensiveSupportLeverage)
+            );
+        }
+
+        /// <summary>
+        /// Returns the opposing faction with the greatest known support on a planet.
+        /// </summary>
+        /// <param name="planet">The planet being evaluated.</param>
+        /// <returns>The leading opposing faction identifier, or null when none exists.</returns>
+        private string GetLeadingOpposingFactionId(Planet planet)
+        {
+            string leadingFactionId = null;
+            int leadingSupport = int.MinValue;
+            foreach (string factionId in _opposingFactionIds)
+            {
+                int support = planet.GetPopularSupport(factionId);
+                if (support <= leadingSupport)
+                    continue;
+
+                leadingFactionId = factionId;
+                leadingSupport = support;
+            }
+
+            return leadingFactionId;
+        }
+
+        /// <summary>
+        /// Calculates how many known planets a change of control places within one support shift
+        /// of the beneficiary's ownership threshold.
+        /// </summary>
+        /// <param name="planet">The planet whose control may change.</param>
+        /// <param name="beneficiaryFactionId">The faction receiving the support shift.</param>
+        /// <returns>The number of directly and indirectly exposed planets.</returns>
+        private int CalculateSupportLeverage(Planet planet, string beneficiaryFactionId)
+        {
+            if (
+                planet == null
+                || string.IsNullOrEmpty(beneficiaryFactionId)
+                || _context?.Game?.Config?.SupportShift == null
+            )
+                return 0;
+
+            int leverage = 0;
+            string ownerId = planet.GetOwnerInstanceID();
+            int ownerSupport = string.IsNullOrEmpty(ownerId)
+                ? 0
+                : planet.GetPopularSupport(ownerId);
+            if (
+                ownerId != beneficiaryFactionId
+                && planet.GetPopularSupport(beneficiaryFactionId) > ownerSupport
+            )
+                leverage++;
+
+            string systemId = GetPlanetSystemId(planet);
+            if (
+                !_knownPlanetsBySystemId.TryGetValue(
+                    systemId,
+                    out IReadOnlyList<Planet> systemPlanets
+                )
+            )
+                return leverage;
+
+            int threshold = _context.Game.Config.SupportShift.OwnershipTransferThreshold;
+            int shift = _context.Game.Config.SupportShift.GarrisonRemovalSupportShift;
+            foreach (Planet candidate in systemPlanets)
+            {
+                if (
+                    candidate.InstanceID == planet.InstanceID
+                    || candidate.GetOwnerInstanceID() == beneficiaryFactionId
+                    || _knownGarrisonedPlanetIds.Contains(candidate.InstanceID)
+                )
+                    continue;
+
+                int support = candidate.GetPopularSupport(beneficiaryFactionId);
+                if (support < threshold && support + shift >= threshold)
+                    leverage++;
+            }
+
+            return leverage;
         }
 
         /// <summary>
