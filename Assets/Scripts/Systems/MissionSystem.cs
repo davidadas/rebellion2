@@ -625,7 +625,12 @@ namespace Rebellion.Systems
                 if (unit is Officer officer)
                 {
                     if (!officer.IsCaptured)
-                        CaptureOfficer(officer, missionPlanet, results);
+                        CaptureOfficer(
+                            officer,
+                            missionPlanet?.GetOwnerInstanceID(),
+                            missionPlanet,
+                            results
+                        );
 
                     if (missionPlanet != null)
                         _movementManager.RequestMove(officer, missionPlanet);
@@ -906,7 +911,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            CaptureOfficer(officer, planet, results);
+            CaptureOfficer(officer, detector.GetOwnerInstanceID(), planet, results);
         }
 
         /// <summary>
@@ -1011,12 +1016,18 @@ namespace Rebellion.Systems
         /// Marks an officer captured at a planet and records the capture state change.
         /// </summary>
         /// <param name="officer">The officer being captured.</param>
+        /// <param name="captorInstanceId">The faction taking the officer captive.</param>
         /// <param name="planet">The planet where the capture occurred.</param>
         /// <param name="results">Collection to append the capture result to.</param>
-        private void CaptureOfficer(Officer officer, Planet planet, List<GameResult> results)
+        private void CaptureOfficer(
+            Officer officer,
+            string captorInstanceId,
+            Planet planet,
+            List<GameResult> results
+        )
         {
             officer.IsCaptured = true;
-            officer.CaptorInstanceID = planet?.OwnerInstanceID;
+            officer.CaptorInstanceID = captorInstanceId;
             officer.CanEscape = true;
             results.Add(
                 new OfficerCaptureStateResult

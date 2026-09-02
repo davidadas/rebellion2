@@ -28,6 +28,25 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(canExecute);
         }
 
+        [Test]
+        public void CanExecute_DamagedLowBombardmentShip_ReturnsTrue()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            Fleet fleet = AddBombardmentFleet(
+                game,
+                planet,
+                "alliance",
+                bombardment: 1,
+                currentHull: 53
+            );
+
+            bool canExecute = MakeBombardment(game, new SequenceRNG())
+                .CanExecute(new List<Fleet> { fleet }, planet, BombardmentType.General);
+
+            Assert.IsTrue(canExecute);
+        }
+
         [TestCase(BombardmentType.Military)]
         [TestCase(BombardmentType.Civilian)]
         [TestCase(BombardmentType.General)]
