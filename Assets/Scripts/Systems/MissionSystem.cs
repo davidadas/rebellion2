@@ -914,7 +914,7 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission being checked for detection.</param>
         /// <param name="planet">The planet where the mission is operating.</param>
         /// <returns>The ordered detector units.</returns>
-        private List<ISceneNode> GetDetectors(Mission mission, Planet planet)
+        private static List<ISceneNode> GetDetectors(Mission mission, Planet planet)
         {
             List<ISceneNode> detectors = new List<ISceneNode>();
             AddEligibleDetectors(mission, planet.GetChildren<Starfighter>(), detectors);
@@ -935,7 +935,7 @@ namespace Rebellion.Systems
             {
                 foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
                 {
-                    if (mission.IsEligibleDetector(capitalShip, _game))
+                    if (mission.IsEligibleDetector(capitalShip))
                         detectors.Add(capitalShip);
 
                     AddEligibleDetectors(
@@ -956,7 +956,7 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission being checked for detection.</param>
         /// <param name="candidates">The candidate detector units.</param>
         /// <param name="detectors">The collection receiving eligible detectors.</param>
-        private void AddEligibleDetectors(
+        private static void AddEligibleDetectors(
             Mission mission,
             IEnumerable<ISceneNode> candidates,
             ICollection<ISceneNode> detectors
@@ -964,7 +964,7 @@ namespace Rebellion.Systems
         {
             foreach (ISceneNode candidate in candidates)
             {
-                if (mission.IsEligibleDetector(candidate, _game))
+                if (mission.IsEligibleDetector(candidate))
                     detectors.Add(candidate);
             }
         }

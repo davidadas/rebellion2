@@ -763,15 +763,13 @@ namespace Rebellion.Game.Missions
         /// Returns whether a scene object may attempt to detect this mission.
         /// </summary>
         /// <param name="candidate">The potential hostile detector.</param>
-        /// <param name="game">The active game state, used to confirm the owner is a belligerent faction.</param>
         /// <returns>True for a completed, stationary hostile unit with a detection rating.</returns>
-        internal bool IsEligibleDetector(ISceneNode candidate, GameRoot game)
+        internal bool IsEligibleDetector(ISceneNode candidate)
         {
             string candidateOwnerId = candidate?.GetOwnerInstanceID();
             if (
                 string.IsNullOrEmpty(candidateOwnerId)
                 || candidateOwnerId == OwnerInstanceID
-                || !game.GetFactions().Any(faction => faction.InstanceID == candidateOwnerId)
                 || candidate
                     is not IManufacturable { ManufacturingStatus: ManufacturingStatus.Complete }
                 || candidate is IMovable movable && movable.GetTransitMovement() != null
