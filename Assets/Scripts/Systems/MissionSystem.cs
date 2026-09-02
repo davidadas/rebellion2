@@ -733,28 +733,64 @@ namespace Rebellion.Systems
             if (mission == null || detector == null)
                 return false;
 
+            int score = CalculateDetectionScore(mission, detector);
+            int probability = LookupProbability(GetMissionTables().Foil, score);
+            return RollProbability(probability);
+        }
+
+        /// <summary>
+        /// Calculates one detector's score against a mission team.
+        /// </summary>
+        /// <param name="mission">The mission attempting to remain undetected.</param>
+        /// <param name="detector">The hostile unit making the detection attempt.</param>
+        /// <returns>The score used to look up the detection probability.</returns>
+        private int CalculateDetectionScore(Mission mission, ISceneNode detector)
+        {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
-            Officer commander = mission.FindDetectorCommander(detector);
-            int commanderEspionage = commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0;
-            int scaledCommanderEspionage =
-                commanderEspionage * missionTables.FoilDefenderScalingPercent / 100;
             IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
-            int averageEspionage =
-                participants.Count == 0
-                    ? 0
-                    : participants.Sum(participant =>
-                        participant.GetEffectiveRating(OfficerRating.Espionage)
-                    ) / participants.Count;
-            int detectorRating = GetDetectorRating(detector);
-            int specialForcesPenalty = participants.OfType<SpecialForces>().Count();
-            int score =
-                averageEspionage
-                - scaledCommanderEspionage
-                - detectorRating
-                - specialForcesPenalty
+            Officer commander = mission.FindDetectorCommander(detector);
+            return GetAverageEspionage(participants)
+                - GetScaledCommanderEspionage(commander, missionTables.FoilDefenderScalingPercent)
+                - GetDetectorRating(detector)
+                - participants.OfType<SpecialForces>().Count()
                 - missionTables.FoilFlatScoreAdjustment;
-            int detectionProbability = LookupProbability(missionTables.Foil, score);
-            return detectionProbability > 0 && _provider.NextDouble() * 100 < detectionProbability;
+        }
+
+        /// <summary>
+        /// Returns the mission team's average effective Espionage rating.
+        /// </summary>
+        /// <param name="participants">The mission's main participants.</param>
+        /// <returns>The average rating, or zero when the mission has no participants.</returns>
+        private static int GetAverageEspionage(IReadOnlyList<IMissionParticipant> participants)
+        {
+            return participants.Count == 0
+                ? 0
+                : participants.Sum(participant =>
+                    participant.GetEffectiveRating(OfficerRating.Espionage)
+                ) / participants.Count;
+        }
+
+        /// <summary>
+        /// Returns the configured portion of a detector commander's Espionage rating.
+        /// </summary>
+        /// <param name="commander">The detector commander, if one is assigned.</param>
+        /// <param name="scalingPercent">The percentage of the rating applied to detection.</param>
+        /// <returns>The scaled commander contribution.</returns>
+        private static int GetScaledCommanderEspionage(Officer commander, int scalingPercent)
+        {
+            return (commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
+                * scalingPercent
+                / 100;
+        }
+
+        /// <summary>
+        /// Rolls against a percentage probability.
+        /// </summary>
+        /// <param name="probability">The percentage chance of success.</param>
+        /// <returns>True when the random roll succeeds.</returns>
+        private bool RollProbability(int probability)
+        {
+            return probability > 0 && _provider.NextDouble() * 100 < probability;
         }
 
         /// <summary>
