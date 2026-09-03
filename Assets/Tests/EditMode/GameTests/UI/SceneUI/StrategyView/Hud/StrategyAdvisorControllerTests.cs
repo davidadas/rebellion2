@@ -194,6 +194,273 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void OnContextMenuCommandSelected_ManagementToggles_PlayAuthoredEnableAndDisableResponses()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            Faction faction = new Faction();
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            advisorTheme.AudioRoot = "Audio";
+            advisorTheme.PlanetaryGarrisonManagementEnabled = CreateResponse(
+                "GarrisonEnabled",
+                "garrison-enabled"
+            );
+            advisorTheme.PlanetaryGarrisonManagementDisabled = CreateResponse(
+                "GarrisonDisabled",
+                "garrison-disabled"
+            );
+            advisorTheme.ResourceProductionManagementEnabled = CreateResponse(
+                "ProductionEnabled",
+                "production-enabled"
+            );
+            advisorTheme.ResourceProductionManagementDisabled = CreateResponse(
+                "ProductionDisabled",
+                "production-disabled"
+            );
+            Texture2D frame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [advisorTheme.GetFramePath("GarrisonEnabled", 0, false)] = frame,
+                [advisorTheme.GetFramePath("GarrisonDisabled", 0, false)] = frame,
+                [advisorTheme.GetFramePath("ProductionEnabled", 0, false)] = frame,
+                [advisorTheme.GetFramePath("ProductionDisabled", 0, false)] = frame,
+            };
+            List<string> playedAudio = new List<string>();
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = new StrategyAdvisorController(
+                    () => faction,
+                    path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
+                    playedAudio.Add
+                );
+                controller.Initialize(new TestActions());
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageProduction);
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageProduction);
+
+                CollectionAssert.AreEqual(
+                    new[]
+                    {
+                        "Audio/garrison-enabled",
+                        "Audio/garrison-disabled",
+                        "Audio/production-enabled",
+                        "Audio/production-disabled",
+                    },
+                    playedAudio
+                );
+                Assert.IsFalse(faction.ManageGarrisons);
+                Assert.IsFalse(faction.ManageProduction);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void OnContextMenuCommandSelected_RapidManagementToggles_StopPreviousResponseAudio()
+        {
+            DestroyAudioManagers();
+            AudioManager audioManager = AudioManager.EnsureExists();
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            Faction faction = new Faction();
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            advisorTheme.AudioRoot = "Audio";
+            advisorTheme.PlanetaryGarrisonManagementEnabled = CreateResponse(
+                "GarrisonEnabled",
+                "garrison-enabled"
+            );
+            advisorTheme.PlanetaryGarrisonManagementDisabled = CreateResponse(
+                "GarrisonDisabled",
+                "garrison-disabled"
+            );
+            Texture2D frame = new Texture2D(1, 1);
+            AudioClip enabledClip = AudioClip.Create("GarrisonEnabled", 1, 1, 44100, false);
+            AudioClip disabledClip = AudioClip.Create("GarrisonDisabled", 1, 1, 44100, false);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [advisorTheme.GetFramePath("GarrisonEnabled", 0, false)] = frame,
+                [advisorTheme.GetFramePath("GarrisonDisabled", 0, false)] = frame,
+            };
+            Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>
+            {
+                ["Audio/garrison-enabled"] = enabledClip,
+                ["Audio/garrison-disabled"] = disabledClip,
+            };
+            List<AudioPlaybackHandle> playbacks = new List<AudioPlaybackHandle>();
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = new StrategyAdvisorController(
+                    () => faction,
+                    path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
+                    _ => { },
+                    playSfxInstance: path =>
+                    {
+                        AudioPlaybackHandle playback = audioManager.PlaySfxInstance(clips[path]);
+                        playbacks.Add(playback);
+                        return playback;
+                    }
+                );
+                controller.Initialize(new TestActions());
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+
+                Assert.AreEqual(1, playbacks.Count);
+                Assert.AreSame(enabledClip, playbacks[0].Source.clip);
+
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+
+                Assert.AreEqual(2, playbacks.Count);
+                Assert.IsNull(playbacks[0].Source);
+                Assert.AreSame(disabledClip, playbacks[1].Source.clip);
+            }
+            finally
+            {
+                audioManager.StopSfx();
+                UnityEngine.Object.DestroyImmediate(enabledClip);
+                UnityEngine.Object.DestroyImmediate(disabledClip);
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+                DestroyAudioManagers();
+            }
+        }
+
+        [Test]
+        public void OnContextMenuCommandSelected_ManagementResponse_HoldsAnimationForAudioDuration()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            Faction faction = new Faction();
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            advisorTheme.AudioRoot = "Audio";
+            advisorTheme.PlanetaryGarrisonManagementEnabled = CreateResponse(
+                "GarrisonEnabled",
+                "garrison-enabled"
+            );
+            Texture2D frame = new Texture2D(1, 1);
+            bool playbackCompleted = false;
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = new StrategyAdvisorController(
+                    () => faction,
+                    _ => frame,
+                    _ => { },
+                    getAudioDuration: _ => 2f
+                );
+                controller.Initialize(new TestActions());
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+                view.PlaybackCompleted += () => playbackCompleted = true;
+
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+                view.AdvanceAnimation(advisorTheme.FrameIntervalSeconds);
+
+                Assert.IsFalse(playbackCompleted);
+
+                view.AdvanceAnimation(2f);
+
+                Assert.IsTrue(playbackCompleted);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void HandlePlaybackStarted_NextQueuedResponse_PreservesPreviousResponseAudio()
+        {
+            DestroyAudioManagers();
+            AudioManager audioManager = AudioManager.EnsureExists();
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            Texture2D frame = new Texture2D(1, 1);
+            AudioClip firstClip = AudioClip.Create("First", 44100, 1, 44100, false);
+            AudioClip secondClip = AudioClip.Create("Second", 44100, 1, 44100, false);
+            Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>
+            {
+                ["Audio/first"] = firstClip,
+                ["Audio/second"] = secondClip,
+            };
+            List<AudioPlaybackHandle> playbacks = new List<AudioPlaybackHandle>();
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = new StrategyAdvisorController(
+                    () => new Faction(),
+                    _ => null,
+                    _ => { },
+                    playSfxInstance: path =>
+                    {
+                        AudioPlaybackHandle playback = audioManager.PlaySfxInstance(clips[path]);
+                        playbacks.Add(playback);
+                        return playback;
+                    }
+                );
+                controller.Initialize(new TestActions());
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+
+                controller.ReplaceAnimation(
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { frame },
+                        false,
+                        "Audio/first",
+                        minimumPlaybackSeconds: 1f
+                    ),
+                    null,
+                    null
+                );
+                view.EnqueuePlaybacks(
+                    new[]
+                    {
+                        new StrategyAdvisorAnimationViewData(
+                            new[] { frame },
+                            false,
+                            "Audio/second"
+                        ),
+                    }
+                );
+
+                Assert.AreEqual(1, playbacks.Count);
+                Assert.AreSame(firstClip, playbacks[0].Source.clip);
+
+                view.AdvanceAnimation(advisorTheme.FrameIntervalSeconds);
+
+                Assert.AreEqual(1, playbacks.Count);
+                Assert.AreSame(firstClip, playbacks[0].Source.clip);
+
+                view.AdvanceAnimation(1f);
+
+                Assert.AreEqual(2, playbacks.Count);
+                Assert.AreSame(firstClip, playbacks[0].Source.clip);
+                Assert.AreSame(secondClip, playbacks[1].Source.clip);
+            }
+            finally
+            {
+                audioManager.StopSfx();
+                UnityEngine.Object.DestroyImmediate(firstClip);
+                UnityEngine.Object.DestroyImmediate(secondClip);
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+                DestroyAudioManagers();
+            }
+        }
+
+        [Test]
         public void Render_SameThemeAfterIdleFramesLoad_RefreshesAdvisorImages()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
@@ -534,6 +801,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             return controller;
         }
 
+        private static void DestroyAudioManagers()
+        {
+            foreach (
+                AudioManager manager in UnityEngine.Object.FindObjectsByType<AudioManager>(
+                    FindObjectsInactive.Include
+                )
+            )
+            {
+                UnityEngine.Object.DestroyImmediate(manager.gameObject);
+            }
+        }
+
         private static StrategyAdvisorTheme CreateTheme()
         {
             return new StrategyAdvisorTheme
@@ -544,6 +823,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 FrameIntervalSeconds = 0.5f,
                 RepeatCooldownTicks = 10,
             };
+        }
+
+        private static StrategyAdvisorAnimationTheme CreateResponse(string animation, string audio)
+        {
+            return new StrategyAdvisorAnimationTheme
+            {
+                Animation = animation,
+                FrameCount = 1,
+                Audio = audio,
+            };
+        }
+
+        private static void SelectCommand(
+            StrategyAdvisorController controller,
+            Faction faction,
+            StrategyMenuAction action
+        )
+        {
+            StrategyMenuCommand command = StrategyAdvisorController
+                .BuildCommandMenu(faction)
+                .Single(item => item.Action == action);
+            ContextMenuRequest request = (ContextMenuRequest)
+                typeof(StrategyAdvisorController)
+                    .GetMethod(
+                        "CreateContextMenuRequest",
+                        BindingFlags.Instance | BindingFlags.NonPublic
+                    )
+                    ?.Invoke(
+                        controller,
+                        new object[]
+                        {
+                            new List<StrategyMenuCommand> { command },
+                            0,
+                            0,
+                        }
+                    );
+            controller.OnContextMenuCommandSelected(request, command);
         }
 
         private static RawImage GetImage(GameObject rootObject, string name)

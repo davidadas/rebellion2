@@ -38,6 +38,8 @@ internal static class StrategyUISoundPaths
 
         foreach (string path in GetPlanetaryAssaultAdvisorAudioPaths(theme?.StrategyAdvisor))
             yield return path;
+        foreach (string path in GetAdvisorManagementAudioPaths(theme?.StrategyAdvisor))
+            yield return path;
 
         StrategyWindowSoundTheme windowSounds = theme?.StrategyWindowSounds;
         ConfirmDialogTheme confirmDialog = theme?.ConfirmDialogTheme;
@@ -78,6 +80,58 @@ internal static class StrategyUISoundPaths
             yield return droidPath;
         if (!string.IsNullOrWhiteSpace(protocolPath))
             yield return protocolPath;
+    }
+
+    /// <summary>
+    /// Returns the configured protocol-advisor responses for management toggles.
+    /// </summary>
+    /// <param name="advisor">The active faction advisor theme.</param>
+    /// <returns>The management response audio paths.</returns>
+    private static IEnumerable<string> GetAdvisorManagementAudioPaths(StrategyAdvisorTheme advisor)
+    {
+        StrategyAdvisorAnimationTheme[] responses =
+        {
+            advisor?.PlanetaryGarrisonManagementEnabled,
+            advisor?.PlanetaryGarrisonManagementDisabled,
+            advisor?.ResourceProductionManagementEnabled,
+            advisor?.ResourceProductionManagementDisabled,
+        };
+        foreach (StrategyAdvisorAnimationTheme response in responses)
+        {
+            foreach (string path in GetAdvisorAnimationAudioPaths(advisor, response))
+                yield return path;
+        }
+    }
+
+    /// <summary>
+    /// Returns every selectable audio path configured for one advisor animation.
+    /// </summary>
+    /// <param name="advisor">The owning advisor theme.</param>
+    /// <param name="animation">The configured advisor animation.</param>
+    /// <returns>The resolved audio paths.</returns>
+    private static IEnumerable<string> GetAdvisorAnimationAudioPaths(
+        StrategyAdvisorTheme advisor,
+        StrategyAdvisorAnimationTheme animation
+    )
+    {
+        if (!string.IsNullOrWhiteSpace(animation?.AudioPath))
+        {
+            yield return animation.AudioPath.Trim();
+            yield break;
+        }
+
+        if (animation?.AudioOptions?.Count > 0)
+        {
+            foreach (string audio in animation.AudioOptions)
+            {
+                if (!string.IsNullOrWhiteSpace(audio))
+                    yield return advisor.GetAudioPath(audio.Trim());
+            }
+            yield break;
+        }
+
+        if (!string.IsNullOrWhiteSpace(animation?.Audio))
+            yield return advisor.GetAudioPath(animation.Audio.Trim());
     }
 
     /// <summary>

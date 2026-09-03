@@ -165,6 +165,24 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Releases independently controlled sound effects after playback finishes.
+    /// </summary>
+    private void Update()
+    {
+        foreach (AudioPlaybackHandle playback in _activeSfxPlaybacks.ToArray())
+        {
+            if (
+                playback.LoadCoroutine != null
+                || playback.Paused
+                || playback.Source?.isPlaying == true
+            )
+                continue;
+
+            StopPlayback(playback);
+        }
+    }
+
+    /// <summary>
     /// Clears the singleton reference when Unity destroys the active manager.
     /// </summary>
     private void OnDestroy()
@@ -458,6 +476,24 @@ public sealed class AudioManager : MonoBehaviour
         AudioPlaybackHandle playback = CreatePlayback();
         StartPlayback(playback, clip);
         return playback;
+    }
+
+    /// <summary>
+    /// Gets the duration of a sound effect already held by the audio manager.
+    /// </summary>
+    /// <param name="resourcePath">The content address for the sound effect clip.</param>
+    /// <returns>The loaded clip duration, or zero when the path is blank or not loaded.</returns>
+    internal float GetLoadedSfxDuration(string resourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(resourcePath))
+            return 0f;
+
+        string normalizedPath = resourcePath.Trim();
+        if (_preloadedSfx.TryGetValue(normalizedPath, out AudioClip preloadedClip))
+            return preloadedClip.length;
+        return _loadedSfx.TryGetValue(normalizedPath, out AudioClip loadedClip)
+            ? loadedClip.length
+            : 0f;
     }
 
     /// <summary>
