@@ -126,12 +126,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         {
             bool opened = _controller.Open(_sector);
             PlanetSectorWindowView view = GetOpenView(out UIWindow window);
-            Vector2Int requestedPosition = GetWindowPosition(SectorWindowPositions.Left);
-            Vector2Int expectedPosition = _windowManager.ClampPosition(
-                requestedPosition.x,
-                requestedPosition.y,
-                _windowLayer.GetWindowSize(_windowLayer.PlanetSectorWindowPrefab)
-            );
+            Vector2Int expectedPosition = GetWindowPosition(SectorWindowPositions.Left);
 
             Assert.IsTrue(opened);
             Assert.AreEqual($"PlanetSectorWindow-{_planetSector.GetDisplayName()}", view.name);

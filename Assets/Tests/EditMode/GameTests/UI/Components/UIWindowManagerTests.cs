@@ -265,6 +265,30 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void CreateWindow_ImmovableModelessWindow_PreservesAuthoredPosition()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            windowManager.SetMovementBounds(new RectInt(100, 100, 200, 200));
+            TestContent prefab = CreateWindowPrefab<TestContent>();
+
+            UIWindow window = windowManager.CreateWindow(
+                prefab,
+                windowManager.transform,
+                "FixedWindow",
+                500,
+                400,
+                new Vector2Int(100, 80),
+                false,
+                false,
+                false,
+                false,
+                out TestContent _
+            );
+
+            Assert.AreEqual(new Vector2Int(500, 400), new Vector2Int(window.X, window.Y));
+        }
+
+        [Test]
         public void ForEachWindow_MixedContent_VisitsMatchingWindowsOnly()
         {
             UIWindowManager windowManager = CreateWindowManager();

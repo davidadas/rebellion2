@@ -230,6 +230,7 @@ namespace Rebellion.Game.Missions
                 {
                     TargetOfficer = target,
                     IsCaptured = true,
+                    CapturingUnit = successfulParticipant,
                     Context = GetParent() as Planet,
                     Tick = game.CurrentTick,
                 }

@@ -215,6 +215,71 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Establishes a captured officer's custody in a captor-controlled container.
+        /// </summary>
+        /// <param name="officer">The captured officer to transfer.</param>
+        /// <param name="destination">The captor-controlled ship or planet receiving the officer.</param>
+        /// <param name="escort">The captor unit accompanying a remote transfer, if one exists.</param>
+        /// <param name="results">The collection receiving movement results.</param>
+        /// <returns>True when custody is established or the officer is already there.</returns>
+        internal bool TryEstablishCapturedOfficerCustody(
+            Officer officer,
+            ContainerNode destination,
+            IMovable escort,
+            ICollection<GameResult> results
+        )
+        {
+            if (officer == null)
+                throw new ArgumentNullException(nameof(officer));
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+            if (!officer.IsCaptured || string.IsNullOrEmpty(officer.CaptorInstanceID))
+                return false;
+
+            destination = ResolveLiveContainer(destination);
+            if (
+                !TryResolveAcceptedDestination(
+                    officer,
+                    destination,
+                    out ContainerNode resolvedDestination
+                )
+                || !string.Equals(
+                    resolvedDestination.GetOwnerInstanceID(),
+                    officer.CaptorInstanceID,
+                    StringComparison.Ordinal
+                )
+            )
+                return false;
+
+            if (ReferenceEquals(officer.GetParent(), resolvedDestination))
+                return true;
+
+            Planet originPlanet = officer.GetParentOfType<Planet>();
+            Planet destinationPlanet = RequireDestinationPlanet(resolvedDestination);
+            if (!officer.IsActive() || ReferenceEquals(originPlanet, destinationPlanet))
+            {
+                officer.Movement = null;
+                _game.MoveNode(officer, resolvedDestination);
+                return true;
+            }
+
+            if (escort == null)
+            {
+                officer.Movement = null;
+                _game.MoveNode(officer, resolvedDestination);
+                return true;
+            }
+
+            return TryExecuteMoveGroup(
+                new List<IMovable> { escort, officer },
+                resolvedDestination,
+                results
+            );
+        }
+
+        /// <summary>
         /// Requests move.
         /// </summary>
         /// <param name="unit">The unit to move.</param>

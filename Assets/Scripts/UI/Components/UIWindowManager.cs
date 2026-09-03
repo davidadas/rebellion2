@@ -130,7 +130,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
 
         UIWindow window = GetRequiredWindowShell(view);
         window.SetContent(view);
-        if (ShouldClampInitialPosition(modal, canMove))
+        if (canMove)
         {
             Vector2Int position = ClampPosition(x, y, size);
             x = position.x;
@@ -710,17 +710,6 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
             throw new MissingReferenceException($"{view.name} is missing UIWindow.");
 
         return window;
-    }
-
-    /// <summary>
-    /// Determines whether initial placement must stay within configured movement bounds.
-    /// </summary>
-    /// <param name="modal">Whether the window is modal.</param>
-    /// <param name="canMove">Whether the window may move after opening.</param>
-    /// <returns>True when the initial position must be clamped.</returns>
-    private static bool ShouldClampInitialPosition(bool modal, bool canMove)
-    {
-        return canMove || !modal;
     }
 
     /// <summary>

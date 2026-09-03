@@ -911,7 +911,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            CaptureOfficer(officer, detector.GetOwnerInstanceID(), planet, results);
+            CaptureOfficer(officer, detector.GetOwnerInstanceID(), planet, results, detector);
         }
 
         /// <summary>
@@ -1019,11 +1019,13 @@ namespace Rebellion.Systems
         /// <param name="captorInstanceId">The faction taking the officer captive.</param>
         /// <param name="planet">The planet where the capture occurred.</param>
         /// <param name="results">Collection to append the capture result to.</param>
+        /// <param name="capturingUnit">The unit responsible for the capture, when applicable.</param>
         private void CaptureOfficer(
             Officer officer,
             string captorInstanceId,
             Planet planet,
-            List<GameResult> results
+            List<GameResult> results,
+            ISceneNode capturingUnit = null
         )
         {
             officer.IsCaptured = true;
@@ -1034,6 +1036,7 @@ namespace Rebellion.Systems
                 {
                     TargetOfficer = officer,
                     IsCaptured = true,
+                    CapturingUnit = capturingUnit,
                     Context = planet,
                     Tick = _game.CurrentTick,
                 }
