@@ -575,8 +575,6 @@ namespace Rebellion.Game
         [PersistableObject]
         public class SpaceCombatConfig
         {
-            public int AutoResolveRandomSeed { get; set; }
-
             public int AutoResolveMaximumIterations { get; set; }
 
             public int AutoResolveStagnationIterations { get; set; }
@@ -584,6 +582,22 @@ namespace Rebellion.Game
             public double AutoResolveRetreatStrengthRatio { get; set; }
 
             public double AutoResolveMinimumManeuverRatio { get; set; }
+
+            public int AutoResolveTargetScanDivisor { get; set; }
+
+            public double AutoResolveStartingDistance { get; set; }
+
+            public double AutoResolveWithdrawalDistance { get; set; }
+
+            public double AutoResolveComponentDamageInterval { get; set; }
+
+            public int AutoResolveComponentDamageRollMaximum { get; set; }
+
+            public int AutoResolveComponentDelayMinimum { get; set; }
+
+            public int AutoResolveComponentDelayMaximum { get; set; }
+
+            public int AutoResolveComponentDelayRecovery { get; set; }
         }
 
         /// <summary>

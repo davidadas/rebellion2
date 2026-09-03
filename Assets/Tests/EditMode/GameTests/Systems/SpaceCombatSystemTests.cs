@@ -395,6 +395,7 @@ namespace Rebellion.Tests.Systems
         public void Resolve_ShipTakesDamage_ReducesCurrentHullStrength()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
+            game.Random = new SequenceRNG();
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
@@ -448,65 +449,29 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_FighterSquadronTakesLosses_ReducesCurrentSquadronSize()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire" };
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.GetFactions().Add(empire);
-            game.GetFactions().Add(alliance);
-
-            PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
-            Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(planetSector, game.Galaxy);
-            game.AttachNode(planet, planetSector);
-
-            Fleet empireFleet = CreateFleetWithFighters(
-                game,
-                "f1",
-                "empire",
-                planet,
-                1,
-                1000,
-                1,
-                100
-            );
-            Fleet allianceFleet = CreateFleetWithFighters(
-                game,
-                "f2",
-                "alliance",
-                planet,
-                1,
-                50,
-                1,
-                10
-            );
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Random = new SequenceRNG();
+            (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            CreatePlanet(game, "alliance-fallback", owner: "alliance");
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 2);
+            Fleet allianceFleet = new Fleet { InstanceID = "f2", OwnerInstanceID = "alliance" };
+            game.AttachNode(allianceFleet, planet);
+            Starfighter allianceFighter = new Starfighter
+            {
+                InstanceID = "alliance-fighter",
+                OwnerInstanceID = "alliance",
+                MaxSquadronSize = 10,
+                CurrentSquadronSize = 10,
+                ShieldStrength = 1,
+                Hyperdrive = 60,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(allianceFighter, planet);
             SpaceCombatSystem manager = MakeSpaceCombat(game);
 
-            RunCombat(manager);
+            TryResolveCombat(manager, empireFleet, allianceFleet, out _);
 
-            Fleet allianceFleet2 = game.GetSceneNodeByInstanceID<Fleet>("f2");
-            if (allianceFleet2 != null)
-            {
-                List<Starfighter> allFighters = allianceFleet2.GetStarfighters().ToList();
-                if (allFighters.Count > 0)
-                {
-                    Assert.Less(
-                        allFighters[0].CurrentSquadronSize,
-                        10,
-                        "Alliance fighters should take losses"
-                    );
-                    return;
-                }
-            }
-
-            Fleet remainingEmpireFleet = game.GetSceneNodeByInstanceID<Fleet>("f1");
-            Assert.IsNotNull(remainingEmpireFleet, "Empire fleet should still exist");
-            List<Starfighter> empireFighters = remainingEmpireFleet.GetStarfighters().ToList();
-            Assert.Greater(empireFighters.Count, 0, "Empire should have fighters");
-            Assert.Less(
-                empireFighters[0].CurrentSquadronSize,
-                100,
-                "Empire fighters should take some losses"
-            );
+            Assert.Less(allianceFighter.CurrentSquadronSize, 10);
         }
 
         [Test]
@@ -619,6 +584,7 @@ namespace Rebellion.Tests.Systems
         public void Resolve_WeaponFire_DamagesTargets()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
+            game.Random = new SequenceRNG();
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
@@ -1216,12 +1182,14 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_WeakerAIFleetCanRetreat_MovesToFriendlyPlanet()
         {
             GameRoot game = CreateGame();
+            game.Random = new SequenceRNG();
             (Planet combatPlanet, _) = CreatePlanet(game, "combat");
             (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
             CreatePlanet(game, "allianceHome", owner: "alliance");
 
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 10);
+            empireFleet.GetChildren<CapitalShip>().Single().SublightSpeed = 10;
 
             SpaceCombatSystem manager = MakeSpaceCombat(game);
 
@@ -1237,6 +1205,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_WeakerAIFleetDefendingFixedHeadquarters_DoesNotRetreat()
         {
             GameRoot game = CreateGame();
+            game.Random = new SequenceRNG();
             (Planet headquarters, _) = CreatePlanet(game, "headquarters", owner: "empire");
             CreatePlanet(game, "empireHome", owner: "empire");
             CreatePlanet(game, "allianceHome", owner: "alliance");
@@ -1268,6 +1237,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_WeakerAIFleetBlockedByGravityWell_Fights()
         {
             GameRoot game = CreateGame();
+            game.Random = new SequenceRNG();
             (Planet combatPlanet, _) = CreatePlanet(game, "combat");
             CreatePlanet(game, "empireHome", owner: "empire");
             CreatePlanet(game, "allianceHome", owner: "alliance");
@@ -1804,6 +1774,7 @@ namespace Rebellion.Tests.Systems
         public void ResolvePending_PlanetaryHyperdriveFightersReachWithdrawalThreshold_WithdrawsFighters()
         {
             GameRoot game = CreateAutomaticCombatGame();
+            game.Random = new SequenceRNG();
             game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
                 "player1";
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
@@ -1833,6 +1804,8 @@ namespace Rebellion.Tests.Systems
                 ShieldStrength = 1,
                 Hyperdrive = 60,
                 LaserCannon = 1,
+                LaserRange = 0,
+                SublightSpeed = 10,
             };
             game.AttachNode(fighter, combatPlanet);
             SpaceCombatSystem manager = MakeSpaceCombat(game);
@@ -1857,6 +1830,7 @@ namespace Rebellion.Tests.Systems
         public void ResolvePending_PlanetaryNonHyperdriveFightersReachWithdrawalThreshold_DestroysFighters()
         {
             GameRoot game = CreateAutomaticCombatGame();
+            game.Random = new SequenceRNG();
             game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
                 "player1";
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
@@ -1882,6 +1856,7 @@ namespace Rebellion.Tests.Systems
                 ShieldStrength = 1,
                 Hyperdrive = 0,
                 LaserCannon = 1,
+                LaserRange = 0,
             };
             game.AttachNode(fighter, combatPlanet);
             SpaceCombatSystem manager = MakeSpaceCombat(game);
@@ -1904,6 +1879,7 @@ namespace Rebellion.Tests.Systems
         public void ResolvePending_FleetAndPlanetaryNonHyperdriveFightersWithdraw_DestroysStrandedFighters()
         {
             GameRoot game = CreateAutomaticCombatGame();
+            game.Random = new SequenceRNG();
             game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
                 "player1";
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
@@ -1920,7 +1896,7 @@ namespace Rebellion.Tests.Systems
                 combatPlanet,
                 1,
                 1000,
-                70,
+                76,
                 shieldRechargeRate: 0
             );
             Starfighter attackerFighter = new Starfighter
@@ -1943,9 +1919,12 @@ namespace Rebellion.Tests.Systems
                 combatPlanet,
                 1,
                 100,
-                1,
+                100,
                 shieldRechargeRate: 0
             );
+            CapitalShip defenderShip = defenderFleet.GetChildren<CapitalShip>().Single();
+            defenderShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = 0;
+            defenderShip.SublightSpeed = 10;
             Starfighter defenderFighter = new Starfighter
             {
                 InstanceID = "defender-fighter",
@@ -1977,32 +1956,40 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ResolvePending_CorellianCorvetteAgainstPlanetaryTie_DestroysTie()
+        public void ResolvePending_CapitalShipAgainstPlanetaryFighter_DestroysFighter()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            game.GetFactions().Add(new Faction { InstanceID = "FNALL1", PlayerID = "player1" });
-            game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
-            (Planet planet, _) = CreatePlanet(game, "combat", owner: "FNEMP1");
-            Fleet fleet = new Fleet { InstanceID = "alliance-fleet", OwnerInstanceID = "FNALL1" };
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Random = new SequenceRNG();
+            game.GetFactions().First(faction => faction.InstanceID == "alliance").PlayerID =
+                "player1";
+            (Planet planet, _) = CreatePlanet(game, "combat", owner: "empire");
+            Fleet fleet = new Fleet { InstanceID = "alliance-fleet", OwnerInstanceID = "alliance" };
             game.AttachNode(fleet, planet);
 
-            CapitalShip corvette = TestContent
-                .Data.CapitalShips.Single(ship => ship.GetTypeID() == "ALCS006")
-                .GetDeepCopy();
-            corvette.InstanceID = "corellian-corvette";
-            corvette.OwnerInstanceID = "FNALL1";
-            corvette.ManufacturingStatus = ManufacturingStatus.Complete;
-            corvette.Movement = null;
-            game.AttachNode(corvette, fleet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "capital-ship",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 500,
+                CurrentHullStrength = 500,
+                WeaponRecharge = 100,
+            };
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 0, 0, 0, 100 };
+            game.AttachNode(ship, fleet);
 
-            Starfighter tie = TestContent
-                .Data.Starfighters.Single(fighter => fighter.GetTypeID() == "SFEM01")
-                .GetDeepCopy();
-            tie.InstanceID = "planet-tie";
-            tie.OwnerInstanceID = "FNEMP1";
-            tie.ManufacturingStatus = ManufacturingStatus.Complete;
-            tie.Movement = null;
-            game.AttachNode(tie, planet);
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "planet-fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                ShieldStrength = 1,
+                LaserCannon = 10,
+                LaserRange = 100,
+            };
+            game.AttachNode(fighter, planet);
             SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
@@ -2012,8 +1999,8 @@ namespace Rebellion.Tests.Systems
                 .Single();
 
             Assert.AreEqual(CombatSide.Attacker, result.Winner);
-            Assert.AreEqual(500, corvette.CurrentHullStrength);
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(tie.InstanceID));
+            Assert.Less(ship.CurrentHullStrength, 500);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("alliance-fleet"));
         }
 
@@ -2304,11 +2291,18 @@ namespace Rebellion.Tests.Systems
                 {
                     SpaceCombat = new GameConfig.SpaceCombatConfig
                     {
-                        AutoResolveRandomSeed = 1894809716,
                         AutoResolveMaximumIterations = 4096,
                         AutoResolveStagnationIterations = 1200,
                         AutoResolveRetreatStrengthRatio = 0.33,
                         AutoResolveMinimumManeuverRatio = 0.1,
+                        AutoResolveTargetScanDivisor = 3,
+                        AutoResolveStartingDistance = 75,
+                        AutoResolveComponentDamageInterval = 1,
+                        AutoResolveComponentDamageRollMaximum = 10,
+                        AutoResolveWithdrawalDistance = 10,
+                        AutoResolveComponentDelayMinimum = 30,
+                        AutoResolveComponentDelayMaximum = 50,
+                        AutoResolveComponentDelayRecovery = 1,
                     },
                 },
             };
@@ -2361,9 +2355,10 @@ namespace Rebellion.Tests.Systems
                     ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
                     {
                         weaponPower,
-                        weaponPower,
-                        weaponPower,
-                        weaponPower,
+                        0,
+                        0,
+                        0,
+                        100,
                     };
                 }
 
@@ -2419,8 +2414,11 @@ namespace Rebellion.Tests.Systems
                     MaxSquadronSize = squadronSize,
                     CurrentSquadronSize = squadronSize,
                     LaserCannon = 5,
+                    LaserRange = 100,
                     IonCannon = 3,
+                    IonRange = 100,
                     Torpedoes = 2,
+                    TorpedoRange = 100,
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 };
                 fleet.GetChildren<CapitalShip>()[0].StarfighterCapacity = 1;

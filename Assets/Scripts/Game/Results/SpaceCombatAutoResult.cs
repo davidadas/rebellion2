@@ -46,6 +46,7 @@ namespace Rebellion.Game.Results
         public CapitalShip Ship { get; }
         public int HullBefore { get; }
         public double HullAfter { get; }
+        public bool Withdrew { get; }
 
         /// <summary>
         /// Creates a resolved capital-ship outcome.
@@ -53,11 +54,18 @@ namespace Rebellion.Game.Results
         /// <param name="ship">The resolved capital ship.</param>
         /// <param name="hullBefore">The ship's initial hull strength.</param>
         /// <param name="hullAfter">The ship's final hull strength.</param>
-        public SpaceCombatAutoShipOutcome(CapitalShip ship, int hullBefore, double hullAfter)
+        /// <param name="withdrew">Whether the ship escaped from combat.</param>
+        public SpaceCombatAutoShipOutcome(
+            CapitalShip ship,
+            int hullBefore,
+            double hullAfter,
+            bool withdrew
+        )
         {
             Ship = ship;
             HullBefore = hullBefore;
             HullAfter = hullAfter;
+            Withdrew = withdrew;
         }
     }
 
@@ -69,6 +77,7 @@ namespace Rebellion.Game.Results
         public Starfighter Fighter { get; }
         public int SquadronSizeBefore { get; }
         public int SquadronSizeAfter { get; }
+        public bool Withdrew { get; }
 
         /// <summary>
         /// Creates a resolved fighter-squadron outcome.
@@ -76,15 +85,18 @@ namespace Rebellion.Game.Results
         /// <param name="fighter">The resolved fighter squadron.</param>
         /// <param name="squadronSizeBefore">The initial fighter count.</param>
         /// <param name="squadronSizeAfter">The final fighter count.</param>
+        /// <param name="withdrew">Whether the squadron escaped from combat.</param>
         public SpaceCombatAutoFighterOutcome(
             Starfighter fighter,
             int squadronSizeBefore,
-            int squadronSizeAfter
+            int squadronSizeAfter,
+            bool withdrew
         )
         {
             Fighter = fighter;
             SquadronSizeBefore = squadronSizeBefore;
             SquadronSizeAfter = squadronSizeAfter;
+            Withdrew = withdrew;
         }
     }
 }
