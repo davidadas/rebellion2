@@ -137,6 +137,23 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_CaptureAtUncolonizedCaptorPlanet_UsesFallbackDestination()
+        {
+            (GameRoot game, Planet destination, Officer captive, MovementSystem movement) =
+                BuildScene();
+            Planet capturePlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
+            game.MoveNode(captive, capturePlanet);
+            capturePlanet.OwnerInstanceID = captive.CaptorInstanceID;
+            capturePlanet.IsColonized = false;
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+
+            system.HandleResults(new[] { CaptureResult(captive, capturePlanet) });
+
+            Assert.AreSame(destination, captive.GetParent());
+            Assert.IsNull(captive.Movement);
+        }
+
+        [Test]
         public void HandleResults_CaptureByOfficerAwayFromCaptorPlanet_MovesWithEscort()
         {
             (GameRoot game, Planet destination, Officer captive, MovementSystem movement) =
@@ -257,6 +274,32 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, snapshot.TickCaptured);
             Assert.IsNotNull(observed.Movement);
             Assert.AreEqual(0, observed.Movement.TicksElapsed);
+        }
+
+        [Test]
+        public void HandleResults_ReleasedOfficer_RemovesCaptureSnapshot()
+        {
+            (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+            system.HandleResults(new[] { CaptureResult(captive, planet) });
+            captive.IsCaptured = false;
+            captive.CaptorInstanceID = null;
+
+            system.HandleResults(
+                new[]
+                {
+                    new OfficerCaptureStateResult { TargetOfficer = captive, IsCaptured = false },
+                }
+            );
+
+            Faction owner = game.GetFactionByOwnerInstanceID(captive.OwnerInstanceID);
+            Assert.IsFalse(owner.Fog.EntityLastSeenAt.ContainsKey(captive.InstanceID));
+            Assert.IsFalse(
+                owner
+                    .Fog.Snapshots.Values.SelectMany(snapshot => snapshot.Planets.Values)
+                    .SelectMany(snapshot => snapshot.Officers)
+                    .Any(officer => officer.InstanceID == captive.InstanceID)
+            );
         }
 
         [Test]

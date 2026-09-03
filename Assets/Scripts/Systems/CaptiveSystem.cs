@@ -67,9 +67,24 @@ namespace Rebellion.Systems
             foreach (OfficerCaptureStateResult result in results)
             {
                 Officer officer = result?.TargetOfficer;
+                if (officer == null)
+                    continue;
+
+                Faction originalFaction = _game.GetFactionByOwnerInstanceID(
+                    officer.OwnerInstanceID
+                );
+                if (result.IsCaptured == false)
+                {
+                    if (!officer.IsCaptured)
+                        _fogOfWarSystem.RemoveEntityFromSnapshots(
+                            originalFaction,
+                            officer.InstanceID
+                        );
+                    continue;
+                }
+
                 if (
-                    result?.IsCaptured != true
-                    || officer?.IsCaptured != true
+                    officer.IsCaptured != true
                     || string.IsNullOrEmpty(officer.CaptorInstanceID)
                     || !handledOfficerIds.Add(officer.InstanceID)
                 )
@@ -93,9 +108,6 @@ namespace Rebellion.Systems
                     continue;
                 }
 
-                Faction originalFaction = _game.GetFactionByOwnerInstanceID(
-                    officer.OwnerInstanceID
-                );
                 _fogOfWarSystem.RecordObservations(originalFaction, new[] { officer }, result.Tick);
             }
 
@@ -146,18 +158,25 @@ namespace Rebellion.Systems
             string captorInstanceId = officer.CaptorInstanceID;
             ContainerNode establishedCustody = GetCaptorControlledContainer(
                 officer.GetParent() as ContainerNode,
-                captorInstanceId
+                captorInstanceId,
+                officer
             );
             if (establishedCustody != null)
                 return establishedCustody;
 
             Planet capturePlanet = GetResultPlanet(result);
-            if (IsControlledBy(capturePlanet, captorInstanceId))
-                return capturePlanet;
+            ContainerNode capturePlanetCustody = GetCaptorControlledContainer(
+                capturePlanet,
+                captorInstanceId,
+                officer
+            );
+            if (capturePlanetCustody != null)
+                return capturePlanetCustody;
 
             ContainerNode capturingUnitCustody = GetCapturingUnitCustody(
                 result.CapturingUnit,
-                captorInstanceId
+                captorInstanceId,
+                officer
             );
             if (capturingUnitCustody != null)
                 return capturingUnitCustody;
@@ -195,10 +214,12 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="capturingUnit">The unit responsible for the capture.</param>
         /// <param name="captorInstanceId">The capturing faction identifier.</param>
+        /// <param name="officer">The captured officer requiring custody.</param>
         /// <returns>The capturing unit's custody container, or null when it has none.</returns>
         private static ContainerNode GetCapturingUnitCustody(
             ISceneNode capturingUnit,
-            string captorInstanceId
+            string captorInstanceId,
+            Officer officer
         )
         {
             if (capturingUnit == null)
@@ -206,12 +227,18 @@ namespace Rebellion.Systems
 
             CapitalShip ship =
                 capturingUnit as CapitalShip ?? capturingUnit.GetParentOfType<CapitalShip>();
-            if (IsControlledBy(ship, captorInstanceId))
-                return ship;
+            ContainerNode shipCustody = GetCaptorControlledContainer(
+                ship,
+                captorInstanceId,
+                officer
+            );
+            if (shipCustody != null)
+                return shipCustody;
 
             return GetCaptorControlledContainer(
                 capturingUnit.GetParent() as ContainerNode,
-                captorInstanceId
+                captorInstanceId,
+                officer
             );
         }
 
@@ -235,13 +262,18 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="container">The possible custody container.</param>
         /// <param name="captorInstanceId">The capturing faction identifier.</param>
+        /// <param name="officer">The captured officer requiring custody.</param>
         /// <returns>The controlled custody container, or null when ownership does not match.</returns>
         private static ContainerNode GetCaptorControlledContainer(
             ContainerNode container,
-            string captorInstanceId
+            string captorInstanceId,
+            Officer officer
         )
         {
-            return container is Planet or CapitalShip && IsControlledBy(container, captorInstanceId)
+            return
+                container is Planet or CapitalShip
+                && IsControlledBy(container, captorInstanceId)
+                && container.CanAcceptChild(officer)
                 ? container
                 : null;
         }
