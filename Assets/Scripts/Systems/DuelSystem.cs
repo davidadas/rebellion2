@@ -142,6 +142,7 @@ namespace Rebellion.Systems
                     {
                         TargetOfficer = encountered,
                         IsCaptured = true,
+                        CapturingUnit = opposing,
                         CapturedOfficer = encountered,
                         LinkedOfficer = opposing,
                         Context = location,
