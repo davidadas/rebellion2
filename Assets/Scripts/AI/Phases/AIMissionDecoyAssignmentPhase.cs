@@ -6,7 +6,6 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.AI.Phases
 {

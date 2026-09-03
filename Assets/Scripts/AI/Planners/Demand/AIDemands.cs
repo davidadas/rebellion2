@@ -6,7 +6,6 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.AI.Planners.Demand
 {
