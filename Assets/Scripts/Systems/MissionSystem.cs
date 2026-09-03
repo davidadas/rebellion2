@@ -905,7 +905,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            CaptureOfficer(officer, detector, planet, results);
+            CaptureOfficer(officer, detector.GetOwnerInstanceID(), planet, results, detector);
         }
 
         /// <summary>
@@ -1013,11 +1013,13 @@ namespace Rebellion.Systems
         /// <param name="captorInstanceId">The faction taking the officer captive.</param>
         /// <param name="planet">The planet where the capture occurred.</param>
         /// <param name="results">Collection to append the capture result to.</param>
+        /// <param name="capturingUnit">The unit responsible for the capture, when applicable.</param>
         private void CaptureOfficer(
             Officer officer,
             string captorInstanceId,
             Planet planet,
-            List<GameResult> results
+            List<GameResult> results,
+            ISceneNode capturingUnit = null
         )
         {
             officer.IsCaptured = true;
@@ -1028,36 +1030,11 @@ namespace Rebellion.Systems
                 {
                     TargetOfficer = officer,
                     IsCaptured = true,
+                    CapturingUnit = capturingUnit,
                     Context = planet,
                     Tick = _game.CurrentTick,
                 }
             );
-        }
-
-        /// <summary>
-        /// Captures an officer encountered by a detector and places the captive with that unit
-        /// when the capture occurs away from a captor-held planet.
-        /// </summary>
-        /// <param name="officer">The captured officer.</param>
-        /// <param name="captor">The hostile unit that made the capture.</param>
-        /// <param name="planet">The planet where the capture occurred.</param>
-        /// <param name="results">Collection to append the capture result to.</param>
-        private void CaptureOfficer(
-            Officer officer,
-            ISceneNode captor,
-            Planet planet,
-            List<GameResult> results
-        )
-        {
-            string captorInstanceId = captor.GetOwnerInstanceID();
-            CaptureOfficer(officer, captorInstanceId, planet, results);
-
-            if (planet?.GetOwnerInstanceID() == captorInstanceId)
-                return;
-
-            CapitalShip captorShip = captor as CapitalShip ?? captor.GetParentOfType<CapitalShip>();
-            if (captorShip != null)
-                _movementManager.RequestMove(officer, captorShip);
         }
 
         /// <summary>

@@ -460,7 +460,12 @@ public sealed class GameManager
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
         _namingSystem = new NamingSystem(_game);
         _recoverySystem = new RecoverySystem(_game);
-        _captiveSystem = new CaptiveSystem(_game, _randomProvider, _movementSystem);
+        _captiveSystem = new CaptiveSystem(
+            _game,
+            _randomProvider,
+            _movementSystem,
+            _fogOfWarSystem
+        );
         _factionAutomationSystem = new FactionAutomationSystem(
             _game,
             _gameData,
@@ -538,6 +543,7 @@ public sealed class GameManager
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
         _resultProcessor.Subscribe<OfficerCaptureStateResult>(_missionSystem);
+        _resultProcessor.Subscribe<OfficerCaptureStateResult>(_captiveSystem);
         _resultProcessor.Subscribe<IntelligenceRevealedResult>(_fogOfWarSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 

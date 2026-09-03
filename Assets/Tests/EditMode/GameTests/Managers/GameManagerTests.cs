@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -280,9 +281,11 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_EventCapturesMissionParticipant_TearsDownMission()
+        public void ProcessTick_EventCapturesMissionParticipant_CompletesCaptureLifecycle()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameConfig config = new GameConfig();
+            config.Smuggling.LossPercentByMinimumSupport[0] = 0;
+            GameRoot game = new GameRoot(config);
             Faction owner = new Faction { InstanceID = "OWNER" };
             Faction captor = new Faction { InstanceID = "CAPTOR" };
             game.GetFactions().Add(owner);
@@ -293,9 +296,20 @@ namespace Rebellion.Tests.Managers
                 InstanceID = "PLANET",
                 OwnerInstanceID = owner.InstanceID,
                 IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet captorPlanet = new Planet
+            {
+                InstanceID = "CAPTOR_PLANET",
+                OwnerInstanceID = captor.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
             };
             game.AttachNode(sector, game.GetGalaxyMap());
             game.AttachNode(planet, sector);
+            game.AttachNode(captorPlanet, sector);
             Officer officer = EntityFactory.CreateOfficer("OFFICER", owner.InstanceID);
             DiplomacyMission mission = new DiplomacyMission
             {
@@ -324,14 +338,23 @@ namespace Rebellion.Tests.Managers
                         },
                     }
                 );
-            GameManager manager = TestContent.CreateGameManager(game);
+            GameManager manager = new GameManager(game, TestGameData.Create(config));
 
             manager.ProcessTick();
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Mission>(mission.InstanceID));
-            Assert.AreSame(planet, officer.GetParent());
+            Assert.AreSame(captorPlanet, officer.GetParent());
+            Assert.IsNull(officer.Movement);
             Assert.IsTrue(officer.IsCaptured);
             Assert.AreEqual(captor.InstanceID, officer.CaptorInstanceID);
+            PlanetSnapshot snapshot = owner.Fog.Snapshots[sector.InstanceID].Planets[
+                captorPlanet.InstanceID
+            ];
+            Officer observed = snapshot.Officers.Single(candidate =>
+                candidate.InstanceID == officer.InstanceID
+            );
+            Assert.IsTrue(observed.IsCaptured);
+            Assert.IsNull(observed.Movement);
         }
 
         [Test]

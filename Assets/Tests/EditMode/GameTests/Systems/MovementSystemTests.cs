@@ -2396,7 +2396,7 @@ namespace Rebellion.Tests.Sectors
                 Planet destination,
                 Officer escort,
                 MovementSystem movement
-            ) = BuildScene();
+            ) = BuildScene(new GameConfig());
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
             movement.SendToMission(escort, mission);
@@ -4592,10 +4592,9 @@ namespace Rebellion.Tests.Sectors
             Planet destination,
             Officer officer,
             MovementSystem movement
-        ) BuildScene()
+        ) BuildScene(GameConfig config = null)
         {
-            GameConfig config = TestContent.Data.GameConfig;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = new GameRoot(config ?? TestContent.Data.GameConfig);
 
             Faction empire = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(empire);

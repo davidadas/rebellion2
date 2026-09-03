@@ -1193,7 +1193,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_CapturedByOrbitalFleetOverOwnPlanet_BoardsCaptorShip()
+        public void UpdateMission_CapturedByOrbitalFleetOverOwnPlanet_RecordsCapturingShip()
         {
             (
                 GameRoot game,
@@ -1203,7 +1203,7 @@ namespace Rebellion.Tests.Sectors
                 MovementSystem movement
             ) = BuildOrbitalDetectionScene(planetOwnerId: "empire");
 
-            RunOrbitalCaptureMission(game, planet, spy, movement);
+            List<GameResult> results = RunOrbitalCaptureMission(game, planet, spy, movement);
 
             Assert.IsTrue(spy.IsCaptured);
             Assert.AreEqual(
@@ -1213,13 +1213,12 @@ namespace Rebellion.Tests.Sectors
             );
             Assert.AreSame(
                 captorShip,
-                spy.GetParent(),
-                "Captive should be loaded onto the capturing ship, not left on its own planet"
+                results.OfType<OfficerCaptureStateResult>().Single().CapturingUnit
             );
         }
 
         [Test]
-        public void UpdateMission_CapturedByOrbitalFleetOverNeutralPlanet_BoardsCaptorShip()
+        public void UpdateMission_CapturedByOrbitalFleetOverNeutralPlanet_RecordsCapturingShip()
         {
             (
                 GameRoot game,
@@ -1229,13 +1228,13 @@ namespace Rebellion.Tests.Sectors
                 MovementSystem movement
             ) = BuildOrbitalDetectionScene(planetOwnerId: null);
 
-            RunOrbitalCaptureMission(game, planet, spy, movement);
+            List<GameResult> results = RunOrbitalCaptureMission(game, planet, spy, movement);
 
             Assert.IsTrue(spy.IsCaptured);
+            Assert.AreEqual("rebels", spy.CaptorInstanceID);
             Assert.AreSame(
                 captorShip,
-                spy.GetParent(),
-                "Captive should ride the capturing ship off a neutral planet"
+                results.OfType<OfficerCaptureStateResult>().Single().CapturingUnit
             );
         }
 
@@ -3698,7 +3697,7 @@ namespace Rebellion.Tests.Sectors
             return (game, planet, spy, captorShip, movement);
         }
 
-        private void RunOrbitalCaptureMission(
+        private List<GameResult> RunOrbitalCaptureMission(
             GameRoot game,
             Planet planet,
             Officer spy,
@@ -3717,7 +3716,7 @@ namespace Rebellion.Tests.Sectors
                 new FixedRNG(0.01),
                 movement
             );
-            system.UpdateMission(mission);
+            return system.UpdateMission(mission);
         }
 
         private (

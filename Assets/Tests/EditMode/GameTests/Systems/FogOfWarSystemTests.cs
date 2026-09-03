@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Sectors
         [SetUp]
         public void SetUp()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = new GameConfig();
             _game = new GameRoot(config);
             _fogSystem = new FogOfWarSystem(_game);
 
@@ -1965,23 +1965,21 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void CaptureSnapshot_CapturedFriendlyOfficer_NotIncludedInSnapshot()
+        public void CaptureSnapshot_CapturedFriendlyOfficer_IncludesDetachedOfficer()
         {
-            // Leia is captured on Coruscant. Snapshots must not include captured friendly officers
-            // because they are always surfaced as live data — snapshotting them would be redundant
-            // and could produce stale copies that conflict with live position.
             Officer leia = CreateOfficer("LEIA", _alliance);
             leia.IsCaptured = true;
+            leia.CaptorInstanceID = _empire.InstanceID;
             _game.AttachNode(leia, _coruscant);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
 
-            Assert.IsFalse(
-                snapshot.Officers.Any(o => o.InstanceID == "LEIA"),
-                "Captured friendly officer must not be included in snapshots — they are live data"
-            );
+            Officer observed = snapshot.Officers.Single(officer => officer.InstanceID == "LEIA");
+            Assert.AreNotSame(leia, observed);
+            Assert.IsTrue(observed.IsCaptured);
+            Assert.AreEqual(_empire.InstanceID, observed.CaptorInstanceID);
         }
 
         [Test]
