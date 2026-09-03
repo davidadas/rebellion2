@@ -336,6 +336,77 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void EnqueuePlaybacks_QueuedResponse_DoesNotStopPreviousAudio()
+        {
+            DestroyAudioManagers();
+            AudioManager audioManager = AudioManager.EnsureExists();
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            Texture2D frame = new Texture2D(1, 1);
+            AudioClip firstClip = AudioClip.Create("First", 44100, 1, 44100, false);
+            AudioClip secondClip = AudioClip.Create("Second", 44100, 1, 44100, false);
+            Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>
+            {
+                ["Audio/first"] = firstClip,
+                ["Audio/second"] = secondClip,
+            };
+            List<AudioPlaybackHandle> playbacks = new List<AudioPlaybackHandle>();
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = new StrategyAdvisorController(
+                    () => new Faction(),
+                    _ => null,
+                    _ => { },
+                    playSfxInstance: path =>
+                    {
+                        AudioPlaybackHandle playback = audioManager.PlaySfxInstance(clips[path]);
+                        playbacks.Add(playback);
+                        return playback;
+                    }
+                );
+                controller.Initialize(new TestActions());
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+
+                controller.ReplaceAnimation(
+                    new StrategyAdvisorAnimationViewData(new[] { frame }, false, "Audio/first"),
+                    null,
+                    null
+                );
+                view.EnqueuePlaybacks(
+                    new[]
+                    {
+                        new StrategyAdvisorAnimationViewData(
+                            new[] { frame },
+                            false,
+                            "Audio/second"
+                        ),
+                    }
+                );
+
+                Assert.AreEqual(1, playbacks.Count);
+                Assert.AreSame(firstClip, playbacks[0].Source.clip);
+
+                view.AdvanceAnimation(advisorTheme.FrameIntervalSeconds);
+
+                Assert.AreEqual(2, playbacks.Count);
+                Assert.AreSame(firstClip, playbacks[0].Source.clip);
+                Assert.AreSame(secondClip, playbacks[1].Source.clip);
+            }
+            finally
+            {
+                audioManager.StopSfx();
+                UnityEngine.Object.DestroyImmediate(firstClip);
+                UnityEngine.Object.DestroyImmediate(secondClip);
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+                DestroyAudioManagers();
+            }
+        }
+
+        [Test]
         public void Render_SameThemeAfterIdleFramesLoad_RefreshesAdvisorImages()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
