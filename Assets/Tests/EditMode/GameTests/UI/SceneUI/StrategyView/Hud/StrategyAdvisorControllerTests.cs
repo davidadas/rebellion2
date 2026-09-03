@@ -380,7 +380,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void HandlePlaybackStarted_NextQueuedResponse_WaitsForPreviousAudioDuration()
+        public void HandlePlaybackStarted_NextQueuedResponse_PreservesPreviousResponseAudio()
         {
             DestroyAudioManagers();
             AudioManager audioManager = AudioManager.EnsureExists();
@@ -446,7 +446,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 view.AdvanceAnimation(1f);
 
                 Assert.AreEqual(2, playbacks.Count);
-                Assert.IsNull(playbacks[0].Source);
+                Assert.AreSame(firstClip, playbacks[0].Source.clip);
                 Assert.AreSame(secondClip, playbacks[1].Source.clip);
             }
             finally
