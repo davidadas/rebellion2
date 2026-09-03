@@ -87,9 +87,7 @@ internal static class StrategyUISoundPaths
     /// </summary>
     /// <param name="advisor">The active faction advisor theme.</param>
     /// <returns>The management response audio paths.</returns>
-    private static IEnumerable<string> GetAdvisorManagementAudioPaths(
-        StrategyAdvisorTheme advisor
-    )
+    private static IEnumerable<string> GetAdvisorManagementAudioPaths(StrategyAdvisorTheme advisor)
     {
         StrategyAdvisorAnimationTheme[] responses =
         {

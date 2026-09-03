@@ -701,10 +701,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             };
         }
 
-        private static StrategyAdvisorAnimationTheme CreateResponse(
-            string animation,
-            string audio
-        )
+        private static StrategyAdvisorAnimationTheme CreateResponse(string animation, string audio)
         {
             return new StrategyAdvisorAnimationTheme
             {
