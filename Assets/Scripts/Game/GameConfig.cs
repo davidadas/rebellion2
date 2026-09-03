@@ -518,7 +518,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Combat resolution parameters for assault, bombardment, and dogfights.
+        /// Combat resolution parameters for space combat, assault, and bombardment.
         /// </summary>
         [PersistableObject]
         public class CombatConfig
@@ -570,20 +570,34 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Space combat damage and loss parameters.
+        /// Automatic space-combat resolution parameters.
         /// </summary>
         [PersistableObject]
         public class SpaceCombatConfig
         {
-            public int FighterTacticalDurability { get; set; }
+            public int AutoResolveMaximumIterations { get; set; }
 
-            public int WeaponDamageVariancePercent { get; set; }
+            public int AutoResolveStagnationIterations { get; set; }
 
-            public int FighterDogfightLossRatePercent { get; set; }
+            public double AutoResolveRetreatStrengthRatio { get; set; }
 
-            public int FighterDamageBasePercent { get; set; }
+            public double AutoResolveMinimumManeuverRatio { get; set; }
 
-            public int FighterDamageSpreadPercent { get; set; }
+            public int AutoResolveTargetScanDivisor { get; set; }
+
+            public double AutoResolveStartingDistance { get; set; }
+
+            public double AutoResolveWithdrawalDistance { get; set; }
+
+            public double AutoResolveComponentDamageInterval { get; set; }
+
+            public int AutoResolveComponentDamageRollMaximum { get; set; }
+
+            public int AutoResolveComponentDelayMinimum { get; set; }
+
+            public int AutoResolveComponentDelayMaximum { get; set; }
+
+            public int AutoResolveComponentDelayRecovery { get; set; }
         }
 
         /// <summary>
