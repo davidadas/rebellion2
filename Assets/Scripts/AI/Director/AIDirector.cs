@@ -52,9 +52,11 @@ namespace Rebellion.AI.Director
             _planetaryAssault = planetaryAssault;
             _turnPhases = new List<IAITurnPhase>
             {
+                new AISpecialForcesIntentPhase(),
                 new AIPlanningPhase(),
                 new AIScoringPhase(),
                 new AISelectionPhase(),
+                new AIMissionDecoyAssignmentPhase(),
                 new AIExecutionPhase(),
             };
         }

@@ -53,6 +53,27 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        public void Select_WithMandatoryProposal_SelectsItBeforeHigherScoredOptionalProposal()
+        {
+            AITurnContext context = CreateEmptyContext();
+            TestAIProposal optional = new TestAIProposal("optional", new[] { "claim:shared" });
+            TestAIProposal mandatory = new TestAIProposal(
+                "mandatory",
+                new[] { "claim:shared" },
+                priority: AIProposalPriority.Mandatory
+            );
+            optional.SetScore(100);
+            mandatory.SetScore(0);
+            context.AddProposal(optional);
+            context.AddProposal(mandatory);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(1, selected.Count);
+            Assert.AreSame(mandatory, selected[0]);
+        }
+
+        [Test]
         public void Select_WithUnscoredProposal_DoesNotSelectProposal()
         {
             AITurnContext context = CreateEmptyContext();

@@ -265,16 +265,12 @@ namespace Rebellion.AI.Planners
                 : HasProductionInfrastructure(context, planet)
                     ? config.StarfighterRequirementInfrastructure
                 : config.StarfighterRequirementDefault;
-            if (
-                !planet.IsHeadquarters
-                && !HasProductionInfrastructure(context, planet)
-                && !context.Assessment.IsPlanetThreatened(planet)
-            )
+            if (!planet.IsHeadquarters && !context.Assessment.IsPlanetThreatened(planet))
             {
-                baseline = IntegerMath.ScaleByPercent(
-                    baseline,
-                    config.InteriorStarfighterBaselinePercent
-                );
+                int baselinePercent = HasProductionInfrastructure(context, planet)
+                    ? config.UnthreatenedInfrastructureStarfighterBaselinePercent
+                    : config.InteriorStarfighterBaselinePercent;
+                baseline = IntegerMath.ScaleByPercent(baseline, baselinePercent);
             }
             int requiredDefenseStrength = context.Assessment.GetRequiredPlanetDefenseStrength(
                 planet

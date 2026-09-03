@@ -9,6 +9,8 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIAbortMissionProposal : AIProposal
     {
+        internal override AIProposalPriority Priority => AIProposalPriority.Mandatory;
+
         public Mission Mission { get; }
 
         /// <summary>

@@ -671,9 +671,9 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithSpecialForcesDeficits_SelectsEachRequestedUnlockedType()
+        public void Plan_WithSpecialForcesMissionDemand_SelectsRequestedUnlockedType()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 30;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -681,6 +681,12 @@ namespace Rebellion.Tests.AI.Planners
                 system,
                 "training-world",
                 empire.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "target",
+                rebels.InstanceID
             );
             AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -718,6 +724,15 @@ namespace Rebellion.Tests.AI.Planners
             secondCommandos.InstanceID = "commandos-2";
             game.AttachNode(firstCommandos, planet);
             game.AttachNode(secondCommandos, planet);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            StubMission mission = EntityFactory.CreateMission(
+                "active-espionage",
+                empire.InstanceID,
+                target.InstanceID
+            );
+            mission.ConfigKey = MissionTypeIDs.Espionage;
+            game.AttachNode(mission, target);
+            game.AttachNode(officer, mission);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIManufactureProposal> proposals = new AIProductionPlanner()
@@ -726,15 +741,11 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(item => item.Demand.Kind == AIDemandKind.SpecialForces)
                 .ToList();
 
-            AIManufactureProposal commandoProposal = proposals.Single(item =>
-                item.Demand.ProductTypeId == "commandos"
-            );
             AIManufactureProposal spyProposal = proposals.Single(item =>
                 item.Demand.ProductTypeId == "spies"
             );
-            Assert.AreEqual(2, commandoProposal.Demand.QuantityNeeded);
-            Assert.AreSame(commandos, commandoProposal.Product.GetReference());
-            Assert.AreEqual(4, spyProposal.Demand.QuantityNeeded);
+            Assert.AreEqual(1, proposals.Count);
+            Assert.AreEqual(1, spyProposal.Demand.QuantityNeeded);
             Assert.AreSame(spies, spyProposal.Product.GetReference());
         }
 
@@ -2016,7 +2027,6 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction =
                 minimumMaintenanceHeadroom;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "defense-system");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -2063,7 +2073,6 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction =
                 minimumMaintenanceHeadroom;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
             game.Config.AI.NonCapitalSummary.InteriorStarfighterBaselinePercent = 100;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "defense-system");
@@ -2320,7 +2329,6 @@ namespace Rebellion.Tests.AI.Planners
         ) CreateFacilityUpgradeScene(int maintenanceBudgetOffset)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerRole = 0;
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
             game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 20;

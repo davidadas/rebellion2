@@ -18,17 +18,13 @@ namespace Rebellion.Game.Missions
     {
         public double SuccessProbability { get; }
 
-        public double PersonnelLossProbability { get; }
-
         /// <summary>
         /// Creates a mission probability result.
         /// </summary>
         /// <param name="successProbability">Probability that at least one participant succeeds.</param>
-        /// <param name="personnelLossProbability">Probability that known defenses capture or kill an officer.</param>
-        internal MissionOdds(double successProbability, double personnelLossProbability = 0)
+        internal MissionOdds(double successProbability)
         {
             SuccessProbability = successProbability;
-            PersonnelLossProbability = personnelLossProbability;
         }
     }
 
@@ -63,53 +59,6 @@ namespace Rebellion.Game.Missions
             MissionCompletedResult completedResult,
             List<GameResult> results
         );
-    }
-
-    /// <summary>
-    /// Describes one hostile unit that can detect a mission or confront a detected participant.
-    /// </summary>
-    internal sealed class MissionDetector
-    {
-        internal ISceneNode Unit { get; }
-
-        internal Officer Commander { get; }
-
-        internal int Rating { get; }
-
-        internal bool IsFleetBased { get; }
-
-        /// <summary>
-        /// Creates a detector with its original detection context.
-        /// </summary>
-        /// <param name="unit">The detecting regiment, starfighter, or capital ship.</param>
-        /// <param name="commander">The matching local commander, when one is present.</param>
-        /// <param name="rating">The unit's authored detection rating.</param>
-        /// <param name="isFleetBased">Whether the detector belongs to a fleet.</param>
-        internal MissionDetector(ISceneNode unit, Officer commander, int rating, bool isFleetBased)
-        {
-            Unit = unit;
-            Commander = commander;
-            Rating = rating;
-            IsFleetBased = isFleetBased;
-        }
-    }
-
-    /// <summary>
-    /// Captures the hostile detectors visible at one mission target for reuse during a planning
-    /// turn.
-    /// </summary>
-    internal sealed class MissionDetectionSnapshot
-    {
-        internal IReadOnlyList<MissionDetector> Detectors { get; }
-
-        /// <summary>
-        /// Creates a target detection snapshot.
-        /// </summary>
-        /// <param name="detectors">The target's hostile mission detectors.</param>
-        internal MissionDetectionSnapshot(IReadOnlyList<MissionDetector> detectors)
-        {
-            Detectors = detectors ?? Array.Empty<MissionDetector>();
-        }
     }
 
     /// <summary>
@@ -484,147 +433,12 @@ namespace Rebellion.Game.Missions
             GameRoot game
         )
         {
-            List<IMissionParticipant> evaluatedParticipants = (
+            IEnumerable<double> probabilities = (
                 participants ?? Enumerable.Empty<IMissionParticipant>()
             )
-                .Where(participant => participant != null)
-                .ToList();
-            IEnumerable<double> probabilities = evaluatedParticipants
                 .Where(participant => participant != null)
                 .Select(participant => GetAgentProbability(participant, game));
             return new MissionOdds(CombineSuccessProbabilities(probabilities));
-        }
-
-        /// <summary>
-        /// Calculates mission success and officer-loss probabilities from the faction's observed
-        /// target state without resolving an outcome.
-        /// </summary>
-        /// <param name="participants">The primary participants being evaluated.</param>
-        /// <param name="observedPlanet">The faction-visible mission target.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The calculated mission odds.</returns>
-        internal MissionOdds GetMissionOdds(
-            IEnumerable<IMissionParticipant> participants,
-            Planet observedPlanet,
-            GameRoot game
-        )
-        {
-            return GetMissionOdds(participants, GetDetectionSnapshot(observedPlanet), game);
-        }
-
-        /// <summary>
-        /// Calculates mission odds using a previously captured target-detection snapshot.
-        /// </summary>
-        /// <param name="participants">The primary participants being evaluated.</param>
-        /// <param name="detectionSnapshot">The target's cached hostile detectors.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The calculated mission odds.</returns>
-        internal MissionOdds GetMissionOdds(
-            IEnumerable<IMissionParticipant> participants,
-            MissionDetectionSnapshot detectionSnapshot,
-            GameRoot game
-        )
-        {
-            List<IMissionParticipant> evaluatedParticipants = (
-                participants ?? Enumerable.Empty<IMissionParticipant>()
-            )
-                .Where(participant => participant != null)
-                .ToList();
-            MissionOdds successOdds = GetMissionOdds(evaluatedParticipants, game);
-            double lossPerDetectionPass = GetProjectedPersonnelLossProbability(
-                evaluatedParticipants,
-                detectionSnapshot?.Detectors,
-                game
-            );
-            return new MissionOdds(
-                successOdds.SuccessProbability,
-                GetPersonnelLossProbabilityBeforeSuccess(
-                    lossPerDetectionPass,
-                    successOdds.SuccessProbability
-                )
-            );
-        }
-
-        /// <summary>
-        /// Returns the probability that repeated detection passes remove an officer before the
-        /// mission records its first successful objective roll.
-        /// </summary>
-        /// <param name="lossPerDetectionPass">Officer-loss probability for one detection pass.</param>
-        /// <param name="successPerSurvivedPass">Objective success probability after surviving detection.</param>
-        /// <returns>The eventual officer-loss probability as a percentage.</returns>
-        private static double GetPersonnelLossProbabilityBeforeSuccess(
-            double lossPerDetectionPass,
-            double successPerSurvivedPass
-        )
-        {
-            double loss = Math.Clamp(lossPerDetectionPass, 0, 100) / 100d;
-            double success = Math.Clamp(successPerSurvivedPass, 0, 100) / 100d;
-            double terminalProbability = loss + (1d - loss) * success;
-            return terminalProbability > 0 ? loss / terminalProbability * 100d : 0;
-        }
-
-        /// <summary>
-        /// Estimates the chance that known defenses capture or kill an officer during one
-        /// detection pass, including the protection supplied by assigned decoys.
-        /// </summary>
-        /// <param name="participants">The primary participants being evaluated.</param>
-        /// <param name="detectors">The faction-visible detectors at the mission target.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The projected officer-loss probability as a percentage.</returns>
-        private double GetProjectedPersonnelLossProbability(
-            IReadOnlyList<IMissionParticipant> participants,
-            IReadOnlyList<MissionDetector> detectors,
-            GameRoot game
-        )
-        {
-            List<Officer> officers = participants.OfType<Officer>().ToList();
-            if (officers.Count == 0 || detectors == null || detectors.Count == 0)
-                return 0;
-
-            List<IMissionParticipant> decoys = GetDecoyParticipants().ToList();
-            double noLossProbability = 1d;
-            foreach (MissionDetector detector in detectors)
-            {
-                double decoyProbability =
-                    decoys.Count == 0
-                        ? 0
-                        : decoys.Average(decoy => GetDecoyProbability(decoy, detector, game));
-                double foilProbability = GetFoilProbability(
-                    detector.Rating,
-                    detector.Commander,
-                    game
-                );
-                double lossAfterConfrontation = officers.Average(officer =>
-                    100d
-                    - GetEvasionProbability(
-                        officer.GetEffectiveRating(OfficerRating.Combat)
-                            - (detector.Commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0),
-                        game
-                    )
-                );
-                double detectorLossProbability =
-                    (100d - decoyProbability)
-                    / 100d
-                    * foilProbability
-                    / 100d
-                    * lossAfterConfrontation
-                    / 100d;
-                noLossProbability *= 1d - detectorLossProbability;
-            }
-
-            return (1d - noLossProbability) * 100d;
-        }
-
-        /// <summary>
-        /// Returns the configured evasion probability for an officer confronting a detector.
-        /// </summary>
-        /// <param name="score">The officer's combat rating minus commander combat rating.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The evasion probability as a percentage.</returns>
-        private static double GetEvasionProbability(int score, GameRoot game)
-        {
-            GameConfig.MissionProbabilityTablesConfig tables = GetMissionTables(game);
-            return LookupProbability(tables.Evasion, score, tables.DefaultEvasionProbability);
         }
 
         /// <summary>
@@ -647,7 +461,7 @@ namespace Rebellion.Game.Missions
         /// <param name="detector">The detector being diverted.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>The decoy success probability.</returns>
-        private double GetDecoyProbability(
+        internal double GetDecoyProbability(
             IMissionParticipant decoy,
             ISceneNode detector,
             GameRoot game
@@ -943,108 +757,6 @@ namespace Rebellion.Game.Missions
                 provider.NextDouble() * 100,
                 GetDecoyProbability(decoy, detector, game)
             );
-        }
-
-        /// <summary>
-        /// Returns hostile detector units in the original foil traversal order.
-        /// </summary>
-        /// <returns>The ordered detector collection.</returns>
-        internal List<MissionDetector> GetDetectors()
-        {
-            if (GetParent() is not Planet planet)
-                return new List<MissionDetector>();
-
-            return GetDetectors(planet);
-        }
-
-        /// <summary>
-        /// Captures the hostile detectors currently visible at a prospective mission target.
-        /// </summary>
-        /// <param name="planet">The observed mission target.</param>
-        /// <returns>A reusable target-detection snapshot.</returns>
-        internal MissionDetectionSnapshot GetDetectionSnapshot(Planet planet)
-        {
-            return new MissionDetectionSnapshot(GetDetectors(planet));
-        }
-
-        /// <summary>
-        /// Returns hostile detector units visible at the supplied mission target.
-        /// </summary>
-        /// <param name="planet">The observed mission target.</param>
-        /// <returns>The ordered detector collection.</returns>
-        private List<MissionDetector> GetDetectors(Planet planet)
-        {
-            if (planet == null)
-                return new List<MissionDetector>();
-
-            List<MissionDetector> detectors = new List<MissionDetector>();
-            foreach (Starfighter starfighter in planet.GetChildren<Starfighter>())
-            {
-                if (IsEligibleDetector(starfighter))
-                    detectors.Add(CreateDetector(planet, starfighter));
-            }
-
-            foreach (Regiment regiment in planet.GetChildren<Regiment>())
-            {
-                if (IsEligibleDetector(regiment))
-                    detectors.Add(CreateDetector(planet, regiment));
-            }
-
-            foreach (Fleet fleet in planet.GetChildren<Fleet>())
-            {
-                foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
-                {
-                    if (IsEligibleDetector(capitalShip))
-                        detectors.Add(CreateDetector(planet, capitalShip));
-
-                    foreach (Starfighter starfighter in capitalShip.GetChildren<Starfighter>())
-                    {
-                        if (IsEligibleDetector(starfighter))
-                            detectors.Add(CreateDetector(planet, starfighter));
-                    }
-
-                    foreach (Regiment regiment in capitalShip.GetChildren<Regiment>())
-                    {
-                        if (IsEligibleDetector(regiment))
-                            detectors.Add(CreateDetector(planet, regiment));
-                    }
-                }
-            }
-
-            return detectors;
-        }
-
-        /// <summary>
-        /// Creates a detector and resolves its matching local commander.
-        /// </summary>
-        /// <param name="planet">The mission planet.</param>
-        /// <param name="unit">The detecting unit.</param>
-        /// <returns>The resolved detector.</returns>
-        private static MissionDetector CreateDetector(Planet planet, ISceneNode unit)
-        {
-            return new MissionDetector(
-                unit,
-                FindDetectorCommander(planet, unit),
-                GetDetectorRating(unit),
-                unit.GetParentOfType<Fleet>() != null
-            );
-        }
-
-        /// <summary>
-        /// Selects one detector uniformly for a post-foil participant encounter.
-        /// </summary>
-        /// <param name="detectors">The remaining active detectors.</param>
-        /// <param name="provider">RNG provider used for selection.</param>
-        /// <returns>The selected detector, or null when none remain.</returns>
-        internal static MissionDetector SelectDetector(
-            IReadOnlyList<MissionDetector> detectors,
-            IRandomNumberProvider provider
-        )
-        {
-            if (detectors == null || detectors.Count == 0)
-                return null;
-
-            return detectors[provider.NextInt(0, detectors.Count)];
         }
 
         /// <summary>

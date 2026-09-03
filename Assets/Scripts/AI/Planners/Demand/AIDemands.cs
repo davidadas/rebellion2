@@ -4,7 +4,9 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.AI.Planners.Demand
 {
@@ -31,7 +33,7 @@ namespace Rebellion.AI.Planners.Demand
                     .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
-                BuildingType buildingType = GetFoundingBuildingType(
+                BuildingType buildingType = SelectInitialColonyBuildingType(
                     planet,
                     plannedMines,
                     plannedRefineries
@@ -66,7 +68,7 @@ namespace Rebellion.AI.Planners.Demand
         /// <param name="plannedMines">Current and queued mine output.</param>
         /// <param name="plannedRefineries">Current and queued refinery capacity.</param>
         /// <returns>The preferred founding facility type.</returns>
-        private static BuildingType GetFoundingBuildingType(
+        private static BuildingType SelectInitialColonyBuildingType(
             Planet planet,
             int plannedMines,
             int plannedRefineries
@@ -113,22 +115,20 @@ namespace Rebellion.AI.Planners.Demand
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             List<SpecialForces> existingUnits =
                 context.Faction.GetOwnedUnitsByType<SpecialForces>();
-            Dictionary<string, int> inventoryByRole = new Dictionary<string, int>(
+            Dictionary<string, int> decoySupplyByRole = new Dictionary<string, int>(
                 StringComparer.Ordinal
             );
-            Dictionary<string, int> readyOrBuildingByRole = new Dictionary<string, int>(
-                StringComparer.Ordinal
-            );
+            Dictionary<string, int> activeOfficerMissionsByType =
+                GetActiveHostileOfficerMissionCounts(context);
             foreach (SpecialForces unit in existingUnits)
             {
-                string roleId = GetRoleId(unit);
-                IncrementCount(inventoryByRole, roleId);
                 if (
                     context.Faction.IsAvailableMissionParticipant(unit)
                     || unit.ManufacturingStatus != ManufacturingStatus.Complete
+                    || IsAssignedAsDecoy(unit)
                 )
                 {
-                    IncrementCount(readyOrBuildingByRole, roleId);
+                    IncrementCount(decoySupplyByRole, GetRoleId(unit));
                 }
             }
 
@@ -146,12 +146,17 @@ namespace Rebellion.AI.Planners.Demand
                     .ThenBy(candidate => candidate.MaintenanceCost)
                     .ThenBy(candidate => candidate.GetTypeID(), StringComparer.Ordinal)
                     .First();
-                inventoryByRole.TryGetValue(role.Key, out int currentCount);
-                readyOrBuildingByRole.TryGetValue(role.Key, out int availableOrBuildingCount);
-                int inventoryDeficit = config.SpecialForcesTargetCountPerRole - currentCount;
-                int readinessDeficit =
-                    config.SpecialForcesReadyReservePerRole - availableOrBuildingCount;
-                int deficit = Math.Max(inventoryDeficit, readinessDeficit);
+                decoySupplyByRole.TryGetValue(role.Key, out int decoySupply);
+                int activeMissionDemand = template.AllowedMissionTypeIDs.Sum(missionTypeId =>
+                    activeOfficerMissionsByType.TryGetValue(missionTypeId, out int count)
+                        ? count
+                        : 0
+                );
+                int desiredSupply = GetDesiredSupply(
+                    activeMissionDemand,
+                    config.SpecialForcesMissionCoveragePercent
+                );
+                int deficit = desiredSupply - decoySupply;
                 if (deficit <= 0)
                     continue;
 
@@ -173,16 +178,64 @@ namespace Rebellion.AI.Planners.Demand
                         deficit,
                         GetPressure(
                             deficit,
-                            Math.Max(
-                                config.SpecialForcesTargetCountPerRole,
-                                config.SpecialForcesReadyReservePerRole
-                            ),
+                            desiredSupply,
                             config.SpecialForcesDemandPercent
                         ),
                         template.GetTypeID()
                     )
                 );
             }
+        }
+
+        /// <summary>
+        /// Calculates decoy supply from current hostile officer-mission workload.
+        /// </summary>
+        /// <param name="activeMissionCount">The active officer-led hostile mission count.</param>
+        /// <param name="coveragePercent">The portion of that workload to cover with decoys.</param>
+        /// <returns>The required decoy supply.</returns>
+        private static int GetDesiredSupply(int activeMissionCount, int coveragePercent)
+        {
+            int boundedCoveragePercent = Math.Max(0, Math.Min(100, coveragePercent));
+            return (activeMissionCount * boundedCoveragePercent + 99) / 100;
+        }
+
+        /// <summary>
+        /// Returns whether a special-forces unit is currently assigned as a mission decoy.
+        /// </summary>
+        /// <param name="unit">The special-forces unit to inspect.</param>
+        /// <returns>True when the unit belongs to a mission's decoy team.</returns>
+        private static bool IsAssignedAsDecoy(SpecialForces unit)
+        {
+            Mission mission = unit?.GetParentOfType<Mission>();
+            return mission?.GetDecoyParticipants().Contains(unit) == true;
+        }
+
+        /// <summary>
+        /// Counts active officer-led missions in enemy territory by mission type.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>Active hostile officer-mission counts keyed by mission type.</returns>
+        private static Dictionary<string, int> GetActiveHostileOfficerMissionCounts(
+            AITurnContext context
+        )
+        {
+            Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (Mission mission in context.Assessment.ActiveMissions)
+            {
+                Planet target = mission.GetParentOfType<Planet>();
+                if (
+                    target == null
+                    || !context.Assessment.IsEnemyPlanet(target)
+                    || !mission.GetMainParticipants().OfType<Officer>().Any()
+                )
+                    continue;
+
+                string missionTypeId = mission.ConfigKey;
+                counts.TryGetValue(missionTypeId, out int count);
+                counts[missionTypeId] = count + 1;
+            }
+
+            return counts;
         }
 
         /// <summary>

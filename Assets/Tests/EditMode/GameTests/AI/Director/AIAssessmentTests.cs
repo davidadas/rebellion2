@@ -1059,19 +1059,13 @@ namespace Rebellion.Tests.AI.Director
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            int shieldPriority = assessment.GetSabotageTargetPriorityBonus(target, shield);
-            int batteryPriority = assessment.GetSabotageTargetPriorityBonus(target, battery);
-            int regimentPriority = assessment.GetSabotageTargetPriorityBonus(target, regiment);
-            int starfighterPriority = assessment.GetSabotageTargetPriorityBonus(
-                target,
-                starfighter
-            );
-            int infrastructurePriority = assessment.GetSabotageTargetPriorityBonus(
-                target,
-                shipyard
-            );
+            int shieldPriority = context.SabotageTargets.GetPriorityBonus(target, shield);
+            int batteryPriority = context.SabotageTargets.GetPriorityBonus(target, battery);
+            int regimentPriority = context.SabotageTargets.GetPriorityBonus(target, regiment);
+            int starfighterPriority = context.SabotageTargets.GetPriorityBonus(target, starfighter);
+            int infrastructurePriority = context.SabotageTargets.GetPriorityBonus(target, shipyard);
 
             Assert.Greater(shieldPriority, batteryPriority);
             Assert.Greater(batteryPriority, regimentPriority);

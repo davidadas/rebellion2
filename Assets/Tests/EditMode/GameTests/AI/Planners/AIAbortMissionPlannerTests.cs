@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI.Director;
@@ -17,17 +16,12 @@ namespace Rebellion.Tests.AI.Planners
     public class AIAbortMissionPlannerTests
     {
         [Test]
-        public void Plan_WithOfficerMissionAboveLossTolerance_AddsAbortProposal()
+        public void Plan_WithUnknownMissionTarget_AddsAbortProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
-            Regiment detector = AITestSceneBuilder.CreateRegiment("detector", rebels.InstanceID);
-            detector.DetectionRating = 100;
-            game.AttachNode(detector, target);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            officer.Ratings[OfficerRating.Espionage] = 0;
-            officer.Ratings[OfficerRating.Combat] = 0;
             StubMission mission = EntityFactory.CreateMission(
                 "mission",
                 empire.InstanceID,
@@ -35,10 +29,6 @@ namespace Rebellion.Tests.AI.Planners
             );
             game.AttachNode(mission, target);
             game.AttachNode(officer, mission);
-            AITestSceneBuilder.RevealPlanet(game, empire, target);
-            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 100 } };
-            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int> { { 0, 0 } };
-            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 25;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             AIAbortMissionProposal proposal = new AIAbortMissionPlanner()

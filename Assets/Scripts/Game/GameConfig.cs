@@ -126,6 +126,8 @@ namespace Rebellion.Game
 
             public int MinimumMissionScore { get; set; } = 20;
 
+            public int MissionFoilRiskWeight { get; set; } = 1;
+
             public int ReconnaissancePriorityBonus { get; set; } = 50;
 
             public int RecruitmentPriorityBonus { get; set; } = 80;
@@ -155,8 +157,6 @@ namespace Rebellion.Game
             public int DiplomacySectorSupportRiskWeight { get; set; } = 25;
 
             public int HostileOfficerReplacementPenalty { get; set; } = 100;
-
-            public int MaximumOfficerMissionLossProbability { get; set; } = 5;
         }
 
         /// <summary>
@@ -233,6 +233,7 @@ namespace Rebellion.Game
             public int CapitalConstructionCostWeight { get; set; }
             public int CapitalMaintenanceCostWeight { get; set; }
             public int CapitalCombatWeight { get; set; }
+            public int CapitalLaserCannonWeightDivisor { get; set; } = 6;
             public int CapitalExcessCombatPenaltyWeight { get; set; } = 1;
             public int CapitalStarfighterCapacityWeight { get; set; }
             public int CapitalRegimentCapacityWeight { get; set; }
@@ -295,9 +296,9 @@ namespace Rebellion.Game
             public int FleetStarfighterDemandPercent { get; set; } = 50;
             public int FleetRegimentDemandPercent { get; set; } = 60;
             public int FleetSeedCapitalShipDemandPercent { get; set; } = 95;
-            public int SpecialForcesTargetCountPerRole { get; set; } = 4;
-            public int SpecialForcesReadyReservePerRole { get; set; } = 1;
             public int SpecialForcesDemandPercent { get; set; } = 25;
+
+            public int SpecialForcesMissionCoveragePercent { get; set; } = 10;
             public int StarfighterParentFillPercent { get; set; } = 100;
             public int StarfighterLocalReservePercent { get; set; }
             public int AssaultRegimentLoadPercent { get; set; } = 100;
@@ -366,6 +367,8 @@ namespace Rebellion.Game
             public int StarfighterRequirementInfrastructure { get; set; }
 
             public int StarfighterRequirementHeadquarters { get; set; }
+
+            public int UnthreatenedInfrastructureStarfighterBaselinePercent { get; set; } = 50;
 
             public int InteriorStarfighterBaselinePercent { get; set; } = 100;
 

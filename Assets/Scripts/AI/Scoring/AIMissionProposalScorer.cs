@@ -46,31 +46,17 @@ namespace Rebellion.AI.Scoring
             if (!TryCreateMission(context, missionProposal, out Mission mission))
                 return 0;
 
-            MissionOdds odds;
-            if (missionProposal.MainParticipants.OfType<Officer>().Any())
-            {
-                odds = context.GetMissionOdds(
-                    mission,
-                    missionProposal.MainParticipants,
-                    missionProposal.TargetPlanet
-                );
-                if (
-                    odds.PersonnelLossProbability
-                    > context.Game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability
-                )
-                    return 0;
+            double successProbability = context
+                .Missions.GetMissionOdds(mission, missionProposal.MainParticipants)
+                .SuccessProbability;
+            if (!MeetsUprisingMissionProbabilityFloor(context, missionProposal, successProbability))
+                return 0;
 
-                if (!HasUsableHostileTargetIntelligence(context, missionProposal))
-                    return 0;
-            }
-            else
-            {
-                odds = context.Missions.GetMissionOdds(mission, missionProposal.MainParticipants);
-            }
-
-            double successProbability = odds.SuccessProbability;
+            double foilProbability = GetFoilProbability(context, missionProposal, mission);
+            missionProposal.SetFoilProbability(foilProbability);
             double score = GetMissionScore(context, missionProposal, successProbability);
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
+            score -= foilProbability * context.Game.Config.AI.MissionPlanning.MissionFoilRiskWeight;
             score -= GetTravelPenalty(context, missionProposal);
             score -= GetOfficerReplacementPenalty(context, missionProposal);
 
@@ -78,24 +64,47 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Returns whether a hostile mission has current intelligence or a decoy that offsets
-        /// uncertainty about the target.
+        /// Returns the probability that known defenders foil a mission.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The mission proposal to inspect.</param>
-        /// <returns>True when target intelligence permits the proposed mission.</returns>
-        private static bool HasUsableHostileTargetIntelligence(
+        /// <param name="proposal">The mission proposal being evaluated.</param>
+        /// <param name="mission">The mission created for probability evaluation.</param>
+        /// <returns>The estimated foil probability.</returns>
+        private static double GetFoilProbability(
             AITurnContext context,
-            AIMissionProposal proposal
+            AIMissionProposal proposal,
+            Mission mission
         )
         {
-            if (proposal.DecoyParticipants.Count > 0)
+            if (proposal.TargetPlanet == null)
+                return 0;
+
+            return context.Missions.GetMissionFoilProbability(
+                mission,
+                context.Assessment.GetMissionDetectorCandidates(proposal.TargetPlanet)
+            );
+        }
+
+        /// <summary>
+        /// Returns whether an uprising mission is viable before strategic priority is applied.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The mission proposal being evaluated.</param>
+        /// <param name="successProbability">The calculated mission success probability.</param>
+        /// <returns>True when the mission meets its feasibility requirement.</returns>
+        private static bool MeetsUprisingMissionProbabilityFloor(
+            AITurnContext context,
+            AIMissionProposal proposal,
+            double successProbability
+        )
+        {
+            if (
+                proposal.MissionTypeID != MissionTypeIDs.InciteUprising
+                && proposal.MissionTypeID != MissionTypeIDs.SubdueUprising
+            )
                 return true;
 
-            string targetOwnerId = proposal.TargetPlanet.GetOwnerInstanceID();
-            return string.IsNullOrEmpty(targetOwnerId)
-                || targetOwnerId == context.Faction.InstanceID
-                || context.Assessment.GetPlanetIntelAge(proposal.TargetPlanet) == 0;
+            return successProbability >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore;
         }
 
         /// <summary>
@@ -154,7 +163,7 @@ namespace Rebellion.AI.Scoring
         )
         {
             return successProbability
-                + context.Assessment.GetSabotageTargetPriorityBonus(
+                + context.SabotageTargets.GetPriorityBonus(
                     proposal.TargetPlanet,
                     proposal.SelectedTarget as IManufacturable
                 );

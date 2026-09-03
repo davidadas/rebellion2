@@ -4,7 +4,7 @@ using Rebellion.AI.Proposals;
 namespace Rebellion.AI.Scoring
 {
     /// <summary>
-    /// Scores mission-abort proposals ahead of optional strategic actions.
+    /// Scores mission-abort proposals selected through mandatory proposal priority.
     /// </summary>
     public sealed class AIAbortMissionProposalScorer : IAIProposalScorer
     {
@@ -19,14 +19,14 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Returns a score that selects mission abortions before optional actions.
+        /// Returns the neutral score for a mandatory mission-abort proposal.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to score.</param>
-        /// <returns>The highest score for an abort proposal; otherwise zero.</returns>
+        /// <returns>Zero; mandatory ordering is handled explicitly during selection.</returns>
         public double Score(AITurnContext context, AIProposal proposal)
         {
-            return proposal is AIAbortMissionProposal ? double.MaxValue : 0;
+            return 0;
         }
     }
 }

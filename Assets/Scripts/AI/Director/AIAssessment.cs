@@ -7,6 +7,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -19,7 +20,6 @@ namespace Rebellion.AI.Director
     {
         // Turn Context.
         private readonly AITurnContext _context;
-        private readonly AISabotageTargetPolicy _sabotageTargets;
 
         // Cached Assessments.
         private readonly Dictionary<string, double> _planetValues = new Dictionary<string, double>(
@@ -35,6 +35,8 @@ namespace Rebellion.AI.Director
             new Dictionary<string, IReadOnlyList<Regiment>>(StringComparer.Ordinal);
         private readonly Dictionary<string, IReadOnlyList<Starfighter>> _planetStarfighters =
             new Dictionary<string, IReadOnlyList<Starfighter>>(StringComparer.Ordinal);
+        private readonly Dictionary<string, IReadOnlyList<ISceneNode>> _planetMissionDetectors =
+            new Dictionary<string, IReadOnlyList<ISceneNode>>(StringComparer.Ordinal);
         private readonly Dictionary<
             (string PlanetId, ManufacturingType ManufacturingType),
             int
@@ -179,10 +181,6 @@ namespace Rebellion.AI.Director
                     .Select(candidate => candidate.InstanceID)
                     .ToList()
                 ?? new List<string>();
-            _sabotageTargets = new AISabotageTargetPolicy(
-                this,
-                context?.Game?.Config?.AI?.MissionPlanning
-            );
             Faction faction = context?.Faction;
             int availableMaterials = faction?.GetTotalAvailableMaterialsRaw() ?? 0;
             MaintenanceCapacity =
@@ -753,6 +751,58 @@ namespace Rebellion.AI.Director
                 planet.InstanceID,
                 () => planet.GetAllStarfighters().ToList()
             );
+        }
+
+        /// <summary>
+        /// Returns the known units that can attempt to detect this faction's missions at a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The detector candidates indexed for this AI turn.</returns>
+        public IReadOnlyList<ISceneNode> GetMissionDetectorCandidates(Planet planet)
+        {
+            if (planet == null)
+                return Array.Empty<ISceneNode>();
+
+            return GetOrAdd(
+                _planetMissionDetectors,
+                planet.InstanceID,
+                () => BuildMissionDetectorCandidates(planet)
+            );
+        }
+
+        /// <summary>
+        /// Builds detector candidates once from the faction's current view of a planet.
+        /// </summary>
+        /// <param name="planet">The planet whose known forces are indexed.</param>
+        /// <returns>The ordered detector candidates.</returns>
+        private IReadOnlyList<ISceneNode> BuildMissionDetectorCandidates(Planet planet)
+        {
+            List<ISceneNode> detectors = new List<ISceneNode>();
+            detectors.AddRange(planet.GetChildren<Starfighter>());
+            detectors.AddRange(planet.GetChildren<Regiment>());
+
+            bool blocksFleetDetection = planet
+                .GetChildren<Building>()
+                .Any(building =>
+                    building.IsDetectionBlocker
+                    && building.OwnerInstanceID == _context.Faction.InstanceID
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                );
+            if (blocksFleetDetection)
+                return detectors;
+
+            foreach (Fleet fleet in planet.GetChildren<Fleet>())
+            {
+                foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
+                {
+                    detectors.Add(capitalShip);
+                    detectors.AddRange(capitalShip.GetChildren<Starfighter>());
+                    detectors.AddRange(capitalShip.GetChildren<Regiment>());
+                }
+            }
+
+            return detectors;
         }
 
         /// <summary>
@@ -1449,27 +1499,6 @@ namespace Rebellion.AI.Director
                 && AttackOrderedFleets.Any(fleet =>
                     fleet.Order.TargetPlanetId == planet.InstanceID
                 );
-        }
-
-        /// <summary>
-        /// Returns the contextual priority bonus for a sabotage target.
-        /// </summary>
-        /// <param name="planet">Planet containing the target.</param>
-        /// <param name="target">Target to evaluate.</param>
-        /// <returns>The priority bonus.</returns>
-        public int GetSabotageTargetPriorityBonus(Planet planet, IManufacturable target)
-        {
-            return _sabotageTargets.GetPriorityBonus(planet, target);
-        }
-
-        /// <summary>
-        /// Returns the tactical priority tier for a sabotage target.
-        /// </summary>
-        /// <param name="target">The sabotage target to classify.</param>
-        /// <returns>A larger value for targets that must be destroyed first.</returns>
-        public static int GetSabotageTargetPriority(IManufacturable target)
-        {
-            return AISabotageTargetPolicy.GetPriority(target);
         }
 
         /// <summary>

@@ -4,6 +4,15 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Director
 {
+    internal enum AISabotageTargetTier
+    {
+        Infrastructure,
+        Starfighter,
+        Regiment,
+        DefenseBattery,
+        ShieldGenerator,
+    }
+
     /// <summary>
     /// Classifies and scores targets considered by AI sabotage planning.
     /// </summary>
@@ -80,21 +89,23 @@ namespace Rebellion.AI.Director
         /// </summary>
         /// <param name="target">The target unit or facility.</param>
         /// <returns>A larger value for targets that should be destroyed first.</returns>
-        internal static int GetPriority(IManufacturable target)
+        internal static AISabotageTargetTier GetTier(IManufacturable target)
         {
             if (target is Building building)
             {
                 if (IsShieldGenerator(building))
-                    return 4;
+                    return AISabotageTargetTier.ShieldGenerator;
 
-                return IsPlanetaryDefenseBuilding(building) ? 3 : 0;
+                return IsPlanetaryDefenseBuilding(building)
+                    ? AISabotageTargetTier.DefenseBattery
+                    : AISabotageTargetTier.Infrastructure;
             }
 
             return target switch
             {
-                Regiment => 2,
-                Starfighter => 1,
-                _ => 0,
+                Regiment => AISabotageTargetTier.Regiment,
+                Starfighter => AISabotageTargetTier.Starfighter,
+                _ => AISabotageTargetTier.Infrastructure,
             };
         }
 

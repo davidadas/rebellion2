@@ -3,8 +3,8 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -26,6 +26,7 @@ namespace Rebellion.AI.Director
         public PlanetaryAssaultSystem PlanetaryAssault { get; }
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
+        internal AISabotageTargetPolicy SabotageTargets { get; }
 
         // Turn Output.
         public IReadOnlyList<AIProposal> Proposals => _proposals;
@@ -35,8 +36,8 @@ namespace Rebellion.AI.Director
         private readonly List<AIProposal> _proposals = new List<AIProposal>();
         private readonly List<AIProposal> _selectedProposals = new List<AIProposal>();
         private readonly List<GameResult> _results = new List<GameResult>();
-        private readonly Dictionary<string, MissionDetectionSnapshot> _missionDetectionSnapshots =
-            new Dictionary<string, MissionDetectionSnapshot>(System.StringComparer.Ordinal);
+        private readonly Dictionary<SpecialForces, SpecialForcesIntent> _specialForcesIntents =
+            new Dictionary<SpecialForces, SpecialForcesIntent>();
 
         /// <summary>
         /// Creates a turn context.
@@ -72,6 +73,10 @@ namespace Rebellion.AI.Director
             Random = random;
             FactionView = factionView;
             Assessment = new AIAssessment(this);
+            SabotageTargets = new AISabotageTargetPolicy(
+                Assessment,
+                game?.Config?.AI?.MissionPlanning
+            );
         }
 
         /// <summary>
@@ -116,6 +121,29 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Records how a special-forces unit should be used during this AI turn.
+        /// </summary>
+        /// <param name="unit">The special-forces unit being assigned.</param>
+        /// <param name="intent">The unit's turn-scoped staffing intent.</param>
+        public void SetSpecialForcesIntent(SpecialForces unit, SpecialForcesIntent intent)
+        {
+            if (unit != null)
+                _specialForcesIntents[unit] = intent;
+        }
+
+        /// <summary>
+        /// Returns how a special-forces unit should be used during this AI turn.
+        /// </summary>
+        /// <param name="unit">The special-forces unit to inspect.</param>
+        /// <returns>The assigned intent, or primary agent when no intent has been assigned.</returns>
+        public SpecialForcesIntent GetSpecialForcesIntent(SpecialForces unit)
+        {
+            return unit != null && _specialForcesIntents.TryGetValue(unit, out var intent)
+                ? intent
+                : SpecialForcesIntent.PrimaryAgent;
+        }
+
+        /// <summary>
         /// Adds one result to the turn.
         /// </summary>
         /// <param name="result">The result to add.</param>
@@ -136,39 +164,6 @@ namespace Rebellion.AI.Director
 
             foreach (GameResult result in results)
                 AddResult(result);
-        }
-
-        /// <summary>
-        /// Calculates mission odds while reusing the target's detector snapshot for this AI turn.
-        /// </summary>
-        /// <param name="mission">The mission whose probability rules apply.</param>
-        /// <param name="participants">The primary participants being evaluated.</param>
-        /// <param name="observedPlanet">The faction-visible mission target.</param>
-        /// <returns>The calculated mission odds.</returns>
-        internal MissionOdds GetMissionOdds(
-            Mission mission,
-            IEnumerable<IMissionParticipant> participants,
-            Planet observedPlanet
-        )
-        {
-            if (mission == null)
-                throw new System.ArgumentNullException(nameof(mission));
-
-            if (observedPlanet == null)
-                return Missions.GetMissionOdds(mission, participants);
-
-            if (
-                !_missionDetectionSnapshots.TryGetValue(
-                    observedPlanet.InstanceID,
-                    out MissionDetectionSnapshot detectionSnapshot
-                )
-            )
-            {
-                detectionSnapshot = mission.GetDetectionSnapshot(observedPlanet);
-                _missionDetectionSnapshots.Add(observedPlanet.InstanceID, detectionSnapshot);
-            }
-
-            return mission.GetMissionOdds(participants, detectionSnapshot, Game);
         }
     }
 }

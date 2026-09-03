@@ -17,7 +17,6 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionPlanner : IAIProposalPlanner
     {
-        private const int _primaryLaserDivisor = 6;
         private const int _primaryWeaponWeight = 100;
         private const int _productionRateMetricScale = 1000;
         private const int _roleMetricScale = 10;
@@ -1035,9 +1034,10 @@ namespace Rebellion.AI.Planners
                 return null;
 
             int maintenanceBudget = GetCapitalShipMaintenanceBudget(context);
+            GameConfig.AISelectionConfig selectionConfig = context.Game.Config.AI.Selection;
             bool prioritizeGeneralDelivery =
                 demand.CapitalShipRole == AICapitalShipProductionRole.General
-                && !HasCommittedCombatCapitalShip(demand.DestinationFleet);
+                && !HasCommittedCombatCapitalShip(demand.DestinationFleet, selectionConfig);
             List<Technology> rankedTechnologies = new List<Technology>();
 
             foreach (
@@ -1050,7 +1050,7 @@ namespace Rebellion.AI.Planners
                 if (!IManufacturable.CanBeManufacturedBy(capitalShip, context.Faction.InstanceID))
                     continue;
 
-                if (!CanFillCapitalShipRole(capitalShip, demand.CapitalShipRole))
+                if (!CanFillCapitalShipRole(capitalShip, demand.CapitalShipRole, selectionConfig))
                     continue;
 
                 InsertCapitalShipTechnology(
@@ -1094,7 +1094,8 @@ namespace Rebellion.AI.Planners
             long candidateMetric = GetCapitalShipRoleMetric(
                 candidateShip,
                 role,
-                prioritizeGeneralDelivery
+                prioritizeGeneralDelivery,
+                context.Game.Config.AI.Selection
             );
 
             for (int index = 0; index < rankedTechnologies.Count; index++)
@@ -1103,7 +1104,8 @@ namespace Rebellion.AI.Planners
                 long rankedMetric = GetCapitalShipRoleMetric(
                     rankedShip,
                     role,
-                    prioritizeGeneralDelivery
+                    prioritizeGeneralDelivery,
+                    context.Game.Config.AI.Selection
                 );
                 if (
                     candidateMetric < rankedMetric
@@ -1179,14 +1181,18 @@ namespace Rebellion.AI.Planners
         /// Returns whether a fleet has a completed or constructing combat capital ship.
         /// </summary>
         /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="config">The capital-ship selection configuration.</param>
         /// <returns>True when the fleet has committed capital-ship combat capability.</returns>
-        private static bool HasCommittedCombatCapitalShip(Fleet fleet)
+        private static bool HasCommittedCombatCapitalShip(
+            Fleet fleet,
+            GameConfig.AISelectionConfig config
+        )
         {
             return fleet
                     ?.GetChildren<CapitalShip>()
                     .Any(capitalShip =>
                         IsCommittedCapitalShip(capitalShip)
-                        && GetMaximumPrimaryWeaponWeight(capitalShip) > 0
+                        && GetMaximumPrimaryWeaponWeight(capitalShip, config) > 0
                     ) == true;
         }
 
@@ -1195,10 +1201,12 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="role">The role.</param>
+        /// <param name="config">The capital-ship selection configuration.</param>
         /// <returns>True when the ship satisfies the role requirements.</returns>
         private static bool CanFillCapitalShipRole(
             CapitalShip capitalShip,
-            AICapitalShipProductionRole role
+            AICapitalShipProductionRole role,
+            GameConfig.AISelectionConfig config
         )
         {
             if (capitalShip.CanDestroyPlanets)
@@ -1207,10 +1215,10 @@ namespace Rebellion.AI.Planners
             return role switch
             {
                 AICapitalShipProductionRole.General => !capitalShip.HasGravityWell
-                    && GetMaximumPrimaryWeaponWeight(capitalShip) > 0,
+                    && GetMaximumPrimaryWeaponWeight(capitalShip, config) > 0,
                 AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity > 0
                     && !capitalShip.HasGravityWell
-                    && GetMaximumPrimaryWeaponWeight(capitalShip) == 0,
+                    && GetMaximumPrimaryWeaponWeight(capitalShip, config) == 0,
                 AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0,
                 AICapitalShipProductionRole.Interdiction => capitalShip.HasGravityWell,
                 _ => false,
@@ -1225,17 +1233,19 @@ namespace Rebellion.AI.Planners
         /// <param name="prioritizeGeneralDelivery">
         /// Whether an unready fleet needs its first combat ship delivered quickly.
         /// </param>
+        /// <param name="config">The capital-ship selection configuration.</param>
         /// <returns>The ship's comparable role-priority metric.</returns>
         private static long GetCapitalShipRoleMetric(
             CapitalShip capitalShip,
             AICapitalShipProductionRole role,
-            bool prioritizeGeneralDelivery
+            bool prioritizeGeneralDelivery,
+            GameConfig.AISelectionConfig config
         )
         {
             int constructionCost = Math.Max(1, capitalShip.ConstructionCost);
             long capabilityMetric = role switch
             {
-                AICapitalShipProductionRole.General => GetPrimaryWeaponMetric(capitalShip)
+                AICapitalShipProductionRole.General => GetPrimaryWeaponMetric(capitalShip, config)
                     * _roleMetricScale
                     / Math.Max(1, capitalShip.MaintenanceCost),
                 AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
@@ -1254,8 +1264,12 @@ namespace Rebellion.AI.Planners
         /// Returns primary weapon metric.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
+        /// <param name="config">The capital-ship selection configuration.</param>
         /// <returns>The calculated value.</returns>
-        private static long GetPrimaryWeaponMetric(CapitalShip capitalShip)
+        private static long GetPrimaryWeaponMetric(
+            CapitalShip capitalShip,
+            GameConfig.AISelectionConfig config
+        )
         {
             long maximumWeight = 0;
             int selectedWeaponCount = 0;
@@ -1268,7 +1282,9 @@ namespace Rebellion.AI.Planners
                 long weight =
                     (long)_primaryWeaponWeight * turbolasers
                     + (long)_primaryWeaponWeight * ionCannons
-                    + (long)_primaryWeaponWeight * laserCannons / _primaryLaserDivisor;
+                    + (long)_primaryWeaponWeight
+                        * laserCannons
+                        / Math.Max(1, config.CapitalLaserCannonWeightDivisor);
                 if (weight <= maximumWeight)
                     continue;
 
@@ -1286,8 +1302,12 @@ namespace Rebellion.AI.Planners
         /// Returns maximum primary weapon weight.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
+        /// <param name="config">The capital-ship selection configuration.</param>
         /// <returns>The calculated value.</returns>
-        private static long GetMaximumPrimaryWeaponWeight(CapitalShip capitalShip)
+        private static long GetMaximumPrimaryWeaponWeight(
+            CapitalShip capitalShip,
+            GameConfig.AISelectionConfig config
+        )
         {
             long maximumWeight = 0;
             for (int arc = 0; arc < _weaponArcCount; arc++)
@@ -1299,7 +1319,7 @@ namespace Rebellion.AI.Planners
                         * GetWeaponCount(capitalShip, PrimaryWeaponType.IonCannon, arc)
                     + (long)_primaryWeaponWeight
                         * GetWeaponCount(capitalShip, PrimaryWeaponType.LaserCannon, arc)
-                        / _primaryLaserDivisor;
+                        / Math.Max(1, config.CapitalLaserCannonWeightDivisor);
                 maximumWeight = Math.Max(maximumWeight, weight);
             }
 
