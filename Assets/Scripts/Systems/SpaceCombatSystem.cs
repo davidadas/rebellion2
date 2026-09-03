@@ -1667,7 +1667,9 @@ namespace Rebellion.Systems
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
         }
 
-        /// <summary>Contains one capital ship's detached automatic-combat outcome.</summary>
+        /// <summary>
+        /// Contains one capital ship's detached automatic-combat outcome.
+        /// </summary>
         private class ShipSnap
         {
             public CapitalShip Ship;
@@ -1677,7 +1679,9 @@ namespace Rebellion.Systems
             public bool Alive;
         }
 
-        /// <summary>Contains one fighter squadron's detached automatic-combat outcome.</summary>
+        /// <summary>
+        /// Contains one fighter squadron's detached automatic-combat outcome.
+        /// </summary>
         private class FighterSnap
         {
             public Starfighter Fighter;

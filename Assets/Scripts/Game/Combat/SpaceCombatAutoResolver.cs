@@ -273,14 +273,18 @@ namespace Rebellion.Game.Combat
 
             internal IReadOnlyList<PendingHit> Hits => _hits;
 
-            /// <summary>Adds another accumulated attack to this target.</summary>
+            /// <summary>
+            /// Adds another accumulated attack to this target.
+            /// </summary>
             /// <param name="source">The accumulated damage to add.</param>
             internal void Add(PendingDamage source)
             {
                 _hits.AddRange(source._hits);
             }
 
-            /// <summary>Adds one weapon lane's damage to the appropriate channel.</summary>
+            /// <summary>
+            /// Adds one weapon lane's damage to the appropriate channel.
+            /// </summary>
             /// <param name="damage">The positive damage to add.</param>
             /// <param name="isIonDamage">Whether the damage comes from ion weapons.</param>
             internal void Add(double damage, bool isIonDamage)
@@ -297,7 +301,9 @@ namespace Rebellion.Game.Combat
             internal double Damage { get; }
             internal bool IsIonDamage { get; }
 
-            /// <summary>Creates a pending hit.</summary>
+            /// <summary>
+            /// Creates a pending hit.
+            /// </summary>
             /// <param name="damage">The positive damage dealt by the hit.</param>
             /// <param name="isIonDamage">Whether the hit uses ion damage.</param>
             internal PendingHit(double damage, bool isIonDamage)
@@ -480,7 +486,9 @@ namespace Rebellion.Game.Combat
                 Outcome = SpaceCombatSideOutcome.Active;
             }
 
-            /// <summary>Assigns every tactical unit to an eligible or ineligible withdrawal group.</summary>
+            /// <summary>
+            /// Assigns every tactical unit to an eligible or ineligible withdrawal group.
+            /// </summary>
             /// <param name="withdrawalGroups">The scene-node groups capable of retreat.</param>
             private void ConfigureWithdrawalGroups(
                 IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups
@@ -508,7 +516,9 @@ namespace Rebellion.Game.Combat
                     AssignWithdrawalGroup(new[] { unit }, canWithdraw: false);
             }
 
-            /// <summary>Assigns tactical units to a shared withdrawal group.</summary>
+            /// <summary>
+            /// Assigns tactical units to a shared withdrawal group.
+            /// </summary>
             /// <param name="units">The tactical units to group.</param>
             /// <param name="canWithdraw">Whether the group can leave combat.</param>
             private static void AssignWithdrawalGroup(
@@ -532,7 +542,9 @@ namespace Rebellion.Game.Combat
             internal bool CanWithdraw { get; }
             internal bool IsWithdrawing { get; private set; }
 
-            /// <summary>Creates a withdrawal group.</summary>
+            /// <summary>
+            /// Creates a withdrawal group.
+            /// </summary>
             /// <param name="units">The units that must withdraw together.</param>
             /// <param name="canWithdraw">Whether the group can leave the battle.</param>
             internal WithdrawalGroup(IReadOnlyList<TacticalUnit> units, bool canWithdraw)
@@ -541,7 +553,9 @@ namespace Rebellion.Game.Combat
                 CanWithdraw = canWithdraw;
             }
 
-            /// <summary>Starts withdrawal for every surviving member.</summary>
+            /// <summary>
+            /// Starts withdrawal for every surviving member.
+            /// </summary>
             internal void BeginWithdrawal()
             {
                 if (!CanWithdraw || IsWithdrawing)
@@ -552,7 +566,9 @@ namespace Rebellion.Game.Combat
                     unit.StartWithdrawal();
             }
 
-            /// <summary>Completes withdrawal once every surviving member reaches safety.</summary>
+            /// <summary>
+            /// Completes withdrawal once every surviving member reaches safety.
+            /// </summary>
             /// <param name="withdrawalDistance">The distance required to leave combat.</param>
             internal void CompleteWithdrawalWhenReady(double withdrawalDistance)
             {
@@ -567,7 +583,9 @@ namespace Rebellion.Game.Combat
                 CompleteWithdrawal();
             }
 
-            /// <summary>Removes every surviving member from combat as withdrawn.</summary>
+            /// <summary>
+            /// Removes every surviving member from combat as withdrawn.
+            /// </summary>
             internal void CompleteWithdrawal()
             {
                 foreach (TacticalUnit unit in _units.Where(unit => unit.IsAlive))
@@ -606,7 +624,9 @@ namespace Rebellion.Game.Combat
             internal bool IsTargetable => IsAlive && !HasWithdrawn;
             internal double WithdrawalDistance => _withdrawalDistance;
 
-            /// <summary>Updates this unit's target when scanning and queues available attacks.</summary>
+            /// <summary>
+            /// Updates this unit's target when scanning and queues available attacks.
+            /// </summary>
             /// <param name="targets">The surviving opposing units.</param>
             /// <param name="scansForTarget">Whether the unit performs its periodic target scan.</param>
             /// <param name="engagementDistance">The abstract distance between combat forces.</param>
@@ -618,7 +638,9 @@ namespace Rebellion.Game.Combat
                 IDictionary<TacticalUnit, PendingDamage> pendingDamage
             );
 
-            /// <summary>Adds attack damage to a tactical target.</summary>
+            /// <summary>
+            /// Adds attack damage to a tactical target.
+            /// </summary>
             /// <param name="pendingDamage">Damage grouped by tactical target.</param>
             /// <param name="target">The tactical target.</param>
             /// <param name="damage">The positive damage to add.</param>
@@ -640,7 +662,9 @@ namespace Rebellion.Game.Combat
                 targetDamage.Add(damage, isIonDamage);
             }
 
-            /// <summary>Returns the pairwise distance between this unit and a target.</summary>
+            /// <summary>
+            /// Returns the pairwise distance between this unit and a target.
+            /// </summary>
             /// <param name="target">The opposing tactical unit.</param>
             /// <param name="startingDistance">The configured initial separation.</param>
             /// <returns>The remaining abstract distance between the units.</returns>
@@ -656,12 +680,16 @@ namespace Rebellion.Game.Combat
                 );
             }
 
-            /// <summary>Calculates this unit's remaining tactical strength.</summary>
+            /// <summary>
+            /// Calculates this unit's remaining tactical strength.
+            /// </summary>
             /// <param name="targetsFighters">Whether the opposing target is a fighter squadron.</param>
             /// <returns>The remaining tactical strength.</returns>
             internal abstract double GetEffectiveness(bool targetsFighters);
 
-            /// <summary>Applies simultaneous tactical damage.</summary>
+            /// <summary>
+            /// Applies simultaneous tactical damage.
+            /// </summary>
             /// <param name="conventionalDamage">The non-negative hull-damaging attack strength.</param>
             /// <param name="ionDamage">The non-negative shield and subsystem attack strength.</param>
             /// <param name="config">The automatic combat parameters.</param>
@@ -673,7 +701,9 @@ namespace Rebellion.Game.Combat
                 IRandomNumberProvider random
             );
 
-            /// <summary>Advances temporary damage and recharge state.</summary>
+            /// <summary>
+            /// Advances temporary damage and recharge state.
+            /// </summary>
             /// <param name="config">The automatic combat parameters.</param>
             /// <param name="random">The combat random-number stream.</param>
             internal void AdvanceTacticalState(
@@ -694,7 +724,9 @@ namespace Rebellion.Game.Combat
                 _approachDistance += ClosingSpeed;
             }
 
-            /// <summary>Advances unit-specific temporary damage and recharge state.</summary>
+            /// <summary>
+            /// Advances unit-specific temporary damage and recharge state.
+            /// </summary>
             /// <param name="config">The automatic combat parameters.</param>
             /// <param name="random">The combat random-number stream.</param>
             protected abstract void AdvanceUnitState(
@@ -702,16 +734,22 @@ namespace Rebellion.Game.Combat
                 IRandomNumberProvider random
             );
 
-            /// <summary>Destroys the tactical unit.</summary>
+            /// <summary>
+            /// Destroys the tactical unit.
+            /// </summary>
             internal abstract void Destroy();
 
-            /// <summary>Starts the vulnerable movement toward the tactical escape boundary.</summary>
+            /// <summary>
+            /// Starts the vulnerable movement toward the tactical escape boundary.
+            /// </summary>
             internal void BeginWithdrawal()
             {
                 _withdrawalGroup?.BeginWithdrawal();
             }
 
-            /// <summary>Removes this surviving unit from combat as withdrawn.</summary>
+            /// <summary>
+            /// Removes this surviving unit from combat as withdrawn.
+            /// </summary>
             internal void CompleteWithdrawal()
             {
                 _withdrawalGroup?.CompleteWithdrawal();
@@ -726,20 +764,26 @@ namespace Rebellion.Game.Combat
                 _minimumManeuverRatio = minimumManeuverRatio;
             }
 
-            /// <summary>Assigns the unit to its withdrawal group.</summary>
+            /// <summary>
+            /// Assigns the unit to its withdrawal group.
+            /// </summary>
             /// <param name="withdrawalGroup">The group that coordinates this unit's retreat.</param>
             internal void SetWithdrawalGroup(WithdrawalGroup withdrawalGroup)
             {
                 _withdrawalGroup = withdrawalGroup;
             }
 
-            /// <summary>Starts this unit's movement toward the escape boundary.</summary>
+            /// <summary>
+            /// Starts this unit's movement toward the escape boundary.
+            /// </summary>
             internal void StartWithdrawal()
             {
                 IsWithdrawing = true;
             }
 
-            /// <summary>Marks this surviving unit as withdrawn.</summary>
+            /// <summary>
+            /// Marks this surviving unit as withdrawn.
+            /// </summary>
             internal void FinishWithdrawal()
             {
                 if (!IsAlive)
@@ -893,7 +937,9 @@ namespace Rebellion.Game.Combat
                 }
             }
 
-            /// <summary>Updates every charged weapon lane with its strongest available target.</summary>
+            /// <summary>
+            /// Updates every charged weapon lane with its strongest available target.
+            /// </summary>
             /// <param name="targets">The surviving opposing units.</param>
             /// <param name="engagementDistance">The abstract distance between combat forces.</param>
             private void ScanForArcTargets(
@@ -940,7 +986,9 @@ namespace Rebellion.Game.Combat
                 }
             }
 
-            /// <summary>Returns the damage queued by all valid lanes on an arc.</summary>
+            /// <summary>
+            /// Returns the damage queued by all valid lanes on an arc.
+            /// </summary>
             /// <param name="arc">The zero-based firing arc.</param>
             /// <param name="startingDistance">The configured initial separation.</param>
             /// <param name="condition">The ship's current hull condition.</param>
@@ -968,7 +1016,9 @@ namespace Rebellion.Game.Combat
                 return damage;
             }
 
-            /// <summary>Queues each valid lane on an arc against its independently selected target.</summary>
+            /// <summary>
+            /// Queues each valid lane on an arc against its independently selected target.
+            /// </summary>
             /// <param name="arc">The zero-based firing arc.</param>
             /// <param name="startingDistance">The configured initial separation.</param>
             /// <param name="condition">The ship's current hull condition.</param>
@@ -1054,7 +1104,9 @@ namespace Rebellion.Game.Combat
                 CurrentShields = 0;
             }
 
-            /// <summary>Consumes shield strength and returns damage that penetrated the shields.</summary>
+            /// <summary>
+            /// Consumes shield strength and returns damage that penetrated the shields.
+            /// </summary>
             /// <param name="damage">The non-negative incoming damage.</param>
             /// <returns>The damage remaining after the shields absorb what they can.</returns>
             private double ApplyShieldDamage(double damage)
@@ -1065,7 +1117,9 @@ namespace Rebellion.Game.Combat
                 return damage - shieldDamage;
             }
 
-            /// <summary>Applies temporary subsystem damage from ion overflow.</summary>
+            /// <summary>
+            /// Applies temporary subsystem damage from ion overflow.
+            /// </summary>
             /// <param name="ionOverflowDamage">Ion damage that penetrated the shields.</param>
             /// <param name="config">The automatic combat parameters.</param>
             /// <param name="random">The combat random-number stream.</param>
@@ -1093,7 +1147,9 @@ namespace Rebellion.Game.Combat
                 }
             }
 
-            /// <summary>Returns a random temporary component-delay duration.</summary>
+            /// <summary>
+            /// Returns a random temporary component-delay duration.
+            /// </summary>
             /// <param name="config">The automatic combat parameters.</param>
             /// <param name="random">The combat random-number stream.</param>
             /// <returns>The component delay.</returns>
@@ -1107,7 +1163,9 @@ namespace Rebellion.Game.Combat
                 return random.NextInt(minimum, maximum + 1);
             }
 
-            /// <summary>Clears one damaged firing arc and queues it for recharge.</summary>
+            /// <summary>
+            /// Clears one damaged firing arc and queues it for recharge.
+            /// </summary>
             /// <param name="arc">The zero-based firing arc.</param>
             private void ClearArc(int arc)
             {
@@ -1118,7 +1176,9 @@ namespace Rebellion.Game.Combat
                 QueueArcForRecharge(arc);
             }
 
-            /// <summary>Consumes the charge used by an attack and queues the arc for recharge.</summary>
+            /// <summary>
+            /// Consumes the charge used by an attack and queues the arc for recharge.
+            /// </summary>
             /// <param name="arc">The zero-based firing arc.</param>
             /// <param name="consumedCharge">The combined weapon strength fired from the arc.</param>
             private void DischargeArc(int arc, double consumedCharge)
@@ -1127,7 +1187,9 @@ namespace Rebellion.Game.Combat
                 QueueArcForRecharge(arc);
             }
 
-            /// <summary>Adds a depleted arc to the recharge queue once.</summary>
+            /// <summary>
+            /// Adds a depleted arc to the recharge queue once.
+            /// </summary>
             /// <param name="arc">The zero-based firing arc.</param>
             private void QueueArcForRecharge(int arc)
             {
@@ -1138,7 +1200,9 @@ namespace Rebellion.Game.Combat
                 _rechargeQueue.Enqueue(arc);
             }
 
-            /// <summary>Recharges shields according to current hull condition.</summary>
+            /// <summary>
+            /// Recharges shields according to current hull condition.
+            /// </summary>
             private void RechargeShields()
             {
                 double condition = CurrentHull / _maximumHull;
@@ -1148,7 +1212,9 @@ namespace Rebellion.Game.Combat
                 );
             }
 
-            /// <summary>Distributes the ship's recharge budget across depleted arcs in order.</summary>
+            /// <summary>
+            /// Distributes the ship's recharge budget across depleted arcs in order.
+            /// </summary>
             private void RechargeWeapons()
             {
                 double condition = CurrentHull / _maximumHull;
@@ -1169,7 +1235,9 @@ namespace Rebellion.Game.Combat
                 }
             }
 
-            /// <summary>Returns the strongest usable primary-weapon arc at full charge.</summary>
+            /// <summary>
+            /// Returns the strongest usable primary-weapon arc at full charge.
+            /// </summary>
             /// <param name="targetsFighters">Whether the opposing target is a fighter squadron.</param>
             /// <returns>The strongest arc strength.</returns>
             private double GetStrongestArcStrength(bool targetsFighters)
@@ -1189,7 +1257,9 @@ namespace Rebellion.Game.Combat
                 return strongestArc;
             }
 
-            /// <summary>Returns one arc's usable primary-weapon strength.</summary>
+            /// <summary>
+            /// Returns one arc's usable primary-weapon strength.
+            /// </summary>
             /// <param name="arc">The zero-based firing arc.</param>
             /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
             /// <param name="engagementDistance">The abstract distance between combat forces.</param>
@@ -1227,7 +1297,9 @@ namespace Rebellion.Game.Combat
                 return strength;
             }
 
-            /// <summary>Returns one weapon type's non-negative strength on an arc.</summary>
+            /// <summary>
+            /// Returns one weapon type's non-negative strength on an arc.
+            /// </summary>
             /// <param name="type">The weapon type.</param>
             /// <param name="arc">The zero-based firing arc.</param>
             /// <param name="engagementDistance">The abstract distance between combat forces.</param>
@@ -1332,7 +1404,9 @@ namespace Rebellion.Game.Combat
                 }
             }
 
-            /// <summary>Updates each fighter weapon lane with its strongest available target.</summary>
+            /// <summary>
+            /// Updates each fighter weapon lane with its strongest available target.
+            /// </summary>
             /// <param name="targets">The surviving opposing units.</param>
             /// <param name="engagementDistance">The abstract distance between combat forces.</param>
             private void ScanForWeaponTargets(
@@ -1403,14 +1477,18 @@ namespace Rebellion.Game.Combat
                 _currentDurability = 0;
             }
 
-            /// <summary>Returns the durability-adjusted number of surviving fighters.</summary>
+            /// <summary>
+            /// Returns the durability-adjusted number of surviving fighters.
+            /// </summary>
             /// <returns>The surviving fighter count.</returns>
             private double GetRemainingFighterCount()
             {
                 return _currentDurability / _durabilityPerFighter;
             }
 
-            /// <summary>Returns one fighter's usable weapon strength against a target type.</summary>
+            /// <summary>
+            /// Returns one fighter's usable weapon strength against a target type.
+            /// </summary>
             /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
             /// <param name="engagementDistance">The abstract distance between combat forces.</param>
             /// <param name="requireRange">Whether a positive weapon range is required.</param>
@@ -1429,7 +1507,9 @@ namespace Rebellion.Game.Combat
                 return strength;
             }
 
-            /// <summary>Returns one fighter weapon lane's usable strength.</summary>
+            /// <summary>
+            /// Returns one fighter weapon lane's usable strength.
+            /// </summary>
             /// <param name="weaponIndex">The zero-based weapon lane.</param>
             /// <param name="engagementDistance">The abstract distance to the target.</param>
             /// <param name="requireRange">Whether a positive range is required.</param>
@@ -1464,7 +1544,9 @@ namespace Rebellion.Game.Combat
                 };
             }
 
-            /// <summary>Returns a fighter weapon's non-negative usable strength.</summary>
+            /// <summary>
+            /// Returns a fighter weapon's non-negative usable strength.
+            /// </summary>
             /// <param name="strength">The configured weapon strength.</param>
             /// <param name="range">The configured weapon range.</param>
             /// <param name="engagementDistance">The abstract distance between combat forces.</param>
