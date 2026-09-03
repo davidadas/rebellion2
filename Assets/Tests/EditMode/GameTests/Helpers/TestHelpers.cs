@@ -348,9 +348,9 @@ public static class MissionSceneBuilder
         Planet enemyPlanet,
         Officer officer,
         FogOfWarSystem fog
-    ) Build()
+    ) Build(GameConfig config = null)
     {
-        GameRoot game = new GameRoot(TestConfig.Create());
+        GameRoot game = new GameRoot(config ?? TestConfig.Create());
 
         Faction empire = new Faction { InstanceID = "empire" };
         Faction rebels = new Faction { InstanceID = "rebels" };

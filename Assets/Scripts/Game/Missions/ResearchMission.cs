@@ -172,19 +172,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Research missions target own planets and are never foiled.
-        /// </summary>
-        /// <param name="detectorRating">The detector rating (unused).</param>
-        /// <param name="defender">The defender (unused).</param>
-        /// <param name="game">The current game state, unused because research cannot be foiled.</param>
-        /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(
-            int detectorRating,
-            Officer defender,
-            GameRoot game
-        ) => 0;
-
-        /// <summary>
         /// Calculates the probability that at least one researcher produces research progress.
         /// </summary>
         /// <param name="participants">The researchers to evaluate.</param>

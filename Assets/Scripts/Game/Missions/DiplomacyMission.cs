@@ -20,11 +20,6 @@ namespace Rebellion.Game.Missions
         /// </summary>
         internal override bool SuccessfulParticipantsRemainAtLocation => true;
 
-        /// <summary>
-        /// Returns whether hostile forces can foil the mission.
-        /// </summary>
-        internal override bool CanBeFoiled => false;
-
         /// <summary>Creates an empty diplomacy mission copy.</summary>
         /// <returns>An empty diplomacy mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new DiplomacyMission();
