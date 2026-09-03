@@ -68,6 +68,8 @@ namespace Rebellion.Game.Combat
             double previousDefenderDurability = GetTacticalDurability(defender);
             int stagnantIterations = 0;
             int iterationsCompleted = 0;
+            Dictionary<TacticalUnit, PendingDamage> pendingDamage =
+                new Dictionary<TacticalUnit, PendingDamage>();
             for (int iteration = 0; iteration < _config.AutoResolveMaximumIterations; iteration++)
             {
                 iterationsCompleted = iteration + 1;
@@ -77,11 +79,9 @@ namespace Rebellion.Game.Combat
                 WithdrawUnitsAtThreshold(attacker, defender);
                 WithdrawUnitsAtThreshold(defender, attacker);
 
-                Dictionary<TacticalUnit, PendingDamage> pendingDamage = QueueAttacks(
-                    attacker,
-                    defender
-                );
-                AddPendingDamage(pendingDamage, QueueAttacks(defender, attacker));
+                pendingDamage.Clear();
+                QueueAttacks(attacker, defender, pendingDamage);
+                QueueAttacks(defender, attacker, pendingDamage);
                 ApplyPendingDamage(pendingDamage);
                 AdvanceTacticalState(attacker);
                 AdvanceTacticalState(defender);
@@ -192,21 +192,21 @@ namespace Rebellion.Game.Combat
         /// </summary>
         /// <param name="firingForce">The force performing attacks.</param>
         /// <param name="targetForce">The force receiving attacks.</param>
-        /// <returns>Damage grouped by tactical target.</returns>
-        private Dictionary<TacticalUnit, PendingDamage> QueueAttacks(
+        /// <param name="pendingDamage">Damage grouped by tactical target.</param>
+        private void QueueAttacks(
             CombatForce firingForce,
-            CombatForce targetForce
+            CombatForce targetForce,
+            IDictionary<TacticalUnit, PendingDamage> pendingDamage
         )
         {
-            Dictionary<TacticalUnit, PendingDamage> pendingDamage =
-                new Dictionary<TacticalUnit, PendingDamage>();
-            List<TacticalUnit> targets = targetForce
-                .Units.Where(unit => unit.IsTargetable)
-                .ToList();
+            IReadOnlyList<TacticalUnit> targets = targetForce.GetTargetableUnits();
             int scanDivisor = Math.Max(_config.AutoResolveTargetScanDivisor, 1);
 
-            foreach (TacticalUnit attacker in firingForce.Units.Where(unit => unit.CanFire))
+            foreach (TacticalUnit attacker in firingForce.Units)
             {
+                if (!attacker.CanFire)
+                    continue;
+
                 bool scansForTarget =
                     attacker.CanScanForTargets && _random.NextInt(0, scanDivisor) == 0;
                 attacker.QueueAvailableAttacks(
@@ -215,30 +215,6 @@ namespace Rebellion.Game.Combat
                     _config.AutoResolveStartingDistance,
                     pendingDamage
                 );
-            }
-
-            return pendingDamage;
-        }
-
-        /// <summary>
-        /// Merges pending target damage from another firing force.
-        /// </summary>
-        /// <param name="destination">The combined damage collection.</param>
-        /// <param name="source">Damage to append.</param>
-        private static void AddPendingDamage(
-            IDictionary<TacticalUnit, PendingDamage> destination,
-            IReadOnlyDictionary<TacticalUnit, PendingDamage> source
-        )
-        {
-            foreach (KeyValuePair<TacticalUnit, PendingDamage> entry in source)
-            {
-                if (!destination.TryGetValue(entry.Key, out PendingDamage existingDamage))
-                {
-                    destination[entry.Key] = entry.Value;
-                    continue;
-                }
-
-                existingDamage.Add(entry.Value);
             }
         }
 
@@ -272,15 +248,6 @@ namespace Rebellion.Game.Combat
             private readonly List<PendingHit> _hits = new List<PendingHit>();
 
             internal IReadOnlyList<PendingHit> Hits => _hits;
-
-            /// <summary>
-            /// Adds another accumulated attack to this target.
-            /// </summary>
-            /// <param name="source">The accumulated damage to add.</param>
-            internal void Add(PendingDamage source)
-            {
-                _hits.AddRange(source._hits);
-            }
 
             /// <summary>
             /// Adds one weapon lane's damage to the appropriate channel.
@@ -319,8 +286,13 @@ namespace Rebellion.Game.Combat
         /// <param name="force">The force whose tactical state advances.</param>
         private void AdvanceTacticalState(CombatForce force)
         {
-            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable))
+            foreach (TacticalUnit unit in force.Units)
+            {
+                if (!unit.IsTargetable)
+                    continue;
+
                 unit.AdvanceTacticalState(_config, _random);
+            }
         }
 
         /// <summary>
@@ -331,16 +303,20 @@ namespace Rebellion.Game.Combat
         /// <returns>The force's remaining tactical strength.</returns>
         private static double GetTacticalStrength(CombatForce force, CombatForce opposingForce)
         {
-            bool canTargetCapitalShips = opposingForce.Ships.Any(ship => ship.IsTargetable);
-            bool canTargetFighters = opposingForce.Fighters.Any(fighter => fighter.IsTargetable);
-            return force
-                .Units.Where(unit => unit.IsTargetable)
-                .Sum(unit =>
-                    Math.Max(
-                        canTargetCapitalShips ? unit.GetEffectiveness(targetsFighters: false) : 0,
-                        canTargetFighters ? unit.GetEffectiveness(targetsFighters: true) : 0
-                    )
+            bool canTargetCapitalShips = opposingForce.HasTargetableShips;
+            bool canTargetFighters = opposingForce.HasTargetableFighters;
+            double strength = 0;
+            foreach (TacticalUnit unit in force.Units)
+            {
+                if (!unit.IsTargetable)
+                    continue;
+
+                strength += Math.Max(
+                    canTargetCapitalShips ? unit.GetEffectiveness(targetsFighters: false) : 0,
+                    canTargetFighters ? unit.GetEffectiveness(targetsFighters: true) : 0
                 );
+            }
+            return strength;
         }
 
         /// <summary>
@@ -350,9 +326,13 @@ namespace Rebellion.Game.Combat
         /// <returns>The force's remaining tactical durability.</returns>
         private static double GetTacticalDurability(CombatForce force)
         {
-            return force
-                .Units.Where(unit => unit.IsTargetable)
-                .Sum(unit => unit.RemainingDurability);
+            double durability = 0;
+            foreach (TacticalUnit unit in force.Units)
+            {
+                if (unit.IsTargetable)
+                    durability += unit.RemainingDurability;
+            }
+            return durability;
         }
 
         /// <summary>
@@ -449,10 +429,13 @@ namespace Rebellion.Game.Combat
         {
             internal readonly List<CapitalShipState> Ships;
             internal readonly List<StarfighterState> Fighters;
+            internal readonly List<TacticalUnit> Units;
+            private readonly List<TacticalUnit> _targetableUnits = new List<TacticalUnit>();
 
-            internal IEnumerable<TacticalUnit> Units => Ships.Cast<TacticalUnit>().Concat(Fighters);
-            internal bool HasCombatants => Units.Any(unit => unit.IsTargetable);
-            internal bool HasWithdrawnUnits => Units.Any(unit => unit.HasWithdrawn);
+            internal bool HasCombatants => HasTargetableUnits(Units);
+            internal bool HasTargetableShips => HasTargetableUnits(Ships);
+            internal bool HasTargetableFighters => HasTargetableUnits(Fighters);
+            internal bool HasWithdrawnUnits => HasWithdrawnUnit(Units);
             internal double InitialStrength { get; set; }
             internal SpaceCombatSideOutcome Outcome { get; set; }
             internal bool WithdrawalOrdered { get; set; }
@@ -482,8 +465,26 @@ namespace Rebellion.Game.Combat
                         config.AutoResolveMinimumManeuverRatio
                     ))
                     .ToList();
+                Units = new List<TacticalUnit>(Ships.Count + Fighters.Count);
+                Units.AddRange(Ships);
+                Units.AddRange(Fighters);
                 ConfigureWithdrawalGroups(withdrawalGroups);
                 Outcome = SpaceCombatSideOutcome.Active;
+            }
+
+            /// <summary>
+            /// Returns the force's currently targetable units in stable combat order.
+            /// </summary>
+            /// <returns>The reusable target collection.</returns>
+            internal IReadOnlyList<TacticalUnit> GetTargetableUnits()
+            {
+                _targetableUnits.Clear();
+                foreach (TacticalUnit unit in Units)
+                {
+                    if (unit.IsTargetable)
+                        _targetableUnits.Add(unit);
+                }
+                return _targetableUnits;
             }
 
             /// <summary>
@@ -514,6 +515,38 @@ namespace Rebellion.Game.Combat
 
                 foreach (TacticalUnit unit in Units.Where(unit => !assignedUnits.Contains(unit)))
                     AssignWithdrawalGroup(new[] { unit }, canWithdraw: false);
+            }
+
+            /// <summary>
+            /// Determines whether a tactical collection contains a surviving unit.
+            /// </summary>
+            /// <typeparam name="TUnit">The tactical-unit type.</typeparam>
+            /// <param name="units">The units to inspect.</param>
+            /// <returns>True when at least one unit remains targetable.</returns>
+            private static bool HasTargetableUnits<TUnit>(IReadOnlyList<TUnit> units)
+                where TUnit : TacticalUnit
+            {
+                foreach (TUnit unit in units)
+                {
+                    if (unit.IsTargetable)
+                        return true;
+                }
+                return false;
+            }
+
+            /// <summary>
+            /// Determines whether a tactical collection contains a withdrawn unit.
+            /// </summary>
+            /// <param name="units">The units to inspect.</param>
+            /// <returns>True when at least one unit has withdrawn.</returns>
+            private static bool HasWithdrawnUnit(IReadOnlyList<TacticalUnit> units)
+            {
+                foreach (TacticalUnit unit in units)
+                {
+                    if (unit.HasWithdrawn)
+                        return true;
+                }
+                return false;
             }
 
             /// <summary>
@@ -824,11 +857,15 @@ namespace Rebellion.Game.Combat
             internal readonly int InitialHull;
             private readonly bool[] _arcQueuedForRecharge = new bool[4];
             private readonly TacticalUnit[,] _arcTargets = new TacticalUnit[4, 3];
+            private readonly double[,] _arcTargetDamage = new double[4, 3];
             private readonly double[] _currentArcCharge = new double[4];
+            private readonly int[] _ionCannons;
+            private readonly int[] _laserCannons;
             private readonly double _maximumHull;
             private readonly double _maximumShields;
             private readonly double[] _maximumArcCharge = new double[4];
             private readonly Queue<int> _rechargeQueue = new Queue<int>();
+            private readonly int[] _turbolasers;
             private int _attackDelay;
             private int _movementDelay;
 
@@ -874,6 +911,9 @@ namespace Rebellion.Game.Combat
                 InitialHull = Math.Max(ship.CurrentHullStrength, 0);
                 _maximumHull = Math.Max(ship.MaxHullStrength, 1);
                 _maximumShields = Math.Max(ship.MaxShieldStrength, 0);
+                _turbolasers = GetWeaponValues(ship, PrimaryWeaponType.Turbolaser);
+                _laserCannons = GetWeaponValues(ship, PrimaryWeaponType.LaserCannon);
+                _ionCannons = GetWeaponValues(ship, PrimaryWeaponType.IonCannon);
                 CurrentHull = InitialHull;
                 CurrentShields = _maximumShields;
                 for (int arc = 0; arc < _maximumArcCharge.Length; arc++)
@@ -955,18 +995,29 @@ namespace Rebellion.Game.Combat
 
                     for (int weaponIndex = 0; weaponIndex < _weaponTypes.Length; weaponIndex++)
                     {
-                        PrimaryWeaponType weaponType = _weaponTypes[weaponIndex];
                         _arcTargets[arc, weaponIndex] = null;
-                        double strongestDamage = 0;
-                        foreach (TacticalUnit candidate in targets)
+                        _arcTargetDamage[arc, weaponIndex] = 0;
+                    }
+                }
+
+                foreach (TacticalUnit candidate in targets)
+                {
+                    double engagementRange = GetDistanceTo(candidate, engagementDistance);
+                    double maneuverMultiplier = GetManeuverMultiplier(candidate);
+                    for (int arc = 0; arc < _currentArcCharge.Length; arc++)
+                    {
+                        if (_currentArcCharge[arc] < _maximumArcCharge[arc])
+                            continue;
+
+                        for (int weaponIndex = 0; weaponIndex < _weaponTypes.Length; weaponIndex++)
                         {
+                            PrimaryWeaponType weaponType = _weaponTypes[weaponIndex];
                             if (
                                 weaponType == PrimaryWeaponType.IonCannon
                                 && candidate.IsStarfighter
                             )
                                 continue;
 
-                            double engagementRange = GetDistanceTo(candidate, engagementDistance);
                             double candidateDamage =
                                 GetWeaponStrength(
                                     weaponType,
@@ -974,12 +1025,12 @@ namespace Rebellion.Game.Combat
                                     engagementRange,
                                     requireRange: true
                                 )
-                                * GetManeuverMultiplier(candidate)
+                                * maneuverMultiplier
                                 * condition;
-                            if (candidateDamage <= strongestDamage)
+                            if (candidateDamage <= _arcTargetDamage[arc, weaponIndex])
                                 continue;
 
-                            strongestDamage = candidateDamage;
+                            _arcTargetDamage[arc, weaponIndex] = candidateDamage;
                             _arcTargets[arc, weaponIndex] = candidate;
                         }
                     }
@@ -1312,9 +1363,15 @@ namespace Rebellion.Game.Combat
                 bool requireRange
             )
             {
+                int[] values = type switch
+                {
+                    PrimaryWeaponType.Turbolaser => _turbolasers,
+                    PrimaryWeaponType.LaserCannon => _laserCannons,
+                    PrimaryWeaponType.IonCannon => _ionCannons,
+                    _ => null,
+                };
                 if (
-                    !Ship.PrimaryWeapons.TryGetValue(type, out int[] values)
-                    || values == null
+                    values == null
                     || arc >= values.Length
                     || (
                         requireRange
@@ -1324,6 +1381,17 @@ namespace Rebellion.Game.Combat
                     return 0;
 
                 return Math.Max(values[arc], 0);
+            }
+
+            /// <summary>
+            /// Returns the configured values for one capital-ship weapon type.
+            /// </summary>
+            /// <param name="ship">The capital ship providing weapon values.</param>
+            /// <param name="type">The weapon type to retrieve.</param>
+            /// <returns>The configured weapon values, or null when absent.</returns>
+            private static int[] GetWeaponValues(CapitalShip ship, PrimaryWeaponType type)
+            {
+                return ship.PrimaryWeapons.TryGetValue(type, out int[] values) ? values : null;
             }
         }
 
@@ -1335,6 +1403,7 @@ namespace Rebellion.Game.Combat
             internal readonly Starfighter Fighter;
             internal readonly int InitialSquadronSize;
             private readonly double _durabilityPerFighter;
+            private readonly double[] _weaponTargetDamage = new double[3];
             private readonly TacticalUnit[] _weaponTargets = new TacticalUnit[3];
             private double _currentDurability;
 
@@ -1418,24 +1487,26 @@ namespace Rebellion.Game.Combat
                 for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
                 {
                     _weaponTargets[weaponIndex] = null;
-                    double strongestDamage = 0;
-                    foreach (TacticalUnit candidate in targets)
+                    _weaponTargetDamage[weaponIndex] = 0;
+                }
+
+                foreach (TacticalUnit candidate in targets)
+                {
+                    double engagementRange = GetDistanceTo(candidate, engagementDistance);
+                    double maneuverMultiplier = GetManeuverMultiplier(candidate);
+                    for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
                     {
                         if (weaponIndex == 2 && candidate.IsStarfighter)
                             continue;
 
                         double candidateDamage =
-                            GetWeaponStrength(
-                                weaponIndex,
-                                GetDistanceTo(candidate, engagementDistance),
-                                requireRange: true
-                            )
-                            * GetManeuverMultiplier(candidate)
+                            GetWeaponStrength(weaponIndex, engagementRange, requireRange: true)
+                            * maneuverMultiplier
                             * fighterCount;
-                        if (candidateDamage <= strongestDamage)
+                        if (candidateDamage <= _weaponTargetDamage[weaponIndex])
                             continue;
 
-                        strongestDamage = candidateDamage;
+                        _weaponTargetDamage[weaponIndex] = candidateDamage;
                         _weaponTargets[weaponIndex] = candidate;
                     }
                 }
