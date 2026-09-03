@@ -682,12 +682,7 @@ namespace Rebellion.Tests.AI.Planners
                 "training-world",
                 empire.InstanceID
             );
-            Planet target = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "target",
-                rebels.InstanceID
-            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             AITestSceneBuilder.AddProductionFacility(
                 game,
                 planet,

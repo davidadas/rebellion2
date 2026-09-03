@@ -176,11 +176,7 @@ namespace Rebellion.AI.Planners.Demand
                         BuildingType.None,
                         destination,
                         deficit,
-                        GetPressure(
-                            deficit,
-                            desiredSupply,
-                            config.SpecialForcesDemandPercent
-                        ),
+                        GetPressure(deficit, desiredSupply, config.SpecialForcesDemandPercent),
                         template.GetTypeID()
                     )
                 );

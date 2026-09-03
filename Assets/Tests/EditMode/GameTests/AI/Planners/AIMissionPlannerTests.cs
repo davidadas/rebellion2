@@ -584,9 +584,7 @@ namespace Rebellion.Tests.AI.Planners
                 context.GetSpecialForcesIntent(specialForcesDecoy)
             );
             Assert.IsFalse(proposals.Any(proposal => proposal.Participant == leadSpy));
-            Assert.IsFalse(
-                proposals.Any(proposal => proposal.Participant == specialForcesDecoy)
-            );
+            Assert.IsFalse(proposals.Any(proposal => proposal.Participant == specialForcesDecoy));
         }
 
         [Test]
