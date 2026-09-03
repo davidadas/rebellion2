@@ -37,32 +37,32 @@ namespace Rebellion.Game.Combat
         /// <param name="attackerFighters">The attacking fighter squadrons.</param>
         /// <param name="defenderShips">The defending capital ships.</param>
         /// <param name="defenderFighters">The defending fighter squadrons.</param>
-        /// <param name="attackerWithdrawableUnits">The attacking units capable of retreat.</param>
-        /// <param name="defenderWithdrawableUnits">The defending units capable of retreat.</param>
+        /// <param name="attackerWithdrawalGroups">The attacking unit groups capable of retreat.</param>
+        /// <param name="defenderWithdrawalGroups">The defending unit groups capable of retreat.</param>
         /// <returns>The resolved tactical state for both forces.</returns>
         public SpaceCombatAutoResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
             IReadOnlyList<Starfighter> attackerFighters,
             IReadOnlyList<CapitalShip> defenderShips,
             IReadOnlyList<Starfighter> defenderFighters,
-            ISet<ISceneNode> attackerWithdrawableUnits,
-            ISet<ISceneNode> defenderWithdrawableUnits
+            IReadOnlyList<IReadOnlyCollection<ISceneNode>> attackerWithdrawalGroups,
+            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups
         )
         {
             CombatForce attacker = new CombatForce(
                 attackerShips,
                 attackerFighters,
-                attackerWithdrawableUnits,
+                attackerWithdrawalGroups,
                 _config
             );
             CombatForce defender = new CombatForce(
                 defenderShips,
                 defenderFighters,
-                defenderWithdrawableUnits,
+                defenderWithdrawalGroups,
                 _config
             );
-            attacker.InitialStrength = GetTacticalStrength(attacker);
-            defender.InitialStrength = GetTacticalStrength(defender);
+            attacker.InitialStrength = GetTacticalStrength(attacker, defender);
+            defender.InitialStrength = GetTacticalStrength(defender, attacker);
 
             double previousAttackerDurability = GetTacticalDurability(attacker);
             double previousDefenderDurability = GetTacticalDurability(defender);
@@ -74,8 +74,8 @@ namespace Rebellion.Game.Combat
                 if (CompleteEliminatedForces(attacker, defender))
                     break;
 
-                WithdrawUnitsAtThreshold(attacker);
-                WithdrawUnitsAtThreshold(defender);
+                WithdrawUnitsAtThreshold(attacker, defender);
+                WithdrawUnitsAtThreshold(defender, attacker);
 
                 Dictionary<TacticalUnit, PendingDamage> pendingDamage = QueueAttacks(
                     attacker,
@@ -86,8 +86,8 @@ namespace Rebellion.Game.Combat
                 AdvanceTacticalState(attacker);
                 AdvanceTacticalState(defender);
 
-                double attackerStrength = GetTacticalStrength(attacker);
-                double defenderStrength = GetTacticalStrength(defender);
+                double attackerStrength = GetTacticalStrength(attacker, defender);
+                double defenderStrength = GetTacticalStrength(defender, attacker);
                 double attackerDurability = GetTacticalDurability(attacker);
                 double defenderDurability = GetTacticalDurability(defender);
                 bool stateChanged =
@@ -112,8 +112,8 @@ namespace Rebellion.Game.Combat
                 ResolveStalemate(
                     attacker,
                     defender,
-                    GetTacticalStrength(attacker),
-                    GetTacticalStrength(defender)
+                    GetTacticalStrength(attacker, defender),
+                    GetTacticalStrength(defender, attacker)
                 );
             }
 
@@ -150,9 +150,10 @@ namespace Rebellion.Game.Combat
         /// Begins per-unit withdrawal after a force falls below the original strength threshold.
         /// </summary>
         /// <param name="force">The force whose withdrawal state is evaluated.</param>
-        private void WithdrawUnitsAtThreshold(CombatForce force)
+        /// <param name="opposingForce">The force providing the available target types.</param>
+        private void WithdrawUnitsAtThreshold(CombatForce force, CombatForce opposingForce)
         {
-            if (force.WithdrawalOrdered || !HasReachedWithdrawalThreshold(force))
+            if (force.WithdrawalOrdered || !HasReachedWithdrawalThreshold(force, opposingForce))
                 return;
 
             force.WithdrawalOrdered = true;
@@ -164,13 +165,14 @@ namespace Rebellion.Game.Combat
         /// Determines whether a force has fallen below one third of its initial tactical strength.
         /// </summary>
         /// <param name="force">The force to inspect.</param>
+        /// <param name="opposingForce">The force providing the available target types.</param>
         /// <returns>True when the withdrawal threshold has been reached.</returns>
-        private bool HasReachedWithdrawalThreshold(CombatForce force)
+        private bool HasReachedWithdrawalThreshold(CombatForce force, CombatForce opposingForce)
         {
             if (!force.HasCombatants || force.InitialStrength <= 0)
                 return false;
 
-            return GetTacticalStrength(force) / force.InitialStrength
+            return GetTacticalStrength(force, opposingForce) / force.InitialStrength
                 < _config.AutoResolveRetreatStrengthRatio;
         }
 
@@ -250,29 +252,32 @@ namespace Rebellion.Game.Combat
         {
             foreach (KeyValuePair<TacticalUnit, PendingDamage> entry in pendingDamage)
             {
-                entry.Key.ApplyDamage(
-                    entry.Value.ConventionalDamage,
-                    entry.Value.IonDamage,
-                    _config,
-                    _random
-                );
+                foreach (PendingHit hit in entry.Value.Hits)
+                {
+                    entry.Key.ApplyDamage(
+                        hit.IsIonDamage ? 0 : hit.Damage,
+                        hit.IsIonDamage ? hit.Damage : 0,
+                        _config,
+                        _random
+                    );
+                }
             }
         }
 
         /// <summary>
-        /// Keeps conventional and ion damage separate until both sides have finished firing.
+        /// Keeps queued hits in firing order until both sides have finished firing.
         /// </summary>
         private sealed class PendingDamage
         {
-            internal double ConventionalDamage { get; private set; }
-            internal double IonDamage { get; private set; }
+            private readonly List<PendingHit> _hits = new List<PendingHit>();
+
+            internal IReadOnlyList<PendingHit> Hits => _hits;
 
             /// <summary>Adds another accumulated attack to this target.</summary>
             /// <param name="source">The accumulated damage to add.</param>
             internal void Add(PendingDamage source)
             {
-                ConventionalDamage += source.ConventionalDamage;
-                IonDamage += source.IonDamage;
+                _hits.AddRange(source._hits);
             }
 
             /// <summary>Adds one weapon lane's damage to the appropriate channel.</summary>
@@ -280,10 +285,25 @@ namespace Rebellion.Game.Combat
             /// <param name="isIonDamage">Whether the damage comes from ion weapons.</param>
             internal void Add(double damage, bool isIonDamage)
             {
-                if (isIonDamage)
-                    IonDamage += damage;
-                else
-                    ConventionalDamage += damage;
+                _hits.Add(new PendingHit(damage, isIonDamage));
+            }
+        }
+
+        /// <summary>
+        /// Records one conventional or ion hit in its original firing order.
+        /// </summary>
+        private readonly struct PendingHit
+        {
+            internal double Damage { get; }
+            internal bool IsIonDamage { get; }
+
+            /// <summary>Creates a pending hit.</summary>
+            /// <param name="damage">The positive damage dealt by the hit.</param>
+            /// <param name="isIonDamage">Whether the hit uses ion damage.</param>
+            internal PendingHit(double damage, bool isIonDamage)
+            {
+                Damage = damage;
+                IsIonDamage = isIonDamage;
             }
         }
 
@@ -301,13 +321,20 @@ namespace Rebellion.Game.Combat
         /// Calculates the remaining strength used by the original completion checks.
         /// </summary>
         /// <param name="force">The force being measured.</param>
+        /// <param name="opposingForce">The force providing the available target types.</param>
         /// <returns>The force's remaining tactical strength.</returns>
-        private static double GetTacticalStrength(CombatForce force)
+        private static double GetTacticalStrength(CombatForce force, CombatForce opposingForce)
         {
-            return force.Ships.Where(ship => ship.IsTargetable).Sum(ship => ship.GetEffectiveness())
-                + force
-                    .Fighters.Where(fighter => fighter.IsTargetable)
-                    .Sum(fighter => fighter.GetEffectiveness());
+            bool canTargetCapitalShips = opposingForce.Ships.Any(ship => ship.IsTargetable);
+            bool canTargetFighters = opposingForce.Fighters.Any(fighter => fighter.IsTargetable);
+            return force
+                .Units.Where(unit => unit.IsTargetable)
+                .Sum(unit =>
+                    Math.Max(
+                        canTargetCapitalShips ? unit.GetEffectiveness(targetsFighters: false) : 0,
+                        canTargetFighters ? unit.GetEffectiveness(targetsFighters: true) : 0
+                    )
+                );
         }
 
         /// <summary>
@@ -429,33 +456,123 @@ namespace Rebellion.Game.Combat
             /// </summary>
             /// <param name="ships">The force's capital ships.</param>
             /// <param name="fighters">The force's fighter squadrons.</param>
-            /// <param name="withdrawableUnits">The force members capable of retreat.</param>
+            /// <param name="withdrawalGroups">The force's unit groups capable of retreat.</param>
             /// <param name="config">The automatic combat parameters.</param>
             internal CombatForce(
                 IReadOnlyList<CapitalShip> ships,
                 IReadOnlyList<Starfighter> fighters,
-                ISet<ISceneNode> withdrawableUnits,
+                IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups,
                 GameConfig.SpaceCombatConfig config
             )
             {
-                ISet<ISceneNode> eligibleUnits = withdrawableUnits ?? new HashSet<ISceneNode>();
                 Ships = (ships ?? Array.Empty<CapitalShip>())
                     .Where(ship => ship != null)
-                    .Select(ship => new CapitalShipState(
-                        ship,
-                        eligibleUnits.Contains(ship),
-                        config
-                    ))
+                    .Select(ship => new CapitalShipState(ship, config))
                     .ToList();
                 Fighters = (fighters ?? Array.Empty<Starfighter>())
                     .Where(fighter => fighter != null)
                     .Select(fighter => new StarfighterState(
                         fighter,
-                        eligibleUnits.Contains(fighter),
                         config.AutoResolveMinimumManeuverRatio
                     ))
                     .ToList();
+                ConfigureWithdrawalGroups(withdrawalGroups);
                 Outcome = SpaceCombatSideOutcome.Active;
+            }
+
+            /// <summary>Assigns every tactical unit to an eligible or ineligible withdrawal group.</summary>
+            /// <param name="withdrawalGroups">The scene-node groups capable of retreat.</param>
+            private void ConfigureWithdrawalGroups(
+                IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups
+            )
+            {
+                Dictionary<ISceneNode, TacticalUnit> stateByNode = Units.ToDictionary(unit =>
+                    unit.Node
+                );
+                HashSet<TacticalUnit> assignedUnits = new HashSet<TacticalUnit>();
+                foreach (
+                    IReadOnlyCollection<ISceneNode> group in withdrawalGroups
+                        ?? Array.Empty<IReadOnlyCollection<ISceneNode>>()
+                )
+                {
+                    List<TacticalUnit> members = (group ?? Array.Empty<ISceneNode>())
+                        .Where(stateByNode.ContainsKey)
+                        .Select(node => stateByNode[node])
+                        .Where(assignedUnits.Add)
+                        .ToList();
+                    if (members.Count > 0)
+                        AssignWithdrawalGroup(members, canWithdraw: true);
+                }
+
+                foreach (TacticalUnit unit in Units.Where(unit => !assignedUnits.Contains(unit)))
+                    AssignWithdrawalGroup(new[] { unit }, canWithdraw: false);
+            }
+
+            /// <summary>Assigns tactical units to a shared withdrawal group.</summary>
+            /// <param name="units">The tactical units to group.</param>
+            /// <param name="canWithdraw">Whether the group can leave combat.</param>
+            private static void AssignWithdrawalGroup(
+                IReadOnlyList<TacticalUnit> units,
+                bool canWithdraw
+            )
+            {
+                WithdrawalGroup group = new WithdrawalGroup(units, canWithdraw);
+                foreach (TacticalUnit unit in units)
+                    unit.SetWithdrawalGroup(group);
+            }
+        }
+
+        /// <summary>
+        /// Coordinates tactical withdrawal for units that must leave combat together.
+        /// </summary>
+        private sealed class WithdrawalGroup
+        {
+            private readonly IReadOnlyList<TacticalUnit> _units;
+
+            internal bool CanWithdraw { get; }
+            internal bool IsWithdrawing { get; private set; }
+
+            /// <summary>Creates a withdrawal group.</summary>
+            /// <param name="units">The units that must withdraw together.</param>
+            /// <param name="canWithdraw">Whether the group can leave the battle.</param>
+            internal WithdrawalGroup(IReadOnlyList<TacticalUnit> units, bool canWithdraw)
+            {
+                _units = units ?? Array.Empty<TacticalUnit>();
+                CanWithdraw = canWithdraw;
+            }
+
+            /// <summary>Starts withdrawal for every surviving member.</summary>
+            internal void BeginWithdrawal()
+            {
+                if (!CanWithdraw || IsWithdrawing)
+                    return;
+
+                IsWithdrawing = true;
+                foreach (TacticalUnit unit in _units.Where(unit => unit.IsTargetable))
+                    unit.StartWithdrawal();
+            }
+
+            /// <summary>Completes withdrawal once every surviving member reaches safety.</summary>
+            /// <param name="withdrawalDistance">The distance required to leave combat.</param>
+            internal void CompleteWithdrawalWhenReady(double withdrawalDistance)
+            {
+                if (
+                    !IsWithdrawing
+                    || _units.Any(unit =>
+                        unit.IsAlive && unit.WithdrawalDistance < withdrawalDistance
+                    )
+                )
+                    return;
+
+                CompleteWithdrawal();
+            }
+
+            /// <summary>Removes every surviving member from combat as withdrawn.</summary>
+            internal void CompleteWithdrawal()
+            {
+                foreach (TacticalUnit unit in _units.Where(unit => unit.IsAlive))
+                    unit.FinishWithdrawal();
+                IsWithdrawing = false;
             }
         }
 
@@ -464,12 +581,13 @@ namespace Rebellion.Game.Combat
         /// </summary>
         private abstract class TacticalUnit
         {
-            private readonly bool _canWithdraw;
             private readonly double _minimumManeuverRatio;
+            private WithdrawalGroup _withdrawalGroup;
             private double _approachDistance;
             private double _withdrawalDistance;
 
             protected double MinimumManeuverRatio => _minimumManeuverRatio;
+            internal abstract ISceneNode Node { get; }
             internal abstract bool IsAlive { get; }
             internal abstract double ManeuverRate { get; }
             internal abstract double ClosingSpeed { get; }
@@ -479,10 +597,14 @@ namespace Rebellion.Game.Combat
             internal abstract bool CanScanForTargets { get; }
             internal virtual bool IsAttackDelayed => false;
             internal bool CanFire => IsTargetable && !IsWithdrawing && !IsAttackDelayed;
-            internal bool CanWithdraw => _canWithdraw && IsTargetable && !IsWithdrawing;
+            internal bool CanWithdraw =>
+                _withdrawalGroup?.CanWithdraw == true
+                && IsTargetable
+                && !_withdrawalGroup.IsWithdrawing;
             internal bool HasWithdrawn { get; private set; }
             internal bool IsWithdrawing { get; private set; }
             internal bool IsTargetable => IsAlive && !HasWithdrawn;
+            internal double WithdrawalDistance => _withdrawalDistance;
 
             /// <summary>Updates this unit's target when scanning and queues available attacks.</summary>
             /// <param name="targets">The surviving opposing units.</param>
@@ -535,8 +657,9 @@ namespace Rebellion.Game.Combat
             }
 
             /// <summary>Calculates this unit's remaining tactical strength.</summary>
+            /// <param name="targetsFighters">Whether the opposing target is a fighter squadron.</param>
             /// <returns>The remaining tactical strength.</returns>
-            internal abstract double GetEffectiveness();
+            internal abstract double GetEffectiveness(bool targetsFighters);
 
             /// <summary>Applies simultaneous tactical damage.</summary>
             /// <param name="conventionalDamage">The non-negative hull-damaging attack strength.</param>
@@ -562,8 +685,9 @@ namespace Rebellion.Game.Combat
                 if (IsWithdrawing)
                 {
                     _withdrawalDistance += WithdrawalSpeed;
-                    if (_withdrawalDistance >= Math.Max(config.AutoResolveWithdrawalDistance, 0))
-                        CompleteWithdrawal();
+                    _withdrawalGroup.CompleteWithdrawalWhenReady(
+                        Math.Max(config.AutoResolveWithdrawalDistance, 0)
+                    );
                     return;
                 }
 
@@ -584,31 +708,45 @@ namespace Rebellion.Game.Combat
             /// <summary>Starts the vulnerable movement toward the tactical escape boundary.</summary>
             internal void BeginWithdrawal()
             {
-                if (!CanWithdraw)
-                    return;
-
-                IsWithdrawing = true;
+                _withdrawalGroup?.BeginWithdrawal();
             }
 
             /// <summary>Removes this surviving unit from combat as withdrawn.</summary>
             internal void CompleteWithdrawal()
+            {
+                _withdrawalGroup?.CompleteWithdrawal();
+            }
+
+            /// <summary>
+            /// Creates tactical state using the configured maneuver floor.
+            /// </summary>
+            /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
+            protected TacticalUnit(double minimumManeuverRatio)
+            {
+                _minimumManeuverRatio = minimumManeuverRatio;
+            }
+
+            /// <summary>Assigns the unit to its withdrawal group.</summary>
+            /// <param name="withdrawalGroup">The group that coordinates this unit's retreat.</param>
+            internal void SetWithdrawalGroup(WithdrawalGroup withdrawalGroup)
+            {
+                _withdrawalGroup = withdrawalGroup;
+            }
+
+            /// <summary>Starts this unit's movement toward the escape boundary.</summary>
+            internal void StartWithdrawal()
+            {
+                IsWithdrawing = true;
+            }
+
+            /// <summary>Marks this surviving unit as withdrawn.</summary>
+            internal void FinishWithdrawal()
             {
                 if (!IsAlive)
                     return;
 
                 HasWithdrawn = true;
                 IsWithdrawing = false;
-            }
-
-            /// <summary>
-            /// Creates tactical state using the configured maneuver floor.
-            /// </summary>
-            /// <param name="canWithdraw">Whether the unit can retreat from combat.</param>
-            /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
-            protected TacticalUnit(bool canWithdraw, double minimumManeuverRatio)
-            {
-                _canWithdraw = canWithdraw;
-                _minimumManeuverRatio = minimumManeuverRatio;
             }
 
             /// <summary>
@@ -652,6 +790,7 @@ namespace Rebellion.Game.Combat
 
             internal double CurrentHull { get; private set; }
             internal double CurrentShields { get; private set; }
+            internal override ISceneNode Node => Ship;
             internal override bool IsAlive => CurrentHull > 0;
             internal override bool IsStarfighter => false;
             internal override double RemainingDurability => CurrentHull + CurrentShields;
@@ -683,14 +822,9 @@ namespace Rebellion.Game.Combat
             /// Creates tactical state from a capital ship's current strategic state.
             /// </summary>
             /// <param name="ship">The capital ship entering combat.</param>
-            /// <param name="canWithdraw">Whether the ship can retreat from combat.</param>
             /// <param name="config">The automatic combat parameters.</param>
-            internal CapitalShipState(
-                CapitalShip ship,
-                bool canWithdraw,
-                GameConfig.SpaceCombatConfig config
-            )
-                : base(canWithdraw, config.AutoResolveMinimumManeuverRatio)
+            internal CapitalShipState(CapitalShip ship, GameConfig.SpaceCombatConfig config)
+                : base(config.AutoResolveMinimumManeuverRatio)
             {
                 Ship = ship;
                 InitialHull = Math.Max(ship.CurrentHullStrength, 0);
@@ -877,10 +1011,10 @@ namespace Rebellion.Game.Combat
             }
 
             /// <inheritdoc />
-            internal override double GetEffectiveness()
+            internal override double GetEffectiveness(bool targetsFighters)
             {
                 double condition = CurrentHull / _maximumHull;
-                return GetStrongestArcStrength() * condition;
+                return GetStrongestArcStrength(targetsFighters) * condition;
             }
 
             /// <inheritdoc />
@@ -1035,9 +1169,10 @@ namespace Rebellion.Game.Combat
                 }
             }
 
-            /// <summary>Returns the strongest primary-weapon arc at full charge.</summary>
+            /// <summary>Returns the strongest usable primary-weapon arc at full charge.</summary>
+            /// <param name="targetsFighters">Whether the opposing target is a fighter squadron.</param>
             /// <returns>The strongest arc strength.</returns>
-            private double GetStrongestArcStrength()
+            private double GetStrongestArcStrength(bool targetsFighters)
             {
                 double strongestArc = 0;
                 for (int arc = 0; arc < 4; arc++)
@@ -1045,9 +1180,9 @@ namespace Rebellion.Game.Combat
                         strongestArc,
                         GetArcStrength(
                             arc,
-                            targetsFighters: false,
+                            targetsFighters,
                             engagementDistance: 0,
-                            requireRange: false
+                            requireRange: true
                         )
                     );
 
@@ -1138,6 +1273,7 @@ namespace Rebellion.Game.Combat
                         (int)Math.Ceiling(_currentDurability / _durabilityPerFighter)
                     )
                     : 0;
+            internal override ISceneNode Node => Fighter;
             internal override bool IsAlive => _currentDurability > 0;
             internal override bool IsStarfighter => true;
             internal override double RemainingDurability => _currentDurability;
@@ -1155,14 +1291,9 @@ namespace Rebellion.Game.Combat
             /// Creates tactical state from a fighter squadron's current strategic state.
             /// </summary>
             /// <param name="fighter">The fighter squadron entering combat.</param>
-            /// <param name="canWithdraw">Whether the squadron can retreat from combat.</param>
             /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
-            internal StarfighterState(
-                Starfighter fighter,
-                bool canWithdraw,
-                double minimumManeuverRatio
-            )
-                : base(canWithdraw, minimumManeuverRatio)
+            internal StarfighterState(Starfighter fighter, double minimumManeuverRatio)
+                : base(minimumManeuverRatio)
             {
                 Fighter = fighter;
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
@@ -1237,12 +1368,12 @@ namespace Rebellion.Game.Combat
             }
 
             /// <inheritdoc />
-            internal override double GetEffectiveness()
+            internal override double GetEffectiveness(bool targetsFighters)
             {
                 return GetCombinedWeaponStrength(
-                        targetsFighters: false,
+                        targetsFighters,
                         engagementDistance: 0,
-                        requireRange: false
+                        requireRange: true
                     ) * GetRemainingFighterCount();
             }
 

@@ -1341,6 +1341,7 @@ namespace Rebellion.Tests.Managers
                     weaponPower,
                     weaponPower,
                     weaponPower,
+                    100,
                 };
             }
 

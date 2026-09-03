@@ -663,23 +663,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the tactical units capable of leaving an automatically resolved battle.
+        /// Returns the tactical unit groups capable of leaving an automatically resolved battle.
         /// </summary>
         /// <param name="fleets">The fleets on the withdrawing side.</param>
         /// <param name="opponents">The opposing fleets.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The withdrawing owner identifier.</param>
-        /// <returns>The ships and fighter squadrons that can withdraw.</returns>
-        private HashSet<ISceneNode> GetAutomaticallyWithdrawableUnits(
+        /// <returns>The fleets and independent fighter squadrons that can withdraw.</returns>
+        private List<IReadOnlyCollection<ISceneNode>> GetAutomaticWithdrawalGroups(
             IReadOnlyList<Fleet> fleets,
             IReadOnlyList<Fleet> opponents,
             Planet planet,
             string ownerInstanceId
         )
         {
-            HashSet<ISceneNode> units = new HashSet<ISceneNode>();
+            List<IReadOnlyCollection<ISceneNode>> groups =
+                new List<IReadOnlyCollection<ISceneNode>>();
             if (IsRetreatBlockedByGravityWell(planet, opponents))
-                return units;
+                return groups;
 
             foreach (
                 Fleet fleet in (fleets ?? Array.Empty<Fleet>()).Where(
@@ -687,19 +688,24 @@ namespace Rebellion.Systems
                 )
             )
             {
-                units.UnionWith(GetActiveCapitalShips(fleet));
-                units.UnionWith(GetActiveStarfighters(fleet));
+                List<ISceneNode> fleetUnits = GetActiveCapitalShips(fleet)
+                    .Cast<ISceneNode>()
+                    .Concat(GetActiveStarfighters(fleet))
+                    .Distinct()
+                    .ToList();
+                if (fleetUnits.Count > 0)
+                    groups.Add(fleetUnits);
             }
 
             foreach (Starfighter fighter in GetActivePlanetStarfighters(planet, ownerInstanceId))
             {
                 if (fighter.Hyperdrive > 0 && _movement.CanEvacuateToNearestFriendlyPlanet(fighter))
                 {
-                    units.Add(fighter);
+                    groups.Add(new ISceneNode[] { fighter });
                 }
             }
 
-            return units;
+            return groups;
         }
 
         /// <summary>
@@ -1123,25 +1129,27 @@ namespace Rebellion.Systems
                 .Where(IsActiveStarfighter)
                 .Distinct()
                 .ToList();
-            HashSet<ISceneNode> attackerWithdrawableUnits = GetAutomaticallyWithdrawableUnits(
-                attackerFleets,
-                defenderFleets,
-                planet,
-                attackerOwnerInstanceId
-            );
-            HashSet<ISceneNode> defenderWithdrawableUnits = GetAutomaticallyWithdrawableUnits(
-                defenderFleets,
-                attackerFleets,
-                planet,
-                defenderOwnerInstanceId
-            );
+            List<IReadOnlyCollection<ISceneNode>> attackerWithdrawalGroups =
+                GetAutomaticWithdrawalGroups(
+                    attackerFleets,
+                    defenderFleets,
+                    planet,
+                    attackerOwnerInstanceId
+                );
+            List<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
+                GetAutomaticWithdrawalGroups(
+                    defenderFleets,
+                    attackerFleets,
+                    planet,
+                    defenderOwnerInstanceId
+                );
             SpaceCombatAutoResult autoResult = _autoResolver.Resolve(
                 attackerShips,
                 attackerFighters,
                 defenderShips,
                 defenderFighters,
-                attackerWithdrawableUnits,
-                defenderWithdrawableUnits
+                attackerWithdrawalGroups,
+                defenderWithdrawalGroups
             );
             withdrawnUnits = autoResult
                 .Ships.Where(outcome => outcome.Withdrew)
