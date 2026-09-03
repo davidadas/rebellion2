@@ -264,6 +264,78 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void OnContextMenuCommandSelected_RapidManagementToggles_StopPreviousResponseAudio()
+        {
+            DestroyAudioManagers();
+            AudioManager audioManager = AudioManager.EnsureExists();
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            Faction faction = new Faction();
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            advisorTheme.AudioRoot = "Audio";
+            advisorTheme.PlanetaryGarrisonManagementEnabled = CreateResponse(
+                "GarrisonEnabled",
+                "garrison-enabled"
+            );
+            advisorTheme.PlanetaryGarrisonManagementDisabled = CreateResponse(
+                "GarrisonDisabled",
+                "garrison-disabled"
+            );
+            Texture2D frame = new Texture2D(1, 1);
+            AudioClip enabledClip = AudioClip.Create("GarrisonEnabled", 1, 1, 44100, false);
+            AudioClip disabledClip = AudioClip.Create("GarrisonDisabled", 1, 1, 44100, false);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [advisorTheme.GetFramePath("GarrisonEnabled", 0, false)] = frame,
+                [advisorTheme.GetFramePath("GarrisonDisabled", 0, false)] = frame,
+            };
+            Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>
+            {
+                ["Audio/garrison-enabled"] = enabledClip,
+                ["Audio/garrison-disabled"] = disabledClip,
+            };
+            List<AudioPlaybackHandle> playbacks = new List<AudioPlaybackHandle>();
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = new StrategyAdvisorController(
+                    () => faction,
+                    path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
+                    _ => { },
+                    playSfxInstance: path =>
+                    {
+                        AudioPlaybackHandle playback = audioManager.PlaySfxInstance(clips[path]);
+                        playbacks.Add(playback);
+                        return playback;
+                    }
+                );
+                controller.Initialize(new TestActions());
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+
+                Assert.AreEqual(1, playbacks.Count);
+                Assert.AreSame(enabledClip, playbacks[0].Source.clip);
+
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+
+                Assert.AreEqual(2, playbacks.Count);
+                Assert.IsNull(playbacks[0].Source);
+                Assert.AreSame(disabledClip, playbacks[1].Source.clip);
+            }
+            finally
+            {
+                audioManager.StopSfx();
+                UnityEngine.Object.DestroyImmediate(enabledClip);
+                UnityEngine.Object.DestroyImmediate(disabledClip);
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+                DestroyAudioManagers();
+            }
+        }
+
+        [Test]
         public void Render_SameThemeAfterIdleFramesLoad_RefreshesAdvisorImages()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
@@ -602,6 +674,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             );
             controller.Initialize(new TestActions());
             return controller;
+        }
+
+        private static void DestroyAudioManagers()
+        {
+            foreach (
+                AudioManager manager in UnityEngine.Object.FindObjectsByType<AudioManager>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None
+                )
+            )
+            {
+                UnityEngine.Object.DestroyImmediate(manager.gameObject);
+            }
         }
 
         private static StrategyAdvisorTheme CreateTheme()

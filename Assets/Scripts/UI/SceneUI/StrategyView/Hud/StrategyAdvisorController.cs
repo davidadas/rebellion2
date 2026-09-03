@@ -18,6 +18,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private readonly Func<Faction> getPlayerFaction;
     private readonly Func<string, Texture2D> getTexture;
     private readonly Action<string> playSfx;
+    private readonly Func<string, AudioPlaybackHandle> playSfxInstance;
     private readonly Func<int, int> selectRandomIndex;
     private readonly Dictionary<string, StrategyAdvisorNotificationTheme> pendingNotifications =
         new Dictionary<string, StrategyAdvisorNotificationTheme>();
@@ -28,6 +29,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private IStrategyHudActions actions;
     private StrategyAdvisorTheme theme;
     private StrategyAdvisorView view;
+    private AudioPlaybackHandle activeAudioPlayback;
     private Action playbackCompleted;
     private Action playbackStarted;
 
@@ -38,17 +40,20 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
     /// <param name="selectRandomIndex">Selects a zero-based index below the supplied count.</param>
+    /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
     public StrategyAdvisorController(
         Func<Faction> getPlayerFaction,
         Func<string, Texture2D> getTexture,
         Action<string> playSfx,
-        Func<int, int> selectRandomIndex = null
+        Func<int, int> selectRandomIndex = null,
+        Func<string, AudioPlaybackHandle> playSfxInstance = null
     )
     {
         this.getPlayerFaction =
             getPlayerFaction ?? throw new ArgumentNullException(nameof(getPlayerFaction));
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
+        this.playSfxInstance = playSfxInstance;
         this.selectRandomIndex = selectRandomIndex ?? (count => UnityEngine.Random.Range(0, count));
     }
 
@@ -336,6 +341,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         StrategyAdvisorView targetView = GetRequiredView();
         playbackStarted = null;
         playbackCompleted = null;
+        StopActiveAudioPlayback();
         targetView.CancelPlayback();
 
         if (animation == null || animation.Frames.Count == 0)
@@ -356,6 +362,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     {
         playbackStarted = null;
         playbackCompleted = null;
+        StopActiveAudioPlayback();
         GetRequiredView().CancelPlayback();
     }
 
@@ -396,6 +403,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         nextAllowedTicks.Clear();
         playbackStarted = null;
         playbackCompleted = null;
+        StopActiveAudioPlayback();
         view?.ResetPlayback();
     }
 
@@ -757,8 +765,13 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         Action started = playbackStarted;
         playbackStarted = null;
         started?.Invoke();
+        StopActiveAudioPlayback();
 
-        if (!string.IsNullOrEmpty(animation?.AudioPath))
+        if (string.IsNullOrEmpty(animation?.AudioPath))
+            return;
+
+        activeAudioPlayback = playSfxInstance?.Invoke(animation.AudioPath);
+        if (playSfxInstance == null)
             playSfx(animation.AudioPath);
     }
 
@@ -934,6 +947,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     private void ReleaseView()
     {
+        StopActiveAudioPlayback();
         if (ReferenceEquals(view, null))
             return;
 
@@ -944,6 +958,15 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         view.PlaybackStarted -= HandlePlaybackStarted;
         view.ProtocolContextRequested -= HandleProtocolContextRequested;
         view = null;
+    }
+
+    /// <summary>
+    /// Stops the active advisor response without affecting unrelated sound effects.
+    /// </summary>
+    private void StopActiveAudioPlayback()
+    {
+        activeAudioPlayback?.Stop();
+        activeAudioPlayback = null;
     }
 
     /// <summary>

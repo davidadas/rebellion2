@@ -239,7 +239,8 @@ public sealed class StrategyController
             () => gameManager?.GetPlayerFaction(),
             () => uiContext?.GetPlayerFactionTheme(),
             path => uiContext?.GetTexture(path),
-            PlaySfx
+            PlaySfx,
+            PlaySfxInstance
         );
         strategyHudController.Initialize(this);
         strategyHudController.BindView(strategyHud);
@@ -659,6 +660,16 @@ public sealed class StrategyController
     private static void PlaySfx(string resourcePath)
     {
         AudioManager.EnsureExists().PlaySfx(resourcePath);
+    }
+
+    /// <summary>
+    /// Plays an independently stoppable strategy sound effect through the shared audio manager.
+    /// </summary>
+    /// <param name="resourcePath">The content address of the sound effect.</param>
+    /// <returns>The playback handle, or null when the path is blank.</returns>
+    private static AudioPlaybackHandle PlaySfxInstance(string resourcePath)
+    {
+        return AudioManager.EnsureExists().PlaySfxInstance(resourcePath);
     }
 
     /// <summary>
