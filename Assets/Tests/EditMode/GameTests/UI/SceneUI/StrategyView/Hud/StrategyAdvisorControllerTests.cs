@@ -194,6 +194,76 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void OnContextMenuCommandSelected_ManagementToggles_PlayAuthoredEnableAndDisableResponses()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            Faction faction = new Faction();
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            advisorTheme.AudioRoot = "Audio";
+            advisorTheme.PlanetaryGarrisonManagementEnabled = CreateResponse(
+                "GarrisonEnabled",
+                "garrison-enabled"
+            );
+            advisorTheme.PlanetaryGarrisonManagementDisabled = CreateResponse(
+                "GarrisonDisabled",
+                "garrison-disabled"
+            );
+            advisorTheme.ResourceProductionManagementEnabled = CreateResponse(
+                "ProductionEnabled",
+                "production-enabled"
+            );
+            advisorTheme.ResourceProductionManagementDisabled = CreateResponse(
+                "ProductionDisabled",
+                "production-disabled"
+            );
+            Texture2D frame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [advisorTheme.GetFramePath("GarrisonEnabled", 0, false)] = frame,
+                [advisorTheme.GetFramePath("GarrisonDisabled", 0, false)] = frame,
+                [advisorTheme.GetFramePath("ProductionEnabled", 0, false)] = frame,
+                [advisorTheme.GetFramePath("ProductionDisabled", 0, false)] = frame,
+            };
+            List<string> playedAudio = new List<string>();
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = new StrategyAdvisorController(
+                    () => faction,
+                    path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
+                    playedAudio.Add
+                );
+                controller.Initialize(new TestActions());
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageProduction);
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageProduction);
+
+                CollectionAssert.AreEqual(
+                    new[]
+                    {
+                        "Audio/garrison-enabled",
+                        "Audio/garrison-disabled",
+                        "Audio/production-enabled",
+                        "Audio/production-disabled",
+                    },
+                    playedAudio
+                );
+                Assert.IsFalse(faction.ManageGarrisons);
+                Assert.IsFalse(faction.ManageProduction);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
         public void Render_SameThemeAfterIdleFramesLoad_RefreshesAdvisorImages()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
@@ -544,6 +614,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 FrameIntervalSeconds = 0.5f,
                 RepeatCooldownTicks = 10,
             };
+        }
+
+        private static StrategyAdvisorAnimationTheme CreateResponse(
+            string animation,
+            string audio
+        )
+        {
+            return new StrategyAdvisorAnimationTheme
+            {
+                Animation = animation,
+                FrameCount = 1,
+                Audio = audio,
+            };
+        }
+
+        private static void SelectCommand(
+            StrategyAdvisorController controller,
+            Faction faction,
+            StrategyMenuAction action
+        )
+        {
+            StrategyMenuCommand command = StrategyAdvisorController
+                .BuildCommandMenu(faction)
+                .Single(item => item.Action == action);
+            ContextMenuRequest request = (ContextMenuRequest)
+                typeof(StrategyAdvisorController)
+                    .GetMethod(
+                        "CreateContextMenuRequest",
+                        BindingFlags.Instance | BindingFlags.NonPublic
+                    )
+                    ?.Invoke(
+                        controller,
+                        new object[]
+                        {
+                            new List<StrategyMenuCommand> { command },
+                            0,
+                            0,
+                        }
+                    );
+            controller.OnContextMenuCommandSelected(request, command);
         }
 
         private static RawImage GetImage(GameObject rootObject, string name)

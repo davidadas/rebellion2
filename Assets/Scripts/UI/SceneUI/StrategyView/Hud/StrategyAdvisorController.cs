@@ -280,7 +280,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     public void PlayInTransitOrderRejected()
     {
-        PlayOrderRejected(theme?.InTransitOrderRejected);
+        PlayResponse(theme?.InTransitOrderRejected);
     }
 
     /// <summary>
@@ -288,7 +288,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     public void PlayInvalidOrderRejected()
     {
-        PlayOrderRejected(theme?.InvalidOrderRejected);
+        PlayResponse(theme?.InvalidOrderRejected);
     }
 
     /// <summary>
@@ -296,14 +296,14 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     public void PlayUnitUnderConstructionOrderRejected()
     {
-        PlayOrderRejected(theme?.UnitUnderConstructionOrderRejected);
+        PlayResponse(theme?.UnitUnderConstructionOrderRejected);
     }
 
     /// <summary>
-    /// Resolves and immediately plays one authored order-rejection response.
+    /// Resolves and immediately plays one authored advisor response.
     /// </summary>
-    /// <param name="animationTheme">The rejection animation and audio.</param>
-    private void PlayOrderRejected(StrategyAdvisorAnimationTheme animationTheme)
+    /// <param name="animationTheme">The response animation and audio.</param>
+    private void PlayResponse(StrategyAdvisorAnimationTheme animationTheme)
     {
         List<StrategyAdvisorAnimationViewData> playbacks =
             new List<StrategyAdvisorAnimationViewData>();
@@ -600,11 +600,21 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
                 faction.ManageGarrisons = !faction.ManageGarrisons;
                 if (faction.ManageGarrisons)
                     actions.ProcessAdvisorAutomation(faction);
+                PlayResponse(
+                    faction.ManageGarrisons
+                        ? theme?.PlanetaryGarrisonManagementEnabled
+                        : theme?.PlanetaryGarrisonManagementDisabled
+                );
                 break;
             case StrategyMenuAction.AdvisorManageProduction:
                 faction.ManageProduction = !faction.ManageProduction;
                 if (faction.ManageProduction)
                     actions.ProcessAdvisorAutomation(faction);
+                PlayResponse(
+                    faction.ManageProduction
+                        ? theme?.ResourceProductionManagementEnabled
+                        : theme?.ResourceProductionManagementDisabled
+                );
                 break;
             case StrategyMenuAction.AdvisorManageNaming:
                 faction.ManageNaming = !faction.ManageNaming;

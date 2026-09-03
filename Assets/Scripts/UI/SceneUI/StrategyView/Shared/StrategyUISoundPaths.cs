@@ -38,6 +38,8 @@ internal static class StrategyUISoundPaths
 
         foreach (string path in GetPlanetaryAssaultAdvisorAudioPaths(theme?.StrategyAdvisor))
             yield return path;
+        foreach (string path in GetAdvisorManagementAudioPaths(theme?.StrategyAdvisor))
+            yield return path;
 
         StrategyWindowSoundTheme windowSounds = theme?.StrategyWindowSounds;
         ConfirmDialogTheme confirmDialog = theme?.ConfirmDialogTheme;
@@ -78,6 +80,30 @@ internal static class StrategyUISoundPaths
             yield return droidPath;
         if (!string.IsNullOrWhiteSpace(protocolPath))
             yield return protocolPath;
+    }
+
+    /// <summary>
+    /// Returns the configured protocol-advisor responses for management toggles.
+    /// </summary>
+    /// <param name="advisor">The active faction advisor theme.</param>
+    /// <returns>The management response audio paths.</returns>
+    private static IEnumerable<string> GetAdvisorManagementAudioPaths(
+        StrategyAdvisorTheme advisor
+    )
+    {
+        StrategyAdvisorAnimationTheme[] responses =
+        {
+            advisor?.PlanetaryGarrisonManagementEnabled,
+            advisor?.PlanetaryGarrisonManagementDisabled,
+            advisor?.ResourceProductionManagementEnabled,
+            advisor?.ResourceProductionManagementDisabled,
+        };
+        foreach (StrategyAdvisorAnimationTheme response in responses)
+        {
+            string path = GetAdvisorAnimationAudioPath(advisor, response);
+            if (!string.IsNullOrWhiteSpace(path))
+                yield return path;
+        }
     }
 
     /// <summary>
