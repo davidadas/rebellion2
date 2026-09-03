@@ -16,6 +16,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private const string _customNotificationKey = "Notification:Custom";
 
     private readonly Func<Faction> getPlayerFaction;
+    private readonly Func<string, float> getAudioDuration;
     private readonly Func<string, Texture2D> getTexture;
     private readonly Action<string> playSfx;
     private readonly Func<string, AudioPlaybackHandle> playSfxInstance;
@@ -41,12 +42,14 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
     /// <param name="selectRandomIndex">Selects a zero-based index below the supplied count.</param>
     /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
+    /// <param name="getAudioDuration">Gets the duration of a loaded advisor response.</param>
     public StrategyAdvisorController(
         Func<Faction> getPlayerFaction,
         Func<string, Texture2D> getTexture,
         Action<string> playSfx,
         Func<int, int> selectRandomIndex = null,
-        Func<string, AudioPlaybackHandle> playSfxInstance = null
+        Func<string, AudioPlaybackHandle> playSfxInstance = null,
+        Func<string, float> getAudioDuration = null
     )
     {
         this.getPlayerFaction =
@@ -54,6 +57,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.playSfxInstance = playSfxInstance;
+        this.getAudioDuration = getAudioDuration ?? (_ => 0f);
         this.selectRandomIndex = selectRandomIndex ?? (count => UnityEngine.Random.Range(0, count));
     }
 
@@ -720,14 +724,20 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         if (!ready)
             return false;
 
+        string audioPath =
+            !string.IsNullOrWhiteSpace(animation.AudioPath) ? animation.AudioPath
+            : string.IsNullOrWhiteSpace(audio ?? animation.Audio) ? null
+            : theme.GetAudioPath(audio ?? animation.Audio);
+        float minimumPlaybackSeconds = string.IsNullOrEmpty(audioPath)
+            ? 0f
+            : getAudioDuration(audioPath);
         playbacks.Add(
             new StrategyAdvisorAnimationViewData(
                 frames,
                 usesDroid,
-                !string.IsNullOrWhiteSpace(animation.AudioPath) ? animation.AudioPath
-                    : string.IsNullOrWhiteSpace(audio ?? animation.Audio) ? null
-                    : theme.GetAudioPath(audio ?? animation.Audio),
-                animation.DelayBeforeSeconds
+                audioPath,
+                animation.DelayBeforeSeconds,
+                minimumPlaybackSeconds
             )
         );
         return true;

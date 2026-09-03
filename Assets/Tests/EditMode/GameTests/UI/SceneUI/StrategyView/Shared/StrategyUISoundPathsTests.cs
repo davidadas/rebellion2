@@ -35,6 +35,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                     PlanetaryGarrisonManagementEnabled = new StrategyAdvisorAnimationTheme
                     {
                         Audio = "garrison-enabled",
+                        AudioOptions = { "garrison-enabled-alternate" },
                     },
                     PlanetaryGarrisonManagementDisabled = new StrategyAdvisorAnimationTheme
                     {
@@ -84,7 +85,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                     StrategyUISoundPaths.GalacticInformationControl,
                     StrategyUISoundPaths.PlanetaryAssault,
                     "advisor-audio/planetary-assault",
-                    "advisor-audio/garrison-enabled",
+                    "advisor-audio/garrison-enabled-alternate",
                     "advisor-audio/garrison-disabled",
                     "advisor-audio/production-enabled",
                     "advisor-audio/production-disabled",

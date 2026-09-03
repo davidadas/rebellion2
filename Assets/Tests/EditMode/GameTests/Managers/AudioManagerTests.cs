@@ -305,6 +305,34 @@ public sealed class AudioManagerTests
     }
 
     [Test]
+    public void GetLoadedSfxDuration_PreloadedPath_ReturnsClipDuration()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Tracked", 88200, 1, 44100, false);
+        try
+        {
+            GetPreloadedSfx(manager).Add("Audio/SFX/tracked", clip);
+
+            float duration = manager.GetLoadedSfxDuration(" Audio/SFX/tracked ");
+
+            Assert.AreEqual(2f, duration);
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void GetLoadedSfxDuration_MissingOrBlankPath_ReturnsZero()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+
+        Assert.AreEqual(0f, manager.GetLoadedSfxDuration("Audio/SFX/missing"));
+        Assert.AreEqual(0f, manager.GetLoadedSfxDuration(" "));
+    }
+
+    [Test]
     public void StopSfx_ActiveSfxInstances_StopsEveryInstance()
     {
         AudioManager manager = AudioManager.EnsureExists();

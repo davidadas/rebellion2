@@ -240,7 +240,8 @@ public sealed class StrategyController
             () => uiContext?.GetPlayerFactionTheme(),
             path => uiContext?.GetTexture(path),
             PlaySfx,
-            PlaySfxInstance
+            PlaySfxInstance,
+            audioManager.GetLoadedSfxDuration
         );
         strategyHudController.Initialize(this);
         strategyHudController.BindView(strategyHud);

@@ -336,7 +336,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void HandlePlaybackStarted_NextQueuedResponse_StopsPreviousResponseAudio()
+        public void OnContextMenuCommandSelected_ManagementResponse_HoldsAnimationForAudioDuration()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            Faction faction = new Faction();
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            advisorTheme.AudioRoot = "Audio";
+            advisorTheme.PlanetaryGarrisonManagementEnabled = CreateResponse(
+                "GarrisonEnabled",
+                "garrison-enabled"
+            );
+            Texture2D frame = new Texture2D(1, 1);
+            bool playbackCompleted = false;
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = new StrategyAdvisorController(
+                    () => faction,
+                    _ => frame,
+                    _ => { },
+                    getAudioDuration: _ => 2f
+                );
+                controller.Initialize(new TestActions());
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+                view.PlaybackCompleted += () => playbackCompleted = true;
+
+                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+                view.AdvanceAnimation(advisorTheme.FrameIntervalSeconds);
+
+                Assert.IsFalse(playbackCompleted);
+
+                view.AdvanceAnimation(2f);
+
+                Assert.IsTrue(playbackCompleted);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void HandlePlaybackStarted_NextQueuedResponse_WaitsForPreviousAudioDuration()
         {
             DestroyAudioManagers();
             AudioManager audioManager = AudioManager.EnsureExists();
@@ -371,7 +415,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.Render(advisorTheme);
 
                 controller.ReplaceAnimation(
-                    new StrategyAdvisorAnimationViewData(new[] { frame }, false, "Audio/first"),
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { frame },
+                        false,
+                        "Audio/first",
+                        minimumPlaybackSeconds: 1f
+                    ),
                     null,
                     null
                 );
@@ -390,6 +439,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 Assert.AreSame(firstClip, playbacks[0].Source.clip);
 
                 view.AdvanceAnimation(advisorTheme.FrameIntervalSeconds);
+
+                Assert.AreEqual(1, playbacks.Count);
+                Assert.AreSame(firstClip, playbacks[0].Source.clip);
+
+                view.AdvanceAnimation(1f);
 
                 Assert.AreEqual(2, playbacks.Count);
                 Assert.IsNull(playbacks[0].Source);
@@ -751,8 +805,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         {
             foreach (
                 AudioManager manager in UnityEngine.Object.FindObjectsByType<AudioManager>(
-                    FindObjectsInactive.Include,
-                    FindObjectsSortMode.None
+                    FindObjectsInactive.Include
                 )
             )
             {

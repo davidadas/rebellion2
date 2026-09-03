@@ -27,12 +27,14 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
     /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
+    /// <param name="getAudioDuration">Gets the duration of a loaded advisor response.</param>
     public StrategyHudController(
         Func<Faction> getPlayerFaction,
         Func<FactionTheme> getPlayerTheme,
         Func<string, Texture2D> getTexture,
         Action<string> playSfx,
-        Func<string, AudioPlaybackHandle> playSfxInstance = null
+        Func<string, AudioPlaybackHandle> playSfxInstance = null,
+        Func<string, float> getAudioDuration = null
     )
     {
         if (getPlayerFaction == null)
@@ -46,7 +48,8 @@ public sealed class StrategyHudController : IContextMenuReceiver
             getPlayerFaction,
             getTexture,
             playSfx,
-            playSfxInstance: playSfxInstance
+            playSfxInstance: playSfxInstance,
+            getAudioDuration: getAudioDuration
         );
     }
 

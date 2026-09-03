@@ -98,10 +98,40 @@ internal static class StrategyUISoundPaths
         };
         foreach (StrategyAdvisorAnimationTheme response in responses)
         {
-            string path = GetAdvisorAnimationAudioPath(advisor, response);
-            if (!string.IsNullOrWhiteSpace(path))
+            foreach (string path in GetAdvisorAnimationAudioPaths(advisor, response))
                 yield return path;
         }
+    }
+
+    /// <summary>
+    /// Returns every selectable audio path configured for one advisor animation.
+    /// </summary>
+    /// <param name="advisor">The owning advisor theme.</param>
+    /// <param name="animation">The configured advisor animation.</param>
+    /// <returns>The resolved audio paths.</returns>
+    private static IEnumerable<string> GetAdvisorAnimationAudioPaths(
+        StrategyAdvisorTheme advisor,
+        StrategyAdvisorAnimationTheme animation
+    )
+    {
+        if (!string.IsNullOrWhiteSpace(animation?.AudioPath))
+        {
+            yield return animation.AudioPath.Trim();
+            yield break;
+        }
+
+        if (animation?.AudioOptions?.Count > 0)
+        {
+            foreach (string audio in animation.AudioOptions)
+            {
+                if (!string.IsNullOrWhiteSpace(audio))
+                    yield return advisor.GetAudioPath(audio.Trim());
+            }
+            yield break;
+        }
+
+        if (!string.IsNullOrWhiteSpace(animation?.Audio))
+            yield return advisor.GetAudioPath(animation.Audio.Trim());
     }
 
     /// <summary>
