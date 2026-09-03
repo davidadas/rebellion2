@@ -336,7 +336,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void EnqueuePlaybacks_QueuedResponse_DoesNotStopPreviousAudio()
+        public void HandlePlaybackStarted_NextQueuedResponse_StopsPreviousResponseAudio()
         {
             DestroyAudioManagers();
             AudioManager audioManager = AudioManager.EnsureExists();
@@ -392,7 +392,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 view.AdvanceAnimation(advisorTheme.FrameIntervalSeconds);
 
                 Assert.AreEqual(2, playbacks.Count);
-                Assert.AreSame(firstClip, playbacks[0].Source.clip);
+                Assert.IsNull(playbacks[0].Source);
                 Assert.AreSame(secondClip, playbacks[1].Source.clip);
             }
             finally

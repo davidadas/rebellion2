@@ -165,6 +165,24 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Releases independently controlled sound effects after playback finishes.
+    /// </summary>
+    private void Update()
+    {
+        foreach (AudioPlaybackHandle playback in _activeSfxPlaybacks.ToArray())
+        {
+            if (
+                playback.LoadCoroutine != null
+                || playback.Paused
+                || playback.Source?.isPlaying == true
+            )
+                continue;
+
+            StopPlayback(playback);
+        }
+    }
+
+    /// <summary>
     /// Clears the singleton reference when Unity destroys the active manager.
     /// </summary>
     private void OnDestroy()

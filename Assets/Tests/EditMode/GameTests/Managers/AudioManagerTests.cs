@@ -242,6 +242,57 @@ public sealed class AudioManagerTests
     }
 
     [Test]
+    public void PlaySfxInstance_CompletedPlayback_ReleasesAndReusesSource()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Tracked", 1, 1, 44100, false);
+        try
+        {
+            GetPreloadedSfx(manager).Add("Audio/SFX/tracked", clip);
+            AudioPlaybackHandle firstPlayback = manager.PlaySfxInstance("Audio/SFX/tracked");
+            AudioSource source = firstPlayback.Source;
+
+            source.Stop();
+            InvokeUpdate(manager);
+
+            Assert.IsNull(firstPlayback.Source);
+
+            AudioPlaybackHandle secondPlayback = manager.PlaySfxInstance("Audio/SFX/tracked");
+
+            Assert.AreSame(source, secondPlayback.Source);
+            secondPlayback.Stop();
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void PlaySfxInstance_PausedPlayback_RemainsActiveUntilResumedOrStopped()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Tracked", 1, 1, 44100, false);
+        try
+        {
+            GetPreloadedSfx(manager).Add("Audio/SFX/tracked", clip);
+            AudioPlaybackHandle playback = manager.PlaySfxInstance("Audio/SFX/tracked");
+            AudioSource source = playback.Source;
+            playback.Paused = true;
+            source.Stop();
+
+            InvokeUpdate(manager);
+
+            Assert.AreSame(source, playback.Source);
+            playback.Stop();
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
     public void PlaySfxInstance_MissingClipOrPath_ReturnsNull()
     {
         AudioManager manager = AudioManager.EnsureExists();
@@ -400,5 +451,12 @@ public sealed class AudioManagerTests
             typeof(AudioManager)
                 .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                 .GetValue(manager);
+    }
+
+    private static void InvokeUpdate(AudioManager manager)
+    {
+        typeof(AudioManager)
+            .GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(manager, null);
     }
 }

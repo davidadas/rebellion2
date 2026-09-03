@@ -20,8 +20,6 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private readonly Action<string> playSfx;
     private readonly Func<string, AudioPlaybackHandle> playSfxInstance;
     private readonly Func<int, int> selectRandomIndex;
-    private readonly List<AudioPlaybackHandle> activeAudioPlaybacks =
-        new List<AudioPlaybackHandle>();
     private readonly Dictionary<string, StrategyAdvisorNotificationTheme> pendingNotifications =
         new Dictionary<string, StrategyAdvisorNotificationTheme>();
     private readonly Dictionary<string, int> pendingExpirationTicks = new Dictionary<string, int>();
@@ -31,6 +29,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private IStrategyHudActions actions;
     private StrategyAdvisorTheme theme;
     private StrategyAdvisorView view;
+    private AudioPlaybackHandle activeAudioPlayback;
     private Action playbackCompleted;
     private Action playbackStarted;
 
@@ -342,7 +341,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         StrategyAdvisorView targetView = GetRequiredView();
         playbackStarted = null;
         playbackCompleted = null;
-        StopActiveAudioPlaybacks();
+        StopActiveAudioPlayback();
         targetView.CancelPlayback();
 
         if (animation == null || animation.Frames.Count == 0)
@@ -363,7 +362,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     {
         playbackStarted = null;
         playbackCompleted = null;
-        StopActiveAudioPlaybacks();
+        StopActiveAudioPlayback();
         GetRequiredView().CancelPlayback();
     }
 
@@ -404,7 +403,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         nextAllowedTicks.Clear();
         playbackStarted = null;
         playbackCompleted = null;
-        StopActiveAudioPlaybacks();
+        StopActiveAudioPlayback();
         view?.ResetPlayback();
     }
 
@@ -766,13 +765,11 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         Action started = playbackStarted;
         playbackStarted = null;
         started?.Invoke();
+        StopActiveAudioPlayback();
         if (string.IsNullOrEmpty(animation?.AudioPath))
             return;
 
-        activeAudioPlaybacks.RemoveAll(playback => playback?.IsActive != true);
-        AudioPlaybackHandle playback = playSfxInstance?.Invoke(animation.AudioPath);
-        if (playback != null)
-            activeAudioPlaybacks.Add(playback);
+        activeAudioPlayback = playSfxInstance?.Invoke(animation.AudioPath);
         if (playSfxInstance == null)
             playSfx(animation.AudioPath);
     }
@@ -949,7 +946,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     private void ReleaseView()
     {
-        StopActiveAudioPlaybacks();
+        StopActiveAudioPlayback();
         if (ReferenceEquals(view, null))
             return;
 
@@ -965,11 +962,10 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <summary>
     /// Stops the active advisor response without affecting unrelated sound effects.
     /// </summary>
-    private void StopActiveAudioPlaybacks()
+    private void StopActiveAudioPlayback()
     {
-        for (int i = 0; i < activeAudioPlaybacks.Count; i++)
-            activeAudioPlaybacks[i]?.Stop();
-        activeAudioPlaybacks.Clear();
+        activeAudioPlayback?.Stop();
+        activeAudioPlayback = null;
     }
 
     /// <summary>
