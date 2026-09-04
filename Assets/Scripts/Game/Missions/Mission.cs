@@ -419,7 +419,12 @@ namespace Rebellion.Game.Missions
         protected virtual double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             int? score = GetAgentScore(agent, game);
-            return score.HasValue ? LookupSuccessProbability(game, score.Value) : 0;
+            if (!score.HasValue)
+                return 0;
+
+            double probability = LookupSuccessProbability(game, score.Value);
+            int modifier = game.GetDifficultyModifier(OwnerInstanceID).MissionSuccessChancePoints;
+            return Math.Clamp(probability + modifier, 0, 100);
         }
 
         /// <summary>

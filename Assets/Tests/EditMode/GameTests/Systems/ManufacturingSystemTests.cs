@@ -1678,6 +1678,59 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_ManufacturingSpeedModifier_PreservesFractionalThroughput()
+        {
+            GameConfig config = TestConfig.Create();
+            config.DifficultyModifiers[GameDifficulty.Hard] = new GameModifier
+            {
+                ManufacturingSpeedPercent = 150,
+            };
+            GameRoot game = new GameRoot(config);
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.Summary.PlayerFactionID = "player";
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.GetFactions().Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", empire.InstanceID);
+            empire.RefinedMaterialStockpile = 3;
+            Building yard = new Building
+            {
+                InstanceID = "cy1",
+                OwnerInstanceID = empire.InstanceID,
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(yard, planet);
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = empire.InstanceID,
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+            };
+            FleetSystem fleetSystem = new FleetSystem(game);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleetSystem);
+            manufacturing.Enqueue(planet, mine, planet, ignoreCost: true);
+
+            manufacturing.ProcessTick();
+
+            Assert.AreEqual(1.5, yard.ProductionCycleProgress, 0.0001);
+            Assert.AreEqual(0, mine.ManufacturingProgress);
+
+            manufacturing.ProcessTick();
+
+            Assert.AreEqual(1, yard.ProductionCycleProgress, 0.0001);
+            Assert.AreEqual(1, mine.ManufacturingProgress);
+
+            manufacturing.ProcessTick();
+
+            Assert.AreEqual(0.5, yard.ProductionCycleProgress, 0.0001);
+            Assert.AreEqual(2, mine.ManufacturingProgress);
+        }
+
+        [Test]
         public void ProcessTick_FullBlockade_HaltsProductionWithoutReservingInput()
         {
             GameConfig config = TestConfig.Create();

@@ -498,7 +498,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_BudgetDifficultyMapping_UsesMappedDifficulty()
+        public void Seed_HardDifficulty_UsesStandardDeploymentBudget()
         {
             Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
             planet.EnergyCapacity = 8;
