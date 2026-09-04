@@ -32,6 +32,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private GameManager _gameManager;
         private GameObject _rootObject;
         private SpecialForces _specialForces;
+        private bool _showMissionOdds;
+        private int _showMissionOddsSaveCount;
         private StrategyMissionTarget _target;
         private UIContext _uiContext;
         private StrategyWindowLayerView _windowLayer;
@@ -42,6 +44,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             _closedWindow = null;
             _dirtyCount = 0;
+            _showMissionOdds = true;
+            _showMissionOddsSaveCount = 0;
             _game = CreateGame(out Planet origin, out GalaxyMapPlanet targetPlanet);
             _gameManager = TestContent.CreateGameManager(_game);
             _uiContext = TestContent.CreateUIContext(
@@ -187,7 +191,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
             Assert.IsFalse(checkbox.IsChecked);
             Assert.AreEqual(2, _dirtyCount);
+            Assert.IsFalse(_showMissionOdds);
+            Assert.AreEqual(1, _showMissionOddsSaveCount);
             Assert.AreSame(window, _windowManager.ActiveWindow);
+        }
+
+        [Test]
+        public void MissionOddsCheckbox_PersistedHiddenState_InitializesHidden()
+        {
+            _showMissionOdds = false;
+
+            MissionCreateWindowView view = OpenWindow(out UIWindow window);
+            UICheckboxView checkbox = view.GetComponentInChildren<UICheckboxView>(true);
+            UIComponentTestHelper.InvokeLifecycle(checkbox, "Awake");
+            _controller.RenderWindow(view, window);
+
+            Assert.IsFalse(checkbox.IsChecked);
+            Assert.AreEqual(0, _showMissionOddsSaveCount);
         }
 
         [Test]
@@ -222,7 +242,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 _windowManager,
                 () => new Vector2Int(141, 73),
                 CloseWindow,
-                () => _dirtyCount++
+                () => _dirtyCount++,
+                getShowMissionOdds: () => _showMissionOdds,
+                setShowMissionOdds: visible =>
+                {
+                    _showMissionOdds = visible;
+                    _showMissionOddsSaveCount++;
+                }
             );
         }
 
