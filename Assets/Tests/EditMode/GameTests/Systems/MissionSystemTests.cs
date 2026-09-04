@@ -551,6 +551,42 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void GetMissionOdds_TracksWhichDecoySurvivesEachDetector()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            Regiment secondDetector = CreateCompletedRegiment("r2", "rebels");
+            secondDetector.DetectionRating = 100;
+            game.AttachNode(secondDetector, planet);
+            Officer weakDecoy = EntityFactory.CreateOfficer("weak-decoy-1", "empire");
+            Officer secondWeakDecoy = EntityFactory.CreateOfficer("weak-decoy-2", "empire");
+            Officer strongDecoy = EntityFactory.CreateOfficer("strong-decoy", "empire");
+            weakDecoy.SetBaseRating(OfficerRating.Espionage, 0);
+            secondWeakDecoy.SetBaseRating(OfficerRating.Espionage, 0);
+            strongDecoy.SetBaseRating(OfficerRating.Espionage, 200);
+            game.AttachNode(weakDecoy, spy.GetParent());
+            game.AttachNode(secondWeakDecoy, spy.GetParent());
+            game.AttachNode(strongDecoy, spy.GetParent());
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            MissionOdds odds = system.GetMissionOdds(
+                CreateRequest(
+                    MissionTypeIDs.Espionage,
+                    new List<IMissionParticipant> { spy },
+                    new List<IMissionParticipant> { weakDecoy, secondWeakDecoy, strongDecoy },
+                    planet
+                )
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(52.777, odds.FoilProbability, 0.001);
+        }
+
+        [Test]
         public void GetMissionOdds_IncludesStationaryFleetDetectors()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =

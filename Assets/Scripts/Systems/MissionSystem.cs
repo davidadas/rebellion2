@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -764,8 +765,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Estimates the chance that at least one observed detector foils the mission. Decoys are
-        /// grouped by remaining count so failed evasion can remove one before the next detector.
+        /// Estimates the chance that at least one observed detector foils the mission.
         /// </summary>
         /// <param name="mission">The unstarted or active mission to evaluate.</param>
         /// <param name="observedPlanet">The planet state currently known to the planning faction.</param>
@@ -780,50 +780,115 @@ namespace Rebellion.Systems
                 return 0;
 
             IReadOnlyList<IMissionParticipant> decoys = mission.GetDecoyParticipants();
+            var decoyGroups = decoys
+                .GroupBy(decoy => new
+                {
+                    Espionage = decoy.GetEffectiveRating(OfficerRating.Espionage),
+                    Combat = decoy.GetEffectiveRating(OfficerRating.Combat),
+                    CanBeRemoved = decoy is Officer or SpecialForces,
+                })
+                .Select(group => new { Decoy = group.First(), Count = group.Count() })
+                .ToList();
 
-            // Track unfoiled probability by the number of decoys still available.
-            double[] unfoiledByRemainingDecoys = new double[decoys.Count + 1];
-            unfoiledByRemainingDecoys[decoys.Count] = 1d;
+            // Encode each group's surviving count as one digit in a mixed-radix number.
+            BigInteger[] groupPlaceValues = new BigInteger[decoyGroups.Count];
+            BigInteger allDecoys = BigInteger.Zero;
+            BigInteger nextPlaceValue = BigInteger.One;
+            for (int index = 0; index < decoyGroups.Count; index++)
+            {
+                groupPlaceValues[index] = nextPlaceValue;
+                allDecoys += decoyGroups[index].Count * nextPlaceValue;
+                nextPlaceValue *= decoyGroups[index].Count + 1;
+            }
+
+            Dictionary<BigInteger, double> unfoiledByDecoyPool = new Dictionary<BigInteger, double>
+            {
+                { allDecoys, 1d },
+            };
             foreach (ISceneNode detector in detectors)
             {
                 double noFoilProbability =
                     1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
-                double diversionProbability = 0;
-                double failedButEvadedProbability = 0;
-                double removedProbability = 0;
-                if (decoys.Count > 0)
+                Dictionary<BigInteger, double> next = new Dictionary<BigInteger, double>();
+                foreach ((BigInteger availableDecoys, double probability) in unfoiledByDecoyPool)
                 {
-                    foreach (IMissionParticipant decoy in decoys)
+                    int[] availableCounts = new int[decoyGroups.Count];
+                    int availableCount = 0;
+                    for (int index = 0; index < decoyGroups.Count; index++)
                     {
-                        double diversion = Math.Clamp(
+                        availableCounts[index] = (int)(
+                            availableDecoys
+                            / groupPlaceValues[index]
+                            % (decoyGroups[index].Count + 1)
+                        );
+                        availableCount += availableCounts[index];
+                    }
+
+                    if (availableCount == 0)
+                    {
+                        AddProbability(next, availableDecoys, probability * noFoilProbability);
+                        continue;
+                    }
+
+                    for (int index = 0; index < decoyGroups.Count; index++)
+                    {
+                        if (availableCounts[index] == 0)
+                            continue;
+
+                        IMissionParticipant decoy = decoyGroups[index].Decoy;
+                        double selectionProbability =
+                            probability * availableCounts[index] / availableCount;
+                        double diversionProbability = Math.Clamp(
                             mission.GetDecoyProbability(decoy, detector, _game) / 100d,
                             0,
                             1
                         );
-                        double evasion = GetDecoyEvasionProbability(mission, decoy, detector);
-                        diversionProbability += diversion / decoys.Count;
-                        failedButEvadedProbability += (1d - diversion) * evasion / decoys.Count;
-                        removedProbability += (1d - diversion) * (1d - evasion) / decoys.Count;
+                        double evasionProbability = GetDecoyEvasionProbability(
+                            mission,
+                            decoy,
+                            detector
+                        );
+
+                        // A diversion or successful evasion leaves this decoy available.
+                        AddProbability(
+                            next,
+                            availableDecoys,
+                            selectionProbability
+                                * (
+                                    diversionProbability
+                                    + (1d - diversionProbability)
+                                        * evasionProbability
+                                        * noFoilProbability
+                                )
+                        );
+
+                        // A failed evasion removes this specific decoy from later checks.
+                        AddProbability(
+                            next,
+                            availableDecoys - groupPlaceValues[index],
+                            selectionProbability
+                                * (1d - diversionProbability)
+                                * (1d - evasionProbability)
+                                * noFoilProbability
+                        );
                     }
                 }
 
-                double[] next = new double[unfoiledByRemainingDecoys.Length];
-                next[0] = unfoiledByRemainingDecoys[0] * noFoilProbability;
-                for (int remaining = 1; remaining < unfoiledByRemainingDecoys.Length; remaining++)
-                {
-                    double probability = unfoiledByRemainingDecoys[remaining];
-
-                    // Diversion or evasion retains the decoy; failed evasion removes one.
-                    next[remaining] +=
-                        probability
-                        * (diversionProbability + failedButEvadedProbability * noFoilProbability);
-                    next[remaining - 1] += probability * removedProbability * noFoilProbability;
-                }
-
-                unfoiledByRemainingDecoys = next;
+                unfoiledByDecoyPool = next;
             }
 
-            return (1d - unfoiledByRemainingDecoys.Sum()) * 100d;
+            return (1d - unfoiledByDecoyPool.Values.Sum()) * 100d;
+        }
+
+        /// <summary>Adds probability to an existing or new decoy-pool outcome.</summary>
+        private static void AddProbability(
+            Dictionary<BigInteger, double> probabilities,
+            BigInteger decoyPool,
+            double probability
+        )
+        {
+            probabilities.TryGetValue(decoyPool, out double existingProbability);
+            probabilities[decoyPool] = existingProbability + probability;
         }
 
         /// <summary>
