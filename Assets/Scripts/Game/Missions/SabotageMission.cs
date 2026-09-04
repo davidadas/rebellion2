@@ -122,8 +122,15 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="agent">The participant whose espionage and combat ratings are evaluated.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
+        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
         /// <returns>The participant's raw sabotage score.</returns>
-        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
+        protected override int? GetAgentScore(
+            IMissionParticipant agent,
+            GameRoot game,
+            Planet observedPlanet = null,
+            ISceneNode observedTarget = null
+        )
         {
             return (
                     agent.GetEffectiveRating(OfficerRating.Espionage)

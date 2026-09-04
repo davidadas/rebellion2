@@ -400,8 +400,15 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="agent">The participant whose rating is evaluated.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
+        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
         /// <returns>The participant's raw mission score, or null when it cannot be resolved.</returns>
-        protected virtual int? GetAgentScore(IMissionParticipant agent, GameRoot game)
+        protected virtual int? GetAgentScore(
+            IMissionParticipant agent,
+            GameRoot game,
+            Planet observedPlanet = null,
+            ISceneNode observedTarget = null
+        )
         {
             return agent?.GetEffectiveRating(ParticipantRating);
         }
@@ -410,11 +417,14 @@ namespace Rebellion.Game.Missions
         /// Returns the mission planet whether the mission is active or only being evaluated.
         /// </summary>
         /// <param name="game">The current game state.</param>
+        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
         /// <returns>The mission planet, or null when it cannot be resolved.</returns>
-        protected Planet GetMissionPlanet(GameRoot game)
+        protected Planet GetMissionPlanet(GameRoot game, Planet observedPlanet = null)
         {
-            return GetParent() as Planet
-                ?? game?.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
+            return observedPlanet?.InstanceID == LocationInstanceID
+                ? observedPlanet
+                : GetParent() as Planet
+                    ?? game?.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
         }
 
         /// <summary>
@@ -422,10 +432,17 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="agent">The participant whose raw score is evaluated.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
+        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
         /// <returns>The configured success probability, or zero when no score can be resolved.</returns>
-        protected virtual double GetAgentProbability(IMissionParticipant agent, GameRoot game)
+        protected virtual double GetAgentProbability(
+            IMissionParticipant agent,
+            GameRoot game,
+            Planet observedPlanet = null,
+            ISceneNode observedTarget = null
+        )
         {
-            int? score = GetAgentScore(agent, game);
+            int? score = GetAgentScore(agent, game, observedPlanet, observedTarget);
             return score.HasValue ? LookupSuccessProbability(game, score.Value) : 0;
         }
 
@@ -434,17 +451,23 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="participants">The participants to evaluate.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
+        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
         /// <returns>The probability that at least one participant succeeds.</returns>
         internal virtual double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
-            GameRoot game
+            GameRoot game,
+            Planet observedPlanet = null,
+            ISceneNode observedTarget = null
         )
         {
             IEnumerable<double> probabilities = (
                 participants ?? Enumerable.Empty<IMissionParticipant>()
             )
                 .Where(participant => participant != null)
-                .Select(participant => GetAgentProbability(participant, game));
+                .Select(participant =>
+                    GetAgentProbability(participant, game, observedPlanet, observedTarget)
+                );
             return CombineSuccessProbabilities(probabilities);
         }
 

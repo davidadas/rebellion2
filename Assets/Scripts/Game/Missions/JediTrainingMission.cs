@@ -204,10 +204,14 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="participants">The training participants to evaluate.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
+        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
         /// <returns>The calculated training progress probability.</returns>
         internal override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
-            GameRoot game
+            GameRoot game,
+            Planet observedPlanet = null,
+            ISceneNode observedTarget = null
         )
         {
             List<Officer> officers = (participants ?? Enumerable.Empty<IMissionParticipant>())

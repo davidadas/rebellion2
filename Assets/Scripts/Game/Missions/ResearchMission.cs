@@ -176,10 +176,14 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="participants">The researchers to evaluate.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
+        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
         /// <returns>The calculated research progress probability.</returns>
         internal override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
-            GameRoot game
+            GameRoot game,
+            Planet observedPlanet = null,
+            ISceneNode observedTarget = null
         )
         {
             GameConfig.ResearchConfig config = game?.Config?.Research;

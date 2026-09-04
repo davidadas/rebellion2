@@ -254,7 +254,9 @@ namespace Rebellion.Systems
 
             double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(
                 mission.GetMainParticipants(),
-                _game
+                _game,
+                request.Location as Planet,
+                request.SelectedTarget
             );
             double detectionProbability = EstimateDetectionProbability(
                 mission,

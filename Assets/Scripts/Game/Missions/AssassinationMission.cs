@@ -120,10 +120,21 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="agent">The participant attempting the assassination.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
+        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
         /// <returns>The raw combat advantage, or null when the target cannot be resolved.</returns>
-        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
+        protected override int? GetAgentScore(
+            IMissionParticipant agent,
+            GameRoot game,
+            Planet observedPlanet = null,
+            ISceneNode observedTarget = null
+        )
         {
-            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+            Officer target =
+                observedTarget is Officer observedOfficer
+                && observedOfficer.InstanceID == TargetOfficerInstanceID
+                    ? observedOfficer
+                    : game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             if (target == null)
                 return null;
 
