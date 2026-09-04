@@ -56,12 +56,21 @@ namespace Rebellion.Game.Missions
         /// </summary>
         protected readonly struct MissionEvaluationContext
         {
+            /// <summary>The authoritative game configuration and scene state.</summary>
             public GameRoot Game { get; }
 
+            /// <summary>The optional player-visible planet used for planning.</summary>
             public Planet Planet { get; }
 
+            /// <summary>The optional player-visible mission target used for planning.</summary>
             public ISceneNode Target { get; }
 
+            /// <summary>
+            /// Creates an objective-scoring context from authoritative and optional observed state.
+            /// </summary>
+            /// <param name="game">The authoritative game state.</param>
+            /// <param name="planet">The optional observed planet.</param>
+            /// <param name="target">The optional observed target.</param>
             public MissionEvaluationContext(
                 GameRoot game,
                 Planet planet = null,

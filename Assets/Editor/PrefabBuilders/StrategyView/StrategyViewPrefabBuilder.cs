@@ -3299,6 +3299,16 @@ public static class StrategyViewPrefabBuilder
         return overlay;
     }
 
+    /// <summary>
+    /// Authors one half of the mission-odds overlay using the mission label's font styling.
+    /// </summary>
+    /// <param name="objectName">The generated child object name.</param>
+    /// <param name="parent">The overlay half receiving the text field.</param>
+    /// <param name="styleSource">The authored label supplying the font material.</param>
+    /// <param name="anchorMin">The lower normalized anchor.</param>
+    /// <param name="anchorMax">The upper normalized anchor.</param>
+    /// <param name="color">The semantic probability color.</param>
+    /// <returns>The configured odds text field.</returns>
     private static TextMeshProUGUI CreateMissionOddsTextField(
         string objectName,
         RectTransform parent,

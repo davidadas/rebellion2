@@ -103,6 +103,9 @@ public sealed class UICheckboxView : MonoBehaviour
             throw new MissingReferenceException($"{name}/LabelTextField is missing.");
     }
 
+    /// <summary>
+    /// Adds the toggle listener once.
+    /// </summary>
     private void BindControl()
     {
         if (bound)
@@ -112,6 +115,9 @@ public sealed class UICheckboxView : MonoBehaviour
         bound = true;
     }
 
+    /// <summary>
+    /// Removes the toggle listener when currently bound.
+    /// </summary>
     private void UnbindControl()
     {
         if (!bound)
@@ -121,12 +127,20 @@ public sealed class UICheckboxView : MonoBehaviour
         bound = false;
     }
 
+    /// <summary>
+    /// Updates the authored check mark and forwards a user-initiated value change.
+    /// </summary>
+    /// <param name="isChecked">The toggle's new checked state.</param>
     private void HandleValueChanged(bool isChecked)
     {
         RenderCheckMark(isChecked);
         ValueChanged?.Invoke(isChecked);
     }
 
+    /// <summary>
+    /// Shows the check mark only for the checked state.
+    /// </summary>
+    /// <param name="isChecked">Whether the check mark should be visible.</param>
     private void RenderCheckMark(bool isChecked)
     {
         checkMarkRoot.gameObject.SetActive(isChecked);

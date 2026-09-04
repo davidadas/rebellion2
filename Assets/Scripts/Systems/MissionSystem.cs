@@ -242,8 +242,9 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Estimates a mission's final success and foiling chances without resolving an outcome.
-        /// Foiling uses the caller's observed planet state so planning does not expose hidden units.
+        /// Estimates a mission's visible objective-roll and foiling chances without resolving an
+        /// outcome. Hidden betrayal and state changes produced during uprising resolution are
+        /// intentionally excluded. Foiling uses the caller's observed planet state.
         /// </summary>
         /// <param name="request">The mission configuration to evaluate.</param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
@@ -763,9 +764,8 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Estimates the chance that at least one observed detector foils the mission.
-        /// Each detector's decoy diversion chance uses the average of the currently assigned decoys;
-        /// later decoy capture is intentionally omitted because this is a planning estimate.
+        /// Estimates the chance that at least one observed detector foils the mission. Decoys are
+        /// grouped by remaining count so failed evasion can remove one before the next detector.
         /// </summary>
         /// <param name="mission">The unstarted or active mission to evaluate.</param>
         /// <param name="observedPlanet">The planet state currently known to the planning faction.</param>
@@ -780,23 +780,64 @@ namespace Rebellion.Systems
                 return 0;
 
             IReadOnlyList<IMissionParticipant> decoys = mission.GetDecoyParticipants();
-            double unfoiledProbability = 1d;
+            double[] unfoiledByRemainingDecoys = new double[decoys.Count + 1];
+            unfoiledByRemainingDecoys[decoys.Count] = 1d;
             foreach (ISceneNode detector in detectors)
             {
-                double decoySuccessProbability =
-                    decoys.Count == 0
-                        ? 0
-                        : decoys.Average(decoy =>
-                            mission.GetDecoyProbability(decoy, detector, _game)
-                        ) / 100d;
-                double detectorFoilProbability = GetFoilProbability(mission, detector) / 100d;
-                double effectiveFoilProbability =
-                    (1d - Math.Clamp(decoySuccessProbability, 0, 1))
-                    * Math.Clamp(detectorFoilProbability, 0, 1);
-                unfoiledProbability *= 1d - effectiveFoilProbability;
+                double noFoilProbability =
+                    1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
+                double diversionProbability = 0;
+                double failedButEvadedProbability = 0;
+                double removedProbability = 0;
+                if (decoys.Count > 0)
+                {
+                    foreach (IMissionParticipant decoy in decoys)
+                    {
+                        double diversion = Math.Clamp(
+                            mission.GetDecoyProbability(decoy, detector, _game) / 100d,
+                            0,
+                            1
+                        );
+                        double evasion = GetDecoyEvasionProbability(mission, decoy, detector);
+                        diversionProbability += diversion / decoys.Count;
+                        failedButEvadedProbability += (1d - diversion) * evasion / decoys.Count;
+                        removedProbability += (1d - diversion) * (1d - evasion) / decoys.Count;
+                    }
+                }
+
+                double[] next = new double[unfoiledByRemainingDecoys.Length];
+                next[0] = unfoiledByRemainingDecoys[0] * noFoilProbability;
+                for (int remaining = 1; remaining < unfoiledByRemainingDecoys.Length; remaining++)
+                {
+                    double probability = unfoiledByRemainingDecoys[remaining];
+                    next[remaining] +=
+                        probability
+                        * (diversionProbability + failedButEvadedProbability * noFoilProbability);
+                    next[remaining - 1] += probability * removedProbability * noFoilProbability;
+                }
+
+                unfoiledByRemainingDecoys = next;
             }
 
-            return (1d - unfoiledProbability) * 100d;
+            return (1d - unfoiledByRemainingDecoys.Sum()) * 100d;
+        }
+
+        /// <summary>
+        /// Returns the chance that a decoy remains available after a failed diversion.
+        /// </summary>
+        private double GetDecoyEvasionProbability(
+            Mission mission,
+            IMissionParticipant decoy,
+            ISceneNode detector
+        )
+        {
+            if (decoy is not Officer && decoy is not SpecialForces)
+                return 1d;
+
+            Officer commander = mission.FindDetectorCommander(detector);
+            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
+            int score = decoy.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
+            return Math.Clamp(GetEvasionProbability(score) / 100d, 0, 1);
         }
 
         /// <summary>

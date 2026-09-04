@@ -534,6 +534,7 @@ namespace Rebellion.Tests.Sectors
             planet.AddVisitor("empire");
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
             SetDecoyTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
             MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             MissionOdds odds = system.GetMissionOdds(
@@ -546,7 +547,7 @@ namespace Rebellion.Tests.Sectors
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(43.75, odds.FoilProbability, 0.001);
+            Assert.AreEqual(50, odds.FoilProbability, 0.001);
         }
 
         [Test]
@@ -598,6 +599,37 @@ namespace Rebellion.Tests.Sectors
 
             Assert.IsNotNull(odds);
             Assert.AreEqual(90, odds.ObjectiveSuccessProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_DoesNotExposeHiddenBetrayalState()
+        {
+            (GameRoot game, Planet _, Planet target, Officer diplomat, MissionSystem missions) =
+                BuildMissionOddsScene("empire");
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -100, 50 },
+            };
+
+            diplomat.CanBetray = false;
+            diplomat.Loyalty = 100;
+            MissionOdds loyalOdds = missions.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Diplomacy, diplomat, target)
+            );
+            diplomat.CanBetray = true;
+            diplomat.Loyalty = 0;
+            MissionOdds betrayalOdds = missions.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Diplomacy, diplomat, target)
+            );
+
+            Assert.IsNotNull(loyalOdds);
+            Assert.IsNotNull(betrayalOdds);
+            Assert.AreEqual(
+                loyalOdds.OverallSuccessProbability,
+                betrayalOdds.OverallSuccessProbability,
+                0.001
+            );
+            Assert.AreEqual(loyalOdds.FoilProbability, betrayalOdds.FoilProbability, 0.001);
         }
 
         [Test]

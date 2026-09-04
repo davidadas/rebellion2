@@ -27,7 +27,7 @@ public sealed class MissionOddsRenderData
     /// <summary>
     /// Creates one icon-overlay snapshot from calculated mission probabilities.
     /// </summary>
-    /// <param name="overallSuccessProbability">Estimated chance of final mission success.</param>
+    /// <param name="overallSuccessProbability">Estimated visible operational success chance.</param>
     /// <param name="foilProbability">Estimated chance of being foiled before the objective.</param>
     public MissionOddsRenderData(double overallSuccessProbability, double foilProbability)
     {
@@ -35,6 +35,9 @@ public sealed class MissionOddsRenderData
         FoilPercent = RoundProbability(foilProbability);
     }
 
+    /// <summary>
+    /// Rounds and bounds one percentage for compact mission-icon presentation.
+    /// </summary>
     private static int RoundProbability(double probability) =>
         (int)Math.Round(Math.Clamp(probability, 0, 100), MidpointRounding.AwayFromZero);
 }

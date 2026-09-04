@@ -3,7 +3,8 @@ using System;
 namespace Rebellion.Game.Missions
 {
     /// <summary>
-    /// Contains calculated objective, foiling, and overall mission probabilities.
+    /// Contains calculated visible objective, foiling, and overall mission probabilities.
+    /// Hidden betrayal state is deliberately excluded from planning odds.
     /// </summary>
     public sealed class MissionOdds
     {
