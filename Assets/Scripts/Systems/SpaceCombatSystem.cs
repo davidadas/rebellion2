@@ -659,7 +659,10 @@ namespace Rebellion.Systems
         {
             return fleets?.Count > 0
                 && !IsRetreatBlockedByGravityWell(fleets, opponents)
-                && fleets.All(_movement.CanEvacuateToNearestFriendlyPlanet);
+                && fleets.All(fleet =>
+                    HasHyperdriveCapableShip(fleet)
+                    && _movement.CanEvacuateToNearestFriendlyPlanet(fleet)
+                );
         }
 
         /// <summary>
@@ -683,8 +686,9 @@ namespace Rebellion.Systems
                 return groups;
 
             foreach (
-                Fleet fleet in (fleets ?? Array.Empty<Fleet>()).Where(
-                    _movement.CanEvacuateToNearestFriendlyPlanet
+                Fleet fleet in (fleets ?? Array.Empty<Fleet>()).Where(fleet =>
+                    HasHyperdriveCapableShip(fleet)
+                    && _movement.CanEvacuateToNearestFriendlyPlanet(fleet)
                 )
             )
             {
@@ -706,6 +710,16 @@ namespace Rebellion.Systems
             }
 
             return groups;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet has a surviving capital ship capable of entering hyperspace.
+        /// </summary>
+        /// <param name="fleet">The fleet whose withdrawal capability is being checked.</param>
+        /// <returns>True when at least one active capital ship has a hyperdrive.</returns>
+        private static bool HasHyperdriveCapableShip(Fleet fleet)
+        {
+            return fleet != null && GetActiveCapitalShips(fleet).Any(ship => ship.Hyperdrive > 0);
         }
 
         /// <summary>
@@ -740,6 +754,8 @@ namespace Rebellion.Systems
                 return false;
 
             if (!ignoreGravityWell && IsRetreatBlockedByGravityWell(fleets, opponents))
+                return false;
+            if (fleets.Any(fleet => !HasHyperdriveCapableShip(fleet)))
                 return false;
 
             bool allRetreated = true;

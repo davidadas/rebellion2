@@ -372,21 +372,16 @@ namespace Rebellion.Game.Combat
         /// <param name="force">The force to complete.</param>
         private static void CompleteStalematedForce(CombatForce force)
         {
-            bool withdrew = force.HasWithdrawnUnits;
-            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable))
+            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable).ToList())
             {
                 if (unit.CanWithdraw)
-                {
                     unit.CompleteWithdrawal();
-                    withdrew = true;
-                }
-                else
-                {
-                    unit.Destroy();
-                }
             }
 
-            if (withdrew)
+            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable))
+                unit.Destroy();
+
+            if (force.HasWithdrawnUnits)
                 force.Outcome = SpaceCombatSideOutcome.Withdrawn;
             else
                 force.Outcome = SpaceCombatSideOutcome.Destroyed;
@@ -621,9 +616,81 @@ namespace Rebellion.Game.Combat
             /// </summary>
             internal void CompleteWithdrawal()
             {
-                foreach (TacticalUnit unit in _units.Where(unit => unit.IsAlive))
-                    unit.FinishWithdrawal();
+                HashSet<TacticalUnit> recoverableUnits = GetRecoverableUnits();
+                foreach (TacticalUnit unit in _units.Where(unit => unit.IsTargetable))
+                {
+                    if (unit.CanWithdrawIndependently || recoverableUnits.Contains(unit))
+                        unit.FinishWithdrawal();
+                    else
+                        unit.CancelWithdrawal();
+                }
                 IsWithdrawing = false;
+            }
+
+            /// <summary>
+            /// Assigns surviving non-hyperdrive fighters to withdrawing carrier capacity.
+            /// Existing mother-ship assignments are honored first, followed by deterministic
+            /// reassignment to another carrier that is still able to leave the battle.
+            /// </summary>
+            /// <returns>The carrier-dependent fighters that can leave with the group.</returns>
+            private HashSet<TacticalUnit> GetRecoverableUnits()
+            {
+                List<CapitalShipState> carriers = _units
+                    .OfType<CapitalShipState>()
+                    .Where(carrier =>
+                        carrier.IsTargetable
+                        && carrier.CanWithdrawIndependently
+                        && carrier.Ship.StarfighterCapacity > 0
+                    )
+                    .ToList();
+                List<StarfighterState> fighters = _units
+                    .OfType<StarfighterState>()
+                    .Where(fighter => fighter.IsTargetable)
+                    .ToList();
+                Dictionary<CapitalShipState, int> remainingCapacity = carriers.ToDictionary(
+                    carrier => carrier,
+                    carrier => Math.Max(carrier.Ship.StarfighterCapacity, 0)
+                );
+                HashSet<TacticalUnit> recoverableUnits = new HashSet<TacticalUnit>();
+
+                foreach (CapitalShipState carrier in carriers)
+                {
+                    IEnumerable<StarfighterState> assignedFighters = fighters
+                        .Where(fighter =>
+                            ReferenceEquals(
+                                fighter.Fighter.GetParentOfType<CapitalShip>(),
+                                carrier.Ship
+                            )
+                        )
+                        .OrderBy(fighter => fighter.CanWithdrawIndependently ? 1 : 0);
+                    foreach (StarfighterState fighter in assignedFighters)
+                    {
+                        if (remainingCapacity[carrier] <= 0)
+                            break;
+
+                        remainingCapacity[carrier]--;
+                        if (!fighter.CanWithdrawIndependently)
+                            recoverableUnits.Add(fighter);
+                    }
+                }
+
+                foreach (
+                    StarfighterState fighter in fighters.Where(fighter =>
+                        !fighter.CanWithdrawIndependently && !recoverableUnits.Contains(fighter)
+                    )
+                )
+                {
+                    CapitalShipState recoveryCarrier = carriers.FirstOrDefault(carrier =>
+                        remainingCapacity[carrier] > 0
+                    );
+                    if (recoveryCarrier == null)
+                        continue;
+
+                    remainingCapacity[recoveryCarrier]--;
+                    recoverableUnits.Add(fighter);
+                }
+
+                return recoverableUnits;
             }
         }
 
@@ -640,6 +707,7 @@ namespace Rebellion.Game.Combat
             protected double MinimumManeuverRatio => _minimumManeuverRatio;
             internal abstract ISceneNode Node { get; }
             internal abstract bool IsAlive { get; }
+            internal abstract bool CanWithdrawIndependently { get; }
             internal abstract double ManeuverRate { get; }
             internal abstract double ClosingSpeed { get; }
             internal virtual double WithdrawalSpeed => ClosingSpeed;
@@ -827,6 +895,15 @@ namespace Rebellion.Game.Combat
             }
 
             /// <summary>
+            /// Returns a unit to combat when it reaches the boundary without a way to enter
+            /// hyperspace or recover aboard a surviving carrier.
+            /// </summary>
+            internal void CancelWithdrawal()
+            {
+                IsWithdrawing = false;
+            }
+
+            /// <summary>
             /// Calculates the original maneuver-rate adjustment used against fighter targets.
             /// </summary>
             /// <param name="target">The target unit.</param>
@@ -873,6 +950,7 @@ namespace Rebellion.Game.Combat
             internal double CurrentShields { get; private set; }
             internal override ISceneNode Node => Ship;
             internal override bool IsAlive => CurrentHull > 0;
+            internal override bool CanWithdrawIndependently => Ship.Hyperdrive > 0;
             internal override bool IsStarfighter => false;
             internal override double RemainingDurability => CurrentHull + CurrentShields;
             internal override bool IsAttackDelayed => _attackDelay > 0;
@@ -1416,6 +1494,7 @@ namespace Rebellion.Game.Combat
                     : 0;
             internal override ISceneNode Node => Fighter;
             internal override bool IsAlive => _currentDurability > 0;
+            internal override bool CanWithdrawIndependently => Fighter.Hyperdrive > 0;
             internal override bool IsStarfighter => true;
             internal override double RemainingDurability => _currentDurability;
             internal override bool CanScanForTargets =>

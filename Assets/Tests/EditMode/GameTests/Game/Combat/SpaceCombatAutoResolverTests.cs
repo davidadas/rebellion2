@@ -739,6 +739,137 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
+        public void Resolve_CarriedNonHyperdriveFighterWithdraws_PreservesFighter()
+        {
+            CapitalShip attacker = CreatePassiveTarget("attacker", hull: 100);
+            CapitalShip carrier = CreateShip("carrier", hull: 100, weaponStrength: 1);
+            carrier.StarfighterCapacity = 1;
+            carrier.SublightSpeed = 10;
+            Starfighter fighter = CreateFighter("fighter", squadronSize: 12, weaponStrength: 0);
+            fighter.Hyperdrive = 0;
+            fighter.SublightSpeed = 10;
+            Fleet fleet = new Fleet();
+            fleet.AddChild(carrier);
+            carrier.AddChild(fighter);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveStartingDistance = 0;
+            IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups =
+                new IReadOnlyCollection<ISceneNode>[] { new ISceneNode[] { carrier, fighter } };
+
+            SpaceCombatAutoResult result = CreateResolver(config)
+                .Resolve(
+                    new[] { attacker },
+                    new List<Starfighter>(),
+                    new[] { carrier },
+                    new[] { fighter },
+                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
+                    withdrawalGroups
+                );
+
+            Assert.IsTrue(GetShipOutcome(result, carrier).Withdrew);
+            Assert.IsTrue(GetFighterOutcome(result, fighter).Withdrew);
+            Assert.AreEqual(12, GetFighterOutcome(result, fighter).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_CarrierDestroyedWithoutRecoveryCapacity_DestroysNonHyperdriveFighter()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
+            CapitalShip carrier = CreateShip("carrier", hull: 1, weaponStrength: 1);
+            carrier.StarfighterCapacity = 1;
+            carrier.SublightSpeed = 10;
+            CapitalShip escapeShip = CreateShip("escape-ship", hull: 1000, weaponStrength: 1);
+            escapeShip.StarfighterCapacity = 0;
+            escapeShip.SublightSpeed = 10;
+            Starfighter fighter = CreateFighter("fighter", squadronSize: 12, weaponStrength: 0);
+            fighter.Hyperdrive = 0;
+            fighter.ShieldStrength = 100;
+            fighter.SublightSpeed = 10;
+            Fleet fleet = new Fleet();
+            fleet.AddChild(carrier);
+            fleet.AddChild(escapeShip);
+            carrier.AddChild(fighter);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 20;
+            config.AutoResolveTargetScanDivisor = 1;
+            IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups =
+                new IReadOnlyCollection<ISceneNode>[]
+                {
+                    new ISceneNode[] { carrier, escapeShip, fighter },
+                };
+
+            SpaceCombatAutoResult result = CreateResolver(config, new ArcDamageRNG())
+                .Resolve(
+                    new[] { attacker },
+                    new List<Starfighter>(),
+                    new[] { carrier, escapeShip },
+                    new[] { fighter },
+                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
+                    withdrawalGroups
+                );
+
+            Assert.IsTrue(GetShipOutcome(result, escapeShip).Withdrew);
+            Assert.IsFalse(GetFighterOutcome(result, fighter).Withdrew);
+            Assert.AreEqual(0, GetFighterOutcome(result, fighter).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_CarrierDestroyedWithSpareRecoveryCapacity_WithdrawsNonHyperdriveFighter()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
+            CapitalShip destroyedCarrier = CreateShip(
+                "destroyed-carrier",
+                hull: 1,
+                weaponStrength: 1
+            );
+            destroyedCarrier.StarfighterCapacity = 1;
+            destroyedCarrier.SublightSpeed = 10;
+            CapitalShip recoveryCarrier = CreateShip(
+                "recovery-carrier",
+                hull: 1000,
+                weaponStrength: 1
+            );
+            recoveryCarrier.StarfighterCapacity = 1;
+            recoveryCarrier.SublightSpeed = 10;
+            Starfighter fighter = CreateFighter("fighter", squadronSize: 12, weaponStrength: 0);
+            fighter.Hyperdrive = 0;
+            fighter.ShieldStrength = 100;
+            fighter.SublightSpeed = 10;
+            Fleet fleet = new Fleet();
+            fleet.AddChild(destroyedCarrier);
+            fleet.AddChild(recoveryCarrier);
+            destroyedCarrier.AddChild(fighter);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 20;
+            config.AutoResolveTargetScanDivisor = 1;
+            IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups =
+                new IReadOnlyCollection<ISceneNode>[]
+                {
+                    new ISceneNode[] { destroyedCarrier, recoveryCarrier, fighter },
+                };
+
+            SpaceCombatAutoResult result = CreateResolver(config, new ArcDamageRNG())
+                .Resolve(
+                    new[] { attacker },
+                    new List<Starfighter>(),
+                    new[] { destroyedCarrier, recoveryCarrier },
+                    new[] { fighter },
+                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
+                    withdrawalGroups
+                );
+
+            Assert.AreEqual(0, GetShipOutcome(result, destroyedCarrier).HullAfter);
+            Assert.IsTrue(GetShipOutcome(result, recoveryCarrier).Withdrew);
+            Assert.IsTrue(GetFighterOutcome(result, fighter).Withdrew);
+            Assert.AreEqual(12, GetFighterOutcome(result, fighter).SquadronSizeAfter);
+        }
+
+        [Test]
         public void Resolve_UnarmedForcesWithoutWithdrawal_DestroysBothForces()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
@@ -877,6 +1008,7 @@ namespace Rebellion.Tests.Game.Combat
                 InstanceID = instanceId,
                 MaxHullStrength = hull,
                 CurrentHullStrength = hull,
+                Hyperdrive = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 WeaponRecharge = Math.Max(weaponStrength, 0),
             };
@@ -900,6 +1032,7 @@ namespace Rebellion.Tests.Game.Combat
                 MaxSquadronSize = squadronSize,
                 CurrentSquadronSize = squadronSize,
                 ShieldStrength = 1,
+                Hyperdrive = 1,
                 LaserCannon = weaponStrength,
                 LaserRange = weaponStrength > 0 ? 100 : 0,
                 ManufacturingStatus = ManufacturingStatus.Complete,

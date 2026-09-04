@@ -2002,6 +2002,92 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ResolvePending_WithdrawingFleetCarriesNonHyperdriveFighter_PreservesFighter()
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 1.01;
+            game.Random = new SequenceRNG();
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            (Planet allianceFallback, _) = CreatePlanet(
+                game,
+                "alliance-fallback",
+                owner: "alliance"
+            );
+            CreatePlanet(game, "empire-fallback", owner: "empire");
+            Fleet attackerFleet = CreateFleet(
+                game,
+                "attacker",
+                "empire",
+                combatPlanet,
+                1,
+                1000,
+                76,
+                shieldRechargeRate: 0
+            );
+            Starfighter attackerFighter = new Starfighter
+            {
+                InstanceID = "attacker-fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 9,
+                CurrentSquadronSize = 9,
+                ShieldStrength = 1,
+                LaserCannon = 1,
+            };
+            CapitalShip attackerShip = attackerFleet.GetChildren<CapitalShip>().Single();
+            attackerShip.StarfighterCapacity = 1;
+            game.AttachNode(attackerFighter, attackerShip);
+            Fleet defenderFleet = CreateFleet(
+                game,
+                "defender",
+                "alliance",
+                combatPlanet,
+                1,
+                1000,
+                100,
+                shieldRechargeRate: 0
+            );
+            CapitalShip defenderShip = defenderFleet.GetChildren<CapitalShip>().Single();
+            defenderShip.SublightSpeed = 10;
+            defenderShip.StarfighterCapacity = 1;
+            Starfighter defenderFighter = new Starfighter
+            {
+                InstanceID = "defender-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                ShieldStrength = 1,
+                Hyperdrive = 0,
+                SublightSpeed = 10,
+                LaserCannon = 1,
+            };
+            game.AttachNode(defenderFighter, defenderShip);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
+
+            manager.ProcessTick();
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+            SpaceCombatSideOutcome allianceOutcome =
+                result.AttackerOwnerInstanceID == "alliance"
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            Assert.AreSame(allianceFallback, defenderFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(defenderFleet.Movement);
+            Assert.AreSame(
+                defenderFighter,
+                game.GetSceneNodeByInstanceID<Starfighter>(defenderFighter.InstanceID)
+            );
+            Assert.AreSame(defenderShip, defenderFighter.GetParent());
+        }
+
+        [Test]
         public void ResolvePending_CapitalShipAgainstPlanetaryFighter_DestroysFighter()
         {
             GameRoot game = CreateAutomaticCombatGame();
@@ -2090,6 +2176,35 @@ namespace Rebellion.Tests.Systems
                 SpaceCombatSideOutcome.Active,
                 empireWasAttacker ? combatResult.DefenderOutcome : combatResult.AttackerOutcome
             );
+        }
+
+        [Test]
+        public void ResolvePendingRetreat_FleetWithoutHyperdrive_DoesNotMoveFleet()
+        {
+            GameRoot game = CreateGame();
+            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
+                "player1";
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
+            empireFleet.GetChildren<CapitalShip>().Single().Hyperdrive = 0;
+            CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
+
+            PendingCombatResult pending = manager
+                .ProcessTick()
+                .OfType<PendingCombatResult>()
+                .Single();
+            bool empireCanRetreat = ReferenceEquals(pending.AttackerFleet, empireFleet)
+                ? pending.AttackerCanRetreat
+                : pending.DefenderCanRetreat;
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+
+            Assert.IsFalse(empireCanRetreat);
+            Assert.IsNull(results);
+            Assert.AreSame(combatPlanet, empireFleet.GetParentOfType<Planet>());
+            Assert.IsNull(empireFleet.Movement);
         }
 
         [Test]
@@ -2391,6 +2506,7 @@ namespace Rebellion.Tests.Systems
                     MaxHullStrength = hullStrength,
                     CurrentHullStrength = hullStrength,
                     ShieldRechargeRate = shieldRechargeRate,
+                    Hyperdrive = 1,
                     ManufacturingStatus = ManufacturingStatus.Complete,
                     WeaponRecharge = 1,
                 };

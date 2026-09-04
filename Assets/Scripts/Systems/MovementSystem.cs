@@ -2418,6 +2418,18 @@ namespace Rebellion.Systems
             string evictingOwnerInstanceID = null
         )
         {
+            if (unit == null)
+                throw new ArgumentNullException(nameof(unit));
+
+            if (!CanTravelBetweenPlanets(unit))
+            {
+                unit.Movement = null;
+                GameLogger.Warning(
+                    $"{unit.GetDisplayName()} has no hyperdrive or carrier and cannot evacuate."
+                );
+                return;
+            }
+
             string ownerID = GetMovementControlOwner(unit);
             if (string.IsNullOrEmpty(ownerID))
             {
@@ -2461,6 +2473,8 @@ namespace Rebellion.Systems
         internal bool CanEvacuateToNearestFriendlyPlanet(IMovable unit)
         {
             if (unit == null)
+                return false;
+            if (!CanTravelBetweenPlanets(unit))
                 return false;
 
             string ownerId = GetMovementControlOwner(unit);
@@ -2507,7 +2521,12 @@ namespace Rebellion.Systems
             if (units == null)
                 throw new ArgumentNullException(nameof(units));
 
-            foreach (IMovable unit in units.Where(unit => unit != null).ToList())
+            foreach (
+                IMovable unit in units
+                    .Where(unit => unit != null)
+                    .OrderBy(unit => unit is Starfighter fighter && fighter.Hyperdrive <= 0 ? 0 : 1)
+                    .ToList()
+            )
             {
                 ISceneNode node = unit;
                 CapitalShip currentShip = node?.GetParentOfType<CapitalShip>();
@@ -2523,9 +2542,33 @@ namespace Rebellion.Systems
                     );
                 if (destination != null)
                     _game.MoveNode(node, destination);
-                else
+                else if (CanTravelBetweenPlanets(unit))
                     EvacuateToNearestFriendlyPlanet(unit);
             }
+        }
+
+        /// <summary>
+        /// Returns whether a unit can cross interplanetary space under its own power or as part
+        /// of a fleet with at least one operational hyperdrive.
+        /// </summary>
+        /// <param name="unit">The unit attempting to travel.</param>
+        /// <returns>True when the unit has a valid interplanetary movement source.</returns>
+        private static bool CanTravelBetweenPlanets(IMovable unit)
+        {
+            return unit switch
+            {
+                Starfighter fighter => fighter.Hyperdrive > 0,
+                CapitalShip capitalShip => capitalShip.Hyperdrive > 0,
+                Fleet fleet => fleet
+                    .GetChildren<CapitalShip>()
+                    .Any(ship =>
+                        ship.ManufacturingStatus == ManufacturingStatus.Complete
+                        && ship.Movement == null
+                        && ship.CurrentHullStrength > 0
+                        && ship.Hyperdrive > 0
+                    ),
+                _ => unit != null,
+            };
         }
 
         /// <summary>
