@@ -855,15 +855,28 @@ namespace Rebellion.Game.Combat
 
             internal readonly CapitalShip Ship;
             internal readonly int InitialHull;
-            private readonly bool[] _arcQueuedForRecharge = new bool[4];
-            private readonly TacticalUnit[,] _arcTargets = new TacticalUnit[4, 3];
-            private readonly double[,] _arcTargetDamage = new double[4, 3];
-            private readonly double[] _currentArcCharge = new double[4];
+            private readonly bool[] _arcQueuedForRecharge = new bool[
+                CapitalShip.PrimaryWeaponArcs.Count
+            ];
+            private readonly TacticalUnit[,] _arcTargets = new TacticalUnit[
+                CapitalShip.PrimaryWeaponArcs.Count,
+                _weaponTypes.Length
+            ];
+            private readonly double[,] _arcTargetDamage = new double[
+                CapitalShip.PrimaryWeaponArcs.Count,
+                _weaponTypes.Length
+            ];
+            private readonly double[] _currentArcCharge = new double[
+                CapitalShip.PrimaryWeaponArcs.Count
+            ];
             private readonly int[] _ionCannons;
             private readonly int[] _laserCannons;
+            private readonly double _laserCannonDamageAgainstCapitalShipsMultiplier;
             private readonly double _maximumHull;
             private readonly double _maximumShields;
-            private readonly double[] _maximumArcCharge = new double[4];
+            private readonly double[] _maximumArcCharge = new double[
+                CapitalShip.PrimaryWeaponArcs.Count
+            ];
             private readonly Queue<int> _rechargeQueue = new Queue<int>();
             private readonly int[] _turbolasers;
             private int _attackDelay;
@@ -914,6 +927,10 @@ namespace Rebellion.Game.Combat
                 _turbolasers = GetWeaponValues(ship, PrimaryWeaponType.Turbolaser);
                 _laserCannons = GetWeaponValues(ship, PrimaryWeaponType.LaserCannon);
                 _ionCannons = GetWeaponValues(ship, PrimaryWeaponType.IonCannon);
+                _laserCannonDamageAgainstCapitalShipsMultiplier = Math.Max(
+                    config.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier,
+                    0
+                );
                 CurrentHull = InitialHull;
                 CurrentShields = _maximumShields;
                 for (int arc = 0; arc < _maximumArcCharge.Length; arc++)
@@ -1292,7 +1309,7 @@ namespace Rebellion.Game.Combat
             private double GetStrongestArcStrength(bool targetsFighters)
             {
                 double strongestArc = 0;
-                for (int arc = 0; arc < 4; arc++)
+                for (int arc = 0; arc < _maximumArcCharge.Length; arc++)
                     strongestArc = Math.Max(
                         strongestArc,
                         GetArcStrength(
@@ -1357,15 +1374,12 @@ namespace Rebellion.Game.Combat
             /// <param name="type">The weapon type.</param>
             /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
             /// <returns>The target-specific damage multiplier.</returns>
-            private static double GetTargetTypeMultiplier(
-                PrimaryWeaponType type,
-                bool targetsFighters
-            )
+            private double GetTargetTypeMultiplier(PrimaryWeaponType type, bool targetsFighters)
             {
                 if (type == PrimaryWeaponType.IonCannon && targetsFighters)
                     return 0;
                 if (type == PrimaryWeaponType.LaserCannon && !targetsFighters)
-                    return 1.0 / CapitalShip.LaserCannonCapitalShipDamageDivisor;
+                    return _laserCannonDamageAgainstCapitalShipsMultiplier;
                 return 1;
             }
 
@@ -1396,7 +1410,11 @@ namespace Rebellion.Game.Combat
                     || arc >= values.Length
                     || (
                         requireRange
-                        && (values.Length < 5 || values[4] <= 0 || values[4] < engagementDistance)
+                        && (
+                            values.Length <= CapitalShip.PrimaryWeaponRangeIndex
+                            || values[CapitalShip.PrimaryWeaponRangeIndex] <= 0
+                            || values[CapitalShip.PrimaryWeaponRangeIndex] < engagementDistance
+                        )
                     )
                 )
                     return 0;

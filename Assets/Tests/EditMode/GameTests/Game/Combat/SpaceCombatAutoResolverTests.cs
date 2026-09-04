@@ -56,13 +56,14 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
-        public void Resolve_CapitalShipLaserCannonAgainstCapitalShip_DealsOneSixthDamage()
+        public void Resolve_CapitalShipLaserCannonAgainstCapitalShip_UsesConfiguredMultiplier()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
             attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
             attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
             CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 0.25;
             config.AutoResolveMaximumIterations = 1;
             config.AutoResolveTargetScanDivisor = 1;
 
@@ -75,7 +76,7 @@ namespace Rebellion.Tests.Game.Combat
                 defenderCanWithdraw: true
             );
 
-            Assert.AreEqual(90, GetShipOutcome(result, defender).HullAfter);
+            Assert.AreEqual(85, GetShipOutcome(result, defender).HullAfter);
         }
 
         [Test]
@@ -888,6 +889,7 @@ namespace Rebellion.Tests.Game.Combat
         {
             return new GameConfig.SpaceCombatConfig
             {
+                CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 1.0 / 6.0,
                 AutoResolveMaximumIterations = 4096,
                 AutoResolveStagnationIterations = 1200,
                 AutoResolveRetreatStrengthRatio = 0.33,
