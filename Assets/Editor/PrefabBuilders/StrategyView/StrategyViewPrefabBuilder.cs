@@ -142,6 +142,8 @@ public static class StrategyViewPrefabBuilder
         "Application/Strategy/UI/Windows/ui_strategyview_construction_decrement_button_pressed.png";
     private const string _constructionDropdownBackgroundPreviewPath =
         "Application/Strategy/UI/Windows/ui_strategyview_construction_dropdown_background.png";
+    private const string _contextMenuCheckMarkPreviewPath =
+        "Pack/Shared/Strategy/UI/ContextMenus/context-menu-check-mark.png";
     private const string _defenseWindowBackgroundPreviewPath =
         "Application/Strategy/UI/Windows/ui_strategyview_defense_window_background.png";
     private const string _fleetWindowBackgroundPreviewPath =
@@ -2825,7 +2827,7 @@ public static class StrategyViewPrefabBuilder
             missionSelection,
             _constructionOpenButtonPreviewPath,
             101,
-            174,
+            167,
             _constructionDropdownButtonWidth,
             _constructionDropdownButtonHeight
         );
@@ -2864,8 +2866,8 @@ public static class StrategyViewPrefabBuilder
             missionSelection,
             "MissionOddsCheckbox",
             "Show mission odds",
-            70,
-            154,
+            80,
+            185,
             130,
             16,
             true
@@ -3145,7 +3147,7 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Authors a compact dark checkbox without requiring an external sprite.
+    /// Authors a compact dark checkbox using the shared context-menu check artwork.
     /// </summary>
     /// <param name="parent">The checkbox parent.</param>
     /// <param name="name">The checkbox object name.</param>
@@ -3172,7 +3174,6 @@ public static class StrategyViewPrefabBuilder
             typeof(RectTransform),
             typeof(CanvasRenderer),
             typeof(Image),
-            typeof(Outline),
             typeof(Toggle),
             typeof(UICheckboxView)
         );
@@ -3180,35 +3181,27 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(root.GetComponent<RectTransform>(), x, y, width, height);
 
         Image background = root.GetComponent<Image>();
-        background.color = new Color32(5, 9, 14, 190);
+        background.color = Color.clear;
         background.raycastTarget = true;
-        Outline rowOutline = root.GetComponent<Outline>();
-        rowOutline.effectColor = new Color32(70, 105, 125, 150);
-        rowOutline.effectDistance = new Vector2(1, -1);
-        rowOutline.useGraphicAlpha = false;
+        background.canvasRenderer.cullTransparentMesh = false;
 
         Image box = CreateImage("CheckboxBoxImage", root.transform);
-        box.color = new Color32(0, 0, 0, 215);
+        box.color = new Color32(22, 18, 19, 255);
         box.raycastTarget = false;
         SetSourceRect(box.rectTransform, 2, 1, 14, 14);
-        Outline boxOutline = box.gameObject.AddComponent<Outline>();
-        boxOutline.effectColor = new Color32(125, 165, 185, 210);
-        boxOutline.effectDistance = new Vector2(1, -1);
-        boxOutline.useGraphicAlpha = false;
+        CreateSolidBorder(box.transform, 14, 14, Color.white);
 
-        RectTransform checkMark = CreateChildLayer("CheckMark", root.transform);
-        SetSourceRect(checkMark, 2, 1, 14, 14);
-        Color32 checkColor = new Color32(90, 255, 125, 255);
-        Image shortStroke = CreateImage("ShortStroke", checkMark);
-        shortStroke.color = checkColor;
-        shortStroke.raycastTarget = false;
-        SetSourceRect(shortStroke.rectTransform, 2, 7, 6, 2);
-        shortStroke.rectTransform.localEulerAngles = new Vector3(0, 0, -42);
-        Image longStroke = CreateImage("LongStroke", checkMark);
-        longStroke.color = checkColor;
-        longStroke.raycastTarget = false;
-        SetSourceRect(longStroke.rectTransform, 5, 5, 9, 2);
-        longStroke.rectTransform.localEulerAngles = new Vector3(0, 0, 48);
+        RawImage checkMark = CreateRawImage(
+            "CheckMark",
+            root.transform,
+            _contextMenuCheckMarkPreviewPath,
+            2,
+            1,
+            14,
+            14
+        );
+        checkMark.raycastTarget = false;
+        AttachTextureBinding(checkMark, _contextMenuCheckMarkPreviewPath);
 
         TextMeshProUGUI labelField = CreateTextLabel("LabelTextField", root.transform);
         labelField.text = label;
@@ -3221,22 +3214,43 @@ public static class StrategyViewPrefabBuilder
         Toggle toggle = root.GetComponent<Toggle>();
         toggle.targetGraphic = background;
         toggle.graphic = null;
-        toggle.transition = Selectable.Transition.ColorTint;
-        ColorBlock colors = toggle.colors;
-        colors.normalColor = Color.white;
-        colors.highlightedColor = new Color32(135, 170, 185, 255);
-        colors.pressedColor = new Color32(90, 130, 150, 255);
-        colors.selectedColor = colors.highlightedColor;
-        toggle.colors = colors;
+        toggle.transition = Selectable.Transition.None;
         toggle.isOn = isChecked;
 
         UICheckboxView view = EnableRuntimeComponent(root.GetComponent<UICheckboxView>());
         AssignReference(view, "toggle", toggle);
         AssignReference(view, "backgroundImage", background);
-        AssignReference(view, "checkMarkRoot", checkMark);
+        AssignReference(view, "checkMarkRoot", checkMark.rectTransform);
         AssignReference(view, "labelTextField", labelField);
         checkMark.gameObject.SetActive(isChecked);
         return view;
+    }
+
+    /// <summary>
+    /// Authors a crisp one-source-pixel border within a rectangular control.
+    /// </summary>
+    /// <param name="parent">The bordered control.</param>
+    /// <param name="width">The control width.</param>
+    /// <param name="height">The control height.</param>
+    /// <param name="color">The border color.</param>
+    private static void CreateSolidBorder(Transform parent, int width, int height, Color color)
+    {
+        Image top = CreateImage("BorderTopImage", parent);
+        top.color = color;
+        top.raycastTarget = false;
+        SetSourceRect(top.rectTransform, 0, 0, width, 1);
+        Image bottom = CreateImage("BorderBottomImage", parent);
+        bottom.color = color;
+        bottom.raycastTarget = false;
+        SetSourceRect(bottom.rectTransform, 0, height - 1, width, 1);
+        Image left = CreateImage("BorderLeftImage", parent);
+        left.color = color;
+        left.raycastTarget = false;
+        SetSourceRect(left.rectTransform, 0, 0, 1, height);
+        Image right = CreateImage("BorderRightImage", parent);
+        right.color = color;
+        right.raycastTarget = false;
+        SetSourceRect(right.rectTransform, width - 1, 0, 1, height);
     }
 
     /// <summary>
