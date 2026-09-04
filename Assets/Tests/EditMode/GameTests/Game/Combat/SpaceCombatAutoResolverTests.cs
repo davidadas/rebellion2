@@ -870,6 +870,78 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
+        public void Resolve_HyperdriveFighterOccupiesRecoveryCarrier_WithdrawsBothFighters()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
+            CapitalShip destroyedCarrier = CreateShip(
+                "destroyed-carrier",
+                hull: 1,
+                weaponStrength: 1
+            );
+            destroyedCarrier.StarfighterCapacity = 1;
+            destroyedCarrier.SublightSpeed = 10;
+            CapitalShip recoveryCarrier = CreateShip(
+                "recovery-carrier",
+                hull: 1000,
+                weaponStrength: 1
+            );
+            recoveryCarrier.StarfighterCapacity = 1;
+            recoveryCarrier.SublightSpeed = 10;
+            Starfighter hyperdriveFighter = CreateFighter(
+                "hyperdrive-fighter",
+                squadronSize: 12,
+                weaponStrength: 0
+            );
+            hyperdriveFighter.Hyperdrive = 1;
+            hyperdriveFighter.ShieldStrength = 100;
+            hyperdriveFighter.SublightSpeed = 10;
+            Starfighter nonHyperdriveFighter = CreateFighter(
+                "non-hyperdrive-fighter",
+                squadronSize: 12,
+                weaponStrength: 0
+            );
+            nonHyperdriveFighter.Hyperdrive = 0;
+            nonHyperdriveFighter.ShieldStrength = 100;
+            nonHyperdriveFighter.SublightSpeed = 10;
+            Fleet fleet = new Fleet();
+            fleet.AddChild(destroyedCarrier);
+            fleet.AddChild(recoveryCarrier);
+            destroyedCarrier.AddChild(nonHyperdriveFighter);
+            recoveryCarrier.AddChild(hyperdriveFighter);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 20;
+            config.AutoResolveTargetScanDivisor = 1;
+            IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups =
+                new IReadOnlyCollection<ISceneNode>[]
+                {
+                    new ISceneNode[]
+                    {
+                        destroyedCarrier,
+                        recoveryCarrier,
+                        hyperdriveFighter,
+                        nonHyperdriveFighter,
+                    },
+                };
+
+            SpaceCombatAutoResult result = CreateResolver(config, new ArcDamageRNG())
+                .Resolve(
+                    new[] { attacker },
+                    new List<Starfighter>(),
+                    new[] { destroyedCarrier, recoveryCarrier },
+                    new[] { hyperdriveFighter, nonHyperdriveFighter },
+                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
+                    withdrawalGroups
+                );
+
+            Assert.AreEqual(0, GetShipOutcome(result, destroyedCarrier).HullAfter);
+            Assert.IsTrue(GetShipOutcome(result, recoveryCarrier).Withdrew);
+            Assert.IsTrue(GetFighterOutcome(result, hyperdriveFighter).Withdrew);
+            Assert.IsTrue(GetFighterOutcome(result, nonHyperdriveFighter).Withdrew);
+        }
+
+        [Test]
         public void Resolve_UnarmedForcesWithoutWithdrawal_DestroysBothForces()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);

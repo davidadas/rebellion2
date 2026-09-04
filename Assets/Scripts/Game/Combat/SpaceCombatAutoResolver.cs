@@ -655,22 +655,20 @@ namespace Rebellion.Game.Combat
 
                 foreach (CapitalShipState carrier in carriers)
                 {
-                    IEnumerable<StarfighterState> assignedFighters = fighters
-                        .Where(fighter =>
-                            ReferenceEquals(
-                                fighter.Fighter.GetParentOfType<CapitalShip>(),
-                                carrier.Ship
-                            )
+                    IEnumerable<StarfighterState> assignedFighters = fighters.Where(fighter =>
+                        !fighter.CanWithdrawIndependently
+                        && ReferenceEquals(
+                            fighter.Fighter.GetParentOfType<CapitalShip>(),
+                            carrier.Ship
                         )
-                        .OrderBy(fighter => fighter.CanWithdrawIndependently ? 1 : 0);
+                    );
                     foreach (StarfighterState fighter in assignedFighters)
                     {
                         if (remainingCapacity[carrier] <= 0)
                             break;
 
                         remainingCapacity[carrier]--;
-                        if (!fighter.CanWithdrawIndependently)
-                            recoverableUnits.Add(fighter);
+                        recoverableUnits.Add(fighter);
                     }
                 }
 

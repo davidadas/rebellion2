@@ -2531,16 +2531,48 @@ namespace Rebellion.Systems
                 ISceneNode node = unit;
                 CapitalShip currentShip = node?.GetParentOfType<CapitalShip>();
                 Fleet fleet = node?.GetParentOfType<Fleet>();
-                CapitalShip destination = fleet
-                    ?.GetChildren<CapitalShip>()
-                    .FirstOrDefault(ship =>
+                List<CapitalShip> availableShips = (
+                    fleet?.GetChildren<CapitalShip>() ?? Array.Empty<CapitalShip>()
+                )
+                    .Where(ship =>
                         ship != currentShip
                         && ship.ManufacturingStatus == ManufacturingStatus.Complete
                         && ship.Movement == null
                         && ship.CurrentHullStrength > 0
-                        && ship.CanAcceptChild(node)
-                    );
-                if (destination != null)
+                    )
+                    .ToList();
+                CapitalShip destination = availableShips.FirstOrDefault(ship =>
+                    ship.CanAcceptChild(node)
+                );
+                Starfighter independentlyMobileOccupant = null;
+                if (
+                    destination == null
+                    && unit is Starfighter starfighter
+                    && starfighter.Hyperdrive <= 0
+                )
+                {
+                    foreach (CapitalShip availableShip in availableShips)
+                    {
+                        independentlyMobileOccupant = availableShip
+                            .GetChildren<Starfighter>()
+                            .FirstOrDefault(fighter =>
+                                fighter.ManufacturingStatus == ManufacturingStatus.Complete
+                                && fighter.Movement == null
+                                && fighter.Hyperdrive > 0
+                                && CanEvacuateToNearestFriendlyPlanet(fighter)
+                            );
+                        if (independentlyMobileOccupant == null)
+                            continue;
+
+                        destination = availableShip;
+                        break;
+                    }
+                }
+
+                if (independentlyMobileOccupant != null)
+                    EvacuateToNearestFriendlyPlanet(independentlyMobileOccupant);
+
+                if (destination?.CanAcceptChild(node) == true)
                     _game.MoveNode(node, destination);
                 else if (CanTravelBetweenPlanets(unit))
                     EvacuateToNearestFriendlyPlanet(unit);

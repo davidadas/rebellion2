@@ -190,6 +190,72 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void RelocateUnits_HyperdriveFighterOccupiesRecoveryCapacity_EvacuatesHyperdriveFighterAndRecoversNonHyperdriveFighter()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "combat" };
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(combatPlanet, sector);
+            game.AttachNode(friendlyPlanet, sector);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            CapitalShip destroyedShip = new CapitalShip
+            {
+                InstanceID = "destroyed",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            CapitalShip recoveryCarrier = new CapitalShip
+            {
+                InstanceID = "recovery",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+                StarfighterCapacity = 1,
+            };
+            Starfighter hyperdriveFighter = new Starfighter
+            {
+                InstanceID = "hyperdrive-fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter nonHyperdriveFighter = new Starfighter
+            {
+                InstanceID = "non-hyperdrive-fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, combatPlanet);
+            game.AttachNode(destroyedShip, fleet);
+            game.AttachNode(recoveryCarrier, fleet);
+            game.AttachNode(hyperdriveFighter, recoveryCarrier);
+            game.AttachNode(nonHyperdriveFighter, destroyedShip);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+
+            movement.RelocateUnits(new[] { nonHyperdriveFighter });
+
+            Assert.AreSame(recoveryCarrier, nonHyperdriveFighter.GetParent());
+            Assert.IsNull(nonHyperdriveFighter.Movement);
+            Assert.AreSame(friendlyPlanet, hyperdriveFighter.GetParent());
+            Assert.IsNotNull(hyperdriveFighter.Movement);
+        }
+
+        [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
             GameRoot dependencyGame = new GameRoot(TestConfig.Create());
