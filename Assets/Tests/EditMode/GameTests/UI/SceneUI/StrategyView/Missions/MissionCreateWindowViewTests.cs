@@ -124,6 +124,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void Render_MissionOdds_OverlaysSuccessAndDetectionOnSelectedAndDropdownIcons()
+        {
+            MissionOddsRenderData odds = new MissionOddsRenderData(73.6, 41.2);
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                true,
+                new[]
+                {
+                    new StrategyDropdownItemRenderData(_texture, "Diplomacy", Color.white, odds),
+                },
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                selectedMissionOdds: odds
+            );
+
+            _view.Render(data);
+
+            RawImage selectedImage = FindComponent<RawImage>("SelectedMissionImage");
+            TextMeshProUGUI selectedSuccess = FindOddsText(
+                selectedImage.transform,
+                "SuccessOddsTextField"
+            );
+            TextMeshProUGUI selectedDetection = FindOddsText(
+                selectedImage.transform,
+                "DetectionOddsTextField"
+            );
+            StrategyDropdownItemView row = FindDropdownItems().Single();
+            RawImage rowImage = FindDropdownImage(row);
+            Assert.AreEqual("SUCCESS\n~74%", selectedSuccess.text);
+            Assert.AreEqual("DETECTED\n~41%", selectedDetection.text);
+            Assert.AreEqual(
+                "SUCCESS\n~74%",
+                FindOddsText(rowImage.transform, "SuccessOddsTextField").text
+            );
+            Assert.AreEqual(
+                "DETECTED\n~41%",
+                FindOddsText(rowImage.transform, "DetectionOddsTextField").text
+            );
+            Assert.Greater(selectedSuccess.color.g, selectedSuccess.color.r);
+            Assert.Greater(selectedDetection.color.r, selectedDetection.color.g);
+        }
+
+        [Test]
         public void Render_PlanetTargetPreview_UsesAuthoredPreviewTexture()
         {
             Texture authoredPlanetTexture = FindComponent<RawImage>("TargetPreviewImage").texture;
@@ -672,7 +715,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             string targetName = "Corellia",
             MissionCreateTabRenderData[] tabs = null,
             bool showSelectedMission = true,
-            bool canConfirm = true
+            bool canConfirm = true,
+            MissionOddsRenderData selectedMissionOdds = null
         )
         {
             return new MissionCreateWindowRenderData(
@@ -692,7 +736,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 tabs ?? CreateTabs(),
                 dropdownItems,
                 agents,
-                decoys
+                decoys,
+                selectedMissionOdds
             );
         }
 
@@ -773,6 +818,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             return item.GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "ItemTextField");
+        }
+
+        private static TextMeshProUGUI FindOddsText(Transform root, string objectName)
+        {
+            return root.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == objectName);
         }
 
         private static RawImage FindParticipantImage(

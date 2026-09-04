@@ -17,14 +17,20 @@ internal sealed class MissionCreateWindowProjector
     private static readonly Color32 _white = Color.white;
 
     private readonly Func<UIContext> getUIContext;
+    private readonly Func<MissionStartRequest, MissionEstimate> getMissionEstimate;
 
     /// <summary>
     /// Creates a Mission Create projector with access to the current presentation context.
     /// </summary>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
-    public MissionCreateWindowProjector(Func<UIContext> getUIContext)
+    /// <param name="getMissionEstimate">Calculates planning odds for a mission configuration.</param>
+    public MissionCreateWindowProjector(
+        Func<UIContext> getUIContext,
+        Func<MissionStartRequest, MissionEstimate> getMissionEstimate = null
+    )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
+        this.getMissionEstimate = getMissionEstimate ?? (_ => null);
     }
 
     /// <summary>
@@ -71,7 +77,8 @@ internal sealed class MissionCreateWindowProjector
                 : Array.Empty<MissionParticipantRowRenderData>(),
             session.ActiveTab == MissionCreateWindowTab.Personnel
                 ? BuildParticipantRows(uiContext, session.Decoys, session.SelectedDecoys)
-                : Array.Empty<MissionParticipantRowRenderData>()
+                : Array.Empty<MissionParticipantRowRenderData>(),
+            BuildMissionOdds(session, selectedChoice)
         );
     }
 
@@ -130,7 +137,7 @@ internal sealed class MissionCreateWindowProjector
     /// <param name="uiContext">The current strategy presentation context.</param>
     /// <param name="session">The source Mission Create session.</param>
     /// <returns>The ordered immutable dropdown snapshots.</returns>
-    private static IReadOnlyList<StrategyDropdownItemRenderData> BuildDropdownItems(
+    private IReadOnlyList<StrategyDropdownItemRenderData> BuildDropdownItems(
         UIContext uiContext,
         MissionCreateWindowSession session
     )
@@ -143,12 +150,44 @@ internal sealed class MissionCreateWindowProjector
                 new StrategyDropdownItemRenderData(
                     GetMissionChoiceTexture(uiContext, choice),
                     choice.Name,
-                    index == session.SelectedMissionIndex ? _white : _gray
+                    index == session.SelectedMissionIndex ? _white : _gray,
+                    BuildMissionOdds(session, choice)
                 )
             );
         }
 
         return rows;
+    }
+
+    /// <summary>
+    /// Builds the current participant split's estimate for one mission choice.
+    /// </summary>
+    /// <param name="session">The source Mission Create session.</param>
+    /// <param name="choice">The mission choice to evaluate.</param>
+    /// <returns>The rounded presentation estimate, or null when the choice is invalid.</returns>
+    private MissionOddsRenderData BuildMissionOdds(
+        MissionCreateWindowSession session,
+        StrategyMissionChoice choice
+    )
+    {
+        Planet planet = session?.Target?.Planet?.Planet;
+        if (choice == null || planet == null || session.Agents.Count == 0)
+            return null;
+
+        MissionEstimate estimate = getMissionEstimate(
+            new MissionStartRequest
+            {
+                MissionTypeID = choice.MissionTypeID,
+                Location = planet,
+                SelectedTarget = session.Target.Item,
+                Discipline = choice.Discipline,
+                MainParticipants = session.Agents.ToList(),
+                DecoyParticipants = session.Decoys.ToList(),
+            }
+        );
+        return estimate == null
+            ? null
+            : new MissionOddsRenderData(estimate.SuccessProbability, estimate.DetectionProbability);
     }
 
     /// <summary>

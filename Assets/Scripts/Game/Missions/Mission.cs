@@ -29,6 +29,30 @@ namespace Rebellion.Game.Missions
     }
 
     /// <summary>
+    /// Contains the planning estimates shown before a mission is started.
+    /// </summary>
+    public sealed class MissionEstimate
+    {
+        public double ObjectiveSuccessProbability { get; }
+
+        public double DetectionProbability { get; }
+
+        public double SuccessProbability { get; }
+
+        /// <summary>
+        /// Creates a planning estimate from the objective and pre-objective detection chances.
+        /// </summary>
+        /// <param name="objectiveSuccessProbability">Chance that the objective succeeds if reached.</param>
+        /// <param name="detectionProbability">Chance that known opposing forces foil the mission first.</param>
+        internal MissionEstimate(double objectiveSuccessProbability, double detectionProbability)
+        {
+            ObjectiveSuccessProbability = Math.Clamp(objectiveSuccessProbability, 0, 100);
+            DetectionProbability = Math.Clamp(detectionProbability, 0, 100);
+            SuccessProbability = ObjectiveSuccessProbability * (1d - DetectionProbability / 100d);
+        }
+    }
+
+    /// <summary>
     /// Provides the external operations needed while a mission executes its post-arrival lifecycle.
     /// </summary>
     internal interface IMissionExecutionRuntime
@@ -461,7 +485,7 @@ namespace Rebellion.Game.Missions
         /// <param name="detector">The detector being diverted.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>The decoy success probability.</returns>
-        private double GetDecoyProbability(
+        internal double GetDecoyProbability(
             IMissionParticipant decoy,
             ISceneNode detector,
             GameRoot game
@@ -803,7 +827,8 @@ namespace Rebellion.Game.Missions
         /// <returns>The matching commander, or null when none is assigned.</returns>
         internal Officer FindDetectorCommander(ISceneNode detector)
         {
-            if (GetParent() is not Planet planet)
+            Planet planet = GetParent() as Planet ?? detector?.GetParentOfType<Planet>();
+            if (planet == null)
                 return null;
 
             OfficerRank requiredRank = detector switch

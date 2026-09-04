@@ -242,6 +242,27 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Estimates a mission's final success and detection chances without resolving an outcome.
+        /// Detection uses the caller's observed planet state so planning does not expose hidden units.
+        /// </summary>
+        /// <param name="request">The mission configuration to evaluate.</param>
+        /// <returns>The planning estimate, or null when the request cannot create a mission.</returns>
+        public MissionEstimate GetMissionEstimate(MissionStartRequest request)
+        {
+            if (!TryCreateMission(request, out Mission mission))
+                return null;
+
+            double objectiveSuccessProbability = mission
+                .GetMissionOdds(mission.GetMainParticipants(), _game)
+                .SuccessProbability;
+            double detectionProbability = EstimateDetectionProbability(
+                mission,
+                request.Location as Planet
+            );
+            return new MissionEstimate(objectiveSuccessProbability, detectionProbability);
+        }
+
+        /// <summary>
         /// Creates, attaches, and starts a mission from the supplied request.
         /// </summary>
         /// <param name="request">The mission start request to resolve and start.</param>
@@ -738,9 +759,59 @@ namespace Rebellion.Systems
             if (mission == null || detector == null)
                 return false;
 
+            return RollProbability(GetDetectionProbability(mission, detector));
+        }
+
+        /// <summary>
+        /// Estimates the chance that at least one observed detector foils the mission.
+        /// Each detector's decoy diversion chance uses the average of the currently assigned decoys;
+        /// later decoy capture is intentionally omitted because this is a planning estimate.
+        /// </summary>
+        /// <param name="mission">The unstarted or active mission to evaluate.</param>
+        /// <param name="observedPlanet">The planet state currently known to the planning faction.</param>
+        /// <returns>The estimated detection percentage.</returns>
+        internal double EstimateDetectionProbability(Mission mission, Planet observedPlanet)
+        {
+            if (mission == null || observedPlanet == null)
+                return 0;
+
+            List<ISceneNode> detectors = GetDetectors(mission, observedPlanet);
+            if (detectors.Count == 0)
+                return 0;
+
+            IReadOnlyList<IMissionParticipant> decoys = mission.GetDecoyParticipants();
+            double undetectedProbability = 1d;
+            foreach (ISceneNode detector in detectors)
+            {
+                double diversionProbability =
+                    decoys.Count == 0
+                        ? 0
+                        : decoys.Average(decoy =>
+                            mission.GetDecoyProbability(decoy, detector, _game)
+                        ) / 100d;
+                double detectorProbability = GetDetectionProbability(mission, detector) / 100d;
+                double effectiveProbability =
+                    (1d - Math.Clamp(diversionProbability, 0, 1))
+                    * Math.Clamp(detectorProbability, 0, 1);
+                undetectedProbability *= 1d - effectiveProbability;
+            }
+
+            return (1d - undetectedProbability) * 100d;
+        }
+
+        /// <summary>
+        /// Returns one detector's configured chance to foil a mission.
+        /// </summary>
+        /// <param name="mission">The mission attempting to remain undetected.</param>
+        /// <param name="detector">The hostile detector.</param>
+        /// <returns>The detection percentage.</returns>
+        private int GetDetectionProbability(Mission mission, ISceneNode detector)
+        {
+            if (mission == null || detector == null)
+                return 0;
+
             int score = CalculateDetectionScore(mission, detector);
-            int probability = LookupProbability(GetMissionTables().Foil, score);
-            return RollProbability(probability);
+            return LookupProbability(GetMissionTables().Foil, score);
         }
 
         /// <summary>

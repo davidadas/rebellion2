@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Identifies one tab in the authored Mission Create workflow order.
@@ -9,6 +11,34 @@ public enum MissionCreateWindowTab
 {
     Mission = 0,
     Personnel = 1,
+}
+
+/// <summary>
+/// Contains the rounded mission-planning percentages displayed over a mission icon.
+/// </summary>
+public sealed class MissionOddsRenderData
+{
+    public int SuccessPercent { get; }
+
+    public int DetectionPercent { get; }
+
+    public string SuccessLabel => $"SUCCESS\n~{SuccessPercent}%";
+
+    public string DetectionLabel => $"DETECTED\n~{DetectionPercent}%";
+
+    /// <summary>
+    /// Creates one icon-overlay snapshot from calculated mission probabilities.
+    /// </summary>
+    /// <param name="successProbability">Estimated chance of final mission success.</param>
+    /// <param name="detectionProbability">Estimated chance of pre-objective detection.</param>
+    public MissionOddsRenderData(double successProbability, double detectionProbability)
+    {
+        SuccessPercent = RoundProbability(successProbability);
+        DetectionPercent = RoundProbability(detectionProbability);
+    }
+
+    private static int RoundProbability(double probability) =>
+        (int)Math.Round(Math.Clamp(probability, 0, 100), MidpointRounding.AwayFromZero);
 }
 
 /// <summary>
@@ -73,6 +103,8 @@ public sealed class MissionCreateWindowRenderData
 
     public Texture SelectedMissionTexture { get; }
 
+    public MissionOddsRenderData SelectedMissionOdds { get; }
+
     public string TargetName { get; }
 
     public Texture TargetTexture { get; }
@@ -111,6 +143,7 @@ public sealed class MissionCreateWindowRenderData
     /// <param name="dropdownItems">The ordered mission dropdown rows.</param>
     /// <param name="agentRows">The ordered primary-agent rows.</param>
     /// <param name="decoyRows">The ordered decoy-agent rows.</param>
+    /// <param name="selectedMissionOdds">The estimate displayed over the selected mission icon.</param>
     public MissionCreateWindowRenderData(
         int x,
         int y,
@@ -128,7 +161,8 @@ public sealed class MissionCreateWindowRenderData
         IReadOnlyList<MissionCreateTabRenderData> tabs,
         IReadOnlyList<StrategyDropdownItemRenderData> dropdownItems,
         IReadOnlyList<MissionParticipantRowRenderData> agentRows,
-        IReadOnlyList<MissionParticipantRowRenderData> decoyRows
+        IReadOnlyList<MissionParticipantRowRenderData> decoyRows,
+        MissionOddsRenderData selectedMissionOdds = null
     )
     {
         X = x;
@@ -139,6 +173,7 @@ public sealed class MissionCreateWindowRenderData
         TitleTexture = titleTexture;
         MissionName = missionName ?? string.Empty;
         SelectedMissionTexture = selectedMissionTexture;
+        SelectedMissionOdds = selectedMissionOdds;
         TargetName = targetName ?? string.Empty;
         TargetTexture = targetTexture;
         UsePlanetTargetPreview = usePlanetTargetPreview;
@@ -160,5 +195,124 @@ public sealed class MissionCreateWindowRenderData
     private static IReadOnlyList<T> Copy<T>(IReadOnlyList<T> items, string parameterName)
     {
         return new List<T>(items ?? throw new ArgumentNullException(parameterName)).AsReadOnly();
+    }
+}
+
+/// <summary>
+/// Renders compact success and detection estimates over the top of a mission icon.
+/// </summary>
+internal sealed class MissionOddsOverlayView : MonoBehaviour
+{
+    private static readonly Color32 _backdropColor = new Color32(0, 0, 0, 205);
+    private static readonly Color32 _detectionColor = new Color32(255, 105, 85, 255);
+    private static readonly Color32 _successColor = new Color32(90, 255, 125, 255);
+
+    private TextMeshProUGUI detectionTextField;
+    private TextMeshProUGUI successTextField;
+
+    /// <summary>
+    /// Creates an overlay fitted to the supplied mission icon.
+    /// </summary>
+    /// <param name="iconRoot">The mission icon receiving the overlay.</param>
+    /// <param name="textStyleSource">An authored text component supplying the UI font.</param>
+    /// <returns>The configured overlay.</returns>
+    public static MissionOddsOverlayView Create(
+        RectTransform iconRoot,
+        TextMeshProUGUI textStyleSource
+    )
+    {
+        if (iconRoot == null)
+            throw new ArgumentNullException(nameof(iconRoot));
+        if (textStyleSource == null)
+            throw new ArgumentNullException(nameof(textStyleSource));
+
+        GameObject overlayObject = new GameObject(
+            "MissionOddsOverlay",
+            typeof(RectTransform),
+            typeof(Image),
+            typeof(MissionOddsOverlayView)
+        );
+        RectTransform overlayRect = overlayObject.GetComponent<RectTransform>();
+        overlayRect.SetParent(iconRoot, false);
+        overlayRect.anchorMin = new Vector2(0, 1);
+        overlayRect.anchorMax = new Vector2(1, 1);
+        overlayRect.pivot = new Vector2(0.5f, 1);
+        overlayRect.anchoredPosition = Vector2.zero;
+        overlayRect.sizeDelta = new Vector2(0, 24);
+
+        Image backdrop = overlayObject.GetComponent<Image>();
+        backdrop.color = _backdropColor;
+        backdrop.raycastTarget = false;
+
+        MissionOddsOverlayView overlay = overlayObject.GetComponent<MissionOddsOverlayView>();
+        overlay.successTextField = CreateTextField(
+            "SuccessOddsTextField",
+            overlayRect,
+            textStyleSource,
+            new Vector2(0, 0),
+            new Vector2(0.5f, 1),
+            _successColor
+        );
+        overlay.detectionTextField = CreateTextField(
+            "DetectionOddsTextField",
+            overlayRect,
+            textStyleSource,
+            new Vector2(0.5f, 0),
+            new Vector2(1, 1),
+            _detectionColor
+        );
+        overlayRect.SetAsLastSibling();
+        return overlay;
+    }
+
+    /// <summary>
+    /// Applies one complete mission-odds snapshot.
+    /// </summary>
+    /// <param name="odds">The mission odds to display.</param>
+    public void Render(MissionOddsRenderData odds)
+    {
+        if (odds == null)
+            throw new ArgumentNullException(nameof(odds));
+
+        successTextField.text = odds.SuccessLabel;
+        detectionTextField.text = odds.DetectionLabel;
+        gameObject.SetActive(true);
+    }
+
+    private static TextMeshProUGUI CreateTextField(
+        string objectName,
+        RectTransform parent,
+        TextMeshProUGUI styleSource,
+        Vector2 anchorMin,
+        Vector2 anchorMax,
+        Color32 color
+    )
+    {
+        GameObject textObject = new GameObject(
+            objectName,
+            typeof(RectTransform),
+            typeof(TextMeshProUGUI)
+        );
+        RectTransform rect = textObject.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.anchorMin = anchorMin;
+        rect.anchorMax = anchorMax;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(-2, -2);
+
+        TextMeshProUGUI textField = textObject.GetComponent<TextMeshProUGUI>();
+        textField.font = styleSource.font;
+        textField.fontSharedMaterial = styleSource.fontSharedMaterial;
+        textField.color = color;
+        textField.alignment = TextAlignmentOptions.Center;
+        textField.fontStyle = FontStyles.Bold;
+        textField.enableAutoSizing = true;
+        textField.fontSizeMin = 5;
+        textField.fontSizeMax = 10;
+        textField.textWrappingMode = TextWrappingModes.NoWrap;
+        textField.overflowMode = TextOverflowModes.Overflow;
+        textField.raycastTarget = false;
+        return textField;
     }
 }

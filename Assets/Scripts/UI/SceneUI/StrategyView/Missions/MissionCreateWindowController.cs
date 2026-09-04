@@ -85,7 +85,10 @@ public sealed class MissionCreateWindowController
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
-        projector = new MissionCreateWindowProjector(getUIContext);
+        projector = new MissionCreateWindowProjector(
+            getUIContext,
+            request => this.getMissionSystem().GetMissionEstimate(request)
+        );
     }
 
     /// <summary>

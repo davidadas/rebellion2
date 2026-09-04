@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -160,6 +161,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual((Color32)Color.gray, data.DropdownItems[1].LabelColor);
             Assert.IsEmpty(data.AgentRows);
             Assert.IsEmpty(data.DecoyRows);
+        }
+
+        [Test]
+        public void Build_MissionOdds_UsesCurrentAgentAndDecoySplitForEveryIcon()
+        {
+            Officer primary = CreateOfficer("primary", "Primary", false);
+            Officer decoy = CreateOfficer("decoy", "Decoy", false);
+            List<MissionStartRequest> requests = new List<MissionStartRequest>();
+            MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
+                () => _uiContext,
+                request =>
+                {
+                    requests.Add(request);
+                    return request.MissionTypeID == MissionTypeIDs.Diplomacy
+                        ? new MissionEstimate(80, 25)
+                        : new MissionEstimate(50, 10);
+                }
+            );
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, _planet.Planet),
+                new IMissionParticipant[] { primary, decoy }
+            );
+            session.SelectParticipant(MissionParticipantRole.Agent, 1, 1);
+            session.MoveSelectedParticipants(MissionParticipantRole.Agent);
+            session.ToggleDropdown();
+
+            MissionCreateWindowRenderData data = projector.Build(session, _window);
+
+            Assert.AreEqual(60, data.SelectedMissionOdds.SuccessPercent);
+            Assert.AreEqual(25, data.SelectedMissionOdds.DetectionPercent);
+            Assert.AreEqual(60, data.DropdownItems[0].MissionOdds.SuccessPercent);
+            Assert.AreEqual(25, data.DropdownItems[0].MissionOdds.DetectionPercent);
+            Assert.AreEqual(45, data.DropdownItems[1].MissionOdds.SuccessPercent);
+            Assert.AreEqual(10, data.DropdownItems[1].MissionOdds.DetectionPercent);
+            Assert.AreEqual(3, requests.Count);
+            Assert.IsTrue(
+                requests.All(request => request.MainParticipants.SequenceEqual(new[] { primary }))
+            );
+            Assert.IsTrue(
+                requests.All(request => request.DecoyParticipants.SequenceEqual(new[] { decoy }))
+            );
         }
 
         [Test]

@@ -151,6 +151,7 @@ public sealed class MissionCreateWindowView
     private UnityAction dropdownListener;
     private bool dropdownOpen;
     private bool hasTargetPreviewSlotRect;
+    private MissionOddsOverlayView selectedMissionOddsOverlay;
     private UnityAction infoListener;
     private UnityAction moveLeftListener;
     private UnityAction moveRightListener;
@@ -492,6 +493,7 @@ public sealed class MissionCreateWindowView
         selectedMissionImage.gameObject.SetActive(data.SelectedMissionTexture != null);
         if (data.SelectedMissionTexture != null)
             UILayout.SetImageTexture(selectedMissionImage, data.SelectedMissionTexture);
+        RenderSelectedMissionOdds(data.SelectedMissionOdds);
 
         selectedMissionNameTextField.gameObject.SetActive(!string.IsNullOrEmpty(data.MissionName));
         if (!string.IsNullOrEmpty(data.MissionName))
@@ -521,6 +523,26 @@ public sealed class MissionCreateWindowView
             UILayout.SetTextContent(targetPreviewNameTextField, data.TargetName);
 
         RenderDropdown(data.DropdownOpen, data.DropdownItems);
+    }
+
+    /// <summary>
+    /// Renders mission-planning odds over the selected mission icon.
+    /// </summary>
+    /// <param name="odds">The selected mission estimate, or null when unavailable.</param>
+    private void RenderSelectedMissionOdds(MissionOddsRenderData odds)
+    {
+        if (odds == null)
+        {
+            if (selectedMissionOddsOverlay != null)
+                selectedMissionOddsOverlay.gameObject.SetActive(false);
+            return;
+        }
+
+        selectedMissionOddsOverlay ??= MissionOddsOverlayView.Create(
+            selectedMissionImage.rectTransform,
+            selectedMissionNameTextField
+        );
+        selectedMissionOddsOverlay.Render(odds);
     }
 
     /// <summary>
