@@ -1585,8 +1585,8 @@ namespace Rebellion.Systems
             IReadOnlyList<Fleet> defenderFleets
         )
         {
-            List<GameResult> events = ApplyShipDamage(shipDamage);
             ApplyFighterSquadronLosses(fighterLosses);
+            List<GameResult> events = ApplyShipDamage(shipDamage);
 
             foreach (
                 Fleet fleet in attackerFleets

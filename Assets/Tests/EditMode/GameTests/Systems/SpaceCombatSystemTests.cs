@@ -2188,6 +2188,38 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ResolvePending_InTransitFighterOccupiesRecoveryCarrier_RecordsStrandedFighterLoss()
+        {
+            (
+                GameRoot game,
+                Fleet retreatingFleet,
+                _,
+                CapitalShip recoveryCarrier,
+                List<Starfighter> displacedFighters,
+                List<Starfighter> existingFighters,
+                Planet fallbackPlanet,
+                SpaceCombatResult result
+            ) = ResolveCarrierDestructionWithdrawal(
+                recoveryCapacity: 1,
+                displacedFighterHyperdrives: new[] { 0 },
+                existingRecoveryFighterCount: 1,
+                existingRecoveryFightersAreInTransit: true
+            );
+            Starfighter strandedFighter = displacedFighters.Single();
+            Starfighter inTransitFighter = existingFighters.Single();
+            FighterLossResult loss = result.FighterLosses.Single(candidate =>
+                candidate.Fighter == strandedFighter
+            );
+
+            Assert.AreSame(fallbackPlanet, retreatingFleet.GetParentOfType<Planet>());
+            Assert.AreSame(recoveryCarrier, inTransitFighter.GetParent());
+            Assert.IsNotNull(inTransitFighter.Movement);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(strandedFighter.InstanceID));
+            Assert.AreEqual(12, loss.SquadsBefore);
+            Assert.AreEqual(0, loss.SquadsAfter);
+        }
+
+        [Test]
         public void ResolvePending_CarrierDestroyedWithLimitedCapacity_PrioritizesNonHyperdriveFighter()
         {
             (
@@ -2667,7 +2699,8 @@ namespace Rebellion.Tests.Systems
             int recoveryCapacity,
             IReadOnlyList<int> displacedFighterHyperdrives,
             int existingRecoveryFighterCount = 0,
-            int existingRecoveryFighterHyperdrive = 0
+            int existingRecoveryFighterHyperdrive = 0,
+            bool existingRecoveryFightersAreInTransit = false
         )
         {
             GameRoot game = CreateAutomaticCombatGame();
@@ -2739,6 +2772,13 @@ namespace Rebellion.Tests.Systems
                     Hyperdrive = existingRecoveryFighterHyperdrive,
                     SublightSpeed = 10,
                 };
+                if (existingRecoveryFightersAreInTransit)
+                {
+                    fighter.Movement = new MovementState
+                    {
+                        CurrentPosition = combatPlanet.GetPosition(),
+                    };
+                }
                 game.AttachNode(fighter, recoveryCarrier);
                 existingFighters.Add(fighter);
             }

@@ -643,37 +643,29 @@ namespace Rebellion.Game.Combat
                         && carrier.Ship.StarfighterCapacity > 0
                     )
                     .ToList();
-                List<StarfighterState> fighters = _units
-                    .OfType<StarfighterState>()
+                List<StarfighterState> fighterStates = _units.OfType<StarfighterState>().ToList();
+                List<StarfighterState> survivingFighters = fighterStates
                     .Where(fighter => fighter.IsTargetable)
                     .ToList();
                 Dictionary<CapitalShipState, int> remainingCapacity = carriers.ToDictionary(
                     carrier => carrier,
-                    carrier => Math.Max(carrier.Ship.StarfighterCapacity, 0)
+                    carrier => GetAvailableRecoveryCapacity(carrier, fighterStates)
                 );
                 HashSet<TacticalUnit> recoverableUnits = new HashSet<TacticalUnit>();
 
                 foreach (CapitalShipState carrier in carriers)
                 {
-                    IEnumerable<StarfighterState> assignedFighters = fighters.Where(fighter =>
-                        !fighter.CanWithdrawIndependently
-                        && ReferenceEquals(
-                            fighter.Fighter.GetParentOfType<CapitalShip>(),
-                            carrier.Ship
-                        )
+                    IEnumerable<StarfighterState> assignedFighters = survivingFighters.Where(
+                        fighter =>
+                            !fighter.CanWithdrawIndependently
+                            && IsAssignedToCarrier(fighter, carrier)
                     );
                     foreach (StarfighterState fighter in assignedFighters)
-                    {
-                        if (remainingCapacity[carrier] <= 0)
-                            break;
-
-                        remainingCapacity[carrier]--;
                         recoverableUnits.Add(fighter);
-                    }
                 }
 
                 foreach (
-                    StarfighterState fighter in fighters.Where(fighter =>
+                    StarfighterState fighter in survivingFighters.Where(fighter =>
                         !fighter.CanWithdrawIndependently && !recoverableUnits.Contains(fighter)
                     )
                 )
@@ -689,6 +681,42 @@ namespace Rebellion.Game.Combat
                 }
 
                 return recoverableUnits;
+            }
+
+            /// <summary>
+            /// Calculates the carrier bays available after already-resolved fighter outcomes are
+            /// applied. Existing inactive occupants continue to reserve their bays.
+            /// </summary>
+            /// <param name="carrier">The carrier receiving displaced fighters.</param>
+            /// <param name="fighterStates">All fighters that participated in the battle.</param>
+            /// <returns>The number of bays available for reassignment.</returns>
+            private static int GetAvailableRecoveryCapacity(
+                CapitalShipState carrier,
+                IReadOnlyList<StarfighterState> fighterStates
+            )
+            {
+                int releasedCapacity = fighterStates.Count(fighter =>
+                    IsAssignedToCarrier(fighter, carrier)
+                    && (!fighter.IsAlive || fighter.CanWithdrawIndependently)
+                );
+                return Math.Max(carrier.Ship.GetExcessStarfighterCapacity() + releasedCapacity, 0);
+            }
+
+            /// <summary>
+            /// Returns whether a fighter is currently assigned to a specified carrier.
+            /// </summary>
+            /// <param name="fighter">The fighter assignment to inspect.</param>
+            /// <param name="carrier">The expected carrier.</param>
+            /// <returns>True when the fighter is a child of the carrier.</returns>
+            private static bool IsAssignedToCarrier(
+                StarfighterState fighter,
+                CapitalShipState carrier
+            )
+            {
+                return ReferenceEquals(
+                    fighter.Fighter.GetParentOfType<CapitalShip>(),
+                    carrier.Ship
+                );
             }
         }
 

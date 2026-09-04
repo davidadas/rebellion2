@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -750,7 +751,9 @@ namespace Rebellion.Tests.Game.Combat
             fighter.SublightSpeed = 10;
             Fleet fleet = new Fleet();
             fleet.AddChild(carrier);
+            carrier.SetParent(fleet);
             carrier.AddChild(fighter);
+            fighter.SetParent(carrier);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
             config.AutoResolveStartingDistance = 0;
@@ -788,8 +791,11 @@ namespace Rebellion.Tests.Game.Combat
             fighter.SublightSpeed = 10;
             Fleet fleet = new Fleet();
             fleet.AddChild(carrier);
+            carrier.SetParent(fleet);
             fleet.AddChild(escapeShip);
+            escapeShip.SetParent(fleet);
             carrier.AddChild(fighter);
+            fighter.SetParent(carrier);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
             config.AutoResolveStartingDistance = 0;
@@ -817,6 +823,74 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
+        public void Resolve_RecoveryCarrierBayOccupiedByInTransitFighter_DestroysNonHyperdriveFighter()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
+            CapitalShip destroyedCarrier = CreateShip(
+                "destroyed-carrier",
+                hull: 1,
+                weaponStrength: 1
+            );
+            destroyedCarrier.StarfighterCapacity = 1;
+            destroyedCarrier.SublightSpeed = 10;
+            CapitalShip recoveryCarrier = CreateShip(
+                "recovery-carrier",
+                hull: 1000,
+                weaponStrength: 1
+            );
+            recoveryCarrier.StarfighterCapacity = 1;
+            recoveryCarrier.SublightSpeed = 10;
+            Starfighter strandedFighter = CreateFighter(
+                "stranded-fighter",
+                squadronSize: 12,
+                weaponStrength: 0
+            );
+            strandedFighter.Hyperdrive = 0;
+            strandedFighter.ShieldStrength = 100;
+            strandedFighter.SublightSpeed = 10;
+            Starfighter inTransitFighter = CreateFighter(
+                "in-transit-fighter",
+                squadronSize: 12,
+                weaponStrength: 0
+            );
+            inTransitFighter.Movement = new MovementState();
+            Fleet fleet = new Fleet();
+            fleet.AddChild(destroyedCarrier);
+            destroyedCarrier.SetParent(fleet);
+            fleet.AddChild(recoveryCarrier);
+            recoveryCarrier.SetParent(fleet);
+            destroyedCarrier.AddChild(strandedFighter);
+            strandedFighter.SetParent(destroyedCarrier);
+            recoveryCarrier.AddChild(inTransitFighter);
+            inTransitFighter.SetParent(recoveryCarrier);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 20;
+            config.AutoResolveTargetScanDivisor = 1;
+            IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups =
+                new IReadOnlyCollection<ISceneNode>[]
+                {
+                    new ISceneNode[] { destroyedCarrier, recoveryCarrier, strandedFighter },
+                };
+
+            SpaceCombatAutoResult result = CreateResolver(config, new ArcDamageRNG())
+                .Resolve(
+                    new[] { attacker },
+                    new List<Starfighter>(),
+                    new[] { destroyedCarrier, recoveryCarrier },
+                    new[] { strandedFighter },
+                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
+                    withdrawalGroups
+                );
+
+            Assert.AreEqual(0, GetShipOutcome(result, destroyedCarrier).HullAfter);
+            Assert.IsTrue(GetShipOutcome(result, recoveryCarrier).Withdrew);
+            Assert.IsFalse(GetFighterOutcome(result, strandedFighter).Withdrew);
+            Assert.AreEqual(0, GetFighterOutcome(result, strandedFighter).SquadronSizeAfter);
+        }
+
+        [Test]
         public void Resolve_CarrierDestroyedWithSpareRecoveryCapacity_WithdrawsNonHyperdriveFighter()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
@@ -840,8 +914,11 @@ namespace Rebellion.Tests.Game.Combat
             fighter.SublightSpeed = 10;
             Fleet fleet = new Fleet();
             fleet.AddChild(destroyedCarrier);
+            destroyedCarrier.SetParent(fleet);
             fleet.AddChild(recoveryCarrier);
+            recoveryCarrier.SetParent(fleet);
             destroyedCarrier.AddChild(fighter);
+            fighter.SetParent(destroyedCarrier);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
             config.AutoResolveStartingDistance = 0;
@@ -905,9 +982,13 @@ namespace Rebellion.Tests.Game.Combat
             nonHyperdriveFighter.SublightSpeed = 10;
             Fleet fleet = new Fleet();
             fleet.AddChild(destroyedCarrier);
+            destroyedCarrier.SetParent(fleet);
             fleet.AddChild(recoveryCarrier);
+            recoveryCarrier.SetParent(fleet);
             destroyedCarrier.AddChild(nonHyperdriveFighter);
+            nonHyperdriveFighter.SetParent(destroyedCarrier);
             recoveryCarrier.AddChild(hyperdriveFighter);
+            hyperdriveFighter.SetParent(recoveryCarrier);
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
             config.AutoResolveStartingDistance = 0;
