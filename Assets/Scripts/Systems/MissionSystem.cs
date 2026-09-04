@@ -875,6 +875,8 @@ namespace Rebellion.Systems
                 }
 
                 unfoiledByDecoyPool = next;
+                if (unfoiledByDecoyPool.Count == 0)
+                    break;
             }
 
             return (1d - unfoiledByDecoyPool.Values.Sum()) * 100d;
@@ -887,6 +889,9 @@ namespace Rebellion.Systems
             double probability
         )
         {
+            if (probability <= 0)
+                return;
+
             probabilities.TryGetValue(decoyPool, out double existingProbability);
             probabilities[decoyPool] = existingProbability + probability;
         }
