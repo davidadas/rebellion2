@@ -1405,10 +1405,10 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_BuildingCompleteDestinationChangedSides_RedirectsToProductionPlanet()
+        public void ProcessTick_BuildingDestinationChangedSides_CancelsOrder()
         {
             // Mine queued from planetA to planetB. planetB captured before completion.
-            // planetA has capacity — mine should redirect there and be in transit.
+            // The order should be cancelled instead of redirecting to planetA.
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
@@ -1480,23 +1480,16 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Delivering, mine.ManufacturingStatus);
-            Assert.AreEqual(
-                planetA,
-                mine.GetParent(),
-                "Mine should redirect to production planet."
-            );
-            Assert.IsNotNull(
-                mine.Movement,
-                "Mine should be in visual transit to production planet."
-            );
+            Assert.IsNull(mine.GetParent());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+            Assert.IsEmpty(planetA.GetManufacturingQueue());
         }
 
         [Test]
-        public void ProcessTick_BuildingCompleteDestinationChangedNoCapacity_StaysAtHostile()
+        public void ProcessTick_BuildingDestinationChangedSides_CancelsRegardlessOfProducerCapacity()
         {
             // Mine queued from full planetA to planetB. planetB captured before completion.
-            // planetA has no remaining capacity — mine stays at hostile planetB.
+            // Cancellation should not depend on planetA having fallback capacity.
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
@@ -1577,12 +1570,9 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
-            Assert.IsNotNull(
-                _game.GetSceneNodeByInstanceID<Building>("mine1"),
-                "Mine should remain in the scene — not destroyed."
-            );
-            Assert.IsNull(mine.Movement, "No transit state when no valid planet found.");
+            Assert.IsNull(mine.GetParent());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+            Assert.IsEmpty(planetA.GetManufacturingQueue());
         }
 
         [Test]
@@ -2221,11 +2211,40 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_BuildingBatchDestinationChangedSidesWithCapacity_RedirectsAll()
+        public void ProcessTick_RegimentDestinationChangedSides_CancelsOrder()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "REBELS" });
+            Planet destination = new Planet
+            {
+                InstanceID = "DESTINATION",
+                OwnerInstanceID = _empire.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            _game.AttachNode(destination, _coruscant.GetParent());
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "REGIMENT",
+                OwnerInstanceID = _empire.InstanceID,
+                ConstructionCost = 100,
+            };
+
+            Assert.IsTrue(_manager.Enqueue(_coruscant, regiment, destination, ignoreCost: true));
+            destination.OwnerInstanceID = "REBELS";
+
+            _manager.ProcessTick();
+
+            Assert.IsNull(regiment.GetParent());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.IsFalse(_coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessTick_BuildingBatchDestinationChangedSides_CancelsAllTargetedOrders()
         {
             // 3 mines queued from production planet A to destination planet B.
             // B changes sides. A has enough ground slots for all 3.
-            // Expected: all 3 mines redirect to A and are marked complete.
+            // Every order assigned to B should be cancelled.
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 3 };
@@ -2325,33 +2344,17 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Delivering, mine1.ManufacturingStatus);
-            Assert.AreEqual(ManufacturingStatus.Delivering, mine2.ManufacturingStatus);
-            Assert.AreEqual(ManufacturingStatus.Delivering, mine3.ManufacturingStatus);
-            Assert.AreEqual(
-                planetA,
-                mine1.GetParent(),
-                "Mine 1 should redirect to production planet."
-            );
-            Assert.AreEqual(
-                planetA,
-                mine2.GetParent(),
-                "Mine 2 should redirect to production planet."
-            );
-            Assert.AreEqual(
-                planetA,
-                mine3.GetParent(),
-                "Mine 3 should redirect to production planet."
-            );
+            Assert.IsNull(mine1.GetParent());
+            Assert.IsNull(mine2.GetParent());
+            Assert.IsNull(mine3.GetParent());
+            Assert.IsEmpty(planetA.GetManufacturingQueue());
         }
 
         [Test]
-        public void ProcessTick_BuildingBatchDestinationChangedSidesNoCapacity_StaysAtCurrentLocation()
+        public void ProcessTick_BuildingBatchDestinationChangedSides_CancelsWithoutFallbackCapacity()
         {
             // 3 mines queued from production planet A to destination planet B.
-            // B changes sides. A has no capacity for redirected mines.
-            // Expected: MovementSystem cannot find a valid placement; mines remain in the scene
-            // at their current location (planetB) rather than being destroyed.
+            // B changes sides. Cancellation does not depend on fallback capacity at A.
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 3 };
@@ -2467,21 +2470,10 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick();
 
-            Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
-            Assert.AreEqual(ManufacturingStatus.Complete, mine2.ManufacturingStatus);
-            Assert.AreEqual(ManufacturingStatus.Complete, mine3.ManufacturingStatus);
-            Assert.IsNotNull(
-                _game.GetSceneNodeByInstanceID<Building>("m1"),
-                "Mine 1 should remain in the scene when no valid placement is found."
-            );
-            Assert.IsNotNull(
-                _game.GetSceneNodeByInstanceID<Building>("m2"),
-                "Mine 2 should remain in the scene when no valid placement is found."
-            );
-            Assert.IsNotNull(
-                _game.GetSceneNodeByInstanceID<Building>("m3"),
-                "Mine 3 should remain in the scene when no valid placement is found."
-            );
+            Assert.IsNull(mine1.GetParent());
+            Assert.IsNull(mine2.GetParent());
+            Assert.IsNull(mine3.GetParent());
+            Assert.IsEmpty(planetA.GetManufacturingQueue());
         }
 
         [Test]
