@@ -144,6 +144,8 @@ public static class StrategyViewPrefabBuilder
         "Application/Strategy/UI/Windows/ui_strategyview_construction_dropdown_background.png";
     private const string _contextMenuCheckMarkPreviewPath =
         "Pack/Shared/Strategy/UI/ContextMenus/context-menu-check-mark.png";
+    private const string _checkboxFramePreviewPath =
+        "Pack/Shared/Strategy/UI/Controls/checkbox-frame.png";
     private const string _defenseWindowBackgroundPreviewPath =
         "Application/Strategy/UI/Windows/ui_strategyview_defense_window_background.png";
     private const string _fleetWindowBackgroundPreviewPath =
@@ -3185,11 +3187,16 @@ public static class StrategyViewPrefabBuilder
         background.raycastTarget = true;
         background.canvasRenderer.cullTransparentMesh = false;
 
-        Image box = CreateImage("CheckboxBoxImage", root.transform);
-        box.color = new Color32(22, 18, 19, 255);
-        box.raycastTarget = false;
-        SetSourceRect(box.rectTransform, 2, 1, 14, 14);
-        CreateSolidBorder(box.transform, 14, 14, Color.white);
+        RawImage frame = CreateRawImage(
+            "CheckboxFrameImage",
+            root.transform,
+            _checkboxFramePreviewPath,
+            2,
+            1,
+            14,
+            14
+        );
+        frame.raycastTarget = false;
 
         RawImage checkMark = CreateRawImage(
             "CheckMark",
@@ -3201,7 +3208,6 @@ public static class StrategyViewPrefabBuilder
             14
         );
         checkMark.raycastTarget = false;
-        AttachTextureBinding(checkMark, _contextMenuCheckMarkPreviewPath);
 
         TextMeshProUGUI labelField = CreateTextLabel("LabelTextField", root.transform);
         labelField.text = label;
@@ -3220,37 +3226,12 @@ public static class StrategyViewPrefabBuilder
         UICheckboxView view = EnableRuntimeComponent(root.GetComponent<UICheckboxView>());
         AssignReference(view, "toggle", toggle);
         AssignReference(view, "backgroundImage", background);
+        AssignReference(view, "frameImage", frame);
+        AssignReference(view, "checkMarkImage", checkMark);
         AssignReference(view, "checkMarkRoot", checkMark.rectTransform);
         AssignReference(view, "labelTextField", labelField);
         checkMark.gameObject.SetActive(isChecked);
         return view;
-    }
-
-    /// <summary>
-    /// Authors a crisp one-source-pixel border within a rectangular control.
-    /// </summary>
-    /// <param name="parent">The bordered control.</param>
-    /// <param name="width">The control width.</param>
-    /// <param name="height">The control height.</param>
-    /// <param name="color">The border color.</param>
-    private static void CreateSolidBorder(Transform parent, int width, int height, Color color)
-    {
-        Image top = CreateImage("BorderTopImage", parent);
-        top.color = color;
-        top.raycastTarget = false;
-        SetSourceRect(top.rectTransform, 0, 0, width, 1);
-        Image bottom = CreateImage("BorderBottomImage", parent);
-        bottom.color = color;
-        bottom.raycastTarget = false;
-        SetSourceRect(bottom.rectTransform, 0, height - 1, width, 1);
-        Image left = CreateImage("BorderLeftImage", parent);
-        left.color = color;
-        left.raycastTarget = false;
-        SetSourceRect(left.rectTransform, 0, 0, 1, height);
-        Image right = CreateImage("BorderRightImage", parent);
-        right.color = color;
-        right.raycastTarget = false;
-        SetSourceRect(right.rectTransform, width - 1, 0, 1, height);
     }
 
     /// <summary>

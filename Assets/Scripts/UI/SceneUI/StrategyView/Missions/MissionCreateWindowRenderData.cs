@@ -107,6 +107,10 @@ public sealed class MissionCreateWindowRenderData
 
     public bool ShowMissionOdds { get; }
 
+    public Texture CheckboxFrameTexture { get; }
+
+    public Texture CheckboxCheckMarkTexture { get; }
+
     public string TargetName { get; }
 
     public Texture TargetTexture { get; }
@@ -147,6 +151,8 @@ public sealed class MissionCreateWindowRenderData
     /// <param name="decoyRows">The ordered decoy-agent rows.</param>
     /// <param name="selectedMissionOdds">The estimate displayed over the selected mission icon.</param>
     /// <param name="showMissionOdds">Whether the mission-odds overlays are enabled.</param>
+    /// <param name="checkboxFrameTexture">The theme-owned checkbox frame.</param>
+    /// <param name="checkboxCheckMarkTexture">The theme-owned checkbox check mark.</param>
     public MissionCreateWindowRenderData(
         int x,
         int y,
@@ -166,7 +172,9 @@ public sealed class MissionCreateWindowRenderData
         IReadOnlyList<MissionParticipantRowRenderData> agentRows,
         IReadOnlyList<MissionParticipantRowRenderData> decoyRows,
         MissionOddsRenderData selectedMissionOdds = null,
-        bool showMissionOdds = true
+        bool showMissionOdds = true,
+        Texture checkboxFrameTexture = null,
+        Texture checkboxCheckMarkTexture = null
     )
     {
         X = x;
@@ -179,6 +187,8 @@ public sealed class MissionCreateWindowRenderData
         SelectedMissionTexture = selectedMissionTexture;
         SelectedMissionOdds = selectedMissionOdds;
         ShowMissionOdds = showMissionOdds;
+        CheckboxFrameTexture = checkboxFrameTexture;
+        CheckboxCheckMarkTexture = checkboxCheckMarkTexture;
         TargetName = targetName ?? string.Empty;
         TargetTexture = targetTexture;
         UsePlanetTargetPreview = usePlanetTargetPreview;

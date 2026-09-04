@@ -112,6 +112,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             session.ToggleDropdown();
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
             MissionCreateWindowTheme theme = playerTheme.StrategyWindows.MissionCreate;
+            StrategyCheckboxTheme checkboxTheme = playerTheme.StrategyCheckboxTheme;
 
             MissionCreateWindowRenderData data = _projector.Build(session, _window);
 
@@ -138,6 +139,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(
                 _uiContext.GetTexture(theme.DecoysHeaderImagePath),
                 data.DecoysHeaderTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(checkboxTheme.FrameImagePath),
+                data.CheckboxFrameTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(checkboxTheme.CheckMarkImagePath),
+                data.CheckboxCheckMarkTexture
             );
             Assert.AreEqual(2, data.Tabs.Count);
             Assert.AreEqual(MissionCreateWindowTab.Mission, data.Tabs[0].Tab);

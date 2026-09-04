@@ -190,7 +190,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 Array.Empty<StrategyDropdownItemRenderData>(),
                 Array.Empty<MissionParticipantRowRenderData>(),
                 Array.Empty<MissionParticipantRowRenderData>(),
-                showMissionOdds: false
+                showMissionOdds: false,
+                checkboxFrameTexture: _texture,
+                checkboxCheckMarkTexture: _texture
             );
 
             _view.Render(data);
@@ -198,6 +200,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             UICheckboxView checkbox = FindComponent<UICheckboxView>("MissionOddsCheckbox");
             Image background = checkbox.GetComponent<Image>();
             Assert.IsFalse(checkbox.IsChecked);
+            Assert.AreSame(_texture, FindComponent<RawImage>("CheckboxFrameImage").texture);
+            Assert.AreSame(_texture, FindComponent<RawImage>("CheckMark").texture);
             Assert.Less(background.color.r, 0.1f);
             Assert.Less(background.color.a, 1f);
             Assert.IsFalse(FindObject("CheckMark").activeSelf);
@@ -760,7 +764,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             bool showSelectedMission = true,
             bool canConfirm = true,
             MissionOddsRenderData selectedMissionOdds = null,
-            bool showMissionOdds = true
+            bool showMissionOdds = true,
+            Texture checkboxFrameTexture = null,
+            Texture checkboxCheckMarkTexture = null
         )
         {
             return new MissionCreateWindowRenderData(
@@ -782,7 +788,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 agents,
                 decoys,
                 selectedMissionOdds,
-                showMissionOdds
+                showMissionOdds,
+                checkboxFrameTexture,
+                checkboxCheckMarkTexture
             );
         }
 

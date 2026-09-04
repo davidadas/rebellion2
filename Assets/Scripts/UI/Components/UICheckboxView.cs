@@ -15,6 +15,12 @@ public sealed class UICheckboxView : MonoBehaviour
     private Image backgroundImage;
 
     [SerializeField]
+    private RawImage frameImage;
+
+    [SerializeField]
+    private RawImage checkMarkImage;
+
+    [SerializeField]
     private RectTransform checkMarkRoot;
 
     [SerializeField]
@@ -65,6 +71,20 @@ public sealed class UICheckboxView : MonoBehaviour
     }
 
     /// <summary>
+    /// Applies theme-owned checkbox artwork while retaining authored preview fallbacks.
+    /// </summary>
+    /// <param name="frameTexture">The checkbox frame texture, or null to retain the authored fallback.</param>
+    /// <param name="checkMarkTexture">The check-mark texture, or null to retain the authored fallback.</param>
+    public void SetTextures(Texture frameTexture, Texture checkMarkTexture)
+    {
+        VerifyReferences();
+        if (frameTexture != null)
+            UILayout.SetImageTexture(frameImage, frameTexture);
+        if (checkMarkTexture != null)
+            UILayout.SetImageTexture(checkMarkImage, checkMarkTexture);
+    }
+
+    /// <summary>
     /// Verifies all required checkbox references.
     /// </summary>
     public void VerifyReferences()
@@ -73,6 +93,10 @@ public sealed class UICheckboxView : MonoBehaviour
             throw new MissingReferenceException($"{name}/Toggle is missing.");
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
+        if (frameImage == null)
+            throw new MissingReferenceException($"{name}/FrameImage is missing.");
+        if (checkMarkImage == null)
+            throw new MissingReferenceException($"{name}/CheckMarkImage is missing.");
         if (checkMarkRoot == null)
             throw new MissingReferenceException($"{name}/CheckMarkRoot is missing.");
         if (labelTextField == null)

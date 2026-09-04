@@ -47,9 +47,9 @@ internal sealed class MissionCreateWindowProjector
             throw new ArgumentNullException(nameof(window));
 
         UIContext uiContext = GetRequiredUIContext();
-        MissionCreateWindowTheme theme = uiContext
-            .GetPlayerFactionTheme()
-            ?.StrategyWindows?.MissionCreate;
+        FactionTheme playerTheme = uiContext.GetPlayerFactionTheme();
+        MissionCreateWindowTheme theme = playerTheme?.StrategyWindows?.MissionCreate;
+        StrategyCheckboxTheme checkboxTheme = playerTheme?.StrategyCheckboxTheme;
         StrategyMissionChoice selectedChoice = session.SelectedChoice;
         ISceneNode target = session.Target.GetMissionTarget(
             selectedChoice?.TargetKind ?? MissionTargetKind.Planet
@@ -79,7 +79,9 @@ internal sealed class MissionCreateWindowProjector
                 ? BuildParticipantRows(uiContext, session.Decoys, session.SelectedDecoys)
                 : Array.Empty<MissionParticipantRowRenderData>(),
             BuildMissionOdds(session, selectedChoice),
-            session.ShowMissionOdds
+            session.ShowMissionOdds,
+            uiContext.GetTexture(checkboxTheme?.FrameImagePath),
+            uiContext.GetTexture(checkboxTheme?.CheckMarkImagePath)
         );
     }
 

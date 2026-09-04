@@ -504,6 +504,7 @@ public sealed class MissionCreateWindowView
         selectedMissionImage.gameObject.SetActive(data.SelectedMissionTexture != null);
         if (data.SelectedMissionTexture != null)
             UILayout.SetImageTexture(selectedMissionImage, data.SelectedMissionTexture);
+        missionOddsCheckbox.SetTextures(data.CheckboxFrameTexture, data.CheckboxCheckMarkTexture);
         missionOddsCheckbox.SetIsCheckedWithoutNotify(data.ShowMissionOdds);
         RenderSelectedMissionOdds(data.SelectedMissionOdds);
 
