@@ -3198,11 +3198,14 @@ public static class StrategyViewPrefabBuilder
         );
         frame.raycastTarget = false;
 
+        RectTransform checkMarkClip = CreateChildLayer("CheckMarkClip", root.transform);
+        SetSourceRect(checkMarkClip, 3, 2, 12, 12);
+        checkMarkClip.gameObject.AddComponent<RectMask2D>();
         RawImage checkMark = CreateRawImage(
             "CheckMark",
-            root.transform,
+            checkMarkClip,
             _contextMenuCheckMarkPreviewPath,
-            2,
+            -1,
             1,
             14,
             14
@@ -3228,9 +3231,9 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "backgroundImage", background);
         AssignReference(view, "frameImage", frame);
         AssignReference(view, "checkMarkImage", checkMark);
-        AssignReference(view, "checkMarkRoot", checkMark.rectTransform);
+        AssignReference(view, "checkMarkRoot", checkMarkClip);
         AssignReference(view, "labelTextField", labelField);
-        checkMark.gameObject.SetActive(isChecked);
+        checkMarkClip.gameObject.SetActive(isChecked);
         return view;
     }
 

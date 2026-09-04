@@ -202,15 +202,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(checkbox.IsChecked);
             Assert.AreSame(_texture, FindComponent<RawImage>("CheckboxFrameImage").texture);
             Assert.AreSame(_texture, FindComponent<RawImage>("CheckMark").texture);
+            Assert.AreEqual(
+                new RectInt(3, 2, 12, 12),
+                UILayout.GetSourceRect(FindComponent<RectMask2D>("CheckMarkClip").rectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(-1, 1, 14, 14),
+                UILayout.GetSourceRect(FindComponent<RawImage>("CheckMark").rectTransform)
+            );
             Assert.Less(background.color.r, 0.1f);
             Assert.Less(background.color.a, 1f);
-            Assert.IsFalse(FindObject("CheckMark").activeSelf);
+            Assert.IsFalse(FindObject("CheckMarkClip").activeSelf);
 
             checkbox.GetComponent<Toggle>().isOn = true;
 
             Assert.AreSame(_view, changedView);
             Assert.IsTrue(requestedVisibility);
-            Assert.IsTrue(FindObject("CheckMark").activeSelf);
+            Assert.IsTrue(FindObject("CheckMarkClip").activeSelf);
         }
 
         [Test]
