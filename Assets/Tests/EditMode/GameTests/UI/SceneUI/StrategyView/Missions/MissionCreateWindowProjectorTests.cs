@@ -184,8 +184,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 {
                     requests.Add(request);
                     return request.MissionTypeID == MissionTypeIDs.Diplomacy
-                        ? new MissionEstimate(80, 25)
-                        : new MissionEstimate(50, 10);
+                        ? new MissionOdds(80, 25)
+                        : new MissionOdds(50, 10);
                 }
             );
             MissionCreateWindowSession session = CreateSession(
@@ -233,7 +233,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 request =>
                 {
                     capturedRequest = request;
-                    return new MissionEstimate(50, 20);
+                    return new MissionOdds(50, 20);
                 },
                 planetInstanceId =>
                     planetInstanceId == latestPlanet.InstanceID ? latestPlanet : null
@@ -262,7 +262,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 _ =>
                 {
                     estimateCount++;
-                    return new MissionEstimate(80, 25);
+                    return new MissionOdds(80, 25);
                 }
             );
             MissionCreateWindowSession session = CreateSession(

@@ -12,26 +12,9 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Missions
 {
     /// <summary>
-    /// Contains calculated mission probabilities without resolving an outcome.
+    /// Contains the complete calculated mission probabilities without resolving an outcome.
     /// </summary>
     public sealed class MissionOdds
-    {
-        public double SuccessProbability { get; }
-
-        /// <summary>
-        /// Creates a mission probability result.
-        /// </summary>
-        /// <param name="successProbability">Probability that at least one participant succeeds.</param>
-        internal MissionOdds(double successProbability)
-        {
-            SuccessProbability = successProbability;
-        }
-    }
-
-    /// <summary>
-    /// Contains the planning estimates shown before a mission is started.
-    /// </summary>
-    public sealed class MissionEstimate
     {
         public double ObjectiveSuccessProbability { get; }
 
@@ -40,11 +23,11 @@ namespace Rebellion.Game.Missions
         public double SuccessProbability { get; }
 
         /// <summary>
-        /// Creates a planning estimate from the objective and pre-objective detection chances.
+        /// Creates complete mission odds from the objective and pre-objective detection chances.
         /// </summary>
         /// <param name="objectiveSuccessProbability">Chance that the objective succeeds if reached.</param>
         /// <param name="detectionProbability">Chance that known opposing forces foil the mission first.</param>
-        internal MissionEstimate(double objectiveSuccessProbability, double detectionProbability)
+        internal MissionOdds(double objectiveSuccessProbability, double detectionProbability)
         {
             ObjectiveSuccessProbability = Math.Clamp(objectiveSuccessProbability, 0, 100);
             DetectionProbability = Math.Clamp(detectionProbability, 0, 100);
@@ -447,12 +430,12 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Calculates success probability for a participant set without resolving the mission.
+        /// Calculates objective success probability for a participant set without resolving the mission.
         /// </summary>
         /// <param name="participants">The participants to evaluate.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>The probability that at least one participant succeeds.</returns>
-        internal virtual MissionOdds GetMissionOdds(
+        internal virtual double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
             GameRoot game
         )
@@ -462,7 +445,7 @@ namespace Rebellion.Game.Missions
             )
                 .Where(participant => participant != null)
                 .Select(participant => GetAgentProbability(participant, game));
-            return new MissionOdds(CombineSuccessProbabilities(probabilities));
+            return CombineSuccessProbabilities(probabilities);
         }
 
         /// <summary>

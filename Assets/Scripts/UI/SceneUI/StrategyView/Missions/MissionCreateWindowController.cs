@@ -89,7 +89,7 @@ public sealed class MissionCreateWindowController
         this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
         projector = new MissionCreateWindowProjector(
             getUIContext,
-            request => this.getMissionSystem().GetMissionEstimate(request),
+            request => this.getMissionSystem().GetMissionOdds(request),
             getObservedPlanet
         );
     }

@@ -225,12 +225,12 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Calculates mission success odds without resolving an outcome.
+        /// Calculates the objective success probability without resolving an outcome.
         /// </summary>
         /// <param name="mission">The mission whose probability rules apply.</param>
         /// <param name="participants">The participants to evaluate.</param>
-        /// <returns>The calculated mission odds.</returns>
-        public MissionOdds GetMissionOdds(
+        /// <returns>The chance that at least one participant succeeds if the objective is reached.</returns>
+        public double GetObjectiveSuccessProbability(
             Mission mission,
             IEnumerable<IMissionParticipant> participants
         )
@@ -238,7 +238,7 @@ namespace Rebellion.Systems
             if (mission == null)
                 throw new ArgumentNullException(nameof(mission));
 
-            return mission.GetMissionOdds(participants, _game);
+            return mission.GetObjectiveSuccessProbability(participants, _game);
         }
 
         /// <summary>
@@ -246,20 +246,21 @@ namespace Rebellion.Systems
         /// Detection uses the caller's observed planet state so planning does not expose hidden units.
         /// </summary>
         /// <param name="request">The mission configuration to evaluate.</param>
-        /// <returns>The planning estimate, or null when the request cannot create a mission.</returns>
-        public MissionEstimate GetMissionEstimate(MissionStartRequest request)
+        /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
+        public MissionOdds GetMissionOdds(MissionStartRequest request)
         {
             if (!TryCreateMission(request, out Mission mission))
                 return null;
 
-            double objectiveSuccessProbability = mission
-                .GetMissionOdds(mission.GetMainParticipants(), _game)
-                .SuccessProbability;
+            double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                _game
+            );
             double detectionProbability = EstimateDetectionProbability(
                 mission,
                 request.Location as Planet
             );
-            return new MissionEstimate(objectiveSuccessProbability, detectionProbability);
+            return new MissionOdds(objectiveSuccessProbability, detectionProbability);
         }
 
         /// <summary>

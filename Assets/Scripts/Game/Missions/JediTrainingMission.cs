@@ -204,8 +204,8 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="participants">The training participants to evaluate.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>The calculated training progress odds.</returns>
-        internal override MissionOdds GetMissionOdds(
+        /// <returns>The calculated training progress probability.</returns>
+        internal override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
             GameRoot game
         )
@@ -217,12 +217,12 @@ namespace Rebellion.Game.Missions
                 officer.InstanceID == TrainerInstanceID
             );
             if (trainer == null || game?.Config?.Jedi == null)
-                return new MissionOdds(0);
+                return 0;
 
             IEnumerable<double> probabilities = officers
                 .Where(officer => officer != trainer)
                 .Select(officer => GetTrainingProgressProbability(officer, trainer, game));
-            return new MissionOdds(CombineSuccessProbabilities(probabilities));
+            return CombineSuccessProbabilities(probabilities);
         }
 
         /// <summary>

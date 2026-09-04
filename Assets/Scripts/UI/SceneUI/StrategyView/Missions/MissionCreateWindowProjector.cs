@@ -18,22 +18,22 @@ internal sealed class MissionCreateWindowProjector
 
     private readonly Func<string, Planet> getObservedPlanet;
     private readonly Func<UIContext> getUIContext;
-    private readonly Func<MissionStartRequest, MissionEstimate> getMissionEstimate;
+    private readonly Func<MissionStartRequest, MissionOdds> getMissionOdds;
 
     /// <summary>
     /// Creates a Mission Create projector with access to the current presentation context.
     /// </summary>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
-    /// <param name="getMissionEstimate">Calculates planning odds for a mission configuration.</param>
+    /// <param name="getMissionOdds">Calculates complete odds for a mission configuration.</param>
     /// <param name="getObservedPlanet">Returns the latest player-visible planet snapshot by ID.</param>
     public MissionCreateWindowProjector(
         Func<UIContext> getUIContext,
-        Func<MissionStartRequest, MissionEstimate> getMissionEstimate = null,
+        Func<MissionStartRequest, MissionOdds> getMissionOdds = null,
         Func<string, Planet> getObservedPlanet = null
     )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
-        this.getMissionEstimate = getMissionEstimate ?? (_ => null);
+        this.getMissionOdds = getMissionOdds ?? (_ => null);
         this.getObservedPlanet = getObservedPlanet ?? (_ => null);
     }
 
@@ -187,7 +187,7 @@ internal sealed class MissionCreateWindowProjector
         )
             return null;
 
-        MissionEstimate estimate = getMissionEstimate(
+        MissionOdds odds = getMissionOdds(
             new MissionStartRequest
             {
                 MissionTypeID = choice.MissionTypeID,
@@ -202,9 +202,9 @@ internal sealed class MissionCreateWindowProjector
                 DecoyParticipants = session.Decoys.ToList(),
             }
         );
-        return estimate == null
+        return odds == null
             ? null
-            : new MissionOddsRenderData(estimate.SuccessProbability, estimate.DetectionProbability);
+            : new MissionOddsRenderData(odds.SuccessProbability, odds.DetectionProbability);
     }
 
     /// <summary>

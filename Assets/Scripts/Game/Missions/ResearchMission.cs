@@ -176,8 +176,8 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="participants">The researchers to evaluate.</param>
         /// <param name="game">The current game state.</param>
-        /// <returns>The calculated research progress odds.</returns>
-        internal override MissionOdds GetMissionOdds(
+        /// <returns>The calculated research progress probability.</returns>
+        internal override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
             GameRoot game
         )
@@ -189,7 +189,7 @@ namespace Rebellion.Game.Missions
             )
                 .OfType<Officer>()
                 .Select(officer => officer.GetBaseRating(Discipline) * rewardProbability);
-            return new MissionOdds(CombineSuccessProbabilities(probabilities));
+            return CombineSuccessProbabilities(probabilities);
         }
 
         /// <summary>
