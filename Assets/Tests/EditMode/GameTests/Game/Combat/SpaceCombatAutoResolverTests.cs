@@ -56,6 +56,71 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
+        public void Resolve_CapitalShipLaserCannonAgainstCapitalShip_DealsOneSixthDamage()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+
+            SpaceCombatAutoResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(90, GetShipOutcome(result, defender).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_CapitalShipLaserCannonAgainstStarfighters_DealsFullDamage()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 120;
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            Starfighter defender = CreateFighter("defender", squadronSize: 2, weaponStrength: 0);
+            defender.ShieldStrength = 100;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+
+            SpaceCombatAutoResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new List<CapitalShip>(),
+                new[] { defender },
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(1, GetFighterOutcome(result, defender).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_HeavyLineShipAgainstThreeLaserEscorts_DefeatsEscorts()
+        {
+            CapitalShip[] escorts =
+            {
+                CreateLaserEscort("escort-1"),
+                CreateLaserEscort("escort-2"),
+                CreateLaserEscort("escort-3"),
+            };
+            CapitalShip lineShip = CreateHeavyLineShip("line-ship");
+
+            SpaceCombatAutoResult result = Resolve(escorts, new[] { lineShip });
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+            Assert.Greater(GetShipOutcome(result, lineShip).HullAfter, 0);
+        }
+
+        [Test]
         public void Resolve_WeaponOutsideItsConfiguredRange_DoesNotDamageTarget()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
@@ -885,6 +950,31 @@ namespace Rebellion.Tests.Game.Combat
                 ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][arc] = weaponStrength;
             if (weaponStrength > 0)
                 ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = 100;
+            return ship;
+        }
+
+        private static CapitalShip CreateLaserEscort(string instanceId)
+        {
+            CapitalShip ship = CreateShip(instanceId, hull: 500, weaponStrength: 0);
+            ship.MaxShieldStrength = 200;
+            ship.ShieldRechargeRate = 10;
+            ship.SublightSpeed = 6;
+            ship.Maneuverability = 3;
+            ship.WeaponRecharge = 8;
+            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 120, 90, 120, 120, 17 };
+            return ship;
+        }
+
+        private static CapitalShip CreateHeavyLineShip(string instanceId)
+        {
+            CapitalShip ship = CreateShip(instanceId, hull: 2750, weaponStrength: 0);
+            ship.MaxShieldStrength = 300;
+            ship.ShieldRechargeRate = 15;
+            ship.SublightSpeed = 4;
+            ship.Maneuverability = 1;
+            ship.WeaponRecharge = 20;
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 40, 60, 60, 50 };
+            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { 100, 40, 40, 40, 35 };
             return ship;
         }
 

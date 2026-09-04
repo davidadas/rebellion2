@@ -918,12 +918,7 @@ namespace Rebellion.Game.Combat
                 CurrentShields = _maximumShields;
                 for (int arc = 0; arc < _maximumArcCharge.Length; arc++)
                 {
-                    _maximumArcCharge[arc] = GetArcStrength(
-                        arc,
-                        targetsFighters: false,
-                        engagementDistance: 0,
-                        requireRange: false
-                    );
+                    _maximumArcCharge[arc] = GetRawArcStrength(arc);
                     _currentArcCharge[arc] = _maximumArcCharge[arc];
                 }
             }
@@ -1012,12 +1007,6 @@ namespace Rebellion.Game.Combat
                         for (int weaponIndex = 0; weaponIndex < _weaponTypes.Length; weaponIndex++)
                         {
                             PrimaryWeaponType weaponType = _weaponTypes[weaponIndex];
-                            if (
-                                weaponType == PrimaryWeaponType.IonCannon
-                                && candidate.IsStarfighter
-                            )
-                                continue;
-
                             double candidateDamage =
                                 GetWeaponStrength(
                                     weaponType,
@@ -1025,6 +1014,7 @@ namespace Rebellion.Game.Combat
                                     engagementRange,
                                     requireRange: true
                                 )
+                                * GetTargetTypeMultiplier(weaponType, candidate.IsStarfighter)
                                 * maneuverMultiplier
                                 * condition;
                             if (candidateDamage <= _arcTargetDamage[arc, weaponIndex])
@@ -1060,6 +1050,7 @@ namespace Rebellion.Game.Combat
                             GetDistanceTo(target, startingDistance),
                             requireRange: true
                         )
+                        * GetTargetTypeMultiplier(_weaponTypes[weaponIndex], target.IsStarfighter)
                         * GetManeuverMultiplier(target)
                         * condition;
                 }
@@ -1097,7 +1088,14 @@ namespace Rebellion.Game.Combat
                     if (weaponStrength <= 0)
                         continue;
 
-                    double damage = weaponStrength * GetManeuverMultiplier(target) * condition;
+                    double damage =
+                        weaponStrength
+                        * GetTargetTypeMultiplier(_weaponTypes[weaponIndex], target.IsStarfighter)
+                        * GetManeuverMultiplier(target)
+                        * condition;
+                    if (damage <= 0)
+                        continue;
+
                     AddPendingDamage(
                         pendingDamage,
                         target,
@@ -1323,29 +1321,52 @@ namespace Rebellion.Game.Combat
                 bool requireRange
             )
             {
-                double strength =
-                    GetWeaponStrength(
-                        PrimaryWeaponType.Turbolaser,
-                        arc,
-                        engagementDistance,
-                        requireRange
-                    )
-                    + GetWeaponStrength(
-                        PrimaryWeaponType.LaserCannon,
-                        arc,
-                        engagementDistance,
-                        requireRange
-                    );
-                if (!targetsFighters)
+                double strength = 0;
+                foreach (PrimaryWeaponType weaponType in _weaponTypes)
+                {
+                    strength +=
+                        GetWeaponStrength(weaponType, arc, engagementDistance, requireRange)
+                        * GetTargetTypeMultiplier(weaponType, targetsFighters);
+                }
+                return strength;
+            }
+
+            /// <summary>
+            /// Returns one arc's raw weapon charge before target-type effectiveness is applied.
+            /// </summary>
+            /// <param name="arc">The zero-based firing arc.</param>
+            /// <returns>The arc's raw weapon charge.</returns>
+            private int GetRawArcStrength(int arc)
+            {
+                int strength = 0;
+                foreach (PrimaryWeaponType weaponType in _weaponTypes)
                 {
                     strength += GetWeaponStrength(
-                        PrimaryWeaponType.IonCannon,
+                        weaponType,
                         arc,
-                        engagementDistance,
-                        requireRange
+                        engagementDistance: 0,
+                        requireRange: false
                     );
                 }
                 return strength;
+            }
+
+            /// <summary>
+            /// Returns a capital-ship weapon's effectiveness against the selected target type.
+            /// </summary>
+            /// <param name="type">The weapon type.</param>
+            /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
+            /// <returns>The target-specific damage multiplier.</returns>
+            private static double GetTargetTypeMultiplier(
+                PrimaryWeaponType type,
+                bool targetsFighters
+            )
+            {
+                if (type == PrimaryWeaponType.IonCannon && targetsFighters)
+                    return 0;
+                if (type == PrimaryWeaponType.LaserCannon && !targetsFighters)
+                    return 1.0 / CapitalShip.LaserCannonCapitalShipDamageDivisor;
+                return 1;
             }
 
             /// <summary>

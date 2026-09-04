@@ -30,6 +30,8 @@ namespace Rebellion.Game.Units
     /// </summary>
     public class CapitalShip : ContainerNode, IManufacturable, IMovable
     {
+        internal const int LaserCannonCapitalShipDamageDivisor = 6;
+
         [PersistableMember(Name = "HasAssignedName")]
         private bool _hasAssignedName;
 

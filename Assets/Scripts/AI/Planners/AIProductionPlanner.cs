@@ -17,7 +17,6 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionPlanner : IAIProposalPlanner
     {
-        private const int _primaryLaserDivisor = 6;
         private const int _primaryWeaponWeight = 100;
         private const int _roleMetricScale = 10;
         private const int _weaponArcCount = 4;
@@ -1214,7 +1213,9 @@ namespace Rebellion.AI.Planners
                 long weight =
                     (long)_primaryWeaponWeight * turbolasers
                     + (long)_primaryWeaponWeight * ionCannons
-                    + (long)_primaryWeaponWeight * laserCannons / _primaryLaserDivisor;
+                    + (long)_primaryWeaponWeight
+                        * laserCannons
+                        / CapitalShip.LaserCannonCapitalShipDamageDivisor;
                 if (weight <= maximumWeight)
                     continue;
 
@@ -1245,7 +1246,7 @@ namespace Rebellion.AI.Planners
                         * GetWeaponCount(capitalShip, PrimaryWeaponType.IonCannon, arc)
                     + (long)_primaryWeaponWeight
                         * GetWeaponCount(capitalShip, PrimaryWeaponType.LaserCannon, arc)
-                        / _primaryLaserDivisor;
+                        / CapitalShip.LaserCannonCapitalShipDamageDivisor;
                 maximumWeight = Math.Max(maximumWeight, weight);
             }
 
