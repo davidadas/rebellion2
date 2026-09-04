@@ -222,6 +222,14 @@ public class StrategyAdvisorTheme
 
     public int RepeatCooldownTicks { get; set; }
 
+    public StrategyAdvisorAnimationTheme PlanetaryGarrisonManagementEnabled { get; set; }
+
+    public StrategyAdvisorAnimationTheme PlanetaryGarrisonManagementDisabled { get; set; }
+
+    public StrategyAdvisorAnimationTheme ResourceProductionManagementEnabled { get; set; }
+
+    public StrategyAdvisorAnimationTheme ResourceProductionManagementDisabled { get; set; }
+
     public StrategyAdvisorAnimationTheme InvalidOrderRejected { get; set; }
 
     public StrategyAdvisorAnimationTheme InTransitOrderRejected { get; set; }

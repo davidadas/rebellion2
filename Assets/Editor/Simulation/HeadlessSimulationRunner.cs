@@ -10,6 +10,7 @@ using Rebellion.AI.Planners;
 using Rebellion.AI.Planners.Demand;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
@@ -4036,7 +4037,7 @@ public static class HeadlessSimulationRunner
             + _percentScale
             - 1;
         requiredAttackRegimentStrength /= _percentScale;
-        int requiredBombardmentStrength = PlanetaryAssaultSystem.IsBlockedByShields(
+        int requiredBombardmentStrength = PlanetaryAssaultResolver.IsBlockedByShields(
             targetPlanet,
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
         )
@@ -4136,7 +4137,7 @@ public static class HeadlessSimulationRunner
         if (game == null || fleet == null)
             return 0;
 
-        int leadershipBonus = PlanetaryAssaultSystem.GetLeadershipBonus(
+        int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
             fleet.GetOfficers(),
             OfficerRank.General,
             fleet.GetOwnerInstanceID(),
@@ -4167,7 +4168,7 @@ public static class HeadlessSimulationRunner
             return 0;
 
         string ownerId = planet.GetOwnerInstanceID();
-        int leadershipBonus = PlanetaryAssaultSystem.GetLeadershipBonus(
+        int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
             planet.GetAllOfficers(),
             OfficerRank.General,
             ownerId,

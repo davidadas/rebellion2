@@ -26,11 +26,15 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// <param name="getPlayerTheme">Returns the current player faction theme.</param>
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
+    /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
+    /// <param name="getAudioDuration">Gets the duration of a loaded advisor response.</param>
     public StrategyHudController(
         Func<Faction> getPlayerFaction,
         Func<FactionTheme> getPlayerTheme,
         Func<string, Texture2D> getTexture,
-        Action<string> playSfx
+        Action<string> playSfx,
+        Func<string, AudioPlaybackHandle> playSfxInstance = null,
+        Func<string, float> getAudioDuration = null
     )
     {
         if (getPlayerFaction == null)
@@ -40,7 +44,13 @@ public sealed class StrategyHudController : IContextMenuReceiver
             getPlayerTheme ?? throw new ArgumentNullException(nameof(getPlayerTheme));
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
-        advisorController = new StrategyAdvisorController(getPlayerFaction, getTexture, playSfx);
+        advisorController = new StrategyAdvisorController(
+            getPlayerFaction,
+            getTexture,
+            playSfx,
+            playSfxInstance: playSfxInstance,
+            getAudioDuration: getAudioDuration
+        );
     }
 
     /// <summary>

@@ -32,6 +32,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 StrategyAdvisor = new StrategyAdvisorTheme
                 {
                     AudioRoot = "advisor-audio",
+                    PlanetaryGarrisonManagementEnabled = new StrategyAdvisorAnimationTheme
+                    {
+                        Audio = "garrison-enabled",
+                        AudioOptions = { "garrison-enabled-alternate" },
+                    },
+                    PlanetaryGarrisonManagementDisabled = new StrategyAdvisorAnimationTheme
+                    {
+                        Audio = "garrison-disabled",
+                    },
+                    ResourceProductionManagementEnabled = new StrategyAdvisorAnimationTheme
+                    {
+                        Audio = "production-enabled",
+                    },
+                    ResourceProductionManagementDisabled = new StrategyAdvisorAnimationTheme
+                    {
+                        Audio = "production-disabled",
+                    },
                     Notifications =
                     {
                         new StrategyAdvisorNotificationTheme
@@ -68,6 +85,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                     StrategyUISoundPaths.GalacticInformationControl,
                     StrategyUISoundPaths.PlanetaryAssault,
                     "advisor-audio/planetary-assault",
+                    "advisor-audio/garrison-enabled-alternate",
+                    "advisor-audio/garrison-disabled",
+                    "advisor-audio/production-enabled",
+                    "advisor-audio/production-disabled",
                     "window-open",
                     "window-expand",
                     "window-collapse",
