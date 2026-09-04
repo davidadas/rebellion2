@@ -575,6 +575,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class SpaceCombatConfig
         {
+            public double CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier { get; set; }
+
             public int AutoResolveMaximumIterations { get; set; }
 
             public int AutoResolveStagnationIterations { get; set; }

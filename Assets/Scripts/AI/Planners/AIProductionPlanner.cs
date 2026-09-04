@@ -17,11 +17,6 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionPlanner : IAIProposalPlanner
     {
-        private const int _primaryLaserDivisor = 6;
-        private const int _primaryWeaponWeight = 100;
-        private const int _roleMetricScale = 10;
-        private const int _weaponArcCount = 4;
-
         private readonly AIProductionDemandGenerator _demandGenerator =
             new AIProductionDemandGenerator();
         private readonly Dictionary<ManufacturingType, List<Technology>> _unlockedTechnologies =
@@ -1070,12 +1065,13 @@ namespace Rebellion.AI.Planners
         )
         {
             CapitalShip candidateShip = (CapitalShip)candidate.GetReference();
-            long candidateMetric = GetCapitalShipRoleMetric(candidateShip, role);
+            GameConfig.SpaceCombatConfig combatConfig = context.Game.Config.Combat.SpaceCombat;
+            double candidateMetric = GetCapitalShipRoleMetric(candidateShip, role, combatConfig);
 
             for (int index = 0; index < rankedTechnologies.Count; index++)
             {
                 CapitalShip rankedShip = (CapitalShip)rankedTechnologies[index].GetReference();
-                long rankedMetric = GetCapitalShipRoleMetric(rankedShip, role);
+                double rankedMetric = GetCapitalShipRoleMetric(rankedShip, role, combatConfig);
                 if (
                     candidateMetric < rankedMetric
                     || (
@@ -1163,10 +1159,10 @@ namespace Rebellion.AI.Planners
             return role switch
             {
                 AICapitalShipProductionRole.General => !capitalShip.HasGravityWell
-                    && GetMaximumPrimaryWeaponWeight(capitalShip) > 0,
+                    && GetMaximumPrimaryWeaponStrength(capitalShip) > 0,
                 AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity > 0
                     && !capitalShip.HasGravityWell
-                    && GetMaximumPrimaryWeaponWeight(capitalShip) == 0,
+                    && GetMaximumPrimaryWeaponStrength(capitalShip) == 0,
                 AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0,
                 AICapitalShipProductionRole.Interdiction => capitalShip.HasGravityWell,
                 _ => false,
@@ -1178,17 +1174,20 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="role">The role.</param>
+        /// <param name="combatConfig">The configured space-combat weapon effectiveness.</param>
         /// <returns>The calculated value.</returns>
-        private static long GetCapitalShipRoleMetric(
+        private static double GetCapitalShipRoleMetric(
             CapitalShip capitalShip,
-            AICapitalShipProductionRole role
+            AICapitalShipProductionRole role,
+            GameConfig.SpaceCombatConfig combatConfig
         )
         {
             return role switch
             {
-                AICapitalShipProductionRole.General => GetPrimaryWeaponMetric(capitalShip)
-                    * _roleMetricScale
-                    / Math.Max(1, capitalShip.MaintenanceCost),
+                AICapitalShipProductionRole.General => GetPrimaryWeaponMetric(
+                    capitalShip,
+                    combatConfig
+                ) / Math.Max(1, capitalShip.MaintenanceCost),
                 AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
                 AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0 ? 1 : 0,
                 AICapitalShipProductionRole.Interdiction => capitalShip.ShieldRechargeRate,
@@ -1200,56 +1199,74 @@ namespace Rebellion.AI.Planners
         /// Returns primary weapon metric.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
+        /// <param name="combatConfig">The configured space-combat weapon effectiveness.</param>
         /// <returns>The calculated value.</returns>
-        private static long GetPrimaryWeaponMetric(CapitalShip capitalShip)
+        private static double GetPrimaryWeaponMetric(
+            CapitalShip capitalShip,
+            GameConfig.SpaceCombatConfig combatConfig
+        )
         {
-            long maximumWeight = 0;
+            double maximumEffectiveStrength = 0;
             int selectedWeaponCount = 0;
 
-            for (int arc = 0; arc < _weaponArcCount; arc++)
+            foreach (PrimaryWeaponArc weaponArc in CapitalShip.PrimaryWeaponArcs)
             {
-                int turbolasers = GetWeaponCount(capitalShip, PrimaryWeaponType.Turbolaser, arc);
-                int ionCannons = GetWeaponCount(capitalShip, PrimaryWeaponType.IonCannon, arc);
-                int laserCannons = GetWeaponCount(capitalShip, PrimaryWeaponType.LaserCannon, arc);
-                long weight =
-                    (long)_primaryWeaponWeight * turbolasers
-                    + (long)_primaryWeaponWeight * ionCannons
-                    + (long)_primaryWeaponWeight * laserCannons / _primaryLaserDivisor;
-                if (weight <= maximumWeight)
+                int turbolasers = GetWeaponCount(
+                    capitalShip,
+                    PrimaryWeaponType.Turbolaser,
+                    weaponArc
+                );
+                int ionCannons = GetWeaponCount(
+                    capitalShip,
+                    PrimaryWeaponType.IonCannon,
+                    weaponArc
+                );
+                int laserCannons = GetWeaponCount(
+                    capitalShip,
+                    PrimaryWeaponType.LaserCannon,
+                    weaponArc
+                );
+                double effectiveStrength =
+                    turbolasers
+                    + ionCannons
+                    + laserCannons
+                        * Math.Max(
+                            combatConfig.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier,
+                            0
+                        );
+                if (effectiveStrength <= maximumEffectiveStrength)
                     continue;
 
-                maximumWeight = weight;
+                maximumEffectiveStrength = effectiveStrength;
                 selectedWeaponCount = turbolasers + ionCannons + laserCannons;
             }
 
             if (selectedWeaponCount <= 0)
                 return 0;
 
-            return (long)capitalShip.WeaponRecharge * maximumWeight / selectedWeaponCount;
+            return (double)capitalShip.WeaponRecharge
+                * maximumEffectiveStrength
+                / selectedWeaponCount;
         }
 
         /// <summary>
-        /// Returns maximum primary weapon weight.
+        /// Returns maximum primary weapon strength.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <returns>The calculated value.</returns>
-        private static long GetMaximumPrimaryWeaponWeight(CapitalShip capitalShip)
+        private static int GetMaximumPrimaryWeaponStrength(CapitalShip capitalShip)
         {
-            long maximumWeight = 0;
-            for (int arc = 0; arc < _weaponArcCount; arc++)
+            int maximumStrength = 0;
+            foreach (PrimaryWeaponArc weaponArc in CapitalShip.PrimaryWeaponArcs)
             {
-                long weight =
-                    (long)_primaryWeaponWeight
-                        * GetWeaponCount(capitalShip, PrimaryWeaponType.Turbolaser, arc)
-                    + (long)_primaryWeaponWeight
-                        * GetWeaponCount(capitalShip, PrimaryWeaponType.IonCannon, arc)
-                    + (long)_primaryWeaponWeight
-                        * GetWeaponCount(capitalShip, PrimaryWeaponType.LaserCannon, arc)
-                        / _primaryLaserDivisor;
-                maximumWeight = Math.Max(maximumWeight, weight);
+                int strength =
+                    GetWeaponCount(capitalShip, PrimaryWeaponType.Turbolaser, weaponArc)
+                    + GetWeaponCount(capitalShip, PrimaryWeaponType.IonCannon, weaponArc)
+                    + GetWeaponCount(capitalShip, PrimaryWeaponType.LaserCannon, weaponArc);
+                maximumStrength = Math.Max(maximumStrength, strength);
             }
 
-            return maximumWeight;
+            return maximumStrength;
         }
 
         /// <summary>
@@ -1257,24 +1274,24 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="weaponType">The weapon type.</param>
-        /// <param name="arc">The arc.</param>
+        /// <param name="weaponArc">The weapon arc.</param>
         /// <returns>The calculated value.</returns>
         private static int GetWeaponCount(
             CapitalShip capitalShip,
             PrimaryWeaponType weaponType,
-            int arc
+            PrimaryWeaponArc weaponArc
         )
         {
+            int weaponArcIndex = (int)weaponArc;
             if (
                 capitalShip?.PrimaryWeapons == null
                 || !capitalShip.PrimaryWeapons.TryGetValue(weaponType, out int[] values)
                 || values == null
-                || arc < 0
-                || arc >= values.Length
+                || weaponArcIndex >= values.Length
             )
                 return 0;
 
-            return values[arc];
+            return values[weaponArcIndex];
         }
 
         /// <summary>
