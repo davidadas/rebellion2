@@ -781,9 +781,7 @@ namespace Rebellion.Systems
 
             IReadOnlyList<IMissionParticipant> decoys = mission.GetDecoyParticipants();
 
-            // Each slot stores the probability that the mission remains unfoiled with that many
-            // decoys still available. This is exact for identical decoys and an estimate for a
-            // mixed team, whose individual probabilities are averaged below.
+            // Track unfoiled probability by the number of decoys still available.
             double[] unfoiledByRemainingDecoys = new double[decoys.Count + 1];
             unfoiledByRemainingDecoys[decoys.Count] = 1d;
             foreach (ISceneNode detector in detectors)
@@ -815,9 +813,7 @@ namespace Rebellion.Systems
                 {
                     double probability = unfoiledByRemainingDecoys[remaining];
 
-                    // A diversion avoids this detector's foil roll. After a failed diversion,
-                    // successful evasion retains the decoy; failed evasion removes one. Both
-                    // failed-diversion branches still have to survive the detector's foil roll.
+                    // Diversion or evasion retains the decoy; failed evasion removes one.
                     next[remaining] +=
                         probability
                         * (diversionProbability + failedButEvadedProbability * noFoilProbability);
