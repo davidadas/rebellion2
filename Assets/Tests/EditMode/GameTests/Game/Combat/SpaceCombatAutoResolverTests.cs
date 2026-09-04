@@ -457,11 +457,7 @@ namespace Rebellion.Tests.Game.Combat
         [Test]
         public void Resolve_DamagedFighterSquadron_DealsProportionalDamage()
         {
-            Starfighter attacker = CreateFighter(
-                "attacker",
-                squadronSize: 12,
-                weaponStrength: 12
-            );
+            Starfighter attacker = CreateFighter("attacker", squadronSize: 12, weaponStrength: 12);
             attacker.CurrentSquadronSize = 6;
             CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
