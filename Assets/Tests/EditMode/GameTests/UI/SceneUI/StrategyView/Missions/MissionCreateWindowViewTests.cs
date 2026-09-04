@@ -128,7 +128,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
-        public void Render_MissionOdds_OverlaysSuccessAndDetectionOnSelectedAndDropdownIcons()
+        public void Render_MissionOdds_OverlaysSuccessAndFoilOnSelectedAndDropdownIcons()
         {
             MissionOddsRenderData odds = new MissionOddsRenderData(73.6, 41.2);
             MissionCreateWindowRenderData data = CreateRenderData(
@@ -148,28 +148,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             RawImage selectedImage = FindComponent<RawImage>("SelectedMissionImage");
             TextMeshProUGUI selectedSuccess = FindOddsText(
                 selectedImage.transform,
-                "SuccessOddsTextField"
+                "OverallSuccessOddsTextField"
             );
-            TextMeshProUGUI selectedDetection = FindOddsText(
+            TextMeshProUGUI selectedFoil = FindOddsText(
                 selectedImage.transform,
-                "DetectionOddsTextField"
+                "FoilOddsTextField"
             );
             StrategyDropdownItemView row = FindDropdownItems().Single();
             RawImage rowImage = FindDropdownImage(row);
             Assert.AreEqual("SUCCESS\n~74%", selectedSuccess.text);
-            Assert.AreEqual("FOILED\n~41%", selectedDetection.text);
+            Assert.AreEqual("FOILED\n~41%", selectedFoil.text);
             Assert.AreEqual(
                 "SUCCESS\n~74%",
-                FindOddsText(rowImage.transform, "SuccessOddsTextField").text
+                FindOddsText(rowImage.transform, "OverallSuccessOddsTextField").text
             );
             Assert.AreEqual(
                 "FOILED\n~41%",
-                FindOddsText(rowImage.transform, "DetectionOddsTextField").text
+                FindOddsText(rowImage.transform, "FoilOddsTextField").text
             );
             Assert.Greater(selectedSuccess.color.g, selectedSuccess.color.r);
-            Assert.Greater(selectedDetection.color.r, selectedDetection.color.g);
-            Assert.AreEqual(0f, selectedDetection.rectTransform.anchorMin.x);
-            Assert.AreEqual(0.5f, selectedDetection.rectTransform.anchorMax.x);
+            Assert.Greater(selectedFoil.color.r, selectedFoil.color.g);
+            Assert.AreEqual(0f, selectedFoil.rectTransform.anchorMin.x);
+            Assert.AreEqual(0.5f, selectedFoil.rectTransform.anchorMax.x);
             Assert.AreEqual(0.5f, selectedSuccess.rectTransform.anchorMin.x);
             Assert.AreEqual(1f, selectedSuccess.rectTransform.anchorMax.x);
         }

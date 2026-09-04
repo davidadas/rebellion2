@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// Identifies one tab in the authored Mission Create workflow order.
@@ -18,23 +16,23 @@ public enum MissionCreateWindowTab
 /// </summary>
 public sealed class MissionOddsRenderData
 {
-    public int SuccessPercent { get; }
+    public int OverallSuccessPercent { get; }
 
-    public int DetectionPercent { get; }
+    public int FoilPercent { get; }
 
-    public string SuccessLabel => $"SUCCESS\n~{SuccessPercent}%";
+    public string OverallSuccessLabel => $"SUCCESS\n~{OverallSuccessPercent}%";
 
-    public string DetectionLabel => $"FOILED\n~{DetectionPercent}%";
+    public string FoilLabel => $"FOILED\n~{FoilPercent}%";
 
     /// <summary>
     /// Creates one icon-overlay snapshot from calculated mission probabilities.
     /// </summary>
-    /// <param name="successProbability">Estimated chance of final mission success.</param>
-    /// <param name="detectionProbability">Estimated chance of pre-objective detection.</param>
-    public MissionOddsRenderData(double successProbability, double detectionProbability)
+    /// <param name="overallSuccessProbability">Estimated chance of final mission success.</param>
+    /// <param name="foilProbability">Estimated chance of being foiled before the objective.</param>
+    public MissionOddsRenderData(double overallSuccessProbability, double foilProbability)
     {
-        SuccessPercent = RoundProbability(successProbability);
-        DetectionPercent = RoundProbability(detectionProbability);
+        OverallSuccessPercent = RoundProbability(overallSuccessProbability);
+        FoilPercent = RoundProbability(foilProbability);
     }
 
     private static int RoundProbability(double probability) =>
@@ -210,124 +208,5 @@ public sealed class MissionCreateWindowRenderData
     private static IReadOnlyList<T> Copy<T>(IReadOnlyList<T> items, string parameterName)
     {
         return new List<T>(items ?? throw new ArgumentNullException(parameterName)).AsReadOnly();
-    }
-}
-
-/// <summary>
-/// Renders compact success and detection estimates over the top of a mission icon.
-/// </summary>
-internal sealed class MissionOddsOverlayView : MonoBehaviour
-{
-    private static readonly Color32 _backdropColor = new Color32(0, 0, 0, 205);
-    private static readonly Color32 _detectionColor = new Color32(255, 105, 85, 255);
-    private static readonly Color32 _successColor = new Color32(90, 255, 125, 255);
-
-    private TextMeshProUGUI detectionTextField;
-    private TextMeshProUGUI successTextField;
-
-    /// <summary>
-    /// Creates an overlay fitted to the supplied mission icon.
-    /// </summary>
-    /// <param name="iconRoot">The mission icon receiving the overlay.</param>
-    /// <param name="textStyleSource">An authored text component supplying the UI font.</param>
-    /// <returns>The configured overlay.</returns>
-    public static MissionOddsOverlayView Create(
-        RectTransform iconRoot,
-        TextMeshProUGUI textStyleSource
-    )
-    {
-        if (iconRoot == null)
-            throw new ArgumentNullException(nameof(iconRoot));
-        if (textStyleSource == null)
-            throw new ArgumentNullException(nameof(textStyleSource));
-
-        GameObject overlayObject = new GameObject(
-            "MissionOddsOverlay",
-            typeof(RectTransform),
-            typeof(Image),
-            typeof(MissionOddsOverlayView)
-        );
-        RectTransform overlayRect = overlayObject.GetComponent<RectTransform>();
-        overlayRect.SetParent(iconRoot, false);
-        overlayRect.anchorMin = new Vector2(0, 1);
-        overlayRect.anchorMax = new Vector2(1, 1);
-        overlayRect.pivot = new Vector2(0.5f, 1);
-        overlayRect.anchoredPosition = Vector2.zero;
-        overlayRect.sizeDelta = new Vector2(0, 24);
-
-        Image backdrop = overlayObject.GetComponent<Image>();
-        backdrop.color = _backdropColor;
-        backdrop.raycastTarget = false;
-
-        MissionOddsOverlayView overlay = overlayObject.GetComponent<MissionOddsOverlayView>();
-        overlay.detectionTextField = CreateTextField(
-            "DetectionOddsTextField",
-            overlayRect,
-            textStyleSource,
-            new Vector2(0, 0),
-            new Vector2(0.5f, 1),
-            _detectionColor
-        );
-        overlay.successTextField = CreateTextField(
-            "SuccessOddsTextField",
-            overlayRect,
-            textStyleSource,
-            new Vector2(0.5f, 0),
-            new Vector2(1, 1),
-            _successColor
-        );
-        overlayRect.SetAsLastSibling();
-        return overlay;
-    }
-
-    /// <summary>
-    /// Applies one complete mission-odds snapshot.
-    /// </summary>
-    /// <param name="odds">The mission odds to display.</param>
-    public void Render(MissionOddsRenderData odds)
-    {
-        if (odds == null)
-            throw new ArgumentNullException(nameof(odds));
-
-        successTextField.text = odds.SuccessLabel;
-        detectionTextField.text = odds.DetectionLabel;
-        gameObject.SetActive(true);
-    }
-
-    private static TextMeshProUGUI CreateTextField(
-        string objectName,
-        RectTransform parent,
-        TextMeshProUGUI styleSource,
-        Vector2 anchorMin,
-        Vector2 anchorMax,
-        Color32 color
-    )
-    {
-        GameObject textObject = new GameObject(
-            objectName,
-            typeof(RectTransform),
-            typeof(TextMeshProUGUI)
-        );
-        RectTransform rect = textObject.GetComponent<RectTransform>();
-        rect.SetParent(parent, false);
-        rect.anchorMin = anchorMin;
-        rect.anchorMax = anchorMax;
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = new Vector2(-2, -2);
-
-        TextMeshProUGUI textField = textObject.GetComponent<TextMeshProUGUI>();
-        textField.font = styleSource.font;
-        textField.fontSharedMaterial = styleSource.fontSharedMaterial;
-        textField.color = color;
-        textField.alignment = TextAlignmentOptions.Center;
-        textField.fontStyle = FontStyles.Bold;
-        textField.enableAutoSizing = true;
-        textField.fontSizeMin = 5;
-        textField.fontSizeMax = 10;
-        textField.textWrappingMode = TextWrappingModes.NoWrap;
-        textField.overflowMode = TextOverflowModes.Overflow;
-        textField.raycastTarget = false;
-        return textField;
     }
 }

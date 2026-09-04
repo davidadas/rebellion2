@@ -2864,6 +2864,10 @@ public static class StrategyViewPrefabBuilder
         selectedMissionName.fontSize = 13;
         selectedMissionName.alignment = TextAlignmentOptions.Top;
         SetSourceRect(selectedMissionName.rectTransform, 60, 64, 150, 16);
+        MissionOddsOverlayView selectedMissionOddsOverlay = CreateMissionOddsOverlay(
+            selectedMission.rectTransform,
+            selectedMissionName
+        );
         UICheckboxView missionOddsCheckbox = CreateCheckbox(
             missionSelection,
             "MissionOddsCheckbox",
@@ -3033,7 +3037,8 @@ public static class StrategyViewPrefabBuilder
             "Espionage",
             13,
             TextAlignmentOptions.Top,
-            false
+            false,
+            true
         );
         RectTransform dropdownContentPaddingTemplate = CreateChildLayer(
             "DropdownContentPaddingTemplate",
@@ -3089,6 +3094,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "dropdownButton", dropdownButtonComponent);
         AssignReference(view, "selectedMissionImage", selectedMission);
         AssignReference(view, "selectedMissionNameTextField", selectedMissionName);
+        AssignReference(view, "selectedMissionOddsOverlay", selectedMissionOddsOverlay);
         AssignReference(view, "missionOddsCheckbox", missionOddsCheckbox);
         AssignReference(view, "targetPreviewImage", targetPreview);
         AssignReference(view, "targetPreviewNameTextField", targetPreviewName);
@@ -3238,6 +3244,93 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
+    /// Authors a reusable mission-odds overlay inside a mission icon.
+    /// </summary>
+    /// <param name="iconRoot">The mission icon receiving the overlay.</param>
+    /// <param name="textStyleSource">The authored text component supplying the UI font.</param>
+    /// <returns>The configured overlay view.</returns>
+    private static MissionOddsOverlayView CreateMissionOddsOverlay(
+        RectTransform iconRoot,
+        TextMeshProUGUI textStyleSource
+    )
+    {
+        GameObject overlayObject = new GameObject(
+            "MissionOddsOverlay",
+            typeof(RectTransform),
+            typeof(Image),
+            typeof(MissionOddsOverlayView)
+        );
+        RectTransform overlayRect = overlayObject.GetComponent<RectTransform>();
+        overlayRect.SetParent(iconRoot, false);
+        overlayRect.anchorMin = new Vector2(0, 1);
+        overlayRect.anchorMax = new Vector2(1, 1);
+        overlayRect.pivot = new Vector2(0.5f, 1);
+        overlayRect.anchoredPosition = Vector2.zero;
+        overlayRect.sizeDelta = new Vector2(0, 24);
+
+        Image backdrop = overlayObject.GetComponent<Image>();
+        backdrop.color = new Color32(0, 0, 0, 205);
+        backdrop.raycastTarget = false;
+
+        TextMeshProUGUI foilText = CreateMissionOddsTextField(
+            "FoilOddsTextField",
+            overlayRect,
+            textStyleSource,
+            new Vector2(0, 0),
+            new Vector2(0.5f, 1),
+            new Color32(255, 105, 85, 255)
+        );
+        TextMeshProUGUI overallSuccessText = CreateMissionOddsTextField(
+            "OverallSuccessOddsTextField",
+            overlayRect,
+            textStyleSource,
+            new Vector2(0.5f, 0),
+            new Vector2(1, 1),
+            new Color32(90, 255, 125, 255)
+        );
+
+        MissionOddsOverlayView overlay = EnableRuntimeComponent(
+            overlayObject.GetComponent<MissionOddsOverlayView>()
+        );
+        AssignReference(overlay, "foilTextField", foilText);
+        AssignReference(overlay, "overallSuccessTextField", overallSuccessText);
+        overlayRect.SetAsLastSibling();
+        overlayObject.SetActive(false);
+        return overlay;
+    }
+
+    private static TextMeshProUGUI CreateMissionOddsTextField(
+        string objectName,
+        RectTransform parent,
+        TextMeshProUGUI styleSource,
+        Vector2 anchorMin,
+        Vector2 anchorMax,
+        Color32 color
+    )
+    {
+        TextMeshProUGUI textField = CreateTextLabel(objectName, parent);
+        RectTransform rect = textField.rectTransform;
+        rect.anchorMin = anchorMin;
+        rect.anchorMax = anchorMax;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(-2, -2);
+
+        textField.font = styleSource.font;
+        textField.fontSharedMaterial = styleSource.fontSharedMaterial;
+        textField.color = color;
+        textField.alignment = TextAlignmentOptions.Center;
+        textField.fontStyle = FontStyles.Bold;
+        textField.enableAutoSizing = true;
+        textField.fontSizeMin = 5;
+        textField.fontSizeMax = 10;
+        textField.textWrappingMode = TextWrappingModes.NoWrap;
+        textField.overflowMode = TextOverflowModes.Overflow;
+        textField.raycastTarget = false;
+        return textField;
+    }
+
+    /// <summary>
     /// Authors the Missions window's reusable list-row template.
     /// </summary>
     /// <param name="parent">The mission-list content transform.</param>
@@ -3304,6 +3397,7 @@ public static class StrategyViewPrefabBuilder
     /// <param name="fontSize">The preview font size.</param>
     /// <param name="alignment">The preview text alignment.</param>
     /// <param name="preserveImageRect">Whether rendering preserves the authored image rectangle.</param>
+    /// <param name="includeMissionOddsOverlay">Whether the row includes a mission-odds overlay.</param>
     /// <returns>The configured dropdown item template.</returns>
     private static StrategyDropdownItemView CreateStrategyDropdownItemTemplate(
         Transform parent,
@@ -3315,7 +3409,8 @@ public static class StrategyViewPrefabBuilder
         string previewText,
         float fontSize,
         TextAlignmentOptions alignment,
-        bool preserveImageRect
+        bool preserveImageRect,
+        bool includeMissionOddsOverlay = false
     )
     {
         GameObject row = new GameObject(
@@ -3368,6 +3463,9 @@ public static class StrategyViewPrefabBuilder
             textRect.width,
             textRect.height
         );
+        MissionOddsOverlayView missionOddsOverlay = includeMissionOddsOverlay
+            ? CreateMissionOddsOverlay(itemImage.rectTransform, itemText)
+            : null;
 
         StrategyDropdownItemView view = EnableRuntimeComponent(
             row.GetComponent<StrategyDropdownItemView>()
@@ -3375,6 +3473,8 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "button", button);
         AssignReference(view, "itemImage", itemImage);
         AssignReference(view, "itemTextField", itemText);
+        if (missionOddsOverlay != null)
+            AssignReference(view, "missionOddsOverlay", missionOddsOverlay);
         AssignBool(view, "preserveAuthoredImageRect", preserveImageRect);
         AddTemplateLayoutElement(row.GetComponent<RectTransform>());
         row.SetActive(false);

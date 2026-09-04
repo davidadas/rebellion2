@@ -546,7 +546,7 @@ namespace Rebellion.Tests.Sectors
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(43.75, odds.DetectionProbability, 0.001);
+            Assert.AreEqual(43.75, odds.FoilProbability, 0.001);
         }
 
         [Test]
@@ -574,7 +574,7 @@ namespace Rebellion.Tests.Sectors
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(100, odds.DetectionProbability, 0.001);
+            Assert.AreEqual(100, odds.FoilProbability, 0.001);
         }
 
         [Test]

@@ -585,15 +585,11 @@ public sealed class MissionCreateWindowController
         if (choice == null || session.Agents.Count == 0 || missionPlanet == null)
             return false;
 
-        MissionStartRequest request = new MissionStartRequest
-        {
-            MissionTypeID = choice.MissionTypeID,
-            Location = missionPlanet,
-            SelectedTarget = session.Target.Item,
-            Discipline = choice.Discipline,
-            MainParticipants = session.Agents.ToList(),
-            DecoyParticipants = session.Decoys.ToList(),
-        };
+        MissionStartRequest request = session.CreateMissionRequest(
+            choice,
+            missionPlanet,
+            session.Target.Item
+        );
         MissionSystem missionSystem = getMissionSystem();
         if (!missionSystem.CanCreateMission(request) || !missionSystem.InitiateMission(request))
             return false;
@@ -791,6 +787,33 @@ internal sealed class MissionCreateWindowSession
 
         ShowMissionOdds = visible;
         return true;
+    }
+
+    /// <summary>
+    /// Builds the mission request shared by planning estimates and final submission.
+    /// </summary>
+    /// <param name="choice">The mission option to request.</param>
+    /// <param name="planet">The authoritative or observed mission planet.</param>
+    /// <param name="target">The authoritative or observed mission target.</param>
+    /// <returns>A request containing the session's current participant roles.</returns>
+    public MissionStartRequest CreateMissionRequest(
+        StrategyMissionChoice choice,
+        Planet planet,
+        ISceneNode target
+    )
+    {
+        if (choice == null)
+            throw new ArgumentNullException(nameof(choice));
+
+        return new MissionStartRequest
+        {
+            MissionTypeID = choice.MissionTypeID,
+            Location = planet,
+            SelectedTarget = target,
+            Discipline = choice.Discipline,
+            MainParticipants = agents.ToList(),
+            DecoyParticipants = decoys.ToList(),
+        };
     }
 
     /// <summary>

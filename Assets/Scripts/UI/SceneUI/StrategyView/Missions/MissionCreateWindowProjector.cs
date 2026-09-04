@@ -58,6 +58,7 @@ internal sealed class MissionCreateWindowProjector
         ISceneNode target = session.Target.GetMissionTarget(
             selectedChoice?.TargetKind ?? MissionTargetKind.Planet
         );
+        MissionOddsRenderData selectedMissionOdds = BuildMissionOdds(session, selectedChoice);
         return new MissionCreateWindowRenderData(
             window.X,
             window.Y,
@@ -74,7 +75,7 @@ internal sealed class MissionCreateWindowProjector
             uiContext.GetTexture(theme?.DecoysHeaderImagePath),
             BuildTabs(uiContext, theme, session.ActiveTab),
             session.DropdownOpen
-                ? BuildDropdownItems(uiContext, session)
+                ? BuildDropdownItems(uiContext, session, selectedMissionOdds)
                 : Array.Empty<StrategyDropdownItemRenderData>(),
             session.ActiveTab == MissionCreateWindowTab.Personnel
                 ? BuildParticipantRows(uiContext, session.Agents, session.SelectedAgents)
@@ -82,7 +83,7 @@ internal sealed class MissionCreateWindowProjector
             session.ActiveTab == MissionCreateWindowTab.Personnel
                 ? BuildParticipantRows(uiContext, session.Decoys, session.SelectedDecoys)
                 : Array.Empty<MissionParticipantRowRenderData>(),
-            BuildMissionOdds(session, selectedChoice),
+            selectedMissionOdds,
             session.ShowMissionOdds,
             uiContext.GetTexture(checkboxTheme?.FrameImagePath),
             uiContext.GetTexture(checkboxTheme?.CheckMarkImagePath)
@@ -143,10 +144,12 @@ internal sealed class MissionCreateWindowProjector
     /// </summary>
     /// <param name="uiContext">The current strategy presentation context.</param>
     /// <param name="session">The source Mission Create session.</param>
+    /// <param name="selectedMissionOdds">The already calculated selected-choice estimate.</param>
     /// <returns>The ordered immutable dropdown snapshots.</returns>
     private IReadOnlyList<StrategyDropdownItemRenderData> BuildDropdownItems(
         UIContext uiContext,
-        MissionCreateWindowSession session
+        MissionCreateWindowSession session,
+        MissionOddsRenderData selectedMissionOdds
     )
     {
         List<StrategyDropdownItemRenderData> rows = new List<StrategyDropdownItemRenderData>();
@@ -158,7 +161,9 @@ internal sealed class MissionCreateWindowProjector
                     GetMissionChoiceTexture(uiContext, choice),
                     choice.Name,
                     index == session.SelectedMissionIndex ? _white : _gray,
-                    BuildMissionOdds(session, choice)
+                    index == session.SelectedMissionIndex
+                        ? selectedMissionOdds
+                        : BuildMissionOdds(session, choice)
                 )
             );
         }
@@ -188,23 +193,15 @@ internal sealed class MissionCreateWindowProjector
             return null;
 
         MissionOdds odds = getMissionOdds(
-            new MissionStartRequest
-            {
-                MissionTypeID = choice.MissionTypeID,
-                Location = planet,
-                SelectedTarget = GetLatestObservedTarget(
-                    session.Target.Item,
-                    sessionPlanet,
-                    planet
-                ),
-                Discipline = choice.Discipline,
-                MainParticipants = session.Agents.ToList(),
-                DecoyParticipants = session.Decoys.ToList(),
-            }
+            session.CreateMissionRequest(
+                choice,
+                planet,
+                GetLatestObservedTarget(session.Target.Item, sessionPlanet, planet)
+            )
         );
         return odds == null
             ? null
-            : new MissionOddsRenderData(odds.SuccessProbability, odds.DetectionProbability);
+            : new MissionOddsRenderData(odds.OverallSuccessProbability, odds.FoilProbability);
     }
 
     /// <summary>

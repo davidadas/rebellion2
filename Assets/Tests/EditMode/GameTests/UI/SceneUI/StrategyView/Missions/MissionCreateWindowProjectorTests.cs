@@ -198,13 +198,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
             MissionCreateWindowRenderData data = projector.Build(session, _window);
 
-            Assert.AreEqual(60, data.SelectedMissionOdds.SuccessPercent);
-            Assert.AreEqual(25, data.SelectedMissionOdds.DetectionPercent);
-            Assert.AreEqual(60, data.DropdownItems[0].MissionOdds.SuccessPercent);
-            Assert.AreEqual(25, data.DropdownItems[0].MissionOdds.DetectionPercent);
-            Assert.AreEqual(45, data.DropdownItems[1].MissionOdds.SuccessPercent);
-            Assert.AreEqual(10, data.DropdownItems[1].MissionOdds.DetectionPercent);
-            Assert.AreEqual(3, requests.Count);
+            Assert.AreEqual(60, data.SelectedMissionOdds.OverallSuccessPercent);
+            Assert.AreEqual(25, data.SelectedMissionOdds.FoilPercent);
+            Assert.AreEqual(60, data.DropdownItems[0].MissionOdds.OverallSuccessPercent);
+            Assert.AreEqual(25, data.DropdownItems[0].MissionOdds.FoilPercent);
+            Assert.AreEqual(45, data.DropdownItems[1].MissionOdds.OverallSuccessPercent);
+            Assert.AreEqual(10, data.DropdownItems[1].MissionOdds.FoilPercent);
+            Assert.AreEqual(2, requests.Count);
             Assert.IsTrue(
                 requests.All(request => request.MainParticipants.SequenceEqual(new[] { primary }))
             );

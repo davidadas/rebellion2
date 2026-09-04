@@ -203,15 +203,11 @@ namespace Rebellion.Game.Missions
         /// Calculates the probability that at least one student makes Force training progress.
         /// </summary>
         /// <param name="participants">The training participants to evaluate.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
-        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The calculated training progress probability.</returns>
-        internal override double GetObjectiveSuccessProbability(
+        protected override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
-            GameRoot game,
-            Planet observedPlanet = null,
-            ISceneNode observedTarget = null
+            MissionEvaluationContext context
         )
         {
             List<Officer> officers = (participants ?? Enumerable.Empty<IMissionParticipant>())
@@ -220,12 +216,12 @@ namespace Rebellion.Game.Missions
             Officer trainer = officers.FirstOrDefault(officer =>
                 officer.InstanceID == TrainerInstanceID
             );
-            if (trainer == null || game?.Config?.Jedi == null)
+            if (trainer == null || context.Game?.Config?.Jedi == null)
                 return 0;
 
             IEnumerable<double> probabilities = officers
                 .Where(officer => officer != trainer)
-                .Select(officer => GetTrainingProgressProbability(officer, trainer, game));
+                .Select(officer => GetTrainingProgressProbability(officer, trainer, context.Game));
             return CombineSuccessProbabilities(probabilities);
         }
 

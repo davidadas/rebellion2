@@ -242,8 +242,8 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Estimates a mission's final success and detection chances without resolving an outcome.
-        /// Detection uses the caller's observed planet state so planning does not expose hidden units.
+        /// Estimates a mission's final success and foiling chances without resolving an outcome.
+        /// Foiling uses the caller's observed planet state so planning does not expose hidden units.
         /// </summary>
         /// <param name="request">The mission configuration to evaluate.</param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
@@ -258,11 +258,8 @@ namespace Rebellion.Systems
                 request.Location as Planet,
                 request.SelectedTarget
             );
-            double detectionProbability = EstimateDetectionProbability(
-                mission,
-                request.Location as Planet
-            );
-            return new MissionOdds(objectiveSuccessProbability, detectionProbability);
+            double foilProbability = EstimateFoilProbability(mission, request.Location as Planet);
+            return new MissionOdds(objectiveSuccessProbability, foilProbability);
         }
 
         /// <summary>
@@ -737,7 +734,7 @@ namespace Rebellion.Systems
             ResolveDecoys(mission, activeDetectors, planet, results);
 
             ISceneNode foilingDetector = activeDetectors.FirstOrDefault(detector =>
-                IsMissionDetected(mission, detector)
+                DoesDetectorFoilMission(mission, detector)
             );
             if (foilingDetector == null)
                 return false;
@@ -752,17 +749,17 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Rolls one hostile unit's detection attempt against a mission.
+        /// Rolls one hostile unit's attempt to foil a mission.
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile unit making the detection attempt.</param>
         /// <returns>True when the detector foils the mission.</returns>
-        private bool IsMissionDetected(Mission mission, ISceneNode detector)
+        private bool DoesDetectorFoilMission(Mission mission, ISceneNode detector)
         {
             if (mission == null || detector == null)
                 return false;
 
-            return RollProbability(GetDetectionProbability(mission, detector));
+            return RollProbability(GetFoilProbability(mission, detector));
         }
 
         /// <summary>
@@ -772,8 +769,8 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The unstarted or active mission to evaluate.</param>
         /// <param name="observedPlanet">The planet state currently known to the planning faction.</param>
-        /// <returns>The estimated detection percentage.</returns>
-        private double EstimateDetectionProbability(Mission mission, Planet observedPlanet)
+        /// <returns>The estimated foiling percentage.</returns>
+        private double EstimateFoilProbability(Mission mission, Planet observedPlanet)
         {
             if (mission == null || observedPlanet == null)
                 return 0;
@@ -783,23 +780,23 @@ namespace Rebellion.Systems
                 return 0;
 
             IReadOnlyList<IMissionParticipant> decoys = mission.GetDecoyParticipants();
-            double undetectedProbability = 1d;
+            double unfoiledProbability = 1d;
             foreach (ISceneNode detector in detectors)
             {
-                double diversionProbability =
+                double decoySuccessProbability =
                     decoys.Count == 0
                         ? 0
                         : decoys.Average(decoy =>
                             mission.GetDecoyProbability(decoy, detector, _game)
                         ) / 100d;
-                double detectorProbability = GetDetectionProbability(mission, detector) / 100d;
-                double effectiveProbability =
-                    (1d - Math.Clamp(diversionProbability, 0, 1))
-                    * Math.Clamp(detectorProbability, 0, 1);
-                undetectedProbability *= 1d - effectiveProbability;
+                double detectorFoilProbability = GetFoilProbability(mission, detector) / 100d;
+                double effectiveFoilProbability =
+                    (1d - Math.Clamp(decoySuccessProbability, 0, 1))
+                    * Math.Clamp(detectorFoilProbability, 0, 1);
+                unfoiledProbability *= 1d - effectiveFoilProbability;
             }
 
-            return (1d - undetectedProbability) * 100d;
+            return (1d - unfoiledProbability) * 100d;
         }
 
         /// <summary>
@@ -807,13 +804,13 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile detector.</param>
-        /// <returns>The detection percentage.</returns>
-        private int GetDetectionProbability(Mission mission, ISceneNode detector)
+        /// <returns>The foiling percentage.</returns>
+        private int GetFoilProbability(Mission mission, ISceneNode detector)
         {
             if (mission == null || detector == null)
                 return 0;
 
-            int score = CalculateDetectionScore(mission, detector);
+            int score = CalculateFoilScore(mission, detector);
             return LookupProbability(GetMissionTables().Foil, score);
         }
 
@@ -822,8 +819,8 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile unit making the detection attempt.</param>
-        /// <returns>The score used to look up the detection probability.</returns>
-        private int CalculateDetectionScore(Mission mission, ISceneNode detector)
+        /// <returns>The score used to look up the foiling probability.</returns>
+        private int CalculateFoilScore(Mission mission, ISceneNode detector)
         {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
             IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();

@@ -119,22 +119,18 @@ namespace Rebellion.Game.Missions
         /// Returns the attacker's raw combat advantage over the assassination target.
         /// </summary>
         /// <param name="agent">The participant attempting the assassination.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
-        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The raw combat advantage, or null when the target cannot be resolved.</returns>
         protected override int? GetAgentScore(
             IMissionParticipant agent,
-            GameRoot game,
-            Planet observedPlanet = null,
-            ISceneNode observedTarget = null
+            MissionEvaluationContext context
         )
         {
             Officer target =
-                observedTarget is Officer observedOfficer
+                context.Target is Officer observedOfficer
                 && observedOfficer.InstanceID == TargetOfficerInstanceID
                     ? observedOfficer
-                    : game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+                    : context.Game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             if (target == null)
                 return null;
 

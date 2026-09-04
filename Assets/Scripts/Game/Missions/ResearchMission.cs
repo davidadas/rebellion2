@@ -175,18 +175,14 @@ namespace Rebellion.Game.Missions
         /// Calculates the probability that at least one researcher produces research progress.
         /// </summary>
         /// <param name="participants">The researchers to evaluate.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
-        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The calculated research progress probability.</returns>
-        internal override double GetObjectiveSuccessProbability(
+        protected override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
-            GameRoot game,
-            Planet observedPlanet = null,
-            ISceneNode observedTarget = null
+            MissionEvaluationContext context
         )
         {
-            GameConfig.ResearchConfig config = game?.Config?.Research;
+            GameConfig.ResearchConfig config = context.Game?.Config?.Research;
             double rewardProbability = GetPositiveRewardProbability(config);
             IEnumerable<double> probabilities = (
                 participants ?? Enumerable.Empty<IMissionParticipant>()

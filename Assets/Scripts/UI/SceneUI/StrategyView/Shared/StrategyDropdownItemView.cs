@@ -18,11 +18,13 @@ public sealed class StrategyDropdownItemView : MonoBehaviour
     private TextMeshProUGUI itemTextField;
 
     [SerializeField]
+    private MissionOddsOverlayView missionOddsOverlay;
+
+    [SerializeField]
     private bool preserveAuthoredImageRect;
 
     private RectInt imageSlot;
     private bool hasImageSlot;
-    private MissionOddsOverlayView missionOddsOverlay;
 
     /// <summary>
     /// Raised when this row's authored button is selected.
@@ -96,17 +98,13 @@ public sealed class StrategyDropdownItemView : MonoBehaviour
     /// <param name="odds">The mission odds, or null for ordinary dropdown rows.</param>
     private void RenderMissionOdds(MissionOddsRenderData odds)
     {
-        if (odds == null)
+        if (missionOddsOverlay == null)
         {
-            if (missionOddsOverlay != null)
-                missionOddsOverlay.gameObject.SetActive(false);
+            if (odds != null)
+                throw new MissingReferenceException($"{name}/MissionOddsOverlay is missing.");
             return;
         }
 
-        missionOddsOverlay ??= MissionOddsOverlayView.Create(
-            itemImage.rectTransform,
-            itemTextField
-        );
         missionOddsOverlay.Render(odds);
     }
 

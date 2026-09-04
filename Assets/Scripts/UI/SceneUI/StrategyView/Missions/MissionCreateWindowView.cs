@@ -80,6 +80,9 @@ public sealed class MissionCreateWindowView
     private TextMeshProUGUI selectedMissionNameTextField;
 
     [SerializeField]
+    private MissionOddsOverlayView selectedMissionOddsOverlay;
+
+    [SerializeField]
     private UICheckboxView missionOddsCheckbox;
 
     [SerializeField]
@@ -154,7 +157,6 @@ public sealed class MissionCreateWindowView
     private UnityAction dropdownListener;
     private bool dropdownOpen;
     private bool hasTargetPreviewSlotRect;
-    private MissionOddsOverlayView selectedMissionOddsOverlay;
     private UnityAction infoListener;
     private UnityAction moveLeftListener;
     private UnityAction moveRightListener;
@@ -544,17 +546,6 @@ public sealed class MissionCreateWindowView
     /// <param name="odds">The selected mission estimate, or null when unavailable.</param>
     private void RenderSelectedMissionOdds(MissionOddsRenderData odds)
     {
-        if (odds == null)
-        {
-            if (selectedMissionOddsOverlay != null)
-                selectedMissionOddsOverlay.gameObject.SetActive(false);
-            return;
-        }
-
-        selectedMissionOddsOverlay ??= MissionOddsOverlayView.Create(
-            selectedMissionImage.rectTransform,
-            selectedMissionNameTextField
-        );
         selectedMissionOddsOverlay.Render(odds);
     }
 
@@ -1009,6 +1000,8 @@ public sealed class MissionCreateWindowView
             throw new MissingReferenceException($"{name}/SelectedMissionImage is missing.");
         if (selectedMissionNameTextField == null)
             throw new MissingReferenceException($"{name}/SelectedMissionNameTextField is missing.");
+        if (selectedMissionOddsOverlay == null)
+            throw new MissingReferenceException($"{name}/SelectedMissionOddsOverlay is missing.");
         if (missionOddsCheckbox == null)
             throw new MissingReferenceException($"{name}/MissionOddsCheckbox is missing.");
         if (targetPreviewImage == null)

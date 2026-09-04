@@ -114,20 +114,16 @@ namespace Rebellion.Game.Missions
         /// Returns the participant's raw diplomacy mission score for the current target.
         /// </summary>
         /// <param name="agent">The participant whose diplomacy rating is evaluated.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
-        /// <param name="observedTarget">Optional player-visible mission target used for planning.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The participant's raw diplomacy mission score.</returns>
         protected override int? GetAgentScore(
             IMissionParticipant agent,
-            GameRoot game,
-            Planet observedPlanet = null,
-            ISceneNode observedTarget = null
+            MissionEvaluationContext context
         )
         {
-            Planet planet = GetMissionPlanet(game, observedPlanet);
+            Planet planet = GetMissionPlanet(context);
             if (planet == null)
-                return base.GetAgentScore(agent, game, observedPlanet, observedTarget);
+                return base.GetAgentScore(agent, context);
 
             return agent.GetEffectiveRating(OfficerRating.Diplomacy)
                 - planet.GetOpposingPopularSupport(OwnerInstanceID);
