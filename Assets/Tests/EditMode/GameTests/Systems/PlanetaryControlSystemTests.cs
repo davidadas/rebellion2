@@ -600,6 +600,46 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TransferPlanet_PlanetWithRemotelyProducedBuilding_CancelsProduction()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.EnergyCapacity = 1;
+
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                _game,
+                new FleetSystem(_game)
+            );
+            Building shipyard = new Building
+            {
+                InstanceID = "remote-shipyard",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.Shipyard,
+                ConstructionCost = 100,
+            };
+            bool enqueued = manufacturing.Enqueue(
+                _empirePlanet,
+                shipyard,
+                _targetPlanet,
+                ignoreCost: true
+            );
+            Assert.IsTrue(enqueued, "Setup: remote shipyard should enqueue successfully");
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.IsFalse(
+                _empirePlanet
+                    .GetManufacturingQueue()
+                    .Values.SelectMany(items => items)
+                    .Contains(shipyard),
+                "Captured destination must cancel the producer's queued building"
+            );
+            Assert.IsNull(
+                shipyard.GetParent(),
+                "Cancelled remote building must be detached from the captured planet"
+            );
+        }
+
+        [Test]
         public void ClearPlanetOwnership_ActiveDiplomacyMission_PreservesMission()
         {
             _game.ChangeOwnership(_targetPlanet, _rebels.InstanceID);

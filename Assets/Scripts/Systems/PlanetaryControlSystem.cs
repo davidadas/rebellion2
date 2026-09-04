@@ -416,10 +416,10 @@ namespace Rebellion.Systems
                     newOwner
                 );
 
+                _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
                 if (newOwner != null)
                     TransferBuildings(planet, newOwner);
 
-                _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
                 EvictEnemyUnits(planet, newOwnerId);
                 planet.EndUprising();
                 if (newOwner == null)

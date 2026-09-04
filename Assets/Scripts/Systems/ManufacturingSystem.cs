@@ -1494,8 +1494,8 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Clears all manufacturing queues for a planet and destroys items being built.
-        /// Called when planet ownership changes (capture, uprising, diplomacy).
+        /// Clears all manufacturing queues for a planet and cancels remotely produced buildings
+        /// attached there. Called when planet ownership changes (capture, uprising, diplomacy).
         /// </summary>
         /// <param name="planet">The planet whose queues should be cleared.</param>
         public void ClearQueuesOnOwnershipChange(Planet planet)
@@ -1503,6 +1503,28 @@ namespace Rebellion.Systems
             if (planet == null)
             {
                 return;
+            }
+
+            foreach (
+                Building building in planet
+                    .GetChildren<Building>(includeDisabled: true)
+                    .Where(building =>
+                        building.ManufacturingStatus == ManufacturingStatus.Building
+                        && !string.IsNullOrEmpty(building.ProducerPlanetID)
+                        && !string.Equals(
+                            building.ProducerPlanetID,
+                            planet.InstanceID,
+                            StringComparison.Ordinal
+                        )
+                    )
+                    .ToList()
+            )
+            {
+                Planet producer = _game.GetSceneNodeByInstanceID<Planet>(
+                    building.ProducerPlanetID
+                );
+                if (producer != null)
+                    CancelManufacturing(building, producer.GetOwnerInstanceID());
             }
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
