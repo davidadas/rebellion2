@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -126,16 +127,50 @@ namespace Rebellion.Game.Missions
             MissionEvaluationContext context
         )
         {
-            Officer target =
-                context.Target is Officer observedOfficer
-                && observedOfficer.InstanceID == TargetOfficerInstanceID
-                    ? observedOfficer
-                    : context.Game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+            Officer target = GetEvaluationTarget(context);
             if (target == null)
                 return null;
 
             return agent.GetEffectiveRating(OfficerRating.Combat)
                 - target.GetEffectiveRating(OfficerRating.Combat);
+        }
+
+        /// <summary>
+        /// Includes the post-hit death roll required for an assassination to report success.
+        /// </summary>
+        /// <param name="participants">The participants attempting the assassination.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
+        /// <returns>The probability that at least one participant both hits and kills the target.</returns>
+        protected override double GetObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
+        )
+        {
+            Officer target = GetEvaluationTarget(context);
+            int killProbability = GetPostInjuryDeathProbability(
+                target,
+                context.Game?.Config?.Assassination?.KillProbability ?? 0
+            );
+            if (killProbability == 0)
+                return 0;
+
+            IEnumerable<double> probabilities = (
+                participants ?? Enumerable.Empty<IMissionParticipant>()
+            )
+                .Where(participant => participant != null)
+                .Select(participant =>
+                    GetAgentProbability(participant, context) * killProbability / 100d
+                );
+            return CombineSuccessProbabilities(probabilities);
+        }
+
+        private Officer GetEvaluationTarget(MissionEvaluationContext context)
+        {
+            return
+                context.Target is Officer observedOfficer
+                && observedOfficer.InstanceID == TargetOfficerInstanceID
+                ? observedOfficer
+                : context.Game?.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         }
 
         /// <summary>

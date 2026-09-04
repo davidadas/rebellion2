@@ -432,7 +432,7 @@ namespace Rebellion.Game.Missions
             return GetAgentProbability(agent, new MissionEvaluationContext(game));
         }
 
-        private double GetAgentProbability(
+        protected double GetAgentProbability(
             IMissionParticipant agent,
             MissionEvaluationContext context
         )
@@ -682,12 +682,18 @@ namespace Rebellion.Game.Missions
             int deathProbability
         )
         {
-            if (officer?.IsMain != false)
-                return false;
-
-            int clampedProbability = Math.Min(100, Math.Max(0, deathProbability));
-            return provider.NextInt(0, 100) < clampedProbability;
+            int probability = GetPostInjuryDeathProbability(officer, deathProbability);
+            return probability > 0 && provider.NextInt(0, 100) < probability;
         }
+
+        /// <summary>
+        /// Returns the configured post-injury death probability for an officer.
+        /// </summary>
+        /// <param name="officer">The injured officer.</param>
+        /// <param name="deathProbability">Configured probability that minor personnel die.</param>
+        /// <returns>The clamped death probability, or zero for main characters.</returns>
+        protected static int GetPostInjuryDeathProbability(Officer officer, int deathProbability) =>
+            officer?.IsMain == false ? Math.Clamp(deathProbability, 0, 100) : 0;
 
         /// <summary>
         /// Applies the injury and minor-character death checks used when capture is attempted.

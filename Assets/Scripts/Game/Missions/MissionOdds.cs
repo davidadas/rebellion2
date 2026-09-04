@@ -16,8 +16,8 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Creates complete mission odds from the objective and pre-objective foiling chances.
         /// </summary>
-        /// <param name="objectiveSuccessProbability">Chance that the objective succeeds if reached.</param>
-        /// <param name="foilProbability">Chance that known opposing forces foil the mission first.</param>
+        /// <param name="objectiveSuccessProbability">Chance that the objective reports success if reached.</param>
+        /// <param name="foilProbability">Chance that the mission is foiled before the objective.</param>
         internal MissionOdds(double objectiveSuccessProbability, double foilProbability)
         {
             ObjectiveSuccessProbability = Math.Clamp(objectiveSuccessProbability, 0, 100);

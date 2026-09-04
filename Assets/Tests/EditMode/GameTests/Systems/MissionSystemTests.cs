@@ -600,10 +600,36 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(90, odds.ObjectiveSuccessProbability, 0.001);
         }
 
-        [TestCase(MissionTypeIDs.Abduction)]
-        [TestCase(MissionTypeIDs.Assassination)]
+        [Test]
+        public void GetMissionOdds_ReconnaissanceUsesItsGuaranteedCompletionRule()
+        {
+            (GameRoot game, Planet origin, Planet target, Officer _, MissionSystem missions) =
+                BuildMissionOddsScene("rebels");
+            target.VisitingFactionIDs.Clear();
+            SpecialForces probe = new SpecialForces
+            {
+                InstanceID = "probe",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+            };
+            game.AttachNode(probe, origin);
+            game.Config.ProbabilityTables.Mission.DefaultSuccessProbability = 0;
+
+            MissionOdds odds = missions.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Reconnaissance, probe, target)
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(100, odds.ObjectiveSuccessProbability, 0.001);
+            Assert.AreEqual(100, odds.OverallSuccessProbability, 0.001);
+        }
+
+        [TestCase(MissionTypeIDs.Abduction, 80)]
+        [TestCase(MissionTypeIDs.Assassination, 20)]
         public void GetMissionOdds_OfficerTargetMissionUsesObservedTargetRating(
-            string missionTypeId
+            string missionTypeId,
+            double expectedProbability
         )
         {
             (
@@ -614,6 +640,7 @@ namespace Rebellion.Tests.Sectors
                 MissionSystem missions
             ) = BuildMissionOddsScene("rebels");
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = false;
             target.SetBaseRating(OfficerRating.Combat, 0);
             game.AttachNode(target, targetPlanet);
             Planet observedPlanet = targetPlanet.CreateCopy(recursive: true) as Planet;
@@ -629,6 +656,7 @@ namespace Rebellion.Tests.Sectors
                 { -100, 10 },
                 { 0, 80 },
             };
+            game.Config.Assassination.KillProbability = 25;
 
             MissionOdds odds = missions.GetMissionOdds(
                 CreateRequest(
@@ -640,7 +668,72 @@ namespace Rebellion.Tests.Sectors
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(80, odds.ObjectiveSuccessProbability, 0.001);
+            Assert.AreEqual(expectedProbability, odds.ObjectiveSuccessProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_AssassinationOfMainCharacterCannotReportSuccess()
+        {
+            (
+                GameRoot game,
+                Planet _,
+                Planet targetPlanet,
+                Officer attacker,
+                MissionSystem missions
+            ) = BuildMissionOddsScene("rebels");
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = true;
+            target.SetBaseRating(OfficerRating.Combat, 0);
+            game.AttachNode(target, targetPlanet);
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { -100, 100 },
+            };
+            game.Config.Assassination.KillProbability = 100;
+
+            MissionOdds odds = missions.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Assassination, attacker, targetPlanet, target)
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(0, odds.ObjectiveSuccessProbability, 0.001);
+            Assert.AreEqual(0, odds.OverallSuccessProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_AssassinationCombinesHitAndKillChecksPerParticipant()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer firstAttacker,
+                MissionSystem missions
+            ) = BuildMissionOddsScene("rebels");
+            Officer secondAttacker = EntityFactory.CreateOfficer("second-attacker", "empire");
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = false;
+            game.AttachNode(secondAttacker, origin);
+            game.AttachNode(target, targetPlanet);
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { -100, 50 },
+            };
+            game.Config.Assassination.KillProbability = 50;
+
+            MissionOdds odds = missions.GetMissionOdds(
+                CreateRequest(
+                    MissionTypeIDs.Assassination,
+                    new List<IMissionParticipant> { firstAttacker, secondAttacker },
+                    new List<IMissionParticipant>(),
+                    targetPlanet,
+                    target
+                )
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(43.75, odds.ObjectiveSuccessProbability, 0.001);
+            Assert.AreEqual(43.75, odds.OverallSuccessProbability, 0.001);
         }
 
         [Test]
