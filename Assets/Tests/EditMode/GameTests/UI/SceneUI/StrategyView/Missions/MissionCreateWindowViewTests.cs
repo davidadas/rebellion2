@@ -25,6 +25,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _view = _viewObject.GetComponent<MissionCreateWindowView>();
             _texture = new Texture2D(80, 40);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
+            UIComponentTestHelper.InvokeLifecycle(
+                FindComponent<UICheckboxView>("MissionOddsCheckbox"),
+                "Awake"
+            );
         }
 
         [TearDown]
@@ -164,6 +168,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
             Assert.Greater(selectedSuccess.color.g, selectedSuccess.color.r);
             Assert.Greater(selectedDetection.color.r, selectedDetection.color.g);
+        }
+
+        [Test]
+        public void Render_MissionOddsVisibility_AppliesDarkCheckboxAndRaisesChanges()
+        {
+            MissionCreateWindowView changedView = null;
+            bool? requestedVisibility = null;
+            _view.MissionOddsVisibilityChanged += (view, visible) =>
+            {
+                changedView = view;
+                requestedVisibility = visible;
+            };
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                showMissionOdds: false
+            );
+
+            _view.Render(data);
+
+            UICheckboxView checkbox = FindComponent<UICheckboxView>("MissionOddsCheckbox");
+            Image background = checkbox.GetComponent<Image>();
+            Assert.IsFalse(checkbox.IsChecked);
+            Assert.Less(background.color.r, 0.1f);
+            Assert.Less(background.color.a, 1f);
+            Assert.IsFalse(FindObject("CheckMark").activeSelf);
+
+            checkbox.GetComponent<Toggle>().isOn = true;
+
+            Assert.AreSame(_view, changedView);
+            Assert.IsTrue(requestedVisibility);
+            Assert.IsTrue(FindObject("CheckMark").activeSelf);
         }
 
         [Test]
@@ -716,7 +755,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             MissionCreateTabRenderData[] tabs = null,
             bool showSelectedMission = true,
             bool canConfirm = true,
-            MissionOddsRenderData selectedMissionOdds = null
+            MissionOddsRenderData selectedMissionOdds = null,
+            bool showMissionOdds = true
         )
         {
             return new MissionCreateWindowRenderData(
@@ -737,7 +777,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 dropdownItems,
                 agents,
                 decoys,
-                selectedMissionOdds
+                selectedMissionOdds,
+                showMissionOdds
             );
         }
 

@@ -105,6 +105,8 @@ public sealed class MissionCreateWindowRenderData
 
     public MissionOddsRenderData SelectedMissionOdds { get; }
 
+    public bool ShowMissionOdds { get; }
+
     public string TargetName { get; }
 
     public Texture TargetTexture { get; }
@@ -144,6 +146,7 @@ public sealed class MissionCreateWindowRenderData
     /// <param name="agentRows">The ordered primary-agent rows.</param>
     /// <param name="decoyRows">The ordered decoy-agent rows.</param>
     /// <param name="selectedMissionOdds">The estimate displayed over the selected mission icon.</param>
+    /// <param name="showMissionOdds">Whether the mission-odds overlays are enabled.</param>
     public MissionCreateWindowRenderData(
         int x,
         int y,
@@ -162,7 +165,8 @@ public sealed class MissionCreateWindowRenderData
         IReadOnlyList<StrategyDropdownItemRenderData> dropdownItems,
         IReadOnlyList<MissionParticipantRowRenderData> agentRows,
         IReadOnlyList<MissionParticipantRowRenderData> decoyRows,
-        MissionOddsRenderData selectedMissionOdds = null
+        MissionOddsRenderData selectedMissionOdds = null,
+        bool showMissionOdds = true
     )
     {
         X = x;
@@ -174,6 +178,7 @@ public sealed class MissionCreateWindowRenderData
         MissionName = missionName ?? string.Empty;
         SelectedMissionTexture = selectedMissionTexture;
         SelectedMissionOdds = selectedMissionOdds;
+        ShowMissionOdds = showMissionOdds;
         TargetName = targetName ?? string.Empty;
         TargetTexture = targetTexture;
         UsePlanetTargetPreview = usePlanetTargetPreview;

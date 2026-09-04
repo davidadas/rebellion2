@@ -2860,6 +2860,16 @@ public static class StrategyViewPrefabBuilder
         selectedMissionName.fontSize = 13;
         selectedMissionName.alignment = TextAlignmentOptions.Top;
         SetSourceRect(selectedMissionName.rectTransform, 60, 64, 150, 16);
+        UICheckboxView missionOddsCheckbox = CreateCheckbox(
+            missionSelection,
+            "MissionOddsCheckbox",
+            "Show mission odds",
+            70,
+            154,
+            130,
+            16,
+            true
+        );
         RawImage targetPreview = CreateRawImage(
             "TargetPreviewImage",
             missionSelection,
@@ -3075,6 +3085,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "dropdownButton", dropdownButtonComponent);
         AssignReference(view, "selectedMissionImage", selectedMission);
         AssignReference(view, "selectedMissionNameTextField", selectedMissionName);
+        AssignReference(view, "missionOddsCheckbox", missionOddsCheckbox);
         AssignReference(view, "targetPreviewImage", targetPreview);
         AssignReference(view, "targetPreviewNameTextField", targetPreviewName);
         AssignReference(view, "dropdownRoot", dropdown);
@@ -3131,6 +3142,101 @@ public static class StrategyViewPrefabBuilder
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         return saved.GetComponent<MissionCreateWindowView>();
+    }
+
+    /// <summary>
+    /// Authors a compact dark checkbox without requiring an external sprite.
+    /// </summary>
+    /// <param name="parent">The checkbox parent.</param>
+    /// <param name="name">The checkbox object name.</param>
+    /// <param name="label">The displayed checkbox label.</param>
+    /// <param name="x">The source-space left position.</param>
+    /// <param name="y">The source-space top position.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <param name="isChecked">Whether the checkbox starts checked.</param>
+    /// <returns>The configured checkbox view.</returns>
+    private static UICheckboxView CreateCheckbox(
+        Transform parent,
+        string name,
+        string label,
+        int x,
+        int y,
+        int width,
+        int height,
+        bool isChecked
+    )
+    {
+        GameObject root = new GameObject(
+            name,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Outline),
+            typeof(Toggle),
+            typeof(UICheckboxView)
+        );
+        root.transform.SetParent(parent, false);
+        SetSourceRect(root.GetComponent<RectTransform>(), x, y, width, height);
+
+        Image background = root.GetComponent<Image>();
+        background.color = new Color32(5, 9, 14, 190);
+        background.raycastTarget = true;
+        Outline rowOutline = root.GetComponent<Outline>();
+        rowOutline.effectColor = new Color32(70, 105, 125, 150);
+        rowOutline.effectDistance = new Vector2(1, -1);
+        rowOutline.useGraphicAlpha = false;
+
+        Image box = CreateImage("CheckboxBoxImage", root.transform);
+        box.color = new Color32(0, 0, 0, 215);
+        box.raycastTarget = false;
+        SetSourceRect(box.rectTransform, 2, 1, 14, 14);
+        Outline boxOutline = box.gameObject.AddComponent<Outline>();
+        boxOutline.effectColor = new Color32(125, 165, 185, 210);
+        boxOutline.effectDistance = new Vector2(1, -1);
+        boxOutline.useGraphicAlpha = false;
+
+        RectTransform checkMark = CreateChildLayer("CheckMark", root.transform);
+        SetSourceRect(checkMark, 2, 1, 14, 14);
+        Color32 checkColor = new Color32(90, 255, 125, 255);
+        Image shortStroke = CreateImage("ShortStroke", checkMark);
+        shortStroke.color = checkColor;
+        shortStroke.raycastTarget = false;
+        SetSourceRect(shortStroke.rectTransform, 2, 7, 6, 2);
+        shortStroke.rectTransform.localEulerAngles = new Vector3(0, 0, -42);
+        Image longStroke = CreateImage("LongStroke", checkMark);
+        longStroke.color = checkColor;
+        longStroke.raycastTarget = false;
+        SetSourceRect(longStroke.rectTransform, 5, 5, 9, 2);
+        longStroke.rectTransform.localEulerAngles = new Vector3(0, 0, 48);
+
+        TextMeshProUGUI labelField = CreateTextLabel("LabelTextField", root.transform);
+        labelField.text = label;
+        labelField.color = new Color32(225, 235, 240, 255);
+        labelField.fontSize = 9;
+        labelField.alignment = TextAlignmentOptions.MidlineLeft;
+        labelField.raycastTarget = false;
+        SetSourceRect(labelField.rectTransform, 21, 0, width - 23, height);
+
+        Toggle toggle = root.GetComponent<Toggle>();
+        toggle.targetGraphic = background;
+        toggle.graphic = null;
+        toggle.transition = Selectable.Transition.ColorTint;
+        ColorBlock colors = toggle.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color32(135, 170, 185, 255);
+        colors.pressedColor = new Color32(90, 130, 150, 255);
+        colors.selectedColor = colors.highlightedColor;
+        toggle.colors = colors;
+        toggle.isOn = isChecked;
+
+        UICheckboxView view = EnableRuntimeComponent(root.GetComponent<UICheckboxView>());
+        AssignReference(view, "toggle", toggle);
+        AssignReference(view, "backgroundImage", background);
+        AssignReference(view, "checkMarkRoot", checkMark);
+        AssignReference(view, "labelTextField", labelField);
+        checkMark.gameObject.SetActive(isChecked);
+        return view;
     }
 
     /// <summary>

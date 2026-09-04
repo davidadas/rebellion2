@@ -205,6 +205,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void Build_MissionOddsDisabled_OmitsEveryEstimate()
+        {
+            int estimateCount = 0;
+            MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
+                () => _uiContext,
+                _ =>
+                {
+                    estimateCount++;
+                    return new MissionEstimate(80, 25);
+                }
+            );
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, _planet.Planet),
+                new[] { CreateOfficer("primary", "Primary", false) }
+            );
+            session.ToggleDropdown();
+            session.SetShowMissionOdds(false);
+
+            MissionCreateWindowRenderData data = projector.Build(session, _window);
+
+            Assert.IsFalse(data.ShowMissionOdds);
+            Assert.IsNull(data.SelectedMissionOdds);
+            Assert.IsTrue(data.DropdownItems.All(item => item.MissionOdds == null));
+            Assert.AreEqual(0, estimateCount);
+        }
+
+        [Test]
         public void Build_PlanetTargetWithoutArtwork_UsesPlanetPreviewFallback()
         {
             _planet.Planet.PlanetIconPath = null;

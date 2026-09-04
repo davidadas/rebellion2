@@ -175,6 +175,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void MissionOddsCheckbox_InitializedSession_ChangesVisibilityAndInvalidates()
+        {
+            MissionCreateWindowView view = OpenWindow(out UIWindow window);
+            UICheckboxView checkbox = view.GetComponentInChildren<UICheckboxView>(true);
+            UIComponentTestHelper.InvokeLifecycle(checkbox, "Awake");
+            _controller.RenderWindow(view, window);
+
+            checkbox.GetComponent<Toggle>().isOn = false;
+            _controller.RenderWindow(view, window);
+
+            Assert.IsFalse(checkbox.IsChecked);
+            Assert.AreEqual(2, _dirtyCount);
+            Assert.AreSame(window, _windowManager.ActiveWindow);
+        }
+
+        [Test]
         public void CancelButton_InitializedSession_ClosesOwningWindow()
         {
             MissionCreateWindowView view = OpenWindow(out UIWindow window);

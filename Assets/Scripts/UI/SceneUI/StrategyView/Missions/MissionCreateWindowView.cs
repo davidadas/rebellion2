@@ -80,6 +80,9 @@ public sealed class MissionCreateWindowView
     private TextMeshProUGUI selectedMissionNameTextField;
 
     [SerializeField]
+    private UICheckboxView missionOddsCheckbox;
+
+    [SerializeField]
     private RawImage targetPreviewImage;
 
     [SerializeField]
@@ -198,6 +201,11 @@ public sealed class MissionCreateWindowView
     /// Occurs when an info request is raised.
     /// </summary>
     internal event Action<MissionCreateWindowView> InfoRequested;
+
+    /// <summary>
+    /// Occurs when the user changes whether mission odds are visible.
+    /// </summary>
+    internal event Action<MissionCreateWindowView, bool> MissionOddsVisibilityChanged;
 
     /// <summary>
     /// Occurs when a move participants request is raised.
@@ -414,6 +422,7 @@ public sealed class MissionCreateWindowView
         infoButton.onClick.AddListener(infoListener);
         okButton.onClick.AddListener(okListener);
         cancelButton.onClick.AddListener(cancelListener);
+        missionOddsCheckbox.ValueChanged += HandleMissionOddsVisibilityChanged;
     }
 
     /// <summary>
@@ -439,6 +448,8 @@ public sealed class MissionCreateWindowView
             okButton.onClick.RemoveListener(okListener);
         if (cancelButton != null && cancelListener != null)
             cancelButton.onClick.RemoveListener(cancelListener);
+        if (missionOddsCheckbox != null)
+            missionOddsCheckbox.ValueChanged -= HandleMissionOddsVisibilityChanged;
     }
 
     /// <summary>
@@ -493,6 +504,7 @@ public sealed class MissionCreateWindowView
         selectedMissionImage.gameObject.SetActive(data.SelectedMissionTexture != null);
         if (data.SelectedMissionTexture != null)
             UILayout.SetImageTexture(selectedMissionImage, data.SelectedMissionTexture);
+        missionOddsCheckbox.SetIsCheckedWithoutNotify(data.ShowMissionOdds);
         RenderSelectedMissionOdds(data.SelectedMissionOdds);
 
         selectedMissionNameTextField.gameObject.SetActive(!string.IsNullOrEmpty(data.MissionName));
@@ -543,6 +555,15 @@ public sealed class MissionCreateWindowView
             selectedMissionNameTextField
         );
         selectedMissionOddsOverlay.Render(odds);
+    }
+
+    /// <summary>
+    /// Forwards a mission-odds visibility change to the feature controller.
+    /// </summary>
+    /// <param name="visible">Whether mission odds should be visible.</param>
+    private void HandleMissionOddsVisibilityChanged(bool visible)
+    {
+        MissionOddsVisibilityChanged?.Invoke(this, visible);
     }
 
     /// <summary>
@@ -987,6 +1008,8 @@ public sealed class MissionCreateWindowView
             throw new MissingReferenceException($"{name}/SelectedMissionImage is missing.");
         if (selectedMissionNameTextField == null)
             throw new MissingReferenceException($"{name}/SelectedMissionNameTextField is missing.");
+        if (missionOddsCheckbox == null)
+            throw new MissingReferenceException($"{name}/MissionOddsCheckbox is missing.");
         if (targetPreviewImage == null)
             throw new MissingReferenceException($"{name}/TargetPreviewImage is missing.");
         if (targetPreviewNameTextField == null)

@@ -265,6 +265,7 @@ public sealed class MissionCreateWindowController
         view.DropdownItemRequested += HandleDropdownItemRequested;
         view.DropdownToggleRequested += HandleDropdownToggleRequested;
         view.InfoRequested += HandleInfoRequested;
+        view.MissionOddsVisibilityChanged += HandleMissionOddsVisibilityChanged;
         view.MoveParticipantsRequested += HandleMoveParticipantsRequested;
         view.ParticipantClicked += HandleParticipantClicked;
         view.ParticipantPressed += HandleParticipantPressed;
@@ -383,6 +384,23 @@ public sealed class MissionCreateWindowController
     }
 
     /// <summary>
+    /// Changes whether planning estimates are shown in one Mission Create window.
+    /// </summary>
+    /// <param name="view">The requesting Mission Create view.</param>
+    /// <param name="visible">Whether mission odds should be visible.</param>
+    private void HandleMissionOddsVisibilityChanged(MissionCreateWindowView view, bool visible)
+    {
+        if (!sessions.TryGetValue(view, out MissionCreateWindowSession session))
+            return;
+
+        session.Window.RequestFocus();
+        if (!session.SetShowMissionOdds(visible))
+            return;
+
+        markDirty();
+    }
+
+    /// <summary>
     /// Moves the selected participants out of one requested source role.
     /// </summary>
     /// <param name="view">The requesting Mission Create view.</param>
@@ -487,6 +505,7 @@ public sealed class MissionCreateWindowController
         view.DropdownItemRequested -= HandleDropdownItemRequested;
         view.DropdownToggleRequested -= HandleDropdownToggleRequested;
         view.InfoRequested -= HandleInfoRequested;
+        view.MissionOddsVisibilityChanged -= HandleMissionOddsVisibilityChanged;
         view.MoveParticipantsRequested -= HandleMoveParticipantsRequested;
         view.ParticipantClicked -= HandleParticipantClicked;
         view.ParticipantPressed -= HandleParticipantPressed;
@@ -664,6 +683,8 @@ internal sealed class MissionCreateWindowSession
 
     public bool DropdownOpen { get; private set; }
 
+    public bool ShowMissionOdds { get; private set; } = true;
+
     public StrategyMissionChoice SelectedChoice =>
         SelectedMissionIndex >= 0 && SelectedMissionIndex < Choices.Count
             ? Choices[SelectedMissionIndex]
@@ -740,6 +761,20 @@ internal sealed class MissionCreateWindowSession
     public void ToggleDropdown()
     {
         DropdownOpen = !DropdownOpen;
+    }
+
+    /// <summary>
+    /// Changes whether mission-planning estimates are displayed.
+    /// </summary>
+    /// <param name="visible">Whether mission odds should be visible.</param>
+    /// <returns>True when the state changed.</returns>
+    public bool SetShowMissionOdds(bool visible)
+    {
+        if (ShowMissionOdds == visible)
+            return false;
+
+        ShowMissionOdds = visible;
+        return true;
     }
 
     /// <summary>

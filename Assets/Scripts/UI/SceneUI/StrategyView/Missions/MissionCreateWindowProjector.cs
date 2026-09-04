@@ -78,7 +78,8 @@ internal sealed class MissionCreateWindowProjector
             session.ActiveTab == MissionCreateWindowTab.Personnel
                 ? BuildParticipantRows(uiContext, session.Decoys, session.SelectedDecoys)
                 : Array.Empty<MissionParticipantRowRenderData>(),
-            BuildMissionOdds(session, selectedChoice)
+            BuildMissionOdds(session, selectedChoice),
+            session.ShowMissionOdds
         );
     }
 
@@ -171,7 +172,12 @@ internal sealed class MissionCreateWindowProjector
     )
     {
         Planet planet = session?.Target?.Planet?.Planet;
-        if (choice == null || planet == null || session.Agents.Count == 0)
+        if (
+            choice == null
+            || planet == null
+            || session.Agents.Count == 0
+            || !session.ShowMissionOdds
+        )
             return null;
 
         MissionEstimate estimate = getMissionEstimate(
