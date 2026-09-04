@@ -414,7 +414,7 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
-        public void Resolve_LargerFighterSquadron_DealsMoreDamage()
+        public void Resolve_FullFighterSquadronsWithEqualWeaponStrength_DealEqualDamage()
         {
             Starfighter singleFighter = CreateFighter(
                 "single-fighter",
@@ -429,7 +429,12 @@ namespace Rebellion.Tests.Game.Combat
             CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
             CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
 
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+
             SpaceCombatAutoResult first = Resolve(
+                config,
                 new List<CapitalShip>(),
                 new[] { singleFighter },
                 new[] { firstTarget },
@@ -437,6 +442,7 @@ namespace Rebellion.Tests.Game.Combat
                 defenderCanWithdraw: true
             );
             SpaceCombatAutoResult second = Resolve(
+                config,
                 new List<CapitalShip>(),
                 new[] { fullSquadron },
                 new[] { secondTarget },
@@ -444,7 +450,30 @@ namespace Rebellion.Tests.Game.Combat
                 defenderCanWithdraw: true
             );
 
-            Assert.Less(second.IterationsCompleted, first.IterationsCompleted);
+            Assert.AreEqual(99, GetShipOutcome(first, firstTarget).HullAfter);
+            Assert.AreEqual(99, GetShipOutcome(second, secondTarget).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_DamagedFighterSquadron_DealsProportionalDamage()
+        {
+            Starfighter attacker = CreateFighter("attacker", squadronSize: 12, weaponStrength: 12);
+            attacker.CurrentSquadronSize = 6;
+            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+
+            SpaceCombatAutoResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { attacker },
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(94, GetShipOutcome(result, defender).HullAfter);
         }
 
         [Test]

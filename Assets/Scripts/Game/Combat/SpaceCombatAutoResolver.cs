@@ -1453,7 +1453,7 @@ namespace Rebellion.Game.Combat
                 if (scansForTarget)
                     ScanForWeaponTargets(targets, engagementDistance);
 
-                double fighterCount = GetRemainingFighterCount();
+                double squadronStrength = GetRemainingSquadronStrength();
                 for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
                 {
                     TacticalUnit target = _weaponTargets[weaponIndex];
@@ -1465,7 +1465,8 @@ namespace Rebellion.Game.Combat
                         GetDistanceTo(target, engagementDistance),
                         requireRange: true
                     );
-                    double damage = weaponStrength * GetManeuverMultiplier(target) * fighterCount;
+                    double damage =
+                        weaponStrength * GetManeuverMultiplier(target) * squadronStrength;
                     if (damage > 0)
                     {
                         AddPendingDamage(pendingDamage, target, damage, weaponIndex == 2);
@@ -1483,7 +1484,7 @@ namespace Rebellion.Game.Combat
                 double engagementDistance
             )
             {
-                double fighterCount = GetRemainingFighterCount();
+                double squadronStrength = GetRemainingSquadronStrength();
                 for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
                 {
                     _weaponTargets[weaponIndex] = null;
@@ -1502,7 +1503,7 @@ namespace Rebellion.Game.Combat
                         double candidateDamage =
                             GetWeaponStrength(weaponIndex, engagementRange, requireRange: true)
                             * maneuverMultiplier
-                            * fighterCount;
+                            * squadronStrength;
                         if (candidateDamage <= _weaponTargetDamage[weaponIndex])
                             continue;
 
@@ -1519,7 +1520,7 @@ namespace Rebellion.Game.Combat
                         targetsFighters,
                         engagementDistance: 0,
                         requireRange: true
-                    ) * GetRemainingFighterCount();
+                    ) * GetRemainingSquadronStrength();
             }
 
             /// <inheritdoc />
@@ -1549,16 +1550,20 @@ namespace Rebellion.Game.Combat
             }
 
             /// <summary>
-            /// Returns the durability-adjusted number of surviving fighters.
+            /// Returns the durability-adjusted fraction of the full squadron that survives.
             /// </summary>
-            /// <returns>The surviving fighter count.</returns>
-            private double GetRemainingFighterCount()
+            /// <returns>The surviving fraction of the full squadron.</returns>
+            private double GetRemainingSquadronStrength()
             {
-                return _currentDurability / _durabilityPerFighter;
+                double maximumSquadronSize = Math.Max(Fighter.MaxSquadronSize, 1);
+                return Math.Min(
+                    _currentDurability / (_durabilityPerFighter * maximumSquadronSize),
+                    1
+                );
             }
 
             /// <summary>
-            /// Returns one fighter's usable weapon strength against a target type.
+            /// Returns the squadron's usable weapon strength against a target type.
             /// </summary>
             /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
             /// <param name="engagementDistance">The abstract distance between combat forces.</param>
@@ -1579,7 +1584,7 @@ namespace Rebellion.Game.Combat
             }
 
             /// <summary>
-            /// Returns one fighter weapon lane's usable strength.
+            /// Returns one squadron weapon lane's usable strength.
             /// </summary>
             /// <param name="weaponIndex">The zero-based weapon lane.</param>
             /// <param name="engagementDistance">The abstract distance to the target.</param>
