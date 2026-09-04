@@ -24,7 +24,7 @@ public sealed class MissionOddsRenderData
 
     public string SuccessLabel => $"SUCCESS\n~{SuccessPercent}%";
 
-    public string DetectionLabel => $"DETECTED\n~{DetectionPercent}%";
+    public string DetectionLabel => $"FOILED\n~{DetectionPercent}%";
 
     /// <summary>
     /// Creates one icon-overlay snapshot from calculated mission probabilities.

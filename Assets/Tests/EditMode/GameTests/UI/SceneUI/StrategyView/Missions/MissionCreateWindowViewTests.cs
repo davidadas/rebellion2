@@ -157,13 +157,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             StrategyDropdownItemView row = FindDropdownItems().Single();
             RawImage rowImage = FindDropdownImage(row);
             Assert.AreEqual("SUCCESS\n~74%", selectedSuccess.text);
-            Assert.AreEqual("DETECTED\n~41%", selectedDetection.text);
+            Assert.AreEqual("FOILED\n~41%", selectedDetection.text);
             Assert.AreEqual(
                 "SUCCESS\n~74%",
                 FindOddsText(rowImage.transform, "SuccessOddsTextField").text
             );
             Assert.AreEqual(
-                "DETECTED\n~41%",
+                "FOILED\n~41%",
                 FindOddsText(rowImage.transform, "DetectionOddsTextField").text
             );
             Assert.Greater(selectedSuccess.color.g, selectedSuccess.color.r);
