@@ -253,6 +253,7 @@ namespace Rebellion.AI.Proposals
                 liveTarget
             );
             context.AddResult(assaultResult);
+            context.AddResults(assaultResult.Events);
             context.AddResult(assaultResult.OwnershipChange);
             TryClearCompletedAttackOrder(context, liveTarget);
         }

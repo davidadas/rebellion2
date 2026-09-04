@@ -175,6 +175,41 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
         }
 
+        [Test]
+        public void Execute_WithSuccessfulPlanetaryAssault_AddsGarrisonChangeResult()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            game.AttachNode(AITestSceneBuilder.CreateRegiment("attacker", empire.InstanceID), ship);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = target.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Ready,
+                target
+            );
+
+            proposal.Execute(context);
+
+            PlanetaryAssaultResult assault = context
+                .Results.OfType<PlanetaryAssaultResult>()
+                .Single();
+            Assert.IsTrue(assault.Success);
+            Assert.AreSame(
+                target,
+                context.Results.OfType<PlanetGarrisonChangedResult>().Single().Planet
+            );
+        }
+
         private static Fleet AddBattleFleet(GameRoot game, Planet planet, string ownerInstanceId)
         {
             Fleet fleet = EntityFactory.CreateFleet("fleet", ownerInstanceId);
