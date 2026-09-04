@@ -168,6 +168,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
             Assert.Greater(selectedSuccess.color.g, selectedSuccess.color.r);
             Assert.Greater(selectedDetection.color.r, selectedDetection.color.g);
+            Assert.AreEqual(0f, selectedDetection.rectTransform.anchorMin.x);
+            Assert.AreEqual(0.5f, selectedDetection.rectTransform.anchorMax.x);
+            Assert.AreEqual(0.5f, selectedSuccess.rectTransform.anchorMin.x);
+            Assert.AreEqual(1f, selectedSuccess.rectTransform.anchorMax.x);
         }
 
         [Test]

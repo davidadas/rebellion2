@@ -250,21 +250,21 @@ internal sealed class MissionOddsOverlayView : MonoBehaviour
         backdrop.raycastTarget = false;
 
         MissionOddsOverlayView overlay = overlayObject.GetComponent<MissionOddsOverlayView>();
-        overlay.successTextField = CreateTextField(
-            "SuccessOddsTextField",
-            overlayRect,
-            textStyleSource,
-            new Vector2(0, 0),
-            new Vector2(0.5f, 1),
-            _successColor
-        );
         overlay.detectionTextField = CreateTextField(
             "DetectionOddsTextField",
             overlayRect,
             textStyleSource,
+            new Vector2(0, 0),
+            new Vector2(0.5f, 1),
+            _detectionColor
+        );
+        overlay.successTextField = CreateTextField(
+            "SuccessOddsTextField",
+            overlayRect,
+            textStyleSource,
             new Vector2(0.5f, 0),
             new Vector2(1, 1),
-            _detectionColor
+            _successColor
         );
         overlayRect.SetAsLastSibling();
         return overlay;
