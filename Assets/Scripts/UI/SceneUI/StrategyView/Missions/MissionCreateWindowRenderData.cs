@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// Identifies one tab in the authored Mission Create workflow order.
@@ -218,7 +217,6 @@ public sealed class MissionCreateWindowRenderData
 /// </summary>
 internal sealed class MissionOddsOverlayView : MonoBehaviour
 {
-    private static readonly Color32 _backdropColor = new Color32(0, 0, 0, 205);
     private static readonly Color32 _detectionColor = new Color32(255, 105, 85, 255);
     private static readonly Color32 _successColor = new Color32(90, 255, 125, 255);
 
@@ -244,7 +242,6 @@ internal sealed class MissionOddsOverlayView : MonoBehaviour
         GameObject overlayObject = new GameObject(
             "MissionOddsOverlay",
             typeof(RectTransform),
-            typeof(Image),
             typeof(MissionOddsOverlayView)
         );
         RectTransform overlayRect = overlayObject.GetComponent<RectTransform>();
@@ -254,10 +251,6 @@ internal sealed class MissionOddsOverlayView : MonoBehaviour
         overlayRect.pivot = new Vector2(0.5f, 1);
         overlayRect.anchoredPosition = Vector2.zero;
         overlayRect.sizeDelta = new Vector2(0, 24);
-
-        Image backdrop = overlayObject.GetComponent<Image>();
-        backdrop.color = _backdropColor;
-        backdrop.raycastTarget = false;
 
         MissionOddsOverlayView overlay = overlayObject.GetComponent<MissionOddsOverlayView>();
         overlay.detectionTextField = CreateTextField(

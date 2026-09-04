@@ -146,6 +146,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _view.Render(data);
 
             RawImage selectedImage = FindComponent<RawImage>("SelectedMissionImage");
+            Assert.IsNull(selectedImage.transform.Find("MissionOddsOverlay").GetComponent<Image>());
             TextMeshProUGUI selectedSuccess = FindOddsText(
                 selectedImage.transform,
                 "SuccessOddsTextField"
