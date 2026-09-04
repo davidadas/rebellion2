@@ -372,21 +372,16 @@ namespace Rebellion.Game.Combat
         /// <param name="force">The force to complete.</param>
         private static void CompleteStalematedForce(CombatForce force)
         {
-            bool withdrew = force.HasWithdrawnUnits;
-            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable))
+            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable).ToList())
             {
                 if (unit.CanWithdraw)
-                {
                     unit.CompleteWithdrawal();
-                    withdrew = true;
-                }
-                else
-                {
-                    unit.Destroy();
-                }
             }
 
-            if (withdrew)
+            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable))
+                unit.Destroy();
+
+            if (force.HasWithdrawnUnits)
                 force.Outcome = SpaceCombatSideOutcome.Withdrawn;
             else
                 force.Outcome = SpaceCombatSideOutcome.Destroyed;
@@ -621,9 +616,107 @@ namespace Rebellion.Game.Combat
             /// </summary>
             internal void CompleteWithdrawal()
             {
-                foreach (TacticalUnit unit in _units.Where(unit => unit.IsAlive))
-                    unit.FinishWithdrawal();
+                HashSet<TacticalUnit> recoverableUnits = GetRecoverableUnits();
+                foreach (TacticalUnit unit in _units.Where(unit => unit.IsTargetable))
+                {
+                    if (unit.CanWithdrawIndependently || recoverableUnits.Contains(unit))
+                        unit.FinishWithdrawal();
+                    else
+                        unit.CancelWithdrawal();
+                }
                 IsWithdrawing = false;
+            }
+
+            /// <summary>
+            /// Assigns surviving non-hyperdrive fighters to withdrawing carrier capacity.
+            /// Existing mother-ship assignments are honored first, followed by deterministic
+            /// reassignment to another carrier that is still able to leave the battle.
+            /// </summary>
+            /// <returns>The carrier-dependent fighters that can leave with the group.</returns>
+            private HashSet<TacticalUnit> GetRecoverableUnits()
+            {
+                List<CapitalShipState> carriers = _units
+                    .OfType<CapitalShipState>()
+                    .Where(carrier =>
+                        carrier.IsTargetable
+                        && carrier.CanWithdrawIndependently
+                        && carrier.Ship.StarfighterCapacity > 0
+                    )
+                    .ToList();
+                List<StarfighterState> fighterStates = _units.OfType<StarfighterState>().ToList();
+                List<StarfighterState> survivingFighters = fighterStates
+                    .Where(fighter => fighter.IsTargetable)
+                    .ToList();
+                Dictionary<CapitalShipState, int> remainingCapacity = carriers.ToDictionary(
+                    carrier => carrier,
+                    carrier => GetAvailableRecoveryCapacity(carrier, fighterStates)
+                );
+                HashSet<TacticalUnit> recoverableUnits = new HashSet<TacticalUnit>();
+
+                foreach (CapitalShipState carrier in carriers)
+                {
+                    IEnumerable<StarfighterState> assignedFighters = survivingFighters.Where(
+                        fighter =>
+                            !fighter.CanWithdrawIndependently
+                            && IsAssignedToCarrier(fighter, carrier)
+                    );
+                    foreach (StarfighterState fighter in assignedFighters)
+                        recoverableUnits.Add(fighter);
+                }
+
+                foreach (
+                    StarfighterState fighter in survivingFighters.Where(fighter =>
+                        !fighter.CanWithdrawIndependently && !recoverableUnits.Contains(fighter)
+                    )
+                )
+                {
+                    CapitalShipState recoveryCarrier = carriers.FirstOrDefault(carrier =>
+                        remainingCapacity[carrier] > 0
+                    );
+                    if (recoveryCarrier == null)
+                        continue;
+
+                    remainingCapacity[recoveryCarrier]--;
+                    recoverableUnits.Add(fighter);
+                }
+
+                return recoverableUnits;
+            }
+
+            /// <summary>
+            /// Calculates the carrier bays available after already-resolved fighter outcomes are
+            /// applied. Existing inactive occupants continue to reserve their bays.
+            /// </summary>
+            /// <param name="carrier">The carrier receiving displaced fighters.</param>
+            /// <param name="fighterStates">All fighters that participated in the battle.</param>
+            /// <returns>The number of bays available for reassignment.</returns>
+            private static int GetAvailableRecoveryCapacity(
+                CapitalShipState carrier,
+                IReadOnlyList<StarfighterState> fighterStates
+            )
+            {
+                int releasedCapacity = fighterStates.Count(fighter =>
+                    IsAssignedToCarrier(fighter, carrier)
+                    && (!fighter.IsAlive || fighter.CanWithdrawIndependently)
+                );
+                return Math.Max(carrier.Ship.GetExcessStarfighterCapacity() + releasedCapacity, 0);
+            }
+
+            /// <summary>
+            /// Returns whether a fighter is currently assigned to a specified carrier.
+            /// </summary>
+            /// <param name="fighter">The fighter assignment to inspect.</param>
+            /// <param name="carrier">The expected carrier.</param>
+            /// <returns>True when the fighter is a child of the carrier.</returns>
+            private static bool IsAssignedToCarrier(
+                StarfighterState fighter,
+                CapitalShipState carrier
+            )
+            {
+                return ReferenceEquals(
+                    fighter.Fighter.GetParentOfType<CapitalShip>(),
+                    carrier.Ship
+                );
             }
         }
 
@@ -640,6 +733,7 @@ namespace Rebellion.Game.Combat
             protected double MinimumManeuverRatio => _minimumManeuverRatio;
             internal abstract ISceneNode Node { get; }
             internal abstract bool IsAlive { get; }
+            internal abstract bool CanWithdrawIndependently { get; }
             internal abstract double ManeuverRate { get; }
             internal abstract double ClosingSpeed { get; }
             internal virtual double WithdrawalSpeed => ClosingSpeed;
@@ -827,6 +921,15 @@ namespace Rebellion.Game.Combat
             }
 
             /// <summary>
+            /// Returns a unit to combat when it reaches the boundary without a way to enter
+            /// hyperspace or recover aboard a surviving carrier.
+            /// </summary>
+            internal void CancelWithdrawal()
+            {
+                IsWithdrawing = false;
+            }
+
+            /// <summary>
             /// Calculates the original maneuver-rate adjustment used against fighter targets.
             /// </summary>
             /// <param name="target">The target unit.</param>
@@ -855,15 +958,28 @@ namespace Rebellion.Game.Combat
 
             internal readonly CapitalShip Ship;
             internal readonly int InitialHull;
-            private readonly bool[] _arcQueuedForRecharge = new bool[4];
-            private readonly TacticalUnit[,] _arcTargets = new TacticalUnit[4, 3];
-            private readonly double[,] _arcTargetDamage = new double[4, 3];
-            private readonly double[] _currentArcCharge = new double[4];
+            private readonly bool[] _arcQueuedForRecharge = new bool[
+                CapitalShip.PrimaryWeaponArcs.Count
+            ];
+            private readonly TacticalUnit[,] _arcTargets = new TacticalUnit[
+                CapitalShip.PrimaryWeaponArcs.Count,
+                _weaponTypes.Length
+            ];
+            private readonly double[,] _arcTargetDamage = new double[
+                CapitalShip.PrimaryWeaponArcs.Count,
+                _weaponTypes.Length
+            ];
+            private readonly double[] _currentArcCharge = new double[
+                CapitalShip.PrimaryWeaponArcs.Count
+            ];
             private readonly int[] _ionCannons;
             private readonly int[] _laserCannons;
+            private readonly double _laserCannonDamageAgainstCapitalShipsMultiplier;
             private readonly double _maximumHull;
             private readonly double _maximumShields;
-            private readonly double[] _maximumArcCharge = new double[4];
+            private readonly double[] _maximumArcCharge = new double[
+                CapitalShip.PrimaryWeaponArcs.Count
+            ];
             private readonly Queue<int> _rechargeQueue = new Queue<int>();
             private readonly int[] _turbolasers;
             private int _attackDelay;
@@ -873,6 +989,7 @@ namespace Rebellion.Game.Combat
             internal double CurrentShields { get; private set; }
             internal override ISceneNode Node => Ship;
             internal override bool IsAlive => CurrentHull > 0;
+            internal override bool CanWithdrawIndependently => Ship.Hyperdrive > 0;
             internal override bool IsStarfighter => false;
             internal override double RemainingDurability => CurrentHull + CurrentShields;
             internal override bool IsAttackDelayed => _attackDelay > 0;
@@ -914,16 +1031,15 @@ namespace Rebellion.Game.Combat
                 _turbolasers = GetWeaponValues(ship, PrimaryWeaponType.Turbolaser);
                 _laserCannons = GetWeaponValues(ship, PrimaryWeaponType.LaserCannon);
                 _ionCannons = GetWeaponValues(ship, PrimaryWeaponType.IonCannon);
+                _laserCannonDamageAgainstCapitalShipsMultiplier = Math.Max(
+                    config.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier,
+                    0
+                );
                 CurrentHull = InitialHull;
                 CurrentShields = _maximumShields;
                 for (int arc = 0; arc < _maximumArcCharge.Length; arc++)
                 {
-                    _maximumArcCharge[arc] = GetArcStrength(
-                        arc,
-                        targetsFighters: false,
-                        engagementDistance: 0,
-                        requireRange: false
-                    );
+                    _maximumArcCharge[arc] = GetRawArcStrength(arc);
                     _currentArcCharge[arc] = _maximumArcCharge[arc];
                 }
             }
@@ -1012,12 +1128,6 @@ namespace Rebellion.Game.Combat
                         for (int weaponIndex = 0; weaponIndex < _weaponTypes.Length; weaponIndex++)
                         {
                             PrimaryWeaponType weaponType = _weaponTypes[weaponIndex];
-                            if (
-                                weaponType == PrimaryWeaponType.IonCannon
-                                && candidate.IsStarfighter
-                            )
-                                continue;
-
                             double candidateDamage =
                                 GetWeaponStrength(
                                     weaponType,
@@ -1025,6 +1135,7 @@ namespace Rebellion.Game.Combat
                                     engagementRange,
                                     requireRange: true
                                 )
+                                * GetTargetTypeMultiplier(weaponType, candidate.IsStarfighter)
                                 * maneuverMultiplier
                                 * condition;
                             if (candidateDamage <= _arcTargetDamage[arc, weaponIndex])
@@ -1060,6 +1171,7 @@ namespace Rebellion.Game.Combat
                             GetDistanceTo(target, startingDistance),
                             requireRange: true
                         )
+                        * GetTargetTypeMultiplier(_weaponTypes[weaponIndex], target.IsStarfighter)
                         * GetManeuverMultiplier(target)
                         * condition;
                 }
@@ -1097,7 +1209,14 @@ namespace Rebellion.Game.Combat
                     if (weaponStrength <= 0)
                         continue;
 
-                    double damage = weaponStrength * GetManeuverMultiplier(target) * condition;
+                    double damage =
+                        weaponStrength
+                        * GetTargetTypeMultiplier(_weaponTypes[weaponIndex], target.IsStarfighter)
+                        * GetManeuverMultiplier(target)
+                        * condition;
+                    if (damage <= 0)
+                        continue;
+
                     AddPendingDamage(
                         pendingDamage,
                         target,
@@ -1294,7 +1413,7 @@ namespace Rebellion.Game.Combat
             private double GetStrongestArcStrength(bool targetsFighters)
             {
                 double strongestArc = 0;
-                for (int arc = 0; arc < 4; arc++)
+                for (int arc = 0; arc < _maximumArcCharge.Length; arc++)
                     strongestArc = Math.Max(
                         strongestArc,
                         GetArcStrength(
@@ -1323,29 +1442,49 @@ namespace Rebellion.Game.Combat
                 bool requireRange
             )
             {
-                double strength =
-                    GetWeaponStrength(
-                        PrimaryWeaponType.Turbolaser,
-                        arc,
-                        engagementDistance,
-                        requireRange
-                    )
-                    + GetWeaponStrength(
-                        PrimaryWeaponType.LaserCannon,
-                        arc,
-                        engagementDistance,
-                        requireRange
-                    );
-                if (!targetsFighters)
+                double strength = 0;
+                foreach (PrimaryWeaponType weaponType in _weaponTypes)
+                {
+                    strength +=
+                        GetWeaponStrength(weaponType, arc, engagementDistance, requireRange)
+                        * GetTargetTypeMultiplier(weaponType, targetsFighters);
+                }
+                return strength;
+            }
+
+            /// <summary>
+            /// Returns one arc's raw weapon charge before target-type effectiveness is applied.
+            /// </summary>
+            /// <param name="arc">The zero-based firing arc.</param>
+            /// <returns>The arc's raw weapon charge.</returns>
+            private int GetRawArcStrength(int arc)
+            {
+                int strength = 0;
+                foreach (PrimaryWeaponType weaponType in _weaponTypes)
                 {
                     strength += GetWeaponStrength(
-                        PrimaryWeaponType.IonCannon,
+                        weaponType,
                         arc,
-                        engagementDistance,
-                        requireRange
+                        engagementDistance: 0,
+                        requireRange: false
                     );
                 }
                 return strength;
+            }
+
+            /// <summary>
+            /// Returns a capital-ship weapon's effectiveness against the selected target type.
+            /// </summary>
+            /// <param name="type">The weapon type.</param>
+            /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
+            /// <returns>The target-specific damage multiplier.</returns>
+            private double GetTargetTypeMultiplier(PrimaryWeaponType type, bool targetsFighters)
+            {
+                if (type == PrimaryWeaponType.IonCannon && targetsFighters)
+                    return 0;
+                if (type == PrimaryWeaponType.LaserCannon && !targetsFighters)
+                    return _laserCannonDamageAgainstCapitalShipsMultiplier;
+                return 1;
             }
 
             /// <summary>
@@ -1375,7 +1514,11 @@ namespace Rebellion.Game.Combat
                     || arc >= values.Length
                     || (
                         requireRange
-                        && (values.Length < 5 || values[4] <= 0 || values[4] < engagementDistance)
+                        && (
+                            values.Length <= CapitalShip.PrimaryWeaponRangeIndex
+                            || values[CapitalShip.PrimaryWeaponRangeIndex] <= 0
+                            || values[CapitalShip.PrimaryWeaponRangeIndex] < engagementDistance
+                        )
                     )
                 )
                     return 0;
@@ -1416,6 +1559,7 @@ namespace Rebellion.Game.Combat
                     : 0;
             internal override ISceneNode Node => Fighter;
             internal override bool IsAlive => _currentDurability > 0;
+            internal override bool CanWithdrawIndependently => Fighter.Hyperdrive > 0;
             internal override bool IsStarfighter => true;
             internal override double RemainingDurability => _currentDurability;
             internal override bool CanScanForTargets =>

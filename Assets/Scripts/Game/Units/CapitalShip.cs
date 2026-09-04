@@ -14,6 +14,14 @@ namespace Rebellion.Game.Units
         LaserCannon,
     }
 
+    public enum PrimaryWeaponArc
+    {
+        Fore,
+        Aft,
+        Port,
+        Starboard,
+    }
+
     public enum CapitalShipRole
     {
         PrimaryLine,
@@ -30,6 +38,11 @@ namespace Rebellion.Game.Units
     /// </summary>
     public class CapitalShip : ContainerNode, IManufacturable, IMovable
     {
+        public static IReadOnlyList<PrimaryWeaponArc> PrimaryWeaponArcs { get; } =
+            Array.AsReadOnly((PrimaryWeaponArc[])Enum.GetValues(typeof(PrimaryWeaponArc)));
+
+        public static int PrimaryWeaponRangeIndex => PrimaryWeaponArcs.Count;
+
         [PersistableMember(Name = "HasAssignedName")]
         private bool _hasAssignedName;
 
@@ -88,9 +101,9 @@ namespace Rebellion.Game.Units
             int[]
         >()
         {
-            { PrimaryWeaponType.Turbolaser, new int[5] },
-            { PrimaryWeaponType.IonCannon, new int[5] },
-            { PrimaryWeaponType.LaserCannon, new int[5] },
+            { PrimaryWeaponType.Turbolaser, new int[PrimaryWeaponRangeIndex + 1] },
+            { PrimaryWeaponType.IonCannon, new int[PrimaryWeaponRangeIndex + 1] },
+            { PrimaryWeaponType.LaserCannon, new int[PrimaryWeaponRangeIndex + 1] },
         };
         public int WeaponRecharge;
         public int Bombardment;
@@ -291,9 +304,12 @@ namespace Rebellion.Game.Units
                 return 0;
 
             int strength = 0;
-            int weaponStrengthValueCount = Math.Min(4, weaponValues.Length);
-            for (int i = 0; i < weaponStrengthValueCount; i++)
-                strength += weaponValues[i];
+            foreach (PrimaryWeaponArc weaponArc in PrimaryWeaponArcs)
+            {
+                int weaponArcIndex = (int)weaponArc;
+                if (weaponArcIndex < weaponValues.Length)
+                    strength += weaponValues[weaponArcIndex];
+            }
 
             return strength;
         }

@@ -843,6 +843,66 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithFleetDeficit_UsesConfiguredLaserCannonDamageMultiplier()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config
+                .Combat
+                .SpaceCombat
+                .CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 0.75;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+
+            CapitalShip laserShip = AITestSceneBuilder.CreateCapitalShip(
+                "laser-template",
+                empire.InstanceID,
+                combatStrength: 300,
+                regimentCapacity: 0,
+                starfighterCapacity: 0
+            );
+            laserShip.TypeID = "laser";
+            laserShip.MaintenanceCost = 0;
+            laserShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 0;
+            laserShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 300;
+            laserShip.WeaponRecharge = 20;
+            CapitalShip turbolaserShip = AITestSceneBuilder.CreateCapitalShip(
+                "turbolaser-template",
+                empire.InstanceID,
+                combatStrength: 200,
+                regimentCapacity: 0,
+                starfighterCapacity: 0
+            );
+            turbolaserShip.TypeID = "turbolaser";
+            turbolaserShip.MaintenanceCost = 0;
+            turbolaserShip.WeaponRecharge = 10;
+            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(laserShip),
+                new Technology(turbolaserShip),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item => item.Demand.Kind == AIDemandKind.FleetSeedCapitalShip);
+
+            Assert.AreSame(laserShip, proposal.Product.GetReference());
+        }
+
+        [Test]
         public void Plan_WithGeneralDeficit_DoesNotSelectPlanetDestroyingCapitalShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
