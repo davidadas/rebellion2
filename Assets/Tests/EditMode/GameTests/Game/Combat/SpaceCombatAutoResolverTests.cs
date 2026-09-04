@@ -104,6 +104,67 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
+        public void Resolve_CapitalShipLaserCannonWithMixedTargets_SelectsHighestEffectiveDamageTarget()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 0);
+            attacker.Maneuverability = 1;
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
+            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            CapitalShip defenderShip = CreatePassiveTarget("defender-ship", hull: 100);
+            Starfighter defenderFighter = CreateFighter(
+                "defender-fighter",
+                squadronSize: 12,
+                weaponStrength: 0
+            );
+            defenderFighter.Agility = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 0.01;
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatAutoResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defenderShip },
+                new[] { defenderFighter },
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(100, GetShipOutcome(result, defenderShip).HullAfter);
+            Assert.AreEqual(6, GetFighterOutcome(result, defenderFighter).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_ZeroIterationStalemate_UsesConfiguredCapitalTargetLaserEffectiveness()
+        {
+            CapitalShip laserShip = CreateShip("laser-ship", hull: 100, weaponStrength: 0);
+            laserShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
+            laserShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            CapitalShip turbolaserShip = CreateShip(
+                "turbolaser-ship",
+                hull: 100,
+                weaponStrength: 20
+            );
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 0.25;
+            config.AutoResolveMaximumIterations = 0;
+
+            SpaceCombatAutoResult result = Resolve(
+                config,
+                new[] { laserShip },
+                new List<Starfighter>(),
+                new[] { turbolaserShip },
+                new List<Starfighter>(),
+                attackerCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+        }
+
+        [Test]
         public void Resolve_HeavyLineShipAgainstThreeLaserEscorts_DefeatsEscorts()
         {
             CapitalShip[] escorts =
