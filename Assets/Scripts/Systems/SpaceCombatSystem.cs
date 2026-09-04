@@ -154,6 +154,7 @@ namespace Rebellion.Systems
             List<Fleet> defenderFleets = GetFleets(decision.DefenderFleetInstanceIDs);
             Fleet attacker = GetRepresentativeFleet(attackerFleets);
             Fleet defender = GetRepresentativeFleet(defenderFleets);
+            Planet planet = ResolveCombatPlanet(decision);
 
             return new PendingCombatResult
             {
@@ -161,9 +162,19 @@ namespace Rebellion.Systems
                 DefenderFleet = defender,
                 AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID,
                 DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
-                Planet = ResolveCombatPlanet(decision),
-                AttackerCanRetreat = CanRetreatFleets(attackerFleets, defenderFleets),
-                DefenderCanRetreat = CanRetreatFleets(defenderFleets, attackerFleets),
+                Planet = planet,
+                AttackerCanRetreat = CanRetreatForces(
+                    attackerFleets,
+                    defenderFleets,
+                    planet,
+                    decision.AttackerOwnerInstanceID
+                ),
+                DefenderCanRetreat = CanRetreatForces(
+                    defenderFleets,
+                    attackerFleets,
+                    planet,
+                    decision.DefenderOwnerInstanceID
+                ),
                 Tick = _game.CurrentTick,
             };
         }
@@ -231,19 +242,33 @@ namespace Rebellion.Systems
                 retreatingFactionInstanceId == decision.AttackerOwnerInstanceID;
             List<Fleet> retreatingFleets = attackerRetreated ? attackerFleets : defenderFleets;
             List<Fleet> opposingFleets = attackerRetreated ? defenderFleets : attackerFleets;
+            List<Starfighter> retreatingFighters = GetActivePlanetStarfighters(
+                    planet,
+                    retreatingFactionInstanceId
+                )
+                .ToList();
 
-            if (!TryRetreatFleets(retreatingFleets, opposingFleets, ignoreGravityWell: false))
+            if (
+                !CanRetreatForces(
+                    retreatingFleets,
+                    opposingFleets,
+                    planet,
+                    retreatingFactionInstanceId
+                ) || !TryRetreatFleets(retreatingFleets, opposingFleets, ignoreGravityWell: false)
+            )
                 return false;
 
-            results.Add(
-                BuildRetreatResult(
-                    decision,
-                    attackerRetreated,
-                    attackerFleets,
-                    defenderFleets,
-                    planet
-                )
+            SpaceCombatResult result = BuildRetreatResult(
+                decision,
+                attackerRetreated,
+                attackerFleets,
+                defenderFleets,
+                planet
             );
+            foreach (Starfighter fighter in retreatingFighters)
+                _movement.EvacuateToNearestFriendlyPlanet(fighter);
+
+            results.Add(result);
             ClearCombatFlags(decision);
             return true;
         }
@@ -650,19 +675,31 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Reports whether a fleet can withdraw from its opponent.
+        /// Reports whether every force on one side can withdraw from its opponent.
         /// </summary>
         /// <param name="fleets">The fleets requesting withdrawal.</param>
         /// <param name="opponents">The opposing fleets.</param>
-        /// <returns>True when no opposing gravity well prevents withdrawal.</returns>
-        private bool CanRetreatFleets(IReadOnlyList<Fleet> fleets, IReadOnlyList<Fleet> opponents)
+        /// <param name="planet">The combat planet.</param>
+        /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
+        /// <returns>True when every fleet and directly deployed fighter can evacuate.</returns>
+        private bool CanRetreatForces(
+            IReadOnlyList<Fleet> fleets,
+            IReadOnlyList<Fleet> opponents,
+            Planet planet,
+            string ownerInstanceId
+        )
         {
             return fleets?.Count > 0
                 && !IsRetreatBlockedByGravityWell(fleets, opponents)
                 && fleets.All(fleet =>
                     HasHyperdriveCapableShip(fleet)
                     && _movement.CanEvacuateToNearestFriendlyPlanet(fleet)
-                );
+                )
+                && GetActivePlanetStarfighters(planet, ownerInstanceId)
+                    .All(fighter =>
+                        fighter.Hyperdrive > 0
+                        && _movement.CanEvacuateToNearestFriendlyPlanet(fighter)
+                    );
         }
 
         /// <summary>
