@@ -771,7 +771,7 @@ namespace Rebellion.Systems
         /// <param name="mission">The unstarted or active mission to evaluate.</param>
         /// <param name="observedPlanet">The planet state currently known to the planning faction.</param>
         /// <returns>The estimated detection percentage.</returns>
-        internal double EstimateDetectionProbability(Mission mission, Planet observedPlanet)
+        private double EstimateDetectionProbability(Mission mission, Planet observedPlanet)
         {
             if (mission == null || observedPlanet == null)
                 return 0;

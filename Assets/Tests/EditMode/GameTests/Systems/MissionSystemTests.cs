@@ -523,28 +523,34 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void EstimateDetectionProbability_CombinesKnownDetectorsAndAssignedDecoys()
+        public void GetMissionOdds_CombinesKnownDetectorsAndAssignedDecoys()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
                 BuildDetectionScene();
             Regiment secondDetector = CreateCompletedRegiment("r2", "rebels");
             game.AttachNode(secondDetector, planet);
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            game.AttachNode(decoy, spy.GetParent());
+            planet.AddVisitor("empire");
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
             SetDecoyTable(game, new Dictionary<int, int> { { -1000, 50 } });
-            StubMission mission = new StubMission("empire", planet.InstanceID);
-            game.AttachNode(mission, planet);
-            mission.AddChild(spy);
-            mission.AddDecoyParticipant(decoy);
             MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
-            double probability = system.EstimateDetectionProbability(mission, planet);
+            MissionOdds odds = system.GetMissionOdds(
+                CreateRequest(
+                    MissionTypeIDs.Espionage,
+                    new List<IMissionParticipant> { spy },
+                    new List<IMissionParticipant> { decoy },
+                    planet
+                )
+            );
 
-            Assert.AreEqual(43.75, probability, 0.001);
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(43.75, odds.DetectionProbability, 0.001);
         }
 
         [Test]
-        public void EstimateDetectionProbability_IncludesStationaryFleetDetectors()
+        public void GetMissionOdds_IncludesStationaryFleetDetectors()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
                 BuildDetectionScene();
@@ -559,15 +565,16 @@ namespace Rebellion.Tests.Sectors
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(capitalShip, fleet);
+            planet.AddVisitor("empire");
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
-            StubMission mission = new StubMission("empire", planet.InstanceID);
-            game.AttachNode(mission, planet);
-            mission.AddChild(spy);
             MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
-            double probability = system.EstimateDetectionProbability(mission, planet);
+            MissionOdds odds = system.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Espionage, spy, planet)
+            );
 
-            Assert.AreEqual(100, probability, 0.001);
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(100, odds.DetectionProbability, 0.001);
         }
 
         [Test]
