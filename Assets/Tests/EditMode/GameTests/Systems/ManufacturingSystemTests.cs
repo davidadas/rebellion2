@@ -2240,6 +2240,27 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_LocalBuildingOrderProducerChangedSides_CancelsOrder()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "REBELS" });
+            Building mine = CreateOrderTestBuildingTemplate("LOCAL_MINE");
+            mine.InstanceID = "LOCAL_MINE";
+            mine.OwnerInstanceID = _empire.InstanceID;
+            mine.ConstructionCost = 100;
+            Assert.IsTrue(_manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true));
+
+            _coruscant.OwnerInstanceID = "REBELS";
+
+            _manager.ProcessTick();
+
+            Assert.IsNull(mine.GetParent());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+            Assert.IsFalse(
+                _coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+        }
+
+        [Test]
         public void ProcessTick_SixInvalidOrdersBeforeValidOrder_CancelsInvalidAndAdvancesValid()
         {
             _game.GetFactions().Add(new Faction { InstanceID = "REBELS" });

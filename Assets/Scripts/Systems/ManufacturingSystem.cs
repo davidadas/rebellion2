@@ -966,10 +966,9 @@ namespace Rebellion.Systems
             if (producer == null || items == null || items.Count == 0)
                 return;
 
-            string producerOwnerId = producer.GetOwnerInstanceID();
             foreach (IManufacturable item in items.ToList())
             {
-                if (!HasInvalidPlanetDestination(item, producerOwnerId))
+                if (!HasInvalidPlanetDestination(item))
                     continue;
 
                 item.ManufacturingQueueSequence = 0;
@@ -982,10 +981,7 @@ namespace Rebellion.Systems
         /// Returns whether an unfinished building or troop has a directly assigned planet that
         /// is not controlled by its producer. Fleet and capital-ship destinations are excluded.
         /// </summary>
-        private static bool HasInvalidPlanetDestination(
-            IManufacturable item,
-            string producerOwnerId
-        )
+        private static bool HasInvalidPlanetDestination(IManufacturable item)
         {
             if (
                 item is not ISceneNode sceneNode
@@ -999,7 +995,7 @@ namespace Rebellion.Systems
 
             return !string.Equals(
                 destination.GetOwnerInstanceID(),
-                producerOwnerId,
+                item.ProducerOwnerID,
                 StringComparison.Ordinal
             );
         }
