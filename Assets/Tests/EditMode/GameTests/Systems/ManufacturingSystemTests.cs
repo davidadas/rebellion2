@@ -2240,6 +2240,83 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_SixInvalidOrdersBeforeValidOrder_CancelsInvalidAndAdvancesValid()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "REBELS" });
+            Planet captured = CreateOrderTestPlanet(_game, "CAPTURED", _empire.InstanceID);
+            List<Building> invalidOrders = Enumerable
+                .Range(1, 6)
+                .Select(index =>
+                {
+                    Building building = CreateOrderTestBuildingTemplate($"INVALID_{index}");
+                    building.InstanceID = $"INVALID_{index}";
+                    building.OwnerInstanceID = _empire.InstanceID;
+                    building.ConstructionCost = 100;
+                    return building;
+                })
+                .ToList();
+            foreach (Building invalidOrder in invalidOrders)
+                Assert.IsTrue(
+                    _manager.Enqueue(_coruscant, invalidOrder, captured, ignoreCost: true)
+                );
+
+            Building validOrder = CreateOrderTestBuildingTemplate("VALID");
+            validOrder.InstanceID = "VALID";
+            validOrder.OwnerInstanceID = _empire.InstanceID;
+            validOrder.ConstructionCost = 100;
+            Assert.IsTrue(_manager.Enqueue(_coruscant, validOrder, _coruscant, ignoreCost: true));
+            captured.OwnerInstanceID = "REBELS";
+
+            _manager.ProcessTick();
+
+            Assert.IsTrue(invalidOrders.All(order => order.GetParent() == null));
+            List<IManufacturable> queue = _coruscant.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            CollectionAssert.AreEqual(new[] { validOrder }, queue);
+            Assert.Greater(validOrder.ManufacturingProgress, 0);
+        }
+
+        [Test]
+        public void ProcessTick_OrdersForTwoCapturedPlanets_CancelsEntireLane()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "REBELS" });
+            Planet firstCaptured = CreateOrderTestPlanet(
+                _game,
+                "FIRST_CAPTURED",
+                _empire.InstanceID
+            );
+            Planet secondCaptured = CreateOrderTestPlanet(
+                _game,
+                "SECOND_CAPTURED",
+                _empire.InstanceID
+            );
+            Planet[] destinations = { firstCaptured, secondCaptured, firstCaptured };
+            List<Building> orders = new List<Building>();
+            for (int index = 0; index < destinations.Length; index++)
+            {
+                Building order = CreateOrderTestBuildingTemplate($"ORDER_{index}");
+                order.InstanceID = $"ORDER_{index}";
+                order.OwnerInstanceID = _empire.InstanceID;
+                order.ConstructionCost = 100;
+                Assert.IsTrue(
+                    _manager.Enqueue(_coruscant, order, destinations[index], ignoreCost: true)
+                );
+                orders.Add(order);
+            }
+
+            firstCaptured.OwnerInstanceID = "REBELS";
+            secondCaptured.OwnerInstanceID = "REBELS";
+
+            _manager.ProcessTick();
+
+            Assert.IsTrue(orders.All(order => order.GetParent() == null));
+            Assert.IsFalse(
+                _coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+        }
+
+        [Test]
         public void ProcessTick_BuildingBatchDestinationChangedSides_CancelsAllTargetedOrders()
         {
             // 3 mines queued from production planet A to destination planet B.
