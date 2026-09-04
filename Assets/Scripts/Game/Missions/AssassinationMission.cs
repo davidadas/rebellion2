@@ -164,6 +164,12 @@ namespace Rebellion.Game.Missions
             return CombineSuccessProbabilities(probabilities);
         }
 
+        /// <summary>
+        /// Resolves the assassination target from observed state when available, otherwise from
+        /// the authoritative game state.
+        /// </summary>
+        /// <param name="context">The state available while evaluating the mission.</param>
+        /// <returns>The matching target officer, or null when the target cannot be resolved.</returns>
         private Officer GetEvaluationTarget(MissionEvaluationContext context)
         {
             return

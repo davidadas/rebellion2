@@ -432,6 +432,12 @@ namespace Rebellion.Game.Missions
             return GetAgentProbability(agent, new MissionEvaluationContext(game));
         }
 
+        /// <summary>
+        /// Returns a participant's mission success probability using authoritative or observed state.
+        /// </summary>
+        /// <param name="agent">The participant whose mission score is evaluated.</param>
+        /// <param name="context">The state used to evaluate the participant.</param>
+        /// <returns>The configured success probability, or zero when no score can be resolved.</returns>
         protected double GetAgentProbability(
             IMissionParticipant agent,
             MissionEvaluationContext context
