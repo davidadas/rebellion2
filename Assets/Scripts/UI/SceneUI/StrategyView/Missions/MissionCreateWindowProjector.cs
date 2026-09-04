@@ -16,6 +16,7 @@ internal sealed class MissionCreateWindowProjector
     private static readonly Color32 _gray = Color.gray;
     private static readonly Color32 _white = Color.white;
 
+    private readonly Func<string, Planet> getObservedPlanet;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<MissionStartRequest, MissionEstimate> getMissionEstimate;
 
@@ -24,13 +25,16 @@ internal sealed class MissionCreateWindowProjector
     /// </summary>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="getMissionEstimate">Calculates planning odds for a mission configuration.</param>
+    /// <param name="getObservedPlanet">Returns the latest player-visible planet snapshot by ID.</param>
     public MissionCreateWindowProjector(
         Func<UIContext> getUIContext,
-        Func<MissionStartRequest, MissionEstimate> getMissionEstimate = null
+        Func<MissionStartRequest, MissionEstimate> getMissionEstimate = null,
+        Func<string, Planet> getObservedPlanet = null
     )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.getMissionEstimate = getMissionEstimate ?? (_ => null);
+        this.getObservedPlanet = getObservedPlanet ?? (_ => null);
     }
 
     /// <summary>
@@ -173,7 +177,8 @@ internal sealed class MissionCreateWindowProjector
         StrategyMissionChoice choice
     )
     {
-        Planet planet = session?.Target?.Planet?.Planet;
+        Planet sessionPlanet = session?.Target?.Planet?.Planet;
+        Planet planet = GetLatestObservedPlanet(sessionPlanet);
         if (
             choice == null
             || planet == null
@@ -187,7 +192,11 @@ internal sealed class MissionCreateWindowProjector
             {
                 MissionTypeID = choice.MissionTypeID,
                 Location = planet,
-                SelectedTarget = session.Target.Item,
+                SelectedTarget = GetLatestObservedTarget(
+                    session.Target.Item,
+                    sessionPlanet,
+                    planet
+                ),
                 Discipline = choice.Discipline,
                 MainParticipants = session.Agents.ToList(),
                 DecoyParticipants = session.Decoys.ToList(),
@@ -196,6 +205,46 @@ internal sealed class MissionCreateWindowProjector
         return estimate == null
             ? null
             : new MissionOddsRenderData(estimate.SuccessProbability, estimate.DetectionProbability);
+    }
+
+    /// <summary>
+    /// Resolves the current player-visible planet so an open mission window reflects fleet changes.
+    /// </summary>
+    /// <param name="sessionPlanet">The snapshot captured when targeting began.</param>
+    /// <returns>The latest visible snapshot, falling back to the session snapshot.</returns>
+    private Planet GetLatestObservedPlanet(Planet sessionPlanet)
+    {
+        if (sessionPlanet == null)
+            return null;
+
+        return getObservedPlanet(sessionPlanet.InstanceID) ?? sessionPlanet;
+    }
+
+    /// <summary>
+    /// Rebinds the selected target into the latest visible planet hierarchy.
+    /// </summary>
+    /// <param name="sessionTarget">The target captured when targeting began.</param>
+    /// <param name="sessionPlanet">The planet captured when targeting began.</param>
+    /// <param name="observedPlanet">The latest player-visible planet snapshot.</param>
+    /// <returns>The corresponding current target, or the original target when it is unavailable.</returns>
+    private static ISceneNode GetLatestObservedTarget(
+        ISceneNode sessionTarget,
+        Planet sessionPlanet,
+        Planet observedPlanet
+    )
+    {
+        if (sessionTarget == null || observedPlanet == null)
+            return sessionTarget;
+        if (
+            ReferenceEquals(sessionTarget, sessionPlanet)
+            || sessionTarget.InstanceID == sessionPlanet?.InstanceID
+        )
+            return observedPlanet;
+
+        return observedPlanet
+                .GetChildren<ISceneNode>(recursive: true)
+                .FirstOrDefault(node => node.InstanceID == sessionTarget.InstanceID)
+            ?? sessionTarget;
     }
 
     /// <summary>

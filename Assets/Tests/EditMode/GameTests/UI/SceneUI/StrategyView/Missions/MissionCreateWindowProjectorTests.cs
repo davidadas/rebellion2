@@ -214,6 +214,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void Build_MissionOdds_UsesLatestObservedPlanetFleetState()
+        {
+            Planet latestPlanet = new Planet
+            {
+                InstanceID = _planet.Planet.InstanceID,
+                DisplayName = _planet.Planet.DisplayName,
+            };
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "latest-visible-fleet",
+                OwnerInstanceID = "FNEMP1",
+            };
+            latestPlanet.AddChild(fleet);
+            MissionStartRequest capturedRequest = null;
+            MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
+                () => _uiContext,
+                request =>
+                {
+                    capturedRequest = request;
+                    return new MissionEstimate(50, 20);
+                },
+                planetInstanceId =>
+                    planetInstanceId == latestPlanet.InstanceID ? latestPlanet : null
+            );
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, _planet.Planet),
+                new[] { CreateOfficer("primary", "Primary", false) }
+            );
+
+            projector.Build(session, _window);
+
+            Assert.AreSame(latestPlanet, capturedRequest.Location);
+            Assert.AreSame(latestPlanet, capturedRequest.SelectedTarget);
+            Assert.AreSame(
+                fleet,
+                ((Planet)capturedRequest.Location).GetChildren<GameFleet>().Single()
+            );
+        }
+
+        [Test]
         public void Build_MissionOddsDisabled_OmitsEveryEstimate()
         {
             int estimateCount = 0;

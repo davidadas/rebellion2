@@ -60,6 +60,7 @@ public sealed class MissionCreateWindowController
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
+    /// <param name="getObservedPlanet">Returns the latest player-visible planet snapshot by ID.</param>
     public MissionCreateWindowController(
         Func<GameRoot> getGame,
         Func<MissionSystem> getMissionSystem,
@@ -70,7 +71,8 @@ public sealed class MissionCreateWindowController
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
         Action markDirty,
-        Func<SelectionModifierState> getSelectionModifiers = null
+        Func<SelectionModifierState> getSelectionModifiers = null,
+        Func<string, Planet> getObservedPlanet = null
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
@@ -87,7 +89,8 @@ public sealed class MissionCreateWindowController
         this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
         projector = new MissionCreateWindowProjector(
             getUIContext,
-            request => this.getMissionSystem().GetMissionEstimate(request)
+            request => this.getMissionSystem().GetMissionEstimate(request),
+            getObservedPlanet
         );
     }
 

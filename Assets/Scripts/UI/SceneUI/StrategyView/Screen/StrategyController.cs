@@ -475,7 +475,8 @@ public sealed class StrategyController
             windowPlacementController.GetMissionCreateWindowPosition,
             CloseWindow,
             MarkDirty,
-            () => bootstrap.GetInputManager().GetSelectionModifierState()
+            () => bootstrap.GetInputManager().GetSelectionModifierState(),
+            planetInstanceId => galaxyMapController.FindPlanet(planetInstanceId)?.Planet
         );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,
