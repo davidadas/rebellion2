@@ -83,9 +83,11 @@ public static class GameScreenshotMenu
 
         string fileName = $"rebellion2-{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
         _recordingPath = Path.Combine(recordingDirectory, fileName + ".mp4");
-        Vector2 gameViewSize = Handles.GetMainGameViewSize();
-        int outputWidth = GetEvenDimension(Mathf.RoundToInt(gameViewSize.x));
-        int outputHeight = GetEvenDimension(Mathf.RoundToInt(gameViewSize.y));
+        GameViewInputSettings gameViewInputSettings = new GameViewInputSettings();
+        int outputWidth = GetEvenDimension(gameViewInputSettings.OutputWidth);
+        int outputHeight = GetEvenDimension(gameViewInputSettings.OutputHeight);
+        gameViewInputSettings.OutputWidth = outputWidth;
+        gameViewInputSettings.OutputHeight = outputHeight;
 
         _recorderControllerSettings = ScriptableObject.CreateInstance<RecorderControllerSettings>();
         _movieRecorderSettings = ScriptableObject.CreateInstance<MovieRecorderSettings>();
@@ -98,16 +100,14 @@ public static class GameScreenshotMenu
         };
         _movieRecorderSettings.CaptureAudio = true;
         _movieRecorderSettings.CaptureAlpha = false;
-        _movieRecorderSettings.ImageInputSettings = new GameViewInputSettings
-        {
-            OutputWidth = outputWidth,
-            OutputHeight = outputHeight,
-        };
+        _movieRecorderSettings.ImageInputSettings = gameViewInputSettings;
         _movieRecorderSettings.OutputFile = Path.Combine(recordingDirectory, fileName);
 
         _recorderControllerSettings.AddRecorderSettings(_movieRecorderSettings);
         _recorderControllerSettings.SetRecordModeToManual();
-        _recorderControllerSettings.FrameRate = 60.0f;
+        _recorderControllerSettings.FrameRatePlayback = FrameRatePlayback.Variable;
+        _recorderControllerSettings.FrameRate = 30.0f;
+        _recorderControllerSettings.CapFrameRate = false;
 
         try
         {
