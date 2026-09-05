@@ -46,9 +46,10 @@ namespace Rebellion.AI.Scoring
             if (!TryCreateMission(context, missionProposal, out Mission mission))
                 return 0;
 
-            double successProbability = context
-                .Missions.GetMissionOdds(mission, missionProposal.MainParticipants)
-                .SuccessProbability;
+            double successProbability = context.Missions.GetObjectiveSuccessProbability(
+                mission,
+                missionProposal.MainParticipants
+            );
             double score = GetMissionScore(context, missionProposal, successProbability);
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
             score -= GetTravelPenalty(context, missionProposal);

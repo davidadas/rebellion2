@@ -27,6 +27,7 @@ public sealed class UserGameplaySettings
     public int AutosavesToKeep = DefaultAutosavesToKeep;
     public bool PauseAfterEnemyBombardment = true;
     public bool PauseWhenSpaceBattleBegins = true;
+    public bool ShowMissionOdds = true;
 
     /// <summary>
     /// Gets whether a gameplay option is enabled.
@@ -109,5 +110,6 @@ public sealed class UserGameplaySettings
         AutosavesToKeep = DefaultAutosavesToKeep;
         PauseAfterEnemyBombardment = true;
         PauseWhenSpaceBattleBegins = true;
+        ShowMissionOdds = true;
     }
 }

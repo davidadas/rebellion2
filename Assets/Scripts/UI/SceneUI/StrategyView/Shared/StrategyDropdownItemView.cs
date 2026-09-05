@@ -18,6 +18,9 @@ public sealed class StrategyDropdownItemView : MonoBehaviour
     private TextMeshProUGUI itemTextField;
 
     [SerializeField]
+    private MissionOddsOverlayView missionOddsOverlay;
+
+    [SerializeField]
     private bool preserveAuthoredImageRect;
 
     private RectInt imageSlot;
@@ -77,6 +80,7 @@ public sealed class StrategyDropdownItemView : MonoBehaviour
         else
             UILayout.SetHorizontallyCenteredImage(itemImage, data.Texture, imageSlot);
         UILayout.SetTextContent(itemTextField, data.Label, data.LabelColor);
+        RenderMissionOdds(data.MissionOdds);
         gameObject.SetActive(true);
     }
 
@@ -86,6 +90,22 @@ public sealed class StrategyDropdownItemView : MonoBehaviour
     private void HandleClicked()
     {
         Clicked?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Renders the optional mission-planning overlay used by Mission Create rows.
+    /// </summary>
+    /// <param name="odds">The mission odds, or null for ordinary dropdown rows.</param>
+    private void RenderMissionOdds(MissionOddsRenderData odds)
+    {
+        if (missionOddsOverlay == null)
+        {
+            if (odds != null)
+                throw new MissingReferenceException($"{name}/MissionOddsOverlay is missing.");
+            return;
+        }
+
+        missionOddsOverlay.Render(odds);
     }
 
     /// <summary>
@@ -119,16 +139,25 @@ public sealed class StrategyDropdownItemRenderData
 
     public Color32 LabelColor { get; }
 
+    public MissionOddsRenderData MissionOdds { get; }
+
     /// <summary>
     /// Creates one complete dropdown-row presentation snapshot.
     /// </summary>
     /// <param name="texture">The displayed row image.</param>
     /// <param name="label">The displayed row label.</param>
     /// <param name="labelColor">The displayed label color.</param>
-    public StrategyDropdownItemRenderData(Texture texture, string label, Color32 labelColor)
+    /// <param name="missionOdds">Optional planning odds displayed over a mission icon.</param>
+    public StrategyDropdownItemRenderData(
+        Texture texture,
+        string label,
+        Color32 labelColor,
+        MissionOddsRenderData missionOdds = null
+    )
     {
         Texture = texture;
         Label = label ?? string.Empty;
         LabelColor = labelColor;
+        MissionOdds = missionOdds;
     }
 }
