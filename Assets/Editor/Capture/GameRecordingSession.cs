@@ -19,15 +19,15 @@ internal static class GameRecordingSession
     private static MovieRecorderSettings _movieRecorderSettings;
     private static string _recordingPath;
 
-    static GameRecordingSession()
-    {
-        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-    }
-
     /// <summary>
     /// Gets whether this utility currently owns an active Recorder session.
     /// </summary>
     public static bool IsRecording => _recorderController?.IsRecording() == true;
+
+    static GameRecordingSession()
+    {
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+    }
 
     /// <summary>
     /// Configures and starts an MP4 recording of the Game view and game audio.
