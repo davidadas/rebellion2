@@ -44,6 +44,10 @@ Assets/_Recovery/
 Assets/Videos/
 Assets/TextMesh Pro/
 /Assets/Content/
+
+# Local captures
+/_recordings/
+/_screenshots/
 /Assets/Resources/
 # Installed content is supplied by rebellion2-media beside the project/player.
 /Content/
